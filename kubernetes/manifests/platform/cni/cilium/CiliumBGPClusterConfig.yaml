@@ -1,0 +1,20 @@
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumBGPClusterConfig
+metadata:
+  name: gateway-bgp-config
+spec:
+  localASN: 65101
+  virtualRouters:
+  - exportPodCIDR: false
+    neighbors:
+    - peerAddress: '10.10.101.1/32'
+      peerASN: 65000
+  serviceSelector:
+    matchExpressions:
+    - key: somekey
+      operator: NotIn
+      values:
+      - never-used-value
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"

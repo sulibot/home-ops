@@ -1,0 +1,14 @@
+resources:
+  - jetstack-source.yaml
+  - cilium-source.yaml
+  - ceph-csi-cephfs.yaml
+  - sulibot-chart-template.yaml
+  - cloudflare-source.yaml
+  - external-dns-source.yaml
+  - immich-source.yaml
+  - external-secrets-source.yaml
+  - bitnami-source.yaml
+  - cnpg-helmrepository.yaml
+  - akeyless-helmrepository.yaml
+  # Add other Helm repositories here
+

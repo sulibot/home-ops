@@ -1,0 +1,24 @@
+- hosts: pvenodes
+  tasks:
+
+  - name: Install common Proxmox utilities
+    apt:
+      name:
+        - net-tools
+        - curl
+        - wget
+        - vim
+        - htop
+        - sysstat
+        - lsof
+        - traceroute
+        - tcpdump
+        - openssh-server
+        - ufw
+        - chrony
+        - jq
+        - psmisc
+      state: latest
+      update_cache: yes
+    become: true
+

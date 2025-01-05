@@ -1,0 +1,86 @@
+# General OS-specific files
+.DS_Store
+Thumbs.db
+
+# macOS
+.AppleDouble
+.LSOverride
+*.DS_Store
+.DS_Store?
+
+# macOS - Icon files
+Icon?
+__MACOSX
+
+# Linux
+*~
+.nfs*
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+crash.log
+.terraform*
+terraform.*
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.coverage
+.cache/
+pytest_cache/
+.tox/
+.eggs/
+*.egg-info/
+*.egg
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.out
+*.a
+vendor/
+go.sum
+go.mod
+
+# Rust
+target/
+*.rs.bk
+
+# SOPS
+*.enc.yaml
+*.enc.json
+*.decrypted~*
+
+# Ansible
+*.retry
+.cache/
+ansible.log
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.log
+*.bak
+*.orig
+*.save
+
+# Editor-specific files
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-*
+
+# Git-specific
+*.patch
+*.diff
+*.lock
+*.bak

@@ -1,0 +1,5 @@
+resources:
+  - cluster-issuers/
+  - gateway/
+  - cloudflared/
+  - external-dns/

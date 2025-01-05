@@ -1,0 +1,26 @@
+[all]
+sol-controlplane-1      ansible_host=fd00:101::11    
+sol-controlplane-2      ansible_host=fd00:101::12
+sol-controlplane-3      ansible_host=fd00:101::13
+sol-worker-1            ansible_host=fd00:101::21    
+sol-worker-2            ansible_host=fd00:101::22
+sol-worker-3            ansible_host=fd00:101::23
+
+[kube_control_plane]
+sol-controlplane-1      ansible_host=fd00:101::11    
+sol-controlplane-2      ansible_host=fd00:101::12
+sol-controlplane-3      ansible_host=fd00:101::13
+
+[etcd]
+sol-controlplane-1      ansible_host=fd00:101::11    
+sol-controlplane-2      ansible_host=fd00:101::12
+sol-controlplane-3      ansible_host=fd00:101::13
+
+[kube_node]
+sol-worker-1            ansible_host=fd00:101::21    
+sol-worker-2            ansible_host=fd00:101::22
+sol-worker-3            ansible_host=fd00:101::23
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane

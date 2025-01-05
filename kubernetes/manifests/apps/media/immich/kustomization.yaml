@@ -1,0 +1,5 @@
+resources:
+#  - postgresql-pv.yaml
+#  - redis-pv.yaml
+  - helmrelease.yaml
+

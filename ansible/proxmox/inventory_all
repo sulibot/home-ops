@@ -1,0 +1,41 @@
+[all]
+sol-controlplane-1      ansible_host=fd00:101::11    ansible_user=root
+sol-controlplane-2      ansible_host=fd00:101::12    ansible_user=root
+sol-controlplane-3      ansible_host=fd00:101::13    ansible_user=root
+sol-worker-1            ansible_host=fd00:101::21    ansible_user=root
+sol-worker-2            ansible_host=fd00:101::22    ansible_user=root
+sol-worker-3            ansible_host=fd00:101::23    ansible_user=root
+luna-controlplane-1     ansible_host=fd00:102::11    ansible_user=root
+luna-controlplane-2     ansible_host=fd00:102::12    ansible_user=root
+luna-controlplane-3     ansible_host=fd00:102::13    ansible_user=root
+luna-worker-1           ansible_host=fd00:102::21    ansible_user=root
+luna-worker-2           ansible_host=fd00:102::22    ansible_user=root
+luna-worker-3           ansible_host=fd00:102::23    ansible_user=root
+
+[kube_control_plane]
+sol-controlplane-1      ansible_host=fd00:101::11    ansible_user=root
+sol-controlplane-2      ansible_host=fd00:101::12    ansible_user=root
+sol-controlplane-3      ansible_host=fd00:101::13    ansible_user=root
+luna-controlplane-1     ansible_host=fd00:102::11    ansible_user=root
+luna-controlplane-2     ansible_host=fd00:102::12    ansible_user=root
+luna-controlplane-3     ansible_host=fd00:102::13    ansible_user=root
+
+[etcd]
+sol-controlplane-1      ansible_host=fd00:101::11    ansible_user=root
+sol-controlplane-2      ansible_host=fd00:101::12    ansible_user=root
+sol-controlplane-3      ansible_host=fd00:101::13    ansible_user=root
+luna-controlplane-1     ansible_host=fd00:102::11    ansible_user=root
+luna-controlplane-2     ansible_host=fd00:102::12    ansible_user=root
+luna-controlplane-3     ansible_host=fd00:102::13    ansible_user=root
+
+[kube_node]
+sol-worker-1            ansible_host=fd00:101::21    ansible_user=root
+sol-worker-2            ansible_host=fd00:101::22    ansible_user=root
+sol-worker-3            ansible_host=fd00:101::23    ansible_user=root
+luna-worker-1           ansible_host=fd00:102::21    ansible_user=root
+luna-worker-2           ansible_host=fd00:102::22    ansible_user=root
+luna-worker-3           ansible_host=fd00:102::23    ansible_user=root
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane

@@ -1,0 +1,231 @@
+resource "proxmox_virtual_environment_vm" "sol-cp" {
+  count       = 3
+  name        = "sol-cp-${count.index + 1}"
+  description = "Managed by Terraform"
+  tags        = ["terraform", "ubuntu", "k8s-cp"]
+
+  node_name = "pve01"
+  vm_id     = "10101002${count.index + 1}"
+
+
+  cpu {
+    cores = 2
+    type = "host"
+  }
+
+  memory {
+    dedicated = 2048
+  }
+
+
+  agent {
+    # read 'Qemu guest agent' section, change to true only when ready
+    enabled = true
+  }
+
+  startup {
+    order      = "3"
+    up_delay   = "60"
+    down_delay = "60"
+  }
+
+  disk {
+    datastore_id = "local-zfs"
+    file_id      = "local:iso/jammy-server-cloudimg-amd64.img"
+    interface    = "virtio0"
+    iothread     = true
+    discard      = "on"
+    size         = 40
+    file_format  = "raw"
+  }
+
+
+  initialization {
+    dns {
+      servers = ["10.10.0.1","fd00::1"]
+      domain = "sulibot.com"
+    }
+
+    ip_config {
+        ipv4 {
+            address = "10.10.100.2${count.index + 1}/16"
+            gateway = "10.10.0.1"
+        }
+        ipv6 {
+            address = "fd00::100:2${count.index + 1}/64"
+            gateway = "fd00::1"
+        }
+    }
+    ip_config {
+        ipv6 {
+            address = "dhcp"
+        } 
+    }
+  
+    
+    datastore_id = "local-zfs"
+
+    user_data_file_id = proxmox_virtual_environment_file.ubuntu_cloud_init.id
+  }
+
+  network_device {
+    bridge = "vmbr0"
+    #vlan_id = "216"
+  }
+
+  operating_system {
+    type = "l26"
+  }
+
+  keyboard_layout = "no"
+
+  lifecycle {
+    ignore_changes = [
+      network_device,
+    ]
+  }
+
+
+}
+
+resource "proxmox_virtual_environment_vm" "k8s-wk" {
+  count       = 3
+  name        = "sol-wk-${count.index + 1}"
+  description = "Managed by Terraform"
+  tags        = ["terraform", "ubuntu", "k8s-node"]
+
+  node_name = "pve01"
+  vm_id     = "10101002${count.index + 5}"
+
+
+  cpu {
+    cores = 4
+    type = "host"
+  }
+
+  memory {
+    dedicated = 4096
+  }
+
+
+  agent {
+    # read 'Qemu guest agent' section, change to true only when ready
+    enabled = true
+  }
+
+  startup {
+    order      = "3"
+    up_delay   = "60"
+    down_delay = "60"
+  }
+
+  disk {
+    datastore_id = "local-zfs"
+    file_id      = "local:iso/jammy-server-cloudimg-amd64.img"
+    interface    = "virtio0"
+    iothread     = true
+    discard      = "on"
+    size         = 60
+    file_format  = "raw"
+  }
+
+
+  initialization {
+    dns {
+      servers = ["10.10.0.1","fd00::1"]
+      domain = "sulibot.com"
+    }
+    ip_config {
+        ipv4 {
+            address = "10.10.100.2${count.index + 5}/16"
+            gateway = "10.10.0.1"
+        }
+        ipv6 {
+            address = "fd00::100:2${count.index + 5}/64"
+            gateway = "fd00::1"
+        }
+    }
+    ip_config {
+        ipv6 {
+            address = "dhcp"
+        } 
+    }
+    datastore_id = "local-zfs"
+
+    user_data_file_id = proxmox_virtual_environment_file.ubuntu_cloud_init.id
+  }
+
+  network_device {
+    bridge = "vmbr0"
+    #vlan_id = "216"
+  }
+
+  operating_system {
+    type = "l26"
+  }
+
+  keyboard_layout = "no"
+
+  lifecycle {
+    ignore_changes = [
+      network_device,
+    ]
+  }
+
+}
+
+
+resource "proxmox_virtual_environment_file" "ubuntu_cloud_init" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "pve01"
+
+  source_raw {
+    data = <<EOF
+#cloud-config
+
+# Set the password for the ubuntu user and disable expiration
+chpasswd:
+  list: |
+    ubuntu:ubuntu
+  expire: false
+
+# Install qemu-guest-agent for improved VM management
+packages:
+  - qemu-guest-agent
+
+# Set timezone
+timezone: America/Los_Angeles
+
+# User configuration
+users:
+  - default
+  - name: ubuntu
+    groups: sudo
+    shell: /bin/bash
+    ssh-authorized-keys:
+      - ${trimspace("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com")}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+# Configure root to allow SSH access with the same key
+  - name: root
+    ssh-authorized-keys:
+      - ${trimspace("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com")}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+
+# Enable root SSH access in SSH configuration
+runcmd:
+  - sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+# Reboot the VM after cloud-init completes
+power_state:
+    delay: now
+    mode: reboot
+    message: Rebooting after cloud-init completion
+    condition: true
+EOF
+
+    file_name = "ubuntu.cloud-config.yaml"
+  }
+}

@@ -1,0 +1,91 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: radarr-4k
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: chart-template
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: chart-template
+        namespace: flux-system
+      version: 0.1.0
+  interval: 1h0m0s
+  values:
+    affinity: {}
+    annotations:
+      pod: {}
+    config:
+      enabled: true
+      mountPath: /config
+      storageSize: 100Mi
+    data:
+      enabled: true
+      mountPath: /data
+      storageSize: 10Gi
+    dnsConfig:
+      enabled: true
+      options:
+      - name: ndots
+        value: "1"
+    dnsPolicy: ClusterFirst
+    env:
+    - name: RADARR__APP__INSTANCENAME
+      value: Radarr
+    - name: RADARR__APP__THEME
+      value: dark
+    - name: RADARR__AUTH__METHOD
+      value: External
+    - name: RADARR__AUTH__REQUIRED
+      value: DisabledForLocalAddresses
+    - name: RADARR__LOG__DBENABLED
+      value: "False"
+    - name: RADARR__LOG__LEVEL
+      value: info
+    gateway:
+      domain: sulibot.com
+      enabled: true
+      name: gateway-internal
+      namespace: network
+    headless:
+      enabled: true
+    image:
+      digest: ""
+      pullPolicy: IfNotPresent
+      repository: ghcr.io/onedr0p/radarr-develop
+      tag: 5.17.0.9555@sha256:ca1d1f55524c1d58cd9aa58e747b7ee37536aed4f95852ab07eb0b984dcf1817
+    ingress:
+      className: cilium
+      enabled: false
+      tls:
+        certManagerIssuer: letsencrypt-prod
+    labels:
+      global: {}
+    name: radarr-4k
+    namespace: media
+    ports:
+      servicePort: 80
+      targetPort: 7878
+    replicaCount: 1
+    resources:
+      enabled: false
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      enabled: true
+      fsGroup: 65534
+      fsGroupChangePolicy: OnRootMismatch
+      readOnlyRootFilesystem: false
+      runAsGroup: 65534
+      runAsUser: 65534
+    timezone: America/Los_Angeles
+    tolerations: []

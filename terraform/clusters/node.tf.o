@@ -1,0 +1,162 @@
+# Define a map of clusters with their details
+variable "cluster_config" {
+  description = "Configuration for the cluster, defining control-plane and worker nodes."
+  type = map(object({
+    control_plane = object({
+      quantity     = number
+      cpus         = number
+      memory       = number
+      disk_size    = string
+    })
+    worker = object({
+      quantity     = number
+      cpus         = number
+      memory       = number
+      disk_size    = string
+    })
+    network_segment = number # Third octet
+    starting_ip     = number # Last octet of starting IP
+    starting_vmid   = number
+  }))
+}
+
+# Example configuration
+locals {
+  cluster_config = {
+    "luna" = {
+      control-plane = {
+        quantity  = 3
+        cpus      = 1
+        memory    = 4096
+        disk_size = 20
+      }
+      worker = {
+        quantity  = 3
+        cpus      = 3
+        memory    = 4096
+        disk_size = 20
+      }
+      network_segment = 100
+      starting_ip     = 10
+      starting_vmid   = 10100
+    },
+        "sol" = {
+      control-plane = {
+        quantity  = 3
+        cpus      = 1
+        memory    = 4096
+        disk_size = 20
+      }
+      worker = {
+        quantity  = 3
+        cpus      = 3
+        memory    = 8096
+        disk_size = 20
+      }
+      network_segment = 101
+      starting_ip     = 10
+      starting_vmid   = 10200
+    }
+  }
+
+  # Generate a list of all nodes with details for each
+  all_nodes = flatten([
+    for cluster_name, cluster in local.cluster_config : [
+      for type, config in {
+        "control-plane" = cluster.control-plane,
+        "worker"        = cluster.worker
+      } : [
+        for i in range(0, config.quantity) : {
+          name          = "${cluster_name}-${type}-${i + 1}"
+          type          = type
+          cpus          = config.cpus
+          memory        = config.memory
+          disk_size     = config.disk_size
+          ip_address = "10.10.${cluster.network_segment}.${cluster.starting_ip + i + (type == "worker" ? cluster.control-plane.quantity : 0)}"
+          ip6_address = "fd00::${cluster.network_segment}:${cluster.starting_ip + i + (type == "worker" ? cluster.control-plane.quantity : 0)}"
+          vmid          = cluster.starting_vmid + i + (type == "worker" ? cluster.control-plane.quantity : 0)
+          target_node   = "pve0${i % 3 + 1}"
+        }
+      ]
+    ]
+  ])    
+}
+
+resource "proxmox_virtual_environment_vm" "cluster_nodes" {
+  for_each = { for idx, node in local.all_nodes : idx => node }
+
+  name          = each.value.name
+  node_name     = "pve01"
+  vm_id         = each.value.vmid
+  scsi_hardware = "virtio-scsi-single"
+
+
+
+  clone {
+    vm_id        = "9000"
+    datastore_id = "local-zfs"
+    full         = true
+  }
+
+  cpu {
+    cores   = each.value.cpus
+    sockets = 1
+    numa    = true
+    type    = "host"
+  }
+
+  memory {
+    dedicated = each.value.memory
+    floating = each.value.memory
+  }
+
+  agent {
+    enabled = true
+  }
+
+  network_device {
+    bridge = "vmbr0"
+    model  = "virtio"
+  }
+
+  initialization {
+    datastore_id = "local-zfs"
+    ip_config {
+      ipv4 {
+        address = "${each.value.ip_address}/16"
+        gateway = "10.10.0.1"
+      }
+      ipv6 {
+        address = "${each.value.ip6_address}/64"
+      }      
+    }
+    ip_config {
+      ipv6 {
+        address = "dhcp"
+      } 
+    }
+
+    dns {
+      servers = ["10.10.0.1", "fd00::1"]
+      domain = "sulibot.com"
+    }
+
+  }
+
+  disk {
+    datastore_id = "local-zfs"
+    file_format  = "raw"
+    interface    = "scsi0"
+    size         = each.value.disk_size
+    iothread     = true
+  }
+  
+  serial_device {
+    device = "socket"
+  }
+  
+  vga {
+    type = "std"               # Use Standard VGA for headless Talos
+  }
+}
+

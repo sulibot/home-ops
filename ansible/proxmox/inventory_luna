@@ -1,0 +1,26 @@
+[all]
+luna-controlplane-1     ansible_host=fd00:102::11    
+luna-controlplane-2     ansible_host=fd00:102::12
+luna-controlplane-3     ansible_host=fd00:102::13
+luna-worker-1           ansible_host=fd00:102::21    
+luna-worker-2           ansible_host=fd00:102::22
+luna-worker-3           ansible_host=fd00:102::23
+
+[kube_control_plane]
+luna-controlplane-1     ansible_host=fd00:102::11    
+luna-controlplane-2     ansible_host=fd00:102::12
+luna-controlplane-3     ansible_host=fd00:102::13
+
+[etcd]
+luna-controlplane-1     ansible_host=fd00:102::11    
+luna-controlplane-2     ansible_host=fd00:102::12
+luna-controlplane-3     ansible_host=fd00:102::13
+
+[kube_node]
+luna-worker-1           ansible_host=fd00:102::21    
+luna-worker-2           ansible_host=fd00:102::22
+luna-worker-3           ansible_host=fd00:102::23
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane

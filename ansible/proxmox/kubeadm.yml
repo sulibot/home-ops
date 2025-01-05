@@ -1,0 +1,287 @@
+---
+- name: Prepare node for dual-stack Kubernetes 1.31 installation
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update hostname to match inventory name
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Update and upgrade the system
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Install required dependencies
+      apt:
+        name: 
+          - apt-transport-https
+          - curl
+          - gnupg
+        state: present
+
+    - name: Install jq
+      apt:
+        name: jq
+        state: present
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+
+    - name: Configure containerd
+      block:
+        - name: Create containerd configuration directory
+          file:
+            path: /etc/containerd
+            state: directory
+
+        - name: Generate default containerd config
+          command: "containerd config default"
+          register: containerd_default_config
+
+        - name: Write default containerd config
+          copy:
+            content: "{{ containerd_default_config.stdout }}"
+            dest: /etc/containerd/config.toml
+
+        - name: Set SystemdCgroup to true in containerd config
+          replace:
+            path: /etc/containerd/config.toml
+            regexp: 'SystemdCgroup = false'
+            replace: 'SystemdCgroup = true'
+
+        - name: Restart containerd
+          systemd:
+            name: containerd
+            state: restarted
+            enabled: true
+
+    - name: Download Kubernetes apt key
+      get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key
+        dest: /tmp/kubernetes-release.key
+
+    - name: Convert Kubernetes apt key to .gpg format
+      command: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Add Kubernetes repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /"
+        state: present
+
+    - name: Install Kubernetes components
+      apt:
+        name: 
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: yes
+
+    - name: Hold Kubernetes packages
+      command: apt-mark hold kubelet kubeadm kubectl
+
+    - name: Disable swap
+      command: "swapoff -a"
+
+    - name: Permanently disable swap in fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^(.*\sswap\s.*)$'
+        replace: '#\1'
+
+    - name: Load kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+
+    - name: Ensure kernel modules are loaded on boot
+      copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Set sysctl parameters for Kubernetes with IPv6 support
+      copy:
+        dest: /etc/sysctl.d/k8s.conf
+        content: |
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+          net.ipv6.conf.all.forwarding        = 1
+
+    - name: Apply sysctl parameters
+      command: sysctl --system
+
+
+
+- name: Generate kubeadm configuration for dual-stack kube-proxy-free setup
+  hosts: kube_control_plane
+  tasks:
+    - name: Extract second and third hextets from ansible_host
+      set_fact:
+        second_hextet: "{{ ansible_host.split(':')[1] }}"
+        fourth_hextet: "{{ ansible_host.split(':')[-1] }}"
+
+    - name: Create kubeadm configuration file for dual-stack and kube-proxy-free setup
+      copy:
+        dest: /root/kubeadm-config.yaml
+        content: |
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: ClusterConfiguration
+          apiServer:
+            certSANs:
+              - fd00:{{ second_hextet }}::10
+          networking:       
+            podSubnet:     10.244.0.0/16,fd00:{{ second_hextet }}:244::/56
+            serviceSubnet: 10.96.0.0/12,fd00:{{ second_hextet }}:96::/112
+          controlPlaneEndpoint: "fd00:{{ second_hextet }}::10"
+
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta4
+          kind: InitConfiguration
+          skipPhases:
+            - addon/kube-proxy
+      delegate_to: "{{ inventory_hostname }}"
+
+
+- name: Configure Kubernetes control plane nodes with Kube-VIP and BGP
+  hosts: kube_control_plane
+  become: yes
+  tasks:
+    - name: Upload Kube-VIP setup script to control plane nodes
+      copy:
+        src: files/kube-vip-setup.sh
+        dest: /root/kube-vip-setup.sh
+        mode: '0755'
+
+    - name: Run Kube-VIP setup script on control plane nodes
+      command: /root/kube-vip-setup.sh "{{ ansible_host }}"
+
+- name: Configure Cilium on Kubernetes Control Plane
+  hosts: kube_control_plane
+  become: true
+
+  tasks:
+    - name: Render Cilium values template
+      template:
+        src: templates/cilium-values.j2
+        dest: /root/cilium-values.yaml
+        mode: 0644
+
+- name: Install Cilium CLI and Helm on Kubernetes Control Plane
+  hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Create bash script to install Cilium CLI and Helm
+      copy:
+        dest: /root/install_cilium_helm.sh
+        content: |
+          #!/bin/bash
+          set -e
+          CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+          CLI_ARCH=amd64
+          if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+          curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+          sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+          sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+          rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+        mode: '0755'
+
+    - name: Execute the bash script
+      command: /root/install_cilium_helm.sh
+
+- name: Install Cilium with Helm on Kubernetes Control Plane
+  hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Create bash script to install Cilium
+      copy:
+        dest: /root/cilium.sh
+        content: |
+          #!/bin/bash
+          set -e
+
+          # Add the Cilium Helm repository if it doesn't already exist
+          if ! helm repo list | grep -q 'https://helm.cilium.io'; then
+            helm repo add cilium https://helm.cilium.io
+          fi
+
+          # Update Helm repositories
+          helm repo update
+
+          # Install or upgrade Cilium
+          helm upgrade --install cilium cilium/cilium \
+            --version 1.16.4 \
+            --namespace kube-system \
+            --create-namespace \
+            -f cilium-values.yaml
+          kubectl -n kube-system rollout restart deployment/cilium-operator                                                                                                                                │
+          kubectl -n kube-system rollout restart ds/cilium
+          kubectl label node sol-worker-1 sol-worker-2 sol-worker-3 luna-worker-1 luna-worker-2 luna-worker-3 role=worker 
+        mode: '0755'
+
+- name: Deploy update_k8s_config.sh script to Kubernetes Control Plane
+  hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Copy update_k8s_config.sh script to /root
+      copy:
+        dest: /root/update_k8s_config.sh
+        content: |
+          #!/bin/bash
+
+          set -e
+
+          # Define the source and destination for the kubeconfig file
+          SRC="/etc/kubernetes/admin.conf"
+          DEST="/root/.kube/config"
+
+          # Ensure the .kube directory exists
+          mkdir -p /root/.kube
+
+          # Copy the kubeconfig file
+          if [ -f "$SRC" ]; then
+              cp "$SRC" "$DEST"
+              chmod 600 "$DEST"
+              echo "Kubeconfig has been successfully copied to $DEST with appropriate permissions."
+          else
+              echo "Error: $SRC does not exist. Please ensure Kubernetes is installed and configured."
+              exit 1
+          fi
+        mode: '0755'
+
+- name: Install k9s on Kubernetes Control Plane Nodes
+  hosts: kube_control_plane
+  become: true
+  tasks:
+    - name: Download the k9s .deb package
+      command: >
+        wget -O /root/k9s_linux_amd64.deb
+        https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_linux_amd64.deb
+      args:
+        creates: /root/k9s_linux_amd64.deb
+
+    - name: Install k9s .deb package
+      command: >
+        dpkg -i /root/k9s_linux_amd64.deb
+      register: dpkg_result
+      ignore_errors: true
+
+    - name: Fix dependencies if needed
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ dpkg_result.msg | regex_findall('(?<=depends on ).*?(?= but it is not installed)') }}"
+      when: dpkg_result.failed
+
+    - name: Ensure k9s is installed
+      command: >
+        dpkg -i /root/k9s_linux_amd64.deb

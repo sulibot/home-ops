@@ -1,0 +1,71 @@
+resource "proxmox_virtual_environment_vm" "test_vm" {
+  #name      = "test-martin"
+  node_name     = "pve01"
+  vm_id         = 4321
+  scsi_hardware = "virtio-scsi-single"
+
+
+
+  clone {
+    vm_id        = "8101"
+    datastore_id = "local-zfs"
+    full         = true
+  }
+
+  cpu {
+    cores   = 4
+    sockets = 1
+    numa    = true
+    type    = "host"
+  }
+
+  memory {
+    dedicated = 4096
+    floating = 4096
+  }
+
+  agent {
+    enabled = true
+  }
+
+  network_device {
+    bridge = "vmbr0"
+    model  = "virtio"
+  }
+
+  initialization {
+    datastore_id = "local-zfs"
+    ip_config {
+      ipv4 {
+        address = "172.20.2.57/16"
+        gateway = "172.20.0.1"
+      }
+      ipv6 {
+        address = "fd00::2:57/64"
+        gateway = "fd00::1"
+      }
+    }
+
+    dns {
+      servers = ["172.20.0.1"]
+      domain = "sulibot.com"
+    }
+
+  }
+
+  disk {
+    datastore_id = "local-zfs"
+    file_format  = "raw"
+    interface    = "scsi0"
+    size         = 35
+    iothread     = true
+  }
+  
+  serial_device {
+    device = "socket"
+  }
+  
+  vga {
+    type = "std"               # Use Standard VGA for headless Talos
+  }
+}

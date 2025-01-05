@@ -1,0 +1,4 @@
+resources:
+#  - flux-system-gitrepository.yaml
+  - my-secrets-gitrepository.yaml
+  # Add other Git repositories here

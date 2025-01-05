@@ -1,0 +1,14 @@
+- hosts: pvenodes
+  become: true
+  tasks:
+
+  - name: update repository cache
+    apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+  - name: install proxmoxer
+    apt:
+      name:
+      - python3-proxmoxer
+      state: latest

@@ -1,0 +1,6 @@
+resources:
+  - repo.yaml
+  - platform.yaml       
+  - core.yaml
+  - apps.yaml  
+#  - secrets.yaml

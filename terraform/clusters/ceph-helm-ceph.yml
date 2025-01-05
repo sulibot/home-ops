@@ -1,0 +1,61 @@
+Review the CSI - kbue documenttation
+
+cat << EOF > ./cephfs_values.yaml
+---
+csiConfig:
+  - clusterID: 6225765a-6501-4730-bbfb-80aff1ab4698
+    monitors:
+      - 172.20.1.1:6789
+      - 172.20.1.2:6789
+      - 172.20.1.3:6789
+    cephFS:
+      subvolumeGroup: "csi"
+CSIDriver:
+  fsGroupPolicy: "File"
+  seLinuxMount: false
+selinuxMount: false
+secret:
+  name: csi-cephfs-secret
+  adminID: kubernetes
+  adminKey: AQDJwgVn/GRnKBAA/hL+sq+io13OZCuJT2Z5fw==
+  create: true
+storageClass:
+  create: true
+  name: csi-cephfs-sc
+  clusterID: 6225765a-6501-4730-bbfb-80aff1ab4698
+  # (required) CephFS filesystem name into which the volume shall be created
+  fsName: k8s-cephfs
+  reclaimPolicy: Delete
+  allowVolumeExpansion: true
+  volumeNamePrefix: "luna-"
+  provisionerSecret: csi-cephfs-secret
+  provisionerSecretNamespace: "ceph-csi-cephfs"
+  controllerExpandSecret: csi-cephfs-secret
+  nodeStageSecret: csi-cephfs-secret
+EOF
+
+
+
+
+~ via  v22.9.0
+❯ kubectl get secret csi-cephfs-secret -n ceph-csi-cephfs -o yaml
+apiVersion: v1
+data:
+  adminID: a3ViZXJuZXRlcw==
+  adminKey: QVFESndnVm4vR1JuS0JBQS9oTCtzcStpbzEzT1pDdUpUMlo1Znc9PQ==
+kind: Secret
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Secret","metadata":{"annotations":{},"labels":{"app":"ceph-csi-cephfs","chart":"ceph-csi-cephfs-3.12.2","heritage":"Helm","release":"ceph-csi-cephfs"},"name":"csi-cephfs-secret","namespace":"ceph-csi-cephfs"},"stringData":{"adminID":"kubernetes","adminKey":"AQDJwgVn/GRnKBAA/hL+sq+io13OZCuJT2Z5fw=="}}
+  creationTimestamp: "2024-10-23T21:54:27Z"
+  labels:
+    app: ceph-csi-cephfs
+    chart: ceph-csi-cephfs-3.12.2
+    heritage: Helm
+    release: ceph-csi-cephfs
+  name: csi-cephfs-secret
+  namespace: ceph-csi-cephfs
+  resourceVersion: "1719"
+  uid: b7a67668-c975-4685-ae24-961784821d56
+type: Opaque
