@@ -16,7 +16,7 @@ flux bootstrap github \
 --private \
 --token-auth \
 --owner=sulibot \
---repository=sulibot-homeops \
+--repository=home-ops \
 --path=kubernetes/clusters/production \
 --interval=10m \
 --timeout=5m
