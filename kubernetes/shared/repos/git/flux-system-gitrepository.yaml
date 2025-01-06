@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m0s
-  url: https://github.com/sulibot/sulibot-homeops.git
+  url: https://github.com/sulibot/homeops.git
   branch: main
   secretRef:
     name: flux-system
