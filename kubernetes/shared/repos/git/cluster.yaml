@@ -1,9 +1,10 @@
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/gitrepository_v1.json
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: flux-system
-  namespace: flux-system
+  namespace: home-kubernetes
 spec:
   interval: 10m0s
   ref:
@@ -11,28 +12,15 @@ spec:
   secretRef:
     name: flux-system
   url: https://github.com/sulibot/home-ops.git
-
-
-
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/gitrepository_v1.json
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
-metadata:
-  name: home-kubernetes
-  namespace: flux-system
-spec:
-  interval: 30m
-  url: https://github.com/sulibot/home-ops.git
-  ref:
-    branch: main
-#  secretRef:
-#    name: github-deploy-key
   ignore: |
     # exclude all
     /*
     # include dirs
     !/kubernetes/manifest
     !/kubernetes/shared
+#  secretRef:
+#    name: github-deploy-key
+
 #---
 ## yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 #apiVersion: kustomize.toolkit.fluxcd.io/v1
