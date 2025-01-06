@@ -1,4 +1,19 @@
 ---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  url: https://github.com/sulibot/home-ops.git
+
+
+
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/gitrepository_v1.json
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
@@ -7,7 +22,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
-  url: https://github.com/sulibot/sulibot-homeops.git
+  url: https://github.com/sulibot/home-ops.git
   ref:
     branch: main
 #  secretRef:
