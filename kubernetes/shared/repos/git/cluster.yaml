@@ -16,7 +16,7 @@ spec:
     # exclude all
     /*
     # include dirs
-    !/kubernetes/manifest
+    !/kubernetes/manifests
     !/kubernetes/shared
 #  secretRef:
 #    name: github-deploy-key
