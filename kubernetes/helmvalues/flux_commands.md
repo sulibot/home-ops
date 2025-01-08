@@ -17,6 +17,12 @@ flux create helmrelease connect \
   --export > helmrelease.yaml
 
 
+kubectl create secret generic op-credentials \
+  -n external-secrets \
+  --from-literal=1password-credentials.json="$(cat /Users/sulibot/1password-credentials.json | base64)" \
+  --dry-run=client \
+  -o yaml > op-credentials-secret.yaml
+
 
 
 
