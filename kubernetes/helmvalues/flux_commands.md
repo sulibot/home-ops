@@ -8,7 +8,7 @@ flux create source helm 1password \
     
 ```
 flux create helmrelease connect \
-  --source=HelmRepository/1password \
+  --source=HelmRepository/1password.flux-system \
   --chart=connect \
   --chart-version=1.17.0 \
   --namespace=external-secrets \
