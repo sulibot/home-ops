@@ -108,14 +108,14 @@ spec:
       affinity: {}
       annotations: {}
       applicationName: onepassword-connect-operator
-      autoRestart: false
+      autoRestart: true
       clusterRole:
         create: "true"
         name: onepassword-connect-operator
       clusterRoleBinding:
         create: "true"
         name: onepassword-connect-operator
-      create: false
+      create: true
       customEnvVars: []
       hpa:
         annotations: {}
