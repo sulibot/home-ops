@@ -46,6 +46,9 @@ spec:
       value: "False"
     - name: PROWLARR__LOG__LEVEL
       value: info
+    envFrom:
+      - secretRef:
+          name: prowlarr-secret
     gateway:
       domain: sulibot.com
       enabled: true
