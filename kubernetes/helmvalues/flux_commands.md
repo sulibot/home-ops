@@ -1,5 +1,4 @@
-helm repo add  
-
+helm repo add 1password https://1password.github.io/connect-helm-charts
 
 ```
 flux create source helm 1password \
@@ -8,17 +7,14 @@ flux create source helm 1password \
   --export > 1password-helmrepository.yaml
     
 ```
-flux create helmrelease akeyless \
-  --source=HelmRepository/akeyless.flux-system \
-  --chart=akeyless-secrets-injection \
-  --chart-version=1.12.1 \
+flux create helmrelease connect \
+  --source=HelmRepository/1password \
+  --chart=connect \
+  --chart-version=1.17.0 \
   --namespace=external-secrets \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml
-
-
-
 
 
 
