@@ -23,7 +23,7 @@ spec:
       strategy: rollback
       retries: 3
   dependsOn:
-    - name: connect
+    - name: 1password-connect
       namespace: external-secrets
   values:
     installCRDs: true

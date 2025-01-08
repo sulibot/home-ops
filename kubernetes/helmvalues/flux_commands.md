@@ -7,7 +7,7 @@ flux create source helm 1password \
   --export > 1password-helmrepository.yaml
     
 ```
-flux create helmrelease connect \
+flux create helmrelease 1password-connect \
   --source=HelmRepository/1password.flux-system \
   --chart=connect \
   --chart-version=1.17.0 \
