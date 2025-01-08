@@ -17,6 +17,17 @@ flux create helmrelease 1password-connect \
   --export > helmrelease.yaml
 
 
+flux create helmrelease 1password-connect \
+  --source=HelmRepository/1password.flux-system \
+  --chart=connect \
+  --chart-version=1.17.0 \
+  --namespace=flux-system \
+  --target-namespace=external-secrets \
+  --values=values.yaml \
+  --interval=1h \
+  --export > helmrelease.yaml
+
+
 kubectl create secret generic op-credentials \
   -n external-secrets \
   --from-literal=1password-credentials.json="$(cat /Users/sulibot/1password-credentials.json | base64)" \
