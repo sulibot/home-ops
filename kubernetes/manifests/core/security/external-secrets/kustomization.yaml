@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   # Pre Flux-Kustomizations
   - ./namespace.yaml
+  - op-credentials-secret.yaml
   # Flux-Kustomizations
   - ./onepassword-connect/ks.yaml
   - ./external-secrets/ks.yaml

@@ -8,7 +8,7 @@ creation_rules:
     # Encrypt 'data' and 'stringData' in .sops.yaml files under global or clusters
 
   - path_regex: '.*[-_]secret\.ya?ml$'
-    encrypted_regex: '^(adminKey|userKey|api_key|MIKROTIK_PASSWORD|credentials\.json)$'
+    encrypted_regex: '^(adminKey|userKey|api_key|MIKROTIK_PASSWORD|1password-credentials.json|credentials\.json)$'
     age: *age_key
     # Encrypt sensitive keys in any secret.yaml or secret.yml files
 
