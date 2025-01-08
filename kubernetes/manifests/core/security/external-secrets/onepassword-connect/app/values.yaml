@@ -99,7 +99,7 @@ connect:
   imagePullSecrets: []
 
   # The 1Password Connect version to pull
-  version: "{{ .Chart.AppVersion }}"
+  version: "1.7.3"
 
   # Node selector stanza for the Connect pod
   # See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
@@ -338,7 +338,7 @@ operator:
   # 1Password Operator Service Account Configuration
   serviceAccount:
     # The name of the 1Password Conenct Operator
-    create: "{{ .Values.operator.create }}"
+    create: "true"
 
     # Annotations for the 1Password Connect Service Account
     annotations: {}
@@ -349,7 +349,7 @@ operator:
   # 1Password Operator Role Binding Configuration
   roleBinding:
     # Denotes whether or not a role binding will be created for each Namespace for the 1Password Operator Service Account
-    create: "{{ .Values.operator.create }}"
+    create: "true"
 
     # The name of the 1Password Operator Role Binding
     name: onepassword-connect-operator
@@ -357,7 +357,7 @@ operator:
   # 1Password Operator Cluster Role Configuration
   clusterRole:
     # Denotes whether or not a cluster role will be created for each for the 1Password Operator
-    create: "{{ .Values.operator.create }}"
+    create: "true"
 
     # The name of the 1Password Operator Cluster Role
     name: onepassword-connect-operator
@@ -365,7 +365,7 @@ operator:
   # 1Password Operator Cluster Role Binding Configuration
   clusterRoleBinding:
     # Denotes whether or not a Cluster role binding will be created for the 1Password Operator Service Account
-    create: "{{ .Values.operator.create }}"
+    create: "true"
 
     # The name of the 1Password Operator Cluster Role
     name: onepassword-connect-operator

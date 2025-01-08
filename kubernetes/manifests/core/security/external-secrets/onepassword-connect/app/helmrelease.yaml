@@ -103,17 +103,17 @@ spec:
         enabled: false
         secret: op-connect-tls
       tolerations: []
-      version: '1.17.0'
+      version: 1.7.3
     operator:
       affinity: {}
       annotations: {}
       applicationName: onepassword-connect-operator
       autoRestart: false
       clusterRole:
-        create: 'true'
+        create: "true"
         name: onepassword-connect-operator
       clusterRoleBinding:
-        create: 'true'
+        create: "true"
         name: onepassword-connect-operator
       create: false
       customEnvVars: []
@@ -143,11 +143,11 @@ spec:
       replicas: 1
       resources: {}
       roleBinding:
-        create: 'true'
+        create: "true"
         name: onepassword-connect-operator
       serviceAccount:
         annotations: {}
-        create: 'true'
+        create: "true"
         name: onepassword-connect-operator
       token:
         key: token
