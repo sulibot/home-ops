@@ -1,0 +1,92 @@
+---
+# replicaCount is the number of replicas of the snapscheduler operator to run.
+replicaCount: 1
+
+image:
+  repository: quay.io/backube/snapscheduler
+  tagOverride: ""
+  image: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+rbacProxy:
+  image:
+    repository: quay.io/brancz/kube-rbac-proxy
+    tag: v0.17.1@sha256:89d0be6da831f45fb53e7e40d216555997ccf6e27d66f62e50eb9a69ff9c9801
+    image: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 100Mi
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use. If not set and create is true, a
+  # name is generated using the fullname template
+  name:
+
+podSecurityContext:
+  runAsNonRoot: true
+  # Uncomment when we no longer support OCP 4.10
+  # seccompProfile:
+  #   type: RuntimeDefault
+
+# additional annotations to add to pods
+podAnnotations: {}
+
+# additional labels to add to pods
+podLabels: {}
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - "ALL"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 100Mi
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+  kubernetes.io/os: linux
+
+tolerations: []
+
+topologySpreadConstraints: []
+# - maxSkew: 1
+#   topologyKey: topology.kubernetes.io/zone
+#   whenUnsatisfiable: DoNotSchedule
+#   labelSelector:
+#     matchLabels:
+#       app.kubernetes.io/instance: snapscheduler
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: backube/snapscheduler-affinity
+                operator: In
+                values:
+                  - manager
+          topologyKey: kubernetes.io/hostname
+
+metrics:
+  # Disable auth checks when scraping metrics (allow anyone to scrape)
+  disableAuth: false
+
+manageCRDs: true
+
+# See https://kubernetes.io/blog/2023/01/12/
+#        protect-mission-critical-pods-priorityclass/
+priorityClassName: ""
+
