@@ -46,6 +46,11 @@ spec:
       value: "False"
     - name: RADARR__LOG__LEVEL
       value: info
+    - name: RADARR__AUTH__APIKEY
+      valueFrom:
+        secretKeyRef:
+          name: radarr-4k-secret
+          key: RADARR_4K__AUTH__APIKEY
     gateway:
       domain: sulibot.com
       enabled: true

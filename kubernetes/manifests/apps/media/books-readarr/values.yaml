@@ -29,7 +29,11 @@ env:
 #    value: "911"
 #  - name: PGID
 #    value: "911"
-
+  - name: READARR__AUTH__APIKEY
+    valueFrom:
+      secretKeyRef:
+        name: books-secret
+        key: BOOKS__AUTH__APIKEY
 # Labels and Annotations
 labels:
   global: {}                    # Global labels applied to all resources

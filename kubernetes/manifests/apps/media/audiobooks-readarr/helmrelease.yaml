@@ -15,6 +15,7 @@ spec:
         namespace: flux-system
       version: 0.1.0
   interval: 1h0m0s
+
   values:
     affinity: {}
     annotations:
@@ -33,7 +34,12 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env: null
+    env:
+    - name: READARR__AUTH__APIKEY
+      valueFrom:
+        secretKeyRef:
+          name: audiobooks-secret
+          key: AUDIOBOOKS__AUTH__APIKEY
     gateway:
       domain: sulibot.com
       enabled: true

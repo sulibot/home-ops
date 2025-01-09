@@ -39,7 +39,11 @@ env:
 #    value: "80"
 #  - name: PROWLARR__UPDATE__BRANCH
 #    value: develop
-
+  - name: PROWLARR__AUTH__APIKEY
+    valueFrom:
+      secretKeyRef:
+        name: prowlarr-secret
+        key: PROWLARR__AUTH__APIKEY
 
 # Labels and annotations
 labels:

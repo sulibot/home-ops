@@ -46,6 +46,11 @@ spec:
       value: "False"
     - name: SONARR__LOG__LEVEL
       value: info
+    - name: SONARR__AUTH__APIKEY
+      valueFrom:
+        secretKeyRef:
+          name: sonarr-4k-secret
+          key: SONARR_4K__AUTH__APIKEY
     gateway:
       domain: sulibot.com
       enabled: true
