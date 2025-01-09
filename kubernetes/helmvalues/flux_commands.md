@@ -20,7 +20,7 @@ flux create helmrelease snapscheduler \
   --interval=1h \
   --export > helmrelease.yaml
 
-  flux create helmrelease snapscheduler \
+  flux create helmrelease volsync \
   --source=HelmRepository/backube.flux-system \
   --chart=volsync \
   --chart-version=0.11.0 \
