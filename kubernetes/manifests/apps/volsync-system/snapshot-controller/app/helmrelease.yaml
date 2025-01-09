@@ -1,0 +1,75 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: snapscheduler
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: snapscheduler
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: backube
+        namespace: flux-system
+      version: 3.4.0
+  interval: 1h0m0s
+  targetNamespace: volsync-system
+  values:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: backube/snapscheduler-affinity
+                operator: In
+                values:
+                - manager
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+    fullnameOverride: ""
+    image:
+      image: ""
+      pullPolicy: IfNotPresent
+      repository: quay.io/backube/snapscheduler
+      tagOverride: ""
+    imagePullSecrets: []
+    manageCRDs: true
+    metrics:
+      disableAuth: false
+    nameOverride: ""
+    nodeSelector:
+      kubernetes.io/arch: amd64
+      kubernetes.io/os: linux
+    podAnnotations: {}
+    podLabels: {}
+    podSecurityContext:
+      runAsNonRoot: true
+    priorityClassName: ""
+    rbacProxy:
+      image:
+        image: ""
+        pullPolicy: IfNotPresent
+        repository: quay.io/brancz/kube-rbac-proxy
+        tag: v0.17.1@sha256:89d0be6da831f45fb53e7e40d216555997ccf6e27d66f62e50eb9a69ff9c9801
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    serviceAccount:
+      create: true
+      name: null
+    tolerations: []
+    topologySpreadConstraints: []

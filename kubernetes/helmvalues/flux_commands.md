@@ -10,11 +10,22 @@ flux create source helm backube \
   --export > backube-helmrepository.yaml
     
 ```
-flux create helmrelease 1password-connect \
-  --source=HelmRepository/1password.flux-system \
-  --chart=connect \
-  --chart-version=1.17.0 \
-  --namespace=external-secrets \
+flux create helmrelease snapscheduler \
+  --source=HelmRepository/backube.flux-system \
+  --chart=snapscheduler \
+  --chart-version=3.4.0 \
+  --namespace=flux-system \
+  --target-namespace=volsync-system \
+  --values=values.yaml \
+  --interval=1h \
+  --export > helmrelease.yaml
+
+  flux create helmrelease snapscheduler \
+  --source=HelmRepository/backube.flux-system \
+  --chart=volsync \
+  --chart-version=0.11.0 \
+  --namespace=flux-system \
+  --target-namespace=volsync-system \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml
