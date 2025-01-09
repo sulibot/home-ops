@@ -1,3 +1,27 @@
+helm repo add backube https://backube.github.io/helm-charts/
+NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+backube/snapscheduler   3.4.0           3.4.0           An operator to take scheduled snapshots of Kube...
+backube/volsync         0.11.0          0.11.0          Asynchronous data replication for Kubernetes
+
+```
+flux create source helm backube \
+  --url=https://backube.github.io/helm-charts \
+  --interval=1h \
+  --export > backube-helmrepository.yaml
+    
+```
+flux create helmrelease 1password-connect \
+  --source=HelmRepository/1password.flux-system \
+  --chart=connect \
+  --chart-version=1.17.0 \
+  --namespace=external-secrets \
+  --values=values.yaml \
+  --interval=1h \
+  --export > helmrelease.yaml
+
+
+
+
 helm repo add 1password https://1password.github.io/connect-helm-charts
 
 ```

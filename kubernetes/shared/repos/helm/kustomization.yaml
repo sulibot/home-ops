@@ -11,5 +11,5 @@ resources:
   - cnpg-helmrepository.yaml
   - akeyless-helmrepository.yaml
   - 1password-helmrepository.yaml
-  # Add other Helm repositories here
+  - backube-helmrepository.yaml
 
