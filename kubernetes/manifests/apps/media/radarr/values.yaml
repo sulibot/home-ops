@@ -44,6 +44,11 @@ env:
 #    value: "911"
 #  - name: PGID
 #    value: "911"
+  - name: RADARR__AUTH__APIKEY
+    valueFrom:
+      secretKeyRef:
+        name: radarr-secret
+        key: RADARR__AUTH__APIKEY
 
 # Labels and Annotations
 labels:

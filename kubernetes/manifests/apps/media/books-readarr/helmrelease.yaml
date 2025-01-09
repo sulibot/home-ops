@@ -33,7 +33,12 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env: null
+    env:
+    - name: READARR__AUTH__APIKEY
+      valueFrom:
+        secretKeyRef:
+          name: books-secret
+          key: BOOKS__AUTH__APIKEY
     gateway:
       domain: sulibot.com
       enabled: true

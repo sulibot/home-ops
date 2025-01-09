@@ -38,6 +38,11 @@ spec:
       value: "911"
     - name: PGID
       value: "911"
+    - name: LIDARR__AUTH__APIKEY
+      valueFrom:
+        secretKeyRef:
+          name: lidarr-secret
+          key: LIDARR__AUTH__APIKEY
     gateway:
       domain: sulibot.com
       enabled: true

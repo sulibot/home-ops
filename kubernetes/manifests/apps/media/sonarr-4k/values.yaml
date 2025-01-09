@@ -44,6 +44,11 @@ env:
 #    value: "911"
 #  - name: PGID
 #    value: "911"
+  - name: SONARR__AUTH__APIKEY
+    valueFrom:
+      secretKeyRef:
+        name: sonarr-4k-secret
+        key: SONARR_4K__AUTH__APIKEY
 
 # Labels and Annotations
 labels:
