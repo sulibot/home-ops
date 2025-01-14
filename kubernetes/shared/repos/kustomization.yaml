@@ -1,4 +1,4 @@
 resources:
   - git/
   - helm/
-#  - oci/
+  - oci/
