@@ -2,7 +2,7 @@ apiVersion: volsync.backube/v1alpha1
 kind: ReplicationDestination
 metadata:
   name: config-books-0-destination
-  namespace: volsync
+  namespace: volsync-system
 spec:
   sourcePVC: config-books-0
   retention: 
