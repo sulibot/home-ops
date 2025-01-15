@@ -5,5 +5,5 @@ kind: Kustomization
 resources:
   - ./helmrelease.yaml
 #  - ./prometheusrule.
-  - b2-credentials-secret.yaml
-  - replicationdestination.yaml
+  - restic-config-config-lidarr-0-secret.yaml
+  - replicationsource-config-lidarr-0.yaml
