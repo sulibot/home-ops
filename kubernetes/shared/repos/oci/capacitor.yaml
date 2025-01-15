@@ -83,6 +83,6 @@ spec:
         - group: ""
           kind: Service
           name: capacitor-service
-          namespace: flux-system
+          namespace: media
           port: 80
           weight: 1
