@@ -4,9 +4,10 @@ apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
    name: replication-source-config-lidarr-0
-   namespace: source
+   namespace: volsync-system
 spec:
    sourcePVC: config-lidarr-0
+   sourceNamespace: media
    trigger:
       schedule: "*/30 * * * *"
    restic:
