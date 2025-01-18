@@ -15,11 +15,11 @@ parameters:
   clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
 
   # (required) CephFS filesystem name into which the volume shall be created
-  # eg: fsName: cephfs
-  fsName: cephfs
+  # eg: fsName: kubernetes
+  fsName: kubernetes
 
   # (optional) Ceph pool into which volume data shall be stored
-  pool: cephfs_data
+  pool: kubernetes_data
 
   # (optional) Comma separated string of Ceph-fuse mount options.
   # For eg:
