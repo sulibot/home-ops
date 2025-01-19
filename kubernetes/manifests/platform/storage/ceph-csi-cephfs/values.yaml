@@ -8,10 +8,10 @@ csiConfig:
         subvolumeGroup: csi
 logLevel: 5
 secret:
-    name: csi-cephfs-secret
-    adminID: admin
-    adminKey: ENC[AES256_GCM,data:OF0C6R8IWqIHKSN04ePuyrs1Ccl5jBxG7TWUDtIQ4uc+LjKwqPB3Yg==,iv:jUhaRBdSB4Hhp5fm4TfVmXZzeK/H68fCL7VNraB9ZWE=,tag:pU85LIGtzD2FrFCmEVyAmg==,type:str]
-    create: true
+    name: ENC[AES256_GCM,data:qlwzYQbjCV80CnirwBRXdRk=,iv:OVc8ifpcGDUOWTUkphOSI2+ul3YOSL7DnP+heZCy180=,tag:pqqjDdokQxwR4kEZHpgokw==,type:str]
+    adminID: ENC[AES256_GCM,data:JwSfdkY=,iv:tm5YXB5IgYfVB3izYTeifV0/mfuGGkBZ/4YEQnz8Tzo=,tag:5DxcBU7kLhuc4l0/psjMqg==,type:str]
+    adminKey: ENC[AES256_GCM,data:D50mF0IhX/ouUZXgDJUyCsCNLnkWoUK2HLAvaH5+8mZA5iPLSM0eZg==,iv:5vjFrsgKn8mPj53Mv0jqcWJLZQxMa7ZwB0EB3PX3dZ0=,tag:iZ9+ISqrLdz37hJO9q7Oug==,type:str]
+    create: ENC[AES256_GCM,data:SkKNWA==,iv:sMxCS/rRjElONjX6fs2Zjysg8v/DyE1Hm7+OlDjSWBY=,tag:UEFTuyTqMfgN6rHXeeuT5A==,type:bool]
 storageClass:
     create: true
     name: csi-cephfs-sc
@@ -41,14 +41,14 @@ sops:
         - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB2RGl0djFWQldVVGV2eWhP
-            YlYrcHUyWFBGVzh5TExQVGoyd21mZ08ySFRBCm1tZEhxWlllTjRPeUc5THp6Tlpq
-            Z2VIMGQ5VTZEWTk1N1VrT2lPc29SWEkKLS0tIFFCTFk1OTZEeE9FOWhaTGc3LzhN
-            ZGtDWnVYWEx0S1VGWXlHR2U3bWJQK3MKDZvvH5MKd/3xkI5UzwrMbzs749wGFvwH
-            ITn91b7PXH/ICkwsdvSOQMqusxhTLk0EnSMhQI1K01QLyT+Iydx13A==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBZbzd2U0VTQzdNdFJRYUpH
+            MkJDb3M3NWZvbDcxWUJJSituTmtZc2d2aUJvCmNPT0NvcFp6eG9pcFhudStodFVS
+            N3pia1YxVFEwdTdSV0hUc2JSNnkxWTgKLS0tIEpvNzVpM2ptUXN1bkZueXNIanFW
+            TUh4bjV6aXJBVmw3ZXpwQmVQeFVWTEUKp39WDN+dDNP6/J2N2+ivW5QkbY/W4E+Q
+            d/kDDoUprtdp0gRjjc7FSBrn8OCjE1WXqWV5JckU7soJbrwqeg7a2g==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2024-12-13T04:12:36Z"
-    mac: ENC[AES256_GCM,data:dOjsK31BDpDDp9fe2HKgLRQ9Qu8UR70kdvxQUxTMygELfRNOZK0bRy1rI/VihToZFARwUqe6ZUFmrp7bcY6V1HeX0+f3z/dzkJZ2ejjOXC4MCEbu/8l/+W9MY0t+SEar8EnWz10ArIUBDgaEos2JiCKN4aQtDxV9nAwXHVouv0M=,iv:h561wqbRXDFErdSjQWBwg8+pk1CfnBVp5e2+SUKkbes=,tag:yVJIVVIQWiMjEZHyQyEmmQ==,type:str]
+    lastmodified: "2025-01-19T04:44:38Z"
+    mac: ENC[AES256_GCM,data:GVk5Wug3HgSGKLBM1p3C8KrKVNQ5EjYmdlKcMrbgNdCpQbStcEiQnQslrIhuCJb3s8xF2cbE6xvhajqvFidoxlT7q9uzqYLFR/rZMaM4gI7DsDiipxuapQQfZFXNvtCP7UBcpnDN2hy/pP9E+orbjz7EtoGJjXCfQYvG6QAClj0=,iv:QT21UWUPnB5S08zO3aieMki6Kcvs5PcqhXXg9TJhDqk=,tag:FamhM6uL/qjloA7VD4YgTg==,type:str]
     pgp: []
-    encrypted_regex: ^(adminKey|userKey)$
+    encrypted_regex: ^(adminKey|userKey|secret|password)$
     version: 3.9.1
