@@ -96,11 +96,14 @@ flux create source helm ceph-csi \
   --url=https://ceph.github.io/csi-charts \
   --export > ceph-csi-cephfs.yaml
 
-flux create helmrelease ceph-csi --chart ceph-csi/ceph-csi-cephfs \
+flux create helmrelease ceph-csi \
+  --source=HelmRepository/ceph-csi.flux-system \
+  --chart ceph-csi-cephfs \
+  --chart-version=3.13.0 \
   --namespace=ceph-csi-cephfs \
   --create-target-namespace=true \
-  --source=HelmRepository/ceph-csi.flux-system \
-  --chart-version=3.12.3 --export
+  --values=values.yaml \
+  --export 
 
 
 
