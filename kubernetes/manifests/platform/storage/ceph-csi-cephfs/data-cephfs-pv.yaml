@@ -10,7 +10,7 @@ spec:
     storage: 40Ti
   csi:
     driver: cephfs.csi.ceph.com
-    volumeHandle: media
+    volumeHandle: media-handle
     nodeStageSecretRef:
       name: csi-cephfs-pv-secret
       namespace: ceph-csi-cephfs
