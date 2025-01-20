@@ -7,7 +7,8 @@ parameters:
   clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
   fsName: media
   rootPath: "/"                  # Explicitly set rootPath to /
-  provisionVolume: "false"       # Disable dynamic subvolume creation
+  provisionVolume: "false"
+  subvolumeGroup: ""        # Disable dynamic subvolume creation
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
