@@ -219,7 +219,7 @@
 
           # Install or upgrade Cilium
           helm upgrade --install cilium cilium/cilium \
-            --version 1.16.4 \
+            --version 1.16.5 \
             --namespace kube-system \
             --create-namespace \
             -f cilium-values.yaml
