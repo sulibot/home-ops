@@ -17,7 +17,7 @@ spec:
     volumeAttributes:
       clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
       fsName: media
-      monitors: '[fd00::1:1]:6789,[fd00::1:2]:6789,[fd00::1:3]:6789'
+      monitors: "[v2:[fd00::1:1]:3300,v2:[fd00::1:2]:3300,v2:[fd00::1:3]:3300]"
       rootPath: "/"
       provisionVolume: "false"
   persistentVolumeReclaimPolicy: Retain
