@@ -12,7 +12,7 @@ spec:
                 kind: HelmRepository
                 name: ceph-csi
                 namespace: flux-system
-            version: 3.13.0
+            version: 3.12.3
     install:
         createNamespace: true
     interval: 1m0s
@@ -27,10 +27,10 @@ spec:
                 - '[fd00::1:3]:6789'
         logLevel: 5
         secret:
-            adminID: ENC[AES256_GCM,data:+shvhmc=,iv:qQfPpXKGblg3c/uQ7DPG8QlFA4GAa4MGTD/vMyxrK6M=,tag:XNPbbk9zaSPV16m8UKnH7w==,type:str]
-            adminKey: ENC[AES256_GCM,data:jCSBLEYXXc1CA8PkcON1iuiky0A88izNE5V0bRlY4MBFVdj2wu4ZRw==,iv:zTwrui2FQT6Vbs/w5VSztqQcGOQ/yRosbWgBftDuEus=,tag:F1Z/3XyL+Wgu8f9SOP11rg==,type:str]
-            create: ENC[AES256_GCM,data:N6Lq0g==,iv:0bmBFGFcZ313C1m/QQq3iDwsjrnahPvTA0/1WLDGsyk=,tag:8XiSjfH+Og8fp3AV1hc4Cg==,type:bool]
-            name: ENC[AES256_GCM,data:10IPcYFJFuIF5xSoL6DAG3o=,iv:tqm2PPMAfk54FWYcOu67YpIEbMLBvgO0KnlZieZujVc=,tag:K2I6v8hiMCyqtcfa4VYZ7w==,type:str]
+            adminID: ENC[AES256_GCM,data:eSNK4sw=,iv:onMUmhEBfV1eMtI3td5O3/vypp9Bk2SzJBvs3B2/t+0=,tag:Uvfn9PPgYr3vVtPGbe2O6Q==,type:str]
+            adminKey: ENC[AES256_GCM,data:90e+Lm6oFaCmqs7NOqtmqCsvxTdmsl7rhacQ2L9iI6R0OtVZjSOI6g==,iv:ChJkE/7PysCLkVuOKqbaGptHHcLy9SUZdJcY1wo9iIQ=,tag:lmCMOEqZ+iP7IUfuokC3+g==,type:str]
+            create: ENC[AES256_GCM,data:rbBkEw==,iv:jAoK4QysOyvOAYzIx6xM89y4p5ik1f//Jfr2GMCfvVY=,tag:QgCiUwIDYxLy0EVmQdYKNg==,type:bool]
+            name: ENC[AES256_GCM,data:krqvj3nZteTjHe4cp1upDKM=,iv:hQzPzJDodPtkfVT+pMSE+H2orDJgODy9gihMKRZQjlw=,tag:RNGtuLx8CezjfLBdn+m8xQ==,type:str]
         storageClass:
             allowVolumeExpansion: true
             clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
@@ -54,14 +54,14 @@ sops:
         - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA4SHJrMVJNL2FGRGZwRmxk
-            S0NKUTFuam4vcVBnWlErTFVSZWpzQTQrWkQ4CkdxMDVRTXdVOEE3aWU5ckN6SHJX
-            K1dJUUhkUUZ0dlhGeXNjWXc1Y0NybDgKLS0tIFUrd3NKSFgzVFZBN3FmV2xQOG13
-            cDRYZm5SK3lmN3A4OHdCT0YyNHZ0R3cKLxcBOaGg/O1FwhkX6HbUfY4iydZFacPQ
-            K+AujQX5wsPUaidJrPxhPgcS3cPCsaKey9y1kZtxIyCFBWn9T8qwRw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBsQ2ErMEFOKzFac1ZZYzdP
+            MUFsNVFuNDlnRDErd0VwcmpzZ0hqUHkyM2lzCjE0UURHMnR6SElySVEvckNnRmRq
+            RWp4VGY0Yng3b0t1Rkg5bTRUOCs0NTAKLS0tIFR2Ymw1NEltMFBTbm5uN0w2RlZX
+            Z29Bd1hwbVFCLyt1R1ZkMEJXaXhzaTAKAyQMcY2mx8ngtF6ifyTPdLfkAlyv5gyE
+            OxRRCicRFx31ey6VCqFmthHr8Dz7biH8Rp0SJLQa7E+gJ/iNInq9WQ==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-01-19T04:44:28Z"
-    mac: ENC[AES256_GCM,data:CRy53M643NmSexSfUci9swZLjr9Ch2X1+wHq+Lbg08+mgOE8Fx0+VhmZ+d+nid4/3I7+3wPlL+k2tQooRFaThWJERThZkWMG4geihROTm5Hl4g5XbMbaxfMLXMwDANgDqOpoXKMAgTgMxAlP8KKk6KdeUSe1UFy8z8C8O7hCHtE=,iv:jAwUF0Y5ieuS+4i/1ZlDfqW90mgYYbOxJAS3oELjudo=,tag:74Nzp0yGSWxldAc6LZ9XmA==,type:str]
+    lastmodified: "2025-01-20T02:31:22Z"
+    mac: ENC[AES256_GCM,data:9FC78fQIAixvJwhZO6CAWHvlOKuAnE4Tr8IyWORRa3JJORA+glMGRBTAMiYGOzlKyVshpamyuiVFmV22PUmTne7JD5OCAVv5JpT7IXoNCJkqJ7H2TNAqX8wCbb1Ib+y+D2SO3uD8a6gJUg74SMfXCnyp5st845JEOTtK1VEm8UQ=,iv:8bokH9ShjPAzfQPQR6b1sRWCpj5FtMy+3zNvytrULJY=,tag:c4WRO6ApYBrOjluHJgD0dw==,type:str]
     pgp: []
     encrypted_regex: ^(adminKey|userKey|secret|password)$
     version: 3.9.1
