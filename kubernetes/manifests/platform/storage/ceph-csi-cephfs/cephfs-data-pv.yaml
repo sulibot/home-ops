@@ -14,7 +14,7 @@ spec:
       # node stage secret name
       name: csi-cephfs-secret
       # node stage secret namespace where above secret is created
-      namespace: media
+      namespace: ceph-csi-cephfs
     volumeAttributes:
       # optional file system to be mounted
       "fsName": "media"
