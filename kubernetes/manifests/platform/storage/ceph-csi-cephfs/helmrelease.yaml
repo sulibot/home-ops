@@ -1,67 +1,193 @@
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-    name: ceph-csi
-    namespace: ceph-csi-cephfs
+  name: ceph-csi
+  namespace: ceph-csi-cephfs
 spec:
-    chart:
-        spec:
-            chart: ceph-csi-cephfs
-            reconcileStrategy: ChartVersion
-            sourceRef:
-                kind: HelmRepository
-                name: ceph-csi
-                namespace: flux-system
-            version: 3.12.3
-    install:
-        createNamespace: true
-    interval: 1m0s
-    values:
-        csiConfig:
-            - cephFS:
-                subvolumeGroup: csi
-              clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
-              monitors:
-                - '[fd00::1:1]:6789'
-                - '[fd00::1:2]:6789'
-                - '[fd00::1:3]:6789'
-        logLevel: 5
-        secret:
-            adminID: ENC[AES256_GCM,data:eSNK4sw=,iv:onMUmhEBfV1eMtI3td5O3/vypp9Bk2SzJBvs3B2/t+0=,tag:Uvfn9PPgYr3vVtPGbe2O6Q==,type:str]
-            adminKey: ENC[AES256_GCM,data:90e+Lm6oFaCmqs7NOqtmqCsvxTdmsl7rhacQ2L9iI6R0OtVZjSOI6g==,iv:ChJkE/7PysCLkVuOKqbaGptHHcLy9SUZdJcY1wo9iIQ=,tag:lmCMOEqZ+iP7IUfuokC3+g==,type:str]
-            create: ENC[AES256_GCM,data:rbBkEw==,iv:jAoK4QysOyvOAYzIx6xM89y4p5ik1f//Jfr2GMCfvVY=,tag:QgCiUwIDYxLy0EVmQdYKNg==,type:bool]
-            name: ENC[AES256_GCM,data:krqvj3nZteTjHe4cp1upDKM=,iv:hQzPzJDodPtkfVT+pMSE+H2orDJgODy9gihMKRZQjlw=,tag:RNGtuLx8CezjfLBdn+m8xQ==,type:str]
-        storageClass:
-            allowVolumeExpansion: true
-            clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
-            controllerExpandSecret: csi-cephfs-secret
-            controllerExpandSecretNamespace: ceph-csi-cephfs
-            create: true
-            fsName: kubernetes
-            name: csi-cephfs-sc
-            nodeStageSecret: csi-cephfs-secret
-            nodeStageSecretNamespace: ceph-csi-cephfs
-            provisionerSecret: csi-cephfs-secret
-            provisionerSecretNamespace: ceph-csi-cephfs
-            reclaimPolicy: Delete
-            volumeNamePrefix: sol-csi-vol
-sops:
-    kms: []
-    gcp_kms: []
-    azure_kv: []
-    hc_vault: []
-    age:
-        - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBsQ2ErMEFOKzFac1ZZYzdP
-            MUFsNVFuNDlnRDErd0VwcmpzZ0hqUHkyM2lzCjE0UURHMnR6SElySVEvckNnRmRq
-            RWp4VGY0Yng3b0t1Rkg5bTRUOCs0NTAKLS0tIFR2Ymw1NEltMFBTbm5uN0w2RlZX
-            Z29Bd1hwbVFCLyt1R1ZkMEJXaXhzaTAKAyQMcY2mx8ngtF6ifyTPdLfkAlyv5gyE
-            OxRRCicRFx31ey6VCqFmthHr8Dz7biH8Rp0SJLQa7E+gJ/iNInq9WQ==
-            -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-01-20T02:31:22Z"
-    mac: ENC[AES256_GCM,data:9FC78fQIAixvJwhZO6CAWHvlOKuAnE4Tr8IyWORRa3JJORA+glMGRBTAMiYGOzlKyVshpamyuiVFmV22PUmTne7JD5OCAVv5JpT7IXoNCJkqJ7H2TNAqX8wCbb1Ib+y+D2SO3uD8a6gJUg74SMfXCnyp5st845JEOTtK1VEm8UQ=,iv:8bokH9ShjPAzfQPQR6b1sRWCpj5FtMy+3zNvytrULJY=,tag:c4WRO6ApYBrOjluHJgD0dw==,type:str]
-    pgp: []
-    encrypted_regex: ^(adminKey|userKey|secret|password)$
-    version: 3.9.1
+  chart:
+    spec:
+      chart: ceph-csi-cephfs
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: ceph-csi
+        namespace: flux-system
+      version: 3.13.0
+  install:
+    createNamespace: true
+  interval: 1m0s
+  values:
+    CSIDriver:
+      fsGroupPolicy: File
+    cephConfConfigMapName: ceph-config
+    cephconf: |
+      [global]
+        auth_cluster_required = cephx
+        auth_service_required = cephx
+        auth_client_required = cephx
+
+        # ceph-fuse which uses libfuse2 by default has write buffer size of 2KiB
+        # adding 'fuse_big_writes = true' option by default to override this limit
+        # see https://github.com/ceph/ceph-csi/issues/1928
+        fuse_big_writes = true
+    commonLabels: {}
+    configMapName: ceph-csi-config
+    csiConfig:
+    - cephFS:
+        subvolumeGroup: csi
+      clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+      monitors:
+      - '[fd00::1:1]:6789'
+      - '[fd00::1:2]:6789'
+      - '[fd00::1:3]:6789'
+    driverName: cephfs.csi.ceph.com
+    encryptionKMSConfig: {}
+    externallyManagedConfigmap: false
+    extraDeploy: []
+    kmsConfigMapName: ceph-csi-encryption-kms-config
+    kubeletDir: /var/lib/kubelet
+    logLevel: 5
+    logSlowOperationInterval: 30s
+    nodeplugin:
+      affinity: {}
+      annotations: {}
+      fusemountoptions: ""
+      httpMetrics:
+        containerPort: 8081
+        enabled: true
+        service:
+          annotations:
+            prometheus.io/port: "9080"
+            prometheus.io/scrape: "true"
+          clusterIP: ""
+          enabled: true
+          externalIPs: []
+          loadBalancerIP: ""
+          loadBalancerSourceRanges: []
+          servicePort: 8080
+          type: ClusterIP
+      imagePullSecrets: []
+      kernelmountoptions: ""
+      name: nodeplugin
+      nodeSelector: {}
+      plugin:
+        image:
+          pullPolicy: IfNotPresent
+          repository: quay.io/cephcsi/cephcsi
+          tag: 3.13.0
+        resources: {}
+      podAnnotations: {}
+      podSecurityContext: {}
+      priorityClassName: system-node-critical
+      profiling:
+        enabled: false
+      registrar:
+        image:
+          pullPolicy: IfNotPresent
+          repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+          tag: v2.13.0
+        resources: {}
+      tolerations: []
+      updateStrategy: RollingUpdate
+    pluginSocketFile: csi.sock
+    provisioner:
+      affinity: {}
+      annotations: {}
+      enableHostNetwork: false
+      httpMetrics:
+        containerPort: 8081
+        enabled: true
+        service:
+          annotations: {}
+          clusterIP: ""
+          enabled: true
+          externalIPs: []
+          loadBalancerIP: ""
+          loadBalancerSourceRanges: []
+          servicePort: 8080
+          type: ClusterIP
+      imagePullSecrets: []
+      name: provisioner
+      nodeSelector: {}
+      podAnnotations: {}
+      podSecurityContext: {}
+      priorityClassName: system-cluster-critical
+      profiling:
+        enabled: false
+      provisioner:
+        args: null
+        extraArgs: []
+        image:
+          pullPolicy: IfNotPresent
+          repository: registry.k8s.io/sig-storage/csi-provisioner
+          tag: v5.1.0
+        resources: {}
+      replicaCount: 3
+      resizer:
+        args: null
+        enabled: true
+        extraArgs: []
+        image:
+          pullPolicy: IfNotPresent
+          repository: registry.k8s.io/sig-storage/csi-resizer
+          tag: v1.13.1
+        name: resizer
+        resources: {}
+      setmetadata: true
+      snapshotter:
+        args:
+          enableVolumeGroupSnapshots: false
+        extraArgs: []
+        image:
+          pullPolicy: IfNotPresent
+          repository: registry.k8s.io/sig-storage/csi-snapshotter
+          tag: v8.2.0
+        resources: {}
+      strategy:
+        rollingUpdate:
+          maxUnavailable: 50%
+        type: RollingUpdate
+      timeout: 60s
+      tolerations: []
+    provisionerSocketFile: csi-provisioner.sock
+    rbac:
+      create: true
+      leastPrivileges: true
+    secret:
+      annotations: {}
+      create: false
+      name: csi-cephfs-secret
+      userID: admin
+      userKey: <Ceph auth key corresponding to the userID above>
+    serviceAccounts:
+      nodeplugin:
+        create: true
+        name: null
+      provisioner:
+        create: true
+        name: null
+    sidecarLogLevel: 1
+    storageClass:
+      allowVolumeExpansion: true
+      annotations:
+        storageclass.kubernetes.io/is-default-class: "true"
+      clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+      controllerExpandSecret: csi-cephfs-secret
+      controllerExpandSecretNamespace: ceph-csi-cephfs
+      create: true
+      encrypted: ""
+      encryptionKMSID: ""
+      fsName: kubernetes
+      fuseMountOptions: ""
+      kernelMountOptions: ""
+      mountOptions: []
+      mounter: ""
+      name: csi-cephfs-sc
+      nodeStageSecret: csi-cephfs-secret
+      nodeStageSecretNamespace: ceph-csi-cephfs
+      pool: kubernetes_data
+      provisionerSecret: csi-cephfs-secret
+      provisionerSecretNamespace: ceph-csi-cephfs
+      reclaimPolicy: Delete
+      volumeNamePrefix: sol-csi-vol
