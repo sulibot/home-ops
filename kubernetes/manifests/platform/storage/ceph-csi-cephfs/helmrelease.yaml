@@ -163,6 +163,7 @@ spec:
       name: csi-cephfs-secret
       userID: admin
       userKey: <Ceph auth key corresponding to the userID above>
+    selinuxMount: true
     serviceAccounts:
       nodeplugin:
         create: true
