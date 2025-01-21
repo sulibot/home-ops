@@ -137,7 +137,11 @@ spec:
       setmetadata: true
       snapshotter:
         args:
-          enableVolumeGroupSnapshots: true
+        - --feature-gates=CSIVolumeGroupSnapshot=true
+        - --leader-election=true
+        - --leader-election-namespace=ceph-csi-cephfs
+        - --httpEndpointPort=8092
+        enableVolumeGroupSnapshots: true
         extraArgs: []
         image:
           pullPolicy: IfNotPresent
