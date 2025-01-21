@@ -5,8 +5,11 @@ metadata:
   namespace: network
   labels:
     cilium.io/gateway: "true"
+    app.kubernetes.io/managed-by: Helm
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
+    meta.helm.sh/release-name: cilium
+    meta.helm.sh/release-namespace: kube-system
 spec:
   gatewayClassName: cilium
   addresses:
