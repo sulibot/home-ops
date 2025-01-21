@@ -282,7 +282,7 @@ provisioner:
       - --leader-election-namespace=ceph-csi-cephfs  # Replace with your namespace
       - --httpEndpointPort=8092
       # enableVolumeGroupSnapshots enables support for volume group snapshots
-    enableVolumeGroupSnapshots: true
+      #enableVolumeGroupSnapshots: true
       # httpEndpointPort specifies the http server port for
       # diagnostics, health checks and metrics.
       # Uncomment below line to enable the `http-endpoint` arg for sidecar
