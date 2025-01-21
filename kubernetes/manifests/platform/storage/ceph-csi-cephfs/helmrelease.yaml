@@ -75,7 +75,7 @@ spec:
         image:
           pullPolicy: IfNotPresent
           repository: quay.io/cephcsi/cephcsi
-          tag: 3.13.0
+          tag: v3.13.0
         resources: {}
       podAnnotations: {}
       podSecurityContext: {}

@@ -1,0 +1,35 @@
+csiConfig:
+    - clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+      monitors:
+        - '[fd00::1:1]:6789'
+        - '[fd00::1:2]:6789'
+        - '[fd00::1:3]:6789'
+      cephFS:
+        subvolumeGroup: csi
+logLevel: 5
+secret:
+    name: csi-cephfs-secret
+    adminID: admin
+    adminKey: AQC2gCBnb2SyERAAGWyItItIIQQ78M+5pc4blg==
+    create: true
+storageClass:
+    create: true
+    name: csi-cephfs-sc
+    clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+    # (required) CephFS filesystem name into which the volume shall be created
+    # eg: fsName: myfs
+    fsName: kubernetes
+    pool: kubernetes_data
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeNamePrefix: sol-csi-vol
+    provisionerSecret: csi-cephfs-secret
+    provisionerSecretNamespace: ceph-csi-cephfs
+    controllerExpandSecret: csi-cephfs-secret
+    controllerExpandSecretNamespace: ceph-csi-cephfs
+    nodeStageSecret: csi-cephfs-secret
+    nodeStageSecretNamespace: ceph-csi-cephfs
+#mountOptions: []
+# Mount Options
+# Example:
+# mountOptions:
