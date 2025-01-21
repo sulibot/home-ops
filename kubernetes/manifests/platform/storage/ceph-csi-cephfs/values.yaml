@@ -278,7 +278,7 @@ provisioner:
     resources: {}
     args:
       # enableVolumeGroupSnapshots enables support for volume group snapshots
-      enableVolumeGroupSnapshots: false
+      enableVolumeGroupSnapshots: true
       # httpEndpointPort specifies the http server port for
       # diagnostics, health checks and metrics.
       # Uncomment below line to enable the `http-endpoint` arg for sidecar
