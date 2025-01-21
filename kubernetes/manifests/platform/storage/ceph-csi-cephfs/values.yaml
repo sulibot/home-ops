@@ -279,7 +279,7 @@ provisioner:
     args:
       - --feature-gates=CSIVolumeGroupSnapshot=true
       - --leader-election=true
-      - --leader-election-namespace=ceph-csi-cephfs  # Replace with your namespace
+      - --leader-election-namespace=ceph-csi-cephfs
       - --httpEndpointPort=8092
       # enableVolumeGroupSnapshots enables support for volume group snapshots
       #enableVolumeGroupSnapshots: true
@@ -316,7 +316,7 @@ provisioner:
 
 # Mount the host /etc/selinux inside pods to support
 # selinux-enabled filesystems
-#selinuxMount: true
+selinuxMount: true
 
 storageClass:
   # Specifies whether the Storage class should be created
