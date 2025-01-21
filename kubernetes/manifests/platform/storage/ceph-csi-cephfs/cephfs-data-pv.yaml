@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data-cephfs-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  csi:
+    driver: cephfs.csi.ceph.com
+    nodeStageSecretRef:
+      # node stage secret name
+      name: csi-cephfs-secret
+      # node stage secret namespace where above secret is created
+      namespace: media
+    volumeAttributes:
+      # optional file system to be mounted
+      "fsName": "media"
+      # Required options from storageclass parameters need to be added in volumeAttributes
+      "clusterID": "e919300b-6e62-4c63-90ca-199d5307f9bf"
+      "staticVolume": "true"
+      "rootPath": /
+    # volumeHandle can be anything, need not to be same
+    # as PV name or volume name. keeping same for brevity
+    volumeHandle: media
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
