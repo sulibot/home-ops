@@ -278,8 +278,8 @@ provisioner:
     resources: {}
     args:
       #- --feature-gates=CSIVolumeGroupSnapshot=true
-      - --leader-election=true
-      - --leader-election-namespace=ceph-csi-cephfs
+      #- --leader-election=true
+      #- --leader-election-namespace=ceph-csi-cephfs
       - --httpEndpointPort=8092
       # enableVolumeGroupSnapshots enables support for volume group snapshots
       #enableVolumeGroupSnapshots: true
