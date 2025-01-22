@@ -39,7 +39,7 @@ csiConfig:
         - '[fd00::1:2]:6789'
         - '[fd00::1:3]:6789'
       cephFS:
-        subvolumeGroup: csi
+        subvolumeGroup: "/volumes/csi-sol"
 
 # Configuration for the encryption KMS
 # yamllint disable-line rule:line-length
@@ -359,7 +359,7 @@ storageClass:
   # (optional) Prefix to use for naming subvolumes.
   # If omitted, defaults to "csi-vol-".
   # volumeNamePrefix: "foo-bar-"
-  volumeNamePrefix: "sol-csi-vol"
+  volumeNamePrefix: ""
 
   # (optional) Instruct the plugin it has to encrypt the volume
   # By default it is disabled. Valid values are "true" or "false".
