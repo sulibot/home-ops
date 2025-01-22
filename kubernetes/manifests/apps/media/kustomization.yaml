@@ -1,7 +1,7 @@
 ---
 resources:
 #  - audiobooks-readarr/
-  - books-readarr/
+#  - books-readarr/
 #  - emby/
 #  - filebrowser/
 #  - jellyfin/
@@ -13,7 +13,7 @@ resources:
 #  - radarr/
 #  - radarr-4k/
 #  - sabnzbd/
-#  - sonarr/
+  - sonarr/
 #  - sonarr-4k/
 #  - tautulli/
 #  - recyclarr/
