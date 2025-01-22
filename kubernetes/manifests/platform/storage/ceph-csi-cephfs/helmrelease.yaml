@@ -136,8 +136,7 @@ spec:
         resources: {}
       setmetadata: true
       snapshotter:
-        args:
-          enableVolumeGroupSnapshots: false
+        args: []
         extraArgs: []
         image:
           pullPolicy: IfNotPresent
