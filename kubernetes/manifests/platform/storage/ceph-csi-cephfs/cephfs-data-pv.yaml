@@ -21,7 +21,7 @@ spec:
       # Required options from storageclass parameters need to be added in volumeAttributes
       "clusterID": "e919300b-6e62-4c63-90ca-199d5307f9bf"
       "staticVolume": "true"
-      "rootPath": /
+      "rootPath": /volumes/media
     # volumeHandle can be anything, need not to be same
     # as PV name or volume name. keeping same for brevity
     volumeHandle: data
