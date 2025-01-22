@@ -299,7 +299,7 @@ flux create helmrelease nfs-subdir-external-provisioner \
 https://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-general.html
 https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner/issues/134
 
-sudo zfs set sharenfs="rw=*,sync,all_squash,anonuid=65534,anongid=65534,no_subtree_check,insecure" tank/media
+sudo zfs set sharenfs="rw=*,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check,insecure" tank/media
 
 echo "nfs:
   server: fs1.ent.top
