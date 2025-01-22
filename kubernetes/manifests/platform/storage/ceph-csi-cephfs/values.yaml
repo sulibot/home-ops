@@ -382,7 +382,7 @@ storageClass:
   nodeStageSecret: csi-cephfs-secret
   nodeStageSecretNamespace: "ceph-csi-cephfs"
 
-  reclaimPolicy: Delete
+  reclaimPolicy: Retain
   allowVolumeExpansion: true
   mountOptions: []
   # Mount Options
