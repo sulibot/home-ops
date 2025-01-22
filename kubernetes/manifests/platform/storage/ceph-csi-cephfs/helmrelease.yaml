@@ -138,7 +138,6 @@ spec:
       snapshotter:
         args:
           enableVolumeGroupSnapshots: false
-          httpEndpointPort: 8092
         extraArgs: []
         image:
           pullPolicy: IfNotPresent
