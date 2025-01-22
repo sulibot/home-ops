@@ -35,7 +35,7 @@ spec:
     configMapName: ceph-csi-config
     csiConfig:
     - cephFS:
-        subvolumeGroup: csi
+        subvolumeGroup: /volumes/csi-sol
       clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
       monitors:
       - '[fd00::1:1]:6789'
@@ -137,7 +137,6 @@ spec:
       setmetadata: true
       snapshotter:
         args:
-        - --feature-gates=CSIVolumeGroupSnapshot=true
         - --leader-election=true
         - --leader-election-namespace=ceph-csi-cephfs
         - --httpEndpointPort=8092
@@ -194,4 +193,4 @@ spec:
       provisionerSecret: csi-cephfs-secret
       provisionerSecretNamespace: ceph-csi-cephfs
       reclaimPolicy: Delete
-      volumeNamePrefix: sol-csi-vol
+      volumeNamePrefix: ""

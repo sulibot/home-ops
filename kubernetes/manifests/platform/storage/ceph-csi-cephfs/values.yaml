@@ -277,7 +277,7 @@ provisioner:
       pullPolicy: IfNotPresent
     resources: {}
     args:
-      - --feature-gates=CSIVolumeGroupSnapshot=true
+      #- --feature-gates=CSIVolumeGroupSnapshot=true
       - --leader-election=true
       - --leader-election-namespace=ceph-csi-cephfs
       - --httpEndpointPort=8092
