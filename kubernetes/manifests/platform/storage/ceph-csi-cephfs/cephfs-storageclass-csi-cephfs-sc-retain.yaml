@@ -45,7 +45,7 @@ parameters:
 
   # (optional) Prefix to use for naming subvolumes.
   # If omitted, defaults to "csi-vol-".
-  volumeNamePrefix: "sol-sts-csi-vol-"
+  volumeNamePrefix: ""
 
   # (optional) Boolean value. The PVC shall be backed by the CephFS snapshot
   # specified in its data source. `pool` parameter must not be specified.
@@ -63,7 +63,7 @@ parameters:
   # encryptionKMSID: <kms-config-id>
 
 
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 allowVolumeExpansion: true
 # mountOptions:
 #   - context="system_u:object_r:container_file_t:s0:c0,c1"

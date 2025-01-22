@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data-cephfs-pv
+  name: cephfs-pv-media
 spec:
   accessModes:
   - ReadWriteMany
@@ -24,6 +24,6 @@ spec:
       "rootPath": /volumes/content/media
     # volumeHandle can be anything, need not to be same
     # as PV name or volume name. keeping same for brevity
-    volumeHandle: data
+    volumeHandle: media
   persistentVolumeReclaimPolicy: Retain
   volumeMode: Filesystem
