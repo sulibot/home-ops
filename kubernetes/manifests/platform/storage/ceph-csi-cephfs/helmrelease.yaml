@@ -137,7 +137,8 @@ spec:
       setmetadata: true
       snapshotter:
         args:
-        - --httpEndpointPort=8092
+          enableVolumeGroupSnapshots: false
+          httpEndpointPort: 8092
         extraArgs: []
         image:
           pullPolicy: IfNotPresent
