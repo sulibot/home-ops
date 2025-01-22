@@ -280,13 +280,13 @@ provisioner:
       #- --feature-gates=CSIVolumeGroupSnapshot=true
       #- --leader-election=true
       #- --leader-election-namespace=ceph-csi-cephfs
-      - --httpEndpointPort=8092
+      # httpEndpointPort=8092
       # enableVolumeGroupSnapshots enables support for volume group snapshots
-      #enableVolumeGroupSnapshots: true
+      enableVolumeGroupSnapshots: false
       # httpEndpointPort specifies the http server port for
       # diagnostics, health checks and metrics.
       # Uncomment below line to enable the `http-endpoint` arg for sidecar
-      # httpEndpointPort: 8092
+      httpEndpointPort: 8092
     ## For further options, check
     ## https://github.com/kubernetes-csi/external-snapshotter#csi-external-snapshotter-sidecar-command-line-options
     extraArgs: []
