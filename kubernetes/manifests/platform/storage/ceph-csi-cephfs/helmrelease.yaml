@@ -191,5 +191,5 @@ spec:
       pool: kubernetes_data
       provisionerSecret: csi-cephfs-secret
       provisionerSecretNamespace: ceph-csi-cephfs
-      reclaimPolicy: Retain
+      reclaimPolicy: Delete
       volumeNamePrefix: ""
