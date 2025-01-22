@@ -63,7 +63,7 @@ parameters:
   # encryptionKMSID: <kms-config-id>
 
 
-reclaimPolicy: Retain
+reclaimPolicy: Delete
 allowVolumeExpansion: true
 # mountOptions:
 #   - context="system_u:object_r:container_file_t:s0:c0,c1"
