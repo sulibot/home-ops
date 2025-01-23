@@ -26,9 +26,9 @@ gateway:
 env:
 # Environment variables
   - name: PUID
-    value: "65534"
+    value: "1000"
   - name: PGID
-    value: "65534"
+    value: "1000"
 
 # Labels and Annotations
 labels:
@@ -64,8 +64,8 @@ data:
 # Security context settings
 securityContext:
   enabled: true
-  runAsUser: 65534
-  runAsGroup: 65534
+  runAsUser: 1000
+  runAsGroup: 1000
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
   readOnlyRootFilesystem: false  # Restrict container filesystem to read-only
