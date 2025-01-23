@@ -2,7 +2,7 @@
 resources:
   - audiobooks-readarr/
   - books-readarr/
-  - emby/
+#  - emby/
 #  - filebrowser/
   - jellyfin/
   - lidarr/
