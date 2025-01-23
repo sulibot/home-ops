@@ -56,9 +56,9 @@ resources:
 # Security Context
 securityContext:
   enabled: false            # Must be explicitly enabled
-  runAsUser: 1000
+  runAsUser: 65534
   runAsGroup: 1000
-  fsGroup: 1000
+  fsGroup: 65534
   readOnlyRootFilesystem: true
   allowPrivilegeEscalation: false
 

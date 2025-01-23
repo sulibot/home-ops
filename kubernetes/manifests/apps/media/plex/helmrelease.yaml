@@ -81,7 +81,7 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
       enabled: true
-      fsGroup: 1000
+      fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
       runAsGroup: 1000
