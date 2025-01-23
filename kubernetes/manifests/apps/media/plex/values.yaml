@@ -78,7 +78,7 @@ data:
 # Security context settings
 securityContext:
   enabled: true
-  runAsUser: 1000
+  runAsUser: 0
   runAsGroup: 1000
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
