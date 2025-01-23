@@ -81,7 +81,7 @@ securityContext:
   enabled: true
   runAsUser: 1000
   runAsGroup: 1000
-  fsGroup: 1000
+  fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: false

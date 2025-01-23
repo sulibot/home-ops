@@ -77,7 +77,7 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
       enabled: false
-      fsGroup: 1000
+      fsGroup: 65534
       readOnlyRootFilesystem: true
       runAsGroup: 1000
       runAsUser: 1000
