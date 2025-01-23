@@ -35,7 +35,7 @@ spec:
     dnsPolicy: ClusterFirst
     env:
     - name: PLEX_CLAIM
-      value: claim-5L3L1erBcxYN8kMN3y6w
+      value: claim-PsFzdeVDBmEuYSZpK1zi
     - name: HOSTNAME
       value: plex
     - name: PLEX_UPDATE_CHANNEL
@@ -84,7 +84,7 @@ spec:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 1000
-      runAsUser: 1000
+      runAsGroup: 65534
+      runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []

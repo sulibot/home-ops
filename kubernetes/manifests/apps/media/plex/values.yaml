@@ -32,7 +32,7 @@ env:
   # This claim is optional, and is only used for the first startup of PMS
   # The claim is obtained from https://www.plex.tv/claim/ is is only valid for a few minutes
   - name: PLEX_CLAIM
-    value: "claim-5L3L1erBcxYN8kMN3y6w"
+    value: "claim-PsFzdeVDBmEuYSZpK1zi"
   - name: HOSTNAME
     value: "plex"
   - name: PLEX_UPDATE_CHANNEL
@@ -78,8 +78,8 @@ data:
 # Security context settings
 securityContext:
   enabled: true
-  runAsUser: 1000
-  runAsGroup: 1000
+  runAsUser: 65534
+  runAsGroup: 65534
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
   readOnlyRootFilesystem: false  # Restrict container filesystem to read-only

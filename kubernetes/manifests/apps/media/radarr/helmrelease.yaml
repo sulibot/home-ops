@@ -34,7 +34,7 @@ spec:
         value: "1"
     dnsPolicy: ClusterFirst
     env:
-    - name: RADARR_4K__APP__INSTANCENAME
+    - name: RADARR__APP__INSTANCENAME
       value: Radarr
     - name: RADARR__APP__THEME
       value: dark
@@ -49,8 +49,8 @@ spec:
     - name: RADARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
-          name: radarr-secret
           key: RADARR__AUTH__APIKEY
+          name: radarr-secret
     gateway:
       domain: sulibot.com
       enabled: true
@@ -90,7 +90,7 @@ spec:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 1000
-      runAsUser: 1000
+      runAsGroup: 65534
+      runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []

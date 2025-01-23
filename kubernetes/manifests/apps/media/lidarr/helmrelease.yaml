@@ -2,7 +2,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: lidarr
+  name: jellyfin
   namespace: flux-system
 spec:
   chart:
@@ -41,8 +41,8 @@ spec:
     - name: LIDARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
-          name: lidarr-secret
           key: LIDARR__AUTH__APIKEY
+          name: lidarr-secret
     gateway:
       domain: sulibot.com
       enabled: true
@@ -79,6 +79,10 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
       enabled: true
+      fsGroup: 65534
+      fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
+      runAsGroup: 911
+      runAsUser: 911
     timezone: America/Los_Angeles
     tolerations: []
