@@ -1,7 +1,7 @@
 resources:
   - namespace.yaml
+  - cephfs-secret-csi-cephfs-pv-secret.yaml
   - cephfs-secret-csi-cephfs-secret.yaml
-  - cephfs-secret-node-stage-secret.yaml
   - helmrelease.yaml
   - cephfs-storageclass-csi-cephfs-sc-retain.yaml
   - cephfs-pv-media.yaml

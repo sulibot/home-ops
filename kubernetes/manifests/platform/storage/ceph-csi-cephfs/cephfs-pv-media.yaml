@@ -12,7 +12,7 @@ spec:
     driver: cephfs.csi.ceph.com
     nodeStageSecretRef:
       # node stage secret name
-      name: csi-cephfs-secret
+      name: csi-cephfs-pv-secret
       # node stage secret namespace where above secret is created
       namespace: ceph-csi-cephfs
     volumeAttributes:
