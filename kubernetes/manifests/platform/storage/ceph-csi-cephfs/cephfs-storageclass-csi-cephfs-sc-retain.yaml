@@ -45,7 +45,7 @@ parameters:
 
   # (optional) Prefix to use for naming subvolumes.
   # If omitted, defaults to "csi-vol-".
-  volumeNamePrefix: ""
+  # volumeNamePrefix: ""
 
   # (optional) Boolean value. The PVC shall be backed by the CephFS snapshot
   # specified in its data source. `pool` parameter must not be specified.
