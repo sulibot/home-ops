@@ -34,8 +34,12 @@ spec:
         value: "1"
     dnsPolicy: ClusterFirst
     env:
+    - name: PLEX_UID
+      value: "65534"
+    - name: PLEX_GID
+      value: "65534"
     - name: PLEX_CLAIM
-      value: claim-PsFzdeVDBmEuYSZpK1zi
+      value: claim-QthChcmwUxh3uPMgkFcy
     - name: HOSTNAME
       value: plex
     - name: PLEX_UPDATE_CHANNEL
