@@ -73,7 +73,7 @@ spec:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 65534
-      runAsUser: 65534
+      runAsGroup: 100
+      runAsUser: 1000
     timezone: America/Los_Angeles
     tolerations: []
