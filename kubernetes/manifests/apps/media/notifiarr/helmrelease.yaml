@@ -72,6 +72,10 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
       enabled: true
+      fsGroup: 65534
+      fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
+      runAsGroup: 65534
+      runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []

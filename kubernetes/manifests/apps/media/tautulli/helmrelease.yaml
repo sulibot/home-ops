@@ -69,11 +69,14 @@ spec:
         memory: 256Mi
     securityContext:
       allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
       enabled: true
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 1000
-      runAsUser: 1000
+      runAsGroup: 65534
+      runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []

@@ -64,12 +64,12 @@ data:
 # Security context settings
 securityContext:
   enabled: true
-  runAsUser: 1000
-  runAsGroup: 1000
+  runAsUser: 65534
+  runAsGroup: 65534
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
   readOnlyRootFilesystem: false  # Restrict container filesystem to read-only
-  allowPrivilegeEscalation: false # Restrict privilege escalation
+  allowPrivilegeEscalation: false # Restrict privilege escalationn
 
 # Resource limits and requests
 resources:

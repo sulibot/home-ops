@@ -12,10 +12,8 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: chart-template
-        namespace: flux-system
       version: 0.1.0
   interval: 1h0m0s
-
   values:
     affinity: {}
     annotations:
@@ -35,11 +33,11 @@ spec:
         value: "1"
     dnsPolicy: ClusterFirst
     env:
-    - name: READARR__AUTH__APIKEY
+    - name: PROWLARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
-          name: audiobooks-secret
-          key: AUDIOBOOKS__AUTH__APIKEY
+          key: PROWLARR__AUTH__APIKEY
+          name: prowlarr-secret
     gateway:
       domain: sulibot.com
       enabled: true
@@ -76,6 +74,10 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
       enabled: true
+      fsGroup: 65534
+      fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
+      runAsGroup: 65534
+      runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []
