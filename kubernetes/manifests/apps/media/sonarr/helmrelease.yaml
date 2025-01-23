@@ -12,6 +12,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: chart-template
+        namespace: flux-system
       version: 0.1.0
   interval: 1h0m0s
   values:
@@ -48,8 +49,8 @@ spec:
     - name: SONARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
-          name: sonarr-secret
           key: SONARR__AUTH__APIKEY
+          name: sonarr-secret
     gateway:
       domain: sulibot.com
       enabled: true
@@ -89,7 +90,7 @@ spec:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 1000
+      runAsGroup: 65534
       runAsUser: 65534
     timezone: America/Los_Angeles
     tolerations: []

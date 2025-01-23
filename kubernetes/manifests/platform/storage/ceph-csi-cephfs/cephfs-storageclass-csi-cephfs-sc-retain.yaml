@@ -17,6 +17,7 @@ parameters:
   # (required) CephFS filesystem name into which the volume shall be created
   # eg: fsName: kubernetes
   fsName: kubernetes
+  
 
   # (optional) Ceph pool into which volume data shall be stored
   pool: kubernetes_data
