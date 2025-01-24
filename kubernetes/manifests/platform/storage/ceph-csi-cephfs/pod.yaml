@@ -14,4 +14,4 @@ spec:
   volumes:
   - name: cephfs-volume
     persistentVolumeClaim:
-      claimName: cephfs-pvc-media2
+      claimName: cephfs-pvc-media
