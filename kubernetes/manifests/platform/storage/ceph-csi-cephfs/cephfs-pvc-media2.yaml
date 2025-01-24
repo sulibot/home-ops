@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cephfs-pvc-media2
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 60Ti
+  storageClassName: csi-cephfs-sc-retain2  # Should match the PV's storageClassName
+  volumeName: cephfs-pv-media2  # Explicitly bind to the PV

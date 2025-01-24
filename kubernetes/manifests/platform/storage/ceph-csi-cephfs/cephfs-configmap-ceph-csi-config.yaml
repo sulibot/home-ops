@@ -1,0 +1,66 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-config
+  namespace: ceph-csi-cephfs
+# The `config.json` defines Ceph cluster configurations for the CSI plugins.
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "csi-sol-volumes",
+        "monitors": [
+          "[fd00::1:1]:6789",
+          "[fd00::1:2]:6789",
+          "[fd00::1:3]:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "csi-sol"
+        }
+      },
+      {
+        "clusterID": "csi-luna-volumes",
+        "monitors": [
+          "[fd00::1:1]:6789",
+          "[fd00::1:2]:6789",
+          "[fd00::1:3]:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "csi-luna"
+        }
+      },
+      {
+        "clusterID": "content-volumes",
+        "monitors": [
+          "[fd00::1:1]:6789",
+          "[fd00::1:2]:6789",
+          "[fd00::1:3]:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "content"
+        }
+      },
+      {
+        "clusterID": "backup-volumes",
+        "monitors": [
+          "[fd00::1:1]:6789",
+          "[fd00::1:2]:6789",
+          "[fd00::1:3]:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "backups"
+        }
+      },
+      {
+        "clusterID": "test-volumes",
+        "monitors": [
+          "[fd00::1:1]:6789",
+          "[fd00::1:2]:6789",
+          "[fd00::1:3]:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "test"
+        }
+      }
+    ]

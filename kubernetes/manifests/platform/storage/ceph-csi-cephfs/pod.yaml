@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cephfs-media-test
+  namespace: media
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sleep", "3600"]
+    volumeMounts:
+    - mountPath: "/data"
+      name: cephfs-volume
+  volumes:
+  - name: cephfs-volume
+    persistentVolumeClaim:
+      claimName: cephfs-pvc-media2

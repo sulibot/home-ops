@@ -1,0 +1,22 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-sc-retain2
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"allowVolumeExpansion":true,"apiVersion":"storage.k8s.io/v1","kind":"StorageClass","metadata":{"annotations":{},"name":"csi-cephfs-sc-retain2"},"parameters":{"clusterID":"e919300b-6e62-4c63-90ca-199d5307f9bf","csi.storage.k8s.io/controller-expand-secret-name":"csi-cephfs-secret","csi.storage.k8s.io/controller-expand-secret-namespace":"ceph-csi-cephfs","csi.storage.k8s.io/node-stage-secret-name":"csi-cephfs-secret","csi.storage.k8s.io/node-stage-secret-namespace":"ceph-csi-cephfs","csi.storage.k8s.io/provisioner-secret-name":"csi-cephfs-secret","csi.storage.k8s.io/provisioner-secret-namespace":"ceph-csi-cephfs","fsName":"data","pool":"data_data"},"provisioner":"cephfs.csi.ceph.com","reclaimPolicy":"Retain"}
+  creationTimestamp: "2025-01-24T10:28:51Z"
+allowVolumeExpansion: true
+parameters:
+  clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
+  fsName: data
+  pool: data_data
+provisioner: cephfs.csi.ceph.com
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
