@@ -12,7 +12,7 @@ parameters:
   # Ensure to create an entry in the configmap named ceph-csi-config, based on
   # csi-config-map-sample.yaml, to accompany the string chosen to
   # represent the Ceph cluster in clusterID below
-  clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+  clusterID: csi-sol-volumes
 
   # (required) CephFS filesystem name into which the volume shall be created
   # eg: fsName: kubernetes
