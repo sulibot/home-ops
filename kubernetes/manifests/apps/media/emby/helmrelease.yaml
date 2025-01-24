@@ -33,11 +33,7 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env:
-    - name: PUID
-      value: "1000"
-    - name: PGID
-      value: "1000"
+    env: null
     gateway:
       domain: sulibot.com
       enabled: true
@@ -77,7 +73,7 @@ spec:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
       readOnlyRootFilesystem: false
-      runAsGroup: 1000
+      runAsGroup: 0
       runAsUser: 0
     timezone: America/Los_Angeles
     tolerations: []
