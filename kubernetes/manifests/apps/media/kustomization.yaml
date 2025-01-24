@@ -3,6 +3,7 @@ resources:
   - audiobooks-readarr/
   - books-readarr/
   - emby/
+  - ombi/
 #  - filebrowser/
   - jellyfin/
   - lidarr/
