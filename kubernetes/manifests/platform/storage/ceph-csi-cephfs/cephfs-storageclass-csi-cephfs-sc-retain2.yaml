@@ -8,7 +8,7 @@ metadata:
   creationTimestamp: "2025-01-24T10:28:51Z"
 allowVolumeExpansion: true
 parameters:
-  clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+  clusterID: "content-volumes"
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
