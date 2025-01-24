@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: cephfs-pv-media
+  name: pv-test
 spec:
   accessModes:
   - ReadWriteMany
@@ -15,10 +15,11 @@ spec:
       namespace: ceph-csi-cephfs
     volumeAttributes:
       fsName: "data"
-      pool: "data_data"
-      clusterID: "content-volumes"
+      clusterID: "test-volumes"
       staticVolume: "true"
-      rootPath: "/volumes/content/media/data"
-    volumeHandle: media
+      subvolumeName: content                                                         │
+      subvolumePath: /volumes/content/test
+      rootPath: "/volumes/content/test"
+    volumeHandle: test
   persistentVolumeReclaimPolicy: Retain
   volumeMode: Filesystem

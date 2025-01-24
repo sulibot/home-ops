@@ -6,5 +6,7 @@ resources:
   - helmrelease.yaml
   - cephfs-storageclass-csi-cephfs-sc-kubernetes-csi-sol-retain.yaml
   - cephfs-storageclass-csi-cephfs-sc-kubernetes-csi-sol.yaml
+  - cephfs-storageclass-csi-cephfs-sc-data-content-retain.yaml
+#  - cephfs-storageclass-csi-cephfs-sc-data-test-retain.yaml
   - cephfs-pv-media.yaml
   - cephfs-pvc-media.yaml
