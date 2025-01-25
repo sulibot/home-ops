@@ -70,7 +70,7 @@ securityContext:
   enabled: true
   runAsUser: 911
   runAsGroup: 911
-  fsGroup: 65534
+  fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
   readOnlyRootFilesystem: false  # Restrict container filesystem to read-only
   allowPrivilegeEscalation: false # Restrict privilege escalation

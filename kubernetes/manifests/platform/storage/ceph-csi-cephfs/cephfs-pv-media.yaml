@@ -7,7 +7,7 @@ spec:
   - ReadWriteMany
   capacity:
     storage: 60Ti
-  storageClassName: csi-cephfs-data-content-sc-retain
+  storageClassName: cephfs-content-sc-retain
   csi:
     driver: cephfs.csi.ceph.com
     nodeStageSecretRef:
