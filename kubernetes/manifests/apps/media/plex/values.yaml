@@ -75,15 +75,24 @@ data:
   mountPath: /data              # Mount path for the Data PVC
   storageSize: 10Gi             # Size of the Data PVC
 
-# Security context settings
-securityContext:
+# Global networking options
+networking:
+  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv4        # Default to IPv4 for single-stack clusters
+
+# Pod-level security context
+podSecurityContext:
   enabled: true
-  runAsUser: 0
-  runAsGroup: 0
+  runAsUser: 1000
+  runAsGroup: 1000
   fsGroup: 1000
-  fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
-  readOnlyRootFilesystem: false  # Restrict container filesystem to read-only
-  allowPrivilegeEscalation: false # Restrict privilege escalation
+  fsGroupChangePolicy: OnRootMismatch
+
+# Container-level security context
+containerSecurityContext:
+  enabled: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
 
 # Resource limits and requests
 resources:

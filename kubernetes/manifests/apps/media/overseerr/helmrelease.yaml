@@ -22,6 +22,10 @@ spec:
       enabled: true
       mountPath: /app/config
       storageSize: 100Mi
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      enabled: true
+      readOnlyRootFilesystem: false
     data:
       enabled: true
       mountPath: /data
@@ -54,6 +58,15 @@ spec:
       global: {}
     name: overseerr
     namespace: media
+    networking:
+      ipFamilyPolicy: PreferDualStack
+      singleStackIPFamily: IPv4
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+      runAsGroup: 911
+      runAsUser: 911
     ports:
       servicePort: 80
       targetPort: 5055
@@ -66,13 +79,5 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
-    securityContext:
-      allowPrivilegeEscalation: false
-      enabled: true
-      fsGroup: 1000
-      fsGroupChangePolicy: OnRootMismatch
-      readOnlyRootFilesystem: false
-      runAsGroup: 1000
-      runAsUser: 1000
     timezone: America/Los_Angeles
     tolerations: []

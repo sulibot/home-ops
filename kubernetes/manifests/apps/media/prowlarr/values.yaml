@@ -76,13 +76,22 @@ data:
   mountPath: /data
   storageSize: 10Gi
 
-# Security context settings
-securityContext:
+# Global networking options
+networking:
+  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv4        # Default to IPv4 for single-stack clusters
+
+# Pod-level security context
+podSecurityContext:
   enabled: true
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
+
+# Container-level security context
+containerSecurityContext:
+  enabled: true
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: false
 
