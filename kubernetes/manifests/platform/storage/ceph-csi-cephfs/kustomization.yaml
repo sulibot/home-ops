@@ -12,4 +12,5 @@ resources:
   - cephfs-storageclass-cephfs-csi-sol-sc.yaml
 #  - cephfs-storageclass-csi-cephfs-sc-data-test-retain.yaml
   - cephfs-pv-media.yaml
-  - cephfs-pvc-media.yaml
+  - cephfs-pvc-media-default.yaml
+  - cephfs-pvc-media-media.yaml  
