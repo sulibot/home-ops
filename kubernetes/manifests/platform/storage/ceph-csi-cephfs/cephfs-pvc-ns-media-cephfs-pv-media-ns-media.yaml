@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: cephfs-pv-media
+  name: cephfs-pv-media-ns-media
 spec:
   accessModes:
   - ReadWriteMany
