@@ -8,6 +8,13 @@ spec:
   - name: app
     image: busybox
     command: ["sleep", "3600"]
+    resources:
+      requests:
+        memory: "128Mi"  # Minimum memory required to schedule the pod
+        cpu: "100m"      # Minimum CPU required to schedule the pod
+      limits:
+        memory: "256Mi"  # Maximum memory the container can use
+        cpu: "500m"      # Maximum CPU the container can use
     volumeMounts:
     - mountPath: "/data"
       name: cephfs-volume
