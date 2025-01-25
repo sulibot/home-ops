@@ -15,7 +15,6 @@ spec:
       namespace: ceph-csi-cephfs
     volumeAttributes:
       fsName: "data"
-      pool: "data_data"
       clusterID: "content-volumes"
       staticVolume: "true"
       rootPath: "/volumes/content/media/data"
