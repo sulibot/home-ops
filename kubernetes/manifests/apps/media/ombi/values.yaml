@@ -71,7 +71,7 @@ podSecurityContext:
   enabled: true
   runAsUser: 911
   runAsGroup: 911
-  fsGroup: 65534
+  fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
 
 # Container-level security context

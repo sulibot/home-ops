@@ -351,7 +351,7 @@ flux create helmrelease sabnzbd \
   --export > helmrelease.yaml
 
 
-  runAsUser: 65534
+  runAsUser: 1000
   runAsGroup: 1000
-  fsGroup: 65534
+  fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch

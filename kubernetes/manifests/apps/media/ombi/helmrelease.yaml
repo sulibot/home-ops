@@ -68,7 +68,7 @@ spec:
       singleStackIPFamily: IPv6
     podSecurityContext:
       enabled: true
-      fsGroup: 65534
+      fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
       runAsGroup: 911
       runAsUser: 911

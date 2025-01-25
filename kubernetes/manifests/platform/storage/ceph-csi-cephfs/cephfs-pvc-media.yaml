@@ -4,7 +4,7 @@ metadata:
   name: cephfs-pvc-media
   namespace: media
 spec:
-  storageClassName: csi-cephfs-data-content-sc-retain
+  storageClassName: cephfs-content-sc-retain
   accessModes:
     - ReadWriteMany
   resources:
