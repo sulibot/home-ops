@@ -15,11 +15,6 @@ timezone: "America/Los_Angeles"  # Default timezone for the application
 # Replica settings
 replicaCount: 1
 
-# Global networking options
-networking:
-  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
-  singleStackIPFamily: IPv6        # Default to IPv4 for single-stack clusters
-
 # Gateway configuration
 gateway:
   enabled: true                # Enable or disable HTTPRoute
@@ -65,6 +60,11 @@ data:
   enabled: true                 # Enable or disable Data PVC
   mountPath: /data              # Mount path for the Data PVC
   storageSize: 10Gi             # Size of the Data PVC
+
+# Global networking options
+networking:
+  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv4        # Default to IPv4 for single-stack clusters
 
 # Pod-level security context
 podSecurityContext:

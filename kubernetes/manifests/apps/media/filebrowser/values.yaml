@@ -56,15 +56,24 @@ resources:
     memory: "512Mi"             # Maximum memory allowed
     cpu: "500m"                 # Maximum CPU allowed
 
-# Security context configuration
-securityContext:
+# Global networking options
+networking:
+  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv4        # Default to IPv4 for single-stack clusters
+
+# Pod-level security context
+podSecurityContext:
   enabled: true
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
-  fsGroupChangePolicy: OnRootMismatch                 # Enable or disable security context
-  readOnlyRootFilesystem: false  # Restrict container filesystem to read-only
-  allowPrivilegeEscalation: false # Restrict privilege escalation
+  fsGroupChangePolicy: OnRootMismatch
+
+# Container-level security context
+containerSecurityContext:
+  enabled: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
 
 # Config PVC configuration
 config:
