@@ -23,6 +23,14 @@ spec:
       enabled: true
       mountPath: /config
       storageSize: 100Mi
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      config:
+        capabilities:
+          add:
+          - SETGID
+      enabled: true
+      readOnlyRootFilesystem: false
     data:
       enabled: true
       mountPath: /data
@@ -55,6 +63,12 @@ spec:
       global: {}
     name: ombi
     namespace: media
+    podSecurityContext:
+      enabled: true
+      fsGroup: 65534
+      fsGroupChangePolicy: OnRootMismatch
+      runAsGroup: 0
+      runAsUser: 0
     ports:
       servicePort: 80
       targetPort: 3579
@@ -67,13 +81,5 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
-    securityContext:
-      allowPrivilegeEscalation: false
-      enabled: true
-      fsGroup: 65534
-      fsGroupChangePolicy: OnRootMismatch
-      readOnlyRootFilesystem: false
-      runAsGroup: 1000
-      runAsUser: 1000
     timezone: America/Los_Angeles
     tolerations: []
