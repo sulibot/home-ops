@@ -63,12 +63,15 @@ spec:
       global: {}
     name: ombi
     namespace: media
+    networking:
+      ipFamilyPolicy: PreferDualStack
+      singleStackIPFamily: IPv6
     podSecurityContext:
       enabled: true
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 0
-      runAsUser: 0
+      runAsGroup: 911
+      runAsUser: 911
     ports:
       servicePort: 80
       targetPort: 3579

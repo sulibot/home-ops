@@ -15,6 +15,11 @@ timezone: "America/Los_Angeles"  # Default timezone for the application
 # Replica settings
 replicaCount: 1
 
+# Global networking options
+networking:
+  ipFamilyPolicy: PreferDualStack  # Can be PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv6        # Default to IPv4 for single-stack clusters
+
 # Gateway configuration
 gateway:
   enabled: true                # Enable or disable HTTPRoute
@@ -64,8 +69,8 @@ data:
 # Pod-level security context
 podSecurityContext:
   enabled: true
-  runAsUser: 0
-  runAsGroup: 0
+  runAsUser: 911
+  runAsGroup: 911
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch
 
