@@ -35,7 +35,7 @@ spec:
     dnsPolicy: ClusterFirst
     env:
     - name: PLEX_CLAIM
-      value: claim-Dxa4VxZGQ94pmarRQMJi
+      value: claim-y9dxRqRUyBJtfHjeTpxA
     - name: HOSTNAME
       value: plex
     - name: PLEX_UPDATE_CHANNEL
