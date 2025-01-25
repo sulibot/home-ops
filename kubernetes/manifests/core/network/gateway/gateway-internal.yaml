@@ -2,20 +2,24 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: gateway-external
+  name: gateway-internal
   namespace: network
   labels:
     cilium.io/gateway: "true"
+    app.kubernetes.io/managed-by: Helm
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
+    meta.helm.sh/release-name: cilium
+    meta.helm.sh/release-namespace: kube-system
 spec:
   gatewayClassName: cilium
   addresses:
     - type: IPAddress
-      value: 10.10.101.161
+      value: 10.10.101.160
     - type: IPAddress
-      value: fd00:101::cafe:161
+      value: fd00:101::cafe:160
   listeners:
+    # HTTPS Listener for sulibot.com
     - name: sulibot-https
       hostname: sulibot.com
       port: 443
@@ -24,6 +28,8 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+
+    # HTTPS Listener for *.sulibot.com
     - name: sulibot-wildcard-https
       hostname: "*.sulibot.com"
       port: 443
@@ -32,14 +38,19 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+
+    # HTTP Listener for sulibot.com (delegates to HTTPRoute for redirection)
     - name: sulibot-http
       hostname: sulibot.com
       port: 80
       protocol: HTTP
+
+    # HTTP Listener for *.sulibot.com (delegates to HTTPRoute for redirection)
     - name: sulibot-wildcard-http
       hostname: "*.sulibot.com"
       port: 80
       protocol: HTTP
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -48,7 +59,7 @@ metadata:
   namespace: network
 spec:
   parentRefs:
-    - name: gateway-external
+    - name: gateway-internal
       namespace: network
   rules:
     - matches:
@@ -60,4 +71,3 @@ spec:
           requestRedirect:
             scheme: https
             port: 443
-
