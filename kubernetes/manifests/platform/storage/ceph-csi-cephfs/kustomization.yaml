@@ -7,6 +7,7 @@ resources:
   - cephfs-storageclass-cephfs-content-sc-retain.yaml
   - cephfs-storageclass-cephfs-csi-sol-sc-retain.yaml
   - cephfs-storageclass-cephfs-csi-sol-sc.yaml
-  - cephfs-pv-media.yaml
-  - cephfs-pvc-media-default.yaml
-  - cephfs-pvc-media-media.yaml
+  - cephfs-pv-ns-media-cephfs-pvc-media.yaml
+  - cephfs-pv-ns-default-cephfs-pvc-media.yaml
+  - cephfs-pvc-ns-default-cephfs-pv-media-ns-default.yaml
+  - cephfs-pvc-ns-media-cephfs-pv-media-ns-media.yaml

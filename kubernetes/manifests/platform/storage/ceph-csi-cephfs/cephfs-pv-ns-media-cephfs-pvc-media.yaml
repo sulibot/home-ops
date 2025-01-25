@@ -10,4 +10,4 @@ spec:
   resources:
     requests:
       storage: 60Ti
-  volumeName: cephfs-pv-media
+  volumeName: cephfs-pv-media-ns-media
