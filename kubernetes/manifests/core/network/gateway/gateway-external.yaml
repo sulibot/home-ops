@@ -15,6 +15,7 @@ spec:
     - type: IPAddress
       value: fd00:101::cafe:161
   listeners:
+    # HTTPS Listener for sulibot.com
     - name: sulibot-https
       hostname: sulibot.com
       port: 443
@@ -23,8 +24,8 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
-#      ipAddresses:
-#        - 10.10.0.140  # IP allocated from the blue-pool
+
+    # HTTPS Listener for *.sulibot.com
     - name: sulibot-wildcard-https
       hostname: "*.sulibot.com"
       port: 443
@@ -33,36 +34,29 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
-#      ipAddresses:
-#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
-#    - name: sulibot-http-redirect
-#      hostname: sulibot.com
-#      port: 80
-#      protocol: HTTP
-#      rules:
-#        - backendRefs: [] # No backends; we're redirecting
-#          filters:
-#            - type: HTTPRequestRedirect
-#              requestRedirect:
-#                scheme: https
-#                port: 443
-#      ipAddresses:
-#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
-#    - name: sulibot-wildcard-http-redirect
-#      hostname: "*.sulibot.com"
-#      port: 80
-#      protocol: HTTP
-#      rules:
-#        - backendRefs: [] # No backends; we're redirecting
-#          filters:
-#            - type: HTTPRequestRedirect
-#              requestRedirect:
-#                scheme: https
-#                port: 443
-#      ipAddresses:
-#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
 
+    # HTTP-to-HTTPS Redirect for sulibot.com
+    - name: sulibot-http-redirect
+      hostname: sulibot.com
+      port: 80
+      protocol: HTTP
+      rules:
+        - backendRefs: [] # No backends; this is a redirect rule
+          filters:
+            - type: HTTPRequestRedirect
+              requestRedirect:
+                scheme: https
+                port: 443
 
-
-
-
+    # HTTP-to-HTTPS Redirect for *.sulibot.com
+    - name: sulibot-wildcard-http-redirect
+      hostname: "*.sulibot.com"
+      port: 80
+      protocol: HTTP
+      rules:
+        - backendRefs: [] # No backends; this is a redirect rule
+          filters:
+            - type: HTTPRequestRedirect
+              requestRedirect:
+                scheme: https
+                port: 443
