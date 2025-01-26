@@ -14,10 +14,10 @@ timezone: "America/Los_Angeles"  # Default timezone for the application
 # Environment variables
 env:
 # Uncomment and customize environment variables as needed
-  - name: PUID
-    value: "911"
-  - name: PGID
-    value: "911"
+#  - name: PUID
+#    value: "911"
+#  - name: PGID
+#    value: "911"
 
 # Replica settings
 replicaCount: 1

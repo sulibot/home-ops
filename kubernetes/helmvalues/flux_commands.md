@@ -210,7 +210,7 @@ sops -e -i helmrelease.yaml
 flux create source helm chart-template \
   --url=https://sulibot.github.io/chart-template/ \
   --interval=1h \
-  --export > ../shared/repo/helm/sulibot-chart-template.yaml
+  --export > sulibot-chart-template.yaml
 ```
 
 flux create helmrelease prowlarr \

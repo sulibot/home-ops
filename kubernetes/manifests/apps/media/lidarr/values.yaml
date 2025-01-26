@@ -26,9 +26,9 @@ gateway:
 env:
 # Environment variables
   - name: PUID
-    value: "911"
+    value: "1000"
   - name: PGID
-    value: "911"
+    value: "1000"
   - name: LIDARR__AUTH__APIKEY
     valueFrom:
       secretKeyRef:
@@ -73,8 +73,8 @@ networking:
 # Pod-level security context
 podSecurityContext:
   enabled: true
-  runAsUser: 911
-  runAsGroup: 911
+  runAsUser: 1000
+  runAsGroup: 1000
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
 
