@@ -24,7 +24,7 @@ spec:
       mountPath: /config
       storageSize: 100Mi
     containerSecurityContext:
-      allowPrivilegeEscalation: false
+      allowPrivilegeEscalation: true
       enabled: true
       readOnlyRootFilesystem: false
     data:
