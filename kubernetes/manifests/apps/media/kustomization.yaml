@@ -4,7 +4,7 @@ resources:
   - books-readarr/
   - emby/
   - ombi/
-#  - filebrowser/
+  - filebrowser/
   - jellyfin/
   - lidarr/
   - notifiarr/
