@@ -39,9 +39,9 @@ spec:
     dnsPolicy: ClusterFirst
     env:
     - name: PUID
-      value: "911"
+      value: "1000"
     - name: PGID
-      value: "911"
+      value: "1000"
     - name: LIDARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
@@ -75,8 +75,8 @@ spec:
       enabled: true
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 911
-      runAsUser: 911
+      runAsGroup: 1000
+      runAsUser: 1000
     ports:
       servicePort: 80
       targetPort: 8686
