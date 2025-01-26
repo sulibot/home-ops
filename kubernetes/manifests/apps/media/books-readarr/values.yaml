@@ -25,10 +25,10 @@ gateway:
 # Environment variables
 env:
 # Environment variables
-#  - name: PUID
-#    value: "911"
-#  - name: PGID
-#    value: "911"
+  - name: PUID
+    value: "1000"
+  - name: PGID
+    value: "1000"
   - name: READARR__AUTH__APIKEY
     valueFrom:
       secretKeyRef:
@@ -82,7 +82,7 @@ podSecurityContext:
 containerSecurityContext:
   enabled: true
   readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: true
 
 # Resource limits and requests
 resources:

@@ -23,7 +23,7 @@ spec:
       mountPath: /config
       storageSize: 100Mi
     containerSecurityContext:
-      allowPrivilegeEscalation: false
+      allowPrivilegeEscalation: true
       enabled: true
       readOnlyRootFilesystem: false
     data:
@@ -37,6 +37,10 @@ spec:
         value: "1"
     dnsPolicy: ClusterFirst
     env:
+    - name: PUID
+      value: "1000"
+    - name: PGID
+      value: "1000"
     - name: PROWLARR__AUTH__APIKEY
       valueFrom:
         secretKeyRef:
