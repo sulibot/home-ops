@@ -82,7 +82,7 @@ podSecurityContext:
 containerSecurityContext:
   enabled: true
   readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: true
 
 # Resource limits and requests
 resources:
