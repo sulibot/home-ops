@@ -105,6 +105,14 @@ initContainer:
     - name: data
       mountPath: /data
 
+# Comment out section if not needed
+volumeMountsExtras:
+  - name: config
+    mountPath: /filebrowser.db
+    subPath: filebrowser.db
+  - name: config
+    mountPath: /settings.json
+    subPath: settings.json 
 
 # Tolerations and Affinity
 tolerations: []                   # Define tolerations to schedule pods on tainted nodes
