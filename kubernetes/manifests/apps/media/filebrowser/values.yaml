@@ -11,28 +11,26 @@ image:
 # Timezone
 timezone: "America/Los_Angeles"  # Default timezone for the application
 
-# Environment variables
+
+
+# Replica settings
+replicaCount: 1
+
+
+# Network configuration
+gateway:
+  enabled: true 
+  name: gateway-internal        # Defaults to "gateway-internal"
+  namespace: network            # Namespace for the Gateway and HTTPRoute
+  domain: sulibot.com           # Default domain for hostnames
+
+  # Environment variables
 env:
 # Uncomment and customize environment variables as needed
 #  - name: PUID
 #    value: "911"
 #  - name: PGID
 #    value: "911"
-
-# Replica settings
-replicaCount: 1
-
-# Port configuration
-ports:
-  servicePort: 80               # Port exposed by the service
-  targetPort: 8080              # Port used by the container
-
-# Network configuration
-gateway:
-  name: gateway-internal        # Defaults to "gateway-internal"
-  namespace: network            # Namespace for the Gateway and HTTPRoute
-  domain: sulibot.com           # Default domain for hostnames
-
 # Labels and Annotations
 labels:
   global: {}                    # Global labels for all resources
@@ -44,8 +42,23 @@ annotations:
   global: {}                    # Global annotations for all resources
   service: {}                   # Annotations specific to the service
   deployment: {}                # Annotations specific to the deployment
-  pod: {}                       # Annotations specific to the pod
+  pod: {}  
+  
 
+# Port configuration
+ports:
+  servicePort: 80               # Port exposed by the service
+  targetPort: 8080              # Port used by the container
+
+
+  # Annotations specific to the pod
+# DNS configuration
+dnsPolicy: ClusterFirst          # Default DNS policy
+dnsConfig:
+  enabled: true                # Enable or disable custom DNS settings
+  options:
+    - name: ndots
+      value: "1"
 # Resource requests and limits
 resources:
   enabled: false                # Resource limits and requests are disabled by default

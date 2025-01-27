@@ -33,9 +33,16 @@ spec:
     data:
       enabled: true
       mountPath: /srv
+    dnsConfig:
+      enabled: true
+      options:
+      - name: ndots
+        value: "1"
+    dnsPolicy: ClusterFirst
     env: null
     gateway:
       domain: sulibot.com
+      enabled: true
       name: gateway-internal
       namespace: network
     image:
