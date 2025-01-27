@@ -37,7 +37,11 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env: null
+    env:
+    - name: UID
+      value: "0"
+    - name: GID
+      value: "0"
     gateway:
       domain: sulibot.com
       enabled: true
