@@ -37,11 +37,7 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env:
-    - name: PUID
-      value: "1000"
-    - name: PGID
-      value: "1000"
+    env: null
     gateway:
       domain: sulibot.com
       enabled: true
@@ -70,8 +66,8 @@ spec:
       enabled: true
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 1000
-      runAsUser: 1000
+      runAsGroup: 911
+      runAsUser: 911
     ports:
       servicePort: 80
       targetPort: 8096
