@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebrowser-config
+  namespace: media
+data:
+  settings.json: |
+    {
+      "port": 8080,
+      "baseURL": "",
+      "address": "",
+      "log": "stdout",
+      "database": "/config/database.db",
+      "root": "/srv"
+    }

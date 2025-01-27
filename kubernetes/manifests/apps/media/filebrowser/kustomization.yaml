@@ -1,3 +1,4 @@
 resources:
+  - configmap-filebrowser-config.yaml
   - helmrelease.yaml
 

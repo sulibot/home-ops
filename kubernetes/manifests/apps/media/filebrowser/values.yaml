@@ -27,6 +27,8 @@ gateway:
   # Environment variables
 env:
 # Uncomment and customize environment variables as needed
+  - name: FB_CONFIG
+    value: "/settings.json"
 #  - name: PUID
 #    value: "911"
 #  - name: PGID
@@ -120,12 +122,15 @@ initContainer:
 
 # Comment out section if not needed
 volumeMountsExtras:
-  - name: config
-    mountPath: /filebrowser.db
-    subPath: filebrowser.db
-  - name: config
+  - name: config-volume
     mountPath: /settings.json
     subPath: settings.json 
+
+volumesExtras:
+  - name: config-volume
+    configMap:
+      name: filebrowser-config
+
 
 # Tolerations and Affinity
 tolerations: []                   # Define tolerations to schedule pods on tainted nodes
