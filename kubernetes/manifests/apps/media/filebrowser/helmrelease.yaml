@@ -64,7 +64,7 @@ spec:
       global: {}
       pod: {}
       service: {}
-    name: filebrowser
+    name: file
     namespace: media
     networking:
       ipFamilyPolicy: PreferDualStack
