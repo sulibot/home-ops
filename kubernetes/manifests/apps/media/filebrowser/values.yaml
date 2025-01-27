@@ -64,8 +64,8 @@ networking:
 # Pod-level security context
 podSecurityContext:
   enabled: true
-  runAsUser: 1000
-  runAsGroup: 1000
+  runAsUser: 0
+  runAsGroup: 0
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
 

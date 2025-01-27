@@ -57,7 +57,7 @@ spec:
       volumeMounts:
       - mountPath: /config
         name: config
-      - mountPath: /data
+      - mountPath: /srv
         name: data
     labels:
       deployment: {}
@@ -73,8 +73,8 @@ spec:
       enabled: true
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 1000
-      runAsUser: 1000
+      runAsGroup: 0
+      runAsUser: 0
     ports:
       servicePort: 80
       targetPort: 8080
@@ -89,3 +89,10 @@ spec:
         memory: 256Mi
     timezone: America/Los_Angeles
     tolerations: []
+    volumeMountsExtras:
+    - mountPath: /filebrowser.db
+      name: config
+      subPath: filebrowser.db
+    - mountPath: /settings.json
+      name: config
+      subPath: settings.json
