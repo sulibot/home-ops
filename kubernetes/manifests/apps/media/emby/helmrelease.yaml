@@ -41,7 +41,7 @@ spec:
     - name: PUID
       value: "1000"
     - name: PGID
-      value: "100"
+      value: "1000"
     gateway:
       domain: sulibot.com
       enabled: true
@@ -68,10 +68,10 @@ spec:
       singleStackIPFamily: IPv4
     podSecurityContext:
       enabled: true
-      fsGroup: 100
+      fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
-      runAsGroup: 911
-      runAsUser: 911
+      runAsGroup: 1000
+      runAsUser: 1000
     ports:
       servicePort: 80
       targetPort: 8096
