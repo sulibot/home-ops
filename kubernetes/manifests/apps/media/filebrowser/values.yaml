@@ -103,7 +103,7 @@ initContainer:
     - name: config
       mountPath: /config
     - name: data
-      mountPath: /data
+      mountPath: /srv
 
 # Comment out section if not needed
 volumeMountsExtras:
