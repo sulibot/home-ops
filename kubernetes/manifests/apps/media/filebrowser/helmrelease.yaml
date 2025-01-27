@@ -39,7 +39,9 @@ spec:
       - name: ndots
         value: "1"
     dnsPolicy: ClusterFirst
-    env: null
+    env:
+    - name: FB_CONFIG
+      value: /settings.json
     gateway:
       domain: sulibot.com
       enabled: true
@@ -97,9 +99,10 @@ spec:
     timezone: America/Los_Angeles
     tolerations: []
     volumeMountsExtras:
-    - mountPath: /filebrowser.db
-      name: config
-      subPath: filebrowser.db
     - mountPath: /settings.json
-      name: config
+      name: config-volume
       subPath: settings.json
+    volumesExtras:
+    - configMap:
+        name: filebrowser-config
+      name: config-volume
