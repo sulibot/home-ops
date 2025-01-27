@@ -25,10 +25,10 @@ gateway:
 # Environment variables
 env:
 # Environment variables
-#  - name: UID
-#    value: "1000"
-#  - name: GID
-#    value: "100"
+  - name: UID
+    value: "0"
+  - name: GID
+    value: "0"
 #  - name: GIDLIST
 #    value: "100"
 
