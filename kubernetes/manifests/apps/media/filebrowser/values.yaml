@@ -1,5 +1,5 @@
 # General application settings
-name: file                  # Application name (used for naming resources and host subdomain)
+name: files                  # Application name (used for naming resources and host subdomain)
 namespace: media                # Namespace for the application, PVCs, and services
 
 # Docker container settings
