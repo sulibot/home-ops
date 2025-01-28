@@ -101,6 +101,17 @@ data:
   enabled: true                 # Shared PVC is enabled by default
   mountPath: /srv             # Mount path for shared PVC
 
+command:
+  - "filebrowser"
+args:
+  - "-r"
+  - "/srv"
+  - "-a"
+  - "0.0.0.0"
+  - "-p"
+  - "8080"
+
+
 # Init container configuration
 initContainer:
   enabled: false                # Enable or disable the init container
