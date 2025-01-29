@@ -95,7 +95,7 @@ spec:
           annotations: null
           enabled: true
           hosts:
-          - host: immich.local
+          - host: immich.sulibot.com
             paths:
             - path: /
               pathType: Prefix

@@ -270,6 +270,19 @@ provisioner:
     ## https://github.com/kubernetes-csi/external-resizer#recommended-optional-arguments
     extraArgs: []
 
+  snapshotter:
+    image:
+      repository: registry.k8s.io/sig-storage/csi-snapshotter
+      tag: v8.1.0
+      pullPolicy: IfNotPresent
+    resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-snapshotter#csi-external-snapshotter-sidecar-command-line-options
+    extraArgs: []
+
+    args:
+      enableVolumeGroupSnapshots: false
+
 #  snapshotter:
 #    image:
 #      repository: registry.k8s.io/sig-storage/csi-snapshotter
