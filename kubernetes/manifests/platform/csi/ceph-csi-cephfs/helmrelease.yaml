@@ -128,6 +128,15 @@ spec:
         name: resizer
         resources: {}
       setmetadata: true
+      snapshotter:
+        args:
+          enableVolumeGroupSnapshots: false
+        extraArgs: []
+        image:
+          pullPolicy: IfNotPresent
+          repository: registry.k8s.io/sig-storage/csi-snapshotter
+          tag: v8.1.0
+        resources: {}
       strategy:
         rollingUpdate:
           maxUnavailable: 50%
