@@ -4,6 +4,7 @@ metadata:
   name: sol-worker-1
   labels:
     node-role.kubernetes.io/worker: "true"
+    topology.kubernetes.io/host: "pve01"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
 
@@ -14,6 +15,7 @@ metadata:
   name: sol-worker-2
   labels:
     node-role.kubernetes.io/worker: "true"
+    topology.kubernetes.io/host: "pve02"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
 
@@ -24,5 +26,6 @@ metadata:
   name: sol-worker-3
   labels:
     node-role.kubernetes.io/worker: "true"
+    topology.kubernetes.io/host: "pve03"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
