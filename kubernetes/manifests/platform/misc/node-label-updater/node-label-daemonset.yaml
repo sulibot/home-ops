@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-label-updater
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: node-label-updater
+  template:
+    metadata:
+      labels:
+        name: node-label-updater
+    spec:
+      serviceAccountName: node-label-updater
+      containers:
+        - name: node-label-updater
+          image: sulibot/node-label-updater:latest
+          volumeMounts:
+            - name: kube-api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: kube-api-access
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - secret:
+                  name: node-label-updater-secret
