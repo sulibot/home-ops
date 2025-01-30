@@ -18,6 +18,7 @@
           - apt-transport-https
           - curl
           - gnupg
+          - fio
         state: present
 
     - name: Install jq
@@ -229,7 +230,7 @@
         mode: '0755'
 
 - name: Deploy update_k8s_config.sh script to Kubernetes Control Plane
-  hosts: kube_control_plane
+  hosts: all
   become: true
   tasks:
     - name: Copy update_k8s_config.sh script to /root

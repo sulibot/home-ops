@@ -20,14 +20,14 @@ data:
         }
       },
       {
-        "clusterID": "csi-luna-volumes",
+        "clusterID": "csi-volumes",
         "monitors": [
           "[fd00::1:1]:6789",
           "[fd00::1:2]:6789",
           "[fd00::1:3]:6789"
         ],
         "cephFS": {
-          "subvolumeGroup": "csi-luna"
+          "subvolumeGroup": "csi"
         }
       },
       {
