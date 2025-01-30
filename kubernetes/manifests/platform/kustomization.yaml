@@ -1,6 +1,6 @@
 resources:
   - namespace.yaml
-  - node-label-updater/
+#  - node-label-updater/
   - cni/
   - csi/
   - misc/
