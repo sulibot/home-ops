@@ -5,8 +5,8 @@ resources:
   - cephfs-secret-csi-cephfs-secret.yaml
   - helmrelease.yaml
   - cephfs-storageclass-cephfs-content-sc-retain.yaml
-  - cephfs-storageclass-cephfs-csi-sol-sc-retain.yaml
-  - cephfs-storageclass-cephfs-csi-sol-sc.yaml
+  - cephfs-storageclass-cephfs-csi-sc-retain.yaml
+  - cephfs-storageclass-cephfs-csi-sc.yaml
   - cephfs-pv-ns-media-cephfs-pvc-media.yaml
   - cephfs-pv-ns-default-cephfs-pvc-media.yaml
   - cephfs-pvc-ns-default-cephfs-pv-media-ns-default.yaml
