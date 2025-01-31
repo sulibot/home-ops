@@ -28,5 +28,5 @@ allowedTopologies:
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
-mountOptions:
-  - context="system_u:object_r:container_file_t:s0:c0,c1"
+#mountOptions:
+#  - context="system_u:object_r:container_file_t:s0:c0,c1"
