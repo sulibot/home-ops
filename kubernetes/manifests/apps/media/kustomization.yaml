@@ -1,21 +1,21 @@
 ---
 resources:
-  - audiobooks-readarr/
-  - books-readarr/
-  - emby/
-  - ombi/
-  - filebrowser/
-  - jellyfin/
+ # - audiobooks-readarr/
+ # - books-readarr/
+ # - emby/
+ # - ombi/
+ # - filebrowser/
+ # - jellyfin/
   - lidarr/
-  - notifiarr/
-  - overseerr/
-  - plex/
-  - prowlarr/
-  - radarr/
-  - radarr-4k/
-  - sabnzbd/
-  - sonarr/
-  - sonarr-4k/
-  - tautulli/
-#  - recyclarr/
-#  - immich/
+#  - notifiarr/
+#  - overseerr/
+#  - plex/
+#  - prowlarr/
+#  - radarr/
+#  - radarr-4k/
+#  - sabnzbd/
+#  - sonarr/
+#  - sonarr-4k/
+#  - tautulli/
+##  - recyclarr/
+##  - immich/
