@@ -58,6 +58,11 @@ variable "file_id" {
   type        = string
 }
 
+variable "user_data_file_id" {
+  description = "File ID for cloud-init snippet"
+  type        = string
+  
+}
 variable "dns_server" {
   description = "List of DNS servers"
   type        = list(string)
