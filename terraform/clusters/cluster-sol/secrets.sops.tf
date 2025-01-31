@@ -14,6 +14,7 @@ locals {
   pve_api_token_secret  = data.sops_file.auth-secrets.data["pve_api_token_secret"]
   pve_username          = data.sops_file.auth-secrets.data["pve_username"]
   pve_password          = data.sops_file.auth-secrets.data["pve_password"]
+  vm_password          = data.sops_file.auth-secrets.data["vm_password"]
 }
 
 
