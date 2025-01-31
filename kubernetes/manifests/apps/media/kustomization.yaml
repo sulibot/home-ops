@@ -9,8 +9,8 @@ resources:
   - lidarr/
 #  - notifiarr/
 #  - overseerr/
-#  - plex/
-#  - prowlarr/
+  - plex/
+  - prowlarr/
 #  - radarr/
 #  - radarr-4k/
 #  - sabnzbd/
