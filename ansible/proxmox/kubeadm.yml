@@ -210,23 +210,37 @@
           #!/bin/bash
           set -e
 
+          echo "Checking if Cilium is already installed..."
+
+          # Check if Cilium DaemonSet exists and is running
+          if kubectl get daemonset cilium -n kube-system >/dev/null 2>&1; then
+            echo "Cilium is already installed and running. Skipping installation."
+            exit 0
+          fi
+
+          echo "Cilium is not installed. Proceeding with installation."
+
           # Add the Cilium Helm repository if it doesn't already exist
           if ! helm repo list | grep -q 'https://helm.cilium.io'; then
+            echo "Adding the Cilium Helm repository..."
             helm repo add cilium https://helm.cilium.io
           fi
 
-          # Update Helm repositories
+          echo "Updating Helm repositories..."
           helm repo update
 
-          # Install or upgrade Cilium
+          echo "Installing or upgrading Cilium..."
           helm upgrade --install cilium cilium/cilium \
             --version 1.16.5 \
             --namespace kube-system \
             --create-namespace \
             -f cilium-values.yaml
-          kubectl -n kube-system rollout restart deployment/cilium-operator                                                                                                                                │
+
+          echo "Restarting the Cilium operator and Cilium DaemonSet to apply changes..."
+          kubectl -n kube-system rollout restart deployment/cilium-operator
           kubectl -n kube-system rollout restart ds/cilium
-          kubectl label node sol-worker-1 sol-worker-2 sol-worker-3 luna-worker-1 luna-worker-2 luna-worker-3 role=worker 
+
+          echo "Cilium installation completed successfully."
         mode: '0755'
 
 - name: Deploy update_k8s_config.sh script to Kubernetes Control Plane
