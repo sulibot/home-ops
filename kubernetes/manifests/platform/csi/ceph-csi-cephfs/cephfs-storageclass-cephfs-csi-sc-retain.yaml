@@ -25,6 +25,6 @@ allowedTopologies:
           - pve03
 reclaimPolicy: Retain
 allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
-#mountOptions:
-#  - context="system_u:object_r:container_file_t:s0:c0,c1"
+volumeBindingMode: Immediate
+mountOptions:
+  - context="system_u:object_r:container_file_t:s0:c0,c1"
