@@ -9,7 +9,7 @@ resources:
   - lidarr/
 #  - notifiarr/
 #  - overseerr/
-  - plex/
+#  - plex/
   - prowlarr/
 #  - radarr/
 #  - radarr-4k/
