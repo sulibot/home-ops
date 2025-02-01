@@ -96,17 +96,31 @@ containerSecurityContext:
 
 # Resource limits and requests
 resources:
-  enabled: false                # Enable or disable resource settings
-  requests:
-    memory: "256Mi"             # Memory request for the container
-    cpu: "250m"                 # CPU request for the container
+  enabled: enable                # Enable or disable resource settings
   limits:
-    memory: "512Mi"             # Memory limit for the container
-    cpu: "500m"                 # CPU limit for the container
+    gpu.intel.com/i915: 1  
+#  requests:
+#    memory: "256Mi"             # Memory request for the container
+#    cpu: "250m"                 # CPU request for the container
+#  limits:
+#    memory: "512Mi"             # Memory limit for the container
+#    cpu: "500m"                 # CPU limit for the container
+
+
 
 # Tolerations and affinity
 tolerations: []                 # Define tolerations for node taints
-affinity: {}                    # Define node and pod affinity rules
+affinity:
+  enabled: true
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+            - key: "intel.com/gpu.present"
+              operator: In
+              values:
+                - "true"                   # Define node and pod affinity rules
 
 # Headless service configuration
 headless:
@@ -118,4 +132,6 @@ ingress:
   className: cilium             # Ingress class name
   tls:
     certManagerIssuer: letsencrypt-prod # Cert-manager issuer for TLS certificates
+
+
 

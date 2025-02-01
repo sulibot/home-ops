@@ -1,0 +1,94 @@
+---
+- name: Configure Linux Guest for i915 SR-IOV
+  hosts: kube_worker[0:5]
+  become: yes
+  tasks:
+
+  - name: Ensure DKMS and required packages are installed
+    package:
+      name: 
+        - dkms
+        - linux-headers-{{ ansible_kernel }}
+        - build-essential
+        - git
+      state: present
+
+  - name: Set the i915 version
+    set_fact:
+      i915_version: "2025.01.22"
+
+  - name: Check if i915 SR-IOV DKMS module is correctly installed and functional
+    shell: |
+      if dkms status | grep -q 'i915-sriov-dkms, {{ i915_version }},.*installed'; then
+        if modinfo i915 | grep -q 'version:.*{{ i915_version }}'; then
+          echo 'working'
+        else
+          echo 'reinstall'
+        fi
+      else
+        echo 'reinstall'
+      fi
+    register: dkms_check
+    changed_when: false
+
+  - name: Clone the i915 SR-IOV DKMS repository (if missing)
+    git:
+      repo: "https://github.com/strongtz/i915-sriov-dkms.git"
+      dest: "/opt/i915-sriov-dkms"
+      force: yes
+    when: dkms_check.stdout == "reinstall"
+
+  - name: Clean any existing DKMS modules before reinstalling
+    shell: |
+      dkms status | grep i915-sriov-dkms | awk -F ', ' '{print $1}' | xargs -I {} dkms remove {}/ --all || true
+    ignore_errors: yes
+    when: dkms_check.stdout == "reinstall"
+
+  - name: Check if the i915 SR-IOV DKMS module version is already added
+    shell: dkms status | grep -q "i915-sriov-dkms, {{ i915_version }}"
+    register: dkms_module_check
+    ignore_errors: true
+    changed_when: false
+
+  - name: Add the i915 SR-IOV module to DKMS (if missing)
+    shell: dkms add -m i915-sriov-dkms -v {{ i915_version }}
+    args:
+      chdir: /opt/i915-sriov-dkms
+    when: dkms_module_check.failed
+
+  - name: Build the i915 SR-IOV module using DKMS
+    command: dkms build -m i915-sriov-dkms -v {{ i915_version }}
+    args:
+      chdir: /opt/i915-sriov-dkms
+    when: dkms_module_check.failed
+
+  - name: Install the i915 SR-IOV module using DKMS
+    command: dkms install -m i915-sriov-dkms -v {{ i915_version }}
+    args:
+      chdir: /opt/i915-sriov-dkms
+    when: dkms_module_check.failed
+
+  - name: Blacklist the xe driver
+    copy:
+      dest: /etc/modprobe.d/blacklist.conf
+      content: "blacklist xe\n"
+
+  - name: Add kernel parameter to GRUB
+    lineinfile:
+      path: /etc/default/grub
+      regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+      line: 'GRUB_CMDLINE_LINUX_DEFAULT="module_blacklist=xe"'
+      backrefs: yes
+
+  - name: Add i915 GuC configuration
+    copy:
+      dest: /etc/modprobe.d/i915.conf
+      content: "options i915 enable_guc=3\n"
+
+  - name: Update GRUB and initramfs
+    shell: |
+      update-grub
+      update-initramfs -u
+
+  - name: Reboot the system to apply changes
+    reboot:

@@ -16,7 +16,17 @@ spec:
       version: 0.1.0
   interval: 1h0m0s
   values:
-    affinity: {}
+    affinity:
+      enabled: true
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - preference:
+            matchExpressions:
+            - key: intel.com/gpu.present
+              operator: In
+              values:
+              - "true"
+          weight: 1
     annotations:
       pod: {}
     config:
@@ -77,12 +87,8 @@ spec:
       targetPort: 8096
     replicaCount: 1
     resources:
-      enabled: false
+      enabled: enable
       limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
+        gpu.intel.com/i915: 1
     timezone: America/Los_Angeles
     tolerations: []
