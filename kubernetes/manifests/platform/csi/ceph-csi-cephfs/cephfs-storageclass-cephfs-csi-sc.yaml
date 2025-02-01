@@ -10,7 +10,7 @@ parameters:
   fsName: kubernetes
   pool: kubernetes_data
   mounter: kernel
-  kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576,norbytes,rsize=1M,wsize=1M,client_cache_size=16M
+  kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
@@ -27,6 +27,6 @@ allowedTopologies:
           - pve03
 reclaimPolicy: Delete
 allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
+volumeBindingMode: Immediate
 mountOptions:
   - context="system_u:object_r:container_file_t:s0:c0,c1"
