@@ -12,4 +12,5 @@ resources:
   - akeyless-helmrepository.yaml
   - 1password-helmrepository.yaml
   - backube-helmrepository.yaml
+  - intel-helmrepository.yaml
 
