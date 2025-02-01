@@ -17,7 +17,7 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
   #volumeNamePrefix: "sol-cephfs-"
 reclaimPolicy: Retain
-allowVolumeExpansion: true
+allowVolumeExpansion: false
 volumeBindingMode: Immediate
 #mountOptions:
 #  - context="system_u:object_r:container_file_t:s0:c0,c1"
