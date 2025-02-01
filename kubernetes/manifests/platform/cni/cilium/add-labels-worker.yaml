@@ -30,7 +30,7 @@ metadata:
     topology.kubernetes.io/host: "pve03"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
-    
+
 ---
 apiVersion: v1
 kind: Node
@@ -39,6 +39,7 @@ metadata:
   labels:
     node-role.kubernetes.io/worker: "true"
     topology.kubernetes.io/host: "pve01"
+    intel.com/gpu.present: "true"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
 
@@ -50,5 +51,6 @@ metadata:
   labels:
     node-role.kubernetes.io/worker: "true"
     topology.kubernetes.io/host: "pve02"
+    intel.com/gpu.present: "true"
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
