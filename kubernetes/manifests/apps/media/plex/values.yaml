@@ -32,7 +32,7 @@ env:
   # This claim is optional, and is only used for the first startup of PMS
   # The claim is obtained from https://www.plex.tv/claim/ is is only valid for a few minutes
   - name: PLEX_CLAIM
-    value: "claim-UFwmWndKiejkqpJRQoxk"
+    value: "claim-B_huQd4WqH6reKRdgBtm"
   - name: HOSTNAME
     value: "plex"
   - name: PLEX_UPDATE_CHANNEL
