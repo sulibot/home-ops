@@ -13,4 +13,5 @@ resources:
   - 1password-helmrepository.yaml
   - backube-helmrepository.yaml
   - intel-helmrepository.yaml
+  - node-feature-discovery-helmrepository.yaml
 
