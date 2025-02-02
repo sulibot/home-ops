@@ -1,6 +1,6 @@
 ---
 - name: Configure Linux Guest for i915 SR-IOV
-  hosts: kube_worker[0:5]
+  hosts: kube_worker[3:4]
   become: yes
   tasks:
 
