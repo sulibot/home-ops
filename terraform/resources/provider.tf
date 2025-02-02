@@ -2,19 +2,19 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "0.70.0"
+      version = "~> 0.70.1"
     }
     sops = {
       source  = "carlpett/sops"
-      version = "1.1.1"
+      version = "~>1.1.1"
     }
     random = {
       source  = "hashicorp/random"
-      version = "3.6.2"
+      version = "~>3.6.2"
     }
     cloudinit = {
       source  = "hashicorp/cloudinit"
-      version = "2.3.4"
+      version = "~>2.3.4"
     }
     external = {
       source  = "hashicorp/external"
@@ -22,7 +22,7 @@ terraform {
     }
   }
 
-  required_version = ">= 1.3.0"
+  required_version = "~> 1.3.0"
 }
 
 

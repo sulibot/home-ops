@@ -1,13 +1,9 @@
 data "sops_file" "auth-secrets" {
-    source_file = "secrets.sops.yaml"
+  source_file = "${path.module}/secrets.sops.yaml"
 }
 
-# Output decrypted data for debugging purposes
-#output "decrypted_data" {
-#  value = data.sops_file.auth-secrets.data
-#}
 
-# Expose decrypted values as local variables
+
 locals {
   pve_endpoint          = data.sops_file.auth-secrets.data["pve_endpoint"]
   pve_api_token_id      = data.sops_file.auth-secrets.data["pve_api_token_id"]
@@ -17,8 +13,3 @@ locals {
   vm_password          = data.sops_file.auth-secrets.data["vm_password"]
 }
 
-
-#    sops = {
-#      source  = "carlpett/sops"
-#      version = "1.1.1"
-#    }
