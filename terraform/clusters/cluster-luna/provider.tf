@@ -2,11 +2,11 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-#      version = "~> 0.70.0"  # Use ~> for better version control
+      version = "~> 0.70.1"
     }
     sops = {
       source  = "carlpett/sops"
-#      version = "~> 1.1.1"
+      version = "~> 1.1.1"
     }
 
     local = {

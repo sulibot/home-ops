@@ -127,7 +127,24 @@ resource "proxmox_virtual_environment_vm" "worker" {
     model   = "virtio"
     vlan_id = var.vlan_id
   }
+  # Dynamic hostpci configuration
+  dynamic "hostpci" {
+    for_each = (count.index + 1) == 4 ? {
+      hostpci0 = "00:02.1"
+      hostpci1 = "00:02.2"
+    } : (count.index + 1) == 5 ? {
+      hostpci0 = "00:02.3"
+      hostpci1 = "00:02.4"
+    } : {}
 
+    content {
+      device = hostpci.key
+      id     = hostpci.value
+      pcie   = false
+      rombar = true
+      xvga   = false
+    }
+  }
   initialization {
     ip_config {
       ipv4 {

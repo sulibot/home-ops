@@ -1,38 +1,30 @@
+provider "proxmox" {
+  endpoint  = data.sops_file.auth-secrets.data["pve_endpoint"]
+  api_token = "${data.sops_file.auth-secrets.data["pve_api_token_id"]}=${data.sops_file.auth-secrets.data["pve_api_token_secret"]}"
+  insecure  = true
+  tmp_dir   = "/var/tmp"
+
+  ssh {
+    agent       = false
+    private_key = file("~/.ssh/id_ed25519")
+    username    = "root"
+  }
+}
+
+provider "sops" {}
+
 terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-#      version = "~> 0.70.0"  # Use ~> for better version control
+      version = "~> 0.70.1"
     }
     sops = {
       source  = "carlpett/sops"
-#      version = "~> 1.1.1"
     }
-    local = {
-      source = "hashicorp/local"
-    }
-#    random = {
-#      source  = "hashicorp/random"
-#      version = "~> 3.6.2"
-#    }
-#    cloudinit = {
-#      source  = "hashicorp/cloudinit"
-#      version = "~> 2.3.4"
-#    }
   }
 }
 
-provider "proxmox" {
-  endpoint  = local.pve_endpoint
-  api_token = "${local.pve_api_token_id}=${local.pve_api_token_secret}"
-  
-  # Comment or uncomment based on your self-signed cert usage
-  insecure = true  # Set true for self-signed certificates (if needed)
-
-  tmp_dir  = "/var/tmp"  # Optional customization
-
-  ssh {
-    agent    = true
-    username = "root"  # Keep if SSH is required for certain operations
-  }
+data "sops_file" "auth-secrets" {
+  source_file = "${path.module}/../common/secrets.sops.yaml"
 }
