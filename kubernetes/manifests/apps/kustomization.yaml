@@ -1,4 +1,4 @@
 resources:
  - media/
-# - kube-system/
+ - kube-system/
 # - volsync-system/
