@@ -110,9 +110,16 @@ resources:
 # Tolerations and affinity
 tolerations: []                 # Define tolerations for node taints
 affinity:
+  enabled: true                 # Set to true to enable affinity rules; false to disable them entirely.
   nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution: {}  # Provide an empty object by default
     preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: In
+              values:
+                - "true"
       - weight: 1
         preference:
           matchExpressions:
@@ -122,13 +129,6 @@ affinity:
                 - pve01
                 - pve02
                 - pve03
-      - weight: 1
-        preference:
-          matchExpressions:
-            - key: intel.feature.node.kubernetes.io/gpu
-              operator: In
-              values:
-                - "true"
 
 
 
