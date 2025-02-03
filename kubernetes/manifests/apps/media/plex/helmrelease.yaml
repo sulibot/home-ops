@@ -17,12 +17,20 @@ spec:
   interval: 1h0m0s
   values:
     affinity:
-      enabled: true
       nodeAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
         - preference:
             matchExpressions:
-            - key: intel.com/gpu.present
+            - key: topology.kubernetes.io/host
+              operator: In
+              values:
+              - pve01
+              - pve02
+              - pve03
+          weight: 1
+        - preference:
+            matchExpressions:
+            - key: intel.feature.node.kubernetes.io/gpu
               operator: In
               values:
               - "true"
@@ -98,7 +106,7 @@ spec:
       targetPort: 32400
     replicaCount: 1
     resources:
-      enabled: enable
+      enabled: true
       limits:
         gpu.intel.com/i915: 1
     timezone: America/Los_Angeles
