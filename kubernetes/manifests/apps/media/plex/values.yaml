@@ -95,17 +95,15 @@ containerSecurityContext:
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: true
 
-# Resource limits and requests
 resources:
-  enabled: true                # Enable or disable resource settings
+  enabled: true      # Set to false if you want to omit resource requests/limits.
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
   limits:
-    gpu.intel.com/i915: 1  
-#  requests:
-#    memory: "256Mi"             # Memory request for the container
-#    cpu: "250m"                 # CPU request for the container
-#  limits:
-#    memory: "512Mi"             # Memory limit for the container
-#    cpu: "500m"                 # CPU limit for the container
+    cpu: "3000m"
+    memory: "6Gi"
+    gpu.intel.com/i915: 1
 
 
 
@@ -113,6 +111,7 @@ resources:
 tolerations: []                 # Define tolerations for node taints
 affinity:
   nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution: {}  # Provide an empty object by default
     preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 1
         preference:
@@ -130,6 +129,7 @@ affinity:
               operator: In
               values:
                 - "true"
+
 
 #  podAffinity:
 #    requiredDuringSchedulingIgnoredDuringExecution:
