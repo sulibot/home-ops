@@ -1,5 +1,5 @@
 resources:
 - gateway-api-crds/
 - cert-manager/
-#- intel/
+- intel/
 
