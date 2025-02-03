@@ -84,7 +84,7 @@ containerSecurityContext:
 
 # Resource limits and requests
 resources:
-  enabled: enable                # Enable or disable resource settings
+  enabled: true                # Enable or disable resource settings
   limits:
     gpu.intel.com/i915: 1  
 #  requests:
