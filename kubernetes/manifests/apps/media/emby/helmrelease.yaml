@@ -87,7 +87,7 @@ spec:
       targetPort: 8096
     replicaCount: 1
     resources:
-      enabled: enable
+      enabled: true
       limits:
         gpu.intel.com/i915: 1
     timezone: America/Los_Angeles
