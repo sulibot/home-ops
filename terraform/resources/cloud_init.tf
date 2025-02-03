@@ -97,8 +97,7 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
 
     # Commands to configure and start services
     runcmd:
-        - apt update
-        - apt upgrade -y
+
         - timedatectl set-timezone America/Los_Angeles
         - systemctl enable qemu-guest-agent
         - systemctl start qemu-guest-agent
@@ -106,6 +105,7 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
         - echo 'options i915 enable_guc=3' > /etc/modprobe.d/i915.conf
         - apt install -y linux-headers-$(uname -r) linux-image-$(uname -r)
         - mkdir -p /opt/i915-sriov && cd /opt/i915-sriov
+        - dpkg --configure -a
         - wget https://github.com/strongtz/i915-sriov-dkms/releases/download/2025.01.22/i915-sriov-dkms_2025.01.22_amd64.deb
         - apt install -y ./i915-sriov-dkms_2025.01.22_amd64.deb
         - update-grub
