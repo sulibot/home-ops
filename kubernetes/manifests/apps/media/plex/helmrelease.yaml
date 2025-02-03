@@ -17,8 +17,16 @@ spec:
   interval: 1h0m0s
   values:
     affinity:
+      enabled: true
       nodeAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
+        - preference:
+            matchExpressions:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: In
+              values:
+              - "true"
+          weight: 1
         - preference:
             matchExpressions:
             - key: topology.kubernetes.io/host
@@ -28,14 +36,6 @@ spec:
               - pve02
               - pve03
           weight: 1
-        - preference:
-            matchExpressions:
-            - key: intel.feature.node.kubernetes.io/gpu
-              operator: In
-              values:
-              - "true"
-          weight: 1
-        requiredDuringSchedulingIgnoredDuringExecution: {}
     annotations:
       pod: {}
     config:
@@ -110,7 +110,6 @@ spec:
       enabled: true
       limits:
         cpu: 3000m
-        gpu.intel.com/i915: 1
         memory: 6Gi
       requests:
         cpu: 250m
