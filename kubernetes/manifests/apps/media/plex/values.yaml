@@ -131,13 +131,7 @@ affinity:
                 - "true"
 
 
-  podAffinity: {}
-  podAntiAffinity: {}
-#  podAffinity:
-#    requiredDuringSchedulingIgnoredDuringExecution:
-#      - labelSelector:
-#          matchLabels:
-#            app: my-app
+
 
 
 
