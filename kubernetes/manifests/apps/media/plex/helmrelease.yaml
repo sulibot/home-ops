@@ -36,6 +36,8 @@ spec:
               - "true"
           weight: 1
         requiredDuringSchedulingIgnoredDuringExecution: {}
+      podAffinity: {}
+      podAntiAffinity: {}
     annotations:
       pod: {}
     config:

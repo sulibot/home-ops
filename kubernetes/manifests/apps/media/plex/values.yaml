@@ -131,6 +131,8 @@ affinity:
                 - "true"
 
 
+  podAffinity: {}
+  podAntiAffinity: {}
 #  podAffinity:
 #    requiredDuringSchedulingIgnoredDuringExecution:
 #      - labelSelector:
