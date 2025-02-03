@@ -35,6 +35,7 @@ spec:
               values:
               - "true"
           weight: 1
+        requiredDuringSchedulingIgnoredDuringExecution: {}
     annotations:
       pod: {}
     config:
@@ -108,6 +109,11 @@ spec:
     resources:
       enabled: true
       limits:
+        cpu: 3000m
         gpu.intel.com/i915: 1
+        memory: 6Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
     timezone: America/Los_Angeles
     tolerations: []
