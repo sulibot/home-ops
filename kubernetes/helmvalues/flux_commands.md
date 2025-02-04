@@ -1,3 +1,17 @@
+
+
+flux create helmrelease gpu-device-plugin \
+  --source=HelmRepository/intel.flux-system \
+  --chart=intel-device-plugins-gpu \
+  --chart-version=0.32.0 \
+  --namespace=gpu-resources \
+  --create-target-namespace \
+  --values=values.yaml \
+  --interval=1h \
+  --export > helmrelease.yaml
+
+
+
 helm repo add backube https://backube.github.io/helm-charts/
 NAME                    CHART VERSION   APP VERSION     DESCRIPTION
 backube/snapscheduler   3.4.0           3.4.0           An operator to take scheduled snapshots of Kube...
