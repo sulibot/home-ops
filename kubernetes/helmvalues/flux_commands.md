@@ -1,3 +1,9 @@
+flux create source helm ndf \
+  --url=https://kubernetes-sigs.github.io/node-feature-discovery/charts \
+  --interval=1h \
+  --export > ndf-helmrepository.yaml
+
+
 
 
 flux create helmrelease device-plugin-operator \
