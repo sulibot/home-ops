@@ -1,14 +1,15 @@
 
 
-flux create helmrelease gpu-device-plugin \
+flux create helmrelease device-plugin-operator \
   --source=HelmRepository/intel.flux-system \
-  --chart=intel-device-plugins-gpu \
+  --chart=intel-device-plugins-operator \
   --chart-version=0.32.0 \
   --namespace=gpu-resources \
   --create-target-namespace \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml
+
 
 
 

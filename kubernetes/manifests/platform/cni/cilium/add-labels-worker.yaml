@@ -39,8 +39,6 @@ metadata:
   labels:
     node-role.kubernetes.io/worker: "true"
     topology.kubernetes.io/host: "pve01"
-    intel.com/gpu.present: "true"
-    intel.feature.node.kubernetes.io/gpu: 'true'
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
 
@@ -52,7 +50,5 @@ metadata:
   labels:
     node-role.kubernetes.io/worker: "true"
     topology.kubernetes.io/host: "pve02"
-    intel.com/gpu.present: "true"
-    intel.feature.node.kubernetes.io/gpu: 'true'
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
