@@ -3,8 +3,15 @@ flux create source helm ndf \
   --interval=1h \
   --export > ndf-helmrepository.yaml
 
+flux create helmrelease node-feature-discovery \
+  --source=HelmRepository/ndf.flux-system \
+  --chart=node-feature-discovery \
+  --chart-version=0.17.1 \
+  --namespace=gpu-resources \
+  --interval=1h \
+  --export > helmrelease.yaml
 
-
+  --values=values.yaml \
 
 flux create helmrelease device-plugin-operator \
   --source=HelmRepository/intel.flux-system \
