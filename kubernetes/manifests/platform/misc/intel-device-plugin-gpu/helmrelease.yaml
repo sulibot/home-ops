@@ -25,7 +25,7 @@ spec:
       retries: 3
   dependsOn:
     - name: intel-device-plugin-operator
-      namespace: kube-system
+      namespace: gpu-resources
   values:
     name: intel-gpu-plugin
     sharedDevNum: 2
