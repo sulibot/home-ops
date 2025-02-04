@@ -110,6 +110,7 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
         - apt install -y ./i915-sriov-dkms_2025.01.22_amd64.deb
         - update-grub
         - update-initramfs -u
+        - reboot
         - echo "done" > /tmp/cloud-config.done
 
 
