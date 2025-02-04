@@ -2,4 +2,5 @@ resources:
 - gateway-api-crds/
 - cert-manager/
 - intel-device-plugins-operator/
+- intel-device-plugin-gpu/
 
