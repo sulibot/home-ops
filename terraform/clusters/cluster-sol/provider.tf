@@ -1,6 +1,8 @@
 provider "proxmox" {
   endpoint  = data.sops_file.auth-secrets.data["pve_endpoint"]
-  api_token = "${data.sops_file.auth-secrets.data["pve_api_token_id"]}=${data.sops_file.auth-secrets.data["pve_api_token_secret"]}"
+  username    = "root@pam"
+  password    = "${data.sops_file.auth-secrets.data["pve_password"]}"
+  #api_token = "${data.sops_file.auth-secrets.data["pve_api_token_id"]}=${data.sops_file.auth-secrets.data["pve_api_token_secret"]}"
   insecure  = true
   tmp_dir   = "/var/tmp"
 

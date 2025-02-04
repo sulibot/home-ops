@@ -13,7 +13,7 @@ module "cluster1" {
   cp_disk_size          = 30
 
   # Worker Node Configuration
-  wkr_quantity          = 8
+  wkr_quantity          = 5
   wkr_cpus              = 4
   wkr_memory            = 8192
   wkr_disk_size         = 30
