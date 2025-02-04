@@ -62,7 +62,7 @@ spec:
     - name: PLEX_GID
       value: "1000"
     - name: PLEX_CLAIM
-      value: claim-B_huQd4WqH6reKRdgBtm
+      value: claim-zwDRcfkNxj-fpLZGzaxm
     - name: HOSTNAME
       value: plex
     - name: PLEX_UPDATE_CHANNEL
@@ -110,6 +110,7 @@ spec:
       enabled: true
       limits:
         cpu: 3000m
+        gpu.intel.com/i915: 1
         memory: 6Gi
       requests:
         cpu: 250m
