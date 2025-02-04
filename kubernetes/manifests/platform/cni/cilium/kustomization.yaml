@@ -3,4 +3,4 @@ resources:
 #  - CiliumBGPClusterConfig.yaml
   - CiliumBGPPeeringPolicy.yaml
   - GatewayClass.yaml
-  - add-labels-worker.yaml  
+#  - add-labels-worker.yaml  

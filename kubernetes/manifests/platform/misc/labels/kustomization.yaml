@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - nodes/base-nodes.yaml
+
+patches:
+  - target:
+      kind: Node
+      name: sol-worker-1
+    path: patches/patch-node-1.yaml
+
+  - target:
+      kind: Node
+      name: sol-worker-2
+    path: patches/patch-node-2.yaml
+
+  - target:
+      kind: Node
+      name: sol-worker-3
+    path: patches/patch-node-3.yaml
+
+  - target:
+      kind: Node
+      name: sol-worker-4
+    path: patches/patch-node-4.yaml
+
+  - target:
+      kind: Node
+      name: sol-worker-5
+    path: patches/patch-node-5.yaml
