@@ -4,28 +4,8 @@ kind: Kustomization
 resources:
   - nodes/base-nodes.yaml
 
-patches:
-  - target:
-      kind: Node
-      name: sol-worker-1
-    path: patches/patch-node-1.yaml
+patchesStrategicMerge:
+  - patches/patch-generic.yaml  # Apply to all nodes (common labels)
 
-  - target:
-      kind: Node
-      name: sol-worker-2
-    path: patches/patch-node-2.yaml
-
-  - target:
-      kind: Node
-      name: sol-worker-3
-    path: patches/patch-node-3.yaml
-
-  - target:
-      kind: Node
-      name: sol-worker-4
-    path: patches/patch-node-4.yaml
-
-  - target:
-      kind: Node
-      name: sol-worker-5
-    path: patches/patch-node-5.yaml
+  # Optional: Apply to a specific node (e.g., sol-worker-3) when needed
+  - patches/patch-node-special.yaml
