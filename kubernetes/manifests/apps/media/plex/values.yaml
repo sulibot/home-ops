@@ -32,7 +32,7 @@ env:
   # This claim is optional, and is only used for the first startup of PMS
   # The claim is obtained from https://www.plex.tv/claim/ is is only valid for a few minutes
   - name: PLEX_CLAIM
-    value: "claim-B_huQd4WqH6reKRdgBtm"
+    value: "claim-zwDRcfkNxj-fpLZGzaxm"
   - name: HOSTNAME
     value: "plex"
   - name: PLEX_UPDATE_CHANNEL
@@ -103,7 +103,7 @@ resources:
   limits:
     cpu: "3000m"
     memory: "6Gi"
-#    gpu.intel.com/i915: 1
+    gpu.intel.com/i915: 1
 
 
 
