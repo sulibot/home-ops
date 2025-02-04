@@ -9,13 +9,13 @@ manager:
 
   # supported devices by the operator
   devices:
-    dlb: true
-    dsa: true
-    fpga: true
+    dlb: false
+    dsa: false
+    fpga: false
     gpu: true
-    iaa: true
-    qat: true
-    sgx: true
+    iaa: false
+    qat: false
+    sgx: false
 
 privateRegistry:
   registryUrl: ""
