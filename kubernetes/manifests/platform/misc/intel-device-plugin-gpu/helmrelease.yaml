@@ -23,9 +23,9 @@ spec:
     remediation:
       strategy: rollback
       retries: 3
-  dependsOn:
-    - name: intel-device-plugin-operator
-      namespace: gpu-resources
+  #dependsOn:
+  #  - name: intel-device-plugin-operator
+  #    namespace: gpu-resources
   values:
     name: intel-gpu-plugin
     sharedDevNum: 2
