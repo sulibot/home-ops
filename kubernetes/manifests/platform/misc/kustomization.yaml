@@ -1,6 +1,7 @@
 resources:
 - gateway-api-crds/
 - cert-manager/
+- node-feature-discovery/
 - intel-device-plugins-operator/
 - intel-device-plugin-gpu/
 
