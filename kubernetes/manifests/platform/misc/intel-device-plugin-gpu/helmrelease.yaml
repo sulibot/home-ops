@@ -29,4 +29,6 @@ spec:
   values:
     name: intel-gpu-plugin
     sharedDevNum: 2
-    nodeFeatureRule: false
+    nodeFeatureRule: true
+    nodeSelector:
+      intel.feature.node.kubernetes.io/gpu: 'true'
