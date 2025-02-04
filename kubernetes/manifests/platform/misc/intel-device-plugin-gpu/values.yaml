@@ -1,17 +1,8 @@
-name: gpudeviceplugin-sample
-
-image:
-  hub: intel
-  tag: ""
-
-initImage:
-  enable: false
-  hub: intel
-  tag: ""
+name: intel-device-plugins-gpu
 
 sharedDevNum: 1
-logLevel: 2
-resourceManager: false
+logLevel: 4
+resourceManager: true
 enableMonitoring: true
 allocationPolicy: "none"
 

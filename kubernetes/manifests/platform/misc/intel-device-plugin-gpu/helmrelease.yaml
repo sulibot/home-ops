@@ -1,34 +1,30 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: intel-device-plugin-gpu
+  name: intel-device-plugins-gpu
   namespace: gpu-resources
 spec:
-  interval: 30m
   chart:
     spec:
-      chart: intel-device-plugins-gpu
-      version: 0.32.0
+      chart: connect
+      reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
         name: intel
         namespace: flux-system
+      version: 0.32.0
   install:
-    remediation:
-      retries: 3
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      strategy: rollback
-      retries: 3
-  #dependsOn:
-  #  - name: intel-device-plugin-operator
-  #    namespace: gpu-resources
+    createNamespace: true
+  interval: 1h0m0s
   values:
-    name: intel-gpu-plugin
-    sharedDevNum: 2
+    allocationPolicy: none
+    enableMonitoring: true
+    logLevel: 4
+    name: intel-device-plugins-gpu
     nodeFeatureRule: true
     nodeSelector:
-      intel.feature.node.kubernetes.io/gpu: 'true'
+      intel.feature.node.kubernetes.io/gpu: "true"
+    resourceManager: true
+    sharedDevNum: 1
+    tolerations: null
