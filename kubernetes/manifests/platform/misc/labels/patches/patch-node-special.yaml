@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: sol-worker-3  # Specify the node to patch
+spec:
+  labels:
+    custom-label.example.com/extra-feature: "enabled"
