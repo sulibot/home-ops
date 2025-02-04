@@ -1,6 +1,6 @@
 name: intel-device-plugins-gpu
 
-sharedDevNum: 1
+sharedDevNum: 2
 logLevel: 4
 resourceManager: true
 enableMonitoring: true
