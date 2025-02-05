@@ -75,6 +75,10 @@ resource "proxmox_virtual_environment_vm" "control_plane" {
     device = "socket"
   }
 
+  vga {
+    type = "serial0"
+  }
+
   operating_system {
     type = "l26"
   }
@@ -170,6 +174,10 @@ resource "proxmox_virtual_environment_vm" "worker" {
     device = "socket"
   }
 
+  vga {
+    type = "serial0"
+  }
+  
   operating_system {
     type = "l26"
   }
