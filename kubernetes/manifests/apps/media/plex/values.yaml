@@ -40,7 +40,7 @@ env:
   - name: ALLOWED_NETWORKS
     value: "10.0.0.0/8"
   - name: ADVERTISE_IP
-    value: "http://plex-service.media.svc.cluster.local:80, https://10.10.101.151:443, https://plex.sulibot.com:443"
+    value: "https://plex.sulibot.com:443, http://plex-service.media.svc.cluster.local:80"
   #- name: 
   #  value: 
 
