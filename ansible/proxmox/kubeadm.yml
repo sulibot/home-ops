@@ -231,7 +231,7 @@
 
           echo "Installing or upgrading Cilium..."
           helm upgrade --install cilium cilium/cilium \
-            --version 1.16.5 \
+            --version 1.17.0 \
             --namespace kube-system \
             --create-namespace \
             -f cilium-values.yaml
