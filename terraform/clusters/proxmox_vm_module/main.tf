@@ -50,6 +50,7 @@ resource "proxmox_virtual_environment_vm" "control_plane" {
     vlan_id = var.vlan_id
   }
 
+
   initialization {
     ip_config {
       ipv4 {
@@ -131,6 +132,7 @@ resource "proxmox_virtual_environment_vm" "worker" {
     model   = "virtio"
     vlan_id = var.vlan_id
   }
+
   # Dynamic hostpci configuration
   dynamic "hostpci" {
     for_each = (count.index + 1) == 4 ? {
@@ -149,6 +151,8 @@ resource "proxmox_virtual_environment_vm" "worker" {
       xvga   = false
     }
   }
+  
+  
   initialization {
     ip_config {
       ipv4 {

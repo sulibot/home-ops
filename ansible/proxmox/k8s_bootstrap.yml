@@ -45,19 +45,19 @@
       shell: |
         sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' /etc/kubernetes/manifests/kube-vip.yaml
 
-    - name: Check if any Cilium resource exists in kube-system
-      shell: kubectl get all -n kube-system | grep -i cilium || true
-      register: cilium_check
-      failed_when: false
-
-    - name: Install Cilium using Helm (if not already installed)
-      shell: |
-        helm repo add cilium https://helm.cilium.io || true
-        helm repo update
-        helm upgrade --install cilium cilium/cilium --version 1.16.5 --namespace kube-system --create-namespace -f /root/cilium-values.yaml
-        kubectl -n kube-system rollout restart deployment/cilium-operator || true
-        kubectl -n kube-system rollout restart daemonset/cilium || true
-      when: cilium_check.stdout == ""
+#    - name: Check if any Cilium resource exists in kube-system
+#      shell: kubectl get all -n kube-system | grep -i cilium || true
+#      register: cilium_check
+#      failed_when: false
+#
+#    - name: Install Cilium using Helm (if not already installed)
+#      shell: |
+#        helm repo add cilium https://helm.cilium.io || true
+#        helm repo update
+#        helm upgrade --install cilium cilium/cilium --version 1.17.0 --namespace kube-system --create-namespace -f /root/cilium-values.yaml
+#        kubectl -n kube-system rollout restart deployment/cilium-operator || true
+#        kubectl -n kube-system rollout restart daemonset/cilium || true
+#      when: cilium_check.stdout == ""
 
 - name: Join remaining control plane nodes if not already joined
   hosts: "{{ groups['kube_control_plane'][1:] }}"

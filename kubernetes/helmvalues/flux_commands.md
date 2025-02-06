@@ -265,7 +265,7 @@ flux create source helm cilium \
 ```
 ****** flux create helmrelease cilium \
   --chart=cilium/cilium \
-  --chart-version=1.16.5 \
+  --chart-version=1.17.0 \
   --namespace=kube-system \
   --source=HelmRepository/ceph-csi.flux-system \
   --values=./values.yaml \
