@@ -22,8 +22,7 @@ spec:
     bgpControlPlane:
       enabled: true
     bpf:
-      masquerade:
-        enabled: true
+      masquerade: true
     dashboards:
       annotations: {}
       enabled: true
