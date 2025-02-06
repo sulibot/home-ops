@@ -1,0 +1,127 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  chart:
+    spec:
+      chart: cilium
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+      version: 1.17.0
+  install:
+    createNamespace: true
+  interval: 1m0s
+  targetNamespace: cilium
+  values:
+    bgpControlPlane:
+      enabled: true
+    bpf:
+      masquerade:
+        enabled: true
+    dashboards:
+      annotations: {}
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      namespace: null
+    debug:
+      enabled: false
+      verbose: null
+    enableIPv4Masquerade: true
+    enableIPv6Masquerade: true
+    enableMasqueradeRouteSource: false
+    externalIPs:
+      enabled: false
+    gatewayAPI:
+      enableAlpn: false
+      enableAppProtocol: false
+      enableProxyProtocol: false
+      enabled: true
+      externalTrafficPolicy: Cluster
+      gatewayClass:
+        create: auto
+      hostNetwork:
+        enabled: false
+        nodes:
+          matchLabels: {}
+      secretsNamespace:
+        create: true
+        name: cilium-secrets
+        sync: true
+      xffNumTrustedHops: 0
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
+    ingressController:
+      default: false
+      defaultSecretName: null
+      defaultSecretNamespace: null
+      enableProxyProtocol: false
+      enabled: true
+      enforceHttps: true
+      hostNetwork:
+        enabled: false
+        nodes:
+          matchLabels: {}
+        sharedListenerPort: 8080
+      ingressLBAnnotationPrefixes:
+      - lbipam.cilium.io
+      - nodeipam.cilium.io
+      - service.beta.kubernetes.io
+      - service.kubernetes.io
+      - cloud.google.com
+      loadbalancerMode: dedicated
+      secretsNamespace:
+        create: true
+        name: cilium-secrets
+        sync: true
+      service:
+        allocateLoadBalancerNodePorts: null
+        annotations: {}
+        externalTrafficPolicy: Cluster
+        insecureNodePort: null
+        labels: {}
+        loadBalancerClass: null
+        loadBalancerIP: null
+        name: cilium-ingress
+        secureNodePort: null
+        type: LoadBalancer
+    ipam:
+      mode: cluster-pool
+      operator:
+        clusterPoolIPv4MaskSize: 24
+        clusterPoolIPv4PodCIDRList:
+        - 10.244.0.0/16
+        clusterPoolIPv6MaskSize: 64
+        clusterPoolIPv6PodCIDRList:
+        - fd00:101:244::/56
+    ipv4:
+      enabled: true
+    ipv6:
+      enabled: true
+    k8s:
+      requireIPv4PodCIDR: false
+      requireIPv6PodCIDR: false
+    k8sServiceHost: fd00:101::10
+    k8sServicePort: 6443
+    kubeProxyReplacement: "true"
+    l2NeighDiscovery:
+      enabled: true
+      refreshPeriod: 30s
+    l2announcements:
+      enabled: false
+    l2podAnnouncements:
+      enabled: false
+      interface: eth0
+    l7Proxy: true
+    nat46x64Gateway:
+      enabled: false

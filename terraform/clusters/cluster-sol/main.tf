@@ -7,13 +7,13 @@ module "cluster1" {
   name_prefix           = "sol"
 
   # Control Plane Configuration
-  cp_quantity           = 1
+  cp_quantity           = 3
   cp_cpus               = 4
   cp_memory             = 8192
   cp_disk_size          = 30
 
   # Worker Node Configuration
-  wkr_quantity          = 1
+  wkr_quantity          = 5
   wkr_cpus              = 4
   wkr_memory            = 8192
   wkr_disk_size         = 30

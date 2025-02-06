@@ -2,5 +2,5 @@ resources:
   - CiliumLoadBalancerIPPool.yaml
 #  - CiliumBGPClusterConfig.yaml
   - CiliumBGPPeeringPolicy.yaml
-  - GatewayClass.yaml
-#  - add-labels-worker.yaml  
+#  - GatewayClass.yaml
+  - helmrelease.yaml 
