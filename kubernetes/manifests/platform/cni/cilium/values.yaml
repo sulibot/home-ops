@@ -35,6 +35,9 @@ hubble:
   ui:
     enabled: true
 
+# -- Enable Layer 7 network policy.
+l7Proxy: true
+
 gatewayAPI:
   enabled: true
   enableProxyProtocol: false
@@ -57,7 +60,6 @@ gatewayAPI:
 l2NeighDiscovery:
   enabled: true
   refreshPeriod: "30s"
-l7Proxy: true
 
 dashboards:
   enabled: true
