@@ -102,6 +102,12 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
       - timedatectl set-timezone America/Los_Angeles
       - systemctl enable qemu-guest-agent
       - systemctl start qemu-guest-agent
+      - echo 'blacklist xe' >> /etc/modprobe.d/blacklist.conf
+      - echo 'options i915 enable_guc=3' > /etc/modprobe.d/i915.conf
+      - apt-get update
+      - apt-get upgrade -y
+      - dpkg --configure -a
+      - apt install -f -y
       - mkdir -p /opt/i915-sriov && cd /opt/i915-sriov
       - wget https://github.com/strongtz/i915-sriov-dkms/releases/download/2025.01.22/i915-sriov-dkms_2025.01.22_amd64.deb
       - apt install -y ./i915-sriov-dkms_2025.01.22_amd64.deb
