@@ -46,7 +46,7 @@ gatewayAPI:
   xffNumTrustedHops: 0
   externalTrafficPolicy: Cluster
   gatewayClass:
-    create: true
+    create: auto
   secretsNamespace:
     create: true
     name: cilium-secrets
@@ -89,3 +89,8 @@ envoy:
       - NET_BIND_SERVICE
       - PERFMON
       - BPF
+
+loadBalancer:
+  #acceleration: best-effort
+  l7:
+    backend: envoy

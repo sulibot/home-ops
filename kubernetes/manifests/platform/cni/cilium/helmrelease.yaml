@@ -47,7 +47,7 @@ spec:
       enabled: true
       externalTrafficPolicy: Cluster
       gatewayClass:
-        create: true
+        create: auto
       hostNetwork:
         enabled: false
         nodes:
@@ -98,3 +98,6 @@ spec:
     l2announcements:
       enabled: false
     l7Proxy: true
+    loadBalancer:
+      l7:
+        backend: envoy
