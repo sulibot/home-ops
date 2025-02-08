@@ -46,7 +46,7 @@ gatewayAPI:
   xffNumTrustedHops: 0
   externalTrafficPolicy: Cluster
   gatewayClass:
-    create: auto
+    create: true
   secretsNamespace:
     create: true
     name: cilium-secrets
