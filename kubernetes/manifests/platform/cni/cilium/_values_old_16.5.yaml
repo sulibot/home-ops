@@ -27,6 +27,7 @@ bgp:
   enabled: false
 
 hubble:
+  enabled: true
   relay:
     enabled: true
   ui:
