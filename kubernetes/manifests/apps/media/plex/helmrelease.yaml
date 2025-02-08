@@ -62,7 +62,7 @@ spec:
     - name: PLEX_GID
       value: "1000"
     - name: PLEX_CLAIM
-      value: claim-zwDRcfkNxj-fpLZGzaxm
+      value: claim-4SoxeYwNcfSd5PYR45xk
     - name: HOSTNAME
       value: plex
     - name: PLEX_UPDATE_CHANNEL
