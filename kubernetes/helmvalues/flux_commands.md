@@ -73,7 +73,7 @@ flux create source helm 1password \
 flux create helmrelease 1password-connect \
   --source=HelmRepository/1password.flux-system \
   --chart=connect \
-  --chart-version=1.17.0 \
+  --chart-version=1.16.6 \
   --namespace=external-secrets \
   --values=values.yaml \
   --interval=1h \
@@ -83,7 +83,7 @@ flux create helmrelease 1password-connect \
 flux create helmrelease 1password-connect \
   --source=HelmRepository/1password.flux-system \
   --chart=connect \
-  --chart-version=1.17.0 \
+  --chart-version=1.16.6 \
   --namespace=flux-system \
   --target-namespace=external-secrets \
   --values=values.yaml \
@@ -267,10 +267,9 @@ flux create source helm cilium \
 flux create helmrelease cilium \
   --source=HelmRepository/cilium.flux-system \
   --chart=cilium \
-  --chart-version=1.17.0 \
+  --chart-version=1.16.6 \
   --namespace=kube-system \
-  --target-namespace cilium \
-  --create-target-namespace \
+  --target-namespace kube-system \
   --values=./values.yaml \
   --export > helmrelease.yaml 
 

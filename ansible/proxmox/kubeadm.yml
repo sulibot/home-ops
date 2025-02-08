@@ -1,5 +1,5 @@
 ---
-- name: Prepare node for dual-stack Kubernetes 1.31 installation
+- name: Prepare node for dual-stack Kubernetes 1.32 installation
   hosts: all
   become: yes
   tasks:
@@ -61,7 +61,7 @@
 
     - name: Download Kubernetes apt key
       get_url:
-        url: https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key
+        url: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
         dest: /tmp/kubernetes-release.key
 
     - name: Convert Kubernetes apt key to .gpg format
@@ -71,7 +71,7 @@
 
     - name: Add Kubernetes repository
       apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /"
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
         state: present
 
     - name: Install Kubernetes components
@@ -129,7 +129,7 @@
         second_hextet: "{{ ansible_host.split(':')[1] }}"
         fourth_hextet: "{{ ansible_host.split(':')[-1] }}"
 
-    - name: Create kubeadm configuration file for dual-stack and kube-proxy-free setup
+    - name: Create control plane kubeadm configuration file for dual-stack and kube-proxy-freesetup
       copy:
         dest: /root/kubeadm-config.yaml
         content: |
@@ -139,6 +139,9 @@
           apiServer:
             certSANs:
               - fd00:{{ second_hextet }}::10
+              - 10.10.{{ second_hextet }}.10         # IPv4 VIP for control plane (if using a VIP for IPv4)
+              - kube-api.local       # (Optional) DNS entry for the control plane
+              - 127.0.0.1 
           networking:       
             podSubnet:     10.244.0.0/16,fd00:{{ second_hextet }}:244::/56
             serviceSubnet: 10.96.0.0/12,fd00:{{ second_hextet }}:96::/112
@@ -147,10 +150,17 @@
           ---
           apiVersion: kubeadm.k8s.io/v1beta4
           kind: InitConfiguration
+          localAPIEndpoint:
+            advertiseAddress: "10.10.{{ second_hextet }}.{{ fourth_hextet }}"
+            bindPort: 6443
+          nodeRegistration:
+            kubeletExtraArgs:
+            - name: "node-ip"
+              value: "{{ ansible_host }},10.10.{{ second_hextet }}.{{ fourth_hextet }}"
+
           skipPhases:
             - addon/kube-proxy
       delegate_to: "{{ inventory_hostname }}"
-
 
 - name: Configure Kubernetes control plane nodes with Kube-VIP and BGP
   hosts: kube_control_plane
@@ -231,7 +241,7 @@
 
           echo "Installing or upgrading Cilium..."
           helm upgrade --install cilium cilium/cilium \
-            --version 1.17.0 \
+            --version 1.16.6 \
             --namespace kube-system \
             --create-namespace \
             -f cilium-values.yaml

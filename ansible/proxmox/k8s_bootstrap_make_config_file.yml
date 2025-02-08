@@ -1,0 +1,84 @@
+- name: Initialize the first control plane node if not already done
+  hosts: "{{ groups['kube_control_plane'][0] }}"
+  become: true
+  tasks:
+    - name: Check if kubeadm init has already been run
+      stat:
+        path: /etc/kubernetes/admin.conf
+      register: kubeadm_init_check
+
+    - name: Run kubeadm init with config file (only if not initialized)
+      command: kubeadm init --config /root/kubeadm-config.yaml
+      when: not kubeadm_init_check.stat.exists
+
+    - name: Setup kubectl config for root (only if not already set)
+      shell: |
+        mkdir -p /root/.kube
+        cp /etc/kubernetes/admin.conf /root/.kube/config
+        chown root:root /root/.kube/config
+      when: not kubeadm_init_check.stat.exists
+
+    - name: Generate and capture the bootstrap token
+      shell: kubeadm token create
+      register: bootstrap_token
+
+    - name: Generate and capture the CA certificate hash
+      shell: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+      register: ca_cert_hash
+
+    - name: Generate the certificate key
+      shell: kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace
+      register: certificate_key
+
+    - name: Set join information as global facts
+      set_fact:
+        global_bootstrap_token: "{{ bootstrap_token.stdout }}"
+        global_ca_cert_hash: "sha256:{{ ca_cert_hash.stdout }}"
+        global_certificate_key: "{{ certificate_key.stdout }}"
+      run_once: true
+
+- name: Generate kubeadm-join-config.yaml on each node
+  hosts: all
+  become: true
+  tasks:
+    - name: Set second_hextet fact for control plane nodes
+      set_fact:
+        second_hextet: "{{ ansible_host.split(':')[1] }}"
+
+    - name: Generate kubeadm-join-config.yaml for control plane nodes
+      template:
+        src: kubeadm-join-control-plane.j2
+        dest: /root/kubeadm-join-config.yaml
+      when: "'kube_control_plane' in group_names"
+
+    - name: Generate kubeadm-join-config.yaml for worker nodes
+      template:
+        src: kubeadm-join-worker.j2
+        dest: /root/kubeadm-join-config.yaml
+      when: "'kube_worker' in group_names"
+
+- name: Join remaining control plane nodes if not already joined
+  hosts: "{{ groups['kube_control_plane'][1:] }}"
+  become: true
+  tasks:
+    - name: Check if this control plane node is already part of the cluster
+      shell: kubectl get nodes --no-headers | grep -w $(hostname)
+      register: control_plane_join_check
+      failed_when: false
+
+    - name: Join control plane nodes using kubeadm join with config file
+      shell: kubeadm join --config /root/kubeadm-join-config.yaml
+      when: control_plane_join_check.stdout == "" and control_plane_join_check.rc == 0
+
+- name: Join worker nodes to the cluster if not already joined
+  hosts: kube_worker
+  become: true
+  tasks:
+    - name: Check if this worker node is already part of the cluster
+      shell: kubectl get nodes --no-headers | grep -w $(hostname)
+      register: worker_node_join_check
+      failed_when: false
+
+    - name: Join worker nodes using kubeadm join with config file
+      shell: kubeadm join --config /root/kubeadm-join-config.yaml
+      when: worker_node_join_check.stdout == "" and worker_node_join_check.rc == 0
