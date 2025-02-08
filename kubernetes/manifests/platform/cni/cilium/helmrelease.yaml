@@ -37,7 +37,7 @@ spec:
       enabled: true
       externalTrafficPolicy: Cluster
       gatewayClass:
-        create: auto
+        create: true
       hostNetwork:
         enabled: false
         nodes:
