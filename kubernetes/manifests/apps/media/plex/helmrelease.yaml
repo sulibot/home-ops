@@ -71,6 +71,10 @@ spec:
       value: 10.0.0.0/8
     - name: ADVERTISE_IP
       value: https://plex.sulibot.com:443, http://plex-service.media.svc.cluster.local:80
+    - name: PLEX_MEDIA_SERVER_MAX_BUFFER_SIZE
+      value: "1073741824"
+    - name: PLEX_MEDIA_SERVER_TRANSCODER_MAX_SEGMENT_SIZE
+      value: "1073741824"
     gateway:
       domain: sulibot.com
       enabled: true
@@ -99,6 +103,7 @@ spec:
       enabled: true
       fsGroup: 1000
       fsGroupChangePolicy: OnRootMismatch
+      privileged: true
       runAsGroup: 0
       runAsUser: 0
     ports:
