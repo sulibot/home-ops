@@ -170,7 +170,7 @@ monitoring:
   podMonitorAdditionalLabels: {}
 
   grafanaDashboard:
-    create: false
+    create: true
     # -- Allows overriding the namespace where the ConfigMap will be created, defaulting to the same one as the Release.
     namespace: ""
     # -- The name of the ConfigMap containing the dashboard.
