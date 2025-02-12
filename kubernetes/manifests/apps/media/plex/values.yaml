@@ -41,8 +41,8 @@ env:
     value: "10.0.0.0/8"
   - name: ADVERTISE_IP
     value: "https://plex.sulibot.com:443, http://plex-service.media.svc.cluster.local:80"
-  #- name: 
-  #  value: 
+  - name: CEPH_ARGS
+    value: "--client-cache-size=4G --rsize=1048576 --wsize=1048576"
 
 # Labels and Annotations
 labels:
@@ -88,6 +88,9 @@ podSecurityContext:
   runAsGroup: 0
   fsGroup: 1000
   fsGroupChangePolicy: OnRootMismatch
+  privileged: true
+
+
 
 # Container-level security context
 containerSecurityContext:

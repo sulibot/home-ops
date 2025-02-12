@@ -1,0 +1,19 @@
+# basic/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+configMapGenerator:
+  - name: lldap-config
+    namespace: lldap
+    literals:
+      - TZ="America/Los_Angeles"
+      - GID="1001"
+      - UID="1001"
+      - LLDAP_LDAP_BASE_DN="dc=<DOMAIN>,dc=<TLD>"
+
+resources:
+  - namespace.yaml
+  - svc.yaml
+  - admin-credentials.yaml
+  - crypto.yaml
+  - deployment.yaml
