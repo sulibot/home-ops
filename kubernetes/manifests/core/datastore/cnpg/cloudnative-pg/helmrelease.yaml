@@ -533,7 +533,7 @@ spec:
       ipFamilies:
       - IPv4
       - IPv6
-      ipFamilyPolicy: DualStack
+      ipFamilyPolicy: PreferDualStack
       name: cnpg-webhook-service
       port: 443
       type: ClusterIP
