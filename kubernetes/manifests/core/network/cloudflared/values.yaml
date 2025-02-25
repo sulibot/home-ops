@@ -21,6 +21,8 @@ cloudflare:
           service: http://plex-service.media.svc.cluster.local:80
         - hostname: overseerr.sulibot.com
           service: http://overseerr-service.media.svc.cluster.local:80
+          #      originRequest:
+          #        requireClientCert: true
           # This rule sends traffic to the built-in hello-world HTTP server. This can help debug connectivity
           # issues. If hello.example.com resolves and tunnel.example.com does not, then the problem is
           # in the connection from cloudflared to your local service, not from the internet to cloudflared.
@@ -85,8 +87,8 @@ sops:
             elVLTkx1cWgzaUF4eUpkek1kNXlOWGMKMBvymqF+4jtUYG9VkqUl6R8KGUqCjHKj
             +7mbOX487s67fouT8MfgXPiYhQUEqGBZ8QgNDZffe3nslQFFwOFvSw==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2024-12-15T09:12:49Z"
-    mac: ENC[AES256_GCM,data:Fi1dkKzDosHlMxma57PD/outA/SumRiY4Nd6jdenQgHfvw7h/mnq4EFBuRcr40HU7xVa7KQp+craDnx681Hz8mUK2NJjO3knGBfeubp0X4zN0CTP52N0BGfC/e5hXPVRhvFgs+lp8P7mKGSuoPSHlfiFQaNk/bhs+2MS9jw6CKs=,iv:orxXYEkheux8oAPXg38nAHOTniDzTll/BMd1cAUjEjQ=,tag:t8MQHntYYC3fAP79RVcmmQ==,type:str]
+    lastmodified: "2025-02-22T23:16:37Z"
+    mac: ENC[AES256_GCM,data:vcVdzg7sGpGlTQcCKBe+VqJ76TDGMDNeV2MuGNi8WI4UvMGbIQMajwKDR+NUv4fo7fjp7zJ0DFxJWaNMcX0YT/EhKC5XOwAEUEC7FAi4ypHuyqlPr7owFrFFuYtC4XTZmdpsmxASAP+OXry5d2G33Ps/jyoKWO/kJQUA+1qW9dc=,iv:OGGVCgnEuDjfwvEy1ZXX5QAbtuYmtLTCaDPIf3A8bGQ=,tag:3Dfdqoh3jtKIhj2ta6M3fg==,type:str]
     pgp: []
     encrypted_regex: ^(adminKey|userKey|secret)$
     version: 3.9.1

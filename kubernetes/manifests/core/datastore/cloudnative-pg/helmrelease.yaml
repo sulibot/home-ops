@@ -2,18 +2,20 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: cnpg
-  namespace: datastore
+  name: node-feature-discovery
+  namespace: gpu-resources
 spec:
   chart:
     spec:
-      chart: cloudnative-pg
+      chart: node-feature-discovery
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
-        name: cnpg
+        name: ndf
         namespace: flux-system
-      version: 0.23.0
+      version: 0.17.1
+  install:
+    createNamespace: true
   interval: 1h0m0s
   values:
     additionalArgs: []
@@ -518,6 +520,7 @@ spec:
     podSecurityContext:
       runAsNonRoot: true
       seccompProfile:
+        fsGroup: 1000
         type: RuntimeDefault
     priorityClassName: ""
     rbac:
@@ -526,14 +529,19 @@ spec:
     replicaCount: 1
     resources: {}
     service:
-      ipFamilies: []
-      ipFamilyPolicy: ""
+      ipFamilies:
+      - IPv4
+      - IPv6
+      ipFamilyPolicy: DualStack
       name: cnpg-webhook-service
       port: 443
       type: ClusterIP
     serviceAccount:
       create: true
       name: ""
+    storage:
+      size: 8Gi
+      storageClass: cephfs-csi-sc-retain
     tolerations: []
     webhook:
       livenessProbe:
