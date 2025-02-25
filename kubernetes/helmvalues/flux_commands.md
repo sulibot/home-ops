@@ -22,7 +22,15 @@ flux create helmrelease cloudnative-pg \
   --interval=1h \
   --export > helmrelease.yaml
 
-
+flux create helmrelease cnpg-cluster \
+  --source=HelmRepository/cnpg.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace cnpg-system \
+  --chart=cnpg/cluster \
+  --chart-version=0.2.1 \
+  --interval=1h \
+  --export > helmrelease.yaml
 
 
 
