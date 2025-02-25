@@ -45,10 +45,10 @@ flux create helmrelease node-feature-discovery \
   --source=HelmRepository/ndf.flux-system \
   --chart=node-feature-discovery \
   --chart-version=0.17.1 \
+  --namespace=flux-system \
   --namespace=gpu-resources \
   --create-target-namespace=true \
   --interval=1h \
-  --values=values.yaml \
   --export > helmrelease.yaml
 
   --values=values.yaml \
@@ -94,6 +94,7 @@ flux create helmrelease snapscheduler \
   --chart-version=0.11.0 \
   --namespace=flux-system \
   --target-namespace=volsync-system \
+  --create-target-namespace=true \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml

@@ -1,3 +1,4 @@
 resources:
   - cluster/
   - cloudnative-pg/
+  - external-postgres-service.yaml
