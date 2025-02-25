@@ -1,4 +1,4 @@
 resources:
   - externalsecret.yaml
-#  - helmrelease.yaml
+  - helmrelease.yaml
 
