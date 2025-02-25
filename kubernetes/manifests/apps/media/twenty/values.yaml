@@ -40,9 +40,9 @@ dnsConfig:
 # Persistent Volume Claims (PVCs)
 ###############################################################################
 config:
-  enabled: false                # Enable/disable Config PVC
-  mountPath: /config            # Mount path for the Config PVC
-  storageSize: 100Mi            # Default size for the Config PVC
+  enabled: enable                # Enable/disable Config PVC
+  mountPath: /app/docker-data            # Mount path for the Config PVC
+  storageSize: 1Gi            # Default size for the Config PVC
 
 data:
   enabled: true                 # Enable/disable Data PVC
@@ -130,7 +130,7 @@ networking:
 tolerations: []                 # Define tolerations for node taints
 
 affinity:
-  enabled: true                 # Set to true to enable affinity rules; false to disable them entirely.
+  enabled: false                 # Set to true to enable affinity rules; false to disable them entirely.
   nodeAffinity:
 #    requiredDuringSchedulingIgnoredDuringExecution: {}  # Provide an empty object by default
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -190,6 +190,10 @@ env: []                         # Additional environment variables
 # Example:
 # - name: ENV_VAR_1
 #   value: "value1"
+
+envFrom:
+  - secretRef:
+      name: twenty-config-secret
 
 labels:
   global: {}                    # Global labels applied to all resources
