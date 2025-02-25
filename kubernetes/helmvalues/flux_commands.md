@@ -1,3 +1,31 @@
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm show values cnpg/cloudnative-pg > values.yaml
+
+flux create source helm cnpg \
+  --url=https://cloudnative-pg.github.io/charts \
+  --interval=1h \
+  --export > cnpg-helmrepository.yaml
+
+
+helm upgrade --install cnpg \
+  --namespace cnpg-system \
+  --create-namespace \
+  cnpg/cloudnative-pg
+
+flux create helmrelease cloudnative-pg \
+  --source=HelmRepository/cnpg.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace cnpg-system \
+  --chart=cloudnative-pg \
+  --chart-version=0.23.0 \
+  --interval=1h \
+  --export > helmrelease.yaml
+
+
+
+
+
 flux create source helm ndf \
   --url=https://kubernetes-sigs.github.io/node-feature-discovery/charts \
   --interval=1h \
@@ -8,7 +36,9 @@ flux create helmrelease node-feature-discovery \
   --chart=node-feature-discovery \
   --chart-version=0.17.1 \
   --namespace=gpu-resources \
+  --create-target-namespace=true \
   --interval=1h \
+  --values=values.yaml \
   --export > helmrelease.yaml
 
   --values=values.yaml \
@@ -18,7 +48,7 @@ flux create helmrelease device-plugin-operator \
   --chart=intel-device-plugins-operator \
   --chart-version=0.32.0 \
   --namespace=gpu-resources \
-  --create-target-namespace \
+  --create-target-namespace=true \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml
@@ -335,7 +365,7 @@ flux create helmrelease cert-manager \
   --source HelmRepository/cert-manager.flux-system \
   --release-name cert-manager \
   --target-namespace cert-manager \
-  --create-target-namespace \
+  --create-target-namespace=true \
   --values values-cert-manager.yaml \
   --chart-version v1.16.2 \
   --export > ../manifests/core/network/cert-manager/helmrelease.yaml

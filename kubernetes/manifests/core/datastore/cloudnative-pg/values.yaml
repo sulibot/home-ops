@@ -122,7 +122,7 @@ podSecurityContext:
   runAsNonRoot: true
   seccompProfile:
     type: RuntimeDefault
-  # fsGroup: 2000
+    fsGroup: 1000
 
 # -- Priority indicates the importance of a Pod relative to other Pods.
 priorityClassName: ""
@@ -134,9 +134,9 @@ service:
   name: cnpg-webhook-service
   port: 443
   # -- Set the ip family policy to configure dual-stack see [Configure dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services)
-  ipFamilyPolicy: "PreferDualStack"
+  ipFamilyPolicy: DualStack
   # -- Sets the families that should be supported and the order in which they should be applied to ClusterIP as well. Can be IPv4 and/or IPv6.
-  ipFamilies: ["IPv4","IPv6"]
+  ipFamilies: [IPv4, IPv6]
 
 resources: {}
   # If you want to specify resources, uncomment the following
@@ -170,7 +170,7 @@ monitoring:
   podMonitorAdditionalLabels: {}
 
   grafanaDashboard:
-    create: true
+    create: false
     # -- Allows overriding the namespace where the ConfigMap will be created, defaulting to the same one as the Release.
     namespace: ""
     # -- The name of the ConfigMap containing the dashboard.
@@ -637,4 +637,7 @@ monitoringQueriesConfigMap:
         - setting:
             usage: "GAUGE"
             description: "Setting value"
+storage:
+  storageClass: "cephfs-csi-sc-retain"
+  size: 8Gi
 
