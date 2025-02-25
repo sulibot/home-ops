@@ -17,5 +17,6 @@ resources:
   - sonarr/
   - sonarr-4k/
   - tautulli/
+  - twenty/
 #  - recyclarr/
 #  - immich/
