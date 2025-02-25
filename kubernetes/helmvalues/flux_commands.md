@@ -20,6 +20,7 @@ flux create helmrelease cloudnative-pg \
   --chart=cloudnative-pg \
   --chart-version=0.23.0 \
   --interval=1h \
+  --values=values.yaml \
   --export > helmrelease.yaml
 
 flux create helmrelease cnpg-cluster \
@@ -30,9 +31,10 @@ flux create helmrelease cnpg-cluster \
   --chart=cnpg/cluster \
   --chart-version=0.2.1 \
   --interval=1h \
+  --values=values.yaml \
   --export > helmrelease.yaml
 
-
+#############################################
 
 flux create source helm ndf \
   --url=https://kubernetes-sigs.github.io/node-feature-discovery/charts \
