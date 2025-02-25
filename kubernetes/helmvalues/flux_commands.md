@@ -28,7 +28,7 @@ flux create helmrelease cnpg-cluster \
   --namespace=flux-system \
   --create-target-namespace=true \
   --target-namespace cnpg-system \
-  --chart=cnpg/cluster \
+  --chart=cluster \
   --chart-version=0.2.1 \
   --interval=1h \
   --values=values.yaml \
