@@ -8,7 +8,7 @@ namespace: media                # Namespace for the application
 # Container/Image Settings
 ###############################################################################
 image:
-  repository: twentyhq/twenty
+  repository: twentycrm/twenty
   tag: latest                   # Image tag for the container
   pullPolicy: IfNotPresent      # Image pull policy
 
