@@ -637,7 +637,5 @@ monitoringQueriesConfigMap:
         - setting:
             usage: "GAUGE"
             description: "Setting value"
-storage:
-  storageClass: "cephfs-csi-sc-retain"
-  size: 8Gi
+
 
