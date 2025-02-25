@@ -6,4 +6,4 @@ resources:
   - ./helmrelease.yaml
 #  - ./prometheusrule.
   - restic-config-config-lidarr-0-secret.yaml
-  - replicationsource-config-lidarr-0.yaml
+#  - replicationsource-config-lidarr-0.yaml
