@@ -69,7 +69,7 @@ spec:
       enabled: false
     image:
       pullPolicy: IfNotPresent
-      repository: twentyhq/twenty
+      repository: twentycrm/twenty
       tag: latest
     ingress:
       className: cilium
