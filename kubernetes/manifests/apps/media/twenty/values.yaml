@@ -164,7 +164,7 @@ affinity:
 
 ## Headless Service Configuration
 headless:
-  enabled: false                # Enable headless service
+  enabled: true                # Enable headless service
   # Optional: define a custom selector if needed:
   # selector:
   #   app: "custom-headless-selector"
@@ -178,7 +178,7 @@ ingress:
 
 ## Gateway Configuration (HTTPRoute)
 gateway:
-  enabled: false                # Enable/disable HTTPRoute
+  enabled: true                # Enable/disable HTTPRoute
   name: gateway-internal        # Name of the Gateway
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames

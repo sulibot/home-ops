@@ -62,11 +62,11 @@ spec:
         name: twenty-config-secret
     gateway:
       domain: sulibot.com
-      enabled: false
+      enabled: true
       name: gateway-internal
       namespace: network
     headless:
-      enabled: false
+      enabled: true
     image:
       pullPolicy: IfNotPresent
       repository: twentycrm/twenty
