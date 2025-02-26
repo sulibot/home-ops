@@ -49,14 +49,14 @@ data:
   mountPath: /data              # Mount path for the Data PVC
   storageSize: 10Gi             # Size of the Data PVC
 
-#volumesExtras:
-#  - name: twentycrm-server-data
-#    persistentVolumeClaim:
-#      claimName: twentycrm-server-pvc         # Additional volumes
-#
-#volumeMountsExtras:
-#  - mountPath: /app/packages/twenty-server/.local-storage
-#    name: twentycrm-server-data
+volumesExtras:
+  - name: twentycrm-server-data
+    persistentVolumeClaim:
+      claimName: twentycrm-server-pvc         # Additional volumes
+
+volumeMountsExtras:
+  - mountPath: /app/packages/twenty-server/.local-storage
+    name: twentycrm-server-data
 
 ###############################################################################
 # Security Contexts
