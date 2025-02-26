@@ -185,11 +185,18 @@ flux create helmrelease cnpg \
 flux create source helm bitnami \
     --url https://charts.bitnami.com/bitnami \
     --interval 1h \
-    --namespace flux-system > bitnami-source.yaml
-    
+    --namespace flux-system \
+
+flux create source helm bitnami-charts \
+  --url=https://charts.bitnami.com/bitnami \
+  --namespace=flux-system \
+  --interval=1h \
+  --export > bitnami-source.yaml
+
+
 ```
 flux create helmrelease redis \
-  --source=HelmRepository/bitnami.flux-system \
+  --source=HelmRepository/bitnami-charts.flux-system \
   --namespace=flux-system \
   --create-target-namespace=true \
   --target-namespace redis \
