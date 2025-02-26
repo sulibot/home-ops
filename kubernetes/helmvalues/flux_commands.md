@@ -183,7 +183,7 @@ flux create helmrelease cnpg \
 
 ```
 flux create source helm bitnami-charts \
-  --url=https://charts.bitnami.com/bitnami \
+  --url=oci://registry-1.docker.io/bitnamicharts \
   --namespace=flux-system \
   --interval=1h \
   --export > bitnami-source.yaml
