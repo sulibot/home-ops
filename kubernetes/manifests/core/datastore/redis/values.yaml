@@ -137,7 +137,7 @@ architecture: replication
 auth:
   ## @param auth.enabled Enable password authentication
   ##
-  enabled: true
+  enabled: false
   ## @param auth.sentinel Enable password authentication on sentinels too
   ##
   sentinel: true
@@ -670,7 +670,7 @@ replica:
   kind: StatefulSet
   ## @param replica.replicaCount Number of Redis&reg; replicas to deploy
   ##
-  replicaCount: 3
+  replicaCount: 2
   ## @param replica.revisionHistoryLimit The number of old history to retain to allow rollback
   ## NOTE: Explicitly setting this field to 0, will result in cleaning up all the history, breaking ability to rollback
   revisionHistoryLimit: 10
@@ -1160,7 +1160,7 @@ sentinel:
   ## IMPORTANT: this will disable the master and replicas services and
   ## create a single Redis&reg; service exposing both the Redis and Sentinel ports
   ##
-  enabled: false
+  enabled: true
   ## Bitnami Redis&reg; Sentinel image version
   ## ref: https://hub.docker.com/r/bitnami/redis-sentinel/tags/
   ## @param sentinel.image.registry [default: REGISTRY_NAME] Redis&reg; Sentinel image registry

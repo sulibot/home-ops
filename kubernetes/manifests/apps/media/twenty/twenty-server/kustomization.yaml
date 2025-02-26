@@ -1,3 +1,5 @@
 resources:
+  - pv-server.yaml
+  - pvc-server.yaml
   - helmrelease.yaml
 

@@ -190,13 +190,14 @@ flux create source helm bitnami \
 ```
 flux create helmrelease redis \
   --source=HelmRepository/bitnami.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace redis \
   --chart=redis \
-  --chart-version=20.6.1 \
-  --namespace=datastore \
+  --chart-version=20.9.0 \
   --values=values.yaml \
   --interval=1h \
   --export > helmrelease.yaml
-
 
 
 

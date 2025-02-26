@@ -53,7 +53,7 @@ dnsConfig:
 config:
   enabled: true                # Enable or disable Config PVC
   mountPath: /config            # Mount path for the Config PVC
-  storageSize: 100Mi            # Default size for the Config PVC
+  storageSize: 1Gi            # Default size for the Config PVC
 
 # Data PVC settings
 data:

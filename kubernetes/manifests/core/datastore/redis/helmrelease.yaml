@@ -11,17 +11,20 @@ spec:
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
-        name: bitnami-charts
+        name: bitnami
         namespace: flux-system
-      version: 20.7.0
+      version: 20.9.0
+  install:
+    createNamespace: true
   interval: 1h0m0s
+  targetNamespace: redis
   values:
     architecture: replication
     auth:
       acl:
         enabled: false
         users: []
-      enabled: true
+      enabled: false
       existingSecret: ""
       existingSecretPasswordKey: ""
       password: ""
@@ -312,7 +315,7 @@ spec:
         enabled: true
         externalTrafficPolicy: Cluster
         extraPorts: []
-        loadBalancerClass: ""
+        loadBalancerClass: cilium
         loadBalancerIP: ""
         loadBalancerSourceRanges: []
         ports:
@@ -472,7 +475,7 @@ spec:
         periodSeconds: 5
         successThreshold: 1
         timeoutSeconds: 1
-      replicaCount: 3
+      replicaCount: 2
       resources: {}
       resourcesPreset: nano
       revisionHistoryLimit: 10
@@ -539,7 +542,7 @@ spec:
       customStartupProbe: {}
       downAfterMilliseconds: 60000
       enableServiceLinks: true
-      enabled: false
+      enabled: true
       externalMaster:
         enabled: false
         host: ""
