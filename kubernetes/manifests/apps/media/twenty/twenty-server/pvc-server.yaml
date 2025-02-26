@@ -4,10 +4,9 @@ metadata:
   name: twentycrm-server-pvc
   namespace: media
 spec:
-  storageClassName: cephfs-content-sc-retain
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
-  volumeName: twentycrm-server-pv
+  storageClassName: cephfs-content-sc-retain
