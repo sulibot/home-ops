@@ -1,4 +1,5 @@
 resources:
-  - externalsecret.yaml
-  - helmrelease.yaml
+  - externalsecrets.yaml
+  - twenty-server/
+  - twenty-worker/
 

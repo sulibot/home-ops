@@ -1,0 +1,204 @@
+###############################################################################
+# General Application Settings
+###############################################################################
+name: twenty-worker                 # Default application name
+namespace: media                # Namespace for the application
+
+###############################################################################
+# Container/Image Settings
+###############################################################################
+image:
+  repository: twentycrm/twenty
+  tag: latest                   # Image tag for the container
+  pullPolicy: IfNotPresent      # Image pull policy
+
+###############################################################################
+# Replica and Port Configuration
+###############################################################################
+replicaCount: 1
+
+ports:
+  servicePort: 80               # Port exposed by the service
+  targetPort: 3000              # Target port in the container
+
+###############################################################################
+# Timezone
+###############################################################################
+timezone: "America/Los_Angeles"   # Default timezone for the application
+
+###############################################################################
+# DNS Settings
+###############################################################################
+dnsPolicy: ClusterFirst       # Default DNS policy
+dnsConfig:
+  enabled: false                # Enable/disable custom DNS settings
+  options:
+    - name: ndots
+      value: "1"
+
+###############################################################################
+# Persistent Volume Claims (PVCs)
+###############################################################################
+config:
+  enabled: enable                # Enable/disable Config PVC
+  mountPath: /app/docker-data            # Mount path for the Config PVC
+  storageSize: 1Gi            # Default size for the Config PVC
+
+data:
+  enabled: true                 # Enable/disable Data PVC
+  mountPath: /data              # Mount path for the Data PVC
+  storageSize: 10Gi             # Size of the Data PVC
+
+###############################################################################
+# Security Contexts
+###############################################################################
+podSecurityContext:
+  enabled: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+containerSecurityContext:
+  enabled: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+# Uncomment and adjust below if you need additional container capabilities
+#  config:
+#    capabilities:
+#      add:
+#        - SETGID
+
+###############################################################################
+# # Probes for container health checks
+###############################################################################
+
+probes:
+  liveness:
+    enabled: false              # Enable/disable liveness probe to check if the app is running
+    path: /healthz             # Path to the liveness check endpoint
+    port: 8080                 # Port on which the app exposes the liveness endpoint
+    initialDelaySeconds: 10    # Delay before the first liveness probe is initiated
+    periodSeconds: 10          # Frequency of liveness checks
+    timeoutSeconds: 1          # Timeout for the liveness check
+    failureThreshold: 3        # Number of consecutive failures before the container is restarted
+    successThreshold: 1        # Minimum consecutive successes required to consider the container healthy
+
+  readiness:
+    enabled: false              # Enable/disable readiness probe to check if the app is ready to serve requests
+    path: /ready               # Path to the readiness check endpoint
+    port: 8080                 # Port on which the app exposes the readiness endpoint
+    initialDelaySeconds: 5     # Delay before the first readiness probe is initiated
+    periodSeconds: 10          # Frequency of readiness checks
+    timeoutSeconds: 1          # Timeout for the readiness check
+    failureThreshold: 3        # Number of consecutive failures before marking the container as unready
+    successThreshold: 1        # Minimum consecutive successes required to mark the container as ready
+
+  startup:
+    enabled: false             # Enable/disable startup probe to check if the app has started successfully
+    path: /startup             # Path to the startup check endpoint
+    port: 8080                 # Port on which the app exposes the startup endpoint
+    initialDelaySeconds: 0     # Delay before the first startup probe is initiated
+    periodSeconds: 10          # Frequency of startup checks
+    timeoutSeconds: 1          # Timeout for the startup check
+    failureThreshold: 30       # Number of consecutive failures before the container is restarted
+    successThreshold: 1        # Minimum consecutive successes required to consider startup successful
+
+###############################################################################
+# Resource Limits and Requests
+###############################################################################
+
+resources:
+  enabled: false                # Enable/disable resource settings
+  requests:
+    memory: "256Mi"             # Memory request for the container
+    cpu: "250m"                 # CPU request for the container
+  limits:
+    memory: "512Mi"             # Memory limit for the container
+    cpu: "500m"                 # CPU limit for the container
+
+###############################################################################
+# Global Networking Options
+###############################################################################
+networking:
+  ipFamilyPolicy: PreferDualStack  # Options: PreferDualStack, RequireDualStack, or SingleStack
+  singleStackIPFamily: IPv4        # Used only if ipFamilyPolicy is set to SingleStack
+
+###############################################################################
+# Tolerations and Affinity Rules
+###############################################################################
+tolerations: []                 # Define tolerations for node taints
+
+affinity:
+  enabled: false                 # Set to true to enable affinity rules; false to disable them entirely.
+  nodeAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution: {}  # Provide an empty object by default
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+            - key: intel.feature.node.kubernetes.io/gpu
+              operator: In
+              values:
+                - "true"
+      - weight: 1
+        preference:
+          matchExpressions:
+            - key: topology.kubernetes.io/host
+              operator: In
+              values:
+                - pve01
+                - pve02
+                - pve03
+#  podAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution:
+#      labelSelector:
+#        matchLabels:
+#          app: "my-app"
+#  # Optional: define pod anti-affinity rules if needed
+#  podAntiAffinity: {}           
+
+###############################################################################
+# Service, Ingress, and Gateway Configuration
+###############################################################################
+
+## Headless Service Configuration
+headless:
+  enabled: false                # Enable headless service
+  # Optional: define a custom selector if needed:
+  # selector:
+  #   app: "custom-headless-selector"
+
+## Ingress Configuration
+ingress:
+  enabled: false                # Enable/disable Ingress
+  className: cilium             # Ingress class name
+  tls:
+    certManagerIssuer: letsencrypt-prod  # Cert-manager issuer for TLS certificates
+
+## Gateway Configuration (HTTPRoute)
+gateway:
+  enabled: false                # Enable/disable HTTPRoute
+  name: gateway-internal        # Name of the Gateway
+  namespace: network            # Namespace of the Gateway
+  domain: sulibot.com           # Default domain for hostnames
+
+###############################################################################
+# Additional Customization
+###############################################################################
+env:
+  - name: DISABLE_DB_MIGRATIONS
+    value: "false" # it already runs on the server
+# Example:
+# - name: ENV_VAR_1
+#   value: "value1"
+
+envFrom:
+  - secretRef:
+      name: twenty-config-secret
+
+labels:
+  global: {}                    # Global labels applied to all resources
+
+annotations:
+  pod: {}                       # Pod-level annotations
