@@ -195,7 +195,7 @@ flux create helmrelease redis \
   --namespace=flux-system \
   --create-target-namespace=true \
   --target-namespace=redis \
-  --chart=redis \
+  --chart=oci://registry-1.docker.io/bitnamicharts/redis \
   --chart-version=20.9.0 \
   --values=values.yaml \
   --interval=1h \
