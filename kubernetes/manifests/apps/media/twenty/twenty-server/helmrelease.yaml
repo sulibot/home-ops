@@ -132,10 +132,3 @@ spec:
           memory: 256Mi
     timezone: America/Los_Angeles
     tolerations: []
-    volumeMountsExtras:
-    - mountPath: /app/packages/twenty-server/.local-storage
-      name: twentycrm-server-data
-    volumesExtras:
-    - name: twentycrm-server-data
-      persistentVolumeClaim:
-        claimName: twentycrm-server-pvc
