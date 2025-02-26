@@ -42,12 +42,21 @@ dnsConfig:
 config:
   enabled: enable                # Enable/disable Config PVC
   mountPath: /app/docker-data            # Mount path for the Config PVC
-  storageSize: 1Gi            # Default size for the Config PVC
+  storageSize: 10Gi            # Default size for the Config PVC
 
 data:
   enabled: true                 # Enable/disable Data PVC
   mountPath: /data              # Mount path for the Data PVC
   storageSize: 10Gi             # Size of the Data PVC
+
+volumeExtras:
+  - name: twentycrm-docker-data
+    persistentVolumeClaim:
+      claimName: twentycrm-docker-data-pvc            # Additional volumes
+
+volumeMountsExtras:
+  - mountPath: /app/packages/twenty-server/.local-storage
+    name: twentycrm-server-data
 
 ###############################################################################
 # Security Contexts
@@ -109,13 +118,14 @@ probes:
 ###############################################################################
 
 resources:
-  enabled: false                # Enable/disable resource settings
-  requests:
-    memory: "256Mi"             # Memory request for the container
-    cpu: "250m"                 # CPU request for the container
-  limits:
-    memory: "512Mi"             # Memory limit for the container
-    cpu: "500m"                 # CPU limit for the container
+  enabled: true                # Enable/disable resource settings
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "1000m"                 # CPU limit for the container
 
 ###############################################################################
 # Global Networking Options

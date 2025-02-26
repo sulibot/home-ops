@@ -40,7 +40,7 @@ dnsConfig:
 # Persistent Volume Claims (PVCs)
 ###############################################################################
 config:
-  enabled: enable                # Enable/disable Config PVC
+  enabled: false                # Enable/disable Config PVC
   mountPath: /app/docker-data            # Mount path for the Config PVC
   storageSize: 1Gi            # Default size for the Config PVC
 
@@ -109,13 +109,13 @@ probes:
 ###############################################################################
 
 resources:
-  enabled: false                # Enable/disable resource settings
+  enabled: true                # Enable/disable resource settings
   requests:
-    memory: "256Mi"             # Memory request for the container
-    cpu: "250m"                 # CPU request for the container
+    memory: "1024Mi"
+    cpu: "250m"
   limits:
-    memory: "512Mi"             # Memory limit for the container
-    cpu: "500m"                 # CPU limit for the container
+    memory: "2048Mi"
+    cpu: "1000m"                # CPU limit for the container
 
 ###############################################################################
 # Global Networking Options
@@ -202,3 +202,7 @@ labels:
 
 annotations:
   pod: {}                       # Pod-level annotations
+
+command:
+  - yarn
+  - worker:prod

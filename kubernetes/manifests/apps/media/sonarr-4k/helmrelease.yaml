@@ -22,7 +22,7 @@ spec:
     config:
       enabled: true
       mountPath: /config
-      storageSize: 100Mi
+      storageSize: 1Gi
     containerSecurityContext:
       allowPrivilegeEscalation: false
       enabled: true

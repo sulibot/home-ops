@@ -38,8 +38,11 @@ spec:
           weight: 1
     annotations:
       pod: {}
+    command:
+    - yarn
+    - worker:prod
     config:
-      enabled: enable
+      enabled: false
       mountPath: /app/docker-data
       storageSize: 1Gi
     containerSecurityContext:
@@ -124,12 +127,12 @@ spec:
         timeoutSeconds: 1
     replicaCount: 1
     resources:
-      enabled: false
+      enabled: true
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 1000m
+        memory: 2048Mi
       requests:
         cpu: 250m
-        memory: 256Mi
+        memory: 1024Mi
     timezone: America/Los_Angeles
     tolerations: []

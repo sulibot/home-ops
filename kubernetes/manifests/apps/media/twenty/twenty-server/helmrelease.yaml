@@ -41,7 +41,7 @@ spec:
     config:
       enabled: enable
       mountPath: /app/docker-data
-      storageSize: 1Gi
+      storageSize: 10Gi
     containerSecurityContext:
       allowPrivilegeEscalation: false
       enabled: true
@@ -66,7 +66,7 @@ spec:
       name: gateway-internal
       namespace: network
     headless:
-      enabled: true
+      enabled: false
     image:
       pullPolicy: IfNotPresent
       repository: twentycrm/twenty
@@ -122,12 +122,20 @@ spec:
         timeoutSeconds: 1
     replicaCount: 1
     resources:
-      enabled: false
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
+      enabled: true
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
     timezone: America/Los_Angeles
     tolerations: []
+    volumeExtras:
+    - name: twentycrm-docker-data
+      persistentVolumeClaim:
+        claimName: twentycrm-docker-data-pvc
+    volumeMountsExtras:
+    - mountPath: /app/packages/twenty-server/.local-storage
+      name: twentycrm-server-data
