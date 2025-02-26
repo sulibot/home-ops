@@ -133,9 +133,9 @@ spec:
     timezone: America/Los_Angeles
     tolerations: []
     volumeExtras:
-    - name: twentycrm-docker-data
+    - name: twentycrm-server-data
       persistentVolumeClaim:
-        claimName: twentycrm-docker-data-pvc
+        claimName: twentycrm-server-pvc
     volumeMountsExtras:
     - mountPath: /app/packages/twenty-server/.local-storage
       name: twentycrm-server-data

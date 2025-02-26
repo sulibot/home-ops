@@ -50,9 +50,9 @@ data:
   storageSize: 10Gi             # Size of the Data PVC
 
 volumeExtras:
-  - name: twentycrm-docker-data
+  - name: twentycrm-server-data
     persistentVolumeClaim:
-      claimName: twentycrm-docker-data-pvc            # Additional volumes
+      claimName: twentycrm-server-pvc         # Additional volumes
 
 volumeMountsExtras:
   - mountPath: /app/packages/twenty-server/.local-storage
