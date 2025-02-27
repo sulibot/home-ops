@@ -176,6 +176,7 @@ gateway:
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames
 
+  # - name2
 ###############################################################################
 # Additional Customization
 ###############################################################################

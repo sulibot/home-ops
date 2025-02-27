@@ -1,7 +1,7 @@
 ###############################################################################
 # General Application Settings
 ###############################################################################
-name: twenty                 # Default application name
+name: twenty-server                 # Default application name
 namespace: media                # Namespace for the application
 
 ###############################################################################
@@ -185,6 +185,8 @@ gateway:
   name: gateway-internal        # Name of the Gateway
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames
+  additionalHostnames:          # Additional hostnames
+   - twenty
 
 ###############################################################################
 # Additional Customization

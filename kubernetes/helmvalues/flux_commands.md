@@ -1,3 +1,27 @@
+flux create helmrelease twenty-server \
+  --source HelmRepository/chart-template.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace media \
+  --chart chart-template \
+  --chart-version 0.1.0 \
+  --interval 1h \
+  --values=values.yaml \
+  --export > helmrelease.yaml
+
+flux create helmrelease twenty-worker \
+  --source HelmRepository/chart-template.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace media \
+  --chart chart-template \
+  --chart-version 0.1.0 \
+  --interval 1h \
+  --values=values.yaml \
+  --export > helmrelease.yaml
+
+
+
 helm repo add cnpg https://cloudnative-pg.github.io/charts
 helm show values cnpg/cloudnative-pg > values.yaml
 
