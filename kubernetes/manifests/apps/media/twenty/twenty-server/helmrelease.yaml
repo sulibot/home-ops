@@ -34,7 +34,7 @@ spec:
     config:
       enabled: enable
       mountPath: /app/docker-data
-      storageSize: 10Gi
+      storageSize: 100Mi
     containerSecurityContext:
       allowPrivilegeEscalation: false
       enabled: true
@@ -47,7 +47,7 @@ spec:
       enabled: true
       options:
       - name: ndots
-        value: "2"
+        value: "1"
     dnsPolicy: ClusterFirst
     env: []
     envFrom:

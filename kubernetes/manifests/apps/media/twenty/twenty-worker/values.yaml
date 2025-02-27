@@ -34,7 +34,7 @@ dnsConfig:
   enabled: enable                # Enable/disable custom DNS settings
   options:
     - name: ndots
-      value: "2"
+      value: "1"
 
 ###############################################################################
 # Persistent Volume Claims (PVCs)
@@ -42,7 +42,7 @@ dnsConfig:
 config:
   enabled: false                # Enable/disable Config PVC
   mountPath: /app/docker-data            # Mount path for the Config PVC
-  storageSize: 1Gi            # Default size for the Config PVC
+  storageSize: 100Mi            # Default size for the Config PVC
 
 data:
   enabled: true                 # Enable/disable Data PVC
