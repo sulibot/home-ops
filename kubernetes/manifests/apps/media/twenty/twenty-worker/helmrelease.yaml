@@ -50,7 +50,7 @@ spec:
       enabled: enable
       options:
       - name: ndots
-        value: "1"
+        value: "2"
     dnsPolicy: ClusterFirst
     env:
     - name: DISABLE_DB_MIGRATIONS
