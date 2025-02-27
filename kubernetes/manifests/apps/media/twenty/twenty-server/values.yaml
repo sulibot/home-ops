@@ -34,7 +34,7 @@ dnsConfig:
   enabled: true                # Enable/disable custom DNS settings
   options:
     - name: ndots
-      value: "1"
+      value: "2"
 
 ###############################################################################
 # Persistent Volume Claims (PVCs)
