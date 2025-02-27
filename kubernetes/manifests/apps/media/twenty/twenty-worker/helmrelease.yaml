@@ -22,13 +22,6 @@ spec:
         preferredDuringSchedulingIgnoredDuringExecution:
         - preference:
             matchExpressions:
-            - key: intel.feature.node.kubernetes.io/gpu
-              operator: In
-              values:
-              - "true"
-          weight: 1
-        - preference:
-            matchExpressions:
             - key: topology.kubernetes.io/host
               operator: In
               values:
@@ -54,7 +47,7 @@ spec:
       mountPath: /data
       storageSize: 10Gi
     dnsConfig:
-      enabled: false
+      enabled: enable
       options:
       - name: ndots
         value: "1"

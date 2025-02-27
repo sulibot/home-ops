@@ -31,7 +31,7 @@ timezone: "America/Los_Angeles"   # Default timezone for the application
 ###############################################################################
 dnsPolicy: ClusterFirst       # Default DNS policy
 dnsConfig:
-  enabled: false                # Enable/disable custom DNS settings
+  enabled: true                # Enable/disable custom DNS settings
   options:
     - name: ndots
       value: "1"
@@ -144,13 +144,6 @@ affinity:
   nodeAffinity:
 #    requiredDuringSchedulingIgnoredDuringExecution: {}  # Provide an empty object by default
     preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 1
-        preference:
-          matchExpressions:
-            - key: intel.feature.node.kubernetes.io/gpu
-              operator: In
-              values:
-                - "true"
       - weight: 1
         preference:
           matchExpressions:
