@@ -27,7 +27,7 @@ spec:
       existingSecret: ""
       existingSecretPasswordKey: ""
       password: ""
-      sentinel: true
+      sentinel: false
       usePasswordFileFromSecret: true
       usePasswordFiles: false
     clusterDomain: cluster.local
