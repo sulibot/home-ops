@@ -1,4 +1,5 @@
 resources:
+  - namespace.yaml
   - externalsecret.yaml
   - immich-pg.yaml
 #  - helmrelease.yaml
