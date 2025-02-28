@@ -1,5 +1,5 @@
 resources:
-#  - postgresql-pv.yaml
-#  - redis-pv.yaml
-  - helmrelease.yaml
+  - externalsecret.yaml
+  - immich-pg.yaml
+#  - helmrelease.yaml
 
