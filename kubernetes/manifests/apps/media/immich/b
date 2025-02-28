@@ -1,0 +1,165 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  creationTimestamp: "2025-02-28T06:23:45Z"
+  generation: 1
+  labels:
+    kustomize.toolkit.fluxcd.io/name: apps
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+  name: immich-pg
+  namespace: immich
+  resourceVersion: "13577895"
+  uid: 9bee53b9-2723-47dd-accc-d5b75612e0f5
+spec:
+  affinity:
+    podAntiAffinityType: preferred
+  bootstrap:
+    initdb:
+      dataChecksums: true
+      database: immich
+      encoding: UTF8
+      localeCType: C
+      localeCollate: C
+      owner: immich
+      postInitApplicationSQL:
+      - ALTER SYSTEM SET search_path TO "$user", public, vectors;
+      - SET search_path TO "$user", public, vectors;
+      - CREATE EXTENSION IF NOT EXISTS "vectors";
+      - CREATE EXTENSION IF NOT EXISTS "cube";
+      - CREATE EXTENSION IF NOT EXISTS "earthdistance";
+      - ALTER SCHEMA vectors OWNER TO "immich";
+      - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA vectors TO "immich";
+      - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "immich";
+      secret:
+        name: immich-pg-user
+  enablePDB: true
+  enableSuperuserAccess: true
+  failoverDelay: 0
+  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16.3-v0.2.1
+  instances: 1
+  logLevel: info
+  maxSyncReplicas: 0
+  minSyncReplicas: 0
+  monitoring:
+    customQueriesConfigMap:
+    - key: queries
+      name: cnpg-default-monitoring
+    disableDefaultQueries: false
+    enablePodMonitor: false
+  postgresGID: 26
+  postgresUID: 26
+  postgresql:
+    enableAlterSystem: true
+    parameters:
+      archive_mode: "on"
+      archive_timeout: 5min
+      dynamic_shared_memory_type: posix
+      full_page_writes: "on"
+      log_destination: csvlog
+      log_directory: /controller/log
+      log_filename: postgres
+      log_rotation_age: "0"
+      log_rotation_size: "0"
+      log_truncate_on_rotation: "false"
+      logging_collector: "on"
+      max_parallel_workers: "32"
+      max_replication_slots: "32"
+      max_worker_processes: "32"
+      shared_memory_type: mmap
+      shared_preload_libraries: ""
+      ssl_max_protocol_version: TLSv1.3
+      ssl_min_protocol_version: TLSv1.3
+      wal_keep_size: 512MB
+      wal_level: logical
+      wal_log_hints: "on"
+      wal_receiver_timeout: 5s
+      wal_sender_timeout: 5s
+    shared_preload_libraries:
+    - vectors.so
+    syncReplicaElectionConstraint:
+      enabled: false
+  primaryUpdateMethod: restart
+  primaryUpdateStrategy: unsupervised
+  replicationSlots:
+    highAvailability:
+      enabled: true
+      slotPrefix: _cnpg_
+    synchronizeReplicas:
+      enabled: true
+    updateInterval: 30
+  resources: {}
+  smartShutdownTimeout: 180
+  startDelay: 30
+  stopDelay: 100
+  storage:
+    resizeInUseVolumes: true
+    size: 8Gi
+    storageClass: cephfs-content-sc-retain
+  superuserSecret:
+    name: immich-pg-superuser
+  switchoverDelay: 3600
+status:
+  availableArchitectures:
+  - goArch: amd64
+    hash: 58242fc95faa81d6bba0ba19ea959b82d9b49dc5f8e6c755f3c663665ff0ce1d
+  - goArch: arm64
+    hash: 8e5ef490a05bbd5700047edda5e2440acd14bafa256dbfcc7d4a5107573df75b
+  certificates:
+    clientCASecret: immich-pg-ca
+    expirations:
+      immich-pg-ca: 2025-05-29 06:18:45 +0000 UTC
+      immich-pg-replication: 2025-05-29 06:18:45 +0000 UTC
+      immich-pg-server: 2025-05-29 06:18:45 +0000 UTC
+    replicationTLSSecret: immich-pg-replication
+    serverAltDNSNames:
+    - immich-pg-rw
+    - immich-pg-rw.immich
+    - immich-pg-rw.immich.svc
+    - immich-pg-rw.immich.svc.cluster.local
+    - immich-pg-r
+    - immich-pg-r.immich
+    - immich-pg-r.immich.svc
+    - immich-pg-r.immich.svc.cluster.local
+    - immich-pg-ro
+    - immich-pg-ro.immich
+    - immich-pg-ro.immich.svc
+    - immich-pg-ro.immich.svc.cluster.local
+    serverCASecret: immich-pg-ca
+    serverTLSSecret: immich-pg-server
+  cloudNativePGCommitHash: bad5a251
+  cloudNativePGOperatorHash: 58242fc95faa81d6bba0ba19ea959b82d9b49dc5f8e6c755f3c663665ff0ce1d
+  conditions:
+  - lastTransitionTime: "2025-02-28T06:23:45Z"
+    message: Cluster Is Not Ready
+    reason: ClusterIsNotReady
+    status: "False"
+    type: Ready
+  configMapResourceVersion:
+    metrics:
+      cnpg-default-monitoring: "13577873"
+  image: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16.3-v0.2.1
+  initializingPVC:
+  - immich-pg-1
+  instanceNames:
+  - immich-pg-1
+  instances: 1
+  jobCount: 1
+  latestGeneratedNode: 1
+  managedRolesStatus: {}
+  phase: Setting up primary
+  phaseReason: Creating primary instance immich-pg-1
+  poolerIntegrations:
+    pgBouncerIntegration: {}
+  pvcCount: 1
+  readService: immich-pg-r
+  secretsResourceVersion:
+    clientCaSecretVersion: "13577842"
+    replicationSecretVersion: "13577844"
+    serverCaSecretVersion: "13577842"
+    serverSecretVersion: "13577843"
+  switchReplicaClusterStatus: {}
+  targetPrimary: immich-pg-1
+  targetPrimaryTimestamp: "2025-02-28T06:23:45.722484Z"
+  topology:
+    successfullyExtracted: true
+  writeService: immich-pg-rw
