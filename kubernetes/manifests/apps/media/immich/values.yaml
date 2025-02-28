@@ -4,13 +4,9 @@
 
 # These entries are shared between all the Immich components
 
-env:
-  REDIS_HOSTNAME: 'immich-redis-master'
-  DB_HOSTNAME: "immich-postgresql"
-  DB_USERNAME: "immich"
-  DB_DATABASE_NAME: "immich"
-  DB_PASSWORD: "immich"  # For enhanced security, consider using Kubernetes Secrets
-  IMMICH_MACHINE_LEARNING_URL: 'http://immich-machine-learning:3003'
+envFrom:
+  - secretRef:
+      name: immich-config-secrets
 
 image:
   tag: v1.119.0
@@ -18,7 +14,17 @@ image:
 immich:
   metrics:
     # Enabling this will create the service monitors needed to monitor immich with the prometheus operator
-    enabled: false  # Disabled to prevent ServiceMonitor CRD errors
+    enabled: true
+  persistence:
+    # Main data store for all photos shared between different components.
+    library:
+      # Automatically creating the library volume is not supported by this chart
+      # You have to specify an existing PVC to use
+      existingClaim:
+        cephfs-pvc-media
+  # configuration is immich-config.json converted to yaml
+  # ref: https://immich.app/docs/install/config-file/
+  #
   configuration:
     trash:
       enabled: false
@@ -26,49 +32,6 @@ immich:
     storageTemplate:
       enabled: true
       template: "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
-  persistence:
-    library:
-      # Remove `existingClaim` to allow dynamic provisioning
-      # existingClaim: data-cephfs-pvc
-      storageClassName: csi-cephfs-sc-retain  # Specify the desired StorageClass
-      size: 50Gi                           # Define size based on your storage requirements
-
-# Dependencies
-
-postgresql:
-  enabled: true
-  image:
-    repository: tensorchord/pgvecto-rs
-    tag: pg14-v0.2.0
-  global:
-    postgresql:
-      auth:
-        username: immich
-        database: immich
-        password: immich  # For enhanced security, consider using Kubernetes Secrets
-  primary:
-    containerSecurityContext:
-      readOnlyRootFilesystem: false
-    initdb:
-      scripts:
-        create-extensions.sql: |
-          CREATE EXTENSION cube;
-          CREATE EXTENSION earthdistance;
-          CREATE EXTENSION vectors;
-  persistence:
-    enabled: true
-    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
-    size: 10Gi                          # Adjust based on your storage requirements
-
-redis:
-  enabled: true
-  architecture: standalone
-  auth:
-    enabled: false
-  persistence:
-    enabled: true
-    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
-    size: 10Gi                          # Adjust based on your storage requirements
 
 # Immich components
 
@@ -79,17 +42,23 @@ server:
     pullPolicy: IfNotPresent
   ingress:
     main:
-      enabled: true
-      ingressClassName: cilium  # Use Cilium's Ingress Controller
+      enabled: true  # ✅ Enable Ingress for Cilium
+      className: cilium  # ✅ Use Cilium as the Ingress class
       annotations:
-        # Add Cilium-specific annotations here if required
-        # Example: cilium.ingress.kubernetes.io/some-annotation: "value"
+        kubernetes.io/ingress.class: "cilium"  # ✅ Required for Cilium
+        ingress.cilium.io/loadbalancer-mode: shared
+        ingress.cilium.io/proxy-body-size: "0"  # ✅ Remove body limit for large file uploads
+        cert-manager.io/cluster-issuer: "letsencrypt-production"  # ✅ Cert-Manager TLS support
       hosts:
-        - host: immich.local
+        - host: immich.sulibot.com
           paths:
             - path: "/"
               pathType: Prefix
-      tls: []
+      tls:
+        - hosts:
+            - immich.sulibot.com
+          secretName: immich-tls  # ✅ Cert-Manager will manage this secret
+
 
 machine-learning:
   enabled: true
@@ -102,7 +71,7 @@ machine-learning:
     cache:
       enabled: true
       size: 10Gi
+      # Optional: Set this to pvc to avoid downloading the ML models every start.
       type: emptyDir
       accessMode: ReadWriteMany
-      # Optional: Set this to pvc to avoid downloading the ML models every start.
-      # storageClass: your-class
+      storageClass: cephfs-csi-sc

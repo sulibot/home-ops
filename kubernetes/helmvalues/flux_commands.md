@@ -262,10 +262,12 @@ flux create source helm immich \
 ```
 flux create helmrelease immich \
   --source HelmRepository/immich.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace media \
   --chart immich \
-  --namespace=media \
-  --values=values.yaml \
   --chart-version 0.8.5 \
+  --values=values.yaml \
   --interval 1h \
   --export > helmrelease.yaml
 
