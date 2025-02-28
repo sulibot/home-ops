@@ -20,7 +20,7 @@ spec:
     enableAlterSystem: true
   storage:
     size: 8Gi
-    storageClassName: cephfs-content-sc-retain
+    storageClass: cephfs-content-sc-retain
   monitoring:
     enablePodMonitor: false
   bootstrap:
