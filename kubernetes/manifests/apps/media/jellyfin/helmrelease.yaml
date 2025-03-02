@@ -56,8 +56,9 @@ spec:
     name: jellyfin
     namespace: media
     ports:
-      servicePort: 80
-      targetPort: 8096
+      - name: web-ui
+        servicePort: 80
+        targetPort: 8096
     replicaCount: 1
     resources:
       enabled: false

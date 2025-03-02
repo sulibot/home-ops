@@ -68,8 +68,9 @@ spec:
       runAsGroup: 911
       runAsUser: 911
     ports:
-      servicePort: 80
-      targetPort: 5055
+      - name: web-ui
+        servicePort: 80
+        targetPort: 5055
     replicaCount: 1
     resources:
       enabled: false

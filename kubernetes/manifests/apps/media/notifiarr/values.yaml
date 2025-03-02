@@ -38,8 +38,9 @@ annotations:
 
 # Port configuration
 ports:
-  servicePort: 80               # Port exposed by the service
-  targetPort: 5454              # Target port in the container
+  - name: web-ui
+    servicePort: 80               # Port exposed by the service
+    targetPort: 5454              # Target port in the container
 
 # DNS configuration
 dnsPolicy: ClusterFirst          # Default DNS policy

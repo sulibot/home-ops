@@ -18,8 +18,9 @@ image:
 replicaCount: 1
 
 ports:
-  servicePort: 80               # Port exposed by the service
-  targetPort: 3000              # Target port in the container
+  - name: web-ui
+    servicePort: 80               # Port exposed by the service
+    targetPort: 3000              # Target port in the container
 
 ###############################################################################
 # Timezone

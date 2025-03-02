@@ -58,8 +58,9 @@ spec:
     name: notifiarr
     namespace: media
     ports:
-      servicePort: 80
-      targetPort: 5454
+      - name: web-ui
+        servicePort: 80
+        targetPort: 5454
     replicaCount: 1
     resources:
       enabled: false

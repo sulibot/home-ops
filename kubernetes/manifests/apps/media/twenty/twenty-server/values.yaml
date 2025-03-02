@@ -17,9 +17,14 @@ image:
 ###############################################################################
 replicaCount: 1
 
+#ports:
+#  - servicePort: 80               # Port exposed by the service
+#    targetPort: 3000              # Target port in the container
+
 ports:
-  servicePort: 80               # Port exposed by the service
-  targetPort: 3000              # Target port in the container
+  - name: web-ui
+    servicePort: 80
+    targetPort: 3000
 
 ###############################################################################
 # Timezone
@@ -40,7 +45,7 @@ dnsConfig:
 # Persistent Volume Claims (PVCs)
 ###############################################################################
 config:
-  enabled: enable                # Enable/disable Config PVC
+  enabled: true                # Enable/disable Config PVC
   mountPath: /app/docker-data            # Mount path for the Config PVC
   storageSize: 100Mi            # Default size for the Config PVC
 
@@ -185,8 +190,8 @@ gateway:
   name: gateway-internal        # Name of the Gateway
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames
-  additionalHostnames:          # Additional hostnames
-   - twenty
+  additionalFQDNHostnames:          # Additional hostnames
+   - twenty.sulibot.com
 
 ###############################################################################
 # Additional Customization

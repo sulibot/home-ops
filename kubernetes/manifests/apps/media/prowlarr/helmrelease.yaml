@@ -85,8 +85,9 @@ spec:
       runAsGroup: 1000
       runAsUser: 1000
     ports:
-      servicePort: 80
-      targetPort: 9696
+      - name: web-ui
+        servicePort: 80
+        targetPort: 9696
     replicaCount: 1
     resources:
       enabled: false

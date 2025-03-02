@@ -49,8 +49,9 @@ annotations:
 
 # Port configuration
 ports:
-  servicePort: 80               # Port exposed by the service
-  targetPort: 8080              # Port used by the container
+  - name: web-ui
+    servicePort: 80               # Port exposed by the service
+    targetPort: 8080              # Port used by the container
 
 
   # Annotations specific to the pod

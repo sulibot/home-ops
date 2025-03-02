@@ -53,8 +53,9 @@ annotations:
 
 # Port configuration
 ports:
-  servicePort: 80
-  targetPort: 9696
+  - name: web-ui
+    servicePort: 80
+    targetPort: 9696
 
 # DNS configuration
 dnsPolicy: ClusterFirst
