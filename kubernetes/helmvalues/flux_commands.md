@@ -1,3 +1,16 @@
+flux create helmrelease plex \
+  --source HelmRepository/chart-template.flux-system \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace media \
+  --chart chart-template \
+  --chart-version 0.1.0 \
+  --interval 1h \
+  --values=values.yaml \
+  --export > helmrelease.yaml
+---------------
+
+
 flux create helmrelease twenty-server \
   --source HelmRepository/chart-template.flux-system \
   --namespace=flux-system \
