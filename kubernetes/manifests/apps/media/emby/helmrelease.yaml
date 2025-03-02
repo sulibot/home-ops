@@ -14,7 +14,10 @@ spec:
         name: chart-template
         namespace: flux-system
       version: 0.1.0
+  install:
+    createNamespace: true
   interval: 1h0m0s
+  targetNamespace: media
   values:
     affinity:
       enabled: true
@@ -83,9 +86,9 @@ spec:
       runAsGroup: 0
       runAsUser: 0
     ports:
-      - name: web-ui
-        servicePort: 80
-        targetPort: 8096
+    - name: web-ui
+      servicePort: 80
+      targetPort: 8096
     replicaCount: 1
     resources:
       enabled: true
