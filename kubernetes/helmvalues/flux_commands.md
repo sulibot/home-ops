@@ -1,4 +1,4 @@
-flux create helmrelease plex \
+flux create helmrelease ( $PWD ) \
   --source HelmRepository/chart-template.flux-system \
   --namespace=flux-system \
   --create-target-namespace=true \

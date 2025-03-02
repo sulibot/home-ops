@@ -3,26 +3,25 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: immich
-  namespace: media
+  namespace: flux-system
 spec:
   chart:
     spec:
-      chart: immich
+      chart: chart-template
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
-        name: immich
+        name: chart-template
         namespace: flux-system
-      version: 0.8.5
+      version: 0.1.0
+  install:
+    createNamespace: true
   interval: 1h0m0s
+  targetNamespace: media
   values:
-    env:
-      DB_DATABASE_NAME: immich
-      DB_HOSTNAME: immich-postgresql
-      DB_PASSWORD: immich
-      DB_USERNAME: immich
-      IMMICH_MACHINE_LEARNING_URL: http://immich-machine-learning:3003
-      REDIS_HOSTNAME: immich-redis-master
+    envFrom:
+    - secretRef:
+        name: immich-config-secrets
     image:
       tag: v1.119.0
     immich:
@@ -34,11 +33,10 @@ spec:
           days: 30
           enabled: false
       metrics:
-        enabled: false
+        enabled: true
       persistence:
         library:
-          size: 50Gi
-          storageClassName: csi-cephfs-sc-retain
+          existingClaim: cephfs-pvc-media
     machine-learning:
       enabled: true
       env:
@@ -51,40 +49,8 @@ spec:
           accessMode: ReadWriteMany
           enabled: true
           size: 10Gi
+          storageClass: cephfs-csi-sc
           type: emptyDir
-    postgresql:
-      enabled: true
-      global:
-        postgresql:
-          auth:
-            database: immich
-            password: immich
-            username: immich
-      image:
-        repository: tensorchord/pgvecto-rs
-        tag: pg14-v0.2.0
-      persistence:
-        enabled: true
-        size: 10Gi
-        storageClass: csi-cephfs-sc-retain
-      primary:
-        containerSecurityContext:
-          readOnlyRootFilesystem: false
-        initdb:
-          scripts:
-            create-extensions.sql: |
-              CREATE EXTENSION cube;
-              CREATE EXTENSION earthdistance;
-              CREATE EXTENSION vectors;
-    redis:
-      architecture: standalone
-      auth:
-        enabled: false
-      enabled: true
-      persistence:
-        enabled: true
-        size: 10Gi
-        storageClass: csi-cephfs-sc-retain
     server:
       enabled: true
       image:
@@ -92,12 +58,19 @@ spec:
         repository: ghcr.io/immich-app/immich-server
       ingress:
         main:
-          annotations: null
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-production
+            ingress.cilium.io/loadbalancer-mode: shared
+            ingress.cilium.io/proxy-body-size: "0"
+            kubernetes.io/ingress.class: cilium
+          className: cilium
           enabled: true
           hosts:
           - host: immich.sulibot.com
             paths:
             - path: /
               pathType: Prefix
-          ingressClassName: cilium
-          tls: []
+          tls:
+          - hosts:
+            - immich.sulibot.com
+            secretName: immich-tls

@@ -12,8 +12,12 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: chart-template
+        namespace: flux-system
       version: 0.1.0
+  install:
+    createNamespace: true
   interval: 1h0m0s
+  targetNamespace: media
   values:
     affinity: {}
     annotations:
@@ -68,9 +72,9 @@ spec:
       runAsGroup: 911
       runAsUser: 911
     ports:
-      - name: web-ui
-        servicePort: 80
-        targetPort: 5055
+    - name: web-ui
+      servicePort: 80
+      targetPort: 5055
     replicaCount: 1
     resources:
       enabled: false
