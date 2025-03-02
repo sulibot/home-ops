@@ -1,4 +1,3 @@
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -19,17 +18,8 @@ spec:
     - type: IPAddress
       value: fd00:101::cafe:160
   listeners:
-    # HTTPS Listener for sulibot.com
-    - name: sulibot-https
-      hostname: sulibot.com
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: sulibot-com-tls
 
-    # HTTPS Listener for *.sulibot.com
+    # HTTPS Listener for *.sulibot.com on port 443
     - name: sulibot-wildcard-https
       hostname: "*.sulibot.com"
       port: 443
@@ -39,35 +29,18 @@ spec:
         certificateRefs:
           - name: sulibot-com-tls
 
-    # HTTP Listener for sulibot.com (delegates to HTTPRoute for redirection)
-    - name: sulibot-http
-      hostname: sulibot.com
-      port: 80
-      protocol: HTTP
-
-    # HTTP Listener for *.sulibot.com (delegates to HTTPRoute for redirection)
+    # HTTP Listener for *.sulibot.com on port 80
     - name: sulibot-wildcard-http
       hostname: "*.sulibot.com"
       port: 80
       protocol: HTTP
 
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: sulibot-http-redirect
-  namespace: network
-spec:
-  parentRefs:
-    - name: gateway-internal
-      namespace: network
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      filters:
-        - type: RequestRedirect
-          requestRedirect:
-            scheme: https
-            port: 443
+    # Admin HTTPS Listener for *.sulibot.com on port 8443
+    - name: sulibot-wildcard-admin-https
+      hostname: "*.sulibot.com"
+      port: 8443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: sulibot-com-tls
