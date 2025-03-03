@@ -35,8 +35,11 @@ env:
 # Labels and Annotations
 labels:
   global: {}                    # Global labels applied to all resources
+
 annotations:
-  pod: {}                       # Pod-level annotations
+  kubernetes.io/test: "test"
+
+
 
 # Port configuration
 ports:
