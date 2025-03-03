@@ -111,8 +111,41 @@ spec:
       runAsUser: 0
     ports:
     - name: web-ui
+      protocol: HTTP
       servicePort: 80
       targetPort: 32400
+    - name: plex-companion
+      protocol: TCP
+      servicePort: 3005
+      targetPort: 3005
+    - name: remote-control
+      protocol: TCP
+      servicePort: 8324
+      targetPort: 8324
+    - name: dlna
+      protocol: TCP
+      servicePort: 32469
+      targetPort: 32469
+    - name: discovery-1
+      protocol: UDP
+      servicePort: 32410
+      targetPort: 32410
+    - name: discovery-2
+      protocol: UDP
+      servicePort: 32412
+      targetPort: 32412
+    - name: discovery-3
+      protocol: UDP
+      servicePort: 32413
+      targetPort: 32413
+    - name: discovery-4
+      protocol: UDP
+      servicePort: 32414
+      targetPort: 32414
+    - name: ssdp
+      protocol: UDP
+      servicePort: 1900
+      targetPort: 1900
     replicaCount: 1
     resources:
       enabled: true
