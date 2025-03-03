@@ -28,43 +28,73 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All
 
     # Existing HTTP Listener for *.sulibot.com on port 80
     - name: sulibot-wildcard-http
       hostname: "*.sulibot.com"
       port: 80
       protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     # ADDITIONAL TCP LISTENERS (for Plex TCP Services)
     - name: plex-tcp-companion
       port: 3005
       protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-tcp-remote-control
       port: 8324
       protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-tcp-dlna
       port: 32469
       protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     # ADDITIONAL UDP LISTENERS (for Plex UDP Services)
     - name: plex-udp-discovery-1
       port: 32410
       protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-udp-discovery-2
       port: 32412
       protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-udp-discovery-3
       port: 32413
       protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-udp-discovery-4
       port: 32414
       protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: plex-udp-ssdp
       port: 1900
       protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All

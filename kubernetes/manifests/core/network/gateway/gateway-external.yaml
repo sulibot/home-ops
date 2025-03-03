@@ -1,4 +1,4 @@
-sulibot-wildcard-http-redirectapiVersion: gateway.networking.k8s.io/v1
+apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: gateway-external
@@ -15,6 +15,7 @@ spec:
     - type: IPAddress
       value: fd00:101::cafe:161
   listeners:
+
     # HTTPS Listener for sulibot.com
     - name: sulibot-https
       hostname: sulibot.com
@@ -24,6 +25,9 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All  # Allow HTTPRoutes from all namespaces
 
     # HTTPS Listener for *.sulibot.com
     - name: sulibot-wildcard-https
@@ -34,18 +38,27 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All
 
     # HTTP Listener for sulibot.com (delegates to HTTPRoute for redirection)
     - name: sulibot-http
       hostname: sulibot.com
       port: 80
       protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
 
     # HTTP Listener for *.sulibot.com (delegates to HTTPRoute for redirection)
     - name: sulibot-wildcard-http
       hostname: "*.sulibot.com"
       port: 80
       protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
