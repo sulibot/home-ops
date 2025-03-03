@@ -55,8 +55,43 @@ annotations:
 # Port configuration
 ports:
   - name: web-ui
-    servicePort: 80               # Port exposed by the service
-    targetPort: 32400              # Target port in the container
+    servicePort: 80               # Externally accessible HTTP port
+    targetPort: 32400             # Plex web interface and API
+    protocol: HTTP
+  - name: plex-companion
+    servicePort: 3005             # External port for Plex Companion communication
+    targetPort: 3005              # Internal Plex Companion port
+    protocol: TCP
+  - name: remote-control
+    servicePort: 8324             # External port for remote control and device management
+    targetPort: 8324              # Internal remote control communication port
+    protocol: TCP
+  - name: dlna
+    servicePort: 32469            # External port for DLNA streaming
+    targetPort: 32469             # Internal DLNA service port
+    protocol: TCP
+  - name: discovery-1
+    servicePort: 32410            # External port for network discovery
+    targetPort: 32410             # Internal discovery port
+    protocol: UDP
+  - name: discovery-2
+    servicePort: 32412            # External port for network discovery
+    targetPort: 32412             # Internal discovery port
+    protocol: UDP
+  - name: discovery-3
+    servicePort: 32413            # External port for network discovery
+    targetPort: 32413             # Internal discovery port
+    protocol: UDP
+  - name: discovery-4
+    servicePort: 32414            # External port for network discovery
+    targetPort: 32414             # Internal discovery port
+    protocol: UDP
+  - name: ssdp
+    servicePort: 1900             # External SSDP port for UPnP discovery
+    targetPort: 1900              # Internal SSDP communication port
+    protocol: UDP      # Internal SSDP communication port (UDP)
+
+
 
 # DNS configuration
 dnsPolicy: ClusterFirst          # Default DNS policy
@@ -135,12 +170,6 @@ affinity:
                 - pve01
                 - pve02
                 - pve03
-
-
-
-
-
-
 
 
 # Headless service configuration
