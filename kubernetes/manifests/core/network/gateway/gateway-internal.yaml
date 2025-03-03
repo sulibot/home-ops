@@ -1,25 +1,6 @@
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: gateway-internal
-  namespace: network
-  labels:
-    cilium.io/gateway: "true"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    meta.helm.sh/release-name: cilium
-    meta.helm.sh/release-namespace: kube-system
-spec:
-  gatewayClassName: cilium
-  addresses:
-    - type: IPAddress
-      value: 10.10.101.160
-    - type: IPAddress
-      value: fd00:101::cafe:160
   listeners:
 
-    # HTTPS Listener for *.sulibot.com on port 443
+    # Existing HTTPS Listener for *.sulibot.com on port 443
     - name: sulibot-wildcard-https
       hostname: "*.sulibot.com"
       port: 443
@@ -29,18 +10,42 @@ spec:
         certificateRefs:
           - name: sulibot-com-tls
 
-    # HTTP Listener for *.sulibot.com on port 80
+    # Existing HTTP Listener for *.sulibot.com on port 80
     - name: sulibot-wildcard-http
       hostname: "*.sulibot.com"
       port: 80
       protocol: HTTP
 
-    # Admin HTTPS Listener for *.sulibot.com on port 8443
-    - name: sulibot-wildcard-admin-https
-      hostname: "*.sulibot.com"
-      port: 8443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: sulibot-com-tls
+    # ADDITIONAL TCP LISTENERS (for Plex TCP Services)
+    - name: plex-tcp-companion
+      port: 3005
+      protocol: TCP
+
+    - name: plex-tcp-remote-control
+      port: 8324
+      protocol: TCP
+
+    - name: plex-tcp-dlna
+      port: 32469
+      protocol: TCP
+
+    # ADDITIONAL UDP LISTENERS (for Plex UDP Services)
+    - name: plex-udp-discovery-1
+      port: 32410
+      protocol: UDP
+
+    - name: plex-udp-discovery-2
+      port: 32412
+      protocol: UDP
+
+    - name: plex-udp-discovery-3
+      port: 32413
+      protocol: UDP
+
+    - name: plex-udp-discovery-4
+      port: 32414
+      protocol: UDP
+
+    - name: plex-udp-ssdp
+      port: 1900
+      protocol: UDP
