@@ -1,3 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-internal
+  namespace: network
+  labels:
+    cilium.io/gateway: "true"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    meta.helm.sh/release-name: cilium
+    meta.helm.sh/release-namespace: kube-system
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: 10.10.101.160
+    - type: IPAddress
+      value: fd00:101::cafe:160
   listeners:
 
     # Existing HTTPS Listener for *.sulibot.com on port 443
