@@ -40,11 +40,7 @@ labels:
   deployment: {}                # Labels specific to the deployment
   pod: {}                       # Labels specific to the pod
 
-annotations:
-  global: {}                    # Global annotations for all resources
-  service: {}                   # Annotations specific to the service
-  deployment: {}                # Annotations specific to the deployment
-  pod: {}  
+annotations: {}  
   
 
 # Port configuration

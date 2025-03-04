@@ -20,11 +20,7 @@ spec:
   targetNamespace: media
   values:
     affinity: {}
-    annotations:
-      deployment: {}
-      global: {}
-      pod: {}
-      service: {}
+    annotations: {}
     args:
     - -r
     - /srv
