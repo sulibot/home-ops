@@ -57,7 +57,7 @@ spec:
         name: twenty-config-secret
     gateway:
       additionalFQDNHostnames:
-      - files.sulibot.com
+      - twenty.sulibot.com
       domain: sulibot.com
       enabled: true
       name: gateway-internal

@@ -50,6 +50,8 @@ spec:
           key: PROWLARR__AUTH__APIKEY
           name: prowlarr-secret
     gateway:
+      additionalFQDNHostnames:
+      - audiobooks.sulibot.com
       domain: sulibot.com
       enabled: true
       name: gateway-internal

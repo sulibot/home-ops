@@ -50,6 +50,8 @@ spec:
           key: BOOKS__AUTH__APIKEY
           name: books-secret
     gateway:
+      additionalFQDNHostnames:
+      - books.sulibot.com
       domain: sulibot.com
       enabled: true
       name: gateway-internal

@@ -191,7 +191,7 @@ gateway:
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames
   additionalFQDNHostnames:          # Additional hostnames
-   - files.sulibot.com
+   - twenty.sulibot.com
 
 ###############################################################################
 # Additional Customization

@@ -21,7 +21,8 @@ gateway:
   name: gateway-internal        # Name of the Gateway
   namespace: network            # Namespace of the Gateway
   domain: sulibot.com           # Default domain for hostnames
-
+  additionalFQDNHostnames:          # Additional hostnames
+   - books.sulibot.com
 # Environment variables
 env:
 # Environment variables

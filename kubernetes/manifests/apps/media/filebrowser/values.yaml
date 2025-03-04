@@ -23,6 +23,8 @@ gateway:
   name: gateway-internal        # Defaults to "gateway-internal"
   namespace: network            # Namespace for the Gateway and HTTPRoute
   domain: sulibot.com           # Default domain for hostnames
+  additionalFQDNHostnames:          # Additional hostnames
+   - files.sulibot.com
 
   # Environment variables
 env:
