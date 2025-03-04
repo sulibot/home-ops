@@ -39,8 +39,7 @@ spec:
               - pve02
               - pve03
           weight: 1
-    annotations:
-      pod: {}
+    annotations: {}
     config:
       enabled: true
       mountPath: /config

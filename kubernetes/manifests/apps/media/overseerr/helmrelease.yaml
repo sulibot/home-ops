@@ -20,8 +20,7 @@ spec:
   targetNamespace: media
   values:
     affinity: {}
-    annotations:
-      pod: {}
+    annotations: {}
     config:
       enabled: true
       mountPath: /app/config

@@ -30,8 +30,7 @@ spec:
               values:
               - "true"
           weight: 1
-    annotations:
-      pod: {}
+    annotations: {}
     config:
       enabled: true
       mountPath: /config

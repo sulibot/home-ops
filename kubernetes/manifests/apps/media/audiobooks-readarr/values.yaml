@@ -37,8 +37,7 @@ env:
 # Labels and Annotations
 labels:
   global: {}                    # Global labels applied to all resources
-annotations:
-  pod: {}                       # Pod-level annotations
+annotations: {}                       # Pod-level annotations
 
 # Port configuration
 ports:
