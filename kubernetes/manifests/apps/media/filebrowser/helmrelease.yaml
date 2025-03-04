@@ -51,6 +51,8 @@ spec:
     - name: FB_CONFIG
       value: /settings.json
     gateway:
+      additionalFQDNHostnames:
+      - files.sulibot.com
       domain: sulibot.com
       enabled: true
       name: gateway-internal

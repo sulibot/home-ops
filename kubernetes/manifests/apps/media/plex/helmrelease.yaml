@@ -78,6 +78,8 @@ spec:
     - name: PLEX_MEDIA_SERVER_TRANSCODER_MAX_SEGMENT_SIZE
       value: "1073741824"
     gateway:
+      additionalFQDNHostnames:
+      - plex.sulibot.com
       domain: sulibot.com
       enabled: true
       name: gateway-internal
