@@ -17,6 +17,7 @@ spec:
   install:
     createNamespace: true
   interval: 1h0m0s
+  releaseName: prowlarr
   targetNamespace: media
   values:
     affinity: {}

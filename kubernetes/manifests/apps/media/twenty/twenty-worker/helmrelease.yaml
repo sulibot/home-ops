@@ -17,6 +17,7 @@ spec:
   install:
     createNamespace: true
   interval: 1h0m0s
+  releaseName: twenty-worker
   targetNamespace: media
   values:
     affinity:
