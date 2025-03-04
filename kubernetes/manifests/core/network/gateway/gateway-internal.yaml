@@ -118,33 +118,34 @@ spec:
           requestRedirect:
             scheme: https
             port: 443
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: "allow-icmp-gateway"
-  namespace: "network"
-spec:
-  endpointSelector:
-    matchLabels:
-      cilium.io/gateway: "true"  # Correct label for Cilium Gateway
-  ingress:
-    - icmps:
-        - fields:
-            - family: IPv4
-              type: 8  # Echo request (ping)
-              code: 0
-        - fields:
-            - family: IPv6
-              type: 128  # Echo request for IPv6
-              code: 0
-  egress:
-    - icmps:
-        - fields:
-            - family: IPv4
-              type: 0  # Echo reply
-              code: 0
-        - fields:
-            - family: IPv6
-              type: 129  # Echo reply for IPv6
-              code: 0
+#---
+#apiVersion: "cilium.io/v2"
+#kind: CiliumNetworkPolicy
+#metadata:
+#  name: "allow-icmp-gateway"
+#  namespace: "network"
+#spec:
+#  endpointSelector:
+#    matchLabels:
+#      cilium.io/gateway: "true"  # Correct label for Cilium Gateway
+#  ingress:
+#    - icmps:
+#        - fields:
+#            - family: IPv4
+#              type: 8  # Echo request (ping)
+#              code: 0
+#        - fields:
+#            - family: IPv6
+#              type: 128  # Echo request for IPv6
+#              code: 0
+#  egress:
+#    - icmps:
+#        - fields:
+#            - family: IPv4
+#              type: 0  # Echo reply
+#              code: 0
+#        - fields:
+#            - family: IPv6
+#              type: 129  # Echo reply for IPv6
+#              code: 0
+#
