@@ -1,5 +1,30 @@
+----------------------------------------------------------------
+
+helm show values bitnami/grafana-loki > loki-values.yaml
+
+flux create source helm loki \
+  --url=https://charts.bitnami.com/bitnami \
+  --interval=1h \
+  --export > loki-helmrepository.yaml
+
+helm show values bitnami/grafana-loki > values.yaml
 
 
+flux create helmrelease grafana-loki \
+  --source=HelmRepository/loki.flux-system \
+  --release-name grafana-loki \
+  --namespace=flux-system \
+  --create-target-namespace=true \
+  --target-namespace observability \
+  --chart=grafana-loki \
+  --chart-version=4.7.6 \
+  --interval=1h \
+  --values=loki-values.yaml \
+  --export > loki-helmrelease.yaml
+
+----------------------------------------------------------------
+
+helm show values prometheus-community/kube-prometheus-stack > values.yaml
 
 flux create source helm prometheus \
   --url=https://prometheus-community.github.io/helm-charts \
