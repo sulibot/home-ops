@@ -37,6 +37,10 @@ spec:
         - /etc/alertmanager/config/*.tmpl
       enabled: true
       service:
+        ipFamilies:
+        - IPv4
+        - IPv6
+        ipFamilyPolicy: PreferDualStack
         port: 9093
         type: ClusterIP
     coreDns:
@@ -61,6 +65,10 @@ spec:
       ingress:
         enabled: false
       service:
+        ipFamilies:
+        - IPv4
+        - IPv6
+        ipFamilyPolicy: PreferDualStack
         port: 3000
         type: ClusterIP
     kubeApiServer:
@@ -103,6 +111,10 @@ spec:
         walCompression: true
       replicas: 1
       service:
+        ipFamilies:
+        - IPv4
+        - IPv6
+        ipFamilyPolicy: PreferDualStack
         port: 9090
         type: ClusterIP
     prometheusOperator:
