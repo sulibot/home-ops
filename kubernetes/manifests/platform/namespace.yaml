@@ -28,5 +28,10 @@ metadata:
   annotations:
     kubectl.kubernetes.io/preserves-pruning: "true"
 
-
-    
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  annotations:
+    kubectl.kubernetes.io/preserves-pruning: "true"
