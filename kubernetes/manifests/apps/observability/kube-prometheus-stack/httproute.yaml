@@ -1,0 +1,64 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  parentRefs:
+    - name: gateway-internal  # Your Cilium Gateway
+      namespace: network
+  hostnames:
+    - prometheus.sulibot.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: kube-prometheus-stack-prometheus
+          namespace: observability
+          port: 9090
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  parentRefs:
+    - name: gateway-internal
+      namespace: network
+  hostnames:
+    - grafana.sulibot.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: kube-prometheus-stack-grafana
+          namespace: observability
+          port: 3000
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: alertmanager
+  namespace: observability
+spec:
+  parentRefs:
+    - name: gateway-internal
+      namespace: network
+  hostnames:
+    - alertmanager.sulibot.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: kube-prometheus-stack-alertmanager
+          namespace: observability
+          port: 9093
