@@ -1,12 +1,42 @@
-flux create helmrelease ( $PWD ) \
-  --source HelmRepository/chart-template.flux-system \
+
+
+
+flux create source helm prometheus \
+  --url=https://prometheus-community.github.io/helm-charts \
+  --interval=1h \
+  --export > prometheus-helmrepository.yaml
+
+flux create helmrelease kube-prometheus-stack \
+  --source=HelmRepository/prometheus-community.flux-system \
+  --release-name kube-prometheus-stack \
   --namespace=flux-system \
   --create-target-namespace=true \
-  --target-namespace media \
+  --target-namespace observability \
+  --chart=kube-prometheus-stack \
+  --chart-version=69.7.2 \
+  --interval=1h \
+  --values=values.yaml \
+  --export > helmrelease.yaml
+
+
+
+
+
+
+
+
+
+
+flux create helmrelease $(basename "$PWD") \                         main[!] via 💠 default 
+  --source HelmRepository/chart-template.flux-system \
   --chart chart-template \
+  --release-name $(basename "$PWD") \
+  --namespace flux-system \
+  --create-target-namespace=true \
+  --target-namespace media \
   --chart-version 0.1.0 \
   --interval 1h \
-  --values=values.yaml \
+  --values values.yaml \
   --export > helmrelease.yaml
 ---------------
 
