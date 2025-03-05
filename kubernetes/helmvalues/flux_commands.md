@@ -26,7 +26,7 @@ flux create helmrelease grafana-loki \
 
 helm show values prometheus-community/kube-prometheus-stack > values.yaml
 
-flux create source helm prometheus \
+flux create source helm prometheus-community \
   --url=https://prometheus-community.github.io/helm-charts \
   --interval=1h \
   --export > prometheus-helmrepository.yaml
