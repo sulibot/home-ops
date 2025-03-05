@@ -15,4 +15,6 @@ resources:
   - intel-helmrepository.yaml
   - node-feature-discovery-helmrepository.yaml
   - ndf-helmrepository.yaml
+  - prometheus-helmrepository.yaml
+  - loki-helmrepository.yaml
 
