@@ -80,6 +80,10 @@ spec:
     prometheus:
       enabled: true
       prometheusSpec:
+        dnsConfig:
+          options:
+          - name: ndots
+            value: "1"
         resources:
           limits:
             memory: 4Gi
