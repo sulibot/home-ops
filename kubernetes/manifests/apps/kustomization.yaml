@@ -1,5 +1,4 @@
 resources:
  - media/
  - observability/
-# - kube-system/
  - volsync-system/
