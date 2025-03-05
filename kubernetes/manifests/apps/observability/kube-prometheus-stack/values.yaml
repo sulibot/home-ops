@@ -36,6 +36,10 @@ alertmanager:
   service:
     type: ClusterIP
     port: 9093
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies:
+      - IPv4
+      - IPv6
 
 grafana:
   enabled: true
@@ -44,6 +48,10 @@ grafana:
   service:
     type: ClusterIP
     port: 3000
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies:
+      - IPv4
+      - IPv6
   ingress:
     enabled: false
 
@@ -62,6 +70,10 @@ prometheus:
   service:
     type: ClusterIP
     port: 9090
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies:
+      - IPv4
+      - IPv6
   prometheusSpec:
     retention: 10d
     walCompression: true
