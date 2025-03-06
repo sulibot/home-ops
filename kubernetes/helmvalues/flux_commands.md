@@ -1,3 +1,6 @@
+
+
+
 ----------------------------------------------------------------
 
 helm show values bitnami/grafana-loki > loki-values.yaml
@@ -330,7 +333,8 @@ flux create source helm immich \
 ```
 flux create helmrelease immich \
   --source HelmRepository/immich.flux-system \
-  --namespace=flux-system \
+  --release-name immich \
+  --namespace flux-system \
   --create-target-namespace=true \
   --target-namespace media \
   --chart immich \
@@ -338,6 +342,8 @@ flux create helmrelease immich \
   --values=values.yaml \
   --interval 1h \
   --export > helmrelease.yaml
+
+  
 
 
   --values=<(sops -d values.yaml) \
