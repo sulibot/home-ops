@@ -3,5 +3,5 @@ resources:
   - externalsecret.yaml
   - immich-pg.yaml
   - external-postgres-service.yaml
-#  - helmrelease.yaml
+  - helmrelease.yaml
 
