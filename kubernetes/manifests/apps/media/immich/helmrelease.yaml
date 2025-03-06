@@ -18,7 +18,7 @@ spec:
     createNamespace: true
   interval: 1h0m0s
   releaseName: immich
-  targetNamespace: media
+  targetNamespace: immich
   values:
     envFrom:
     - secretRef:
