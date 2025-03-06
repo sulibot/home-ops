@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cephfs-pvc-media
+  namespace: immich
+spec:
+  storageClassName: cephfs-content-sc-retain
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 60Ti
+  volumeName: cephfs-pv-media-ns-immich
