@@ -58,11 +58,7 @@ server:
         - hosts:
             - immich.sulibot.com
           secretName: immich-tls  # ✅ Cert-Manager will manage this secret
-  env:
-    REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
-  envFrom:
-    - secretRef:
-        name: immich-config-secrets
+
 
 machine-learning:
   enabled: true
