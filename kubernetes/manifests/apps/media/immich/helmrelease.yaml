@@ -32,7 +32,7 @@ spec:
           template: '{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}'
         trash:
           days: 30
-          enabled: false
+          enabled: true
       metrics:
         enabled: true
       persistence:
@@ -54,6 +54,11 @@ spec:
           type: emptyDir
     server:
       enabled: true
+      env:
+        REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
+      envFrom:
+      - secretRef:
+          name: immich-config-secrets
       image:
         pullPolicy: IfNotPresent
         repository: ghcr.io/immich-app/immich-server
