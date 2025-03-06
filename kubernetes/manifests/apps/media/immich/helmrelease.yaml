@@ -7,16 +7,17 @@ metadata:
 spec:
   chart:
     spec:
-      chart: chart-template
+      chart: immich
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
-        name: chart-template
+        name: immich
         namespace: flux-system
-      version: 0.1.0
+      version: 0.8.5
   install:
     createNamespace: true
   interval: 1h0m0s
+  releaseName: immich
   targetNamespace: media
   values:
     envFrom:
