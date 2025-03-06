@@ -91,6 +91,9 @@ prometheus:
           resources:
             requests:
               storage: 50Gi
+    storageClass:
+      mountOptions:
+        - "nofsc"
 #    dnsConfig:
 #      options:
 #        - name: ndots

@@ -95,6 +95,9 @@ spec:
             cpu: 500m
             memory: 2Gi
         retention: 10d
+        storageClass:
+          mountOptions:
+          - nofsc
         storageSpec:
           volumeClaimTemplate:
             spec:
