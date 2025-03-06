@@ -97,7 +97,7 @@ spec:
         retention: 10d
         storageClass:
           mountOptions:
-          - nofsc
+          - nofscache
         storageSpec:
           volumeClaimTemplate:
             spec:

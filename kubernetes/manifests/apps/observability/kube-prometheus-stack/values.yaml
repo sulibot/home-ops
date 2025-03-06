@@ -93,7 +93,7 @@ prometheus:
               storage: 50Gi
     storageClass:
       mountOptions:
-        - "nofsc"
+        - "nofscache"
 #    dnsConfig:
 #      options:
 #        - name: ndots
