@@ -103,7 +103,7 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-              storageClassName: cephfs-content-sc-retain
+              storageClassName: cephfs-csi-sc-retain
         walCompression: true
       replicas: 1
       service:

@@ -86,7 +86,7 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: cephfs-content-sc-retain
+          storageClassName: cephfs-csi-sc-retain
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
