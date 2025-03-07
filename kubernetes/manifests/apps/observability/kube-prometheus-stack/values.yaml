@@ -91,11 +91,11 @@ prometheus:
           resources:
             requests:
               storage: 50Gi
-#          mountOptions:
-#            - noatime
-#            - nodiratime
-#            - readdir_max_bytes=1048576
-#            - _netdev
+          mountOptions:
+            - noatime
+            - nodiratime
+            - readdir_max_bytes=1048576
+            - _netdev
 #    dnsConfig:
 #      options:
 #        - name: ndots
