@@ -1,3 +1,7 @@
+# This chart relies on the common library chart from bjw-s
+# You can find it at https://github.com/bjw-s/helm-charts/tree/main/charts/library/common
+# Refer there for more detail about the supported values
+
 # These entries are shared between all the Immich components
 
 envFrom:
@@ -28,7 +32,7 @@ server:
   image:
     repository: ghcr.io/immich-app/immich-server
     pullPolicy: IfNotPresent
-  # Disable traditional Ingress since we'll use the API Gateway
+  # Disable the traditional Ingress as we are using the Gateway API
   ingress:
     main:
       enabled: false
@@ -41,14 +45,13 @@ server:
       hosts:
         - host: immich.sulibot.com
           paths:
-            - path: "/"
+            - path: /
               pathType: Prefix
       tls:
         - hosts:
             - immich.sulibot.com
           secretName: immich-tls
-
-  # Enable API Gateway support using Cilium
+  # Enable the Cilium API Gateway
   gatewayAPI:
     enabled: true
     className: cilium
@@ -57,14 +60,12 @@ server:
     tls:
       enabled: true
       secretName: immich-tls
-
-  # Configure the service to prefer dual-stack
+  # Configure the service for dual-stack support
   service:
     ipFamilyPolicy: PreferDualStack
     ipFamilies:
       - IPv4
       - IPv6
-
   env:
     REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
     DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
