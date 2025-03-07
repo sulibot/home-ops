@@ -20,78 +20,102 @@ spec:
   releaseName: immich
   targetNamespace: immich
   values:
-    envFrom:
-    - secretRef:
-        name: immich-config-secrets
-    image:
-      tag: v1.119.0
-    immich:
-      configuration:
-        storageTemplate:
+    apiVersion: helm.toolkit.fluxcd.io/v2
+    kind: HelmRelease
+    metadata:
+      labels:
+        kustomize.toolkit.fluxcd.io/name: apps
+        kustomize.toolkit.fluxcd.io/namespace: flux-system
+      name: immich
+      namespace: flux-system
+    spec:
+      chart:
+        spec:
+          chart: immich
+          reconcileStrategy: ChartVersion
+          sourceRef:
+            kind: HelmRepository
+            name: immich
+            namespace: flux-system
+          version: 0.8.5
+      install:
+        createNamespace: true
+      interval: 1h0m0s
+      releaseName: immich
+      targetNamespace: immich
+      values:
+        envFrom:
+        - secretRef:
+            name: immich-config-secrets
+        image:
+          tag: v1.119.0
+        immich:
+          configuration:
+            storageTemplate:
+              enabled: true
+              template: '{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}'
+            trash:
+              days: 30
+              enabled: true
+          metrics:
+            enabled: true
+          persistence:
+            library:
+              existingClaim: cephfs-pvc-media
+        machine-learning:
           enabled: true
-          template: '{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}'
-        trash:
-          days: 30
+          env:
+            TRANSFORMERS_CACHE: /cache
+          image:
+            pullPolicy: IfNotPresent
+            repository: ghcr.io/immich-app/immich-machine-learning
+          persistence:
+            cache:
+              accessMode: ReadWriteMany
+              enabled: true
+              size: 10Gi
+              storageClass: cephfs-csi-sc
+              type: emptyDir
+        server:
           enabled: true
-      metrics:
-        enabled: true
-      persistence:
-        library:
-          existingClaim: cephfs-pvc-media
-    machine-learning:
-      enabled: true
-      env:
-        TRANSFORMERS_CACHE: /cache
-      image:
-        pullPolicy: IfNotPresent
-        repository: ghcr.io/immich-app/immich-machine-learning
-      persistence:
-        cache:
-          accessMode: ReadWriteMany
-          enabled: true
-          size: 10Gi
-          storageClass: cephfs-csi-sc
-          type: emptyDir
-    server:
-      enabled: true
-      env:
-        DB_DATABASE_NAME: immich
-        DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
-        REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
-      envFrom:
-      - secretRef:
-          name: immich-config-secrets
-      gatewayAPI:
-        className: cilium
-        enabled: true
-        hostnames:
-        - immich.sulibot.com
-        tls:
-          enabled: true
-          secretName: immich-tls
-      image:
-        pullPolicy: IfNotPresent
-        repository: ghcr.io/immich-app/immich-server
-      ingress:
-        main:
-          annotations:
-            cert-manager.io/cluster-issuer: letsencrypt-production
-            ingress.cilium.io/loadbalancer-mode: shared
-            ingress.cilium.io/proxy-body-size: "0"
-            kubernetes.io/ingress.class: cilium
-          className: cilium
-          enabled: false
-          hosts:
-          - host: immich.sulibot.com
-            paths:
-            - path: /
-              pathType: Prefix
-          tls:
-          - hosts:
+          env:
+            DB_DATABASE_NAME: immich
+            DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
+            REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
+          envFrom:
+          - secretRef:
+              name: immich-config-secrets
+          gatewayAPI:
+            className: cilium
+            enabled: true
+            hostnames:
             - immich.sulibot.com
-            secretName: immich-tls
-      service:
-        ipFamilies:
-        - IPv4
-        - IPv6
-        ipFamilyPolicy: PreferDualStack
+            tls:
+              enabled: true
+              secretName: immich-tls
+          image:
+            pullPolicy: IfNotPresent
+            repository: ghcr.io/immich-app/immich-server
+          ingress:
+            main:
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt-production
+                ingress.cilium.io/loadbalancer-mode: shared
+                ingress.cilium.io/proxy-body-size: "0"
+                kubernetes.io/ingress.class: cilium
+              className: cilium
+              enabled: false
+              hosts:
+              - host: immich.sulibot.com
+                paths:
+                - path: /
+                  pathType: Prefix
+              tls:
+              - hosts:
+                - immich.sulibot.com
+                secretName: immich-tls
+          service:
+            ipFamilies:
+            - IPv4
+            - IPv6
+            ipFamilyPolicy: PreferDualStack
