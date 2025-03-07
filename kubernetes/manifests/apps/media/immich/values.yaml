@@ -42,7 +42,7 @@ server:
     pullPolicy: IfNotPresent
   ingress:
     main:
-      enabled: true  # ✅ Enable Ingress for Cilium
+      enabled: false  # ✅ Enable Ingress for Cilium
       className: cilium  # ✅ Use Cilium as the Ingress class
       annotations:
         kubernetes.io/ingress.class: "cilium"  # ✅ Required for Cilium

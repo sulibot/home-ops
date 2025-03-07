@@ -72,7 +72,7 @@ spec:
             ingress.cilium.io/proxy-body-size: "0"
             kubernetes.io/ingress.class: cilium
           className: cilium
-          enabled: true
+          enabled: false
           hosts:
           - host: immich.sulibot.com
             paths:
