@@ -55,6 +55,7 @@ spec:
     server:
       enabled: true
       env:
+        DB_DATABASE_NAME: immich
         DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
         REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
       envFrom:
