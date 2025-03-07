@@ -61,12 +61,12 @@ server:
       enabled: true
       secretName: immich-tls
   # Configure the service for dual-stack support
-  service:
-    ipFamilyPolicy: PreferDualStack
-    ipFamilies:
-      - IPv4
-      - IPv6
-    ports: {}  # Added to satisfy the expected type in common templates
+#  service:
+#    ipFamilyPolicy: PreferDualStack
+#    ipFamilies:
+#      - IPv4
+#      - IPv6
+#    ports: {}  # Added to satisfy the expected type in common templates
   env:
     REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
     DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
