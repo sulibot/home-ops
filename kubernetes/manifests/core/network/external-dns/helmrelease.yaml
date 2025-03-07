@@ -79,7 +79,9 @@ spec:
           timeoutSeconds: 5
     registry: txt
     sources:
-    - gateway
+    - gateway-httproute
+    - gateway-udproute
+    - gateway-tcproute
     - ingress
     - service
     - crd
