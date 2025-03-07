@@ -1,90 +1,102 @@
-# This chart relies on the common library chart from bjw-s
-# You can find it at https://github.com/bjw-s/helm-charts/tree/main/charts/library/common
-# Refer there for more detail about the supported values
-
-# These entries are shared between all the Immich components
-
-envFrom:
-  - secretRef:
-      name: immich-config-secrets
-
-image:
-  tag: v1.119.0
-
-immich:
-  metrics:
-    enabled: true
-  persistence:
-    library:
-      existingClaim: cephfs-pvc-media
-  configuration:
-    trash:
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: immich
+  namespace: flux-system
+  labels:
+    kustomize.toolkit.fluxcd.io/name: apps
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: immich
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: immich
+        namespace: flux-system
+      version: 0.8.5
+  install:
+    createNamespace: true
+  interval: 1h0m0s
+  releaseName: immich
+  targetNamespace: immich
+  values:
+    # Shared values across all Immich components
+    envFrom:
+      - secretRef:
+          name: immich-config-secrets
+    image:
+      tag: v1.119.0
+    immich:
+      configuration:
+        trash:
+          enabled: true
+          days: 30
+        storageTemplate:
+          enabled: true
+          template: "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
+      metrics:
+        enabled: true
+      persistence:
+        library:
+          existingClaim: cephfs-pvc-media
+    machine-learning:
       enabled: true
-      days: 30
-    storageTemplate:
+      env:
+        TRANSFORMERS_CACHE: /cache
+      image:
+        repository: ghcr.io/immich-app/immich-machine-learning
+        pullPolicy: IfNotPresent
+      persistence:
+        cache:
+          enabled: true
+          size: 10Gi
+          type: emptyDir
+          accessMode: ReadWriteMany
+          storageClass: cephfs-csi-sc
+    server:
       enabled: true
-      template: "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
-
-# Immich components
-
-server:
-  enabled: true
-  image:
-    repository: ghcr.io/immich-app/immich-server
-    pullPolicy: IfNotPresent
-  # Disable the traditional Ingress as we are using the Gateway API
-  ingress:
-    main:
-      enabled: false
-      className: cilium
-      annotations:
-        kubernetes.io/ingress.class: "cilium"
-        ingress.cilium.io/loadbalancer-mode: shared
-        ingress.cilium.io/proxy-body-size: "0"
-        cert-manager.io/cluster-issuer: "letsencrypt-production"
-      hosts:
-        - host: immich.sulibot.com
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - hosts:
-            - immich.sulibot.com
+      env:
+        REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
+        DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
+        DB_DATABASE_NAME: immich
+      envFrom:
+        - secretRef:
+            name: immich-config-secrets
+      # Enable Cilium API Gateway instead of the traditional Ingress
+      gatewayAPI:
+        enabled: true
+        className: cilium
+        hostnames:
+          - immich.sulibot.com
+        tls:
+          enabled: true
           secretName: immich-tls
-  # Enable the Cilium API Gateway
-  gatewayAPI:
-    enabled: true
-    className: cilium
-    hostnames:
-      - immich.sulibot.com
-    tls:
-      enabled: true
-      secretName: immich-tls
-  # Configure the service for dual-stack support
-  service:
-    ipFamilyPolicy: PreferDualStack
-    ipFamilies:
-      - IPv4
-      - IPv6
-  env:
-    REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
-    DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
-    DB_DATABASE_NAME: immich
-  envFrom:
-    - secretRef:
-        name: immich-config-secrets
-
-machine-learning:
-  enabled: true
-  image:
-    repository: ghcr.io/immich-app/immich-machine-learning
-    pullPolicy: IfNotPresent
-  env:
-    TRANSFORMERS_CACHE: /cache
-  persistence:
-    cache:
-      enabled: true
-      size: 10Gi
-      type: emptyDir
-      accessMode: ReadWriteMany
-      storageClass: cephfs-csi-sc
+      image:
+        repository: ghcr.io/immich-app/immich-server
+        pullPolicy: IfNotPresent
+      ingress:
+        main:
+          enabled: false
+          className: cilium
+          annotations:
+            kubernetes.io/ingress.class: "cilium"
+            ingress.cilium.io/loadbalancer-mode: shared
+            ingress.cilium.io/proxy-body-size: "0"
+            cert-manager.io/cluster-issuer: "letsencrypt-production"
+          hosts:
+            - host: immich.sulibot.com
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - hosts:
+                - immich.sulibot.com
+              secretName: immich-tls
+      # Corrected service configuration for dual-stack support:
+      service:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv4
+          - IPv6
