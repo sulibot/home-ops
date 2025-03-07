@@ -4,5 +4,5 @@ resources:
   - immich-pg.yaml
   - external-postgres-service.yaml
   - helmrelease.yaml
-  - immich-httproute.yaml
+#  - immich-httproute.yaml
 

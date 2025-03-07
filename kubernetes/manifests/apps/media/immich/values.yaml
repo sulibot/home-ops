@@ -1,7 +1,3 @@
-## This chart relies on the common library chart from bjw-s
-## You can find it at https://github.com/bjw-s/helm-charts/tree/main/charts/library/common
-## Refer there for more detail about the supported values
-
 # These entries are shared between all the Immich components
 
 envFrom:
@@ -13,18 +9,10 @@ image:
 
 immich:
   metrics:
-    # Enabling this will create the service monitors needed to monitor immich with the prometheus operator
     enabled: true
   persistence:
-    # Main data store for all photos shared between different components.
     library:
-      # Automatically creating the library volume is not supported by this chart
-      # You have to specify an existing PVC to use
-      existingClaim:
-        cephfs-pvc-media
-  # configuration is immich-config.json converted to yaml
-  # ref: https://immich.app/docs/install/config-file/
-  #
+      existingClaim: cephfs-pvc-media
   configuration:
     trash:
       enabled: true
@@ -40,15 +28,16 @@ server:
   image:
     repository: ghcr.io/immich-app/immich-server
     pullPolicy: IfNotPresent
+  # Disable traditional Ingress since we'll use the API Gateway
   ingress:
     main:
-      enabled: false  # ✅ Enable Ingress for Cilium
-      className: cilium  # ✅ Use Cilium as the Ingress class
+      enabled: false
+      className: cilium
       annotations:
-        kubernetes.io/ingress.class: "cilium"  # ✅ Required for Cilium
+        kubernetes.io/ingress.class: "cilium"
         ingress.cilium.io/loadbalancer-mode: shared
-        ingress.cilium.io/proxy-body-size: "0"  # ✅ Remove body limit for large file uploads
-        cert-manager.io/cluster-issuer: "letsencrypt-production"  # ✅ Cert-Manager TLS support
+        ingress.cilium.io/proxy-body-size: "0"
+        cert-manager.io/cluster-issuer: "letsencrypt-production"
       hosts:
         - host: immich.sulibot.com
           paths:
@@ -57,12 +46,29 @@ server:
       tls:
         - hosts:
             - immich.sulibot.com
-          secretName: immich-tls  # ✅ Cert-Manager will manage this secret
+          secretName: immich-tls
+
+  # Enable API Gateway support using Cilium
+  gatewayAPI:
+    enabled: true
+    className: cilium
+    hostnames:
+      - immich.sulibot.com
+    tls:
+      enabled: true
+      secretName: immich-tls
+
+  # Configure the service to prefer dual-stack
+  service:
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies:
+      - IPv4
+      - IPv6
+
   env:
     REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
     DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
     DB_DATABASE_NAME: immich
-
   envFrom:
     - secretRef:
         name: immich-config-secrets
@@ -78,7 +84,6 @@ machine-learning:
     cache:
       enabled: true
       size: 10Gi
-      # Optional: Set this to pvc to avoid downloading the ML models every start.
       type: emptyDir
       accessMode: ReadWriteMany
       storageClass: cephfs-csi-sc
