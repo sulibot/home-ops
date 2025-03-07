@@ -60,6 +60,8 @@ server:
           secretName: immich-tls  # ✅ Cert-Manager will manage this secret
   env:
     REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
+    DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
+
   envFrom:
     - secretRef:
         name: immich-config-secrets
