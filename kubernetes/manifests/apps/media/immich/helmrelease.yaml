@@ -90,9 +90,3 @@ spec:
           - hosts:
             - immich.sulibot.com
             secretName: immich-tls
-      service:
-        ipFamilies:
-        - IPv4
-        - IPv6
-        ipFamilyPolicy: PreferDualStack
-        ports: {}
