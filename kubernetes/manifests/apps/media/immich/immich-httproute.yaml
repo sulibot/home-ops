@@ -1,0 +1,37 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: immich
+  namespace: immich
+  annotations:
+    meta.helm.sh/release-name: immich
+    meta.helm.sh/release-namespace: immich
+  labels:
+    app.kubernetes.io/component: httproute
+    app.kubernetes.io/instance: immich
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: immich
+    app.kubernetes.io/version: v1.119.0
+    helm.sh/chart: immich-0.1.0
+    helm.toolkit.fluxcd.io/name: immich
+    helm.toolkit.fluxcd.io/namespace: flux-system
+spec:
+  hostnames:
+    - immich.sulibot.com
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: gateway-internal
+      namespace: network
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: immich-server
+          namespace: immich
+          port: 3001
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
