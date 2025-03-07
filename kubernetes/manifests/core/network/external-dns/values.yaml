@@ -4,7 +4,7 @@ fullnameOverride: external-dns-mikrotik
 logLevel: debug
 logFormat: text
 interval: 1s
-sources: ["gateway","ingress", "service", "crd"]
+sources: ["gateway-httproute","gateway-udproute","gateway-tcproute","ingress", "service", "crd"]
 registry: txt
 txtOwnerId: default
 txtPrefix: k8s.
