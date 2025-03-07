@@ -61,6 +61,14 @@ spec:
       envFrom:
       - secretRef:
           name: immich-config-secrets
+      gatewayAPI:
+        className: cilium
+        enabled: true
+        hostnames:
+        - immich.sulibot.com
+        tls:
+          enabled: true
+          secretName: immich-tls
       image:
         pullPolicy: IfNotPresent
         repository: ghcr.io/immich-app/immich-server
@@ -82,3 +90,8 @@ spec:
           - hosts:
             - immich.sulibot.com
             secretName: immich-tls
+      service:
+        ipFamilies:
+        - IPv4
+        - IPv6
+        ipFamilyPolicy: PreferDualStack
