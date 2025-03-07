@@ -67,25 +67,6 @@ server:
 #      - IPv4
 #      - IPv6
 #    ports: {}  # Added to satisfy the expected type in common templates
-  route:
-    immich:
-      enabled: true
-      kind: HTTPRoute
-      parentRefs:
-        - kind: Gateway
-          name: gateway-internal
-          namespace: network
-      hostnames:
-        - immich.sulibot.com
-      rules:
-        - backendRefs:
-            - kind: Service
-              name: immich-server
-              port: 2283
-          matches:
-            - path:
-                type: PathPrefix
-                value: /  
   
   env:
     REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
