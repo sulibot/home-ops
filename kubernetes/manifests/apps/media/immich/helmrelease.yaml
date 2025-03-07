@@ -90,3 +90,22 @@ spec:
           - hosts:
             - immich.sulibot.com
             secretName: immich-tls
+      route:
+        immich:
+          enabled: true
+          hostnames:
+          - immich.sulibot.com
+          kind: HTTPRoute
+          parentRefs:
+          - kind: Gateway
+            name: gateway-internal
+            namespace: network
+          rules:
+          - backendRefs:
+            - kind: Service
+              name: immich-server
+              port: 2283
+            matches:
+            - path:
+                type: PathPrefix
+                value: /
