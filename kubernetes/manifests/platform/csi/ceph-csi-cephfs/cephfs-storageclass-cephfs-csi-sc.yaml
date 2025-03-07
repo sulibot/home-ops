@@ -10,7 +10,8 @@ parameters:
   fsName: kubernetes
   pool: kubernetes_data
   mounter: kernel
-  kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576
+  kernelMountOptions:  noatime,nodiratime,readdir_max_bytes=1048576,_netdev
+  #kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
