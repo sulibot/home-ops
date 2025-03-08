@@ -27,7 +27,7 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: immich-server
+          name: immich-service
           namespace: immich
           port: 2283
           weight: 1
