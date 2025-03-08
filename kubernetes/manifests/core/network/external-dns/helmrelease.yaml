@@ -82,7 +82,6 @@ spec:
     - gateway-httproute
     - gateway-udproute
     - gateway-tcproute
-    - ingress
     - service
     - crd
     txtOwnerId: default
