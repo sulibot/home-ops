@@ -18,6 +18,7 @@ metadata:
 spec:
   hostnames:
     - immich.sulibot.com
+    - photos.sulibot.com
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
