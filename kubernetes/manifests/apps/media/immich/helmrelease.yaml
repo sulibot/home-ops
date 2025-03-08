@@ -57,7 +57,7 @@ spec:
       env:
         DB_DATABASE_NAME: immich
         DB_HOSTNAME: immich-pg-rw.immich.svc.cluster.local
-        IMMICH_HOST: 0.0.0.0
+        IMMICH_HOST: '::'
         IMMICH_PORT: "2283"
         REDIS_HOSTNAME: redis-redis-node-0.redis-redis-headless.redis.svc.cluster.local
       envFrom:
