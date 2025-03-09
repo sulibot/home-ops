@@ -32,25 +32,6 @@ server:
   image:
     repository: ghcr.io/immich-app/immich-server
     pullPolicy: IfNotPresent
-  # Disable the traditional Ingress as we are using the Gateway API
-  ingress:
-    main:
-      enabled: false
-      className: cilium
-      annotations:
-        kubernetes.io/ingress.class: "cilium"
-        ingress.cilium.io/loadbalancer-mode: shared
-        ingress.cilium.io/proxy-body-size: "0"
-        cert-manager.io/cluster-issuer: "letsencrypt-production"
-      hosts:
-        - host: immich.sulibot.com
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - hosts:
-            - immich.sulibot.com
-          secretName: immich-tls
   # Enable the Cilium API Gateway
   gatewayAPI:
     enabled: true
