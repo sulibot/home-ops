@@ -1,6 +1,11 @@
 # Local variable to derive base VM ID from IPv4 address prefix
 locals {
   base_vmid = replace(var.ipv4_address_prefix, ".", "")
+  ssh_hosts = {
+    pve01 = "fd00:255::1"
+    pve02 = "fd00:255::2"
+    pve03 = "fd00:255::3"
+  }
 }
 
 resource "proxmox_virtual_environment_vm" "control_plane" {
@@ -9,8 +14,8 @@ resource "proxmox_virtual_environment_vm" "control_plane" {
 
   # Distribute VMs across nodes based on index
   node_name = count.index % 3 == 1 ? "pve02" : count.index % 3 == 2 ? "pve03" : "pve01"
-  
-  vm_id         = "${local.base_vmid}${count.index + var.cp_octet_start}"
+
+  vm_id = "${var.vlan_id}${format("%04d", count.index + var.cp_octet_start)}"
   description   = "Managed by Terraform"
   tags          = ["debian", "k8s-control-plane", "${var.name_prefix}", "terraform"]
 
@@ -53,10 +58,10 @@ resource "proxmox_virtual_environment_vm" "control_plane" {
 
   initialization {
     ip_config {
-      ipv4 {
-        address = "${var.ipv4_address_prefix}${count.index + var.cp_octet_start}/${var.ipv4_address_subnet}"
-        gateway = var.ipv4_gateway
-      }
+      #ipv4 {
+      #  address = "${var.ipv4_address_prefix}${count.index + var.cp_octet_start}/${var.ipv4_address_subnet}"
+      #  gateway = var.ipv4_gateway
+      #}
       ipv6 {
         address = "${var.ipv6_address_prefix}${count.index + var.cp_octet_start}/${var.ipv6_address_subnet}"
         gateway = var.ipv6_gateway
@@ -93,7 +98,8 @@ resource "proxmox_virtual_environment_vm" "worker" {
   # Distribute VMs across nodes based on index
   node_name = count.index % 3 == 1 ? "pve02" : count.index % 3 == 2 ? "pve03" : "pve01"
 
-  vm_id       = "${local.base_vmid}${count.index + var.wkr_octet_start}"
+  vm_id = "${var.vlan_id}${format("%04d", count.index + var.wkr_octet_start)}"
+
   description = "Managed by Terraform"
   tags          = ["debian", "k8s-worker", "${var.name_prefix}", "terraform"]
 
@@ -155,10 +161,10 @@ resource "proxmox_virtual_environment_vm" "worker" {
   
   initialization {
     ip_config {
-      ipv4 {
-        address = "${var.ipv4_address_prefix}${count.index + var.wkr_octet_start}/${var.ipv4_address_subnet}"
-        gateway = var.ipv4_gateway
-      }
+      #ipv4 {
+      #  address = "${var.ipv4_address_prefix}${count.index + var.wkr_octet_start}/${var.ipv4_address_subnet}"
+      #  gateway = var.ipv4_gateway
+      #}
       ipv6 {
         address = "${var.ipv6_address_prefix}${count.index + var.wkr_octet_start}/${var.ipv6_address_subnet}"
         gateway = var.ipv6_gateway

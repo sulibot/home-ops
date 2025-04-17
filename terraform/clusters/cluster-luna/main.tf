@@ -2,7 +2,7 @@
 locals {
   dns_server  = ["10.0.0.1", "fd00::1"]
   dns_domain  = "sulibot.com"
-  datastore   = "local-zfs"
+  datastore   = "local"
   vlan_common = {
     cluster1 = 102
     cluster2 = 122

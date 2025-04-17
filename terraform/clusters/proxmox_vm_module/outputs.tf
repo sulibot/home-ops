@@ -7,11 +7,11 @@ locals {
     [for i in range(var.wkr_quantity) : 
       format("${var.name_prefix}-worker-%d            ansible_host=%s%d    ansible_user=root", i + 1, var.ipv6_address_prefix, i + var.wkr_octet_start)
     ],
-    ["\n[kube_control_plane]"],
+    ["\n[controlplane]"],
     [for i in range(var.cp_quantity) : 
       format("${var.name_prefix}-controlplane-%d      ansible_host=%s%d    ansible_user=root", i + 1, var.ipv6_address_prefix, i + var.cp_octet_start)
     ],
-    ["\n[kube_worker]"],
+    ["\n[worker]"],
     [for i in range(var.wkr_quantity) : 
       format("${var.name_prefix}-worker-%d            ansible_host=%s%d    ansible_user=root", i + 1, var.ipv6_address_prefix, i + var.wkr_octet_start)
     ],
@@ -21,9 +21,9 @@ locals {
     ) : 
       format("${var.name_prefix}-controlplane-%d      ansible_host=%s%d    ansible_user=root", i + 1, var.ipv6_address_prefix, i + var.cp_octet_start)
     ],
-    ["\n[k8s_cluster:children]"],
-    ["kube_worker"],
-    ["kube_control_plane"]
+    ["\n[cluster:children]"],
+    ["worker"],
+    ["controlplane"]
   ))
 }
 
