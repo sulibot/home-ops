@@ -1,7 +1,7 @@
 locals {
-  dns_server  = ["10.0.0.1", "fd00::1"]
+  dns_server  = ["fd00:8::1"]
   dns_domain  = "sulibot.com"
-  datastore   = "local-zfs"
+  datastore   = "local"
 
   vlan_common = {
     "cluster-sol"  = 101
@@ -12,9 +12,9 @@ locals {
   ip_config = {
     "cluster-sol" = {
       ipv4_prefix   = "10.10.101."
-      ipv4_gateway  = "10.10.101.1"
+      ipv4_gateway  = "10.10.101.254"
       ipv6_prefix   = "fd00:101::"
-      ipv6_gateway  = "fd00:101::1"
+      ipv6_gateway  = "fd00:101::fffd"
     }
         "cluster-luna" = {
       ipv4_prefix   = "10.10.102."

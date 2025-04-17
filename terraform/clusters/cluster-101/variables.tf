@@ -19,10 +19,14 @@ variable "latest_debian_12_bookworm_qcow2_img_url" {
   default     = "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 }
 
-#variable "vm_password" {
-#  description = "The plain-text password to be hashed for cloud-init users."
-#  type        = string
-#}
+variable "latest_debian_12_bookworm_nocloud_qcow2_img_url" {
+  type        = string
+  description = "The URL for the latest Debian 12 Bookworm qcow2 image"
+  default     = "https://cloud.debian.org/images/cloud/bookworm-backports/latest/debian-12-backports-nocloud-amd64.qcow2"
+}
+
+
+
 
 variable "release_20240725_ubuntu_24_noble_lxc_img_url" {
   type        = string
@@ -41,5 +45,3 @@ variable "vm_host" {
   description = ""
   default     = "node"
 }
-
-

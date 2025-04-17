@@ -1,7 +1,7 @@
 data "external" "password_hash" {
   program = [
     "sh", "-c", 
-    "echo '{\"password\": \"'$(openssl passwd -6 \"${var.vm_password}\")'\"}'"
+    "echo '{\"password\": \"'$(openssl passwd -6 \"${local.vm_password}\")'\"}'"
   ]
 }
 
@@ -26,14 +26,17 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
     users:
       - default
       - name: debian
+        passwd: ${local.vm_password_hashed}
         groups: sudo
         shell: /bin/bash
         ssh_authorized_keys:
           - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com
         sudo: ALL=(ALL) NOPASSWD:ALL
         lock_passwd: false
+        
     
       - name: root
+        passwd: ${local.vm_password_hashed}
         shell: /bin/bash
         lock_passwd: false
         ssh_authorized_keys:
