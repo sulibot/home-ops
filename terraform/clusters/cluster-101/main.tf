@@ -2,9 +2,19 @@ module "common" {
   source = "../common"
 }
 
+#data "sops_file" "auth-secrets" {
+#  source_file = "${path.module}/../common/secrets.sops.yaml"
+#}
+
+#locals {
+#  vm_password = data.sops_file.auth-secrets.data["vm_password"]
+#}
 module "cluster1" {
   source                = "../proxmox_vm_module"
   name_prefix           = "sol"
+
+
+  vm_password_hashed = module.common.vm_password_hashed
 
   # Control Plane Configuration
   cp_quantity           = 3
@@ -13,7 +23,7 @@ module "cluster1" {
   cp_disk_size          = 30
 
   # Worker Node Configuration
-  wkr_quantity          = 3
+  wkr_quantity          = 3  
   wkr_cpus              = 4
   wkr_memory            = 8192
   wkr_disk_size         = 30
