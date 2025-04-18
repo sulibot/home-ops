@@ -1,8 +1,6 @@
 provider "proxmox" {
-  endpoint  = data.sops_file.auth-secrets.data["pve_endpoint"]
-  username    = "root@pam"
-  password    = "${data.sops_file.auth-secrets.data["pve_password"]}"
-  api_token = "${data.sops_file.auth-secrets.data["pve_api_token_id"]}=${data.sops_file.auth-secrets.data["pve_api_token_secret"]}"
+  endpoint  = module.common.pve_endpoint
+  api_token = "${module.common.pve_api_token_id}=${module.common.pve_api_token_secret}"
   insecure  = true
   tmp_dir   = "/var/tmp"
 
@@ -27,6 +25,6 @@ terraform {
   }
 }
 
-data "sops_file" "auth-secrets" {
-  source_file = "${path.module}/../common/secrets.sops.yaml"
-}
+#data "sops_file" "auth-secrets" {
+#  source_file = "${path.module}/../common/secrets.sops.yaml"
+#}

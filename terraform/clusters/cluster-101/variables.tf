@@ -26,8 +26,6 @@ variable "latest_debian_12_bookworm_nocloud_qcow2_img_url" {
 }
 
 
-
-
 variable "release_20240725_ubuntu_24_noble_lxc_img_url" {
   type        = string
   description = "The URL for the Ubuntu 24.04 LXC image"
