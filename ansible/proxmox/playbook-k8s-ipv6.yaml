@@ -1,18 +1,17 @@
 ---
-- name: Bootstrap & join controlplane and workers (IPv6‑only)
-  hosts: all
+- name: Bootstrap primary controlplane (IPv6‑only)
+  hosts: "{{ groups['controlplane'][0] }}"
   become: true
-
   vars:
+    # groups in your inventory
     controlplane_group: controlplane
-    worker_group:        worker
+    worker_group:      worker
 
-    # no port here; Cilium BGP will advertise this
+    # no port here; Cilium BGP will advertise it
     k8s_api_vip:        "fd00:101::ac"
     k8s_version_major:  "1.32"
     ipv6_pod_cidr:      "fd00:101:44::/60"
     ipv6_service_cidr:  "fd00:101:96::/108"
-    install_stage:      "full"   # prereqs | k8s | full
 
     cilium_helm_values:
       kubeProxyReplacement: true
@@ -26,9 +25,9 @@
       enableIPv4: false
       bgpControlPlane:
         enabled: true
-        localASN: 65101
+        localASN: 64512
         peers:
-          - peerAddress: "fd00:255::fffe"
+          - peerAddress: "fd00:8::1"
             peerASN:     65000
       service:
         loadBalancer:
@@ -68,7 +67,7 @@
         sysctl_set: yes
         reload:     yes
 
-    # 2) pick up exact kubernetes version
+    # 2) discover the exact Debian package version and derive semver
     - name: Discover latest k8s patch for v{{ k8s_version_major }}
       ansible.builtin.shell: |
         apt-cache madison kubelet \
@@ -82,9 +81,114 @@
         msg: "No kubelet version matching {{ k8s_version_major }}; got: {{ k8s_patch.stdout }}"
       when: k8s_patch.stdout == ""
 
-    - name: Set k8s_version fact
+    - name: Set full Debian version fact
       ansible.builtin.set_fact:
         k8s_version: "{{ k8s_patch.stdout }}"
+
+    - name: Derive pure semver for image tags
+      ansible.builtin.set_fact:
+        k8s_semver: "{{ k8s_version.split('-')[0] }}"
+
+    # 3) Install the exact Kubernetes components
+    - name: Install kubelet, kubeadm, kubectl
+      ansible.builtin.apt:
+        name:
+          - "kubelet={{ k8s_version }}"
+          - "kubeadm={{ k8s_version }}"
+          - "kubectl={{ k8s_version }}"
+        state: present
+        update_cache: false
+
+    # 4) Render & run kubeadm init
+    - name: Render kubeadm init config
+      ansible.builtin.template:
+        src:  kubeadm-init.yaml.j2
+        dest: /root/kubeadm-init.yaml
+
+    - name: Pre-pull control-plane images
+      ansible.builtin.command:
+        cmd: kubeadm config images pull --kubernetes-version=v{{ k8s_semver }} --image-repository registry.k8s.io
+
+    - name: Initialize primary controlplane
+      ansible.builtin.command:
+        cmd: >-
+          kubeadm init
+            --upload-certs
+            --config /root/kubeadm-init.yaml
+      args:
+        creates: /etc/kubernetes/admin.conf
+      register: kubeadm_init
+
+    - name: Fail if kubeadm init failed
+      ansible.builtin.fail:
+        msg: "kubeadm init failed: {{ kubeadm_init.stderr }}"
+      when: kubeadm_init.rc != 0
+
+    - name: Bring VIP up on loopback
+      ansible.builtin.command:
+        cmd: ip -6 addr add {{ k8s_api_vip }}/128 dev lo
+
+    - name: Wait for API server on VIP
+      ansible.builtin.wait_for:
+        host:    "{{ k8s_api_vip }}"
+        port:    6443
+        state:   started
+        timeout: 300
+
+    # 5) Extract both join commands
+    - name: Extract controlplane join command
+      ansible.builtin.set_fact:
+        controlplane_join_cmd: >-
+          {{ kubeadm_init.stdout
+             | regex_search('kubeadm join[\\s\\S]*?--control-plane[^\\n]*', '\\0')
+             | replace('\\\n',' ') | replace('\\','') | trim }}
+
+    - name: Extract worker join command
+      ansible.builtin.set_fact:
+        worker_join_cmd: >-
+          {{ kubeadm_init.stdout
+             | regex_search('kubeadm join[\\s\\S]*?--discovery-token-ca-cert-hash[^\\n]*', '\\0')
+             | replace('\\\n',' ') | replace('\\','') | trim }}
+
+    # 6) Store them together for the next play
+    - name: Bundle join commands into a single fact
+      ansible.builtin.set_fact:
+        join_cmds:
+          controlplane: "{{ controlplane_join_cmd }}"
+          worker:       "{{ worker_join_cmd }}"
+
+- name: Install prerequisites & join all other nodes
+  hosts: all
+  become: true
+  vars:
+    primary: "{{ groups['controlplane'][0] }}"
+
+  tasks:
+    # repeat the APT prereqs + install so that workers also have kubeadm/kubelet
+    - name: Add Kubernetes APT key
+      ansible.builtin.apt_key:
+        url:      "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/Release.key"
+        keyring:  /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state:    present
+
+    - name: Add Kubernetes APT repository
+      ansible.builtin.apt_repository:
+        repo: >
+          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg]
+          https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/ /
+        filename: kubernetes
+        state:    present
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Persist IPv6 forwarding
+      ansible.builtin.sysctl:
+        name:       net.ipv6.conf.all.forwarding
+        value:      "1"
+        sysctl_set: yes
+        reload:     yes
 
     - name: Install kubelet, kubeadm, kubectl
       ansible.builtin.apt:
@@ -95,80 +199,22 @@
         state: present
         update_cache: false
 
-    # 3) initialize first controlplane
-    - name: Render kubeadm init config (primary only)
-      ansible.builtin.template:
-        src:  kubeadm-init.yaml.j2
-        dest: /root/kubeadm-init.yaml
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    - name: Initialize primary control plane
+    # 7a) Secondary controlplane join
+    - name: Join additional controlplane nodes
       ansible.builtin.command:
-        cmd: kubeadm init --upload-certs --config /root/kubeadm-init.yaml
-        creates: /etc/kubernetes/admin.conf
-      register: kubeadm_init
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    - name: Fail if kubeadm init failed
-      ansible.builtin.fail:
-        msg: "kubeadm init failed: {{ kubeadm_init.stderr }}"
-      when:
-        - inventory_hostname == groups[controlplane_group][0]
-        - kubeadm_init.rc != 0
-
-    - name: Bring VIP up on loopback (primary only)
-      ansible.builtin.command:
-        cmd: ip -6 addr add {{ k8s_api_vip }}/128 dev lo
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    - name: Wait for API server to answer on VIP (primary only)
-      ansible.builtin.wait_for:
-        host:    "{{ k8s_api_vip }}"
-        port:    6443
-        state:   started
-        timeout: 300
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    - name: Extract control‑plane join command
-      ansible.builtin.set_fact:
-        controlplane_join_cmd: >-
-          {{ kubeadm_init.stdout
-             | regex_search('kubeadm join[\\s\\S]*?--controlplane[^\\n]*', '\\0')
-             | replace('\\\n',' ') | replace('\\','') | trim }}
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    - name: Extract worker join command
-      ansible.builtin.set_fact:
-        worker_join_cmd: >-
-          {{ kubeadm_init.stdout
-             | regex_search('kubeadm join[\\s\\S]*?--discovery-token-ca-cert-hash[^\\n]*', '\\0')
-             | replace('\\\n',' ') | replace('\\','') | trim }}
-      when: inventory_hostname == groups[controlplane_group][0]
-
-    # 4) distribute those two variables to everyone
-    - name: Distribute join commands
-      ansible.builtin.set_fact:
-        controlplane_join_cmd: "{{ hostvars[ groups[controlplane_group][0] ].controlplane_join_cmd }}"
-        worker_join_cmd:        "{{ hostvars[ groups[controlplane_group][0] ].worker_join_cmd }}"
-
-    # 5a) Join additional control‑plane nodes
-    - name: Join additional control‑plane nodes
-      ansible.builtin.command:
-        cmd: "{{ controlplane_join_cmd }} --cri-socket /run/containerd/containerd.sock"
+        cmd: "{{ hostvars[primary].join_cmds.controlplane }} --cri-socket /run/containerd/containerd.sock"
         creates: /etc/kubernetes/kubelet.conf
-      when:
-        - inventory_hostname in groups[controlplane_group]
-        - inventory_hostname != groups[controlplane_group][0]
+      when: inventory_hostname in groups['controlplane'] and inventory_hostname != primary
 
-    # 5b) Join worker nodes
+    # 7b) Worker join
     - name: Join worker nodes
       ansible.builtin.command:
-        cmd: "{{ worker_join_cmd }} --cri-socket /run/containerd/containerd.sock"
+        cmd: "{{ hostvars[primary].join_cmds.worker }} --cri-socket /run/containerd/containerd.sock"
         creates: /etc/kubernetes/kubelet.conf
-      when: inventory_hostname in groups[worker_group]
+      when: inventory_hostname in groups['worker']
 
-- name: Install & configure Cilium via Helm (primary only)
-  hosts: "{{ groups[controlplane_group][0] }}"
+- name: Install & configure Cilium via Helm
+  hosts: "{{ groups['controlplane'][0] }}"
   become: true
 
   tasks:

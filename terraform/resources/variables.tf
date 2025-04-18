@@ -19,6 +19,13 @@ variable "latest_debian_12_bookworm_qcow2_img_url" {
   default     = "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 }
 
+variable "vm_password" {
+  description = "Plaintext VM user password, decrypted from SOPS"
+  type        = string
+  sensitive   = true
+}
+
+
 #variable "vm_password" {
 #  description = "The plain-text password to be hashed for cloud-init users."
 #  type        = string

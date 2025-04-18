@@ -1,13 +1,13 @@
-#data "external" "password_hash" {
-#  program = [
-#    "sh", "-c", 
-#    "echo '{\"password\": \"'$(openssl passwd -6 \"${local.vm_password}\")'\"}'"
-#  ]
-#}
-#
-#locals {
-#  vm_password_hashed = trimspace(data.external.password_hash.result["password"])
-#}
+data "external" "password_hash" {
+  program = [
+    "sh", "-c", 
+    "echo '{\"password\": \"'$(openssl passwd -6 \"${local.vm_password}\")'\"}'"
+  ]
+}
+
+locals {
+  vm_password_hashed = trimspace(data.external.password_hash.result["password"])
+}
 
 resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
   content_type = "snippets"
@@ -23,7 +23,7 @@ source_raw {
     users:
       - default
       - name: debian
-#        passwd: ${local.vm_password_hashed}
+        passwd: ${local.vm_password_hashed}
         groups: sudo
         shell: /bin/bash
         ssh_authorized_keys:
@@ -33,7 +33,7 @@ source_raw {
         
     
       - name: root
-#        passwd: ${local.vm_password_hashed}
+        passwd: ${local.vm_password_hashed}
         shell: /bin/bash
         lock_passwd: false
         ssh_authorized_keys:
