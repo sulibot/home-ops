@@ -1,0 +1,95 @@
+- name: Fetch latest containerd release info
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/containerd/containerd/releases/latest
+    return_content: yes
+  register: containerd_release_info
+
+- name: Set containerd version and download URL
+  ansible.builtin.set_fact:
+    containerd_version: "{{ containerd_release_info.json.tag_name }}"
+    containerd_download_url: "https://github.com/containerd/containerd/releases/download/{{ containerd_release_info.json.tag_name }}/containerd-{{ containerd_release_info.json.tag_name | regex_replace('^v', '') }}-linux-amd64.tar.gz"
+
+- name: Remove distro-installed containerd (if any)
+  ansible.builtin.apt:
+    name: containerd
+    state: absent
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Download containerd archive
+  ansible.builtin.get_url:
+    url: "{{ containerd_download_url }}"
+    dest: /tmp/containerd.tar.gz
+    mode: '0644'
+
+- name: Extract containerd binaries
+  ansible.builtin.unarchive:
+    src: /tmp/containerd.tar.gz
+    dest: /usr/local
+    remote_src: yes
+
+- name: Ensure /usr/local/bin is in system PATH for login shells
+  ansible.builtin.lineinfile:
+    path: /etc/profile.d/containerd_path.sh
+    create: yes
+    mode: '0755'
+    line: 'export PATH="/usr/local/bin:$PATH"'
+
+- name: Create systemd system.conf.d directory if not present
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    mode: '0755'
+
+- name: Ensure /usr/local/bin is in system PATH for systemd services
+  ansible.builtin.copy:
+    dest: /etc/systemd/system.conf.d/99-containerd-path.conf
+    content: |
+      [Manager]
+      DefaultEnvironment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    mode: '0644'
+
+- name: Download containerd systemd service file
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+    dest: /etc/systemd/system/containerd.service
+    mode: '0644'
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: Generate default containerd config
+  ansible.builtin.command: /usr/local/bin/containerd config default
+  register: containerd_config
+
+- name: Write containerd config
+  ansible.builtin.copy:
+    dest: /etc/containerd/config.toml
+    content: "{{ containerd_config.stdout }}"
+    force: yes
+
+- name: Set SystemdCgroup = true manually if not already present
+  ansible.builtin.blockinfile:
+    path: /etc/containerd/config.toml
+    insertafter: '^\[plugins\.\"io.containerd.cri.v1.runtime\"\.containerd\.runtimes\.runc\.options\]'
+    block: |
+      SystemdCgroup = true
+  when: containerd_config.stdout is not search('SystemdCgroup\s*=\s*true')
+
+- name: Enable and start containerd
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: true
+    state: started
+
+- name: Assert that SystemdCgroup is enabled in containerd config
+  ansible.builtin.shell: grep -E '^\s*SystemdCgroup\s*=\s*true' /etc/containerd/config.toml
+  register: containerd_systemd_check
+  changed_when: false
+  failed_when: containerd_systemd_check.rc != 0

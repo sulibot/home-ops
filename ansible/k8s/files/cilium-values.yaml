@@ -1,0 +1,25 @@
+# Default values for IPv6-only Cilium deployment
+k8sServiceHost: "{{ control_plane_vip }}"
+k8sServicePort: 6443
+kubeProxyReplacement: true
+
+ipv4:
+  enabled: false
+ipv6:
+  enabled: true
+
+bgpControlPlane:
+  enabled: {{ cilium_bgp_enabled }}
+
+ipam:
+  mode: "cluster-pool"
+  operator:
+    clusterPoolIPv6PodCIDRList:
+      - {{ pod_subnet }}
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true

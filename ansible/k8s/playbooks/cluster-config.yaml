@@ -1,0 +1,43 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: v1.32.3
+clusterName: sol-k8s
+controlPlaneEndpoint: "fd00:101::ac:6443"
+networking:
+  podSubnet: "fd00:101:44::/60"
+  serviceSubnet: "fd00:101:96::/108"
+  dnsDomain: "cluster.local"
+apiServer:
+  certSANs:
+    - "::1"
+    - "fd00:101::ac"
+    - "localhost"
+  extraArgs:
+    advertise-address: "127.0.0.1"
+controllerManager:
+  extraArgs:
+    cluster-cidr: "fd00:101:44::/60"
+    service-cluster-ip-range: "fd00:101:96::/108"
+    node-cidr-mask-size-ipv6: "64"
+etcd:
+  local:
+    extraArgs:
+      - name: listen-client-urls
+        value: http://[::1]:2379,http://127.0.0.1:2379
+      - name: listen-peer-urls
+        value: http://[::1]:2380,http://127.0.0.1:2380
+
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+vars_files:
+  - ../../secrets/sensitive.enc.yaml
+localAPIEndpoint:
+  advertiseAddress: "127.0.0.1"
+  bindPort: 6443
+nodeRegistration:
+  name: "localhost"
+  kubeletExtraArgs:
+    node-ip: "127.0.0.1"
+    ipv6-only: "true"
+    fail-swap-on: "false"

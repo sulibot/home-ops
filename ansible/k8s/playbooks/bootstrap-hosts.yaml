@@ -1,0 +1,11 @@
+- name: Bootstrap all Kubernetes nodes
+  hosts: all
+  become: true
+  roles:
+    - role: common
+      tasks_from: os-setup
+    - role: common
+      tasks_from: install-tools
+    - role: common
+      tasks_from: prep-containerd
+  

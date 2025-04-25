@@ -1,0 +1,19 @@
+- name: Add Cilium Helm repo
+  command: helm repo add cilium https://helm.cilium.io
+  args:
+    creates: /tmp/.cilium_repo_added
+
+- name: Update Helm repos
+  command: helm repo update
+
+- name: Install Cilium with custom values
+  command: >
+    helm upgrade --install cilium cilium/cilium
+    --namespace kube-system
+    --version 1.17.3
+    --values {{ cilium_config_file }}
+    --create-namespace
+  register: helm_output
+
+- debug:
+    var: helm_output

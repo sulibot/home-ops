@@ -1,0 +1,38 @@
+# Taskfile.yaml
+version: '3'
+
+vars:
+  INVENTORY: inventory/hosts.ini
+
+tasks:
+  deps:
+    desc: Install local prerequisites
+    cmds:
+      - brew install go-task/tap/go-task kubectl helm fluxcd/tap/flux sops k9s
+
+  bootstrap-hosts:
+    desc: Prep hosts with kernel and Kubernetes packages
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/bootstrap-hosts.yaml
+
+  cluster:
+    desc: Bootstrap or join Kubernetes cluster
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/bootstrap-or-join-cluster.yaml
+
+  cilium:
+    desc: Install Cilium via Helm
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/install-cilium.yaml
+
+  flux:
+    desc: Bootstrap Flux GitOps
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/flux-bootstrap.yaml
+
+  render:
+    desc: Render new cluster config from template
+    vars:
+      VAR_FILE: cluster-vars.yaml
+    cmds:
+      - ansible-playbook tasks/render-cluster-values.yaml -e @${VAR_FILE}

@@ -1,0 +1,20 @@
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: "[{{ control_plane_vip }}]:6443"
+    token: "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
+    caCertHashes:
+      - "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
+nodeRegistration:
+  name: "{{ inventory_hostname }}"
+  kubeletExtraArgs:
+    - name: node-ip
+      value: "{{ ansible_host }}"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+failSwapOn: false
+memorySwap:
+  swapBehavior: LimitedSwap
+cgroupDriver: "systemd"

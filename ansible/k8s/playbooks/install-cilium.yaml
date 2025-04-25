@@ -1,0 +1,5 @@
+- name: Install Cilium with Helm
+  hosts: controlplane[0]
+  become: true
+  roles:
+    - cilium

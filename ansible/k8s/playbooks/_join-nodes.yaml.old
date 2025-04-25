@@ -1,0 +1,23 @@
+- name: Join additional control plane nodes
+  hosts: controlplane[1:]
+  become: true
+  tasks:
+    - name: Template join config
+      template:
+        src: templates/kubeadm-join-cp.yaml.j2
+        dest: /root/kubeadm-join.yaml
+
+    - name: Join as control plane
+      command: kubeadm join --config /root/kubeadm-join.yaml
+
+- name: Join worker nodes
+  hosts: worker
+  become: true
+  tasks:
+    - name: Template worker join config
+      template:
+        src: templates/kubeadm-join-worker.yaml.j2
+        dest: /root/kubeadm-join.yaml
+
+    - name: Join as worker
+      command: kubeadm join --config /root/kubeadm-join.yaml

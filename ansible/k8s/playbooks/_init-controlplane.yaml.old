@@ -1,0 +1,22 @@
+- name: Initialize Kubernetes control plane node
+  hosts: controlplane[0]
+  become: true
+  tasks:
+    - name: Template kubeadm config for init
+      template:
+        src: templates/kubeadm-init.yaml.j2
+        dest: /root/kubeadm-init.yaml
+
+    - name: Run kubeadm init
+      command: kubeadm init --config /root/kubeadm-init.yaml
+
+    - name: Include kube-vip static pod setup
+      include_role:
+        name: kubevip
+
+    - name: Create kubeconfig for root
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /root/.kube/config
+        remote_src: yes
+        mode: '0600'

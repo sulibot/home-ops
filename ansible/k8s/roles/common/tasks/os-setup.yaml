@@ -1,0 +1,114 @@
+---
+# roles/common/tasks/os-setup.yaml
+
+- name: Ensure all inventory hosts have entries in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    create: yes
+    line: "{{ hostvars[item].ansible_host }} {{ item }} {{ item }}.sulibot.com"
+  loop: "{{ groups['all'] }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Load necessary kernel modules config
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+      ip6_tables
+      nf_conntrack
+
+- name: Load kernel modules immediately
+  ansible.builtin.shell: |
+    modprobe overlay
+    modprobe br_netfilter
+    modprobe ip6_tables
+    modprobe nf_conntrack
+
+- name: Apply required sysctl settings
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    reload: yes
+  loop:
+    - { key: 'net.bridge.bridge-nf-call-iptables',  value: '1' }
+    - { key: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+    - { key: 'net.ipv4.conf.all.rp_filter',         value: '1' }
+    - { key: 'net.ipv6.conf.all.forwarding',        value: '1' }
+    - { key: 'net.ipv6.conf.default.forwarding',    value: '1' }
+    - { key: 'net.ipv4.ip_forward',                 value: '1' }
+    - { key: 'fs.inotify.max_user_instances',       value: '8192' }
+    - { key: 'fs.inotify.max_user_watches',         value: '524288' }
+    - { key: 'vm.max_map_count',                    value: '262144' }
+    - { key: 'net.core.somaxconn',                  value: '65535' }
+    - { key: 'net.ipv4.tcp_tw_reuse',               value: '1' }
+
+- name: Disable swap at runtime
+  ansible.builtin.shell: swapoff -a
+  when: ansible_swaptotal_mb > 0
+
+- name: Remove swap entry from /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Set system limits for Kubernetes
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/k8s.conf
+    content: |
+      * soft nofile 1048576
+      * hard nofile 1048576
+      * soft nproc  65536
+      * hard nproc  65536
+
+- name: Apply all sysctl parameters
+  ansible.builtin.command: sysctl --system
+
+- name: Ensure base tools are installed
+  ansible.builtin.package:
+    name:
+      - curl
+      - bash-completion
+      - ca-certificates
+      - iproute2
+      - iptables
+      - ebtables
+      - socat
+      - ethtool
+    state: present
+
+- name: Ensure persistent journald logs are enabled
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?Storage='
+    line: 'Storage=persistent'
+
+- name: Restart journald to apply logging config
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+
+- name: Ensure chrony is installed
+  ansible.builtin.package:
+    name: chrony
+    state: present
+
+- name: Configure chrony to use custom time server
+  ansible.builtin.copy:
+    dest: /etc/chrony/chrony.conf
+    content: |
+      server [fd00:255::fffe] iburst
+      driftfile /var/lib/chrony/chrony.drift
+      makestep 1.0 3
+      rtcsync
+      logdir /var/log/chrony
+    mode: '0644'
+
+- name: Enable and start chrony
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started

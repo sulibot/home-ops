@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: "secrets/sensitive\.enc\.yaml$"
+    encrypted_regex: "^(bootstrap_token|ca_cert_hash)$"
+    age: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
