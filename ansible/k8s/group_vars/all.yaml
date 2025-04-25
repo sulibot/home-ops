@@ -1,0 +1,12 @@
+cluster_name: sol-k8s
+kubernetes_version: "1.33"
+k8s_semver: "1.33.0"
+control_plane_vip: "fd00:101::ac"
+pod_subnet: "fd00:101:44::/60"
+svc_subnet: "fd00:101:96::/108"
+cilium_bgp_enabled: true
+kube_vip_interface: eth0
+cilium_config_file: /root/cilium-values.yaml
+flux_git_owner: your-github-username
+flux_git_repo: sol-k8s-cluster-config
+k8s_repo_url: https://apt.kubernetes.io/

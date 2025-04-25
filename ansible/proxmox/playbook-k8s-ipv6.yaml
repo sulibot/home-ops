@@ -1,247 +1,544 @@
 ---
-- name: Bootstrap primary controlplane (IPv6‑only)
-  hosts: "{{ groups['controlplane'][0] }}"
+- name: Bootstrap & join controlplane and workers (IPv6‑only)
+  hosts: all
   become: true
-  vars:
-    # groups in your inventory
-    controlplane_group: controlplane
-    worker_group:      worker
 
-    # no port here; Cilium BGP will advertise it
+  ######################################################################
+  # Variables
+  ######################################################################
+  vars:
+    # Kubernetes version (full semver and major.minor)
+    k8s_semver: "1.32.3"
+    k8s_version: "{{ k8s_semver.split('.')[0] }}.{{ k8s_semver.split('.')[1] }}"
+    # Inventory groups
+    controlplane_group: "controlplane"
+    worker_group:      "worker"
+
+    # Paths & network ranges
+    kubeadm_config_path: /etc/kubeadm/kube-init.yaml
     k8s_api_vip:        "fd00:101::ac"
-    k8s_version_major:  "1.32"
     ipv6_pod_cidr:      "fd00:101:44::/60"
     ipv6_service_cidr:  "fd00:101:96::/108"
 
-    cilium_helm_values:
-      kubeProxyReplacement: true
-      k8sServiceHost: "{{ k8s_api_vip }}"
-      k8sServicePort: 6443
-      ipam:
-        mode: cluster-pool
-        clusterPoolIPv6PodCIDR: "{{ ipv6_pod_cidr }}"
-        clusterPoolIPv6MaskSize: 64
-      enableIPv6: true
-      enableIPv4: false
-      bgpControlPlane:
-        enabled: true
-        localASN: 64512
-        peers:
-          - peerAddress: "fd00:8::1"
-            peerASN:     65000
-      service:
-        loadBalancer:
-          mode: bgp
-      hubble:
-        relay: { enabled: true }
-        ui:    { enabled: true }
-      l2announcements: { enabled: true }
-      ingressController:
-        enabled: true
-        mode:    dedicated
+    vip_interface: "eth0"
+    local_asn: 65101
+    bgp_peers: "[fd00:255::fffe]:65000::false"
+    bgp_router_id: "10.0.{{ ansible_host.split(':')[1] }}.{{ ansible_host.split(':')[-1] }}"
+
+    # APT repository URL (tied to k8s_version)
+    k8s_repo_url: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/"
 
   tasks:
-    # 1) APT prereqs + sysctl
-    - name: Add Kubernetes APT key
-      ansible.builtin.apt_key:
-        url:      "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/Release.key"
-        keyring:  /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        state:    present
+
+    ######################################################################
+    # Pre‑flight: ensure all inventory hosts are in /etc/hosts
+    ######################################################################
+    - name: Ensure all inventory hosts have entries in /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        create: yes
+        line: "{{ hostvars[item].ansible_host }} {{ item }} {{ item }}.sulibot.com"
+      loop: "{{ groups['all'] }}"
+      loop_control:
+        label: "{{ item }}"
+
+######################################################################
+# System Tuning for Kubernetes
+######################################################################
+    - name: Load necessary kernel modules
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+          ip6_tables
+
+    - name: Ensure kernel modules are loaded immediately
+      ansible.builtin.shell: |
+        modprobe overlay
+        modprobe br_netfilter
+        modprobe ip6_tables
+
+    - name: Set sysctl params required by Kubernetes
+      ansible.builtin.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: yes
+        reload: yes
+      loop:
+        - { key: 'net.bridge.bridge-nf-call-iptables',  value: '1' }
+        - { key: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+        - { key: 'net.ipv4.conf.all.rp_filter',         value: '0' }
+        - { key: 'net.ipv6.conf.all.forwarding',        value: '1' }
+        - { key: 'net.ipv6.conf.default.forwarding',    value: '1' }
+
+    - name: Disable swap at runtime
+      ansible.builtin.shell: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: Remove swap entry from /etc/fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    - name: Set system limits for Kubernetes
+      ansible.builtin.copy:
+        dest: /etc/security/limits.d/k8s.conf
+        content: |
+          * soft nofile 1048576
+          * hard nofile 1048576
+          * soft nproc  65536
+          * hard nproc  65536
+
+    - name: Apply sysctl parameters
+      command: sysctl --system
+
+    ######################################################################
+    # APT repo setup: Kubernetes keyring & sources
+    ######################################################################
+    - name: Ensure /etc/apt/keyrings exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Kubernetes APT key
+      ansible.builtin.shell: |
+        mkdir -p -m 755 /etc/apt/keyrings
+        curl -fsSL {{ k8s_repo_url }}Release.key \
+          | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
     - name: Add Kubernetes APT repository
-      ansible.builtin.apt_repository:
-        repo: >
-          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg]
-          https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/ /
-        filename: kubernetes
-        state:    present
+      ansible.builtin.shell: |
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] {{ k8s_repo_url }} /' \
+          | tee /etc/apt/sources.list.d/kubernetes.list
+      args:
+        creates: /etc/apt/sources.list.d/kubernetes.list
 
     - name: Update apt cache
       ansible.builtin.apt:
-        update_cache: true
+        update_cache: yes
 
-    - name: Persist IPv6 forwarding across reboots
-      ansible.builtin.sysctl:
-        name:       net.ipv6.conf.all.forwarding
-        value:      "1"
-        sysctl_set: yes
-        reload:     yes
-
-    # 2) discover the exact Debian package version and derive semver
-    - name: Discover latest k8s patch for v{{ k8s_version_major }}
-      ansible.builtin.shell: |
-        apt-cache madison kubelet \
-          | awk '/{{ k8s_version_major }}\./ {print $3}' \
-          | sort -Vr | head -n1
-      register: k8s_patch
-      changed_when: false
-
-    - name: Fail if no matching patch found
-      ansible.builtin.fail:
-        msg: "No kubelet version matching {{ k8s_version_major }}; got: {{ k8s_patch.stdout }}"
-      when: k8s_patch.stdout == ""
-
-    - name: Set full Debian version fact
-      ansible.builtin.set_fact:
-        k8s_version: "{{ k8s_patch.stdout }}"
-
-    - name: Derive pure semver for image tags
-      ansible.builtin.set_fact:
-        k8s_semver: "{{ k8s_version.split('-')[0] }}"
-
-    # 3) Install the exact Kubernetes components
-    - name: Install kubelet, kubeadm, kubectl
+    ######################################################################
+    # Install Kubernetes packages
+    ######################################################################
+    - name: Install dependencies for HTTPS APT
       ansible.builtin.apt:
         name:
-          - "kubelet={{ k8s_version }}"
-          - "kubeadm={{ k8s_version }}"
-          - "kubectl={{ k8s_version }}"
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gpg
+          - etcd-client
         state: present
-        update_cache: false
-
-    # 4) Render & run kubeadm init
-    - name: Render kubeadm init config
-      ansible.builtin.template:
-        src:  kubeadm-init.yaml.j2
-        dest: /root/kubeadm-init.yaml
-
-    - name: Pre-pull control-plane images
-      ansible.builtin.command:
-        cmd: kubeadm config images pull --kubernetes-version=v{{ k8s_semver }} --image-repository registry.k8s.io
-
-    - name: Initialize primary controlplane
-      ansible.builtin.command:
-        cmd: >-
-          kubeadm init
-            --upload-certs
-            --config /root/kubeadm-init.yaml
-      args:
-        creates: /etc/kubernetes/admin.conf
-      register: kubeadm_init
-
-    - name: Fail if kubeadm init failed
-      ansible.builtin.fail:
-        msg: "kubeadm init failed: {{ kubeadm_init.stderr }}"
-      when: kubeadm_init.rc != 0
-
-    - name: Bring VIP up on loopback
-      ansible.builtin.command:
-        cmd: ip -6 addr add {{ k8s_api_vip }}/128 dev lo
-
-    - name: Wait for API server on VIP
-      ansible.builtin.wait_for:
-        host:    "{{ k8s_api_vip }}"
-        port:    6443
-        state:   started
-        timeout: 300
-
-    # 5) Extract both join commands
-    - name: Extract controlplane join command
-      ansible.builtin.set_fact:
-        controlplane_join_cmd: >-
-          {{ kubeadm_init.stdout
-             | regex_search('kubeadm join[\\s\\S]*?--control-plane[^\\n]*', '\\0')
-             | replace('\\\n',' ') | replace('\\','') | trim }}
-
-    - name: Extract worker join command
-      ansible.builtin.set_fact:
-        worker_join_cmd: >-
-          {{ kubeadm_init.stdout
-             | regex_search('kubeadm join[\\s\\S]*?--discovery-token-ca-cert-hash[^\\n]*', '\\0')
-             | replace('\\\n',' ') | replace('\\','') | trim }}
-
-    # 6) Store them together for the next play
-    - name: Bundle join commands into a single fact
-      ansible.builtin.set_fact:
-        join_cmds:
-          controlplane: "{{ controlplane_join_cmd }}"
-          worker:       "{{ worker_join_cmd }}"
-
-- name: Install prerequisites & join all other nodes
-  hosts: all
-  become: true
-  vars:
-    primary: "{{ groups['controlplane'][0] }}"
-
-  tasks:
-    # repeat the APT prereqs + install so that workers also have kubeadm/kubelet
-    - name: Add Kubernetes APT key
-      ansible.builtin.apt_key:
-        url:      "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/Release.key"
-        keyring:  /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        state:    present
-
-    - name: Add Kubernetes APT repository
-      ansible.builtin.apt_repository:
-        repo: >
-          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg]
-          https://pkgs.k8s.io/core:/stable:/v{{ k8s_version_major }}/deb/ /
-        filename: kubernetes
-        state:    present
-
-    - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: true
-
-    - name: Persist IPv6 forwarding
-      ansible.builtin.sysctl:
-        name:       net.ipv6.conf.all.forwarding
-        value:      "1"
-        sysctl_set: yes
-        reload:     yes
 
     - name: Install kubelet, kubeadm, kubectl
       ansible.builtin.apt:
         name:
-          - "kubelet={{ k8s_version }}"
-          - "kubeadm={{ k8s_version }}"
-          - "kubectl={{ k8s_version }}"
+          - kubelet={{ k8s_semver }}-1.1
+          - kubeadm={{ k8s_semver }}-1.1
+          - kubectl={{ k8s_semver }}-1.1
         state: present
-        update_cache: false
 
-    # 7a) Secondary controlplane join
-    - name: Join additional controlplane nodes
-      ansible.builtin.command:
-        cmd: "{{ hostvars[primary].join_cmds.controlplane }} --cri-socket /run/containerd/containerd.sock"
-        creates: /etc/kubernetes/kubelet.conf
-      when: inventory_hostname in groups['controlplane'] and inventory_hostname != primary
+    - name: Enable and start kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        enabled: true
+        state: started
 
-    # 7b) Worker join
-    - name: Join worker nodes
-      ansible.builtin.command:
-        cmd: "{{ hostvars[primary].join_cmds.worker }} --cri-socket /run/containerd/containerd.sock"
-        creates: /etc/kubernetes/kubelet.conf
-      when: inventory_hostname in groups['worker']
+    - name: Install apt-transport-https
+      apt:
+        name: apt-transport-https
+        state: present
+        update_cache: true
 
-- name: Install & configure Cilium via Helm
-  hosts: "{{ groups['controlplane'][0] }}"
-  become: true
-
-  tasks:
-    - name: Ensure Helm is installed
+    - name: Add Helm GPG key
       ansible.builtin.shell: |
-        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        curl -fsSL https://baltocdn.com/helm/signing.asc | gpg --dearmor -o /usr/share/keyrings/helm.gpg
       args:
-        creates:    /usr/local/bin/helm
+        creates: /usr/share/keyrings/helm.gpg
+
+    - name: Add Helm repository (force amd64 arch)
+      copy:
+        dest: /etc/apt/sources.list.d/helm-stable-debian.list
+        content: |
+          deb [arch=amd64 signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main
+
+
+    - name: Install Helm
+      apt:
+        name: helm
+        state: present
+        update_cache: yes
+
+    - name: Install WakeMeOps repository
+      ansible.builtin.shell: |
+        curl -sSL https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository | sudo bash
+      args:
         executable: /bin/bash
 
-    - name: Copy admin kubeconfig for Helm
+    - name: Install cilium CLI
+      ansible.builtin.apt:
+        name: cilium
+        state: present
+
+    - name: Install k9s
+      ansible.builtin.apt:
+        name: k9s
+        state: present
+
+    - name: Install k9s
+      ansible.builtin.apt:
+        name: flux
+        state: present
+
+    ######################################################################
+    # kube-vip in ARP/ND Mode (Control Plane Only)
+    ######################################################################
+    - name: Ensure kube‑vip manifest directory exists
+      ansible.builtin.file:
+        path: /etc/kubernetes/manifests
+        state: directory
+        mode: '0755'
+      when: inventory_hostname in groups[controlplane_group]
+
+    - name: Check if kube-vip manifest exists
+      ansible.builtin.stat:
+        path: /etc/kubernetes/manifests/kube-vip.yaml
+      register: kubevip_manifest
+      when: inventory_hostname in groups[controlplane_group]
+
+    - name: Fetch latest kube-vip version
+      ansible.builtin.shell: |
+        curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases \
+        | jq -r "[.[] | select(.prerelease == false)][0].name"
+      register: kubevip_version
+      changed_when: false
+      when: inventory_hostname == groups[controlplane_group]
+
+    - name: Generate kube-vip manifest with ARP/ND
+      ansible.builtin.shell: |
+        ctr image pull ghcr.io/kube-vip/kube-vip:{{ kubevip_version.stdout }}
+        ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:{{ kubevip_version.stdout }} vip /kube-vip manifest pod \
+          --interface {{ vip_interface }} \
+          --address {{ k8s_api_vip }} \
+          --controlplane \
+          --arp \
+          --leaderElection \
+          > /etc/kubernetes/manifests/kube-vip.yaml
+      args:
+        executable: /bin/bash
+      when: 
+        - inventory_hostname == groups[controlplane_group][0]
+        - not kubevip_manifest.stat.exists
+
+
+    - name: Patch kube‑vip manifest for super‑admin.conf
+      ansible.builtin.shell: |
+        sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/admin.conf|path: /etc/kubernetes/super-admin.conf|' \
+          /etc/kubernetes/manifests/kube-vip.yaml
+      args:
+        executable: /bin/bash
+      when: inventory_hostname in groups[controlplane_group][0]
+
+
+    ######################################################################
+    # Generate kubeadm configuration
+    ######################################################################
+    - name: Create /etc/kubeadm directory
+      ansible.builtin.file:
+        path: "{{ kubeadm_config_path | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: Render kubeadm init config from Jinja2
+      ansible.builtin.template:
+        src: templates/kubeadm-init.yaml.j2
+        dest: "{{ kubeadm_config_path }}"
+        mode: '0644'
+
+    ######################################################################
+    # controlplane initialization
+    ######################################################################
+    - name: Check if controlplane is already initialized
+      ansible.builtin.stat:
+        path: /etc/kubernetes/manifests/kube-apiserver.yaml
+      register: cp_initialized
+      when: inventory_hostname == groups[controlplane_group][0]
+
+# Marker 
+#    - name: Cleanup and reset controlplane (if uninitialized)
+#      ansible.builtin.shell: kubeadm reset -f
+#      when:
+#        - inventory_hostname == groups[ controlplane_group ][0]
+#        - not cp_initialized.stat.exists
+# Marker 
+
+    - name: Initialize Kubernetes control plane (if uninitialized)
+      ansible.builtin.shell: kubeadm init --config {{ kubeadm_config_path }}
+      register: kubeadm_init_result
+      args:
+        creates: /etc/kubernetes/manifests/kube-apiserver.yaml
+      failed_when: 
+        - kubeadm_init_result.rc != 0
+        - "'addon/coredns' not in kubeadm_init_result.stderr"
+      when:
+        - inventory_hostname == groups[controlplane_group][0]
+        - not cp_initialized.stat.exists
+    
+    - name: Wait for kube-apiserver to be ready (only if CoreDNS failed)
+      uri:
+        url: "https://[{{ k8s_api_vip }}]:6443/version"
+        method: GET
+        validate_certs: no
+      register: api_ready
+      retries: 15
+      delay: 4
+      until: api_ready.status == 200
+      when:
+        - inventory_hostname == groups[controlplane_group][0]
+        - kubeadm_init_result is defined
+        - (kubeadm_init_result.rc | default(0)) != 0
+        - "'addon/coredns' in (kubeadm_init_result.stderr | default(''))"
+
+#    - name: Patch kube‑vip manifest for super‑admin.conf
+#      ansible.builtin.shell: |
+#        sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
+#          /etc/kubernetes/manifests/kube-vip.yaml
+#      args:
+#        executable: /bin/bash
+#      when: inventory_hostname in groups[controlplane_group][0]
+
+
+    ######################################################################
+    # Kubectl config for administrative user (primary CP)
+    ######################################################################
+    - name: Create .kube directory for kubectl config (primary CP)
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.kube"
+        state: directory
+        mode: '0755'
+      when: inventory_hostname == groups[controlplane_group][0]
+
+    - name: Copy admin kubeconfig for ansible_user (primary CP)
       ansible.builtin.copy:
-        src:        /etc/kubernetes/admin.conf
-        dest:       /root/.kube/config
-        remote_src: true
-        mode:       "0600"
+        remote_src: yes
+        src: /etc/kubernetes/admin.conf
+        dest: "{{ ansible_env.HOME }}/.kube/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+      when: inventory_hostname == groups[controlplane_group][0]
+      become: false
 
-    - name: Add Cilium Helm repo
-      kubernetes.core.helm_repository:
-        name:     cilium
-        repo_url: https://helm.cilium.io
+######################################################################
+# Generate join commands (once, on primary CP)
+######################################################################
 
-    - name: Deploy Cilium
-      kubernetes.core.helm:
-        name:              cilium
-        chart_ref:         cilium/cilium
-        release_namespace: kube-system
-        values:            "{{ cilium_helm_values }}"
-        create_namespace:  false
-        kubeconfig:        /root/.kube/config
+#    - name: Restart kubelet on primary control‑plane
+#      ansible.builtin.systemd:
+#        name: kubelet
+#        state: restarted
+#      delegate_to: "{{ groups[controlplane_group][0] }}"
+#      run_once: true
+
+    - name: Wait for kube‑apiserver to be healthy
+      uri:
+        url: "https://[{{ k8s_api_vip }}]:6443/healthz"
+        method: GET
+        validate_certs: no
+      register: api_health
+      retries: 20
+      delay: 5
+      until: api_health.status == 200
+      delegate_to: "{{ groups[controlplane_group][0] }}"
+      run_once: true
+
+    - name: Generate the control plane join command with token and certificate key
+      ansible.builtin.shell: |
+        kubeadm token create --print-join-command --certificate-key $(
+          kubeadm init phase upload-certs --upload-certs \
+            | grep -vw -e certificate -e Namespace
+        )
+      register: controlplane_join_command
+      delegate_to: "{{ groups[controlplane_group][0] }}"
+      run_once: true
+
+    - name: Generate the worker node join command (with token and discovery hash)
+      ansible.builtin.shell: kubeadm token create --print-join-command
+      register: worker_node_join_command
+      delegate_to: "{{ groups[controlplane_group][0] }}"
+      run_once: true
+
+    - name: Set the join commands as global facts on the primary control‑plane
+      ansible.builtin.set_fact:
+        global_controlplane_join_command:  "{{ controlplane_join_command.stdout }} --ignore-preflight-errors=all"
+        global_worker_join_command:        "{{ worker_node_join_command.stdout }} --ignore-preflight-errors=all"
+      delegate_to: "{{ groups[controlplane_group][0] }}"
+      run_once: true
+
+############################################################
+# Additional control plane nodes
+# (join one by one, to avoid etcd quorum loss)
+############################################################
+- name: Join secondary control planes one by one
+  hosts: "{{ controlplane_group }}"
+  serial: 1
+  become: true
+
+  vars:
+    controlplane_group: "controlplane"
+    k8s_api_vip:        "fd00:101::ac"
+
+  tasks:
+#    - name: Restart kubelet on primary control‑plane
+#      ansible.builtin.systemd:
+#        name: kubelet
+#        state: restarted
+#      delegate_to: "{{ groups[controlplane_group][0] }}"
+#      run_once: true
+
+    - name: Wait for kube‑apiserver to be healthy
+      uri:
+        url: "https://[{{ k8s_api_vip }}]:6443/healthz"
+        method: GET
+        validate_certs: no
+      register: api_health
+      retries: 20
+      delay: 5
+      until: api_health.status == 200
+
+
+    - name: Check if secondary controlplane is already joined
+      ansible.builtin.stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: cp_kubelet_conf
+      when: inventory_hostname != groups[controlplane_group][0]
+
+    - name: Show the control‑plane join command that will be used
+      ansible.builtin.debug:
+        msg: >-
+          Joining {{ inventory_hostname }} with:
+          {{ hostvars[ groups[controlplane_group][0] ].global_controlplane_join_command }}
+      when:
+        - inventory_hostname != groups[controlplane_group][0]
+        - not cp_kubelet_conf.stat.exists
+
+    - name: Join secondary controlplane node (if not joined)
+      ansible.builtin.shell: >
+        {{ hostvars[ groups[controlplane_group][0] ].global_controlplane_join_command }}
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      when:
+        - inventory_hostname != groups[controlplane_group][0]
+        - not cp_kubelet_conf.stat.exists
+
+
+    ######################################################################
+    # Distribute admin kubeconfig to all control‐plane nodes
+    ######################################################################
+    - name: Slurp admin.conf from primary CP
+      ansible.builtin.slurp:
+        src: /etc/kubernetes/admin.conf
+      register: slurped_admin_conf
+      delegate_to: "{{ groups[controlplane_group][0] }}"
+      run_once: true
+
+    - name: Create ~/.kube on every CP
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.kube"
+        state: directory
+        mode: '0755'
+      when: inventory_hostname in groups[controlplane_group]
+
+    - name: Distribute admin.conf so kubectl works
+      ansible.builtin.copy:
+        content: "{{ slurped_admin_conf.content | b64decode }}"
+        dest: "{{ ansible_env.HOME }}/.kube/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+      when: inventory_hostname in groups[controlplane_group]
+
+
+
+
+
+    ######################################################################
+    # Join worker nodes
+    ######################################################################
+- name: Join worker nodes to the cluster
+  hosts: "{{ worker_group }}"
+#  serial: 1
+  become: true
+
+  vars:
+    worker_group:      "worker"
+    controlplane_group: "controlplane"
+    k8s_api_vip:        "fd00:101::ac"    
+
+  tasks:
+#    - name: Restart kubelet on primary control‑plane
+#      ansible.builtin.systemd:
+#        name: kubelet
+#        state: restarted
+#      delegate_to: "{{ groups[controlplane_group][0] }}"
+#      run_once: true
+
+    - name: Wait for kube‑apiserver to be healthy
+      uri:
+        url: "https://[{{ k8s_api_vip }}]:6443/healthz"
+        method: GET
+        validate_certs: no
+      register: api_health
+      retries: 20
+      delay: 5
+      until: api_health.status == 200
+
+    - name: Check if this worker is already joined
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: worker_kubelet_conf
+
+    - name: Join worker node to the cluster (if not joined)
+      shell: "{{ hostvars[groups[controlplane_group][0]].global_worker_join_command }}"
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      when: not worker_kubelet_conf.stat.exists
+
+################  LABEL WORKER NODES  ################
+- name: Label all workers as "worker" role
+  hosts: "{{ groups[controlplane_group][0] }}"
+  become: true
+
+  vars:
+    controlplane_group: "controlplane"
+    worker_group:      "worker"
+
+  tasks:
+    - name: Wait for each worker node to be registered
+      ansible.builtin.command:
+        cmd: >
+          kubectl get node {{ item }}
+          --kubeconfig /etc/kubernetes/admin.conf
+      register: node_check
+      retries: 20
+      delay: 5
+      until: node_check.rc == 0
+      loop: "{{ groups[worker_group] }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Label each worker node
+      ansible.builtin.command:
+        cmd: >
+          kubectl label node {{ item }}
+          node-role.kubernetes.io/worker="" --overwrite
+          --kubeconfig /etc/kubernetes/admin.conf
+      loop: "{{ groups[worker_group] }}"
+      loop_control:
+        label: "{{ item }}"
+

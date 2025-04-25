@@ -1,0 +1,57 @@
+---
+# roles/k8s_generate_join_creds/tasks/main.yaml
+- name: Ensure kubeadm is installed
+  ansible.builtin.command: kubeadm version
+  ignore_errors: true
+  register: kubeadm_check
+
+- name: Install kubeadm if missing
+  ansible.builtin.apt:
+    name: "kubeadm={{ k8s_semver }}-1.1"
+    state: present
+  when: kubeadm_check.rc != 0
+
+- name: Ensure openssl is installed
+  ansible.builtin.command: openssl version
+  ignore_errors: true
+  register: openssl_check
+
+- name: Install openssl if missing
+  ansible.builtin.apt:
+    name: openssl
+    state: present
+  when: openssl_check.rc != 0
+
+- name: Create a bootstrap token
+  ansible.builtin.command: kubeadm token create
+  register: token_out
+
+- name: Compute CA cert hash
+  ansible.builtin.shell: |
+    openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt |
+      openssl rsa -pubin -outform der 2>/dev/null |
+      sha256sum
+  register: hash_out
+
+- name: Set join credentials facts
+  ansible.builtin.set_fact:
+    bootstrap_token: "{{ token_out.stdout }}"
+    ca_cert_hash: "sha256:{{ hash_out.stdout.split()[0] }}"
+
+- name: Write plaintext join secrets
+  ansible.builtin.copy:
+    dest: secrets/sensitive.yaml
+    content: |
+      bootstrap_token: {{ bootstrap_token }}
+      ca_cert_hash: {{ ca_cert_hash }}
+  no_log: true
+
+- name: Encrypt join secrets with SOPS in-place
+  ansible.builtin.shell: sops -i secrets/sensitive.yaml
+  args:
+    creates: secrets/sensitive.enc.yaml
+
+- name: Remove plaintext secrets file
+  ansible.builtin.file:
+    path: secrets/sensitive.yaml
+    state: absent

@@ -1,0 +1,127 @@
+---
+- name: Generate kubeadm artifacts in a throwaway Docker container
+  hosts: localhost
+  connection: local
+  collections:
+    - community.docker
+  vars_files:
+    - ../group_vars/all.yaml
+  vars:
+    cfg_src: "./cluster-config.yaml"
+    workdir: "/workspace"
+    outdir: "{{ workdir }}/output"
+    container_name: k8s-gen
+    image: docker.io/library/debian:stable-slim
+
+  tasks:
+    - name: Render cluster-config.yaml from Jinja2 template
+      ansible.builtin.template:
+        src: ../templates/kubeadm-init.yaml.j2
+        dest: "{{ cfg_src }}"
+
+    - name: Include encrypted sensitive vars
+      ansible.builtin.include_vars:
+        file: ../secrets/sensitive.enc.yaml
+        name: sensitive_vars
+
+    - name: Launch Docker container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image }}"
+        command: sleep infinity
+        volumes:
+          - "{{ cfg_src }}:{{ workdir }}/cluster-config.yaml:ro"
+          - "../secrets/sensitive.enc.yaml:{{ workdir }}/secrets/sensitive.enc.yaml:ro"
+        state: started
+
+    - name: Setup Kubernetes APT repo inside the Docker container
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          /bin/sh -c '
+            mkdir -p -m755 /etc/apt/keyrings && \
+            apt-get update && \
+            apt-get install -y apt-transport-https ca-certificates curl gnupg && \
+            curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+              | gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg && \
+            echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io kubernetes-xenial main" \
+              > /etc/apt/sources.list.d/kubernetes.list && \
+            apt-get update
+          '
+
+    - name: Install kubelet, kubeadm & kubectl inside the Docker container
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            kubelet={{ kubernetes_version }}-00 \
+            kubeadm={{ kubernetes_version }}-00 \
+            kubectl={{ kubernetes_version }}-00
+
+    - name: Pull control-plane images
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          PATH=/usr/bin:$PATH kubeadm config images pull --config {{ workdir }}/cluster-config.yaml
+
+    - name: Run kubeadm phases (certs, kubeconfig, control-plane)
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          PATH=/usr/bin/$PATH && \
+          kubeadm init phase certs all --config {{ workdir }}/cluster-config.yaml && \
+          kubeadm init phase kubeconfig all --config {{ workdir }}/cluster-config.yaml && \
+          kubeadm init phase control-plane all --config {{ workdir }}/cluster-config.yaml
+
+    - name: Upload certs and capture cert-key
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          PATH=/usr/bin:$PATH kubeadm init phase upload-certs --upload-certs --config {{ workdir }}/cluster-config.yaml | awk '/certificate key/{print $4}'
+      register: cert_key
+
+    - name: Create a long-lived bootstrap token
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          PATH=/usr/bin:$PATH kubeadm token create --ttl 0
+      register: bootstrap_token
+
+    - name: Compute discovery-token CA hash
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/.* //'
+      register: ca_hash
+
+    - name: Write the join script
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          cat <<EOF > {{ outdir }}/join.sh
+          #!/usr/bin/env bash
+          kubeadm join {{ control_plane_vip }}:6443 \
+            --token {{ bootstrap_token.stdout }} \
+            --discovery-token-ca-cert-hash sha256:{{ ca_hash.stdout }} \
+            --control-plane \
+            --certificate-key {{ cert_key.stdout }}
+          EOF && \
+          chmod +x {{ outdir }}/join.sh
+
+    - name: Package artifacts into tarball
+      community.docker.docker_container_exec:
+        container: "{{ container_name }}"
+        command: |
+          cd {{ workdir }} && tar czf /tmp/k8s-artifact.tgz output /etc/kubernetes
+      register: artifact_tar
+
+    - name: Copy k8s-artifact.tgz out to localhost
+      ansible.builtin.copy:
+        content: "{{ artifact_tar.stdout }}"
+        dest: "./k8s-artifact.tgz"
+        mode: '0644'
+
+    - name: Clean up Docker container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent

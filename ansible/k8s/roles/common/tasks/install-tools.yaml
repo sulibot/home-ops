@@ -1,0 +1,81 @@
+######################################################################
+# APT repo setup: Kubernetes keyring & sources
+######################################################################
+- name: Ensure /etc/apt/keyrings exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Kubernetes APT key
+  ansible.builtin.shell: |
+    mkdir -p -m 755 /etc/apt/keyrings
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key \
+      | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+- name: Add Kubernetes APT repository
+  ansible.builtin.shell: |
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /' \
+      | tee /etc/apt/sources.list.d/kubernetes.list
+  args:
+    creates: /etc/apt/sources.list.d/kubernetes.list
+
+- name: Install WakeMeOps repository
+  ansible.builtin.shell: |
+    curl -sSL https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository | sudo bash
+  args:
+    executable: /bin/bash
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+
+######################################################################
+# Install Kubernetes packages
+######################################################################
+- name: Install dependencies for HTTPS APT
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gpg
+      - etcd-client
+    state: present
+
+- name: Install kubelet, kubeadm, kubectl
+  ansible.builtin.apt:
+    name:
+      - kubelet={{ k8s_semver }}-1.1
+      - kubeadm={{ k8s_semver }}-1.1
+      - kubectl={{ k8s_semver }}-1.1
+    state: present
+
+- name: Enable and start kubelet
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: true
+    state: started
+
+- name: Install cilium CLI
+  ansible.builtin.apt:
+    name: cilium
+    state: present
+
+- name: Install k9s
+  ansible.builtin.apt:
+    name: k9s
+    state: present
+
+- name: Install k9s
+  ansible.builtin.apt:
+    name: flux
+    state: present
+
+- name: Install helm
+  ansible.builtin.apt:
+    name: helm
+    state: present
+
