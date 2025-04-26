@@ -1,0 +1,7 @@
+# roles/common/tasks/main.yaml
+---
+# this runs first whenever you call `- common`
+- import_tasks: os-setup.yaml
+- import_tasks: prep-containerd.yaml
+- import_tasks: install-tools.yaml
+

@@ -1,3 +1,4 @@
+# playbooks/generate-join-creds.yaml 
 - name: Generate Kubernetes join credentials and encrypt on control plane
   hosts: controlplane[0]
   become: true
@@ -25,7 +26,10 @@
       when: openssl_check.rc != 0
 
     - name: Create a bootstrap token
-      ansible.builtin.command: kubeadm token create
+      ansible.builtin.command:
+        cmd: kubeadm token create
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
       register: token_out
 
     - name: Compute CA cert hash

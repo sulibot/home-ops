@@ -28,27 +28,24 @@ controllerManager:
       value: "{{ svc_subnet }}"
     - name: node-cidr-mask-size-ipv6
       value: "64"
+
 etcd:
   local:
     extraArgs:
-      - name: listen-client-urls
-        value: "http://[::1]:2379,http://[{{ ansible_host }}]:2379"
       - name: advertise-client-urls
-        value: "http://[{{ ansible_host }}]:2379"
-      - name: listen-peer-urls
-        value: "http://[::1]:2380,http://[{{ ansible_host }}]:2380"
+        value: "https://[{{ ansible_host }}]:2379"
       - name: initial-advertise-peer-urls
-        value: "http://[{{ ansible_host }}]:2380"
+        value: "https://[{{ ansible_host }}]:2380"
       - name: initial-cluster
-        value: "{{ inventory_hostname }}=http://[{{ ansible_host }}]:2380"
+        value: "{{ inventory_hostname }}=https://[{{ ansible_host }}]:2380"
       - name: initial-cluster-state
         value: "new"
       - name: initial-cluster-token
         value: "etcd-cluster-1"
-
-
-
-
+      - name: listen-client-urls
+        value: "https://[::1]:2379,https://[{{ ansible_host }}]:2379"
+      - name: listen-peer-urls
+        value: "https://[::1]:2380,https://[{{ ansible_host }}]:2380"
 
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
@@ -56,7 +53,6 @@ kind: InitConfiguration
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_host }}"
   bindPort: 6443
-
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:

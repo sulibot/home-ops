@@ -1,0 +1,13 @@
+# roles/k8s_join_controlplane/tasks/main.yaml
+- name: Render control-plane join config
+  template:
+    src: ../../../templates/kubeadm-join-controlplane.yaml.j2
+    dest: /root/kubeadm-join.yaml
+  vars:
+    bootstrap_token:    "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
+    ca_cert_hash:       "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
+    certificate_key:    "{{ hostvars[groups['controlplane'][0]].certificate_key }}"
+
+
+- name: Join this node as control-plane
+  command: kubeadm join --config /root/kubeadm-join.yaml

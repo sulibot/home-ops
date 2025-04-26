@@ -1,4 +1,3 @@
-# 1) JoinConfiguration
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
 discovery:
@@ -9,51 +8,15 @@ discovery:
       - "{{ ca_cert_hash }}"
 controlPlane:
   certificateKey: "{{ certificate_key }}"
-localAPIEndpoint:
-  advertiseAddress: "{{ ansible_host }}"
-  bindPort: 6443
+  localAPIEndpoint:
+    advertiseAddress: "{{ ansible_host }}"
+    bindPort: 6443
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:
-    node-ip: "{{ ansible_host }}"
-
+    - name: node-ip
+      value: "{{ ansible_host }}"
 ---
-# 2) ClusterConfiguration
-apiVersion: kubeadm.k8s.io/v1beta4
-kind: ClusterConfiguration
-kubernetesVersion: v{{ k8s_semver }}
-clusterName: {{ cluster_name }}
-controlPlaneEndpoint: "[{{ control_plane_vip }}]:6443"
-networking:
-  podSubnet: "{{ pod_subnet }}"
-  serviceSubnet: "{{ svc_subnet }}"
-  dnsDomain: "cluster.local"
-apiServer:
-  certSANs:
-    - "::1"
-    - "localhost"
-    - "{{ control_plane_vip }}"
-    - "{{ inventory_hostname }}"
-    - "{{ inventory_hostname }}.sulibot.com"
-  extraArgs:
-    advertise-address: "{{ ansible_host }}"
-controllerManager:
-  extraArgs:
-    cluster-cidr: "{{ pod_subnet }}"
-    service-cluster-ip-range: "{{ svc_subnet }}"
-    node-cidr-mask-size-ipv6: "64"
-etcd:
-  local:
-    extraArgs:
-      - name: listen-client-urls
-        value: "http://[::1]:2379,http://[{{ ansible_host }}]:2379"
-      - name: advertise-client-urls
-        value: "http://[{{ ansible_host }}]:2379"
-      - name: listen-peer-urls
-        value: "http://[::1]:2380,http://[{{ ansible_host }}]:2380"
-
----
-# 3) KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 failSwapOn: false
