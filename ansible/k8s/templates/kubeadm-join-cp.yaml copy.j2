@@ -6,8 +6,14 @@ discovery:
     token: "{{ bootstrap_token }}"
     caCertHashes:
       - "{{ ca_cert_hash }}"
+controlPlane:
+  certificateKey: "{{ certificate_key }}"
 ignorePreflightErrors:
   - all
+#localAPIEndpoint:
+#  advertiseAddress: "{{ ansible_host }}"
+#  bindPort: 6443
+
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:

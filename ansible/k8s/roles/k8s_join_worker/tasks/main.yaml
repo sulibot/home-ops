@@ -1,0 +1,11 @@
+- name: Render worker join config
+  template:
+    src: ../../../templates/kubeadm-join-worker.yaml.j2
+    dest: /root/kubeadm-join.yaml
+  vars:
+    bootstrap_token:   "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
+    ca_cert_hash:      "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
+    control_plane_vip: "{{ control_plane_vip }}"
+
+- name: Join this node as worker
+  command: kubeadm join --config /root/kubeadm-join.yaml

@@ -1,141 +1,60 @@
 ---
-- name: Bootstrap, prepare, or join Kubernetes cluster
+# 0) Preflight: Prepare all cluster nodes
+- name: "Preflight: Prepare all cluster nodes"
   hosts: all
   become: true
+  gather_facts: true
   vars_files:
     - "../group_vars/all.yaml"
-    - "../secrets/sensitive.enc.yaml"
+  roles:
+    - common
+
+
+# 1) Bootstrap primary control-plane
+- name: "Bootstrap primary control-plane"
+  hosts: "{{ groups['controlplane'][0] }}"
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
   vars:
-    kubeconfig: /etc/kubernetes/admin.conf
-    super_admin_conf: /etc/kubernetes/super-admin.conf
-  tasks:
-    - name: Prepare host prerequisites (kernel, sysctl, swap)
-      import_role:
-        name: common
-        tasks_from: os-setup
-
-    - name: Prepare the latest containerd
-      import_role:
-        name: common
-        tasks_from: prep-containerd
-
-    - name: Install core Kubernetes tools and packages
-      import_role:
-        name: common
-        tasks_from: install-tools
-
-    - name: Check if this node has been initialized or joined
-      stat:
-        path: "{{ kubeconfig }}"
-      register: admin_conf
-
-    - name: Initialize control plane on first CP
-      when: inventory_hostname == groups['controlplane'][0] and not admin_conf.stat.exists
-      block:
-        - name: Render init config
-          template:
-            src: ../templates/kubeadm-init.yaml.j2
-            dest: /root/kubeadm-init.yaml
-
-        - name: Deploy kube-vip static pod
-          include_role:
-            name: kubevip
-
-        - name: Patch kube-vip to use super-admin.conf
-          ansible.builtin.shell: |
-            sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/admin.conf|path: /etc/kubernetes/super-admin.conf|' \
-              /etc/kubernetes/manifests/kube-vip.yaml
-          args:
-            executable: /bin/bash
-
-        - name: Run kubeadm init
-          command: kubeadm init --config /root/kubeadm-init.yaml
-
-        - name: Create .kube directory for kubectl config
-          ansible.builtin.file:
-            path: "{{ ansible_env.HOME }}/.kube"
-            state: directory
-            mode: '0755'
-
-        - name: Set admin kubeconfig for root
-          copy:
-            src: /etc/kubernetes/admin.conf
-            dest: "{{ ansible_env.HOME }}/.kube/config"
-            owner: "{{ ansible_user }}"
-            group: "{{ ansible_user }}"
-            mode: '0600'
-
-    - name: Generate and set join credentials (for config-file method)
-      vars:
-        kubeadm_config_path: /etc/kubeadm/kube-init.yaml
-      block:
-        - name: Create a bootstrap token
-          command: kubeadm token create
-          register: token_out
-          delegate_to: "{{ groups['controlplane'][0] }}"
-          run_once: true
-
-        - name: Compute CA cert hash
-          shell: |
-            openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt |
-            openssl rsa -pubin -outform der 2>/dev/null |
-            sha256sum
-          register: hash_out
-          changed_when: false
-          delegate_to: "{{ groups['controlplane'][0] }}"
-          run_once: true
-
-        - name: Upload control-plane certs and get certificate key
-          shell: kubeadm init phase upload-certs --upload-certs
-          register: upload_certs
-          changed_when: false
-          delegate_to: "{{ groups['controlplane'][0] }}"
-          run_once: true
+    kubeconfig:        /etc/kubernetes/admin.conf
+    super_admin_conf:  /etc/kubernetes/super-admin.conf
+  roles:
+    - kubevip
+    - k8s_init
 
 
-        - name: Extract certificate key
-          set_fact:
-            certificate_key: "{{ upload_certs.stdout | regex_search('[0-9a-f]{64}') }}"
-          delegate_to: localhost
-          run_once: true
+# 2) Generate join credentials
+- name: "Generate join credentials"
+  hosts: "{{ groups['controlplane'][0] }}"
+  become: true
+  gather_facts: false
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    - k8s_generate_join_creds
 
-        - name: Set join credentials globally
-          set_fact:
-            bootstrap_token:  "{{ token_out.stdout }}"
-            ca_cert_hash:    "sha256:{{ hash_out.stdout.split()[0] }}"
-            certificate_key: "{{ certificate_key }}"
-          delegate_to: localhost
-          run_once: true
 
-    - name: Join additional control plane nodes
-      when: inventory_hostname in groups['controlplane'][1:] and not admin_conf.stat.exists
-      block:
-        - name: Render control-plane join config
-          template:
-            src: ../templates/kubeadm-join-cp.yaml.j2
-            dest: /root/kubeadm-join.yaml
+# 3) Join additional control-planes
+- name: "Join additional control-planes"
+  hosts: "{{ groups['controlplane'][1:] }}"
+  become: true
+  gather_facts: true
+  serial: 1
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    - etcd_member
+    - k8s_join_controlplane
 
-        - name: Run kubeadm join as control plane
-          command: kubeadm join --config /root/kubeadm-join.yaml
 
-    - name: Join worker nodes
-      when: inventory_hostname in groups['worker'] and not admin_conf.stat.exists
-      block:
-        - name: Render worker join config
-          template:
-            src: ../templates/kubeadm-join-worker.yaml.j2
-            dest: /root/kubeadm-join.yaml
-
-        - name: Run kubeadm join as worker
-          command: kubeadm join --config /root/kubeadm-join.yaml
-
-    - name: Reset patched kube-vip manifest when reprovisioned
-      when: inventory_hostname == groups['controlplane'][0] and admin_conf.stat.exists
-      shell: |
-        sed -i '/hostPath:/!b;n;s|path: {{ super_admin_conf }}|path: /etc/kubernetes/admin.conf|' /etc/kubernetes/manifests/kube-vip.yaml
-
-    - name: Clean up temporary kubeadm configs on first CP
-      when: inventory_hostname == groups['controlplane'][0]
-      file:
-        path: /root/kubeadm-*.yaml
-        state: absent
+# 4) Join worker nodes
+- name: "Join worker nodes"
+  hosts: worker
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    - k8s_join_worker

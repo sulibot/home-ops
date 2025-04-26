@@ -1,0 +1,12 @@
+# roles/etcd_member/tasks/main.yaml
+
+- name: Add this host as an etcd member and render control-plane join config
+  include_tasks: ../../../roles/common/tasks/add-etcd-member-and-generate-join.yaml
+  vars:
+    new_etcd_member_name: "{{ inventory_hostname }}"
+    new_etcd_peer_url: "https://[{{ ansible_host }}]:2380"
+    api_server_vip: "[{{ control_plane_vip }}]:6443"
+    join_token: "{{ bootstrap_token }}"
+    ca_cert_hash: "{{ ca_cert_hash }}"
+    certificate_key: "{{ certificate_key }}"
+

@@ -1,5 +1,5 @@
----
 # roles/k8s_generate_join_creds/tasks/main.yaml
+
 - name: Ensure kubeadm is installed
   ansible.builtin.command: kubeadm version
   ignore_errors: true
@@ -23,7 +23,10 @@
   when: openssl_check.rc != 0
 
 - name: Create a bootstrap token
-  ansible.builtin.command: kubeadm token create
+  ansible.builtin.command:
+    cmd: kubeadm token create
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
   register: token_out
 
 - name: Compute CA cert hash
@@ -33,25 +36,19 @@
       sha256sum
   register: hash_out
 
+- name: Upload control-plane certificates and get certificate key
+  ansible.builtin.command:
+    cmd: kubeadm init phase upload-certs --upload-certs
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: upload_certs
+
+- name: Extract certificate key
+  ansible.builtin.set_fact:
+    certificate_key: "{{ upload_certs.stdout | regex_search('[0-9a-f]{64}') }}"
+
 - name: Set join credentials facts
   ansible.builtin.set_fact:
     bootstrap_token: "{{ token_out.stdout }}"
     ca_cert_hash: "sha256:{{ hash_out.stdout.split()[0] }}"
-
-- name: Write plaintext join secrets
-  ansible.builtin.copy:
-    dest: secrets/sensitive.yaml
-    content: |
-      bootstrap_token: {{ bootstrap_token }}
-      ca_cert_hash: {{ ca_cert_hash }}
-  no_log: true
-
-- name: Encrypt join secrets with SOPS in-place
-  ansible.builtin.shell: sops -i secrets/sensitive.yaml
-  args:
-    creates: secrets/sensitive.enc.yaml
-
-- name: Remove plaintext secrets file
-  ansible.builtin.file:
-    path: secrets/sensitive.yaml
-    state: absent
+    certificate_key: "{{ certificate_key }}"

@@ -1,0 +1,65 @@
+# roles/k8s_init/tasks/main.yaml
+ # roles/k8s_init/tasks/main.yaml
+
+#- name: Wait for control-plane VIP to appear on {{ kube_vip_interface }}
+#  ansible.builtin.shell: |
+#    ip -6 addr show dev {{ kube_vip_interface }}
+#  register: vip_check
+#  until: "'{{ control_plane_vip }}' in vip_check.stdout"
+#  retries: 10
+#  delay: 5
+
+- name: Render kubeadm-init.yaml
+  template:
+    src: ../../../templates/kubeadm-init.yaml.j2
+    dest: /root/kubeadm-init.yaml
+
+- name: Run kubeadm init
+  command: kubeadm init --config /root/kubeadm-init.yaml
+
+- name: Patch kube-vip manifest for admin.conf
+  ansible.builtin.shell: |
+    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
+      /etc/kubernetes/manifests/kube-vip.yaml
+  args:
+    executable: /bin/bash
+  become: true
+
+# 1) Ensure the remote kube dir exists
+- name: Create remote kube dir
+  file:
+    path: /root/.kube
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# 2) Copy admin.conf _on the remote_ into /root/.kube/config
+- name: Install admin.conf on the host
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: '0644'
+
+# 3) Ensure your local ~/.kube exists (only once; no sudo)
+- name: Create local kube dir
+  delegate_to: localhost
+  run_once: true
+  become: false           # ← disable sudo on localhost
+  file:
+    path: /Users/sulibot/.kube
+    state: directory
+    mode: '0755'
+
+# 4) Fetch the remote config back to your Mac (also no sudo)
+- name: Fetch remote kubeconfig to local machine
+  run_once: true
+  fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: /Users/sulibot/.kube/config
+    flat: yes
+
+
