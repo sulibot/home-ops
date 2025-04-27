@@ -10,3 +10,15 @@ cilium_config_file: /root/cilium-values.yaml
 flux_git_owner: your-github-username
 flux_git_repo: sol-k8s-cluster-config
 k8s_repo_url: https://apt.kubernetes.io/
+
+# FRR / VRRP / BGP globals
+frr_asn:    65101                       # your K8s cluster ASN
+frr_peer_asn: 65000                     # RouterOS ASN
+frr_bgp_neighbors:
+  - "fd00:255::fffe"                    # fill in your router peer IPs here
+
+frr_vrrp_interface: "{{ kube_vip_interface }}"
+frr_vrrp_group:     51
+frr_vrrp_priority:  "{{ 100 + (groups['controlplane'].index(inventory_hostname) * 10) }}"
+frr_vrrp_advert_interval: 1
+frr_vrrp_preempt:   true

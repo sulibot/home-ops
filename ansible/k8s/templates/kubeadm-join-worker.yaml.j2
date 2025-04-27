@@ -1,21 +1,29 @@
+---
+# templates/kubeadm-join-worker.yaml.j2
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
+
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "[{{ control_plane_vip }}]:6443"
     token: "{{ bootstrap_token }}"
+    apiServerEndpoint: "[{{ control_plane_vip }}]:6443"
     caCertHashes:
       - "{{ ca_cert_hash }}"
-ignorePreflightErrors:
-  - all
+
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:
     - name: node-ip
       value: "{{ ansible_host }}"
+
+
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
+
+# Kubelet tuning applied to all worker nodes
+# Disables swap enforcement, limits swap behavior, and sets cgroup driver
+# -------------------------------------------------------------------
 failSwapOn: false
 memorySwap:
   swapBehavior: LimitedSwap

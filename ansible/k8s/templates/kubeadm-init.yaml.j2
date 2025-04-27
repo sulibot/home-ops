@@ -1,21 +1,20 @@
 # templates/kubeadm-init.yaml.j2
+# -------------------------------------------------------------------
+# 1) ClusterConfiguration: cluster-wide settings (passed to kubeadm init)
+# -------------------------------------------------------------------
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
+
 kubernetesVersion: v{{ k8s_semver }}
 clusterName: {{ cluster_name }}
 controlPlaneEndpoint: "[{{ control_plane_vip }}]:6443"
+
 networking:
   podSubnet: "{{ pod_subnet }}"
   serviceSubnet: "{{ svc_subnet }}"
   dnsDomain: "cluster.local"
 
 apiServer:
-  certSANs:
-    - "::1"
-    - "localhost"
-    - "{{ control_plane_vip }}"
-    - "{{ inventory_hostname }}"
-    - "{{ inventory_hostname }}.sulibot.com"
   extraArgs:
     - name: advertise-address
       value: "{{ ansible_host }}"
@@ -31,36 +30,45 @@ controllerManager:
 
 etcd:
   local:
-    extraArgs:
-      - name: advertise-client-urls
-        value: "https://[{{ ansible_host }}]:2379"
-      - name: initial-advertise-peer-urls
-        value: "https://[{{ ansible_host }}]:2380"
-      - name: initial-cluster
-        value: "{{ inventory_hostname }}=https://[{{ ansible_host }}]:2380"
-      - name: initial-cluster-state
-        value: "new"
-      - name: initial-cluster-token
-        value: "etcd-cluster-1"
-      - name: listen-client-urls
-        value: "https://[::1]:2379,https://[{{ ansible_host }}]:2379"
-      - name: listen-peer-urls
-        value: "https://[::1]:2380,https://[{{ ansible_host }}]:2380"
+    # ONLY truly global options here! (no per-node advertise/initial-* flags)
+    # dataDir: /var/lib/etcd
+    # extraArgs:
+    #   - name: heartbeat-interval
+    #     value: "100"
+    #   - name: election-timeout
+    #     value: "1000"
+    # serverCertSANs:
+    #   - "etcd.some-domain.local"
+    # peerCertSANs:
+    #   - "etcd.some-domain.local"
 
 ---
+# -------------------------------------------------------------------
+# 2) InitConfiguration: bootstrap the first control-plane
+# -------------------------------------------------------------------
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
+
+skipPhases:
+  - addon/kube-proxy
+
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_host }}"
   bindPort: 6443
+
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:
-  - name: node-ip
-    value: "{{ ansible_host }}"
+    - name: node-ip
+      value: "{{ ansible_host }}"
+
 ---
+# -------------------------------------------------------------------
+# 3) KubeletConfiguration: kubelet tuning (used by both init & join)
+# -------------------------------------------------------------------
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
+
 failSwapOn: false
 memorySwap:
   swapBehavior: LimitedSwap

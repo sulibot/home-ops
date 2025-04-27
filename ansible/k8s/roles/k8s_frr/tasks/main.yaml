@@ -1,0 +1,42 @@
+---
+- name: Install FRR package
+  apt:
+    name: frr
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Enable needed FRR daemons
+  lineinfile:
+    path: /etc/frr/daemons
+    regexp: '^{{ item.name }}='
+    line: '{{ item.name }}=yes'
+  loop:
+    - { name: zebra }
+    - { name: bgpd  }
+    - { name: vrrpd }
+  notify: restart frr
+  become: true
+
+- name: Deploy API‐server health‐check script
+  copy:
+    dest: /usr/local/bin/check-apiserver.sh
+    content: |
+      #!/usr/bin/env bash
+      # returns exit code 0 only if apiserver /healthz is healthy
+      curl -sf --insecure https://127.0.0.1:6443/healthz
+    owner: root
+    group: root
+    mode: '0755'
+  notify: restart frr
+  become: true
+
+- name: Render FRR main configuration
+  template:
+    src: frr.conf.j2
+    dest: /etc/frr/frr.conf
+    owner: frr
+    group: frr
+    mode: 0644
+  notify: restart frr
+  become: true

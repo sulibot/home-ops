@@ -1,0 +1,54 @@
+! -*- FRR Configuration Jinja2 Template -*-
+!
+! -------------------------------------------------------------------
+! Global FRR settings
+! -------------------------------------------------------------------
+frr version {{ frr_version | default('7.5') }}
+frr defaults traditional
+hostname {{ inventory_hostname }}
+log syslog
+service integrated-vtysh-config
+!
+!
+! -------------------------------------------------------------------
+! BGP Configuration
+! -------------------------------------------------------------------
+{% if cilium_bgp_enabled %}
+router bgp {{ frr_asn }}
+  bgp router-id {{ ansible_host }}
+  {% for peer in frr_bgp_neighbors %}
+  neighbor {{ peer }} remote-as {{ frr_peer_asn }}
+  {% endfor %}
+  !
+  address-family ipv6 unicast
+    network {{ control_plane_vip }}/128
+    {% for peer in frr_bgp_neighbors %}
+    neighbor {{ peer }} activate
+    {% endfor %}
+  exit-address-family
+!
+{% endif %}
+! -------------------------------------------------------------------
+! VRRP Configuration with Health Tracking
+! -------------------------------------------------------------------
+script check-apiserver {
+  script "/usr/local/bin/check-apiserver.sh"
+  interval {{ frr_vrrp_advert_interval }}
+  weight   {{ frr_vrrp_weight | default(50) }}
+}
+
+vrrp vrf default instance {{ frr_vrrp_group }}
+  interface        {{ frr_vrrp_interface }}
+  virtual-router-id {{ frr_vrrp_group }}
+  priority         {{ frr_vrrp_priority }}
+  advert_int       {{ frr_vrrp_advert_interval }}
+  preempt delay minimum {{ frr_vrrp_advert_interval }} reload
+  track script check-apiserver
+  virtual-address  {{ control_plane_vip }}
+!
+! -------------------------------------------------------------------
+! Zebra and Daemon Control via /etc/frr/daemons
+! (Enabled daemons: zebra, bgpd, vrrpd)
+! -------------------------------------------------------------------
+line vty
+  

@@ -1,31 +1,38 @@
 # roles/k8s_init/tasks/main.yaml
- # roles/k8s_init/tasks/main.yaml
 
-#- name: Wait for control-plane VIP to appear on {{ kube_vip_interface }}
-#  ansible.builtin.shell: |
-#    ip -6 addr show dev {{ kube_vip_interface }}
-#  register: vip_check
-#  until: "'{{ control_plane_vip }}' in vip_check.stdout"
-#  retries: 10
-#  delay: 5
+- name: Check if control-plane is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init_stat
 
-- name: Render kubeadm-init.yaml
+- name: Render kubeadm-init.yaml (first CP only)
   template:
     src: ../../../templates/kubeadm-init.yaml.j2
     dest: /root/kubeadm-init.yaml
+  when: not kubeadm_init_stat.stat.exists
 
-- name: Run kubeadm init
-  command: kubeadm init --config /root/kubeadm-init.yaml
-
-- name: Patch kube-vip manifest for admin.conf
-  ansible.builtin.shell: |
-    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
-      /etc/kubernetes/manifests/kube-vip.yaml
+- name: Run kubeadm init (first control-plane)
+  command: kubeadm init --config /root/kubeadm-init.yaml --upload-certs
   args:
-    executable: /bin/bash
-  become: true
+    creates: /etc/kubernetes/admin.conf
+  when: not kubeadm_init_stat.stat.exists
 
-# 1) Ensure the remote kube dir exists
+#- name: Wait for kube-apiserver port to be open
+#  ansible.builtin.wait_for:
+#    host: "{{ control_plane_vip }}"
+#    port: 6443
+#    timeout: 60
+#  when: not kubeadm_init_stat.stat.exists
+  
+#- name: Patch kube-vip manifest for admin.conf path
+#  ansible.builtin.shell: |
+#    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
+#      /etc/kubernetes/manifests/kube-vip.yaml
+#  args:
+#    executable: /bin/bash
+#  become: true
+#  when: not kubeadm_init_stat.stat.exists
+
 - name: Create remote kube dir
   file:
     path: /root/.kube
@@ -34,7 +41,6 @@
     group: root
     mode: '0755'
 
-# 2) Copy admin.conf _on the remote_ into /root/.kube/config
 - name: Install admin.conf on the host
   copy:
     remote_src: yes
@@ -44,22 +50,19 @@
     group: root
     mode: '0644'
 
-# 3) Ensure your local ~/.kube exists (only once; no sudo)
 - name: Create local kube dir
   delegate_to: localhost
   run_once: true
-  become: false           # ← disable sudo on localhost
+  become: false
   file:
-    path: /Users/sulibot/.kube
+    path: "{{ lookup('env','HOME') }}/.kube"
     state: directory
     mode: '0755'
 
-# 4) Fetch the remote config back to your Mac (also no sudo)
+
 - name: Fetch remote kubeconfig to local machine
   run_once: true
   fetch:
     src: /etc/kubernetes/admin.conf
     dest: /Users/sulibot/.kube/config
     flat: yes
-
-
