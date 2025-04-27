@@ -1,54 +1,45 @@
 # roles/k8s_generate_join_creds/tasks/main.yaml
 
-- name: Ensure kubeadm is installed
-  ansible.builtin.command: kubeadm version
-  ignore_errors: true
-  register: kubeadm_check
+- name: Create a new bootstrap token
+  command: kubeadm token create
+  register: bootstrap_token_output
+  changed_when: bootstrap_token_output.rc == 0
 
-- name: Install kubeadm if missing
-  ansible.builtin.apt:
-    name: "kubeadm={{ k8s_semver }}-1.1"
-    state: present
-  when: kubeadm_check.rc != 0
+- name: Save bootstrap token to file
+  copy:
+    dest: /etc/kubernetes/bootstrap-token
+    content: "{{ bootstrap_token_output.stdout }}"
 
-- name: Ensure openssl is installed
-  ansible.builtin.command: openssl version
-  ignore_errors: true
-  register: openssl_check
-
-- name: Install openssl if missing
-  ansible.builtin.apt:
-    name: openssl
-    state: present
-  when: openssl_check.rc != 0
-
-- name: Create a bootstrap token
-  ansible.builtin.command:
-    cmd: kubeadm token create
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
-  register: token_out
-
-- name: Compute CA cert hash
-  ansible.builtin.shell: |
+- name: Compute discovery CA cert hash
+  shell: >
     openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt |
-      openssl rsa -pubin -outform der 2>/dev/null |
-      sha256sum
-  register: hash_out
+    openssl rsa -pubin -outform der 2>/dev/null |
+    openssl dgst -sha256 -hex |
+    sed 's/^.* //'
+  register: ca_cert_hash_output
+  changed_when: false
 
-- name: Upload control-plane certificates and get certificate key
-  ansible.builtin.command:
-    cmd: kubeadm init phase upload-certs --upload-certs
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
-  register: upload_certs
+- name: Save CA cert hash to file
+  copy:
+    dest: /etc/kubernetes/ca-cert-hash
+    content: "{{ ca_cert_hash_output.stdout }}"
+
+- name: Upload and retrieve control-plane certificate key
+  command: kubeadm init phase upload-certs --upload-certs
+  register: cert_key_output
+  changed_when: false
 
 - name: Extract certificate key
-  ansible.builtin.set_fact:
-    certificate_key: "{{ upload_certs.stdout | regex_search('[0-9a-f]{64}') }}"
+  set_fact:
+    certificate_key: "{{ cert_key_output.stdout_lines[-1] }}"
 
-- name: Set join credentials facts
-  ansible.builtin.set_fact:
-    bootstrap_token: "{{ token_out.stdout }}"
-    ca_cert_hash: "sha256:{{ hash_out.stdout.split()[0] }}"
+- name: Save certificate key to file
+  copy:
+    dest: /etc/kubernetes/certificate-key
+    content: "{{ certificate_key }}"
+
+- name: Expose credentials for downstream roles
+  set_fact:
+    bootstrap_token: "{{ bootstrap_token_output.stdout }}"
+    ca_cert_hash:    "sha256:{{ ca_cert_hash_output.stdout }}"
     certificate_key: "{{ certificate_key }}"

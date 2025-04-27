@@ -1,15 +1,33 @@
+# templates/kubeadm-join-cp.yaml.j2
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
+
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "[{{ control_plane_vip }}]:6443"
     token: "{{ bootstrap_token }}"
+    apiServerEndpoint: "[{{ control_plane_vip }}]:6443"
     caCertHashes:
       - "{{ ca_cert_hash }}"
+
 controlPlane:
+  localAPIEndpoint:
+    advertiseAddress: "{{ ansible_host }}"
+    bindPort: 6443
   certificateKey: "{{ certificate_key }}"
+
 nodeRegistration:
   name: "{{ inventory_hostname }}"
   kubeletExtraArgs:
-    node-ip: "{{ ansible_host }}"
+    - name: node-ip
+      value: "{{ ansible_host }}"
+---
+# Apply kubelet configuration to all joining nodes
+# Disables swap enforcement, limits swap behavior, and sets cgroup driver
+# -------------------------------------------------------------------
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
 
+failSwapOn: false
+memorySwap:
+  swapBehavior: LimitedSwap
+cgroupDriver: "systemd"

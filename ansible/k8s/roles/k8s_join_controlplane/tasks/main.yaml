@@ -1,13 +1,32 @@
 # roles/k8s_join_controlplane/tasks/main.yaml
-- name: Render control-plane join config
+
+- name: Check if this control-plane node is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_cp_init_stat
+
+- name: Render kubeadm-join-controlplane.yaml (only if not initialized)
   template:
     src: ../../../templates/kubeadm-join-controlplane.yaml.j2
     dest: /root/kubeadm-join.yaml
-  vars:
-    bootstrap_token:    "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
-    ca_cert_hash:       "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
-    certificate_key:    "{{ hostvars[groups['controlplane'][0]].certificate_key }}"
+  when: not kubeadm_cp_init_stat.stat.exists
 
-
-- name: Join this node as control-plane
+- name: Join this node as control-plane (only if not initialized)
   command: kubeadm join --config /root/kubeadm-join.yaml
+  when: not kubeadm_cp_init_stat.stat.exists
+
+#- name: Wait for kube-apiserver port to be open
+#  ansible.builtin.wait_for:
+#    host: "{{ control_plane_vip }}"
+#    port: 6443
+#    timeout: 60
+#  when: not kubeadm_cp_init_stat.stat.exists
+  
+#- name: Patch kube-vip manifest for admin.conf path
+#  ansible.builtin.shell: |
+#    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
+#      /etc/kubernetes/manifests/kube-vip.yaml
+#  args:
+#    executable: /bin/bash
+#  become: true
+#  when: not kubeadm_cp_init_stat.stat.exists

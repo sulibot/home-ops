@@ -21,19 +21,25 @@
     kubeconfig:        /etc/kubernetes/admin.conf
     super_admin_conf:  /etc/kubernetes/super-admin.conf
   roles:
-    - kubevip
+    # - kubevip
+    - k8s_frr
     - k8s_init
 
 
-# 2) Generate join credentials
-- name: "Generate join credentials"
-  hosts: "{{ groups['controlplane'][0] }}"
-  become: true
+# 2) Generate join credentials (only when we're about to join any non-primary node)
+- name: Ensure join credentials exist on primary CP
+  hosts: "all:!{{ groups['controlplane'][0] }}"
   gather_facts: false
+  become: true
   vars_files:
     - "../group_vars/all.yaml"
-  roles:
-    - k8s_generate_join_creds
+
+  tasks:
+    - name: Create join credentials on primary control-plane
+      import_role:
+        name: k8s_generate_join_creds
+      delegate_to: "{{ groups['controlplane'][0] }}"
+      run_once: true
 
 
 # 3) Join additional control-planes
@@ -45,7 +51,9 @@
   vars_files:
     - "../group_vars/all.yaml"
   roles:
-    - etcd_member
+    # - etcd_member
+    # - kubevip
+    - k8s_frr
     - k8s_join_controlplane
 
 

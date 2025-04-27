@@ -1,0 +1,8 @@
+---
+- name: restart frr
+  service:
+    name: frr
+    state: restarted
+    enabled: yes
+  become: true
+

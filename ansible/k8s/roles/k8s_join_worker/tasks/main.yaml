@@ -1,11 +1,28 @@
-- name: Render worker join config
+# roles/k8s_join_worker/tasks/main.yaml
+
+- name: Check if this worker node is already joined
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubeadm_worker_join_stat
+
+- name: Render kubeadm-join-worker.yaml (only if not joined)
   template:
     src: ../../../templates/kubeadm-join-worker.yaml.j2
     dest: /root/kubeadm-join.yaml
-  vars:
-    bootstrap_token:   "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
-    ca_cert_hash:      "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
-    control_plane_vip: "{{ control_plane_vip }}"
+#  vars:
+#    bootstrap_token: "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
+#    ca_cert_hash: "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
+  when: not kubeadm_worker_join_stat.stat.exists
 
-- name: Join this node as worker
+- name: Join this node as worker (only if not joined)
   command: kubeadm join --config /root/kubeadm-join.yaml
+  when: not kubeadm_worker_join_stat.stat.exists
+
+- name: Label this node as “worker”
+  command: >
+    kubectl label node {{ inventory_hostname }}
+      node-role.kubernetes.io/worker= 
+      --overwrite
+      --kubeconfig /etc/kubernetes/admin.conf
+  delegate_to: "{{ groups['controlplane'][0] }}"
+  when: not kubeadm_worker_join_stat.stat.exists
