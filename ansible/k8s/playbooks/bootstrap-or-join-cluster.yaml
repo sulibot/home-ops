@@ -21,8 +21,8 @@
     kubeconfig:        /etc/kubernetes/admin.conf
     super_admin_conf:  /etc/kubernetes/super-admin.conf
   roles:
-    # - kubevip
-    - k8s_frr
+    - kubevip
+    # - k8s_frr
     - k8s_init
 
 
@@ -51,9 +51,8 @@
   vars_files:
     - "../group_vars/all.yaml"
   roles:
-    # - etcd_member
-    # - kubevip
-    - k8s_frr
+    - kubevip
+    # - k8s_frr
     - k8s_join_controlplane
 
 

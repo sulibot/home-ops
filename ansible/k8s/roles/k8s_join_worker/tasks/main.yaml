@@ -9,13 +9,22 @@
   template:
     src: ../../../templates/kubeadm-join-worker.yaml.j2
     dest: /root/kubeadm-join.yaml
-#  vars:
-#    bootstrap_token: "{{ hostvars[groups['controlplane'][0]].bootstrap_token }}"
-#    ca_cert_hash: "{{ hostvars[groups['controlplane'][0]].ca_cert_hash }}"
+  when: not kubeadm_worker_join_stat.stat.exists
+
+- name: Wait for kube-apiserver port to be open
+  ansible.builtin.wait_for:
+    host: "{{ control_plane_vip }}"
+    port: 6443
+    timeout: 60
   when: not kubeadm_worker_join_stat.stat.exists
 
 - name: Join this node as worker (only if not joined)
-  command: kubeadm join --config /root/kubeadm-join.yaml
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - join
+      - --config
+      - /root/kubeadm-join.yaml
   when: not kubeadm_worker_join_stat.stat.exists
 
 - name: Label this node as “worker”

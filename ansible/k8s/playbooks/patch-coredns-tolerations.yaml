@@ -1,0 +1,23 @@
+---
+- name: Patch CoreDNS to tolerate node not-ready state
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Patch CoreDNS
+      kubernetes.core.k8s:
+        state: patched
+        kind: Deployment
+        namespace: kube-system
+        name: coredns
+        merge_type: strategic-merge
+        definition:
+          spec:
+            template:
+              spec:
+                tolerations:
+                  - key: "node.kubernetes.io/not-ready"
+                    operator: "Exists"
+                    effect: "NoSchedule"
+                  - key: "node.kubernetes.io/unreachable"
+                    operator: "Exists"
+                    effect: "NoSchedule"

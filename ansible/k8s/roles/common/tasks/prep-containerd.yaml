@@ -74,13 +74,15 @@
     content: "{{ containerd_config.stdout }}"
     force: yes
 
-- name: Set SystemdCgroup = true manually if not already present
-  ansible.builtin.blockinfile:
-    path: /etc/containerd/config.toml
-    insertafter: '^\[plugins\.\"io.containerd.cri.v1.runtime\"\.containerd\.runtimes\.runc\.options\]'
-    block: |
-      SystemdCgroup = true
+- name: Patch containerd config.toml with SystemdCgroup = true
+  ansible.builtin.shell: |
+    sed -i '/\[plugins\.\x27io\.containerd\.cri\.v1\.runtime\x27\.containerd\.runtimes\.runc\.options\]/a\            SystemdCgroup = true' /etc/containerd/config.toml
+  args:
+    executable: /bin/bash
+  notify:
+    - Restart containerd
   when: containerd_config.stdout is not search('SystemdCgroup\s*=\s*true')
+
 
 - name: Enable and start containerd
   ansible.builtin.systemd:

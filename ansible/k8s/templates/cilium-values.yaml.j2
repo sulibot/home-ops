@@ -1,0 +1,106 @@
+# --- Kubernetes Integration ---
+k8sServiceHost: "{{ control_plane_vip }}"
+k8sServicePort: 6443
+kubeProxyReplacement: true
+
+k8sServiceProbes:
+  enabled: true
+
+# --- IP Addressing ---
+ipv4:
+  enabled: false
+ipv6:
+  enabled: true
+
+ipv4-node: "0.0.0.0"
+
+routingMode: native
+endpointRoutes:
+  enabled: true
+
+ipv6NativeRoutingCIDR: "{{ pod_subnet }}"
+
+# --- IPAM ---
+ipam:
+  mode: "kubernetes"
+
+# --- Masquerading and BPF ---
+bpf:
+  masquerade: true
+
+enable-ipv6-masquerade: true
+
+# --- CNI Requirements ---
+k8s-require-ipv6-pod-cidr: "true"
+k8s-require-ipv4-pod-cidr: "false"
+
+# --- BGP Settings ---
+bgpControlPlane:
+  enabled: true
+
+# --- Metrics and Monitoring ---
+metrics:
+  enabled: true
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - httpV2
+
+dashboards:
+  enabled: true
+  label: grafana_dashboard
+  namespace: ~
+  labelValue: "1"
+  annotations: {}
+
+# --- Gateway API Support ---
+gatewayAPI:
+  enabled: true
+  enableProxyProtocol: false
+  enableAppProtocol: false
+  enableAlpn: false
+  xffNumTrustedHops: 0
+  externalTrafficPolicy: Cluster
+  gatewayClass:
+    create: auto
+  secretsNamespace:
+    create: true
+    name: cilium-secrets
+    sync: true
+  hostNetwork:
+    enabled: false
+    nodes:
+      matchLabels: {}
+
+# --- Ingress Controller ---
+ingressController:
+  enabled: true
+  default: false
+  loadbalancerMode: dedicated
+  enforceHttps: true
+  enableProxyProtocol: false
+  ingressLBAnnotationPrefixes:
+    - lbipam.cilium.io
+    - nodeipam.cilium.io
+    - service.beta.kubernetes.io
+    - service.kubernetes.io
+    - cloud.google.com
+
+# --- Neighbor Discovery and L2 Announcements ---
+l2NeighDiscovery:
+  enabled: true
+  refreshPeriod: "30s"
+
+l2announcements:
+  enabled: false

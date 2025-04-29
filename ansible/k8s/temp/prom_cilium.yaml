@@ -1,0 +1,43 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cilium-agent
+  namespace: kube-system
+  labels:
+    release: prometheus        # <== Match your Prometheus release name
+spec:
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  endpoints:
+    - port: metrics             # Default Cilium agent metrics port (9962)
+      interval: 30s
+      path: /metrics
+      scheme: http
+      honorLabels: true
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hubble-relay
+  namespace: kube-system
+  labels:
+    release: prometheus         # <== Match your Prometheus release name
+spec:
+  selector:
+    matchLabels:
+      k8s-app: hubble-relay
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  endpoints:
+    - port: metrics             # Hubble relay metrics port (4244)
+      interval: 30s
+      path: /metrics
+      scheme: http
+      honorLabels: true

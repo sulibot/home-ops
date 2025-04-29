@@ -1,19 +1,29 @@
+# roles/cilium/tasks/main.yaml
+---
+- name: Render cilium-values.yaml from template
+  ansible.builtin.template:
+    src: "../../templates/cilium-values.yaml.j2"
+    dest: "{{ cilium_config_file }}"
+    mode: "0644"
+  become: true
+
 - name: Add Cilium Helm repo
-  command: helm repo add cilium https://helm.cilium.io
-  args:
-    creates: /tmp/.cilium_repo_added
+  community.kubernetes.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io
+    state: present
+  become: true
 
-- name: Update Helm repos
-  command: helm repo update
-
-- name: Install Cilium with custom values
-  command: >
-    helm upgrade --install cilium cilium/cilium
-    --namespace kube-system
-    --version 1.17.3
-    --values {{ cilium_config_file }}
-    --create-namespace
-  register: helm_output
-
-- debug:
-    var: helm_output
+- name: Install or upgrade Cilium via Helm
+  kubernetes.core.helm:
+    chart_ref: cilium/cilium
+    release_name: cilium
+    release_namespace: kube-system
+    create_namespace: true
+    values_files:
+      - "{{ cilium_config_file }}"
+    dependency_update: true
+    atomic: true
+    wait: true
+    timeout: 600s
+  become: true
