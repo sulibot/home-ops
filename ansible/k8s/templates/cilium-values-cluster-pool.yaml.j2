@@ -1,0 +1,54 @@
+# --- Kubernetes API access ---
+k8sServiceHost: "{{ control_plane_vip }}"
+k8sServicePort: 6443
+kubeProxyReplacement: true
+k8sServiceProbes:
+  enabled: true
+
+
+#cni:
+#  exclusive: true
+
+ipv4:
+  enabled: false
+ipv6:
+  enabled: true
+
+endpointRoutes:
+  enabled: true
+
+routingMode: native
+
+ipv6NativeRoutingCIDR: "{{ pod_subnet }}"
+
+# Needed because Cilium expects an IPv4 node IP by default
+ipv4-node: "0.0.0.0"
+
+ipam:
+  mode: "cluster-pool"
+  operator:
+    clusterPoolIPv6PodCIDRList:
+      - "{{ pod_subnet }}" 
+    clusterPoolIPv6PodCIDRMaskSize: 64
+
+
+# --- BGP Settings (for VIP / LoadBalancer IPs) ---
+bgpControlPlane:
+  enabled: true
+
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+bpf.masquerade: true
+# --- Node addressing optimization ---
+#enable-ipv4-masquerade: false
+enable-ipv6-masquerade: true
+
+# --- Extra recommended IPv6-only tuning ---
+k8s-require-ipv6-pod-cidr: "false"  # Don't force PodCIDRs from Kubernetes (Cilium handles IPAM)
+k8s-require-ipv4-pod-cidr: "false"  # Make sure Cilium doesn't expect IPv4 CIDRs

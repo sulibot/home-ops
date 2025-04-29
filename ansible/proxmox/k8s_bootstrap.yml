@@ -52,9 +52,9 @@
 #
 #    - name: Install Cilium using Helm (if not already installed)
 #      shell: |
-#        helm repo add cilium https://helm.cilium.io || true
-#        helm repo update
-#        helm upgrade --install cilium cilium/cilium --version 1.16.6 --namespace kube-system --create-namespace -f /root/cilium-values.yaml
+        helm repo add cilium https://helm.cilium.io || true
+        helm repo update
+        helm upgrade --install cilium cilium/cilium --version 1.17.3 --namespace kube-system --create-namespace -f /root/cilium-values.yaml
 #        kubectl -n kube-system rollout restart deployment/cilium-operator || true
 #        kubectl -n kube-system rollout restart daemonset/cilium || true
 #      when: cilium_check.stdout == ""

@@ -1,3 +1,5 @@
+# templates/kubeadm-init.yaml.j2
+---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 
@@ -32,9 +34,10 @@ controllerManager:
     - name: node-cidr-mask-size-ipv6
       value: "64"
     - name: allocate-node-cidrs
-      value: "true"
+      value: "false"
+
 # etcd:
-#   local: {}
+#   local:
     # ONLY truly global options here! (no per-node advertise/initial-* flags)
     # dataDir: /var/lib/etcd
     # extraArgs:
@@ -48,6 +51,9 @@ controllerManager:
     #   - "etcd.some-domain.local"
 
 ---
+# -------------------------------------------------------------------
+# 2) InitConfiguration: bootstrap the first control-plane
+# -------------------------------------------------------------------
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
 
@@ -65,6 +71,9 @@ nodeRegistration:
       value: "{{ ansible_host }}"
 
 ---
+# -------------------------------------------------------------------
+# 3) KubeletConfiguration: kubelet tuning (used by both init & join)
+# -------------------------------------------------------------------
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 

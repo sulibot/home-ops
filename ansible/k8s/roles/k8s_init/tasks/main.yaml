@@ -12,26 +12,32 @@
   when: not kubeadm_init_stat.stat.exists
 
 - name: Run kubeadm init (first control-plane)
-  command: kubeadm init --config /root/kubeadm-init.yaml --upload-certs
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - init
+      - --config
+      - /root/kubeadm-init.yaml
+      - --upload-certs
   args:
     creates: /etc/kubernetes/admin.conf
   when: not kubeadm_init_stat.stat.exists
 
-#- name: Wait for kube-apiserver port to be open
-#  ansible.builtin.wait_for:
-#    host: "{{ control_plane_vip }}"
-#    port: 6443
-#    timeout: 60
-#  when: not kubeadm_init_stat.stat.exists
+- name: Wait for kube-apiserver port to be open
+  ansible.builtin.wait_for:
+    host: "{{ control_plane_vip }}"
+    port: 6443
+    timeout: 60
+  when: not kubeadm_init_stat.stat.exists
   
-#- name: Patch kube-vip manifest for admin.conf path
-#  ansible.builtin.shell: |
-#    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
-#      /etc/kubernetes/manifests/kube-vip.yaml
-#  args:
-#    executable: /bin/bash
-#  become: true
-#  when: not kubeadm_init_stat.stat.exists
+- name: Patch kube-vip manifest for admin.conf path
+  ansible.builtin.shell: |
+    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
+      /etc/kubernetes/manifests/kube-vip.yaml
+  args:
+    executable: /bin/bash
+  become: true
+  when: not kubeadm_init_stat.stat.exists
 
 - name: Create remote kube dir
   file:
