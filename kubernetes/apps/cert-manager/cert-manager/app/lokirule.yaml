@@ -1,0 +1,12 @@
+---
+groups:
+  - name: cert-manager
+    rules:
+      - alert: Cert-ManagerDatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app="cert-manager"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "cert-manager database is locked"
