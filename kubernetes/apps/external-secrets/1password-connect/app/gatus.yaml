@@ -1,0 +1,8 @@
+---
+apiVersion: checker.gatus.io/v1
+kind: Check
+metadata:
+  name: 1password-connect-health
+spec:
+  endpoint: http://1password-connect.sulibot.com/healthz
+  schedule: "@every 1m"
