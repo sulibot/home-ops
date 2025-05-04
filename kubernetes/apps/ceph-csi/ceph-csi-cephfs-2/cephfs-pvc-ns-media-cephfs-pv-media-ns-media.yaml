@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cephfs-pv-media-ns-media
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 60Ti
+  storageClassName: cephfs-content-sc-retain
+  csi:
+    driver: cephfs.csi.ceph.com
+    nodeStageSecretRef:
+      name: csi-cephfs-pv-secret
+      namespace: ceph-csi
+    volumeAttributes:
+      fsName: "data"
+      clusterID: "content-volumes"
+      staticVolume: "true"
+      rootPath: "/volumes/content/media/data"
+    volumeHandle: media
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
