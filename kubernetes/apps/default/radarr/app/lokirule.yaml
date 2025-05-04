@@ -1,0 +1,12 @@
+---
+groups:
+  - name: radarr
+    rules:
+      - alert: RadarrDatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app="radarr"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "radarr database is locked"

@@ -1,0 +1,16 @@
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: {{ .app }}-snapshot
+spec:
+  source:
+    persistentVolumeClaimName: {{ .app }}
+  deletionPolicy: Delete
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeBackup
+metadata:
+  name: {{ .app }}-backup
+spec:
+  snapshotName: {{ .app }}-snapshot

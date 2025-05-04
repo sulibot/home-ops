@@ -1,0 +1,3 @@
+- name: Provision OSDs
+  debug:
+    msg: "Provisioning OSDs..."

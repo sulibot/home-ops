@@ -1,0 +1,12 @@
+---
+groups:
+  - name: {{ .app }}
+    rules:
+      - alert: {{ (print .app) | title }}DatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app="{{ .app }}"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ .app }} database is locked"

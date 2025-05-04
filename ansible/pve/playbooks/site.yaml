@@ -1,0 +1,6 @@
+- hosts: all
+  roles:
+    - ssh
+    - hostname
+    - firewall
+    - systemd_tuning

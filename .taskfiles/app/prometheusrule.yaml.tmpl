@@ -1,0 +1,16 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .app }}-rules
+spec:
+  groups:
+    - name: {{ .app }}-alerts
+      rules:
+        - alert: {{ (print .app) | title }}HighMemory
+          expr: container_memory_usage_bytes{pod=~"{{ .app }}.*"} > 500 * 1024 * 1024
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ .app }} memory consumption is high"

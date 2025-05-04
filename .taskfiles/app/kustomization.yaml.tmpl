@@ -1,0 +1,30 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - externalsecret.yaml
+  - helmrelease.yaml
+{{- if .volsync.enabled }}
+  - volsync.yaml
+{{- end }}
+{{- if .gatus.enabled }}
+  - gatus.yaml
+{{- end }}
+{{- $httproute := index . "httproute" }}
+{{- if $httproute }}
+  {{- if $httproute.enabled }}
+    - httproute.yaml
+  {{- end }}
+{{- end }}
+{{- $prometheusRules := index . "prometheusRules" }}
+{{- if $prometheusRules }}
+  - prometheusrule.yaml
+{{- end }}
+{{- $lokiRules := index . "lokiRules" }}
+{{- if $lokiRules }}
+  - lokirule.yaml
+{{- end }}
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled

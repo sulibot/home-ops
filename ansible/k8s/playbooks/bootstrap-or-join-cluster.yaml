@@ -24,6 +24,7 @@
     - kubevip
     # - k8s_frr
     - k8s_init
+    - sops_age_secret
 
 
 # 2) Generate join credentials (only when we're about to join any non-primary node)

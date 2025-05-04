@@ -1,5 +1,0 @@
-resources:
-#  - authelia/
-#  - authentik/
-  - external-secrets/
-#  - 1password/

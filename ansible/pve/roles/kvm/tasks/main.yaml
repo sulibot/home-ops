@@ -1,0 +1,3 @@
+- name: Ensure KVM modules are loaded
+  modprobe:
+    name: kvm

@@ -1,0 +1,101 @@
+version: '3.6.0'
+
+tasks:
+  scaffold-default-values:
+    desc: Copy default values.yaml into a new app directory and set name/namespace
+    vars:
+      NAME: '{{.NAME | default "example"}}'
+      NAMESPACE: '{{.NAMESPACE | default "default"}}'
+    cmds:
+      - mkdir -p kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app
+      - cp .taskfiles/app/values.tmpl.yaml kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml
+      - |
+        # inject the actual app and namespace into values.yaml
+        sed -i '' 's/^app: .*/app: {{.NAME}}/' kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml
+        sed -i '' 's/^namespace: .*/namespace: {{.NAMESPACE}}/' kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml
+      - echo "✅ Scaffolded values.yaml for {{.NAMESPACE}}/{{.NAME}}"
+
+  create-app:
+    desc: Render all templates for a given app
+    vars:
+      NAME: '{{.NAME}}'
+      NAMESPACE: '{{.NAMESPACE | default "default"}}'
+    cmds:
+      - mkdir -p kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app
+      - |
+        if [ ! -f "kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml" ]; then
+          echo "❌ Missing values.yaml at kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml; please scaffold first."
+          exit 1
+        fi
+      - echo "🔧 Rendering {{.NAMESPACE}}/{{.NAME}}"
+      - |
+        # Render each template, but drop ks and kustomization at root
+        for tmpl in $(find .taskfiles/app -name '*.yaml.tmpl' | sort); do
+          file=$(basename "$tmpl")
+          base="${file%.tmpl}"
+          if [ "$file" = "ks.yaml.tmpl" ]; then
+            outdir="kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}"
+          else
+            outdir="kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app"
+          fi
+          values_file="$(pwd)/kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app/values.yaml"
+          gomplate \
+            --context .="file://$values_file" \
+            --file "$tmpl" \
+            --out "$outdir/$base"
+          echo "  → $base"
+        done
+      - yamllint kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/app
+      - echo "✅ Render complete for {{.NAMESPACE}}/{{.NAME}}"
+
+  render-all:
+    desc: Render every app under `kubernetes/apps`
+    cmds:
+      - |
+        find kubernetes/apps -type f -name values.yaml | sort |
+        while IFS= read -r v; do
+          ns=$(basename $(dirname "$v"))
+          name=$(basename $(dirname "$v"))
+          echo "🔄 Rendering $ns/$name"
+          task create-app NAME="$name" NAMESPACE="$ns"
+        done
+
+  validate-all:
+    desc: Lint & validate all rendered directories
+    cmds:
+      - |
+        find kubernetes/apps -type d -mindepth 2 -maxdepth 2 | sort |
+        while IFS= read -r d; do
+          echo "🔍 Validating $d"
+          yamllint "$d" && kubeconform -strict -summary -output text "$d"
+        done
+
+  add-schema:
+    desc: Prepend YAML schema annotation to all `values.yaml`
+    cmds:
+      - |
+        find kubernetes/apps -name values.yaml | sort |
+        while IFS= read -r v; do
+          if ! grep -q 'yaml-language-server' "$v"; then
+            gomplate \
+              --datasource values="file://$PWD/$v" \
+              --out "$v" \
+              --template '{{"# yaml-language-server: $schema=https://raw.githubusercontent.com/home-ops/flux-schemas/main/app-values.schema.json"}}{{ ds "values" }}'
+            echo "✅ Schema added to $v"
+          fi
+        done
+
+  list-templates:
+    desc: List all available templates
+    cmds:
+      - find .taskfiles/app -name '*.yaml.tmpl' | sort | xargs -n1 basename
+
+  update-values-template:
+    desc: Refresh `values.tmpl.yaml` with the latest schema header
+    cmds:
+      - cp .taskfiles/app/values.generated.yaml .taskfiles/app/values.tmpl.yaml
+
+  print-values-template:
+    desc: Show the default scaffold template
+    cmds:
+      - cat .taskfiles/app/values.tmpl.yaml

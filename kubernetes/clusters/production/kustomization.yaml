@@ -1,6 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
   - repos.yaml
-  - platform.yaml       
-  - core.yaml
-  - apps.yaml  
+  - apps.yaml
+#  - core.yaml
+#  - platform.yaml
+#  - apps.yaml
 #  - secrets.yaml

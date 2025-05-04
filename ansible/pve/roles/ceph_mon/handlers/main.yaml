@@ -1,0 +1,4 @@
+- name: restart ceph-mon
+  service:
+    name: ceph-mon
+    state: restarted

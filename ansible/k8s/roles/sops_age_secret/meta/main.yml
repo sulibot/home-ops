@@ -1,0 +1,18 @@
+# roles/sops_age_secret/tasks/main.yml
+- name: Read SOPS AGE private key
+  slurp:
+    src: "{{ lookup('env','HOME') }}/.config/sops/age/age.agekey"
+  register: age_key
+
+- name: Create or update Kubernetes Secret for SOPS AGE key
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: sops-age
+        namespace: flux-system
+      type: Opaque
+      data:
+        age.agekey: "{{ age_key.content }}"

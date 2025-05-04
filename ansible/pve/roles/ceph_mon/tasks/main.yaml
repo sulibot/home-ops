@@ -1,0 +1,4 @@
+- name: Configure ceph monitor
+  template:
+    src: ceph.conf.j2
+    dest: /etc/ceph/ceph.conf

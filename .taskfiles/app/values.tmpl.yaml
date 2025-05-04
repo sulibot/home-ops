@@ -1,0 +1,77 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/home-ops/flux-schemas/main/app-values.schema.json
+# Scaffold for new values.yaml
+app: default               # name of the application
+namespace: media         # target namespace
+staging: false             # staging or production
+domain_suffix: sulibot.com # ingress/domain suffix
+
+service:
+  port: 80                # service port
+
+volsync:
+  enabled: false           # enable VolSync
+  capacity: 5Gi           # PVC size
+
+gatus:
+  enabled: false           # enable Gatus HTTP checks
+  path: /healthz          # health check path
+
+# HelmRelease-specific values
+chart:
+  name: stable/app        # OCI repository chart name
+  version: 1.0.0          # chart version
+
+helmrelease:               # nested raw values for HelmRelease
+  service:
+    port: 80
+  image:
+    repository: ghcr.io/home-ops/autobrr
+    tag: latest
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+externalSecrets:
+  store: onepassword      # ClusterSecretStore name
+  refreshInterval: 5m
+  keys:                   # key/value pairs or data paths
+    API_KEY: ".API_KEY"
+
+kustomize:
+  components:
+    - components/common
+
+# Flux Kustomization options
+flux:
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  prune: true
+
+# ks.yaml specific options
+#ks:
+#  # Example: dependsOn: another app in the same or different namespace
+#  dependsOn:
+#    - name: rook-ceph-cluster
+#      namespace: rook-ceph
+#    - name: volsync
+#      namespace: volsync-system
+
+#  # Example: healthChecks block
+#  healthChecks:
+#    - apiVersion: helm.toolkit.fluxcd.io/v2
+#      kind: HelmRelease
+#      name: example
+#      namespace: default
+
+#  # Example: healthCheckExprs for advanced readiness
+#  healthCheckExprs:
+#    - apiVersion: ceph.rook.io/v1
+#      kind: CephCluster
+#      failed: status.ceph.health == 'HEALTH_ERR'
+#      current: status.ceph.health in ['HEALTH_OK', 'HEALTH_WARN']

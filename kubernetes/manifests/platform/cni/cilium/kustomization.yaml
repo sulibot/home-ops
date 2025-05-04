@@ -1,6 +1,0 @@
-resources:
-  - CiliumLoadBalancerIPPool.yaml
-#  - CiliumBGPClusterConfig.yaml
-  - CiliumBGPPeeringPolicy.yaml
-  - GatewayClass.yaml
-  - helmrelease.yaml 
