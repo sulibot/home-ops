@@ -1,5 +1,4 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/home-ops/flux-schemas/main/app-values.schema.json
 # Scaffold for new values.yaml
 app: cert-manager
 namespace: cert-manager
@@ -10,11 +9,11 @@ service:
   port: 80                # service port
 
 volsync:
-  enabled: false           # enable VolSync
+  enabled: true           # enable VolSync
   capacity: 5Gi           # PVC size
 
 gatus:
-  enabled: false           # enable Gatus HTTP checks
+  enabled: true           # enable Gatus HTTP checks
   path: /healthz          # health check path
 
 # HelmRelease-specific values
