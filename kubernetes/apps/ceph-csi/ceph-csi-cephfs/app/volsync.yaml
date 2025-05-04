@@ -1,0 +1,16 @@
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: ceph-csi-cephfs-snapshot
+spec:
+  source:
+    persistentVolumeClaimName: ceph-csi-cephfs
+  deletionPolicy: Delete
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeBackup
+metadata:
+  name: ceph-csi-cephfs-backup
+spec:
+  snapshotName: ceph-csi-cephfs-snapshot

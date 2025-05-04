@@ -1,0 +1,12 @@
+---
+groups:
+  - name: ceph-csi-cephfs
+    rules:
+      - alert: Ceph-Csi-CephfsDatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app="ceph-csi-cephfs"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ceph-csi-cephfs database is locked"

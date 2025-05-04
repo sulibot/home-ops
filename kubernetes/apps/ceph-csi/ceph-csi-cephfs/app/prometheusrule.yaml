@@ -1,0 +1,16 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ceph-csi-cephfs-rules
+spec:
+  groups:
+    - name: ceph-csi-cephfs-alerts
+      rules:
+        - alert: Ceph-Csi-CephfsHighMemory
+          expr: container_memory_usage_bytes{pod=~"ceph-csi-cephfs.*"} > 500 * 1024 * 1024
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ceph-csi-cephfs memory consumption is high"
