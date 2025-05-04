@@ -1,9 +1,0 @@
-# basic/crypto.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: crypto
-  namespace: lldap
-stringData:
-  LLDAP_KEY_SEED: "<RANDOM_SEED>"
-  LLDAP_JWT_SECRET: "<RANDOM_SECRET>"

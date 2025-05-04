@@ -1,0 +1,30 @@
+version: '3'
+
+tasks:
+  scaffold-default-values:
+    desc: Scaffold a default `values.yaml` for a new app
+    vars:
+      NAME: '{{.NAME | default "example"}}'
+      NAMESPACE: '{{.NAMESPACE | default "default"}}'
+    cmds:
+      - mkdir -p kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}
+      - cp .taskfiles/app/values.tmpl.yaml kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/values.yaml
+      - echo "✅ Created scaffolded values.yaml for '{{.NAME}}' in namespace '{{.NAMESPACE}}'"
+
+  create-app:
+    desc: Generate all gomplate manifests for an app
+    vars:
+      NAME: '{{.NAME | default "example"}}'
+      NAMESPACE: '{{.NAMESPACE | default "default"}}'
+    cmds:
+      - mkdir -p kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}
+      - echo "🔧 Rendering manifests for '{{.NAME}}' in namespace '{{.NAMESPACE}}'"
+      - |
+        for tmpl in .taskfiles/app/*.yaml.tmpl; do
+          name=$(basename "$tmpl" .tmpl)
+          gomplate \
+            --file "$tmpl" \
+            --datasource values=kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/values.yaml \
+            --out "kubernetes/apps/{{.NAMESPACE}}/{{.NAME}}/${name}"
+        done
+

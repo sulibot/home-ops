@@ -1,5 +1,0 @@
-resources:
-  - externalsecret.yaml
-  - twenty-server/
-  - twenty-worker/
-

@@ -1,4 +1,0 @@
-resources:
-- node-label-rbac.yaml
-- node-label-daemonset.yaml
-

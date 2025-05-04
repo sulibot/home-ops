@@ -1,0 +1,4 @@
+- name: Tune systemd limits
+  copy:
+    src: 99-custom.conf
+    dest: /etc/systemd/system.conf.d/99-custom.conf

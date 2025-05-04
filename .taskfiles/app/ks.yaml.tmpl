@@ -1,0 +1,74 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app {{ .app }}
+  namespace: &namespace {{ .namespace }}
+
+spec:
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+
+  # Components block if any are enabled
+  {{- if or .gatus.enabled .volsync.enabled }}
+  components:
+    {{- if .gatus.enabled }}
+    - ../../../../components/gatus/guarded
+    {{- end }}
+    {{- if .volsync.enabled }}
+    - ../../../../components/volsync
+    {{- end }}
+  {{- end }}
+
+  {{- /* Safe-initialize ks map and its slices */ -}}
+  {{- $ks   := default (dict) (index . "ks") -}}
+  {{- $deps := default (slice) (index $ks "dependsOn") -}}
+  {{- $hc   := default (slice) (index $ks "healthChecks") -}}
+  {{- $hce  := default (slice) (index $ks "healthCheckExprs") -}}
+
+  # Conditional dependsOn
+  {{- if gt (len $deps) 0 }}
+  dependsOn:
+{{ data.ToYAML $deps | indent 2 }}
+  {{- end }}
+
+  interval: {{ .flux.interval }}
+  path: kubernetes/apps/*namespace/*app/app
+
+  # Conditional healthChecks
+  {{- if gt (len $hc) 0 }}
+  healthChecks:
+{{ data.ToYAML $hc | indent 2 }}
+  {{- end }}
+
+  # Conditional healthCheckExprs
+  {{- if gt (len $hce) 0 }}
+  healthCheckExprs:
+{{ data.ToYAML $hce | indent 2 }}
+  {{- end }}
+
+  {{- /* Handle optional postBuild.substitute & substituteFrom */ -}}
+  {{- $pb     := default (dict) (index . "postBuild") -}}
+  {{- $subs   := default (dict) (index $pb "substitute") -}}
+  {{- $sfs    := default (slice) (index $pb "substituteFrom") -}}
+  {{- if or (gt (len $subs) 0) (gt (len $sfs) 0) }}
+  postBuild:
+    {{- if gt (len $subs) 0 }}
+    substitute:
+{{ data.ToYAML $subs | indent 6 }}
+    {{- end }}
+    {{- if gt (len $sfs) 0 }}
+    substituteFrom:
+{{ data.ToYAML $sfs | indent 6 }}
+    {{- end }}
+  {{- end }}
+
+  prune: {{ .flux.prune }}
+  retryInterval: {{ .flux.retryInterval }}
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: *namespace
+  timeout: 5m
+  wait: false

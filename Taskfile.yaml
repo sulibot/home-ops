@@ -1,0 +1,13 @@
+version: '3.6.0'
+silent: true
+
+# pull in all of the .taskfiles/app/generate.yaml under the `app:` namespace
+includes:
+  app: .taskfiles/app/generate.yaml
+
+tasks:
+  # if you run `task` with no args, render *every* app
+  default:
+    desc: Render all apps (default)
+    cmds:
+      - task app:render-all
