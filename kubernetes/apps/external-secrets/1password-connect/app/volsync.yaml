@@ -1,0 +1,16 @@
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: 1password-connect-snapshot
+spec:
+  source:
+    persistentVolumeClaimName: 1password-connect
+  deletionPolicy: Delete
+---
+apiVersion: csi.cilium.io/v1alpha1
+kind: VolumeBackup
+metadata:
+  name: 1password-connect-backup
+spec:
+  snapshotName: 1password-connect-snapshot

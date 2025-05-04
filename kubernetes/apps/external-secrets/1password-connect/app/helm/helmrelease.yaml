@@ -1,0 +1,159 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: 1password-connect
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: connect
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: 1password
+        namespace: flux-system
+      version: 1.17.0
+  interval: 1h0m0s
+  targetNamespace: external-secrets
+  values:
+    acceptanceTests:
+      enabled: false
+      fixtures: {}
+    commonLabels: {}
+    connect:
+      affinity: {}
+      annotations: {}
+      api:
+        httpPort: 8080
+        httpsPort: 8443
+        imageRepository: 1password/connect-api
+        logLevel: info
+        name: connect-api
+        resources:
+          limits:
+            memory: 128Mi
+          requests:
+            cpu: 0.2
+        serviceMonitor:
+          annotations: {}
+          enabled: false
+          interval: 30s
+          params: {}
+          path: /metrics
+      applicationName: onepassword-connect
+      create: true
+      credentials: null
+      credentials_base64: null
+      credentialsKey: 1password-credentials.json
+      credentialsName: op-credentials
+      customEnvVars: []
+      dataVolume:
+        name: shared-data
+        type: emptyDir
+        values: {}
+      host: onepassword-connect
+      hpa:
+        annotations: {}
+        avgCpuUtilization: 50
+        avgMemoryUtilization: 50
+        behavior: {}
+        enabled: false
+        maxReplicas: 3
+        minReplicas: 1
+      imagePullPolicy: IfNotPresent
+      imagePullSecrets: []
+      ingress:
+        annotations: {}
+        enabled: false
+        extraPaths: []
+        hosts:
+        - host: chart-example.local
+          paths: []
+        ingressClassName: ""
+        labels: {}
+        pathType: Prefix
+        tls: []
+      labels: {}
+      nodeSelector: {}
+      pdb:
+        annotations: {}
+        enabled: false
+        maxUnavailable: 1
+        minAvailable: 0
+      podAnnotations: {}
+      podLabels: {}
+      priorityClassName: ""
+      probes:
+        liveness: true
+        readiness: true
+      profiler:
+        enabled: false
+        interval: 6h
+        keepLast: 12
+      replicas: 1
+      serviceAnnotations: {}
+      serviceType: ClusterIP
+      sync:
+        httpPort: 8081
+        imageRepository: 1password/connect-sync
+        logLevel: info
+        name: connect-sync
+        resources: {}
+      tls:
+        enabled: false
+        secret: op-connect-tls
+      tolerations: []
+      version: 1.7.3
+    operator:
+      affinity: {}
+      annotations: {}
+      applicationName: onepassword-connect-operator
+      autoRestart: true
+      clusterRole:
+        create: "true"
+        name: onepassword-connect-operator
+      clusterRoleBinding:
+        create: "true"
+        name: onepassword-connect-operator
+      create: true
+      customEnvVars: []
+      hpa:
+        annotations: {}
+        avgCpuUtilization: 50
+        avgMemoryUtilization: 50
+        behavior: {}
+        enabled: false
+        maxReplicas: 3
+        minReplicas: 1
+      imagePullPolicy: IfNotPresent
+      imagePullSecrets: []
+      imageRepository: 1password/onepassword-operator
+      labels: {}
+      logLevel: info
+      nodeSelector: {}
+      pdb:
+        annotations: {}
+        enabled: false
+        maxUnavailable: 1
+        minAvailable: 0
+      podAnnotations: {}
+      podLabels: {}
+      pollingInterval: 600
+      priorityClassName: ""
+      replicas: 1
+      resources: {}
+      roleBinding:
+        create: "true"
+        name: onepassword-connect-operator
+      serviceAccount:
+        annotations: {}
+        create: "true"
+        name: onepassword-connect-operator
+      token:
+        key: token
+        name: onepassword-token
+        value: null
+      tolerations: []
+      version: 1.8.1
+      watchNamespace: []

@@ -1,0 +1,12 @@
+---
+groups:
+  - name: external-secrets
+    rules:
+      - alert: External-SecretsDatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app="external-secrets"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "external-secrets database is locked"

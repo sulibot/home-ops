@@ -1,6 +1,6 @@
 ---
 # Scaffold for new values.yaml
-app: external-secrets
+app: 1password-connect
 namespace: external-secrets
 staging: false             # staging or production
 domain_suffix: sulibot.com # ingress/domain suffix
