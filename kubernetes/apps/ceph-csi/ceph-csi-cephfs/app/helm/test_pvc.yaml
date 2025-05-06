@@ -12,7 +12,7 @@ spec:
     driver: cephfs.csi.ceph.com
     nodeStageSecretRef:
       name: csi-cephfs-pv-secret
-      namespace: ceph-csi
+      namespace: ceph-csi-cephfs
     volumeAttributes:
       fsName: "kubernetes"
       clusterID: "csi-sol-volumes"
