@@ -15,7 +15,7 @@ spec:
 #    - name: external-secrets
 #      namespace: external-secrets
 
-#  path: kubernetes/apps/*namespace/*app/app
+  path: kubernetes/apps/*namespace/*app/app
 
   # Conditional healthChecks
 
