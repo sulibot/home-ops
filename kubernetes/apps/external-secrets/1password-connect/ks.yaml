@@ -10,9 +10,9 @@ spec:
       app.kubernetes.io/name: *app
 
   # Components block if any are enabled
-  components:
-    - ../../../../components/gatus/guarded
-    - ../../../../components/volsync# Conditional dependsOn
+#  components:
+#    - ../../../../components/gatus/guarded
+#    - ../../../../components/volsync# Conditional dependsOn
 
   interval: 1h
   path: ./kubernetes/apps/*namespace/*app/app
