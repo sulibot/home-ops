@@ -1,3 +1,27 @@
+#- name: Stop and disable containerd service if present
+#  ansible.builtin.service:
+#    name: containerd
+#    state: stopped
+#    enabled: false
+#  ignore_errors: true
+#
+#- name: Uninstall containerd package
+#  ansible.builtin.package:
+#    name: containerd
+#    state: absent
+#
+#- name: Remove containerd config and runtime files
+#  ansible.builtin.file:
+#    path: "{{ item }}"
+#    state: absent
+#  with_items:
+#    - /etc/containerd
+#    - /var/lib/containerd
+#    - /run/containerd
+#    - /usr/local/bin/containerd
+#    - /var/run/containerd
+
+
 ######################################################################
 # APT repo setup: Kubernetes keyring & sources
 ######################################################################
@@ -22,9 +46,25 @@
   args:
     creates: /etc/apt/sources.list.d/kubernetes.list
 
+- name: Download CRI-O APT key
+  ansible.builtin.shell: |
+    mkdir -p -m 755 /etc/apt/keyrings
+    curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v{{ crio_version }}/deb/Release.key \
+    | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+- name: Add CRI-O APT repository
+  ansible.builtin.shell: |
+    echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v{{ crio_version }}/deb/ /" \
+    | tee /etc/apt/sources.list.d/cri-o.list
+  args:
+    creates: /etc/apt/sources.list.d/cri-o.list
+
 - name: Install WakeMeOps repository
   ansible.builtin.shell: |
     curl -sSL https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository | sudo bash
+
   args:
     executable: /bin/bash
 
@@ -44,6 +84,19 @@
       - gpg
       - etcd-client
     state: present
+
+- name: Install CRI-O
+  ansible.builtin.package:
+    name:
+      - cri-o
+#      - cri-o-runc
+    state: present
+
+- name: Enable and start cri-o
+  ansible.builtin.systemd:
+    name: crio
+    enabled: true
+    state: started
 
 - name: Install kubelet, kubeadm, kubectl
   ansible.builtin.apt:

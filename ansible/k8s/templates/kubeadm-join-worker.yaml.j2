@@ -11,6 +11,8 @@ discovery:
 
 nodeRegistration:
   name: "{{ inventory_hostname }}"
+#  criSocket: "/var/run/crio/crio.sock"
+  criSocket: "/var/run/containerd/containerd.sock"
   kubeletExtraArgs:
     - name: node-ip
       value: "{{ ansible_host }}"

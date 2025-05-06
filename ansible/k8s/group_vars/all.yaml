@@ -1,5 +1,6 @@
 cluster_name: sol-k8s
 kubernetes_version: "1.33"
+crio_version: "1.32"
 k8s_semver: "1.33.0"
 control_plane_vip: "fd00:101::ac"
 pod_subnet: "fd00:101:44::/60"
