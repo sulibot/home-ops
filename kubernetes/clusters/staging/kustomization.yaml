@@ -1,7 +1,0 @@
-resources:
-  - repo.yaml
-  - secrets.yaml
-  - git.yaml
-  - apps.yaml
-  - core.yaml
-  - platform.yaml
