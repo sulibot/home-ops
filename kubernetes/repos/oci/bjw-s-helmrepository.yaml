@@ -1,6 +1,0 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: OCIRepository
-metadata:
-  name: bjw-s-helm
-spec:
-  url: oci://ghcr.io/bjw-s/helm
