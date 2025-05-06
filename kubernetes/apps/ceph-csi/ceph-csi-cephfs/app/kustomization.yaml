@@ -3,17 +3,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - externalsecret.yaml
-  - cephfs-configmap-ceph-csi-config.yaml
-  - cephfs-secret-csi-cephfs-pv-secret.yaml
-  - cephfs-secret-csi-cephfs-secret.yaml
   - helm/
-  - cephfs-storageclass-cephfs-content-sc-retain.yaml
-  - cephfs-storageclass-cephfs-csi-sc-retain.yaml
-  - cephfs-storageclass-cephfs-csi-sc.yaml
-  - cephfs-pv-ns-immich-cephfs-pvc-media.yaml
-  - cephfs-pv-ns-media-cephfs-pvc-media.yaml
-  - cephfs-pv-ns-default-cephfs-pvc-media.yaml
-  - cephfs-pvc-ns-default-cephfs-pv-media-ns-default.yaml
-  - cephfs-pvc-ns-immich-cephfs-pv-media-ns-immich.yaml
-  - cephfs-pvc-ns-media-cephfs-pv-media-ns-media.yaml
+
 

@@ -12,11 +12,11 @@ parameters:
   #kernelMountOptions: noatime,nodiratime,readdir_max_bytes=4194304,rsize=1M,wsize=1M,_netdev
   #kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
   volumeNamePrefix: "sol-cephfs-"
 allowedTopologies:
   - matchLabelExpressions:

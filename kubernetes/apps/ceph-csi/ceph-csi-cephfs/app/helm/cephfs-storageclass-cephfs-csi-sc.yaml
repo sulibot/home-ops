@@ -1,23 +1,24 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: cephfs-csi-sol-sc
+  name: cephfs-csi-sc
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: cephfs.csi.ceph.com
 parameters:
-  clusterID: csi-sol-volumes
+  clusterID: csi-volumes
   fsName: kubernetes
   pool: kubernetes_data
   mounter: kernel
-  kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576,norbytes,rsize=1M,wsize=1M,client_cache_size=16M
+  kernelMountOptions:  noatime,nodiratime,readdir_max_bytes=1048576,_netdev
+  #kernelMountOptions: noatime,nodiratime,readdir_max_bytes=1048576
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
-  #volumeNamePrefix: "sol-cephfs-"
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
+  volumeNamePrefix: "sol-cephfs-"
 allowedTopologies:
   - matchLabelExpressions:
       - key: topology.kubernetes.io/host
@@ -27,6 +28,6 @@ allowedTopologies:
           - pve03
 reclaimPolicy: Delete
 allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
-mountOptions:
-  - context="system_u:object_r:container_file_t:s0:c0,c1"
+volumeBindingMode: Immediate
+#mountOptions:
+#  - context="system_u:object_r:container_file_t:s0:c0,c1"

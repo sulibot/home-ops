@@ -2,7 +2,9 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: cephfs-csi-luna-sc-retain
+  name: cephfs-csi-luna-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
 provisioner: cephfs.csi.ceph.com
 parameters:
   # (required) String representing a Ceph cluster to provision storage from.
@@ -32,11 +34,11 @@ parameters:
 
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
 
   # (optional) The driver can use either ceph-fuse (fuse) or
   # ceph kernelclient (kernel).
@@ -64,7 +66,7 @@ parameters:
   # encryptionKMSID: <kms-config-id>
 
 
-reclaimPolicy: Retain
+reclaimPolicy: Delete
 allowVolumeExpansion: true
 # mountOptions:
 #   - context="system_u:object_r:container_file_t:s0:c0,c1"
