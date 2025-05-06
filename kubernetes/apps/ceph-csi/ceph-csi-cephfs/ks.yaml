@@ -14,13 +14,14 @@ spec:
 #  dependsOn:
 #    - name: external-secrets
 #      namespace: external-secrets
-#  interval: 1h
+
 #  path: kubernetes/apps/*namespace/*app/app
 
   # Conditional healthChecks
 
   # Conditional healthCheckExprs
 
+  interval: 1h
   prune: true
   retryInterval: 2m
   sourceRef:
