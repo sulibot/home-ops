@@ -9,7 +9,7 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
-    - ../../../../components/gatus/guarded
+#    - ../../../../components/gatus/guarded
   # Components block if any are enabled# Conditional dependsOn
 #  dependsOn:
 #    - name: external-secrets
