@@ -1,0 +1,70 @@
+---
+# CiliumLoadBalancerIPPool for internal IPv6 allocation
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: pool
+spec:
+  allowFirstLastIPs: "No"
+  blocks:
+    - cidr: fd00:101::/120
+---
+# L2 Announcement Policy
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: l2-policy
+spec:
+  loadBalancerIPs: true
+  interfaces: ["^eth0$"]
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+---
+# BGP Advertisement
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
+metadata:
+  name: l3-bgp-advertisement
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses: ["LoadBalancerIP"]
+      selector:
+        matchExpressions:
+          - { key: somekey, operator: NotIn, values: ["never-used-value"] }
+---
+# BGP PeerConfig (IPv6 MikroTik peer)
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeerConfig
+metadata:
+  name: l3-bgp-peer-config
+spec:
+  families:
+    - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: bgp
+---
+# Cluster-wide BGP Config
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: l3-bgp-cluster-config
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: cilium
+      localASN: 65101
+      peers:
+        - name: mikrotik
+          peerASN: 65000
+          peerAddress: fd00:255::fffe
+          peerConfigRef:
+            name: l3-bgp-peer-config

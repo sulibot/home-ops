@@ -1,0 +1,3 @@
+resources:
+  - ./dns-gateway.yaml
+  - ./dns-route.yaml
