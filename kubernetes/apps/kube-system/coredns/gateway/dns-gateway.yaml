@@ -1,0 +1,35 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    external-dns.alpha.kubernetes.io/target: &dns_host external.sulibot.com
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: fd00:101::cafe:53  # must be part of the pool above
+  listeners:
+    - name: dns-tcp
+      protocol: TCP
+      port: 53
+      hostname: "external.sulibot.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: dns-udp
+      protocol: UDP
+      port: 53
+      hostname: "external.sulibot.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: metrics
+      protocol: TCP
+      port: 9153
+      hostname: "external.sulibot.com"
+      allowedRoutes:
+        namespaces:
+          from: All
