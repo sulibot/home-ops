@@ -18,6 +18,9 @@
       br_netfilter
       ip6_tables
       nf_conntrack
+      ip6table_mangle
+      ip6table_raw
+      ip6table_filter
 
 - name: Load kernel modules immediately
   ansible.builtin.shell: |
@@ -25,6 +28,9 @@
     modprobe br_netfilter
     modprobe ip6_tables
     modprobe nf_conntrack
+    modprobe ip6table_mangle
+    modprobe ip6table_raw
+    modprobe ip6table_filter
 
 - name: Apply required sysctl settings
   ansible.builtin.sysctl:

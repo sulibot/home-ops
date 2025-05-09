@@ -4,6 +4,7 @@ silent: true
 # pull in all of the .taskfiles/app/generate.yaml under the `app:` namespace
 includes:
   app: .taskfiles/app/generate.yaml
+  kube: .taskfiles/kube-system/deploy.yaml
 
 tasks:
   # if you run `task` with no args, render *every* app

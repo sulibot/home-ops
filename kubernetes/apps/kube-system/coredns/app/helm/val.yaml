@@ -4,37 +4,11 @@ image:
   repository: mirror.gcr.io/coredns/coredns
 replicaCount: 2
 k8sAppLabelOverride: kube-dns
-
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-prometheus:
-  service:
-    enabled: false
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "9153"
-    selector: {}
-  monitor:
-    enabled: false
-    additionalLabels: {}
-    namespace: ""
-    interval: ""
-    selector: {}
-
 serviceAccount:
   create: true
 service:
   name: kube-dns
-  clusterIP: fd00:101:96::10
-
-# Default zone is what Kubernetes recommends:
-# https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options
+  clusterIP: 10.43.0.10
 servers:
   - zones:
       - zone: .
@@ -43,19 +17,15 @@ servers:
     port: 53
     plugins:
       - name: errors
-      # Serves a /health endpoint on :8080, required for livenessProbe
       - name: health
         configBlock: |-
           lameduck 5s
-      # Serves a /ready endpoint on :8181, required for readinessProbe
       - name: ready
-      # Required to query kubernetes API for data
       - name: kubernetes
         parameters: cluster.local in-addr.arpa ip6.arpa
         configBlock: |-
           pods verified
           fallthrough in-addr.arpa ip6.arpa
-          ttl 30
       - name: autopath
         parameters: "@kubernetes"
       - name: forward
@@ -68,7 +38,7 @@ servers:
       - name: reload
       - name: loadbalance
       - name: prometheus
-        parameters: ":9153"
+        parameters: 0.0.0.0:9153
       - name: log
         configBlock: |-
           class error
