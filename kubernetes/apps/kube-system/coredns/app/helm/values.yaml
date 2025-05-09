@@ -31,7 +31,7 @@ serviceAccount:
   create: true
 service:
   name: kube-dns
-  clusterIP: fd00:101:96::10
+  clusterIP: fd00:101:96::a
 
 # Default zone is what Kubernetes recommends:
 # https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options
