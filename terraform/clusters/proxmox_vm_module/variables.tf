@@ -1,4 +1,14 @@
-variable "name_prefix" {
+#variable "cluster_key" {
+#  description = "Key to select the appropriate cluster configuration from common.clusters"
+#  type        = string
+#}
+
+variable "cluster" {
+  description = "Cluster config object for this environment"
+  type        = any
+}
+
+variable "cluster_name" {
   description = "Prefix for VM names"
   type        = string
 }
@@ -63,25 +73,25 @@ variable "user_data_file_id" {
   type        = string
   
 }
-variable "dns_server" {
-  description = "List of DNS servers"
-  type        = list(string)
-}
+#variable "dns_server" {
+#  description = "List of DNS servers"
+#  type        = list(string)
+#}
 
-variable "dns_domain" {
-  description = "DNS domain name"
-  type        = string
-}
+#variable "dns_domain" {
+#  description = "DNS domain name"
+#  type        = string
+#}
 
-variable "vlan_id" {
-  description = "vlan id"
-  type        = string
-}
+#variable "vlan_id" {
+#  description = "vlan id"
+#  type        = string
+#}
 
-variable "ipv4_address_prefix" {
-  description = "IPv4 address prefix"
-  type        = string
-}
+#variable "ipv4_address_prefix" {
+#  description = "IPv4 address prefix"
+#  type        = string
+#}
 
 variable "cp_octet_start" {
   description = "Starting octet for control plane addresses"
@@ -93,27 +103,27 @@ variable "wkr_octet_start" {
   type        = number
 }
 
-variable "ipv4_address_subnet" {
-  description = "IPv4 address subnet"
-  type        = string
-}
+#variable "ipv4_address_subnet" {
+#  description = "IPv4 address subnet"
+#  type        = string
+#}
 
-variable "ipv4_gateway" {
-  description = "IPv4 gateway address"
-  type        = string
-}
+#variable "ipv4_gateway" {
+#  description = "IPv4 gateway address"
+#  type        = string
+#}
 
-variable "ipv6_address_prefix" {
-  description = "IPv6 address prefix"
-  type        = string
-}
+#variable "ipv6_address_prefix" {
+#  description = "IPv6 address prefix"
+#  type        = string
+#}
 
-variable "ipv6_address_subnet" {
-  description = "IPv6 address subnet"
-  type        = string
-}
+#variable "ipv6_address_subnet" {
+#  description = "IPv6 address subnet"
+#  type        = string
+#}
 
-variable "ipv6_gateway" {
-  description = "IPv6 gateway address"
-  type        = string
-}
+#variable "ipv6_gateway" {
+#  description = "IPv6 gateway address"
+#  type        = string
+#}
