@@ -1,10 +1,11 @@
+
+
 locals {
-  base_vmid = replace(var.ipv4_address_prefix, ".", "")
-  ssh_hosts = {
-    pve01 = "fd00:255::1"
-    pve02 = "fd00:255::2"
-    pve03 = "fd00:255::3"
-  }
+
+  cluster = var.cluster
+
+  #cluster = module.common.clusters[var.cluster_key]
+
 
   controlplane_nodes = {
     for i in range(1, var.cp_quantity + 1) :
@@ -32,13 +33,15 @@ variable "vm_password_hashed" {
 resource "proxmox_virtual_environment_file" "worker_cloudinit" {
   for_each     = local.worker_nodes
   content_type = "snippets"
-  datastore_id = var.datastore_id
+  datastore_id = local.cluster.datastore_id
   node_name    = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
 
   source_raw {
     file_name = "worker-wk${each.value.padded_suffix}-cloud-init.yaml"
     data = templatefile("${path.module}/templates/user-data-cloud-config.tmpl", {
-      hostname = "${var.name_prefix}wk${each.value.padded_suffix}"
+      hostname = "${var.cluster_name}wk${each.value.padded_suffix}"
+      loopback_ipv6    = "${var.cluster.loopback_ipv6_prefix}::${each.value.index + var.wkr_octet_start}"
+      mesh_gateway   = "${local.cluster.ipv6_mesh_gateway}"
     })
   }
 }
@@ -46,29 +49,31 @@ resource "proxmox_virtual_environment_file" "worker_cloudinit" {
 resource "proxmox_virtual_environment_file" "controlplane_cloudinit" {
   for_each     = local.controlplane_nodes
   content_type = "snippets"
-  datastore_id = var.datastore_id
+  datastore_id = local.cluster.datastore_id
   node_name    = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
 
   source_raw {
     file_name = "controlplane-cp${each.value.padded_suffix}-cloud-init.yaml"
     data = templatefile("${path.module}/templates/user-data-cloud-config.tmpl", {
-      hostname = "${var.name_prefix}cp${each.value.padded_suffix}"
+      hostname = "${var.cluster_name}cp${each.value.padded_suffix}"
+      loopback_ipv6    = "${var.cluster.loopback_ipv6_prefix}::${each.value.index + var.cp_octet_start}"
+      mesh_gateway   = "${local.cluster.ipv6_mesh_gateway}"
     })
   }
 }
 
 resource "proxmox_virtual_environment_vm" "worker" {
   for_each   = local.worker_nodes
-  name       = "${var.name_prefix}wk${each.value.padded_suffix}"
+  name       = "${var.cluster_name}wk${each.value.padded_suffix}"
   node_name  = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
-  vm_id      = "${var.vlan_id}${format("%04d", each.value.index + var.wkr_octet_start)}"
+  vm_id      = "${local.cluster.mesh_vlan_id}${format("%04d", each.value.index + var.wkr_octet_start)}"
 
   description   = "Managed by Terraform"
-  tags          = ["debian", "k8s-worker", "${var.name_prefix}", "terraform"]
+  tags          = ["debian", "k8s-worker", "${var.cluster_name}", "terraform"]
   scsi_hardware = "virtio-scsi-single"
 
   disk {
-    datastore_id = var.datastore_id
+    datastore_id = local.cluster.datastore_id
     file_id      = var.file_id
     interface    = "scsi0"
     iothread     = true
@@ -94,13 +99,18 @@ resource "proxmox_virtual_environment_vm" "worker" {
   agent {
     enabled = true
   }
-
   network_device {
     bridge  = "vmbr0"
     model   = "virtio"
-    vlan_id = var.vlan_id
+    vlan_id = local.cluster.mesh_vlan_id
+    mtu     = local.cluster.mesh_mtu
   }
-
+  network_device {
+    bridge  = "vmbr0"
+    model   = "virtio"
+    vlan_id = local.cluster.egress_vlan_id
+    mtu     = local.cluster.egress_mtu
+  }
   dynamic "hostpci" {
     for_each = (each.value.index + 1) == 4 ? {
       hostpci0 = "00:02.1"
@@ -122,17 +132,24 @@ resource "proxmox_virtual_environment_vm" "worker" {
   initialization {
     ip_config {
       ipv6 {
-        address = "${var.ipv6_address_prefix}${each.value.index + var.wkr_octet_start}/${var.ipv6_address_subnet}"
-        gateway = var.ipv6_gateway
+        address = "${local.cluster.ipv6_mesh_prefix}::${each.value.index + var.wkr_octet_start}/${local.cluster.ipv6_address_subnet}"
+        #  gateway = local.cluster.ipv6_mesh_gateway
+      }
+    }
+
+    ip_config {
+      ipv6 {
+        address = "${local.cluster.ipv6_egress_prefix}::${each.value.index + var.wkr_octet_start}/${local.cluster.ipv6_address_subnet}"
+        gateway = local.cluster.ipv6_egress_gateway
       }
     }
 
     dns {
-      servers = var.dns_server
-      domain  = var.dns_domain
+      servers = local.cluster.ipv6_dns_server
+      domain  = local.cluster.dns_domain
     }
 
-    datastore_id      = var.datastore_id
+    datastore_id      = local.cluster.datastore_id
     user_data_file_id = proxmox_virtual_environment_file.worker_cloudinit[each.key].id
   }
 
@@ -151,12 +168,12 @@ resource "proxmox_virtual_environment_vm" "worker" {
 
 resource "proxmox_virtual_environment_vm" "controlplane" {
   for_each   = local.controlplane_nodes
-  name       = "${var.name_prefix}cp${each.value.padded_suffix}"
+  name       = "${var.cluster_name}cp${each.value.padded_suffix}"
   node_name  = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
-  vm_id      = "${var.vlan_id}${format("%04d", each.value.index + var.cp_octet_start)}"
+  vm_id      = "${local.cluster.mesh_vlan_id}${format("%04d", each.value.index + var.cp_octet_start)}"
 
   description   = "Managed by Terraform"
-  tags          = ["debian", "k8s-control-plane", "${var.name_prefix}", "terraform"]
+  tags          = ["debian", "k8s-control-plane", "${var.cluster_name}", "terraform"]
   scsi_hardware = "virtio-scsi-single"
 
   disk {
@@ -190,23 +207,37 @@ resource "proxmox_virtual_environment_vm" "controlplane" {
   network_device {
     bridge  = "vmbr0"
     model   = "virtio"
-    vlan_id = var.vlan_id
+    vlan_id = local.cluster.mesh_vlan_id
+    mtu     = local.cluster.mesh_mtu
+  }
+  network_device {
+    bridge  = "vmbr0"
+    model   = "virtio"
+    vlan_id = local.cluster.egress_vlan_id
+    mtu     = local.cluster.egress_mtu
   }
 
   initialization {
     ip_config {
       ipv6 {
-        address = "${var.ipv6_address_prefix}${each.value.index + var.cp_octet_start}/${var.ipv6_address_subnet}"
-        gateway = var.ipv6_gateway
+        address = "${local.cluster.ipv6_mesh_prefix}::${each.value.index + var.cp_octet_start}/${local.cluster.ipv6_address_subnet}"
+        #  gateway = local.cluster.ipv6_mesh_gateway
+      }
+    }
+
+    ip_config {
+      ipv6 {
+        address = "${local.cluster.ipv6_egress_prefix}::${each.value.index + var.cp_octet_start}/${local.cluster.ipv6_address_subnet}"
+        gateway = local.cluster.ipv6_egress_gateway
       }
     }
 
     dns {
-      servers = var.dns_server
-      domain  = var.dns_domain
+      servers = local.cluster.ipv6_dns_server
+      domain  = local.cluster.dns_domain
     }
 
-    datastore_id      = var.datastore_id
+    datastore_id      = local.cluster.datastore_id
     user_data_file_id = proxmox_virtual_environment_file.controlplane_cloudinit[each.key].id
   }
 

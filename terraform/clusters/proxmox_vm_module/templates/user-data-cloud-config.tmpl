@@ -21,6 +21,40 @@ users:
 
 ssh_pwauth: true
 
+write_files:
+  - path: /etc/systemd/network/lo.network
+    permissions: '0644'
+    owner: root
+    content: |
+      [Match]
+      Name=lo
+
+      [Network]
+      Address=${loopback_ipv6}/128
+
+
+write_files:
+  - path: /etc/netplan/99-static-routes.yaml
+    permissions: '0644'
+    owner: root
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            accept-ra: false
+            routes:
+              - to: fc00::/8
+                via: ${mesh_gateway}
+                on-link: true
+                metric: 300
+          eth1:
+            accept-ra: false
+
+
+runcmd:
+  - netplan apply
+
 packages:
   - apt-transport-https
   - btrfs-progs
