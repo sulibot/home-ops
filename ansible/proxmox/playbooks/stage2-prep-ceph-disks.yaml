@@ -1,0 +1,16 @@
+- name: Stage 2 - Dangerous: Ceph disk wipe & prep
+  hosts: ceph_osd
+  become: true
+  vars_files:
+  - "../group_vars/all.yaml"
+  vars_prompt:
+    - name: confirm_destruction
+      prompt: "Are you absolutely sure you want to wipe Ceph disks on all ceph_osd nodes? Type YES to continue"
+      private: no
+  tasks:
+    - name: Refuse if not confirmed
+      fail:
+        msg: "Destructive action not confirmed. Exiting."
+      when: confirm_destruction != 'YES'
+  roles:
+    - pve_ceph_disk_prep

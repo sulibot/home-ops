@@ -1,0 +1,10 @@
+- name: Stage 2 - Apply sysctl, SSH, journald, and fstrim tuning
+  hosts: pve
+  become: true
+  vars_files:
+  - "../group_vars/all.yaml"
+  roles:
+    - sysctl
+    - ssh_config
+    - journald
+    - fstrim

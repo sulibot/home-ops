@@ -1,0 +1,2 @@
+---
+- import_tasks: os-setup.yaml

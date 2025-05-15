@@ -1,0 +1,35 @@
+version: '3'
+
+vars:
+  INVENTORY: inventory/hosts.ini
+
+tasks:
+  render:
+    desc: Render cluster vars
+    cmds:
+      - ansible-playbook tasks/render-cluster-vars.yaml
+
+  bootstrap-network:
+    desc: Configure networking
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-bootstrap-network.yaml
+
+  host-tuning:
+    desc: Apply sysctl, SSH, journald, and fstrim tuning
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-host-tuning.yaml
+
+  prep-ceph-disks:
+    desc: ⚠️ Wipe disks for Ceph
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-prep-ceph-disks.yaml
+
+  configure-network:
+    desc: Configure network interfaces
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-configure-network.yaml
+
+  configure-frr:
+    desc: Configure FRR for routing
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-configure-frr.yaml

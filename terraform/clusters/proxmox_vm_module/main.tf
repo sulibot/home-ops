@@ -66,8 +66,8 @@ resource "proxmox_virtual_environment_vm" "worker" {
   for_each   = local.worker_nodes
   name       = "${var.cluster_name}wk${each.value.padded_suffix}"
   node_name  = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
-  vm_id      = "${local.cluster.mesh_vlan_id}${format("%04d", each.value.index + var.wkr_octet_start)}"
-
+  vm_id      = "${local.cluster.cluster_id}${format("%02d", each.value.index + var.wkr_octet_start)}"
+    
   description   = "Managed by Terraform"
   tags          = ["debian", "k8s-worker", "${var.cluster_name}", "terraform"]
   scsi_hardware = "virtio-scsi-single"
@@ -100,16 +100,16 @@ resource "proxmox_virtual_environment_vm" "worker" {
     enabled = true
   }
   network_device {
-    bridge  = "vmbr0"
+    bridge  = "vmbr${local.cluster.cluster_id}"
     model   = "virtio"
-    vlan_id = local.cluster.mesh_vlan_id
-    mtu     = local.cluster.mesh_mtu
+  #  vlan_id = local.cluster.mesh_vlan_id
+    mtu     = local.cluster.egress_mtu
   }
   network_device {
-    bridge  = "vmbr0"
+    bridge  = "mesh0"
     model   = "virtio"
-    vlan_id = local.cluster.egress_vlan_id
-    mtu     = local.cluster.egress_mtu
+  #  vlan_id = local.cluster.egress_vlan_id
+    mtu     = local.cluster.mesh_mtu
   }
   dynamic "hostpci" {
     for_each = (each.value.index + 1) == 4 ? {
@@ -170,14 +170,14 @@ resource "proxmox_virtual_environment_vm" "controlplane" {
   for_each   = local.controlplane_nodes
   name       = "${var.cluster_name}cp${each.value.padded_suffix}"
   node_name  = each.value.index % 3 == 1 ? "pve02" : each.value.index % 3 == 2 ? "pve03" : "pve01"
-  vm_id      = "${local.cluster.mesh_vlan_id}${format("%04d", each.value.index + var.cp_octet_start)}"
+  vm_id      = "${local.cluster.cluster_id}${format("%02d", each.value.index + var.cp_octet_start)}"
 
   description   = "Managed by Terraform"
   tags          = ["debian", "k8s-control-plane", "${var.cluster_name}", "terraform"]
   scsi_hardware = "virtio-scsi-single"
 
   disk {
-    datastore_id = var.datastore_id
+    datastore_id = local.cluster.datastore_id
     file_id      = var.file_id
     interface    = "scsi0"
     iothread     = true
@@ -205,16 +205,16 @@ resource "proxmox_virtual_environment_vm" "controlplane" {
   }
 
   network_device {
-    bridge  = "vmbr0"
+    bridge  = "vmbr${local.cluster.cluster_id}"
     model   = "virtio"
-    vlan_id = local.cluster.mesh_vlan_id
-    mtu     = local.cluster.mesh_mtu
+  #  vlan_id = local.cluster.mesh_vlan_id
+    mtu     = local.cluster.egress_mtu
   }
   network_device {
-    bridge  = "vmbr0"
+    bridge  = "mesh0"
     model   = "virtio"
-    vlan_id = local.cluster.egress_vlan_id
-    mtu     = local.cluster.egress_mtu
+  #  vlan_id = local.cluster.egress_vlan_id
+    mtu     = local.cluster.mesh_mtu
   }
 
   initialization {

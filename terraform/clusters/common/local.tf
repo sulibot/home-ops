@@ -20,7 +20,7 @@ locals {
       cluster_id   = 101
       datastore_id = "local"
       egress_mtu   = 1500
-      mesh_mtu     = 1500
+      mesh_mtu     = 9000
     }
     "cluster-102" = {
       cluster_id   = 102
@@ -40,8 +40,8 @@ locals {
   clusters = {
     for key, cluster in local.clusters_base_info : key => {
       cluster_id              = cluster.cluster_id
-      mesh_vlan_id            = cluster.cluster_id - 1
-      egress_vlan_id          = cluster.cluster_id # + 100
+      egress_vlan_id          = cluster.cluster_id
+      mesh_vlan_id            = cluster.cluster_id  + 900
       egress_mtu              = cluster.egress_mtu
       mesh_mtu                = cluster.mesh_mtu
 
@@ -54,10 +54,9 @@ locals {
       ipv6_mesh_prefix        = "${local.ipv6_mesh_base_prefix}:${cluster.cluster_id}"
       ipv6_egress_prefix      = "${local.ipv6_egress_base_prefix}:${cluster.cluster_id}"
       ipv6_mesh_gateway       = "${local.ipv6_mesh_base_prefix}:${cluster.cluster_id}::fffd"
-#      ipv6_egress_gateway     = "${local.ipv6_egress_base_prefix}:${cluster.cluster_id + 100}::fffe"
-#      ipv6_dns_server         = ["${local.ipv6_egress_base_prefix}:${cluster.cluster_id + 100}::fffd"]
-      ipv6_egress_gateway  = "${local.ipv6_egress_base_prefix}:${cluster.cluster_id}::fffd"
-      ipv6_dns_server      = ["${local.ipv6_egress_base_prefix}:${cluster.cluster_id}::fffd"]
+      ipv6_egress_gateway     = "${local.ipv6_egress_base_prefix}:${cluster.cluster_id }::fffe"
+      ipv6_dns_server         = ["${local.ipv6_egress_base_prefix}:${cluster.cluster_id }::fffd"]
+
 
       ipv4_address_subnet     = local.ipv4_address_subnet
       ipv6_address_subnet     = local.ipv6_address_subnet

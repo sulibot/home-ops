@@ -1,0 +1,15 @@
+---
+- name: Wipe disk /dev/sdb for Ceph OSD
+  command: sgdisk --zap-all /dev/sdb
+
+- name: Create GPT label on /dev/sdb
+  parted:
+    device: /dev/sdb
+    label: gpt
+
+- name: Create Ceph data partition on /dev/sdb
+  parted:
+    device: /dev/sdb
+    number: 1
+    part_type: primary
+    state: present
