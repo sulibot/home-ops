@@ -1,0 +1,6 @@
+---
+- name: Enable periodic fstrim
+  systemd:
+    name: fstrim.timer
+    enabled: true
+    state: started

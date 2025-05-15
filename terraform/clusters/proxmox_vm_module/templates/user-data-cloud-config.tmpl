@@ -32,8 +32,6 @@ write_files:
       [Network]
       Address=${loopback_ipv6}/128
 
-
-write_files:
   - path: /etc/netplan/99-static-routes.yaml
     permissions: '0644'
     owner: root
@@ -54,6 +52,8 @@ write_files:
 
 runcmd:
   - netplan apply
+  - systemctl restart networking
+  - ip -6 addr add ${loopback_ipv6}/128 dev lo || true
 
 packages:
   - apt-transport-https

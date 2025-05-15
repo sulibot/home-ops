@@ -1,0 +1,10 @@
+- name: Render cluster config from template
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - "{{ lookup('env','CLUSTER_VAR_FILE') | default('cluster-vars.yaml') }}"
+  tasks:
+    - name: Render values file
+      template:
+        src: templates/cluster-values.yaml.j2
+        dest: rendered/{{ cluster_name }}-group_vars.yaml
