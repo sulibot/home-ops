@@ -13,11 +13,13 @@ router isis CORE
  passive-interface lo
  redistribute connected route-map EXPORT_VM_IPS
  redistribute connected route-map EXPORT_INFRA
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
  redistribute connected route-map EXPORT_MESH0
+{% endif %}
 !
- track interface enp1s0f0np0
+track interface enp1s0f0np0
   track enp1s0f0np0
- track interface enp1s0f1np1
+track interface enp1s0f1np1
   track enp1s0f1np1
 exit
 
@@ -28,42 +30,56 @@ interface lo
  isis metric 20
 exit
 
-{% for iface in ['bond0.5','vmbr8','vmbr9','vmbr10','vmbr100','vmbr10`','vmbr101','vmbr103','mesh0'] %}
+
+{% for iface in ['bond0.5','vmbr8','vmbr9','vmbr10','vmbr100','vmbr101','vmbr103'] %}
 interface {{ iface }}
   ip router isis CORE
   ipv6 router isis CORE
-  {% if iface != 'bond0.5' %}
+{% if iface != 'bond0.5' %}
   isis passive
-  {% endif %}
+{% endif %}
+{% if iface == 'bond0.5' %}
+  no isis passive
+  isis circuit-type level-2-only
+  isis network broadcast
+{% endif %}
   isis metric {{ '50' if iface == 'bond0.5' else '20' if iface.startswith('vmbr') else '1' }}
 exit
 {% endfor %}
 
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+interface mesh0
+  ip router isis CORE
+  ipv6 router isis CORE
+  isis passive
+  isis metric 1
+exit
+
+interface enp1s0f0np0
+  ip router isis CORE
+  ipv6 router isis CORE
+  isis circuit-type level-2-only
+  isis network point-to-point
+  isis hello-interval 1
+  isis hello-multiplier 3
+  isis metric 1
+exit
+
+interface enp1s0f1np1
+  ip router isis CORE
+  ipv6 router isis CORE
+  isis circuit-type level-2-only
+  isis network point-to-point
+  isis hello-interval 1
+  isis hello-multiplier 3
+  isis metric 1
+exit
+{% endif %}
 
 interface tap*
  ip router isis CORE
  ipv6 router isis CORE
  isis passive
- isis metric 1
-exit
-
-interface enp1s0f0np0
- ip router isis CORE
- ipv6 router isis CORE
- isis circuit-type level-2-only
- isis network point-to-point
- isis hello-interval 1
- isis hello-multiplier 3
- isis metric 1
-exit
-
-interface enp1s0f1np1
- ip router isis CORE
- ipv6 router isis CORE
- isis circuit-type level-2-only
- isis network point-to-point
- isis hello-interval 1
- isis hello-multiplier 3
  isis metric 1
 exit
 
@@ -73,22 +89,24 @@ router bgp 65100
  bgp graceful-restart
  bgp log-neighbor-changes
 {% set id6 = inventory_hostname[-1] %}
-{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::fffe'] if peer!='fd00:255::'~id6 %}
+{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::4','fd00:255::fffe'] if peer != 'fd00:255::' ~ id6 %}
  neighbor {{ peer }} remote-as {{ '65000' if 'fffe' in peer else 65100 }}
-  neighbor {{ peer }} update-source fd00:255::{{ id6 }}
-  {% if 'fffe' in peer %}
-  neighbor {{ peer }} bfd
-  neighbor {{ peer }} route-map DEPRIORITIZE_EBGP in
-  neighbor {{ peer }} next-hop-self
-  {% endif %}
+ neighbor {{ peer }} update-source fd00:255::{{ id6 }}
+{% if 'fffe' in peer %}
+ neighbor {{ peer }} bfd
+ neighbor {{ peer }} route-map DEPRIORITIZE_EBGP in
+ neighbor {{ peer }} next-hop-self
+{% endif %}
 {% endfor %}
 
  address-family ipv4 unicast
   redistribute connected route-map EXPORT_INFRA
   redistribute connected route-map EXPORT_VM_IPS
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
   redistribute connected route-map EXPORT_MESH0
+{% endif %}
   redistribute isis route-map FROM_ISIS
-{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::fffe'] if peer!='fd00:255::'~id6 %}
+{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::4','fd00:255::fffe'] if peer != 'fd00:255::' ~ id6 %}
   neighbor {{ peer }} activate
 {% endfor %}
  exit-address-family
@@ -96,9 +114,11 @@ router bgp 65100
  address-family ipv6 unicast
   redistribute connected route-map EXPORT_INFRA
   redistribute connected route-map EXPORT_VM_IPS
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
   redistribute connected route-map EXPORT_MESH0
+{% endif %}
   redistribute isis route-map FROM_ISIS
-{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::fffe'] if peer!='fd00:255::'~id6 %}
+{% for peer in ['fd00:255::1','fd00:255::2','fd00:255::3','fd00:255::4','fd00:255::fffe'] if peer != 'fd00:255::' ~ id6 %}
   neighbor {{ peer }} activate
 {% endfor %}
  exit-address-family
@@ -127,9 +147,11 @@ route-map EXPORT_VM_IPS permit 10
  match ipv6 address prefix-list ALLOW_VM_IPS
 exit
 
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
 route-map EXPORT_MESH0 permit 10
  match interface mesh0
 exit
+{% endif %}
 
 ip prefix-list ALLOW_ISIS seq 5 permit 10.0.0.0/8 le 32
 ipv6 prefix-list ALLOW_ISIS seq 10 permit fc00::/8 le 128

@@ -1,4 +1,5 @@
 ---
+# roles/interfaces/tasks/main.yaml
 - name: Deploy /etc/network/interfaces
   template:
     src: interfaces.j2

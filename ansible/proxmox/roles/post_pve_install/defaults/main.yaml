@@ -1,0 +1,6 @@
+---
+# URL of the community post-install script
+post_pve_install_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh"
+# Destination on the target hosts
+post_pve_install_dest: "/usr/local/bin/post-pve-install.sh"
+

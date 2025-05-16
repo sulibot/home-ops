@@ -1,0 +1,9 @@
+---
+- name: Create reboot-required marker if kernel was upgraded
+  stat:
+    path: /var/run/reboot-required
+  register: reboot_marker
+
+- name: Trigger reboot if required
+  meta: flush_handlers
+  when: reboot_marker.stat.exists

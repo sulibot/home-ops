@@ -1,35 +1,76 @@
+# Taskfile.yaml
 version: '3'
 
 vars:
   INVENTORY: inventory/hosts.ini
+  ANSIBLE_FLAGS: "-i ${INVENTORY} --forks 10 --timeout 30"
+  # If you want to run in check mode by default, uncomment:
+  # ANSIBLE_FLAGS: "${ANSIBLE_FLAGS} --check"
 
 tasks:
-  render:
-    desc: Render cluster vars
+  # —————————————————————————————————————————————————————————————
+  #  Render & Prep
+  # —————————————————————————————————————————————————————————————
+
+  render-vars:
+    desc: Render per‐cluster variables
     cmds:
-      - ansible-playbook tasks/render-cluster-vars.yaml
+      - ansible-playbook ${ANSIBLE_FLAGS} tasks/render-cluster-vars.yaml
+
+  # —————————————————————————————————————————————————————————————
+  #  Stage 2 – Core Host Configuration
+  # —————————————————————————————————————————————————————————————
 
   bootstrap-network:
-    desc: Configure networking
+    desc: Configure network primitives (bonds, bridges, VLANs)
     cmds:
-      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-bootstrap-network.yaml
+      - ansible-playbook ${ANSIBLE_FLAGS} playbooks/stage2-bootstrap-network.yaml
 
   host-tuning:
-    desc: Apply sysctl, SSH, journald, and fstrim tuning
+    desc: Apply sysctl, BBR, proxy ARP/NDP, SSH, journald, fstrim
     cmds:
-      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-host-tuning.yaml
-
-  prep-ceph-disks:
-    desc: ⚠️ Wipe disks for Ceph
-    cmds:
-      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-prep-ceph-disks.yaml
+      - ansible-playbook ${ANSIBLE_FLAGS} playbooks/stage2-host-configuration.yaml
 
   configure-network:
-    desc: Configure network interfaces
+    desc: Populate /etc/network/interfaces
     cmds:
-      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-configure-network.yaml
+      - ansible-playbook ${ANSIBLE_FLAGS} playbooks/stage2-configure-network.yaml
 
   configure-frr:
-    desc: Configure FRR for routing
+    desc: Deploy FRR (ISIS + BGP + anycast)
     cmds:
-      - ansible-playbook -i {{.INVENTORY}} playbooks/stage2-configure-frr.yaml
+      - ansible-playbook ${ANSIBLE_FLAGS} playbooks/stage2-configure-frr.yaml
+
+  # —————————————————————————————————————————————————————————————
+  #  Stage 2 – Ceph & Destructive Operations
+  #
+  #  ⚠️ Requires confirmation each run
+  # —————————————————————————————————————————————————————————————
+
+  prep-ceph-disks:
+    desc: "⚠️ Wipe & prep Ceph OSD disks (interactive confirmation)"
+    confirm: "This will destroy all data on your Ceph OSD devices. Type 'YES' to proceed:"
+    cmds:
+      - >
+        ansible-playbook ${ANSIBLE_FLAGS}
+        playbooks/stage2-prep-ceph-disks.yaml
+        --extra-vars "confirm_destruction=YES"
+
+  # —————————————————————————————————————————————————————————————
+  #  Composite tasks
+  # —————————————————————————————————————————————————————————————
+
+  stage2-all:
+    desc: Run all non-destructive Stage 2 tasks in order
+    deps:
+      - render-vars
+      - bootstrap-network
+      - host-tuning
+      - configure-network
+      - configure-frr
+
+  all:
+    desc: Render vars, then Stage 2, then Ceph prep
+    deps:
+      - stage2-all
+      - prep-ceph-disks
