@@ -1,7 +1,0 @@
-- name: Stage 2 - Configure /etc/network/interfaces on PVE nodes
-  hosts: pve
-  become: true
-  vars_files:
-  - "../group_vars/all.yaml"
-  roles:
-    - interfaces

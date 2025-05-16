@@ -1,60 +1,78 @@
-{% set node_id = inventory_hostname[-1] | int %}
-{% set peer_id = 6 - node_id %}
+{% set node_id = (inventory_hostname[-2:] | regex_replace('^0*', '') | int) %}
 
 # ============================================================
 # Proxmox VE Network Configuration – {{ inventory_hostname }}
 # ============================================================
 
+# --- Loopback IPv4 addresses ---
 auto lo
-iface lo inet loopback
+iface lo inet static
     address 10.255.255.{{ node_id }}/32
-
     address 10.0.10.{{ node_id }}/32
-    {% for vlan in [100,101,102,103] %}
+{% for vlan in [100,101,102,103] %}
     address 10.0.{{ vlan }}.{{ node_id }}/32
-    {% endfor %}
+{% endfor %}
 
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+    # Anycast loopbacks (IPv4)
     address 10.0.10.254/32
-    {% for vlan in [100,101,102,103] %}
+{% for vlan in [100,101,102,103] %}
     address 10.0.{{ vlan }}.254/32
-    {% endfor %}
+{% endfor %}
+{% endif %}
 
+# --- Loopback IPv6 addresses ---
 iface lo inet6 static
     address fd00:255::{{ node_id }}/128
-
     address fd00:10::{{ node_id }}/128
-    {% for vlan in [100,101,102,103] %}
+{% for vlan in [100,101,102,103] %}
     address fd00:{{ vlan }}::{{ node_id }}/128
-    {% endfor %}
+{% endfor %}
 
-    {# anycast loopbacks #}
-    {% for prefix in [10,100,101,102,103] %}
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+    # Anycast loopbacks (IPv6)
+{% for prefix in [10,100,101,102,103] %}
     address fd00:{{ prefix }}::fffe/128
-    {% endfor %}
+{% endfor %}
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
+{% endif %}
 
+# --- Bonded Interfaces ---
+{% set public = public_interfaces[inventory_hostname] %}
+# Physical interfaces in the bond
+{% for slave in public.slaves %}
+auto {{ slave }}
+iface {{ slave }} inet manual
+{% endfor %}
 
-# Bonded trunk
 auto bond0
 iface bond0 inet manual
-    bond-slaves enp3s0 enp4s0
-    bond-mode 802.3ad
+    bond-mode {{ public.mode }}
     bond-miimon 100
-    mtu 1500
+    bond-slaves {{ public.slaves | join(' ') }}
+{% if public.primary is defined %}
+    bond-primary {{ public.primary }}
+{% endif %}
+{% if public.xmit_hash_policy is defined %}
+    bond-xmit-hash-policy {{ public.xmit_hash_policy }}
+{% endif %}
+    
+# --- VLAN Interfaces ---
+# VLAN 5 – Gateway uplink
 
-# VLAN 5 as untagged on bond0.5
 auto bond0.5
 iface bond0.5 inet static
     address 10.0.5.{{ node_id }}/24
-    gateway 10.0.5.254
+#    gateway 10.0.5.254
     mtu 1500
-
+    
 iface bond0.5 inet6 static
     address fd00:5::{{ node_id }}/64
-    gateway fd00:5::fffe
+#    gateway fd00:5::fffe
 
-# VLAN 8 - Infra bridge
+# VLAN 8 – Infra bridge
+
 auto vmbr8
 iface vmbr8 inet manual
     bridge-ports bond0.8
@@ -62,7 +80,8 @@ iface vmbr8 inet manual
     bridge-fd 0
     mtu 1500
 
-# VLAN 9 - Native
+# VLAN 9 – Native untagged access
+
 auto vmbr9
 iface vmbr9 inet static
     address 10.0.9.{{ node_id }}/24
@@ -71,12 +90,13 @@ iface vmbr9 inet static
     bridge-stp off
     bridge-fd 0
     mtu 1500
-
+    
 iface vmbr9 inet6 static
     address fd00:9::{{ node_id }}/64
     gateway fd00:9::fffe
 
-# VLAN 10 - Management
+# VLAN 10 – Management bridge
+
 auto vmbr10
 iface vmbr10 inet manual
     bridge-ports bond0.10
@@ -84,7 +104,7 @@ iface vmbr10 inet manual
     bridge-fd 0
     mtu 1500
 
-# VLAN 100-103 bridges
+# VLANs 100–103 – Workload bridges
 {% for vlan in [100,101,102,103] %}
 auto vmbr{{ vlan }}
 iface vmbr{{ vlan }} inet manual
@@ -92,10 +112,11 @@ iface vmbr{{ vlan }} inet manual
     bridge-stp off
     bridge-fd 0
     mtu 1500
-
+    
 {% endfor %}
 
-# Dummy interface for VM mesh L3
+{% if mesh_links[inventory_hostname] is defined %}
+# --- Routed Mesh Network Interfaces ---
 auto dummy0
 iface dummy0 inet manual
     pre-up modprobe dummy
@@ -103,28 +124,31 @@ iface dummy0 inet manual
     pre-up ip link set dummy0 up
     post-down ip link del dummy0 || true
 
-# vmbr1: Bridge backed by dummy0 (MTU 9000)
 auto mesh0
 iface mesh0 inet manual
-    mtu 9000
     bridge-ports dummy0
     bridge-stp off
     bridge-fd 0
+    
+{% for link in mesh_links[inventory_hostname] %}
+{% set a = [node_id, link.peer_id] | min %}
+{% set b = [node_id, link.peer_id] | max %}
+{% set subnet = '10.99.' ~ a ~ b %}
+{% set address = node_id %}
+{% set pointopoint = link.peer_id %}
 
-# Mesh ring links
-auto enp1s0f0np0
-iface enp1s0f0np0 inet static
+auto {{ link.iface }}
+iface {{ link.iface }} inet static
+    address {{ subnet }}.{{ address }}/31
+    pointopoint {{ subnet }}.{{ pointopoint }}
     mtu 9000
-    address 10.99.13.{{ node_id }}/31
-#    pointopoint 10.99.13.{{ peer_id }}
-iface enp1s0f0np0 inet6 manual
 
-auto enp1s0f1np1
-iface enp1s0f1np1 inet static
-    mtu 9000
-    address 10.99.12.{{ node_id }}/31
-#    pointopoint 10.99.12.{{ peer_id }}
-iface enp1s0f1np1 inet6 manual
+iface {{ link.iface }} inet6 static
+    address fc00:99:{{ a }}{{ b }}::{{ address }}/127
+    pointopoint fc00:99:{{ a }}{{ b }}::{{ pointopoint }}
+{% endfor %}
+{% endif %}
 
-# Include drop-ins
+# --- Drop-in Configuration Directory ---
 source /etc/network/interfaces.d/*
+

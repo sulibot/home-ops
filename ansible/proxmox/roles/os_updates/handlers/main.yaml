@@ -1,0 +1,4 @@
+---
+- name: reboot if needed
+  reboot:
+    reboot_timeout: 600

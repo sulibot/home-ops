@@ -1,0 +1,15 @@
+---
+- name: Stage 2 - Prepare Ceph OSD disks (DANGEROUS)
+  hosts: ceph_osd
+  become: true
+  vars_prompt:
+    - name: confirm_destruction
+      prompt: "Type YES to confirm destructive disk wipe"
+      private: no
+  tasks:
+    - name: Abort if not confirmed
+      fail:
+        msg: "Destructive action not confirmed. Exiting."
+      when: confirm_destruction != 'YES'
+  roles:
+    - role: pve_ceph_disk_prep

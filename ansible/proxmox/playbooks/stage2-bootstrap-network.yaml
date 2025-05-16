@@ -1,7 +1,0 @@
-- name: Stage 2 - Configure networking primitives
-  hosts: pve
-  become: true
-  vars_files:
-  - "../group_vars/all.yaml"
-  roles:
-    - pve_networking

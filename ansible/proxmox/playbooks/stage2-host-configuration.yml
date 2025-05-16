@@ -1,0 +1,22 @@
+---
+- name: Stage 2 - Host configuration
+  hosts: pve
+  become: true
+  roles:
+    - role: post_pve_install
+    - role: common       # chrony, base OS tuning
+    - role: sysctl       # kernel parameters & forwarding
+    - role: ssh_config   # PermitRootLogin, authorized_keys
+    - role: journald     # persistent logs
+    - role: fstrim       # periodic fstrim
+    - role: swappiness   # vm.swappiness tuning
+    - role: timezone     # UTC timezone
+    - role: ssh_keys     # distribute root SSH keys
+    - role: host_limits  # /etc/security limits
+    - role: reboot_handler
+    - role: os_updates
+    - role: fail2ban     # optional
+    - role: snmpd        # optional
+    - role: node_exporter # optional
+    - role: log_forwarding
+    - role: zfs_tuning   # optional

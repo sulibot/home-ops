@@ -1,0 +1,17 @@
+---
+- name: Fetch the community post-pve-install.sh script
+  ansible.builtin.get_url:
+    url: "{{ post_pve_install_url }}"
+    dest: "{{ post_pve_install_dest }}"
+    mode: '0755'
+
+- name: Run the Proxmox post-install script
+  ansible.builtin.command: "{{ post_pve_install_dest }}"
+  register: pve_post_install
+  # assume the script prints "OK" on success:
+  changed_when: "'OK' in pve_post_install.stdout"
+
+- name: Show post-pve-install output
+  ansible.builtin.debug:
+    var: pve_post_install.stdout_lines
+

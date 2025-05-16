@@ -1,0 +1,15 @@
+---
+- name: Configure ZFS ARC max
+  copy:
+    dest: /etc/modprobe.d/zfs.conf
+    content: |
+      options zfs zfs_arc_max=4294967296
+    mode: '0644'
+
+- name: Schedule ZFS TRIM
+  cron:
+    name: "ZFS TRIM"
+    minute: "0"
+    hour: "*/6"
+    user: root
+    job: "zpool trim -a"

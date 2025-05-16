@@ -1,0 +1,6 @@
+---
+- name: Set vm.swappiness to 10
+  sysctl:
+    name: vm.swappiness
+    value: 10
+    sysctl_file: /etc/sysctl.d/99-swappiness.conf

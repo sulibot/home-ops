@@ -1,0 +1,16 @@
+---
+- name: Ensure backup directory exists
+  file:
+    path: /var/backups/etc
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Schedule /etc backup
+  cron:
+    name: "Backup /etc"
+    minute: "0"
+    hour: "2"
+    user: root
+    job: "tar czf /var/backups/etc/etc-$(date +\%F).tar.gz /etc"
