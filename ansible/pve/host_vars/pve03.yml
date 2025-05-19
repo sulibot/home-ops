@@ -1,0 +1,9 @@
+---
+pve_ceph_osds:
+  - /dev/nvme1n1
+  - /dev/sda1
+  - /dev/sda2
+  - /dev/sdb1
+  - /dev/sdb2
+  - /dev/sdc1
+  - /dev/sdc2

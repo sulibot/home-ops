@@ -1,6 +1,0 @@
----
-- name: Stage 2 - Bootstrap network primitives
-  hosts: pve
-  become: true
-  roles:
-    - role: pve_networking
