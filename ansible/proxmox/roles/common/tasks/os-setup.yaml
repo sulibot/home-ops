@@ -1,4 +1,13 @@
 ---
+- name: Ensure all inventory hosts have entries in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    create: yes
+    line: "{{ hostvars[item].ansible_host }} {{ item }} {{ item }}.sulibot.com"
+  loop: "{{ groups['all'] }}"
+  loop_control:
+    label: "{{ item }}"
+
 - name: Ensure chrony is installed
   ansible.builtin.package:
     name: chrony

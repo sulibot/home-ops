@@ -1,6 +1,8 @@
 ---
 - name: Stage 2 - Prepare Ceph OSD disks (DANGEROUS)
   hosts: ceph_osd
+  vars_files:
+    - ../group_vars/all.yaml
   become: true
   vars_prompt:
     - name: confirm_destruction

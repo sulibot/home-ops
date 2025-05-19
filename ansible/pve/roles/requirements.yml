@@ -1,0 +1,4 @@
+# Roles to install via ansible-galaxy
+- name: lae.proxmox
+  src: lae.proxmox
+- name: geerlingguy.ntp

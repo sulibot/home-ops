@@ -34,8 +34,8 @@ iface lo inet6 static
 {% for prefix in [10,100,101,102,103] %}
     address fd00:{{ prefix }}::fffe/128
 {% endfor %}
-    address fc00:20::{{ node_id }}/128
-    address fc00:21::{{ node_id }}/128
+    address fd00:20::{{ node_id }}/128
+    address fd00:21::{{ node_id }}/128
 {% endif %}
 
 # --- Bonded Interfaces ---

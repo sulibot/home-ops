@@ -1,0 +1,27 @@
+---
+- hosts: pve
+  become: true
+
+  vars:
+    proxmox_password: "{{ vault_proxmox_password }}"
+    pve_ceph_conf_template: ceph.conf.j2
+    pve_ceph_custom_crushmap: files/crushmap.txt
+
+  pre_tasks:
+    - name: Deploy Corosync config
+      template:
+        src: corosync.conf.j2
+        dest: /etc/corosync/corosync.conf
+
+    - name: Ensure corosync is running
+      service:
+        name: corosync
+        state: restarted
+        enabled: true
+
+  roles:
+    - geerlingguy.ntp
+    - lae.proxmox
+
+  tasks:
+    - import_tasks: tasks/main.yml

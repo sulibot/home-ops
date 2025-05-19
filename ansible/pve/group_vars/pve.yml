@@ -1,0 +1,89 @@
+---
+# Networks
+pve_ceph_public_network:  fc00:20::/64
+pve_ceph_cluster_network: fc00:21::/64
+
+# Corosync
+corosync_cluster_name:    pmx01
+corosync_config_version:  3
+corosync_ip_version:      ipv6
+corosync_ring0_interface: 0
+corosync_link_mode:       passive
+corosync_secauth:         on
+corosync_nodes:
+  pve01: { nodeid: 1, ring0_addr: "fd00:255::1" }
+  pve02: { nodeid: 3, ring0_addr: "fd00:255::2" }
+  pve03: { nodeid: 2, ring0_addr: "fd00:255::3" }
+
+# Custom CRUSH map
+pve_ceph_custom_crushmap: files/crushmap.txt
+
+# CSI pools & filesystems
+ceph_csi_pools:
+  - name: data_metadata
+    type: replicated
+    pg_num: 128
+    rule: replicated_rule
+  - name: data_data
+    type: replicated
+    pg_num: 128
+    rule: replicated_rule
+  - name: kubernetes_metadata
+    type: replicated
+    pg_num: 128
+    rule: replicated_rule
+  - name: kubernetes_data
+    type: replicated
+    pg_num: 128
+    rule: replicated_rule
+
+ceph_csi_fs:
+  - name: data
+    metadata_pool: data_metadata
+    data_pool: data_data
+  - name: kubernetes
+    metadata_pool: kubernetes_metadata
+    data_pool: kubernetes_data
+
+# CSI client key
+ceph_csi_clients:
+  csi-cephfs-secret:
+    entity: client.csi-cephfs-secret
+    caps:
+      mon: 'allow r'
+      osd: 'allow rw tag cephfs data'
+      mds: 'allow'
+
+# MDS daemons
+pve_ceph_mds_enabled: true
+pve_ceph_mds:
+  - pve01
+  - pve02
+  - pve03
+
+# CephFS subvolume groups
+ceph_csi_subvol_groups:
+  - fs: data
+    group: content
+  - fs: data
+    group: content-volumes
+  - fs: kubernetes
+    group: csi
+  - fs: data
+    group: csi-sol
+  - fs: data
+    group: backups
+  - fs: data
+    group: test
+
+# Static PV subvolumes
+ceph_csi_static_subvols:
+  - fs: data
+    subvol: volumes/content/media/data
+    group: content
+  - fs: data
+    subvol: volumes/content/media/data
+    group: content-volumes
+  - fs: data
+    subvol: volumes/content/media/data
+    group: csi-sol
