@@ -1,0 +1,4 @@
+---
+# roles/ceph-crush/meta/main.yml
+dependencies:
+  - ceph-cluster

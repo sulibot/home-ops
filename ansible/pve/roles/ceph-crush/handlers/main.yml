@@ -1,0 +1,6 @@
+---
+# roles/ceph-crush/handlers/main.yml
+- name: cleanup tmp crush files
+  file:
+    path: /tmp/crushmap.*
+    state: absent

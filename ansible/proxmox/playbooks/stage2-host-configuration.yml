@@ -5,7 +5,7 @@
     - ../group_vars/all.yaml
   become: true
   roles:
-    - role: proxmox_repo
+#    - role: proxmox_repo
     - role: common       # chrony, base OS tuning
     - role: sysctl       # kernel parameters & forwarding
     - role: ssh_config   # PermitRootLogin, authorized_keys
