@@ -1,3 +1,9 @@
 ---
 collections:
-  - community.general
+  - name: community.general
+  - name: ceph.automation
+
+roles:
+  - name: geerlingguy.ntp
+  - name: ceph-init
+

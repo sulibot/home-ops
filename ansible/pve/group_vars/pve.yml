@@ -1,89 +1,100 @@
----
-# Networks
-pve_ceph_public_network:  fc00:20::/64
-pve_ceph_cluster_network: fc00:21::/64
+# Inventory group name
+pve_group: pve  # matches host group in inventory
 
-# Corosync
-corosync_cluster_name:    pmx01
-corosync_config_version:  3
-corosync_ip_version:      ipv6
-corosync_ring0_interface: 0
-corosync_link_mode:       passive
-corosync_secauth:         on
-corosync_nodes:
-  pve01: { nodeid: 1, ring0_addr: "fd00:255::1" }
-  pve02: { nodeid: 3, ring0_addr: "fd00:255::2" }
-  pve03: { nodeid: 2, ring0_addr: "fd00:255::3" }
+# Proxmox Cluster Configuration
+pve_cluster_name: pmx01
 
-# Custom CRUSH map
-pve_ceph_custom_crushmap: files/crushmap.txt
+# Ceph Configuration
+pve_ceph_network: "fc00:20::/64"
+pve_ceph_cluster_network: "fc00:21::/64"
 
-# CSI pools & filesystems
+# ZFS & ZED
+pve_zfs_enabled: true
+pve_zfs_zed_email: "sulibot@gmail.com"
+
+# Ceph OSD devices
+pve_ceph_osds:
+  - dev: /dev/nvme0n1
+  - dev: /dev/nvme1n1
+
+# CephFS configuration
+pve_ceph_filesystems:
+  - name: media
+    pool: rdb-media
+    rule: replicated_nvme
+
+# CRUSH rules
+pve_ceph_crush_rules:
+  - name: replicated_nvme
+    type: replicated
+    class: nvme
+  - name: replicated_hdd
+    type: replicated
+    class: hdd
+
+# Ceph Pools
+pve_ceph_pools:
+  - name: rdb-media
+    rule: replicated_nvme
+    size: 3
+    application: rbd
+
+# Datacenter-wide config
+pve_datacenter_cfg:
+  keyboard: en-us
+  console: xterm
+  email_from: "sulibot@yourdomain.com"
+
+# Ceph CSI pool definitions
 ceph_csi_pools:
-  - name: data_metadata
-    type: replicated
+  - name: rbd
     pg_num: 128
-    rule: replicated_rule
-  - name: data_data
-    type: replicated
-    pg_num: 128
-    rule: replicated_rule
-  - name: kubernetes_metadata
-    type: replicated
-    pg_num: 128
-    rule: replicated_rule
-  - name: kubernetes_data
-    type: replicated
-    pg_num: 128
-    rule: replicated_rule
+    pool_type: replicated
+    rule_name: replicated_rule
 
+  - name: cephfs_data
+    pg_num: 128
+    pool_type: erasure
+    erasure_profile: ec_k6_m3_hostdrive9  
+
+# CephFS filesystems
 ceph_csi_fs:
-  - name: data
-    metadata_pool: data_metadata
-    data_pool: data_data
   - name: kubernetes
     metadata_pool: kubernetes_metadata
     data_pool: kubernetes_data
+  - name: data
+    metadata_pool: content_metadata
+    data_pool: content_data
 
-# CSI client key
+# CSI CephX clients
 ceph_csi_clients:
-  csi-cephfs-secret:
-    entity: client.csi-cephfs-secret
+  client.kubernetes:
+    entity: client.kubernetes
     caps:
-      mon: 'allow r'
-      osd: 'allow rw tag cephfs data'
-      mds: 'allow'
+      mon: 'profile rbd'
+      osd: 'profile rbd'
+  client.content:
+    entity: client.content
+    caps:
+      mon: 'profile rbd'
+      osd: 'profile rbd'
 
-# MDS daemons
-pve_ceph_mds_enabled: true
-pve_ceph_mds:
-  - pve01
-  - pve02
-  - pve03
-
-# CephFS subvolume groups
+# CephFS subvolume groups & static subvolumes
 ceph_csi_subvol_groups:
-  - fs: data
-    group: content
-  - fs: data
-    group: content-volumes
   - fs: kubernetes
     group: csi
   - fs: data
-    group: csi-sol
-  - fs: data
-    group: backups
-  - fs: data
-    group: test
+    group: content
 
-# Static PV subvolumes
 ceph_csi_static_subvols:
   - fs: data
-    subvol: volumes/content/media/data
+    subvol: media
     group: content
-  - fs: data
-    subvol: volumes/content/media/data
-    group: content-volumes
-  - fs: data
-    subvol: volumes/content/media/data
-    group: csi-sol
+
+# Certbot/Cloudflare settings
+certbot_email: sulibot@gmail.com
+cloudflare_api_key: keykey
+pve_cert_domains:
+  - pve01.sulibot.com
+  - pve02.sulibot.com
+  - pve03.sulibot.com

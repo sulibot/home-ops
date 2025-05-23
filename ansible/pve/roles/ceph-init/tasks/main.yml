@@ -1,0 +1,97 @@
+---
+# roles/ceph-init/tasks/main.yml
+
+- name: Ceph initialization (bootstrap and secondary)
+  block:
+    - name: Assert Ceph network variables are defined
+      assert:
+        that:
+          - pve_ceph_network is defined
+          - pve_ceph_cluster_network is defined
+        fail_msg: "Missing required variables: pve_ceph_network or pve_ceph_cluster_network"
+      when: inventory_hostname == groups['pve'][0]
+
+    - name: Ensure Ceph packages are installed
+      apt:
+        name:
+          - ceph-mon
+          - ceph-mgr
+          - ceph-common
+        state: present
+        update_cache: yes
+
+    - name: Ensure ceph-crash is optionally installed
+      apt:
+        name: ceph-crash
+        state: present
+      ignore_errors: true
+      register: crash_result
+
+    - name: Debug ceph-crash installation failure (optional)
+      debug:
+        msg: "ceph-crash not available in current repo"
+      when: crash_result is failed
+
+    - name: Enable and start ceph-crash if installed
+      systemd:
+        name: ceph-crash
+        enabled: true
+        state: started
+      when: crash_result is succeeded
+
+    - name: Optionally install Ceph MDS if CephFS is in use
+      apt:
+        name: ceph-mds
+        state: present
+      when: ceph_csi_fs is defined and ceph_csi_fs | length > 0
+
+    - name: Initialize Ceph cluster on bootstrap node
+      command: >
+        pveceph init
+        --network {{ pve_ceph_network }}
+        --cluster-network {{ pve_ceph_cluster_network }}
+      args:
+        creates: /etc/pve/ceph.conf
+      when: inventory_hostname == groups['pve'][0]
+
+    - name: Fetch Ceph FSID from the cluster
+      command: ceph fsid
+      register: ceph_fsid
+      changed_when: false
+      when: inventory_hostname == groups['pve'][0]
+
+    - name: Render ceph.conf for bootstrap node
+      template:
+        src: ceph.conf.j2
+        dest: /etc/pve/ceph.conf
+        owner: root
+        group: www-data
+        mode: '0640'
+      vars:
+        fsid: "{{ ceph_fsid.stdout }}"
+      when: inventory_hostname == groups['pve'][0]
+
+    - name: Wait for Ceph configuration to propagate
+      wait_for:
+        path: /etc/pve/ceph.conf
+        timeout: 300
+      when: inventory_hostname != groups['pve'][0]
+
+    - name: Create Ceph Monitor on secondary nodes
+      command: pveceph mon create
+      args:
+        # only create if this node's monitor dir doesn't exist yet
+        creates: /var/lib/ceph/mon/ceph-{{ inventory_hostname }}
+      when: inventory_hostname != groups['pve'][0]
+
+    - name: Create Ceph Manager daemon
+      command: pveceph mgr create
+      args:
+        creates: /var/lib/ceph/mgr/ceph-{{ inventory_hostname }}
+
+    - name: Provision OSDs from defined devices
+      command: pveceph osd create {{ item.dev }}
+      loop: "{{ pve_ceph_osds }}"
+      when: pve_ceph_osds is defined
+
+  become: true

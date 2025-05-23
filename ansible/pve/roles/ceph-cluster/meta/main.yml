@@ -1,0 +1,4 @@
+---
+# roles/ceph-cluster/meta/main.yml
+collections:
+  - ceph.automation

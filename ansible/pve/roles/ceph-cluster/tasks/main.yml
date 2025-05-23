@@ -1,0 +1,42 @@
+---
+# roles/ceph-cluster/tasks/main.yml
+
+- name: Create CSI Ceph pools
+  ceph.automation.ceph_pool:
+    cluster: ceph
+    name: "{{ item.name }}"
+    pg_num: "{{ item.pg_num }}"
+    pgp_num: "{{ item.pg_num }}"
+    pool_type: "{{ item.pool_type }}"        # was `type`
+    rule_name: "{{ item.rule_name | default(omit) }}"            # was `rule`/`rule_id`
+    erasure_profile: "{{ item.erasure_profile | default(omit) }}"
+    state: present
+  loop: "{{ ceph_csi_pools }}"
+
+- name: Create CephFS filesystems
+  ceph.automation.ceph_fs:
+    cluster: ceph
+    name: "{{ item.name }}"
+    metadata_pool: "{{ item.metadata_pool }}"
+    data_pool: "{{ item.data_pool }}"
+    state: present
+  loop: "{{ ceph_csi_fs }}"
+
+- name: Create CSI CephX client keys
+  ceph.automation.ceph_key:
+    cluster: ceph
+    key_name: "{{ item.entity }}"
+    caps: "{{ item.caps }}"
+    state: present
+    dest: "/etc/ceph/{{ item.entity }}.keyring"
+  loop: "{{ ceph_csi_clients.values() | list }}"
+
+- name: Create CephFS subvolume groups
+  command: >-
+    ceph fs subvolume group create {{ item.fs }} {{ item.group }}
+  loop: "{{ ceph_csi_subvol_groups }}"
+
+- name: Create static PV subvolumes
+  command: >-
+    ceph fs subvolume create {{ item.fs }} {{ item.subvol }} --group {{ item.group }}
+  loop: "{{ ceph_csi_static_subvols }}"

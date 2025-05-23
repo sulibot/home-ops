@@ -1,0 +1,37 @@
+# playbooks/tasks/bootstrap.yml
+
+# 1) Terraform support (first node only)
+- name: Create Terraform user if missing
+  shell: |
+    if ! pveum user list | grep -qw 'terraform@pve'; then
+      pveum user add terraform@pve
+    fi
+  run_once: true
+
+- name: Create Terraform role if missing
+  shell: |
+    if ! pveum role list | grep -qw 'Terraform'; then
+      pveum role add Terraform \
+        -privs "Datastore.Allocate Datastore.AllocateSpace Datastore.AllocateTemplate \
+        Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify SDN.Use \
+        VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit \
+        VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory \
+        VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor \
+        VM.PowerMgmt User.Modify"
+    fi
+  run_once: true
+
+- name: Assign Terraform role to user at root
+  shell: |
+    if ! pveum acl list / | grep -E "terraform@pve.*Terraform"; then
+      pveum aclmod / -user terraform@pve -role Terraform
+    fi
+  run_once: true
+
+- name: Create Terraform API token if missing
+  shell: |
+    if ! pveum user token list terraform@pve | grep -qw provider; then
+      pveum user token add terraform@pve provider --privsep=0
+    fi
+  register: tf_token
+  run_once: true

@@ -1,0 +1,5 @@
+---
+# roles/ceph-init/meta/main.yml
+
+dependencies:
+  - bootstrap

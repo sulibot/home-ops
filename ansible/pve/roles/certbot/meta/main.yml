@@ -1,0 +1,4 @@
+---
+# roles/certbot/meta/main.yml
+dependencies:
+  - pve-config

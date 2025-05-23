@@ -1,0 +1,45 @@
+# playbooks/tasks/ceph-cluster.yml
+
+# CSI Ceph pools
+- name: Create CSI Ceph pools
+  ceph.automation.ceph_pool:
+    cluster: ceph
+    name: "{{ item.name }}"
+    pg_num: "{{ item.pg_num }}"
+    pgp_num: "{{ item.pg_num }}"
+    state: present
+    type: "{{ item.type }}"
+    crush_ruleset: "{{ item.rule_id | default(item.rule) }}"
+  loop: "{{ ceph_csi_pools }}"
+
+# CephFS filesystems
+- name: Create CephFS filesystems
+  ceph.automation.ceph_fs:
+    cluster: ceph
+    name: "{{ item.name }}"
+    metadata_pool: "{{ item.metadata_pool }}"
+    data_pool: "{{ item.data_pool }}"
+    state: present
+  loop: "{{ ceph_csi_fs }}"
+
+# CSI CephX client keys
+- name: Create CSI CephX client keys
+  ceph.automation.ceph_key:
+    cluster: ceph
+    key_name: "{{ item.entity }}"
+    caps: "{{ item.caps }}"
+    state: present
+    dest: "/etc/ceph/{{ item.entity }}.keyring"
+  loop: "{{ ceph_csi_clients.values() | list }}"
+
+# CephFS subvolume groups
+- name: Create CephFS subvolume groups
+  command: >-
+    ceph fs subvolume group create {{ item.fs }} {{ item.group }}
+  loop: "{{ ceph_csi_subvol_groups }}"
+
+# Static PV subvolumes
+- name: Create static PV subvolumes
+  command: >-
+    ceph fs subvolume create {{ item.fs }} {{ item.subvol }} --group {{ item.group }}
+  loop: "{{ ceph_csi_static_subvols }}"
