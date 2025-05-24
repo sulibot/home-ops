@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: you
+  description: Partition & wipe OSD devices ahead of provisioning
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Debian
+      versions: all
+    - name: Ubuntu
+      versions: all
+collections:
+  - community.general
+dependencies: []

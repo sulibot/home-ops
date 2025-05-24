@@ -1,0 +1,8 @@
+---
+- name: Partition & wipe all OSD devices
+  hosts: pve
+  become: true
+  gather_facts: true
+
+  roles:
+    - wipe_ceph_devices
