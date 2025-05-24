@@ -1,5 +1,4 @@
 ---
 # roles/ceph-init/defaults/main.yml
-
-# The IPv4 or IPv6 subnet to use for Ceph public traffic
 pve_ceph_network: "fc00:20::/64"
+pve_ceph_cluster_network: "fc00:21::/64"

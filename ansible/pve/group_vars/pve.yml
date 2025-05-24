@@ -1,5 +1,5 @@
 # Inventory group name
-pve_group: pve  # matches host group in inventory
+pve_group: pve
 
 # Proxmox Cluster Configuration
 pve_cluster_name: pmx01
@@ -11,11 +11,6 @@ pve_ceph_cluster_network: "fc00:21::/64"
 # ZFS & ZED
 pve_zfs_enabled: true
 pve_zfs_zed_email: "sulibot@gmail.com"
-
-# Ceph OSD devices
-pve_ceph_osds:
-  - dev: /dev/nvme0n1
-  - dev: /dev/nvme1n1
 
 # CephFS configuration
 pve_ceph_filesystems:
@@ -51,7 +46,6 @@ ceph_csi_pools:
     pg_num: 128
     pool_type: replicated
     rule_name: replicated_rule
-
   - name: cephfs_data
     pg_num: 128
     pool_type: erasure

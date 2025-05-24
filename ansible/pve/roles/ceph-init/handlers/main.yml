@@ -1,0 +1,5 @@
+---
+- name: Reload Ceph mons
+  service:
+    name: "ceph-mon@*"
+    state: reloaded
