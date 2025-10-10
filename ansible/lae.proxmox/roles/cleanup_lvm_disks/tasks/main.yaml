@@ -1,0 +1,239 @@
+# Cleaning script: remove existing DB partitions and wipe all disks
+
+# --- Repositories: PVE 9 (trixie) + Ceph Squid, disable enterprise ---
+
+# Remove known enterprise files (legacy + deb822)
+#- name: Disable Proxmox PVE enterprise repository (legacy .list)
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/pve-enterprise.list
+#    state: absent
+#  become: yes
+#
+#- name: Disable Proxmox Ceph enterprise repository (legacy .list)
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/ceph.list
+#    state: absent
+#  become: yes
+#
+#- name: Disable Proxmox PVE enterprise repository (deb822 .sources)
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/pve-enterprise.sources
+#    state: absent
+#  become: yes
+#
+#- name: Disable Proxmox Ceph enterprise repository (deb822 .sources)
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/ceph-enterprise.sources
+#    state: absent
+#  become: yes
+#
+## Remove any preexisting deb822 stanzas so we don't keep an enterprise entry
+#- name: Remove any existing proxmox.sources/ceph.sources
+#  ansible.builtin.file:
+#    path: "{{ item }}"
+#    state: absent
+#  loop:
+#    - /etc/apt/sources.list.d/proxmox.sources
+#    - /etc/apt/sources.list.d/ceph.sources
+#  become: yes
+#
+## Also scrub enterprise lines from legacy sources.list, just in case
+#- name: Remove enterprise lines from /etc/apt/sources.list (if any)
+#  ansible.builtin.lineinfile:
+#    path: /etc/apt/sources.list
+#    regexp: '^[[:space:]]*deb .*enterprise\.proxmox\.com/'
+#    state: absent
+#  become: yes
+#
+## Install keyrings WITHOUT refreshing cache yet
+#- name: Ensure apt keyrings present (no cache refresh here)
+#  ansible.builtin.apt:
+#    name:
+#      - proxmox-archive-keyring
+#      - debian-archive-keyring
+#    state: present
+#    update_cache: no
+#  become: yes
+#
+## Official PVE 9 (trixie) no-subscription (deb822)
+#- name: Write /etc/apt/sources.list.d/proxmox.sources (PVE 9 no-subscription)
+#  ansible.builtin.copy:
+#    dest: /etc/apt/sources.list.d/proxmox.sources
+#    mode: "0644"
+#    content: |
+#      Types: deb
+#      URIs: http://download.proxmox.com/debian/pve
+#      Suites: trixie
+#      Components: pve-no-subscription
+#      Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+#  become: yes
+#
+## Official Ceph Squid (trixie) no-subscription (deb822)
+#- name: Write /etc/apt/sources.list.d/ceph.sources (Ceph Squid no-subscription)
+#  ansible.builtin.copy:
+#    dest: /etc/apt/sources.list.d/ceph.sources
+#    mode: "0644"
+#    content: |
+#      Types: deb
+#      URIs: http://download.proxmox.com/debian/ceph-squid
+#      Suites: trixie
+#      Components: no-subscription
+#      Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+#  become: yes
+#
+## Debian base repos for trixie + security (deb822)
+#- name: Write /etc/apt/sources.list.d/debian.sources
+#  ansible.builtin.copy:
+#    dest: /etc/apt/sources.list.d/debian.sources
+#    mode: "0644"
+#    content: |
+#      Types: deb
+#      URIs: http://deb.debian.org/debian/
+#      Suites: trixie trixie-updates
+#      Components: main non-free-firmware
+#      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+#
+#      Types: deb
+#      URIs: http://security.debian.org/debian-security/
+#      Suites: trixie-security
+#      Components: main non-free-firmware
+#      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+#  become: yes
+#
+## Now it's safe to refresh caches (no enterprise endpoints left)
+#- name: Update apt cache
+#  ansible.builtin.apt:
+#    update_cache: yes
+#    cache_valid_time: 3600
+#  become: yes
+#
+# Ensure required tools are installed
+- name: Ensure parted, util-linux, lvm2, gdisk, dmsetup are installed
+  ansible.builtin.apt:
+    name:
+      - parted
+      - util-linux
+      - lvm2
+      - gdisk
+      - dmsetup
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Force unmount all mounted LVM volumes
+  shell: |
+    mount | awk '/mapper\// { print $3 }' | xargs -r umount -fl
+  args:
+    executable: /bin/bash
+  tags: [wipe, destructive]
+
+- name: Remove all logical volumes
+  shell: |
+    lvs --noheadings -o lv_path | awk '{$1=$1};1' | while read lv; do
+      lvremove -fy "$lv"
+    done
+  args:
+    executable: /bin/bash
+  tags: [wipe, destructive]
+
+- name: Remove all volume groups
+  shell: |
+    vgs --noheadings -o vg_name | awk '{$1=$1};1' | while read vg; do
+      vgremove -fy "$vg"
+    done
+  args:
+    executable: /bin/bash
+  tags: [wipe, destructive]
+
+- name: Remove all physical volume metadata
+  shell: |
+    pvs --noheadings -o pv_name | awk '{$1=$1};1' | while read pv; do
+      pvremove -ff -y "$pv"
+    done
+  args:
+    executable: /bin/bash
+  tags: [wipe, destructive]
+
+- name: Unmap all remaining device-mapper devices
+  shell: |
+    dmsetup ls --target crypt --target linear --target lvm | awk '{print $1}' | grep -v '^$' | while read dev; do
+      dmsetup remove "$dev" || true
+    done
+  args:
+    executable: /bin/bash
+  ignore_errors: true
+  tags: [wipe, destructive]
+
+- name: Build partition list to wipe
+  set_fact:
+    partitions_to_wipe: >-
+      {{
+        (sata_disks
+          | map('regex_replace', '$', '-part1')
+          | list)
+        + (sata_disks
+          | map('regex_replace', '$', '-part2')
+          | list)
+        + ([optane_disk ~ '-part4'] if optane_disk is defined else [])
+        + ([nvme_disk   ~ '-part4'] if nvme_disk   is defined else [])
+      }}
+  when: sata_disks is defined
+  tags: [wipe, destructive]
+
+- name: Wipe and zero partitions
+  shell: |
+    if [ -e "{{ item }}" ]; then
+      # Resolve real device and partition number
+      devnode=$(readlink -f "{{ item }}")
+      partnum=$(echo "$devnode" | sed -E 's/.*[p]?([0-9]+)$/\1/')
+      disk=$(echo "$devnode" | sed -E 's/[p]?[0-9]+$//')
+      # Remove partition entry via parted
+      parted --script "$disk" rm $partnum || true
+      echo "[*] Cleaning partition $devnode"
+      wipefs -a "$devnode" || true
+      dd if=/dev/zero of="$devnode" bs=1M count=10 conv=fsync || true
+    fi
+  loop: "{{ partitions_to_wipe }}"
+  args:
+    executable: /bin/bash
+  when: partitions_to_wipe is defined
+  tags: [wipe, destructive]
+
+- name: Build disk list to wipe
+  set_fact:
+    disks_to_wipe: >-
+      {{ ([nvme_disk] if nvme_disk is defined else []) + (sata_disks if sata_disks is defined else []) }}
+  tags: [wipe, destructive]
+
+- name: Wipe and zero disks
+  shell: |
+    devnode=$(readlink -f "{{ item }}")
+    echo "[*] Cleaning $devnode"
+    wipefs -a "$devnode" || true
+    sgdisk --zap-all "$devnode" || true
+    dd if=/dev/zero of="$devnode" bs=1M count=10 conv=fsync || true
+    # Recreate an empty partition table to remove all entries
+    parted --script "$devnode" mklabel gpt || true
+    # Reread partition table
+    blockdev --rereadpt "$devnode" || true
+    # Ensure udev sees changes
+    udevadm settle
+  loop: "{{ disks_to_wipe }}"
+  args:
+    executable: /bin/bash
+  when: disks_to_wipe is defined
+  tags: [wipe, destructive]
+
+- name: Trigger partition table rescan
+  shell: |
+    partprobe || true
+    udevadm settle
+  args:
+    executable: /bin/bash
+  tags: [wipe, destructive]
+
+# Final step: Reboot to ensure all partition tables and block devices are stable
+- name: Reboot the system to finalize disk setup
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+  become: yes

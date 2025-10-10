@@ -1,0 +1,146 @@
+---
+# roles/common/tasks/os-setup.yml
+# Purpose:
+#   1) Purge ALL lines in /etc/hosts that reference each cluster host (FQDN or shortname)
+#      while leaving unrelated lines untouched.
+#   2) Write ONE canonical, commented block with the cluster entries.
+#   3) Remove the 127.0.1.1 self-map for this node (after correct mapping exists).
+#   4) (Checks) Ensure time sync services are up if present; verify IPv6 reachability and API port.
+
+- name: Default cluster_domain (if not set in group_vars)
+  ansible.builtin.set_fact:
+    _cluster_domain: "{{ cluster_domain | default('sulibot.com') }}"
+
+- name: Ensure this host has a management address (ansible_service_host or ansible_host)
+  ansible.builtin.assert:
+    that:
+      - (hostvars[inventory_hostname].ansible_service_host is defined) or
+        (hostvars[inventory_hostname].ansible_host is defined)
+    fail_msg: >-
+      {{ inventory_hostname }} has no ansible_service_host/ansible_host defined.
+      Set ansible_service_host to your IPv6 service IP in the inventory.
+
+# Hostname (equivalent to hostnamectl set-hostname)
+- name: Set system hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+# Build cluster host list (name, fqdn, ip)
+- name: Init cluster host list
+  ansible.builtin.set_fact:
+    _cluster_hosts: []
+
+- name: Append each pve host into _cluster_hosts
+  ansible.builtin.set_fact:
+    _cluster_hosts: >-
+      {{ _cluster_hosts + [ {
+          'name': item,
+          'fqdn': item ~ '.' ~ (hostvars[item].cluster_domain | default(_cluster_domain)),
+          'ip'  : (hostvars[item].ansible_service_host | default(hostvars[item].ansible_host))
+      } ] }}
+  loop: "{{ groups['pve'] | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+
+# 1) Remove known legacy managed blocks entirely (by markers)
+- name: Remove legacy block "ANSIBLE MANAGED PVE HOSTS"
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED PVE HOSTS"
+    state: absent
+
+- name: Remove legacy block "PVE CLUSTER HOSTS"
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} PVE CLUSTER HOSTS"
+    state: absent
+
+# 2) Purge ALL stray lines that reference each FQDN or shortname (global, ignore comments)
+- name: Purge any line containing each cluster FQDN (global)
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '(^|\n)[ \t]*(?!#)[^\n]*\b{{ item.fqdn | regex_escape }}\b[^\n]*'
+    replace: '\1'
+  loop: "{{ _cluster_hosts }}"
+  loop_control:
+    label: "remove fqdn: {{ item.fqdn }}"
+
+- name: Purge any line containing each cluster shortname (global)
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '(^|\n)[ \t]*(?!#)[^\n]*\b{{ item.name | regex_escape }}\b[^\n]*'
+    replace: '\1'
+  loop: "{{ _cluster_hosts }}"
+  loop_control:
+    label: "remove name: {{ item.name }}"
+
+# 3) Add ONE canonical block with commented entries
+- name: Render cluster hosts lines (with comments)
+  ansible.builtin.set_fact:
+    _cluster_hosts_lines: |-
+      {% for h in _cluster_hosts %}
+      {{ h.ip }} {{ h.fqdn }} {{ h.name }}
+      {% endfor %}
+
+- name: Ensure single canonical block with PVE cluster hosts exists
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    create: true
+    mode: '0644'
+    marker: "# {mark} PVE CLUSTER HOSTS"
+    block: |-
+      {{ _cluster_hosts_lines | trim }}
+
+# 4) Remove 127.0.1.1 self-map after the correct mapping exists
+- name: Remove 127.0.1.1 self-mapping for this host (short or FQDN)
+  vars:
+    my_fqdn: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].cluster_domain | default(_cluster_domain) }}"
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+({{ inventory_hostname }}|{{ my_fqdn | replace(".", "\\.") }})\b'
+    state: absent
+    backup: true
+
+# === Checks (time sync + reachability) ===
+
+- name: Ensure systemd-timesyncd is enabled if present
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+  failed_when: false
+  changed_when: false
+
+- name: Ensure chrony is enabled if present
+  ansible.builtin.service:
+    name: chrony
+    enabled: true
+    state: started
+  failed_when: false
+  changed_when: false
+
+- name: Build list of peer IPv6 addresses (excluding self)
+  ansible.builtin.set_fact:
+    peer_ipv6: "{{ (peer_ipv6 | default([])) + [ hostvars[item].ansible_service_host | default(hostvars[item].ansible_host) ] }}"
+  loop: "{{ (groups['pve'] | default([])) | difference([inventory_hostname]) }}"
+  loop_control:
+    label: "{{ item }} -> {{ hostvars[item].ansible_service_host | default(hostvars[item].ansible_host) }}"
+
+- name: Ping6 each peer service IP (2 packets)
+  ansible.builtin.command: "ping -6 -c2 {{ item }}"
+  register: ping_results
+  changed_when: false
+  failed_when: ping_results.rc != 0
+  loop: "{{ peer_ipv6 | default([]) }}"
+  when: (peer_ipv6 | default([])) | length > 0
+
+- name: Best-effort check TCP/8006 on peers (does not fail play)
+  ansible.builtin.wait_for:
+    host: "{{ item }}"
+    port: 8006
+    timeout: 2
+    state: started
+  loop: "{{ peer_ipv6 | default([]) }}"
+  register: wait_api
+  failed_when: false
+  changed_when: false

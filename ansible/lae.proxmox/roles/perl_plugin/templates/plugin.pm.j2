@@ -1,0 +1,172 @@
+package PVE::Network::SDN::Controllers::Plugin;
+
+use strict;
+use warnings;
+
+use PVE::Tools;
+use PVE::JSONSchema;
+use PVE::Cluster;
+use PVE::JSONSchema qw(get_standard_option);
+use Net::IP;
+
+use base qw(PVE::SectionConfig);
+
+PVE::Cluster::cfs_register_file(
+    'sdn/controllers.cfg',
+    sub { __PACKAGE__->parse_config(@_); },
+    sub { __PACKAGE__->write_config(@_); },
+);
+
+PVE::JSONSchema::register_standard_option(
+    'pve-sdn-controller-id',
+    {
+        description => "The SDN controller object identifier.",
+        type        => 'string',
+        format      => 'pve-sdn-controller-id',
+    },
+);
+
+PVE::JSONSchema::register_format('pve-sdn-controller-id', \&parse_sdn_controller_id);
+
+sub parse_sdn_controller_id {
+    my ($id, $noerr) = @_;
+
+    if ($id !~ m/^[a-z][a-z0-9_-]*[a-z0-9]$/i) {
+        return undef if $noerr;
+        die "controller ID '$id' contains illegal characters\n";
+    }
+    die "controller ID '$id' can't be more length than 64 characters\n" if length($id) > 64;
+    return $id;
+}
+
+my $defaultData = {
+    propertyList => {
+        type => {
+            description => "Plugin type.",
+            type        => 'string',
+            format      => 'pve-configid',
+        },
+        controller => get_standard_option(
+            'pve-sdn-controller-id',
+            { completion => \&PVE::Network::SDN::complete_sdn_controller },
+        ),
+    },
+};
+
+sub private {
+    return $defaultData;
+}
+
+sub parse_section_header {
+    my ($class, $line) = @_;
+
+    if ($line =~ m/^(\S+):\s*(\S+)\s*$/) {
+        my ($type, $id) = (lc($1), $2);
+        my $errmsg = undef; # set if you want to skip whole section
+        eval { PVE::JSONSchema::pve_verify_configid($type); };
+        $errmsg = $@ if $@;
+        my $config = {}; # to return additional attributes
+        return ($type, $id, $errmsg, $config);
+    }
+    return undef;
+}
+
+sub generate_frr_config {
+    my ($class, $plugin_config, $controller_cfg, $id, $uplinks, $config) = @_;
+    die "please implement inside plugin";
+}
+
+sub generate_zone_frr_config {
+    my ($class, $plugin_config, $controller, $controller_cfg, $id, $uplinks, $config) = @_;
+    die "please implement inside plugin";
+}
+
+sub generate_vnet_frr_config {
+    my ($class, $plugin_config, $controller, $zoneid, $vnetid, $config) = @_;
+    # optional; default noop
+}
+
+sub on_delete_hook {
+    my ($class, $controllerid, $zone_cfg) = @_;
+    # do nothing by default
+}
+
+sub on_update_hook {
+    my ($class, $controllerid, $controller_cfg) = @_;
+    # do nothing by default
+}
+
+# ============================================================
+# Helpers
+# ============================================================
+
+# Prefer the interface's own MAC; if enslaved, try the master's MAC.
+sub read_iface_mac {
+    my ($iface) = @_;
+    return undef unless defined $iface && length $iface;
+
+    my $mac_file = "/sys/class/net/$iface/address";
+    if (-e $mac_file) {
+        my $mac = PVE::Tools::file_read_firstline($mac_file);
+        return $mac if $mac && $mac ne '00:00:00:00:00:00';
+    }
+
+    my $master_file = "/sys/class/net/$iface/master/address";
+    if (-e $master_file) {
+        my $mac = PVE::Tools::file_read_firstline($master_file);
+        return $mac if $mac && $mac ne '00:00:00:00:00:00';
+    }
+
+    return undef;
+}
+
+# Convert a MAC address to a deterministic IPv4 router-id (last 4 bytes).
+sub mac_to_router_id {
+    my ($mac) = @_;
+    return undef unless $mac && $mac =~ /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/;
+    my @b = map { hex($_) } split(':', $mac);
+    return sprintf("%d.%d.%d.%d", $b[2], $b[3], $b[4], $b[5]);
+}
+
+# Always returns a usable IPv4 router-id, or dies with a clear error.
+# Order of attempts:
+# 1) Use provided IPv4 directly.
+# 2) IPv4 on the specified interface.
+# 3) Any IPv4 on the host.
+# 4) Deterministic fallback derived from MAC address.
+sub get_router_id {
+    my ($ip, $iface) = @_;
+
+    # 1) If explicit IPv4 was provided, use it
+    if (defined $ip && Net::IP::ip_is_ipv4($ip)) {
+        return $ip;
+    }
+
+    # 2) Try to find an IPv4 address on the specified interface
+    if ($iface && -d "/sys/class/net/$iface") {
+        my $ip_output = `ip -o -4 addr show dev $iface 2>/dev/null | awk '{print \$4}' | cut -d/ -f1 | head -1`;
+        chomp($ip_output);
+        if ($ip_output && $ip_output =~ /^\d+\.\d+\.\d+\.\d+$/) {
+            return $ip_output;
+        }
+    }
+
+    # 3) Fall back to any IPv4 on the host
+    my $any_ipv4 = `ip -o -4 addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1`;
+    chomp($any_ipv4);
+    if ($any_ipv4 && $any_ipv4 =~ /^\d+\.\d+\.\d+\.\d+$/) {
+        return $any_ipv4;
+    }
+
+    # 4) Deterministic fallback from MAC (prefer the provided iface)
+    my $mac = read_iface_mac($iface // '');
+    $mac //= read_iface_mac('lo'); # last-ditch, usually not helpful but harmless
+    my $rid = mac_to_router_id($mac) if $mac;
+
+    die "cannot derive a valid BGP router-id (no IPv4 on host and no usable MAC on iface '$iface')\n"
+        unless $rid;
+
+    return $rid;
+}
+
+1;

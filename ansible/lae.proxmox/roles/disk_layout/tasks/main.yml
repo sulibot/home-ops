@@ -1,0 +1,249 @@
+---
+## Disable Proxmox enterprise and Ceph enterprise repos, then switch to no-subscription
+#
+#- name: Disable Proxmox PVE enterprise repository if unauthorized
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/pve-enterprise.list
+#    state: absent
+#  become: yes
+#
+#- name: Disable Proxmox Ceph enterprise repository if unauthorized
+#  ansible.builtin.file:
+#    path: /etc/apt/sources.list.d/ceph.list
+#    state: absent
+#  become: yes
+#
+#- name: Add Proxmox PVE no-subscription repository
+#  ansible.builtin.apt_repository:
+#    repo: 'deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription'
+#    state: present
+#    filename: pve-no-subscription
+#  become: yes
+#
+#- name: Add Proxmox Ceph no-subscription (Ceph Quincy via squid)
+#  ansible.builtin.apt_repository:
+#    repo: 'deb http://download.proxmox.com/debian/ceph-squid bookworm main'
+#    state: present
+#    filename: ceph-squid
+#  become: yes
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+# Ensure required tools are installed
+- name: Ensure parted and util-linux (for blockdev) are installed
+  ansible.builtin.apt:
+    name:
+      - parted
+      - util-linux
+    state: present
+    update_cache: yes
+  become: yes
+
+# Calculate DB start/end sectors on optane_disk
+- name: Ensure partition 3 exists on optane_disk
+  ansible.builtin.stat:
+    path: "{{ optane_disk }}-part3"
+  register: part3_exists
+  become: yes
+
+- name: Fail if partition 3 is missing
+  ansible.builtin.fail:
+    msg: "Partition 3 does not exist on {{ optane_disk }}. Cannot determine DB start sector."
+  when: not part3_exists.stat.exists
+
+- name: Get partition info for optane_disk
+  community.general.parted:
+    device: "{{ optane_disk }}"
+    unit: s
+    state: info
+  register: part_info
+  become: yes
+  when: part3_exists.stat.exists
+
+- name: Extract end sector of partition 3
+  ansible.builtin.set_fact:
+    optane_part3_end: >-
+      {{ (part_info.partitions | selectattr('num', 'equalto', 3) | first).end | regex_replace('s$','') | int }}
+
+- name: Calculate DB start sector (immediately after partition 3)
+  ansible.builtin.set_fact:
+    optane_db_start: "{{ (optane_part3_end | int) + 1 }}"
+
+- name: Calculate total DB sectors (including 1 PE per OSD)
+  ansible.builtin.set_fact:
+    optane_db_sectors: >-
+      {{ (((ceph_db_lv_size | human_to_bytes) // 512
+          + (4 * 1024**2 // 512))
+         * (ceph_osd_ids | length)) }}
+
+- name: Calculate DB end sector
+  ansible.builtin.set_fact:
+    optane_db_end: "{{ (optane_db_start | int) + (optane_db_sectors | int) - 1 }}"
+
+# Debug calculated DB values
+- name: Debug DB layout values
+  ansible.builtin.debug:
+    msg:
+      - "optane_part3_end={{ optane_part3_end }}"
+      - "optane_db_start={{ optane_db_start }}"
+      - "optane_db_sectors={{ optane_db_sectors }}"
+      - "optane_db_end={{ optane_db_end }}"
+
+# Create the DB partition
+- block:
+    - name: Create partition 4 on optane_disk for DB
+      community.general.parted:
+        device: "{{ optane_disk }}"
+        number: 4
+        unit: s
+        part_start: "{{ optane_db_start }}s"
+        part_end: "{{ optane_db_end }}s"
+        state: present
+        flags:
+          - lvm
+        label: gpt
+      register: parted4
+      ignore_errors: yes
+
+    - name: Force kernel to reload partition table if parted could not inform kernel
+      ansible.builtin.command:
+        cmd: "partprobe {{ optane_disk }}"
+      become: yes
+      when: parted4 is failed and ('unable to inform the kernel' in (parted4.err | default('')))
+
+    - name: Retry partition 4 creation after forcing reload
+      community.general.parted:
+        device: "{{ optane_disk }}"
+        number: 4
+        unit: s
+        part_start: "{{ optane_db_start }}s"
+        part_end: "{{ optane_db_end }}s"
+        state: present
+        flags:
+          - lvm
+        label: gpt
+      when: parted4 is failed
+  rescue:
+    - name: Fail if partition creation still fails
+      ansible.builtin.fail:
+        msg: "Partition 4 creation failed: {{ parted4.err }}"
+
+- name: Resolve raw block device for optane_disk
+  ansible.builtin.command:
+    cmd: "readlink -f {{ optane_disk }}"
+  register: optane_raw
+  changed_when: false
+  become: yes
+
+# Debug calculated DB values
+- name: Debug DB optane_raw values
+  ansible.builtin.debug:
+    msg:
+      - "optane_raw={{ optane_raw.stdout }}"
+
+- name: Reload partition table on raw optane device
+  ansible.builtin.shell: |
+    partprobe {{ optane_raw.stdout }}
+    udevadm settle
+  args:
+    executable: /bin/bash
+  become: yes
+
+- name: Wait until partition becomes a block device
+  ansible.builtin.stat:
+    path: "{{ optane_raw.stdout }}p4"
+  register: part4_stat
+  until: part4_stat.stat.exists and part4_stat.stat.isblk
+  retries: 10
+  delay: 2
+  become: yes
+
+- name: Debug partition block type before pvcreate
+  ansible.builtin.command:
+    cmd: "ls -l {{ optane_raw.stdout }}p4"
+  become: yes
+
+- name: Create LVM PV on partition VG for OSD DB devices
+  ansible.builtin.command:
+    cmd: "pvcreate -ffy {{ optane_raw.stdout }}p4"
+  become: yes
+
+- name: Create Ceph DB VG
+  ansible.builtin.command:
+    cmd: "vgcreate {{ ceph_db_vg }} {{ optane_raw.stdout }}p4"
+  become: yes
+
+- name: Create individual DB LVs per OSD
+  ansible.builtin.command:
+    cmd: "lvcreate -L {{ ceph_db_lv_size }} -n osd{{ item }}-db {{ ceph_db_vg }}"
+  loop: "{{ ceph_osd_ids }}"
+  loop_control:
+    label: "osd{{ item }}-db"
+  become: yes
+
+- name: Create partition 1 on nvme_disk for Ceph OSD data
+  community.general.parted:
+    device: "{{ nvme_disk }}"
+    number: 1
+    unit: s
+    part_start: "0%"
+    part_end: "100%"
+    state: present
+    name: osd-data
+    label: gpt
+    flags: []
+  become: yes
+
+- name: Inform kernel of nvme_disk partition changes
+  ansible.builtin.command:
+    cmd: "partprobe {{ nvme_disk }}"
+  become: yes
+
+- name: Wait for raw partition device to appear
+  ansible.builtin.wait_for:
+    path: "{{ nvme_disk }}-part1"
+    state: present
+    timeout: 30
+  become: yes
+
+# Partition each SATA disk
+- name: Partition each SATA disk first half
+  ansible.builtin.parted:
+    device: "{{ item }}"
+    number: 1
+    part_start: 0%
+    part_end: 50%
+    unit: "%"
+    state: present
+    label: gpt
+  loop: "{{ sata_disks }}"
+  loop_control:
+    label: "{{ item }}"
+  become: yes
+
+- name: Partition each SATA disk second half
+  ansible.builtin.parted:
+    device: "{{ item }}"
+    number: 2
+    part_start: 50%
+    part_end: 100%
+    unit: "%"
+    state: present
+    label: gpt
+  loop: "{{ sata_disks }}"
+  loop_control:
+    label: "{{ item }}"
+  become: yes
+
+# Inform kernel of SATA partition changes
+- name: Inform kernel of SATA disk partition changes
+  ansible.builtin.command:
+    cmd: "partprobe {{ item }}"
+  loop: "{{ sata_disks }}"
+  loop_control:
+    label: "{{ item }}"
+  become: yes

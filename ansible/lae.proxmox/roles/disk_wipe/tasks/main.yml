@@ -1,0 +1,123 @@
+---
+# Cleaning script: remove existing DB partitions and wipe all disks
+
+- name: Disable Proxmox PVE enterprise repository if unauthorized
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+    state: absent
+  become: yes
+
+- name: Disable Proxmox Ceph enterprise repository if unauthorized
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ceph.list
+    state: absent
+  become: yes
+
+- name: Add Proxmox PVE no-subscription repository
+  ansible.builtin.apt_repository:
+    repo: 'deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription'
+    state: present
+    filename: pve-no-subscription
+  become: yes
+
+- name: Add Proxmox Ceph no-subscription (Ceph Quincy via squid)
+  ansible.builtin.apt_repository:
+    repo: 'deb http://download.proxmox.com/debian/ceph-squid bookworm main'
+    state: present
+    filename: ceph-squid
+  become: yes
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+# Ensure required tools are installed
+- name: Ensure parted and util-linux are installed
+  ansible.builtin.apt:
+    name:
+      - parted
+      - util-linux
+    state: present
+    update_cache: yes
+  become: yes
+
+# Clean up any existing LVM/VG on optane partition 4
+- name: Remove LVs and VG if present on {{ optane_disk }}-part4
+  block:
+    - name: Detect VG on partition 4
+      shell: pvs --noheadings -o vg_name {{ optane_disk }}-part4 2>/dev/null | awk '{$1=$1};1'
+      register: detected_vg
+      changed_when: false
+      failed_when: false
+
+    - name: Remove any LVs in detected VG
+      shell: |
+        lvs --noheadings -o lv_name {{ detected_vg.stdout }} 2>/dev/null | awk '{$1=$1};1' | \
+        xargs -r -I{} lvremove -fy /dev/{{ detected_vg.stdout }}/{}
+      when: detected_vg.stdout != ""
+      ignore_errors: true
+
+    - name: Remove detected VG
+      command: vgremove -fy {{ detected_vg.stdout }}
+      when: detected_vg.stdout != ""
+      ignore_errors: true
+
+    - name: Remove PV metadata on partition 4
+      command: pvremove -ffy {{ optane_disk }}-part4
+      ignore_errors: true
+  become: yes
+
+# Delete partition 4 if exists and reload kernel table
+- name: Delete partition 4 from {{ optane_disk }}
+  command: sgdisk --delete=4 {{ optane_disk }}
+  ignore_errors: true
+  become: yes
+
+- name: Inform kernel of partition table changes
+  ansible.builtin.command:
+    cmd: partprobe {{ optane_disk }}
+  register: partprobe_result
+  ignore_errors: true
+  become: yes
+
+- name: Reboot if kernel did not reload partition table
+  ansible.builtin.reboot:
+    msg: "Rebooting to re-read partition table after deleting partition 4"
+    pre_reboot_delay: 10
+    post_reboot_delay: 120
+  when: partprobe_result.rc != 0
+
+- name: Wait for udev to settle
+  command: udevadm settle
+  become: yes
+
+# Remove any lingering device-mapper entries
+- name: Remove leftover device-mapper volumes
+  ansible.builtin.command:
+    cmd: dmsetup remove_all
+  ignore_errors: true
+  become: yes
+
+# Wipe and zero all NVMe and SATA disks
+- name: Wipe and zero all disks
+  ansible.builtin.shell: |
+    echo "[*] Cleaning {{ item }}"
+    wipefs -a "{{ item }}" || true
+    sgdisk --zap-all "{{ item }}" || true
+    dd if=/dev/zero of="{{ item }}" bs=1M count=10 conv=fsync || true
+  loop: "{{ [nvme_disk] + sata_disks }}"
+  args:
+    executable: /bin/bash
+  ignore_errors: true
+  become: yes
+
+# Inform kernel of partition changes after wipe
+- name: Inform kernel of partition changes after wipe
+  ansible.builtin.command:
+    cmd: partprobe {{ item }}
+  loop: "{{ [nvme_disk] + sata_disks }}"
+  loop_control:
+    label: "{{ item }}"
+  become: yes

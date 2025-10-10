@@ -1,0 +1,14 @@
+---
+- hosts: pve
+  become: true
+  vars_files:
+    - vars/pve.yml
+
+  roles:
+#    - geerlingguy.ntp
+#    - interfaces
+#    - frr
+#    - common
+#    - bootstrap
+     - lae.proxmox
+#    - cephfs_from_pools

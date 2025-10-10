@@ -1,0 +1,23 @@
+---
+# meta file for jool_install
+galaxy_info:
+  author: Your Name
+  description: An Ansible role to install and configure Jool for NAT64.
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "20.04"
+        - "22.04"
+    - name: Debian
+      versions:
+        - "10"
+        - "11"
+  galaxy_tags:
+    - networking
+    - nat64
+    - ipv6
+    - jool
+
+dependencies: []

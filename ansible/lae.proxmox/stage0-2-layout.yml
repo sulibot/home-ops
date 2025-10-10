@@ -1,0 +1,11 @@
+---
+- name: Test Ceph disk wipe and layout
+  hosts: cluster
+  become: true
+  vars_files:
+    - host_vars/{{ inventory_hostname }}.yml
+
+  roles:
+    #    - role: disk_wipe
+    - role: disk_layout
+

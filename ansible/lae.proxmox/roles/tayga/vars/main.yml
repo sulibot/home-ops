@@ -1,0 +1,8 @@
+---
+tayga_binary_url: "https://github.com/apalrd/tayga/releases/download/0.9.5/tayga-amd64"
+tayga_binary_checksum: "sha256:f917c1427340c0a15f46177f3c2142e8ae58dd15df9f90c06fa1340f7a96104f"
+tayga_ipv4_addr: "192.168.255.1"
+tayga_ipv6_prefix: "64:ff9b::/96"
+tayga_ipv6_addr: "fd00:200::64" # <-- Use your server's IPv6 address here
+tayga_dynamic_pool: "192.168.255.0/24"
+tayga_data_dir: "/var/db/tayga"

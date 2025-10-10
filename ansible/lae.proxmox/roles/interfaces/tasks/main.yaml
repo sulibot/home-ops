@@ -1,0 +1,240 @@
+---
+# ============================================================================
+# Proxmox Host Network Configuration and Kernel Tuning
+# ============================================================================
+
+## Deploy /etc/network/interfaces.d/dummy_underlay from template
+#- name: Deploy /etc/network/interfaces.d/dummy_underlay
+#  ansible.builtin.template:
+#    src: interfaces.dummy_underlay.pve.j2
+#    dest: /etc/network/interfaces.d/dummy_underlay
+#    mode: '0644'
+#  notify: Reload network
+
+# Deploy /etc/network/interfaces from template
+- name: Deploy /etc/network/interfaces
+  ansible.builtin.template:
+    src: interfaces.pve.j2
+    dest: /etc/network/interfaces
+    mode: '0644'
+  notify: Reload network
+
+# # Ensure /etc/sysctl.d directory exists for custom sysctl files
+# - name: Ensure /etc/sysctl.d exists
+#   ansible.builtin.file:
+#     path: /etc/sysctl.d
+#     state: directory
+#     mode: '0755'
+# 
+# # Task: Configure global IP forwarding and general network sanity settings
+# - name: Configure global IP forwarding and general network sanity
+#   ansible.posix.sysctl:
+#     name: "{{ item.name }}"
+#     value: "{{ item.value }}"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop:
+#     # --- IP Forwarding ---
+#     - { name: 'net/ipv4/ip_forward',                 value: '1' }
+#     - { name: 'net/ipv6/conf/all/forwarding',        value: '1' }
+#     - { name: 'net/ipv6/conf/default/forwarding',    value: '1' }
+#     - { name: 'net/ipv6/conf/lo/forwarding',         value: '1' }
+# 
+#     # --- ARP Behavior (IPv4) - Global permissive ---
+#     - { name: 'net/ipv4/conf/all/arp_ignore',        value: '0' }
+#     - { name: 'net/ipv4/conf/default/arp_ignore',    value: '0' }
+#     - { name: 'net/ipv4/conf/all/arp_filter',        value: '0' }
+#     - { name: 'net/ipv4/conf/default/arp_filter',    value: '0' }
+#     - { name: 'net/ipv4/conf/all/arp_announce',      value: '2' }
+#     - { name: 'net/ipv4/conf/default/arp_announce',  value: '2' }
+# 
+#     # --- Neighbor (IPv6) - Global ---
+#     - { name: 'net/ipv6/conf/all/proxy_ndp',         value: '0' }
+#     - { name: 'net/ipv6/conf/default/proxy_ndp',     value: '0' }
+# 
+#     # --- Reverse Path Filtering (IPv4) ---
+#     # Loose globally; we turn OFF per anycast VLAN
+#     - { name: 'net/ipv4/conf/all/rp_filter',         value: '0' }
+#     - { name: 'net/ipv4/conf/default/rp_filter',     value: '0' }
+# 
+#     # --- ICMP Redirects (v4/v6) ---
+#     - { name: 'net/ipv4/conf/all/accept_redirects',     value: '0' }
+#     - { name: 'net/ipv4/conf/default/accept_redirects', value: '0' }
+#     - { name: 'net/ipv4/conf/all/send_redirects',       value: '0' }
+#     - { name: 'net/ipv4/conf/default/send_redirects',   value: '0' }
+#     - { name: 'net/ipv6/conf/all/accept_redirects',     value: '0' }
+#     - { name: 'net/ipv6/conf/default/accept_redirects', value: '0' }
+# 
+#     # --- DAD on loopback anycast /128s ---
+#     - { name: 'net/ipv6/conf/lo/accept_dad',         value: '0' }
+# 
+# # IPv6 RA/autoconf OFF on vmbr0.* (anycast VLAN bridges)
+# - name: Disable IPv6 Autoconf/RA on vmbr0 anycast bridges
+#   ansible.posix.sysctl:
+#     name: "net/ipv6/conf/vmbr0.{{ item.0 }}/{{ item.1 }}"
+#     value: '0'
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ vmbr0_anycast_vlans | product(['accept_ra', 'autoconf', 'accept_dad', 'router_solicitations']) | list }}"
+# 
+# # IPv6 RA/autoconf OFF on mesh0 parent bridge
+# - name: Disable IPv6 Autoconf/RA on mesh0 VLAN-aware bridge
+#   ansible.posix.sysctl:
+#     name: "{{ item }}"
+#     value: '0'
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop:
+#     - 'net/ipv6/conf/mesh0/accept_ra'
+#     - 'net/ipv6/conf/mesh0/autoconf'
+#     - 'net/ipv6/conf/mesh0/accept_dad'
+#     - 'net/ipv6/conf/mesh0/router_solicitations'
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # >>> IPv6 RA ON for bond0.5 (accept RA even with forwarding=1)
+# - name: Allow IPv6 RA + default route via RA on bond0.5
+#   ansible.posix.sysctl:
+#     name: "{{ item.name }}"
+#     value: "{{ item.value }}"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop:
+#     - { name: 'net/ipv6/conf/bond0.5/accept_ra',        value: '2' }
+#     - { name: 'net/ipv6/conf/bond0.5/accept_ra_defrtr', value: '2' }
+# 
+# # --------------------------
+# # Anycast per-VLAN on vmbr0
+# # --------------------------
+# 
+# # ARP hygiene (IPv4) on vmbr0 VLAN bridges
+# - name: Set ARP hygiene on vmbr0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/vmbr0.{{ item.0 }}/{{ item.1.name }}"
+#     value: "{{ item.1.value }}"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ vmbr0_anycast_vlans | product([
+#            {'name': 'arp_ignore',           'value': '0'},
+#            {'name': 'arp_announce',         'value': '2'},
+#            {'name': 'arp_filter',           'value': '0'},
+#            {'name': 'drop_gratuitous_arp',  'value': '1'}
+#          ]) | list }}"
+# 
+# # rp_filter OFF (IPv4) on vmbr0 VLAN bridges
+# - name: Disable rp_filter on vmbr0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/vmbr0.{{ item }}/rp_filter"
+#     value: "0"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ vmbr0_anycast_vlans }}"
+# 
+# # Proxy ARP on vmbr0.* (IPv4)
+# - name: Enable Proxy ARP on vmbr0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/vmbr0.{{ item }}/proxy_arp"
+#     value: "1"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ vmbr0_anycast_vlans }}"
+# 
+# # Proxy NDP on vmbr0.* (IPv6)
+# - name: Enable Proxy NDP on vmbr0 anycast VLAN bridges (IPv6)
+#   ansible.posix.sysctl:
+#     name: "net/ipv6/conf/vmbr0.{{ item }}/proxy_ndp"
+#     value: "1"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ vmbr0_anycast_vlans }}"
+# 
+# # --------------------------
+# # Anycast per-VLAN on mesh0
+# # --------------------------
+# 
+# # IPv6 RA/autoconf OFF on mesh0.* VLAN SVIs
+# - name: Disable IPv6 Autoconf/RA on mesh0 VLAN SVIs
+#   ansible.posix.sysctl:
+#     name: "net/ipv6/conf/mesh0.{{ item.0 }}/{{ item.1 }}"
+#     value: '0'
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ mesh0_anycast_vlans | default([]) | product(['accept_ra','autoconf','accept_dad','router_solicitations']) | list }}"
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # ARP hygiene (IPv4) on mesh0 VLAN bridges
+# - name: Set ARP hygiene on mesh0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/mesh0.{{ item.0 }}/{{ item.1.name }}"
+#     value: "{{ item.1.value }}"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ mesh0_anycast_vlans | default([]) | product([
+#            {'name': 'arp_ignore',           'value': '0'},
+#            {'name': 'arp_announce',         'value': '2'},
+#            {'name': 'arp_filter',           'value': '0'},
+#            {'name': 'drop_gratuitous_arp',  'value': '1'}
+#          ]) | list }}"
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # rp_filter OFF (IPv4) on mesh0 VLAN bridges
+# - name: Disable rp_filter on mesh0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/mesh0.{{ item }}/rp_filter"
+#     value: "0"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ mesh0_anycast_vlans | default([]) }}"
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # Proxy ARP on mesh0.* (IPv4)
+# - name: Enable Proxy ARP on mesh0 anycast VLAN bridges (IPv4)
+#   ansible.posix.sysctl:
+#     name: "net/ipv4/conf/mesh0.{{ item }}/proxy_arp"
+#     value: "1"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ mesh0_anycast_vlans | default([]) }}"
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # Proxy NDP on mesh0.* (IPv6)
+# - name: Enable Proxy NDP on mesh0 anycast VLAN bridges (IPv6)
+#   ansible.posix.sysctl:
+#     name: "net/ipv6/conf/mesh0.{{ item }}/proxy_ndp"
+#     value: "1"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop: "{{ mesh0_anycast_vlans | default([]) }}"
+#   when: inventory_hostname in ['pve01','pve02','pve03']
+# 
+# # --------------------------
+# # Bridge netfilter (do not hairpin L2 through iptables/nft)
+# # --------------------------
+# - name: Keep L2 off iptables/nft (bridge-nf)
+#   ansible.posix.sysctl:
+#     name: "{{ item }}"
+#     value: "0"
+#     sysctl_file: "{{ sysctl_file_path }}"
+#     state: present
+#     reload: no
+#   loop:
+#     - 'net/bridge/bridge-nf-call-iptables'
+#     - 'net/bridge/bridge-nf-call-ip6tables'
+#     - 'net/bridge/bridge-nf-call-arptables'
+# 
+# # Apply all sysctl settings once now; systemd-sysctl will persist on reboot
+# - name: Reload sysctls once
+#   ansible.builtin.command: sysctl --system
+#   changed_when: true

@@ -1,0 +1,46 @@
+# roles/site/tasks/main.yml
+- name: Check which OSD devices are already in Ceph
+  shell: |
+    ceph osd tree --format json \
+      | jq -r '.nodes[].name' \
+      | grep '^osd\.' \
+      | awk -F. '{print $2}'
+  register: existing_osd_ids
+  changed_when: false
+
+- name: Mark items whose osd_id is already in Ceph as “already exists”
+  set_fact:
+    # Build a list of all OSD IDs (numbers) that Ceph already knows about.
+    ceph_existing_ids: "{{ existing_osd_ids.stdout_lines }}"
+
+# Define a lightweight custom test plugin in your playbook to use ‘reject(‘osd_already_exists’)’
+# You could also do this logic inline without a plugin, but conceptually:
+#  - “osd_already_exists” returns True if item.osd_id is in ceph_existing_ids
+#  - reject(“osd_already_exists”) removes those items from the list
+#
+# (Below is pseudo-YAML to show intent. In practice you’d write a simple filter plugin 
+#  or do this in a ‘set_fact’ loop. The goal is to produce “pve_ceph_osds” with only 
+#  the OSDs that truly still need creation.)
+- name: Filter out already-existing OSDs
+  set_fact:
+    pve_ceph_osds: >-
+      {{ ceph_osd_candidates
+         | selectattr('osd_id', 'not in', ceph_existing_ids)
+         | list
+      }}
+
+# Finally, call lae.proxmox using the filtered list:
+- name: Bootstrap Proxmox + Ceph
+  hosts: pve_nodes
+  become: true
+  roles:
+    - role: lae.proxmox
+      vars:
+        pve_ceph_osds: "{{ pve_ceph_osds }}"
+        pve_ceph_pools: >-
+          [ /* your pools here */ ]
+        pve_ceph_fs:    >-
+          [ /* your CephFS here */ ]
+        pve_ceph_crush_rules: >-
+          [ /* your CRUSH rules here */ ]
+

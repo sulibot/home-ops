@@ -1,0 +1,253 @@
+---
+# roles/jool/tasks/main.yml
+
+# --- Hostname configuration ---
+- name: Normalize hostname vars
+  ansible.builtin.set_fact:
+    _jool_hostname: "{{ (jool_hostname | default('jool')) | string }}"
+    _jool_fqdn: "{{ (jool_fqdn | default('')) | string }}"
+
+- name: Set system hostname
+  ansible.builtin.hostname:
+    name: "{{ _jool_hostname }}"
+
+- name: Build hosts aliases line
+  ansible.builtin.set_fact:
+    jool_hosts_aliases: >-
+      {{ (_jool_fqdn | length > 0)
+         | ternary(_jool_hostname ~ ' ' ~ _jool_fqdn, _jool_hostname) }}
+
+- name: Ensure 127.0.1.1 maps to hostname in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ jool_hosts_aliases }}"
+    state: present
+    create: yes
+  tags: [configure]
+
+# --- Install tooling needed for Secure Boot / MOK handling and DKMS ---
+- name: Ensure tooling for Secure Boot/MOK and DKMS is present
+  ansible.builtin.apt:
+    name:
+      - mokutil
+      - openssl
+      - dkms
+      - kmod
+    state: present
+    update_cache: yes
+  tags: [install]
+
+- name: Check Secure Boot state
+  ansible.builtin.command: mokutil --sb-state
+  register: sb_state
+  failed_when: false
+  changed_when: false
+  tags: [configure]
+
+- name: Set fact whether Secure Boot is enabled
+  ansible.builtin.set_fact:
+    secure_boot_enabled: "{{ 'enabled' in (sb_state.stdout | default('') | lower) }}"
+  tags: [configure]
+
+# --- Jool install prerequisites & packages ---
+- name: Ensure kernel headers are installed
+  ansible.builtin.apt:
+    name: "linux-headers-{{ ansible_kernel }}"
+    state: present
+    update_cache: yes
+  tags: [install]
+
+- name: Download Jool DEB packages
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: "/tmp/"
+    mode: '0644'
+  loop:
+    - "{{ jool_download_url }}/jool-dkms_{{ jool_version }}-1_all.deb"
+    - "{{ jool_download_url }}/jool-tools_{{ jool_version }}-1_amd64.deb"
+  tags: [install]
+
+- name: Install Jool DEB packages
+  ansible.builtin.apt:
+    deb: "{{ item }}"
+  loop:
+    - "/tmp/jool-dkms_{{ jool_version }}-1_all.deb"
+    - "/tmp/jool-tools_{{ jool_version }}-1_amd64.deb"
+  tags: [install]
+
+# --- Basic sysctls ---
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.forwarding
+    value: '1'
+    state: present
+    reload: yes
+  tags: [configure]
+
+- name: Enable IPv6 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    state: present
+    reload: yes
+  tags: [configure]
+
+# --- Secure Boot-aware signing flow (only when enabled) ---
+- name: Ensure signing directory exists
+  ansible.builtin.file:
+    path: "{{ dkms_sign_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Generate MOK private key (if missing)
+  ansible.builtin.command: >
+    openssl genrsa -out {{ dkms_mok_key }} 2048
+  args:
+    creates: "{{ dkms_mok_key }}"
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Generate MOK self-signed certificate (PEM)
+  ansible.builtin.command: >
+    openssl req -new -x509 -sha256 -key {{ dkms_mok_key }}
+    -out {{ dkms_mok_crt }} -days 3650 -subj "/CN={{ dkms_mok_cn }}/"
+  args:
+    creates: "{{ dkms_mok_crt }}"
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Export MOK certificate to DER (for mokutil)
+  ansible.builtin.command: >
+    openssl x509 -in {{ dkms_mok_crt }} -outform DER -out {{ dkms_mok_der }}
+  args:
+    creates: "{{ dkms_mok_der }}"
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Configure DKMS to sign modules automatically
+  ansible.builtin.copy:
+    dest: /etc/dkms/framework.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by Ansible
+      sign_modules="yes"
+      certificate="{{ dkms_mok_crt }}"
+      private_key="{{ dkms_mok_key }}"
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Enroll MOK if not already enrolled (prompts on next reboot)
+  ansible.builtin.command: >
+    mokutil --import {{ dkms_mok_der }} --password "{{ dkms_mok_password }}"
+  register: mok_import
+  failed_when: >
+    mok_import.rc != 0 and
+    ('already enrolled' not in (mok_import.stderr | default('') | lower)) and
+    ('already enrolled' not in (mok_import.stdout | default('') | lower))
+  changed_when: >
+    mok_import.rc == 0 or
+    ('enrolled' in (mok_import.stdout | default('') | lower))
+  when: dkms_sign_modules and secure_boot_enabled
+  notify: Reboot to enroll MOK
+  tags: [configure]
+
+- name: Check if MOK enrollment is pending
+  ansible.builtin.command: mokutil --list-new
+  register: mok_pending
+  failed_when: false
+  changed_when: false
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Fail early if MOK enrollment is pending and cannot load signed modules yet
+  ansible.builtin.fail:
+    msg: >
+      MOK enrollment is pending (staged). Complete enrollment at next boot
+      (blue 'MOK Manager' → Enroll MOK → enter password), then re-run.
+  when: dkms_sign_modules and secure_boot_enabled and (mok_pending.stdout | length > 0)
+  tags: [configure]
+
+# Rebuild DKMS (ensures module exists), then explicitly sign the built module.
+- name: Rebuild DKMS modules (ensure built)
+  ansible.builtin.command: dkms autoinstall
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [install]
+
+# --------- Locate scripts/sign-file (no Jinja-in-shell) ---------
+- name: Check kernel-headers sign-file helper
+  ansible.builtin.stat:
+    path: "/usr/src/linux-headers-{{ ansible_kernel }}/scripts/sign-file"
+  register: sign_file_headers
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Find fallback sign-file helper under /usr/lib
+  ansible.builtin.find:
+    paths: /usr/lib
+    patterns: sign-file
+    file_type: file
+    recurse: yes
+  register: sign_file_lib
+  when: dkms_sign_modules and secure_boot_enabled and (not sign_file_headers.stat.exists)
+  tags: [configure]
+
+- name: Choose sign-file path (headers helper)
+  ansible.builtin.set_fact:
+    sign_file_path: "/usr/src/linux-headers-{{ ansible_kernel }}/scripts/sign-file"
+  when: dkms_sign_modules and secure_boot_enabled and sign_file_headers.stat.exists
+  tags: [configure]
+
+- name: Choose sign-file path (fallback under /usr/lib)
+  ansible.builtin.set_fact:
+    sign_file_path: "{{ (sign_file_lib.files | map(attribute='path') | list | first | default('')) }}"
+  when: dkms_sign_modules and secure_boot_enabled and (not sign_file_headers.stat.exists)
+  tags: [configure]
+
+- name: Fail if sign-file helper not found
+  ansible.builtin.fail:
+    msg: >
+      Could not find scripts/sign-file helper to sign kernel modules.
+      Ensure linux-headers and (if needed) linux-kbuild are installed.
+  when: dkms_sign_modules and secure_boot_enabled and (sign_file_path | default('') | length == 0)
+  tags: [configure]
+# ---------------------------------------------------------------
+
+- name: Resolve jool module path
+  ansible.builtin.command: modinfo -n jool
+  register: jool_modpath
+  changed_when: false
+  failed_when: jool_modpath.rc != 0
+  tags: [configure]
+
+- name: Explicitly sign jool.ko with MOK
+  ansible.builtin.command: >
+    {{ sign_file_path }} sha256 {{ dkms_mok_key }} {{ dkms_mok_crt }} {{ jool_modpath.stdout }}
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+- name: Refresh module dependency map after signing
+  ansible.builtin.command: depmod -a
+  when: dkms_sign_modules and secure_boot_enabled
+  tags: [configure]
+
+# --- Load module (works in both SB on/off once above is satisfied) ---
+- name: Ensure Jool kernel module is loaded
+  ansible.builtin.modprobe:
+    name: jool
+    state: present
+  tags: [configure]
+
+# --- Jool runtime configuration ---
+- name: Add a Stateful NAT64 instance
+  ansible.builtin.command: "jool instance add --netfilter --pool6 {{ jool_pool6_prefix }}"
+  register: jool_instance_status
+  failed_when: "'already exists' not in (jool_instance_status.stderr | default('')) and jool_instance_status.rc != 0"
+  changed_when: "'already exists' not in (jool_instance_status.stderr | default(''))"
+  tags: [configure]

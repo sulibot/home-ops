@@ -1,0 +1,14 @@
+{% set node_id = (inventory_hostname[-2:] | regex_replace('^0*', '') | int) %}
+
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+auto dummy_underlay
+
+iface dummy_underlay inet manual
+    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
+    post-down ip link del dummy_underlay 2>/dev/null || true
+
+iface dummy_underlay inet6 static
+    address fd00:255::{{ node_id }}/128
+    address fc00:20::{{ node_id }}/128
+    address fc00:21::{{ node_id }}/128
+{% endif %}

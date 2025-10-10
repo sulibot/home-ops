@@ -1,0 +1,36 @@
+- name: Ensure HTTP root path exists
+  file:
+    path: '{{ http_file_root }}/install'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure ZFSBootMenu image exists
+  stat:
+    path: '{{ zfsbootmenu_file }}'
+  register: zbm_stat
+
+- name: Download ZFSBootMenu EFI if missing
+  get_url:
+    url: '{{ zfsbootmenu_url }}'
+    dest: '{{ zfsbootmenu_file }}'
+    mode: '0644'
+  when: not zbm_stat.stat.exists
+
+- name: Deploy install script per node
+  template:
+    src: install-proxmox.sh.j2
+    dest: '{{ http_file_root }}/install/{{ item }}-install.sh'
+    mode: '0755'
+  loop: '{{ groups["pve"] }}'
+  vars:
+    inventory_hostname: '{{ item }}'
+
+- name: Deploy PXE menu
+  template:
+    src: menu.ipxe.j2
+    dest: "{{ http_file_root }}/menu.ipxe"
+    owner: caddy
+    group: caddy
+    mode: '0644'

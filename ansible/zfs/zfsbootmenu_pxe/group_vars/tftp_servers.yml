@@ -1,0 +1,2 @@
+tftp_root: '/srv/tftp'
+ipxe_file: '{{ playbook_dir }}/files/ipxe.efi'

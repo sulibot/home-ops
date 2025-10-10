@@ -34,6 +34,15 @@ device 20 osd.20 class hdd
 # types
 type 0 osd
 type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 zone
+type 10 region
 type 11 root
 type 12 drive
 
@@ -175,15 +184,20 @@ rule replicated_nvme {
 	step chooseleaf firstn 0 type host
 	step emit
 }
-rule ec_k6_m3_hostdrive9 {
+rule replicated_optane {
 	id 3
+	type replicated
+	step take default
+	step chooseleaf firstn 0 type host
+	step emit
+}
+rule ec_4_2_by_drive_host {
+	id 4
 	type erasure
 	step set_chooseleaf_tries 5
 	step set_choose_tries 100
-	step set_chooseleaf_vary_r
-	step set_chooseleaf_stable
-	step take default
-	step chooseleaf indep 3 type drive
+	step take default class hdd
+	step chooseleaf indep 0 type drive
 	step emit
 }
 

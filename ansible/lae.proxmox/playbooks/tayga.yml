@@ -1,0 +1,6 @@
+---
+- name: Install and configure TAYGA
+  hosts: tayga
+  become: yes
+  roles:
+    - tayga

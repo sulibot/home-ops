@@ -1,0 +1,19 @@
+---
+# Sysctl file where this role writes all gateway/bridge tuning
+sysctl_file_path: /etc/sysctl.d/99-gw-bridges.conf
+
+# List of VLAN IDs for vmbr0 bridges that host anycast gateways for VMs
+# These interfaces will have proxy ARP/ND enabled via post-up rules.
+vmbr0_anycast_vlans:
+  - 100
+  - 101
+  - 102
+  - 103
+
+# List of VLAN IDs for mesh0 bridges that host anycast gateways for VMs
+# These interfaces will also have proxy ND enabled for IPv6 mesh anycast.
+mesh0_anycast_vlans:
+  - 100
+  - 101
+  - 102
+  - 103

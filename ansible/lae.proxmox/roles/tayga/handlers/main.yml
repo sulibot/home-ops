@@ -1,0 +1,10 @@
+---
+- name: Reload systemd and restart tayga
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: tayga
+    state: restarted
+
+- name: Save iptables rules
+  ansible.builtin.command: netfilter-persistent save
+  listen: "Save iptables rules" # Listen to this specific name

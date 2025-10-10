@@ -1,0 +1,39 @@
+---
+# These handlers "listen" to the same logical name so a single notify triggers all,
+# but each only runs if its service exists on the node.
+
+- name: restart systemd-resolved
+  listen: restart_dns_caches_if_any
+  ansible.builtin.service:
+    name: systemd-resolved
+    state: restarted
+  when: "'systemd-resolved.service' in ansible_facts.services"
+  failed_when: false
+  changed_when: false
+
+- name: restart nscd
+  listen: restart_dns_caches_if_any
+  ansible.builtin.service:
+    name: nscd
+    state: restarted
+  when: "'nscd.service' in ansible_facts.services"
+  failed_when: false
+  changed_when: false
+
+- name: restart dnsmasq
+  listen: restart_dns_caches_if_any
+  ansible.builtin.service:
+    name: dnsmasq
+    state: restarted
+  when: "'dnsmasq.service' in ansible_facts.services"
+  failed_when: false
+  changed_when: false
+
+- name: reload NetworkManager
+  listen: restart_dns_caches_if_any
+  ansible.builtin.service:
+    name: NetworkManager
+    state: reloaded
+  when: "'NetworkManager.service' in ansible_facts.services"
+  failed_when: false
+  changed_when: false

@@ -1,0 +1,77 @@
+# roles/tftp/tasks/main.yml
+
+- name: Ensure tftpd-hpa is installed
+  apt:
+    name: tftpd-hpa
+    state: present
+    update_cache: yes
+
+- name: Ensure TFTP root exists
+  file:
+    path: '{{ tftp_root }}'
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: '0755'
+
+- name: Configure tftpd-hpa
+  copy:
+    dest: /etc/default/tftpd-hpa
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      TFTP_USERNAME="tftp"
+      TFTP_DIRECTORY="{{ tftp_root }}"
+      TFTP_ADDRESS="0.0.0.0:69"
+      TFTP_OPTIONS="--secure --create"
+  notify: Restart TFTP service
+
+- name: Ensure ipxe.efi is downloaded locally
+  get_url:
+    url: https://boot.ipxe.org/ipxe.efi
+    dest: '{{ ipxe_file }}'
+    mode: '0644'
+  when: not lookup('ansible.builtin.file', ipxe_file, errors='ignore')
+  delegate_to: localhost
+  run_once: true
+
+- name: Ensure snponly.efi is downloaded locally
+  get_url:
+    url: https://boot.ipxe.org/snponly.efi
+    dest: '{{ snponly_file }}'
+    mode: '0644'
+  when: not lookup('ansible.builtin.file', snponly_file, errors='ignore')
+  delegate_to: localhost
+  run_once: true
+
+- name: Render autoexec.ipxe from root-level template
+  template:
+    src: templates/autoexec.ipxe.j2
+    dest: /tmp/autoexec.ipxe
+  delegate_to: localhost
+  run_once: true
+
+- name: Upload ipxe.efi to TFTP directory
+  copy:
+    src: '{{ ipxe_file }}'
+    dest: '{{ tftp_root }}/ipxe.efi'
+    owner: caddy
+    group: caddy
+    mode: '0644'
+
+- name: Upload snponly.efi to TFTP directory
+  copy:
+    src: '{{ snponly_file }}'
+    dest: '{{ tftp_root }}/snponly.efi'
+    owner: caddy
+    group: caddy
+    mode: '0644'
+
+- name: Upload rendered autoexec.ipxe to TFTP directory
+  copy:
+    src: /tmp/autoexec.ipxe
+    dest: '{{ tftp_root }}/autoexec.ipxe'
+    owner: caddy
+    group: caddy
+    mode: '0644'

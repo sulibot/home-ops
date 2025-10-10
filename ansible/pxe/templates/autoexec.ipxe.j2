@@ -1,0 +1,82 @@
+#!ipxe
+
+# Vars
+set menu-timeout 60000
+set submenu-timeout ${menu-timeout}
+set http_root {{ http_web_root }}
+
+:start
+echo >>> Starting Proxmox PXE Menu
+menu Proxmox PXE Boot Menu
+{% for host in groups['pve'] %}
+item --key {{ loop.index }} {{ host }}   Install {{ host }}
+{% endfor %}
+item --gap -- Tools
+item --key i install  Proxmox Installer
+item --key s shell    iPXE Shell
+item --key t test     Test network interfaces
+item --key x exit     Exit to BIOS
+
+choose --timeout ${menu-timeout} selected || goto cancel
+goto ${selected}
+
+{% for host in groups['pve'] %}
+:{{ host }}
+    echo Booting Proxmox installer for {{ host }}...
+    dhcp || goto netfail
+    # Set per-host script path
+    set script_url ${http_root}/install/{{ host }}-install.sh
+
+    kernel ${http_root}/pxe/vmlinuz \
+      script=${script_url} \
+      console=tty0 \
+      nokaslr rd.debug rd.shell ip=dhcp
+    initrd ${http_root}/pxe/initrd.img
+    boot || goto failed
+    goto start
+{% endfor %}
+
+:i
+    echo Booting Proxmox Installer...
+    kernel ${http_root}/pxe/vmlinuz \
+      console=tty0 \
+      nokaslr rd.debug rd.shell ip=dhcp
+    initrd ${http_root}/pxe/initrd.img
+    boot || goto failed
+    goto start
+
+:shell
+    shell
+    goto start
+
+:cancel
+    echo No selection - dropping to shell
+    shell
+    goto start
+
+:test
+    echo Testing network settings...
+    ifstat
+    show ip
+    route
+    dhcp
+    # Verify outbound connectivity
+    ping -c 1 8.8.8.8 || echo "Ping failed"
+    echo Testing HTTP fetch for both artifacts...
+    imgfetch ${http_root}/pxe/vmlinuz || echo "Kernel fetch failed"
+    imgfetch ${http_root}/pxe/initrd.img || echo "Initrd fetch failed"
+    echo Test complete; returning to menu
+    goto start
+
+:exit
+    exit
+
+:failed
+    echo Boot failed - returning to menu
+    sleep 5
+    goto start
+
+:netfail
+    echo DHCP or network initialization failed - check cables or VLAN config
+    sleep 5
+    goto start

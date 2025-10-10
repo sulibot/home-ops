@@ -1,0 +1,480 @@
+---
+# NTP Configuration
+ntp_manage_config: true
+ntp_servers:
+  - fd00:255::fffe
+  - 10.255.255.254
+
+# Proxmox Cluster Settings
+pve_group: pve
+pve_cluster_enabled: yes
+pve_cluster_clustername: "{{ pve_group }}"
+pve_repository_line:        "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription" # apt-repository configuration - change to enterprise if needed (although TODO further configuration may be needed)
+pve_remove_subscription_warning: true # patches the subscription warning messages in proxmox if you are using the community edition
+
+# Host Management
+pve_manage_hosts_enabled: yes
+pve_reboot_on_kernel_update: true
+pve_reboot_on_kernel_update_timeout: 3600 # timeout in seconds for the reboot
+
+# pve_watchdog: ipmi
+pve_cluster_addr0: "{{ ansible_service_host }}"
+
+# Ceph Configuration
+pve_ceph_enabled: true
+pve_ceph_network: "fc00:20::/64"
+pve_ceph_cluster_network: "fc00:21::/64"
+pve_ceph_repository_line:   "deb http://download.proxmox.com/debian/ceph-squid trixie no-subscription"
+
+# ZFS & ZED
+pve_zfs_enabled: true
+pve_zfs_zed_email: "sulibot@gmail.com"
+
+# Additional Package & Upgrade Settings
+pve_extra_packages: []
+pve_run_system_upgrades: true
+
+# PCI Passthrough Settings
+pve_pcie_ovmf_enabled: false
+pve_pci_device_ids: []
+pve_vfio_blacklist_drivers: []
+
+# Storage Management
+pve_zfs_create_volumes: []
+
+# Datacenter & Authentication (uncomment/adjust as needed)
+# pve_datacenter_cfg: {}
+# pve_domains_cfg: []
+
+# Ceph Cluster Roles & Pools (uncomment/adjust as needed)
+pve_ceph_nodes: "{{ pve_group }}"
+pve_ceph_mon_group: "{{ pve_group }}"
+pve_ceph_mgr_group: "{{ pve_group }}"
+pve_ceph_mds_group: "{{ pve_group }}"
+# pve_ceph_osds: []
+# pve_ceph_pools: []
+# pve_ceph_fs: []
+# pve_ceph_crush_rules: []
+
+
+
+
+pve_ceph_tunables:
+  - "choose_local_tries 0"
+  - "choose_local_fallback_tries 0"
+  - "choose_total_tries 50"
+  - "chooseleaf_descend_once 1"
+  - "chooseleaf_vary_r 1"
+  - "chooseleaf_stable 1"
+  - "straw_calc_version 1"
+  - "allowed_bucket_algs 54"
+
+
+#pve_ceph_types:
+#  - "0 osd"
+#  - "1 host"
+#  - "11 root"
+#  - "12 drive"
+
+# ──────────────────────────────────────────────────────────────────────
+# 1) Buckets remain exactly as you specified
+# ──────────────────────────────────────────────────────────────────────
+
+_pve_ceph_buckets:
+  - |
+    drive drive-pve01-1 {
+      id -2
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.3 weight 8.18549
+      item osd.4 weight 8.18549
+    }
+  - |
+    drive drive-pve01-2 {
+      id -4
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.5 weight 8.18549
+      item osd.6 weight 8.18549
+    }
+  - |
+    drive drive-pve01-3 {
+      id -6
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.7 weight 8.18549
+      item osd.8 weight 8.18549
+    }
+  - |
+    host pve01 {
+      id -3
+      # weight 50.93227
+      alg straw2
+      hash 0
+      item osd.0 weight 1.81940     # NVMe‐only OSD for metadata
+      item drive-pve01-1 weight 16.37097
+      item drive-pve01-2 weight 16.37097
+      item drive-pve01-3 weight 16.37097
+    }
+
+  - |
+    drive drive-pve02-1 {
+      id -22
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.9  weight 8.18549
+      item osd.10 weight 8.18549
+    }
+  - |
+    drive drive-pve02-2 {
+      id -23
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.11 weight 8.18549
+      item osd.12 weight 8.18549
+    }
+  - |
+    drive drive-pve02-3 {
+      id -24
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.13 weight 8.18549
+      item osd.14 weight 8.18549
+    }
+  - |
+    host pve02 {
+      id -5
+      # weight 50.93227
+      alg straw2
+      hash 0
+      item osd.1 weight 1.81940     # NVMe‐only OSD for metadata
+      item drive-pve02-1 weight 16.37097
+      item drive-pve02-2 weight 16.37097
+      item drive-pve02-3 weight 16.37097
+    }
+
+  - |
+    drive drive-pve03-1 {
+      id -31
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.15 weight 8.18549
+      item osd.16 weight 8.18549
+    }
+  - |
+    drive drive-pve03-2 {
+      id -32
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.17 weight 8.18549
+      item osd.18 weight 8.18549
+    }
+  - |
+    drive drive-pve03-3 {
+      id -33
+      # weight 16.37097
+      alg straw2
+      hash 0
+      item osd.19 weight 8.18549
+      item osd.20 weight 8.18549
+    }
+  - |
+    host pve03 {
+      id -7
+      # weight 50.93227
+      alg straw2
+      hash 0
+      item osd.2 weight 1.81940     # NVMe‐only OSD for metadata
+      item drive-pve03-1 weight 16.37097
+      item drive-pve03-2 weight 16.37097
+      item drive-pve03-3 weight 16.37097
+    }
+
+  - |
+    root default {
+      id -1
+      # weight 152.73528
+      alg straw2
+      hash 0
+      item pve01 weight 50.91176
+      item pve02 weight 50.91176
+      item pve03 weight 50.91176
+    }
+
+# ──────────────────────────────────────────────────────────────────────
+# 2) CRUSH rules: only EC rule needs a “class hdd” filter
+# ──────────────────────────────────────────────────────────────────────
+
+_pve_ceph_crush_rules:
+  # (your replicated rules here…)
+  - name: replicated_rule
+    min_size: 2
+    max_size: 3
+    rule: |
+      rule replicated_rule {
+        id  0
+        type replicated
+        min_size 2
+        max_size 3
+        step take default
+        step chooseleaf firstn 0 type host
+        step emit
+      }
+
+  - name: replicated_hdd
+    min_size: 2
+    max_size: 3
+    rule: |
+      rule replicated_hdd {
+        id  1
+        type replicated
+        min_size 2
+        max_size 3
+        step take default class hdd
+        step chooseleaf firstn 0 type host
+        step emit
+      }
+
+  - name: replicated_nvme
+    min_size: 2
+    max_size: 3
+    rule: |
+      rule replicated_nvme {
+        id  2
+        type replicated
+        min_size 2
+        max_size 3
+        step take default class nvme
+        step chooseleaf firstn 0 type host
+        step emit
+      }
+
+  - name: replicated_optane
+    min_size: 2
+    max_size: 3
+    rule: |
+      rule replicated_optane {
+        id  10
+        type replicated
+        min_size 2
+        max_size 3
+        step take default class optane
+        step chooseleaf firstn 0 type host
+        step emit
+      }
+
+  # The EC rule now explicitly says “take default class hdd”—
+  # so any “host” or “drive” not tagged hdd (i.e. OSD.0–2, class ssd)
+  # will be filtered out. EC data will only land on OSDs 3–20.
+  - name: ec_4_2_by_drive_host
+    min_size: 2
+    max_size: 6
+    rule: |
+      rule ec_4_2_by_drive_host {
+        id  3
+        type erasure
+
+        step set_chooseleaf_tries    5
+        step set_choose_tries        50
+        step set_chooseleaf_vary_r
+        step set_chooseleaf_stable
+
+        step take default class hdd
+        step chooseleaf firstn 0 type host
+        step chooseleaf indep 2 type drive
+        step emit
+      }
+
+#pve_ceph_mon_group: pve
+
+_pve_ceph_pools:
+  - name: content_metadata
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+  - name: content_data
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+
+  - name: content_data_ec
+    application: cephfs
+    type: erasure
+    crush_rule: ec_4_2_by_drive_host
+    size: 6
+    min_size: 4
+    pg_num: 32
+    autoscale_mode: "on"
+    allow_ec_overwrites: true
+    compression_mode: aggressive
+    compression_algorithm: snappy
+
+  - name: kubernetes_metadata
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+  - name: kubernetes_data
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+  - name: test_metadata
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+  - name: test_data
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+  - name: test_data_extra
+    application: cephfs
+    type: replicated
+    crush_rule: replicated_nvme
+    size: 3
+    min_size: 2
+    pg_num: 8
+    autoscale_mode: "on"
+
+# -------------------------------------------------------
+# 1) Define the “Terraform” role with required privileges
+# -------------------------------------------------------
+pve_roles:
+  - name: Terraform
+    privileges:
+      - Datastore.Allocate
+      - Datastore.AllocateSpace
+      - Datastore.AllocateTemplate
+      - Datastore.Audit
+      - Pool.Allocate
+      - Sys.Audit
+      - Sys.Console
+      - Sys.Modify
+      - SDN.Use
+      - VM.Allocate
+      - VM.Audit
+      - VM.Clone
+      - VM.Config.CDROM
+      - VM.Config.Cloudinit
+      - VM.Config.CPU
+      - VM.Config.Disk
+      - VM.Config.HWType
+      - VM.Config.Memory
+      - VM.Config.Network
+      - VM.Config.Options
+      - VM.Migrate
+      - VM.Monitor
+      - VM.PowerMgmt
+      - User.Modify
+
+
+_pve_cephfs_from_pools:
+  - name:           test
+    metadata_pool:  test_metadata
+    data_pool:      test_data
+    additional_data_pools:
+      - test_data_extra    # ✅ now this is a YAML list
+    add_storage:    true
+    subvolumes:
+      - name:        media
+        quota:       "2000G"
+        pool_layout: test_data_extra
+        mode:        "0775"
+
+
+
+#  - name: content
+#    data_pool: content_data
+#    metadata_pool: content_metadata
+#    additional_data_pools:
+#      - content_data_ec
+#    subvolumes:
+#      - name: media
+#        quota: 2000G
+#      - name: archive
+#        quota: 5000G
+#
+#  - name: kubernetes
+#    data_pool: kubernetes_data
+#    metadata_pool: kubernetes_metadata
+
+# -----------------------------
+# 2) Create the “terraform@pve” user
+# -----------------------------
+pve_users:
+  - name: terraform@pve
+    comment: "API user for Terraform automation"
+    email: "sulibot@gmail.com"
+    password: "TempPass123!"     # ← at least 8 characters
+    groups: []
+
+# -----------------------------
+# 3) (Optional) Proxmox groups
+# -----------------------------
+pve_groups: []     # not using any special Proxmox groups here
+
+# --------------------------------------------
+# 4) Assign the “Terraform” role to terraform@pve at path "/"
+# --------------------------------------------
+pve_acls:
+  - path: "/"
+    roles:
+      - role: Terraform
+        users:
+          - terraform@pve
+
+
+# ------------------------------------------------------
+# 5) Define an API token (metadata only) for terraform@pve
+# ------------------------------------------------------
+# This will run: pveum user token add terraform@pve provider --privsep=0
+pve_tokens:
+  - user: terraform@pve
+    tokenid: provider
+    comment: "Terraform API token"
+    privsep: 0
+
+# ------------------------------------------------------
+# 6) (Later plays can reference these variables to call Proxmox modules)
+# ------------------------------------------------------
+#proxmox_api:
+#  # These keys will be loaded from the SOPS‐encrypted file at runtime
+#  url: "{{ proxmox_api_url }}"
+#  user: "{{ proxmox_api_user }}"
+#  token_id: "{{ proxmox_api_token_id }}"
+#  token_secret: "{{ proxmox_api_token_secret }}"
+## https://chatgpt.com/share/683c05ca-c040-8003-a59a-ae4a6cb10bcc

@@ -1,0 +1,49 @@
+---
+- name: Ensure usb1/proxmox directory exists
+  community.routeros.command:
+    commands:
+      - ':if ([:len [/file find name="usb1/proxmox"]] = 0) do={ /file add name=usb1/proxmox type=directory }'
+
+- name: Remove existing TFTP entries under /usb1/proxmox
+  community.routeros.command:
+    commands:
+      - ':foreach i in=[/ip tftp find where real-filename~"^/usb1/proxmox"] do={ /ip tftp remove $i }'
+
+- name: Have RouterOS fetch ipxe.efi over HTTPS
+  community.routeros.command:
+    commands:
+      - /tool fetch url="https://menu.ipxe.org/ipxe.efi" mode=https dst-path="usb1/proxmox/ipxe.efi" keep-result=yes
+
+- name: Have RouterOS fetch netboot.xyz.efi over HTTPS
+  community.routeros.command:
+    commands:
+      - /tool fetch url="https://boot.netboot.xyz/ipxe/netboot.xyz.efi" mode=https dst-path="usb1/proxmox/netboot.xyz.efi" keep-result=yes
+
+- name: Render menu.ipxe.j2 to temporary local path
+  ansible.builtin.template:
+    src: "./roles/pxe_routeros/templates/menu.ipxe.j2"
+    dest: "/tmp/menu.ipxe"
+    mode: "0644"
+
+- name: Upload menu.ipxe to RouterOS using net_put
+  ansible.netcommon.net_put:
+    src: "/tmp/menu.ipxe"
+    dest: "/usb1/proxmox/menu.ipxe"
+    mode: "0644"
+    protocol: scp
+
+- name: Have RouterOS fetch initrd.img and linux26 over HTTPS
+  community.routeros.command:
+    commands:
+      - /tool fetch url="https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/initrd.gz" mode=https dst-path="usb1/proxmox/initrd.img" keep-result=yes
+      - /tool fetch url="https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/linux" mode=https dst-path="usb1/proxmox/linux26" keep-result=yes
+
+- name: Add TFTP entries for required boot files
+  community.routeros.command:
+    commands: ["/ip tftp add real-filename=\"/usb1/proxmox/{{ item }}\" allow=yes read-only=yes"]
+  loop:
+    - menu.ipxe
+    - ipxe.efi
+    - netboot.xyz.efi
+    - initrd.img
+    - linux26

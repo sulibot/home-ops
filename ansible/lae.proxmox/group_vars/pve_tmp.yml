@@ -1,0 +1,94 @@
+# Inventory group name
+pve_group: pve
+
+## Proxmox Cluster Configuration
+#pve_cluster_name: pmx01
+
+# Ceph Configuration
+pve_ceph_network: "fc00:20::/64"
+pve_ceph_cluster_network: "fc00:21::/64"
+
+# ZFS & ZED
+pve_zfs_enabled: true
+pve_zfs_zed_email: "sulibot@gmail.com"
+
+# CephFS configuration
+pve_ceph_filesystems:
+  - name: media
+    pool: rdb-media
+    rule: replicated_nvme
+
+# CRUSH rules
+pve_ceph_crush_rules:
+  - name: replicated_nvme
+    type: replicated
+    class: nvme
+  - name: replicated_hdd
+    type: replicated
+    class: hdd
+
+# Ceph Pools
+pve_ceph_pools:
+  - name: rdb-media
+    rule: replicated_nvme
+    size: 3
+    application: rbd
+
+# Datacenter-wide config
+pve_datacenter_cfg:
+  keyboard: en-us
+  console: xterm
+  email_from: "sulibot@yourdomain.com"
+
+# Ceph CSI pool definitions
+ceph_csi_pools:
+  - name: rbd
+    pg_num: 128
+    pool_type: replicated
+    rule_name: replicated_rule
+  - name: cephfs_data
+    pg_num: 128
+    pool_type: erasure
+    erasure_profile: ec_k6_m3_hostdrive9  
+
+# CephFS filesystems
+ceph_csi_fs:
+  - name: kubernetes
+    metadata_pool: kubernetes_metadata
+    data_pool: kubernetes_data
+  - name: data
+    metadata_pool: content_metadata
+    data_pool: content_data
+
+# CSI CephX clients
+ceph_csi_clients:
+  client.kubernetes:
+    entity: client.kubernetes
+    caps:
+      mon: 'profile rbd'
+      osd: 'profile rbd'
+  client.content:
+    entity: client.content
+    caps:
+      mon: 'profile rbd'
+      osd: 'profile rbd'
+
+# CephFS subvolume groups & static subvolumes
+ceph_csi_subvol_groups:
+  - fs: kubernetes
+    group: csi
+  - fs: data
+    group: content
+
+ceph_csi_static_subvols:
+  - fs: data
+    subvol: media
+    group: content
+
+# Certbot/Cloudflare settings
+certbot_email: sulibot@gmail.com
+cloudflare_api_key: keykey
+pve_cert_domains:
+  - pve01.sulibot.com
+  - pve02.sulibot.com
+  - pve03.sulibot.com

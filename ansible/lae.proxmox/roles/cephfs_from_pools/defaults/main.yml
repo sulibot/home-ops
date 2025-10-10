@@ -1,0 +1,17 @@
+---
+# roles/cephfs_from_pools/defaults/main.yml
+
+# List of CephFS definitions, each with:
+#   name:             (string) filesystem name
+#   metadata_pool:    (string) name of existing metadata pool
+#   data_pool:        (string) name of existing default data pool
+#   additional_data_pools:  # (optional) list of extra data pools
+#   add_storage:      (bool) whether to create a Proxmox storage entry
+#   subvolumes:       # list of subvolume definitions
+#     - name:         (string) subvolume name
+#       quota:        (string) size, e.g. "2000G"
+#       pool_layout:  (optional string) one of the additional_data_pools
+#       mode:         (string) Unix permission bits, e.g. "0775"
+#
+# Example usage is supplied in the playbook or group_vars.
+# pve_cephfs_from_pools: []

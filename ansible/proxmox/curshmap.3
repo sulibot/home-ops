@@ -34,123 +34,73 @@ device 20 osd.20 class hdd
 # types
 type 0 osd
 type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 zone
+type 10 region
 type 11 root
-type 12 drive
 
 # buckets
-drive drive-pve01-1 {
-	id -2
-	# weight 16.37097
+host pve01 {
+	id -3		# do not change unnecessarily
+	id -4 class ssd		# do not change unnecessarily
+	id -5 class hdd		# do not change unnecessarily
+	# weight 50.93217
 	alg straw2
-	hash 0
+	hash 0	# rjenkins1
+	item osd.0 weight 1.81926
 	item osd.3 weight 8.18549
 	item osd.4 weight 8.18549
-}
-drive drive-pve01-2 {
-	id -4
-	# weight 16.37097
-	alg straw2
-	hash 0
 	item osd.5 weight 8.18549
 	item osd.6 weight 8.18549
-}
-drive drive-pve01-3 {
-	id -6
-	# weight 16.37097
-	alg straw2
-	hash 0
 	item osd.7 weight 8.18549
 	item osd.8 weight 8.18549
 }
-host pve01 {
-	id -3
-	# weight 50.93227
+host pve02 {
+	id -7		# do not change unnecessarily
+	id -8 class ssd		# do not change unnecessarily
+	id -9 class hdd		# do not change unnecessarily
+	# weight 50.93217
 	alg straw2
-	hash 0
-	item osd.0 weight 1.81940
-	item drive-pve01-1 weight 16.37097
-	item drive-pve01-2 weight 16.37097
-	item drive-pve01-3 weight 16.37097
-}
-
-drive drive-pve02-1 {
-	id -22
-	# weight 16.37097
-	alg straw2
-	hash 0
+	hash 0	# rjenkins1
 	item osd.9 weight 8.18549
 	item osd.10 weight 8.18549
-}
-drive drive-pve02-2 {
-	id -23
-	# weight 16.37097
-	alg straw2
-	hash 0
 	item osd.11 weight 8.18549
 	item osd.12 weight 8.18549
-}
-drive drive-pve02-3 {
-	id -24
-	# weight 16.37097
-	alg straw2
-	hash 0
 	item osd.13 weight 8.18549
 	item osd.14 weight 8.18549
-}
-host pve02 {
-	id -5
-	# weight 50.93227
-	alg straw2
-	hash 0
-	item osd.1 weight 1.81940
-	item drive-pve02-1 weight 16.37097
-	item drive-pve02-2 weight 16.37097
-	item drive-pve02-3 weight 16.37097
-}
-
-drive drive-pve03-1 {
-	id -31
-	# weight 16.37097
-	alg straw2
-	hash 0
-	item osd.15 weight 8.18549
-	item osd.16 weight 8.18549
-}
-drive drive-pve03-2 {
-	id -32
-	# weight 16.37097
-	alg straw2
-	hash 0
-	item osd.17 weight 8.18549
-	item osd.18 weight 8.18549
-}
-drive drive-pve03-3 {
-	id -33
-	# weight 16.37097
-	alg straw2
-	hash 0
-	item osd.19 weight 8.18549
-	item osd.20 weight 8.18549
+	item osd.1 weight 1.81926
 }
 host pve03 {
-	id -7
-	# weight 50.93227
+	id -10		# do not change unnecessarily
+	id -11 class ssd		# do not change unnecessarily
+	id -12 class hdd		# do not change unnecessarily
+	# weight 50.93217
 	alg straw2
-	hash 0
-	item osd.2 weight 1.81940
-	item drive-pve03-1 weight 16.37097
-	item drive-pve03-2 weight 16.37097
-	item drive-pve03-3 weight 16.37097
+	hash 0	# rjenkins1
+	item osd.15 weight 8.18549
+	item osd.16 weight 8.18549
+	item osd.17 weight 8.18549
+	item osd.18 weight 8.18549
+	item osd.19 weight 8.18549
+	item osd.20 weight 8.18549
+	item osd.2 weight 1.81926
 }
-
 root default {
-	id -1
-	# weight 152.73528
+	id -1		# do not change unnecessarily
+	id -2 class ssd		# do not change unnecessarily
+	id -6 class hdd		# do not change unnecessarily
+	# weight 152.79648
 	alg straw2
-	hash 0
-	item pve01 weight 50.91176
-	item pve02 weight 50.91176
-	item pve03 weight 50.91176
+	hash 0	# rjenkins1
+	item pve01 weight 50.93216
+	item pve02 weight 50.93216
+	item pve03 weight 50.93216
 }
 
 # rules
@@ -164,26 +114,29 @@ rule replicated_rule {
 rule replicated_hdd {
 	id 1
 	type replicated
-	step take default class hdd
+	step take default
 	step chooseleaf firstn 0 type host
 	step emit
 }
 rule replicated_nvme {
 	id 2
 	type replicated
-	step take default class nvme
+	step take default
 	step chooseleaf firstn 0 type host
 	step emit
 }
-rule ec_k6_m3_hostdrive9 {
+rule replicated_optane {
 	id 3
-	type erasure
-	step set_chooseleaf_tries 5
-	step set_choose_tries 100
-	step set_chooseleaf_vary_r
-	step set_chooseleaf_stable
+	type replicated
 	step take default
-	step chooseleaf indep 3 type drive
+	step chooseleaf firstn 0 type host
+	step emit
+}
+rule ec_4_2_by_drive_host {
+	id 4
+	type replicated
+	step take default
+	step chooseleaf firstn 0 type host
 	step emit
 }
 

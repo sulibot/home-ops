@@ -1,0 +1,15 @@
+---
+mac_address: "A8:B8:E0:04:4A:EC"
+optane_disk: "/dev/disk/by-id/nvme-INTEL_SSDPE21D015TA_PHKE3425002P1P5CGN-part2"
+nvme_disk: "/dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX-part2"
+optane_efi: "/dev/disk/by-id/nvme-INTEL_SSDPE21D015TA_PHKE3425002P1P5CGN-part1"
+nvme_efi: "/dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX-part1"
+
+proxmox_nic: "enp4s0"
+proxmox_ipv4: "10.0.9.1/24"
+proxmox_ipv4_gw: "10.0.9.254"
+proxmox_ipv6: "fd00:9::1/64"
+proxmox_ipv6_gw: "fd00:9::fffe"
+proxmox_dns:
+  - "10.0.9.254"
+  - "fd00:9::fffe"

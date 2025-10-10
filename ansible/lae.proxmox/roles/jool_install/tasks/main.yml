@@ -1,0 +1,61 @@
+---
+- name: Ensure kernel headers are installed
+  ansible.builtin.apt:
+    name: "linux-headers-{{ ansible_kernel }}"
+    state: present
+    update_cache: yes
+  tags:
+    - install
+
+- name: Download Jool DEB packages
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: "/tmp/"
+    mode: '0644'
+  loop:
+    - https://github.com/NICMx/Jool/releases/download/v4.1.14/jool-dkms_4.1.14-1_all.deb
+    - https://github.com/NICMx/Jool/releases/download/v4.1.14/jool-tools_4.1.14-1_amd64.deb
+  tags:
+    - install
+
+- name: Install Jool DEB packages
+  ansible.builtin.apt:
+    deb: "{{ item }}"
+  loop:
+    - "/tmp/jool-dkms_4.1.14-1_all.deb"
+    - "/tmp/jool-tools_4.1.14-1_amd64.deb"
+  tags:
+    - install
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.forwarding
+    value: '1'
+    state: present
+    reload: yes
+  tags:
+    - configure
+
+- name: Enable IPv6 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    state: present
+    reload: yes
+  tags:
+    - configure
+
+- name: Ensure Jool kernel module is loaded
+  ansible.builtin.modprobe:
+    name: jool
+    state: present
+  tags:
+    - configure
+
+- name: Add a Stateful NAT64 instance
+  ansible.builtin.command: jool instance add --netfilter --pool6 64:ff9b:1::/96
+  register: jool_instance_status
+  failed_when: "'already exists' not in jool_instance_status.stderr and jool_instance_status.rc != 0"
+  changed_when: "'already exists' not in jool_instance_status.stderr"
+  tags:
+    - configure

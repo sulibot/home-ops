@@ -1,0 +1,11 @@
+---
+collections:
+  - name: community.general
+  - name: ceph.automation
+  - name: ansible.posix
+
+
+roles:
+  - name: geerlingguy.ntp
+  - name: ceph-init
+

@@ -1,0 +1,94 @@
+#!/bin/bash
+set -euxo pipefail
+
+DISK1="{{ hostvars[inventory_hostname].optane_disk }}"
+DISK2="{{ hostvars[inventory_hostname].nvme_disk | default('') }}"
+SIZE_GB="{{ zfs_root_partition_size_gb }}"
+ZBM_EFI="/boot/efi/EFI/ZBM/ZFSBootMenu.EFI"
+
+{% if inventory_hostname in ['pve01', 'pve02', 'pve03'] %}
+# Partition both disks for mirrored ZFS root
+parted -s $DISK1 mklabel gpt mkpart ESP fat32 1MiB 512MiB set 1 boot on
+parted -s $DISK1 mkpart primary 512MiB ${SIZE_GB}GiB
+
+parted -s $DISK2 mklabel gpt mkpart ESP fat32 1MiB 512MiB set 1 boot on
+parted -s $DISK2 mkpart primary 512MiB ${SIZE_GB}GiB
+
+# Create ZFS mirror
+zpool create -f -o ashift=12 -O compression=lz4 -O atime=off -O mountpoint=/ -R /mnt {{ zfs_pool }} mirror ${DISK1}2 ${DISK2}2
+{% else %}
+# Partition single disk for ZFS root
+parted -s $DISK1 mklabel gpt mkpart ESP fat32 1MiB 512MiB set 1 boot on
+parted -s $DISK1 mkpart primary 512MiB ${SIZE_GB}GiB
+
+# Create ZFS pool
+zpool create -f -o ashift=12 -O compression=lz4 -O atime=off -O mountpoint=/ -R /mnt {{ zfs_pool }} ${DISK1}2
+{% endif %}
+
+# Create root dataset
+zfs create {{ zfs_pool }}/ROOT
+zfs set mountpoint=/ {{ zfs_pool }}/ROOT
+
+# Bootstrap Debian
+debootstrap bookworm /mnt http://deb.debian.org/debian
+mount --bind /dev /mnt/dev
+mount --bind /proc /mnt/proc
+mount --bind /sys /mnt/sys
+
+# Chroot configuration
+cat <<EOC | chroot /mnt /bin/bash
+set -euxo pipefail
+
+# Host identity
+echo {{ inventory_hostname }} > /etc/hostname
+echo "127.0.1.1 {{ inventory_hostname }}.{{ hostname_domain }} {{ inventory_hostname }}" >> /etc/hosts
+
+# Locale & timezone
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen
+echo "America/Los_Angeles" > /etc/timezone
+dpkg-reconfigure -f noninteractive tzdata
+
+# SSH access
+echo 'root:{{ root_passwd_hash }}' | chpasswd -e
+mkdir -p /root/.ssh
+echo '{{ ssh_pubkey }}' > /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
+# Proxmox + ZFSBootMenu setup
+apt update
+apt install -y gnupg curl wget efibootmgr linux-image-amd64
+
+# Add Proxmox repo and key
+curl -fsSL {{ pve_apt_key }} | gpg --dearmor -o /etc/apt/trusted.gpg.d/proxmox.gpg
+echo '{{ pve_apt_repo }}' > /etc/apt/sources.list.d/pve-install.list
+
+apt update
+apt install -y {{ pkgsel_include | join(' ') }}
+
+# ZFSBootMenu installation
+mkdir -p /boot/efi/EFI/ZBM
+cp {{ zfsbootmenu_file }} ${ZBM_EFI}
+
+# EFI boot entry creation
+efibootmgr --create --disk ${DISK1} --part 1 \
+  --label "ZFSBootMenu" \
+  --loader '\EFI\ZBM\ZFSBootMenu.EFI'
+
+{% if inventory_hostname in ['pve01', 'pve02', 'pve03'] %}
+efibootmgr --create --disk ${DISK2} --part 1 \
+  --label "ZFSBootMenu Mirror" \
+  --loader '\EFI\ZBM\ZFSBootMenu.EFI'
+{% endif %}
+
+# Enable SSH at boot
+systemctl enable ssh
+EOC
+
+# Cleanup mounts and export ZFS pool
+umount /mnt/dev || true
+umount /mnt/proc || true
+umount /mnt/sys || true
+zpool export {{ zfs_pool }}
+
+echo "✅ Installation complete for {{ inventory_hostname }}. Ready to boot into ZFSBootMenu."

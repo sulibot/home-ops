@@ -1,0 +1,24 @@
+---
+- name: Prepare RouterOS for TFTP + iPXE
+  hosts: pxe_servers
+  gather_facts: false
+  vars_files:
+    - group_vars/pve.yml
+  roles:
+    - pxe_routeros
+
+- name: Configure TFTP server
+  hosts: tftp_servers
+  gather_facts: false
+  vars_files:
+    - group_vars/tftp_servers.yml
+  roles:
+    - tftp
+
+- name: Configure HTTP server
+  hosts: infraweb
+  gather_facts: false
+  vars_files:
+    - group_vars/http_pxe.yml
+  roles:
+    - http_pxe

@@ -1,0 +1,65 @@
+# roles/pxe_routeros/tasks/main.yml
+
+- name: Ensure TFTP directory exists on RouterOS
+  community.routeros.command:
+    commands:
+      - ':if ([:len [/file find name="usb1/proxmox"]] = 0) do={ /file add name=usb1/proxmox type=directory }'
+
+# === Local downloads and rendering ===
+- name: Download ipxe.efi if missing
+  get_url:
+    url: https://boot.ipxe.org/ipxe.efi
+    dest: /tmp/ipxe.efi
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Download snponly.efi if missing
+  get_url:
+    url: https://boot.ipxe.org/snponly.efi
+    dest: /tmp/snponly.efi
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Render autoexec.ipxe from template
+  template:
+    src: autoexec.ipxe.j2
+    dest: /tmp/autoexec.ipxe
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# === Upload to RouterOS over SCP-compatible connection ===
+- name: Upload ipxe.efi to RouterOS
+  ansible.netcommon.net_put:
+    src: /tmp/ipxe.efi
+    dest: 'usb1/proxmox/ipxe.efi'
+    mode: '0644'
+
+- name: Upload snponly.efi to RouterOS
+  ansible.netcommon.net_put:
+    src: /tmp/snponly.efi
+    dest: 'usb1/proxmox/snponly.efi'
+    mode: '0644'
+
+- name: Upload autoexec.ipxe to RouterOS
+  ansible.netcommon.net_put:
+    src: /tmp/autoexec.ipxe
+    dest: 'usb1/proxmox/autoexec.ipxe'
+    mode: '0644'
+
+# === Register TFTP filenames for RouterOS ===
+- name: Add TFTP entries for iPXE files
+  community.routeros.command:
+    commands:
+      - '/ip tftp add real-filename="usb1/proxmox/ipxe.efi" req-filename=ipxe.efi'
+      - '/ip tftp add real-filename="usb1/proxmox/snponly.efi" req-filename=snponly.efi'
+      - '/ip tftp add real-filename="usb1/proxmox/autoexec.ipxe" req-filename=autoexec.ipxe'
+
+- name: Enable TFTP server on RouterOS
+  community.routeros.command:
+    commands:
+      - '/ip tftp set enabled=yes address=0.0.0.0 port=69'

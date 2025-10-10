@@ -1,0 +1,28 @@
+---
+# defaults file for jool
+
+# --- Hostname settings ---
+jool_hostname: "jool"
+# Optional FQDN; leave empty to skip
+jool_fqdn: ""
+
+# --- Jool version & download location ---
+jool_version: "4.1.14"
+jool_download_url: "https://github.com/NICMx/Jool/releases/download/v{{ jool_version }}"
+
+# NAT64 / DNS64
+jool_pool6_prefix: "64:ff9b::/96"
+
+# Example system IP addresses (informational only)
+system_ipv4_address: "10.0.200.64"
+system_ipv6_address: "fd00:200::64"
+
+# --- Secure Boot / DKMS signing ---
+dkms_sign_modules: true
+dkms_sign_dir: /var/lib/dkms/signing
+dkms_mok_key: "{{ dkms_sign_dir }}/MOK.key"
+dkms_mok_crt: "{{ dkms_sign_dir }}/MOK.crt"     # PEM
+dkms_mok_der: "{{ dkms_sign_dir }}/MOK.der"     # DER for mokutil import
+dkms_mok_cn: "MOK for {{ inventory_hostname }}"
+# IMPORTANT: Use a temporary password; you will be prompted at the blue MOK screen after reboot.
+dkms_mok_password: "ChangeMe-Temporary-MOK-Pass"

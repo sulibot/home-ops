@@ -1,0 +1,5 @@
+# TFTP role variables
+tftp_root: '/srv/tftp'
+ipxe_file: '{{ role_path }}/files/ipxe.efi'
+autoexec_file: '{{ role_path }}/files/autoexec.ipxe'
+http_web_root: "http://infraweb.sulibot.com"

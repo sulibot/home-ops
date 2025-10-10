@@ -1,0 +1,62 @@
+- name: Create HTTP directory tree
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: '0755'
+  loop:
+    - "{{ http_file_root }}"
+    - "{{ http_file_root }}{{ installer_subpath }}"
+#    - "{{ http_file_root }}{{ user_data_base }}"
+#    - "{{ http_file_root }}{{ meta_data_base }}"
+
+- name: Deploy PXE menu
+  template:
+    src: menu.ipxe.j2
+    dest: "{{ pxe_menu }}"
+    owner: caddy
+    group: caddy
+    mode: '0644'
+
+- name: Download installer assets
+  get_url:
+    url: "{{ debian_mirror }}{{ installer_subpath }}/{{ item }}"
+    dest: "{{ http_file_root }}{{ installer_subpath }}/{{ item }}"
+    mode: '0644'
+  loop:
+    - linux
+    - initrd.gz
+  register: fetched_assets
+
+- name: Fail if downloads unsuccessful
+  fail:
+    msg: 'Failed to download installer assets'
+  when: fetched_assets.results | rejectattr('status_code','in',[200, 304]) | list | length > 0
+
+- name: Create per-host cloud-init directories
+  file:
+    path: "{{ http_file_root }}/pxe/proxmox/{{ item }}"
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: '0755'
+  loop: "{{ groups['pve'] }}"
+
+- name: Deploy cloud-init user-data for each PVE host
+  template:
+    src: ../templates/user-data.j2
+    dest: "{{ http_file_root }}/pxe/proxmox/{{ item }}/user-data"
+    owner: caddy
+    group: caddy
+    mode: '0644'
+  loop: "{{ groups['pve'] }}"
+
+- name: Deploy cloud-init meta-data for each PVE host
+  template:
+    src: meta-data.j2
+    dest: "{{ http_file_root }}/pxe/proxmox/{{ item }}/meta-data"
+    owner: caddy
+    group: caddy
+    mode: '0644'
+  loop: "{{ groups['pve'] }}"

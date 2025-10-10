@@ -1,0 +1,21 @@
+---
+# roles/frr/tasks/main.yaml
+
+- name: Deploy FRR configuration - daemons
+  ansible.builtin.template:
+    src: daemons-pve.j2
+    dest: /etc/frr/daemons
+    mode: '0644'
+
+- name: Deploy FRR configuration - frr.conf
+  ansible.builtin.template:
+    src: frr-pve.conf.local.j2
+    dest: /etc/frr/frr.conf.local
+    mode: '0644'
+  notify: restart frr
+
+- name: Restart and enable FRR
+  ansible.builtin.systemd:
+    name: frr
+    state: restarted
+    enabled: true

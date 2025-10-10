@@ -1,0 +1,26 @@
+---
+- name: Prepare RouterOS for TFTP + iPXE
+  hosts: pxe_servers
+  gather_facts: false
+  vars_files:
+    - group_vars/pxe_servers.yml
+    - group_vars/infraweb.yml
+  roles:
+    - pxe_routeros
+
+- name: Configure TFTP server(s)
+  hosts: tftp_servers
+  gather_facts: false
+  vars_files:
+    - group_vars/tftp_servers.yml
+  roles:
+    - tftp
+
+- name: Configure HTTP server for ZFSBootMenu provisioning
+  hosts: infraweb
+  gather_facts: false
+  vars_files:
+    - group_vars/infraweb.yml
+    - group_vars/pve.yml
+  roles:
+    - zfsbootmenu_http

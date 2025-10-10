@@ -1,0 +1,169 @@
+---
+# ==================================================================================================
+# Role: cephfs_from_pools/tasks/main.yml
+# Purpose: Create and update CephFS filesystems, extra data‐pools, and subvolumes.
+# ==================================================================================================
+
+- name: "Gather existing CephFS list"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  shell: |
+    ceph fs ls -f json | jq -r '.[].name'
+  register: _existing_fs_list
+  changed_when: false
+  failed_when: false
+
+- name: "Create missing CephFS"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - item.name not in _existing_fs_list.stdout_lines
+  shell: |
+    ceph fs new {{ item.name }} {{ item.metadata_pool }} {{ item.data_pool }}
+  args:
+    executable: /bin/bash
+  loop: "{{ pve_cephfs_from_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: "Set list of CephFS with extra data pools"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  set_fact:
+    fs_defs_with_extra_pools: >-
+      {{ pve_cephfs_from_pools
+         | selectattr('additional_data_pools', 'defined')
+         | list }}
+
+- name: "Build map of pool IDs to names (int keys)"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  shell: |
+    for pool in $(ceph osd pool ls); do
+      id=$(ceph osd pool get "$pool" all -f json | jq -r '.pool_id')
+      echo "$id $pool"
+    done
+  register: _pool_id_name_map
+  changed_when: false
+  failed_when: false
+
+- name: "Set fact for pool ID → name dictionary"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  vars:
+    _pairs: >-
+      {{ _pool_id_name_map.stdout_lines
+         | select('match', '^[0-9]\\+' )
+         | map('split', ' ')
+         | map('reverse')
+         | list }}
+  set_fact:
+    pool_id_name_dict: "{{ dict(_pairs) }}"
+
+- name: "Create missing additional data pools"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  vars:
+    all_extra_pool_names: >-
+      {{ fs_defs_with_extra_pools
+         | default([])
+         | map(attribute='additional_data_pools')
+         | sum(start=[]) }}
+  loop: "{{ all_extra_pool_names | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  shell: |
+    if ! ceph osd pool ls | grep -x "{{ item }}"; then
+      ceph osd pool create {{ item }} 128
+    fi
+  args:
+    executable: /bin/bash
+
+- name: "Rebuild map of pool IDs to names (after creating extras)"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  shell: |
+    for pool in $(ceph osd pool ls); do
+      id=$(ceph osd pool get "$pool" all -f json | jq -r '.pool_id')
+      echo "$id $pool"
+    done
+  register: _pool_id_name_map_after
+  changed_when: false
+  failed_when: false
+
+- name: "Set updated fact for pool ID → name dictionary"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  vars:
+    _pairs_after: >-
+      {{ _pool_id_name_map_after.stdout_lines
+         | select('match', '^[0-9]\\+' )
+         | map('split', ' ')
+         | map('reverse')
+         | list }}
+  set_fact:
+    pool_id_name_dict: "{{ dict(_pairs_after) }}"
+
+- name: "Add missing additional data pools to each CephFS"
+  when: 
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - >
+      item.1 not in (
+        _existing_data_pool_ids.results
+        | selectattr('item.name','equalto', item.0.name)
+        | map(attribute='stdout_lines')
+        | list
+        | first
+        | default([])
+        | map('int')
+        | map('extract', pool_id_name_dict)
+      )
+  shell: |
+    ceph fs add_data_pool {{ item.0.name }} {{ item.1 }}
+  args:
+    executable: /bin/bash
+  vars:
+    _existing_data_pool_ids: "{{ lookup('vars', '_existing_data_pool_ids', default={'results': []}) }}"
+  loop: "{{ (fs_defs_with_extra_pools | default([])) | subelements('additional_data_pools') }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+
+- name: "Set list of CephFS with subvolumes"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  set_fact:
+    fs_defs_with_subvols: >-
+      {{ pve_cephfs_from_pools
+         | selectattr('subvolumes', 'defined')
+         | list }}
+
+- name: "Gather existing subvolumes for CephFS with subvolumes"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  shell: >
+    ceph fs subvolume ls {{ item.name }} -f json | jq -r '.[].name'
+  register: _existing_subvols
+  loop: "{{ fs_defs_with_subvols | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: "Set fact for subvolume existence map"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  set_fact:
+    existing_map: >-
+      {{ dict(
+           _existing_subvols.results
+           | map(attribute='item.name')
+           | zip(
+               _existing_subvols.results
+               | map(attribute='stdout_lines')
+             )
+         ) }}
+
+- name: "Create or update subvolumes with quotas"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+  shell: |
+    {% set quota_bytes = (item.1.quota | regex_replace('G$', '') | int * 1073741824) %}
+    {% if item.1.name not in (existing_map[item.0.name] | default([])) %}
+      ceph fs subvolume create {{ item.0.name }} {{ item.1.name }} --size {{ quota_bytes }}
+    {% else %}
+      current_quota=$(ceph fs subvolume getquota {{ item.0.name }} {{ item.1.name }} -f json | jq -r '.bytes_quota // 0')
+      if [ "$current_quota" -ne "{{ quota_bytes }}" ]; then
+        ceph fs subvolume setquota {{ item.0.name }} {{ item.1.name }} {{ quota_bytes }}
+      fi
+    {% endif %}
+  args:
+    executable: /bin/bash
+  loop: "{{ (fs_defs_with_subvols | default([])) | subelements('subvolumes') }}"
+  loop_control:
+    label: "{{ item.0.name }}/{{ item.1.name }}"

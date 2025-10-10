@@ -1,0 +1,11 @@
+- name: Run only lae.proxmox Ceph tasks
+  hosts: cluster        # or 'all' / a narrower group; conditions inside ceph.yml will gate work
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Import only the Ceph task file from the role
+      ansible.builtin.import_role:
+        name: lae.proxmox
+        tasks_from: ceph.yml
+
