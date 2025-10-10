@@ -1,0 +1,52 @@
+# inventory/host_vars/pve03.yml
+ceph_db_lv_size: 11G
+ceph_db_vg: ceph-db-vg
+
+ceph_osd_ids:
+  - 14
+  - 15
+  - 16
+  - 17
+  - 18
+  - 19
+  - 20
+
+nvme_disk: /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_2TB_S59CNZFNB11046K
+optane_disk: /dev/disk/by-id/nvme-INTEL_SSDPEK1A118GA_BTOC14120WNT118B
+
+# first (nvme) OSD
+pve_ceph_osds:
+  - osd_id: 14
+    device:    /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_2TB_S59CNZFNB11046K-part1
+    db_device: /dev/ceph-db-vg/osd14-db
+    class:     nvme
+# next six HDD-based OSDs
+  - osd_id: 15
+    device:    /dev/disk/by-id/wwn-0x5000c500e8685467-part1
+    db_device: /dev/ceph-db-vg/osd15-db
+    class:     hdd
+  - osd_id: 16
+    device:    /dev/disk/by-id/wwn-0x5000c500e8685467-part2
+    db_device: /dev/ceph-db-vg/osd16-db
+    class:     hdd
+  - osd_id: 17
+    device:    /dev/disk/by-id/wwn-0x5000c500e869e31a-part1
+    db_device: /dev/ceph-db-vg/osd17-db
+    class:     hdd
+  - osd_id: 18
+    device:    /dev/disk/by-id/wwn-0x5000c500e869e31a-part2
+    db_device: /dev/ceph-db-vg/osd18-db
+    class:     hdd
+  - osd_id: 19
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ab39e-part1
+    db_device: /dev/ceph-db-vg/osd19-db
+    class:     hdd
+  - osd_id: 20
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ab39e-part2
+    db_device: /dev/ceph-db-vg/osd20-db
+    class:     hdd
+
+sata_disks:
+  - /dev/disk/by-id/wwn-0x5000c500e8685467
+  - /dev/disk/by-id/wwn-0x5000c500e869e31a
+  - /dev/disk/by-id/wwn-0x5000c500e86ab39e

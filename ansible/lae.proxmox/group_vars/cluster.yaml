@@ -1,0 +1,73 @@
+public_interfaces:
+  pve01:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve02:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve03:
+    slaves: [enp61s0]
+    mode: active-backup
+    primary: enp61s0
+    xmit_hash_policy: layer3+4
+
+  pve04:
+    slaves: [enp1s0]
+    mode: active-backup
+    primary: enp1s0
+    xmit_hash_policy: layer3+4
+
+#  pve01:
+#    slaves: [enp3s0, enp4s0]
+#    mode: 802.3ad
+#  pve02:
+#    slaves: [enp3s0, enp4s0]
+#    mode: 802.3ad
+
+mesh_links:
+  pve01:
+    - iface: enp1s0f0np0
+      peer_id: 3
+    - iface: enp1s0f1np1
+      peer_id: 2
+  pve02:
+    - iface: enp1s0f0np0
+      peer_id: 1
+    - iface: enp1s0f1np1
+      peer_id: 3
+  pve03:
+    - iface: enp1s0f0np0
+      peer_id: 1
+    - iface: enp1s0f1np1
+      peer_id: 2
+  pve04: []
+
+
+PVE_ASN: 65001
+EDGE_ASN: 65000
+
+TENANT_VLANS: [100, 101, 102, 103]
+
+EDGE_V4_LO: 10.255.255.254
+EDGE_V6_LO: fd00:255::fffe
+PVE_ID: "{{ inventory_hostname[-2:] | regex_replace('^0*','') | int }}"
+enable_mesh_ebgp: true
+
+PVE_LOOPBACKS_V4:
+  - 10.255.255.1
+  - 10.255.255.2
+  - 10.255.255.3
+  - 10.255.255.4
+
+PVE_LOOPBACKS_V6:
+  - fd00:255::1
+  - fd00:255::2
+  - fd00:255::3
+  - fd00:255::4
+

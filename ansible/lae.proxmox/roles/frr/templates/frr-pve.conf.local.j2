@@ -1,0 +1,21 @@
+{# ---------- Host-scoped helpers ---------- #}
+{% set HAS_MESH = inventory_hostname in ['pve01','pve02','pve03'] %}
+{% set PVE_ID = inventory_hostname | regex_replace('^pve0?', '') | int %}
+{% set EDGE_ASN = EDGE_ASN | default(65000) %}
+{% set PVE_ASN = PVE_ASN | default(65001) %}
+{% set EDGE_V6_LO = EDGE_V6_LO | default('fd00:255::fffe') %}
+! ======================================================================
+! frr.conf.local - Proxmox SDN BGP extension
+! Enables IPv6 address family for multi-protocol BGP over IPv6 transport
+! ======================================================================
+{% if HAS_MESH %}
+! ---------- BGP Edge Router Peering ----------
+router bgp {{ PVE_ASN }}
+ !
+ address-family ipv6 unicast
+  neighbor BGP activate
+  neighbor BGP soft-reconfiguration inbound
+ exit-address-family
+exit
+!
+{% endif %}

@@ -1,0 +1,42 @@
+---
+# roles/perl_plugin/tasks/main.yaml
+
+- name: Check if Plugin.pm backup exists
+  ansible.builtin.stat:
+    path: /usr/share/perl5/PVE/Network/SDN/Controllers/Plugin.pm.orig
+  register: plugin_pm_backup
+
+- name: Back up current Plugin.pm if no backup present
+  ansible.builtin.copy:
+    src: /usr/share/perl5/PVE/Network/SDN/Controllers/Plugin.pm
+    dest: /usr/share/perl5/PVE/Network/SDN/Controllers/Plugin.pm.orig
+    remote_src: true
+    mode: '0644'
+  when: not plugin_pm_backup.stat.exists
+
+- name: Deploy perl_plugin configuration - Plugin.pm
+  ansible.builtin.template:
+    src: plugin.pm.j2
+    dest: /usr/share/perl5/PVE/Network/SDN/Controllers/Plugin.pm
+    mode: '0644'
+
+# --- BgpPlugin.pm ---
+
+- name: Check if BgpPlugin.pm backup exists
+  ansible.builtin.stat:
+    path: /usr/share/perl5/PVE/Network/SDN/Controllers/BgpPlugin.pm.orig
+  register: bgp_plugin_backup
+
+- name: Back up current BgpPlugin.pm if no backup present
+  ansible.builtin.copy:
+    src: /usr/share/perl5/PVE/Network/SDN/Controllers/BgpPlugin.pm
+    dest: /usr/share/perl5/PVE/Network/SDN/Controllers/BgpPlugin.pm.orig
+    remote_src: true
+    mode: '0644'
+  when: not bgp_plugin_backup.stat.exists
+
+- name: Deploy perl_plugin configuration - BgpPlugin.pm
+  ansible.builtin.template:
+    src: BgpPlugin.j2
+    dest: /usr/share/perl5/PVE/Network/SDN/Controllers/BgpPlugin.pm
+    mode: '0644'

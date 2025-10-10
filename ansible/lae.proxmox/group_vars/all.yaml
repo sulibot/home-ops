@@ -1,0 +1,31 @@
+---
+# group_vars/all.yaml
+
+# NTP servers for chrony
+ntp_servers:
+  - fd00:255::fffe
+  - 10.255.255.254
+
+# Path to your chrony config (only used if you template it)
+chrony_config_path: /etc/chrony/chrony.conf
+
+# Enable ZFS periodic TRIM in your sysctl role (if you add one)
+zfs_trim_enabled: true
+
+# Public SSH keys to deploy to root@ each PVE host
+ssh_public_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com
+
+# Timezone for all hosts
+timezone: UTC
+
+# VM swappiness tuning
+vm_swappiness: 10
+
+# Log‐forwarding (rsyslog RELP) target
+log_forwarding_target: logserver.sulibot.com
+log_forwarding_port: 2514
+
+# (optional) any overrides for the community post-install script
+#post_pve_install_url: "https://…/post-pve-install.sh"
+#post_pve_install_dest: "/usr/local/bin/post-pve-install.sh"

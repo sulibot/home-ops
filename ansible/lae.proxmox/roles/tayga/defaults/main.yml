@@ -1,0 +1,33 @@
+---
+# Tayga version + download (adjust for your CPU if needed)
+tayga_version: "0.9.5"
+tayga_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armv7
+tayga_arch: "{{ tayga_arch_map[ansible_architecture] | default(omit) }}"
+tayga_url: "https://github.com/apalrd/tayga/releases/download/{{ tayga_version }}/tayga-{{ tayga_arch }}"
+# Optional: add a checksum if you want strict verification (sha256:<hash>)
+tayga_checksum: "sha256:f917c1427340c0a15f46177f3c2142e8ae58dd15df9f90c06fa1340f7a96104f" # Corrected checksum
+
+# Paths & names
+tayga_bin_path: /usr/local/bin/tayga # Changed to match installation path
+tayga_conf_path: /etc/tayga/tayga.conf # Changed to match installation path
+tayga_data_dir: /var/db/tayga # Keep this consistent
+tayga_tun_name: nat64
+
+# Network parameters
+egress_if: "eth0" # **CRITICAL: CHANGE THIS TO YOUR SERVER'S EXTERNAL INTERFACE**
+tayga_ipv4_addr: "192.168.255.1"
+tayga_ipv6_prefix: "64:ff9b::/96"
+tayga_ipv6_addr: "fd00:200::64" # Your server's routable IPv6 address
+tayga_dynamic_pool: "192.168.255.0/24" # This needs to match the source in iptables
+
+# Sysctl parameters for IP forwarding
+sysctl_params:
+  net.ipv4.ip_forward: 1
+  net.ipv6.conf.all.forwarding: 1
+
+# nftables (currently using iptables, so this is not directly used for rules here)
+use_nftables: false # Explicitly set to false as we are using iptables for NAT
+nftables_conf_path: /etc/nftables.d/nat64-tayga.nft

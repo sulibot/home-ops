@@ -1,0 +1,130 @@
+# install-proxmox.sh.j2 (template rendered per host)
+#!/bin/bash
+set -euxo pipefail
+
+# Variables injected by Ansible via inventory_hostname
+DISK1="{{ hostvars[inventory_hostname].optane_disk }}"
+DISK2="{{ hostvars[inventory_hostname].nvme_disk }}"
+POOL="{{ hostvars[inventory_hostname].zfs_pool | default('rpool') }}"
+PART_SIZE_GB="{{ hostvars[inventory_hostname].zfs_root_partition_size_gb | default(64) }}G"
+HOSTNAME="{{ inventory_hostname }}"
+DOMAIN="{{ hostname_domain }}"
+NIC="{{ hostvars[inventory_hostname].proxmox_nic }}"
+IPV4="{{ hostvars[inventory_hostname].proxmox_ipv4 }}"
+IPV6="{{ hostvars[inventory_hostname].proxmox_ipv6 }}"
+GW4="{{ hostvars[inventory_hostname].proxmox_ipv4_gw }}"
+GW6="{{ hostvars[inventory_hostname].proxmox_ipv6_gw }}"
+DNS={{ hostvars[inventory_hostname].proxmox_dns | to_json }}
+
+# Secure Boot notice
+echo "⚠️ Secure Boot must be disabled in UEFI/BIOS for Proxmox kernel to boot."
+
+# Wipe and partition disks
+for disk in "$DISK1" "$DISK2"; do
+  wipefs -a "$disk" || true
+  sgdisk --zap-all "$disk"
+  dd if=/dev/zero of="$disk" bs=1M count=16 status=progress || true
+  sgdisk -n1:1M:+512M -t1:EF00 -c1:"EFI" "$disk"
+  sgdisk -n2:0:+${PART_SIZE_GB} -t2:BF01 -c2:"ZFS" "$disk"
+done
+
+modprobe zfs
+# Create ZFS pool and root dataset
+zpool create -f -o ashift=12 -O compression=lz4 -O atime=off -O xattr=sa -O acltype=posixacl -O mountpoint=none -R /mnt "$POOL" mirror ${DISK1}2 ${DISK2}2
+zfs create -o canmount=off -o mountpoint=none "$POOL/ROOT"
+zfs create -o canmount=noauto -o mountpoint=/ "$POOL/ROOT/pve-1"
+zpool set bootfs="$POOL/ROOT/pve-1" "$POOL"
+zfs mount "$POOL/ROOT/pve-1"
+
+# Bootstrap Debian Bookworm
+debootstrap bookworm /mnt http://deb.debian.org/debian
+
+# Bind and mount
+mount --rbind /dev /mnt/dev
+mount --rbind /proc /mnt/proc
+mount --rbind /sys /mnt/sys
+mkfs.vfat -F32 ${DISK1}1
+mkdir -p /mnt/boot/efi
+mount ${DISK1}1 /mnt/boot/efi
+
+# Generate post-install script inside chroot
+cat <<'EOF' > /mnt/root/post-install.sh
+#!/bin/bash
+set -euxo pipefail
+
+# Host config
+hostnamectl set-hostname "$HOSTNAME"
+echo "127.0.0.1 localhost" > /etc/hosts
+echo "$IPV4 $HOSTNAME.$DOMAIN $HOSTNAME" >> /etc/hosts
+echo "$IPV6 $HOSTNAME.$DOMAIN $HOSTNAME" >> /etc/hosts
+
+# Network
+cat <<NETCONF > /etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto $NIC
+iface $NIC inet manual
+
+auto vmbr0
+iface vmbr0 inet static
+    address $IPV4
+    gateway $GW4
+    bridge-ports $NIC
+    bridge-stp off
+    bridge-fd 0
+
+iface vmbr0 inet6 static
+    address $IPV6
+    gateway $GW6
+    accept_ra 0
+    autoconf 0
+    privext 0
+NETCONF
+
+# DNS
+cat <<RESOLV > /etc/resolv.conf
+$(for ns in $(echo $DNS | jq -r '.[]'); do echo nameserver $ns; done)
+RESOLV
+
+# Locale and time
+apt update
+apt install -y locales systemd-sysv
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen
+update-locale LANG=en_US.UTF-8
+
+# Time sync
+apt install -y chrony
+systemctl disable --now systemd-timesyncd || true
+systemctl enable chrony
+
+# Proxmox repo
+echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
+wget -qO /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg
+apt update && apt full-upgrade -y
+
+# Install PVE
+apt install -y proxmox-default-kernel proxmox-ve postfix open-iscsi
+
+debconf-set-selections <<< "postfix postfix/mailname string $HOSTNAME.$DOMAIN"
+debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Satellite system'"
+
+# Remove unwanted
+apt remove -y linux-image-amd64 'linux-image-6.1*' os-prober
+
+# Install GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=proxmox --recheck
+update-initramfs -c -k all
+update-grub
+EOF
+
+chmod +x /mnt/root/post-install.sh
+
+# Chroot and execute
+chroot /mnt /root/post-install.sh
+
+# Cleanup and reboot
+umount -Rl /mnt
+zpool export "$POOL"
+echo "Installation complete. Reboot to use Proxmox VE."

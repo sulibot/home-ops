@@ -1,0 +1,181 @@
+# begin crush map
+tunable choose_local_tries 0
+tunable choose_local_fallback_tries 0
+tunable choose_total_tries 50
+tunable chooseleaf_descend_once 1
+tunable chooseleaf_vary_r 1
+tunable chooseleaf_stable 1
+tunable straw_calc_version 1
+tunable allowed_bucket_algs 54
+
+# devices
+device 0 osd.0 class nvme
+device 1 osd.1 class hdd
+device 2 osd.2 class hdd
+device 3 osd.3 class hdd
+device 4 osd.4 class hdd
+device 5 osd.5 class hdd
+device 6 osd.6 class hdd
+device 7 osd.7 class nvme
+device 8 osd.8 class hdd
+device 9 osd.9 class hdd
+device 10 osd.10 class hdd
+device 11 osd.11 class hdd
+device 12 osd.12 class hdd
+device 13 osd.13 class hdd
+device 14 osd.14 class nvme
+device 15 osd.15 class hdd
+device 16 osd.16 class hdd
+device 17 osd.17 class hdd
+device 18 osd.18 class hdd
+device 19 osd.19 class hdd
+device 20 osd.20 class hdd
+
+# types
+type 0 osd
+type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 zone
+type 10 region
+type 11 root
+type 12 drive
+
+# buckets
+drive drive-pve01-1 {
+	id -21
+	alg straw2
+	hash 0
+	item osd.1 weight 8.18549
+	item osd.2 weight 8.18549
+}
+drive drive-pve01-2 {
+	id -22
+	alg straw2
+	hash 0
+	item osd.3 weight 8.18549
+	item osd.4 weight 8.18549
+}
+drive drive-pve01-3 {
+	id -23
+	alg straw2
+	hash 0
+	item osd.5 weight 8.18549
+	item osd.6 weight 8.18549
+}
+host pve01 {
+	id -3
+	alg straw2
+	hash 0
+	item osd.0 weight 1.81940
+	item drive-pve01-1 weight 16.37098
+	item drive-pve01-2 weight 16.37098
+	item drive-pve01-3 weight 16.37098
+}
+drive drive-pve02-1 {
+	id -24
+	alg straw2
+	hash 0
+	item osd.8 weight 8.18549
+	item osd.9 weight 8.18549
+}
+drive drive-pve02-2 {
+	id -25
+	alg straw2
+	hash 0
+	item osd.10 weight 8.18549
+	item osd.11 weight 8.18549
+}
+drive drive-pve02-3 {
+	id -26
+	alg straw2
+	hash 0
+	item osd.12 weight 8.18549
+	item osd.13 weight 8.18549
+}
+host pve02 {
+	id -5
+	alg straw2
+	hash 0
+	item osd.7 weight 1.81940
+	item drive-pve02-1 weight 16.37098
+	item drive-pve02-2 weight 16.37098
+	item drive-pve02-3 weight 16.37098
+}
+drive drive-pve03-1 {
+	id -27
+	alg straw2
+	hash 0
+	item osd.15 weight 8.18549
+	item osd.16 weight 8.18549
+}
+drive drive-pve03-2 {
+	id -28
+	alg straw2
+	hash 0
+	item osd.17 weight 8.18549
+	item osd.18 weight 8.18549
+}
+drive drive-pve03-3 {
+	id -29
+	alg straw2
+	hash 0
+	item osd.19 weight 8.18549
+	item osd.20 weight 8.18549
+}
+host pve03 {
+	id -7
+	alg straw2
+	hash 0
+	item osd.14 weight 1.81940
+	item drive-pve03-1 weight 16.37098
+	item drive-pve03-2 weight 16.37098
+	item drive-pve03-3 weight 16.37098
+}
+root default {
+	id -1
+	alg straw2
+	hash 0
+	item pve01 weight 50.93227
+	item pve02 weight 50.93227
+	item pve03 weight 50.93227
+}
+
+# rules
+rule replicated_rule {
+	id 0
+	type replicated
+	step take default
+	step chooseleaf firstn 0 type host
+	step emit
+}
+rule replicated_hdd {
+	id 1
+	type replicated
+	step take default class hdd
+	step chooseleaf firstn 0 type host
+	step emit
+}
+rule replicated_nvme {
+	id 2
+	type replicated
+	step take default class nvme
+	step chooseleaf firstn 0 type host
+	step emit
+}
+rule ec_4_2_by_drive_host {
+	id 3
+	type erasure
+	step set_chooseleaf_tries 5
+	step set_choose_tries 100
+	step take default class hdd
+	step chooseleaf indep 0 type drive
+	step emit
+}
+
+# end crush map

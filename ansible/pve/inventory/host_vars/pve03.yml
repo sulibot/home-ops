@@ -1,8 +1,0 @@
-pve_ceph_osd_map:
-  2: /dev/nvme1n1
-  15: /dev/sda1
-  16: /dev/sda2
-  17: /dev/sdb1
-  18: /dev/sdb2
-  19: /dev/sdc1
-  20: /dev/sdc2

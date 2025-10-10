@@ -1,0 +1,9 @@
+{ 
+  "storage": "{{ item.name }}",
+  "type": "cephfs",
+  "server": "{{ groups[pve_ceph_mon_group][0] }}",
+  "path": "/mnt/pve/{{ item.name }}",
+  "content": "all",
+  "nodes": [],
+  "enable": 1
+}

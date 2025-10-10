@@ -1,0 +1,9 @@
+---
+- name: Reboot to enroll MOK
+  ansible.builtin.reboot:
+    msg: "Rebooting to complete MOK enrollment for Secure Boot kernel module signing."
+    connect_timeout: 60
+    reboot_timeout: 1200
+    pre_reboot_delay: 3
+    post_reboot_delay: 10
+  listen: Reboot to enroll MOK

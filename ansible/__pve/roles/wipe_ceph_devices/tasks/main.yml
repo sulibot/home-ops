@@ -1,0 +1,130 @@
+---
+# roles/wipe_ceph_devices/tasks/main.yml
+
+- name: Gather all Ceph OSD mappings from host_vars
+  set_fact:
+    osd_list: "{{ pve_ceph_osd_map.values() | list }}"
+
+- name: Initialize grouping container
+  set_fact:
+    osds_by_drive: {}
+
+- name: Group each OSD under its base device (nvme or sdX)
+  set_fact:
+    osds_by_drive: >-
+      {{ osds_by_drive
+         | combine({
+             (item.startswith('/dev/sd') and item[:-1] or item): (
+               osds_by_drive.get(
+                 (item.startswith('/dev/sd') and item[:-1] or item), []
+               ) + [ item ]
+             )
+           })
+      }}
+  loop: "{{ osd_list }}"
+
+- name: Show grouped drives
+  debug:
+    var: osds_by_drive
+
+- name: Initialize partition_plan
+  set_fact:
+    partition_plan: {}
+
+- name: Add multi-OSD drives to partition_plan
+  set_fact:
+    partition_plan: "{{ partition_plan | combine({ item.key: item.value }) }}"
+  loop: "{{ osds_by_drive | dict2items }}"
+  when: item.value | length > 1
+
+- name: Show partition_plan
+  debug:
+    var: partition_plan
+
+- name: Determine drives to wipe
+  set_fact:
+    wipe_drives: "{{ osds_by_drive.keys() | list }}"
+
+# ----------------------------------------------------------------------
+# Prepare physical devices for Ceph OSDs
+# ----------------------------------------------------------------------
+- name: Unmount any mounted partitions on target drives
+  mount:
+    path: "{{ item.mount }}"
+    state: absent
+  loop: >-
+    {{ ansible_mounts
+       | selectattr('device', 'match', '^(' + (wipe_drives | join('|') | regex_escape) + ')')
+       | list
+    }}
+  loop_control:
+    label: "{{ item.device }}"
+
+- name: Wipe existing filesystem signatures on drives (force)
+  command: wipefs --all --force {{ item }}
+  loop: "{{ wipe_drives }}"
+  ignore_errors: yes
+
+- name: Zero out first MiB of each drive
+  command: dd if=/dev/zero of={{ item }} bs=1M count=1 oflag=direct
+  loop: "{{ wipe_drives }}"
+
+- name: Sync filesystem buffers
+  command: sync
+  changed_when: false
+
+- name: Create new GPT partition table on each drive
+  command: parted {{ item }} mklabel gpt --script
+  loop: "{{ wipe_drives }}"
+
+- name: Inform the kernel of partition changes (partprobe)
+  command: partprobe {{ item }}
+  loop: "{{ wipe_drives }}"
+  changed_when: false
+
+- name: Wait for udev to settle
+  command: udevadm settle
+
+- name: Create partitions for each OSD on multi-OSD drives
+  parted:
+    device: "{{ item.key }}"
+    number: "{{ idx }}"
+    state: present
+    unit: "%"
+    part_start: "{{ ((idx - 1) / (item.value | length) * 100) | round(2, 'floor') }}%"
+    part_end:   "{{ (idx / (item.value | length) * 100) | round(2, 'floor') }}%"
+  loop: "{{ partition_plan | dict2items }}"
+  loop_control:
+    index_var: idx0
+  vars:
+    idx: "{{ idx0 + 1 }}"
+
+- name: Wipe filesystem signatures on new partitions (force)
+  command: wipefs --all --force {{ item }}
+  loop: "{{ partition_plan.values() | flatten }}"
+
+- name: Inform the kernel of new partitions (partprobe)
+  command: partprobe {{ item }}
+  loop: "{{ partition_plan.values() | flatten }}"
+  changed_when: false
+
+- name: Wait for udev to settle after partitioning
+  command: udevadm settle
+
+# ----------------------------------------------------------------------
+# LVM setup for Ceph OSDs
+# ----------------------------------------------------------------------
+- name: Create LVM physical volumes on OSD partitions
+  lvm_pv:
+    pvs: "{{ partition_plan.values() | flatten }}"
+    force: yes
+
+- name: Create volume group for Ceph OSDs
+  lvg:
+    vg: ceph-osd-vg
+    pvs: "{{ partition_plan.values() | flatten }}"
+    pesize: 4
+
+- name: (Optional) Create logical volumes per OSD
+  debug:
+    msg: "Logical volumes can now be created within 'ceph-osd-vg' for each OSD."

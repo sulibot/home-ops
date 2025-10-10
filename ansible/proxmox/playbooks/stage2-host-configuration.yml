@@ -7,6 +7,7 @@
   roles:
 #    - role: proxmox_repo
     - role: common       # chrony, base OS tuning
+#    - role: proxmox_repo # Proxmox VE repository
     - role: sysctl       # kernel parameters & forwarding
     - role: ssh_config   # PermitRootLogin, authorized_keys
     - role: journald     # persistent logs
@@ -15,7 +16,7 @@
     - role: timezone     # UTC timezone
     - role: ssh_keys     # distribute root SSH keys
     - role: host_limits  # /etc/security limits
-    - role: reboot_handler
+#    - role: reboot_handler
 #    - role: os_updates
 #    - role: fail2ban     # optional
     - role: snmpd        # optional

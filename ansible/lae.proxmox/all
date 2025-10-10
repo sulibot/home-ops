@@ -1,0 +1,246 @@
+https://galaxy.ansible.com/ui/standalone/roles/lae/proxmox/documentation/
+
+---
+# defaults file for ansible-role-proxmox
+pve_group: proxmox
+pve_repository_line: "deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription"
+pve_remove_subscription_warning: true
+pve_extra_packages: []
+pve_check_for_kernel_update: true
+pve_reboot_on_kernel_update: false
+pve_reboot_on_kernel_update_delay: 60
+pve_remove_old_kernels: true
+# pve_default_kernel_version:
+pve_run_system_upgrades: false
+pve_run_proxmox_upgrades: true
+pve_pcie_passthrough_enabled: false
+pve_iommu_passthrough_mode: false
+pve_iommu_unsafe_interrupts: false
+pve_mediated_devices_enabled: false
+pve_pcie_ovmf_enabled: false
+pve_pci_device_ids: []
+pve_vfio_blacklist_drivers: []
+pve_pcie_ignore_msrs: false
+pve_pcie_report_msrs: true
+pve_watchdog: none
+pve_watchdog_ipmi_action: power_cycle
+pve_watchdog_ipmi_timeout: 10
+pve_zfs_enabled: no
+# pve_zfs_options: "parameters to pass to zfs module"
+# pve_zfs_zed_email: "email address for zfs events"
+pve_zfs_create_volumes: []
+pve_ceph_enabled: false
+pve_ceph_repository_line: "deb http://download.proxmox.com/debian/{% if ansible_distribution_release == 'buster' %}ceph-nautilus buster{% else %}ceph-quincy bullseye{% endif %} main"
+pve_ceph_network: "{{ (ansible_default_ipv4.network +'/'+ ansible_default_ipv4.netmask) | ansible.utils.ipaddr('net') }}"
+pve_ceph_nodes: "{{ pve_group }}"
+pve_ceph_mon_group: "{{ pve_group }}"
+pve_ceph_mgr_group: "{{ pve_ceph_mon_group }}"
+pve_ceph_mds_group: "{{ pve_group }}"
+pve_ceph_osds: []
+pve_ceph_pools: []
+pve_ceph_fs: []
+pve_ceph_crush_rules: []
+# pve_ssl_private_key: "contents of private key"
+# pve_ssl_certificate: "contents of certificate"
+pve_cluster_enabled: no
+pve_cluster_clustername: "{{ pve_group }}"
+pve_manage_hosts_enabled: yes
+pve_cluster_addr0: "{{ ansible_default_ipv4.address if ansible_default_ipv4.address is defined else ansible_default_ipv6.address if ansible_default_ipv6.address is defined }}"
+# pve_cluster_addr1: "{{ ansible_eth1.ipv4.address }}
+# pve_cluster_addr0_priority: 0
+# pve_cluster_addr1_priority: 1
+pve_datacenter_cfg: {}
+pve_domains_cfg: []
+pve_cluster_ha_groups: []
+# additional roles for your cluster (f.e. for monitoring)
+pve_pools: []
+pve_roles: []
+pve_groups: []
+pve_users: []
+pve_acls: []
+pve_storages: []
+pve_metric_servers: []
+pve_ssh_port: 22
+pve_manage_ssh: true
+pve_hooks: {}
+pve_no_log: false
+
+
+
+
+---
+pve_group: pve01
+#pve_watchdog: ipmi
+pve_ssl_private_key: "{{ lookup('file', pve_group + '/' + inventory_hostname + '.key') }}"
+pve_ssl_certificate: "{{ lookup('file', pve_group + '/' + inventory_hostname + '.pem') }}"
+pve_cluster_enabled: yes
+pve_groups:
+  - name: ops
+    comment: Operations Team
+pve_users:
+  - name: admin1@pam
+    email: admin1@lab.local
+    firstname: Admin
+    lastname: User 1
+    groups: [ "ops" ]
+  - name: admin2@pam
+    email: admin2@lab.local
+    firstname: Admin
+    lastname: User 2
+    groups: [ "ops" ]
+pve_acls:
+  - path: /
+    roles: [ "Administrator" ]
+    groups: [ "ops" ]
+pve_storages:
+  - name: localdir
+    type: dir
+    content: [ "images", "iso", "backup" ]
+    path: /plop
+    maxfiles: 4
+pve_ssh_port: 22
+
+interfaces_template: "interfaces-{{ pve_group }}.j2"
+
+
+
+
+
+---
+- hosts: all
+  become: True
+  roles:
+    - geerlingguy.ntp
+
+# Leave this out if you're not modifying networking through Ansible
+- hosts: pve01
+  become: True
+  serial: 1
+  tasks:
+    - name: Install bridge-utils
+      apt:
+        name: bridge-utils
+
+    - name: Configure /etc/network/interfaces
+      template:
+        src: "{{ interfaces_template }}"
+        dest: /etc/network/interfaces
+      register: _configure_interfaces
+
+    - block:
+      - name: Reboot for networking changes
+        shell: "sleep 5 && shutdown -r now 'Networking changes found, rebooting'"
+        async: 1
+        poll: 0
+
+      - name: Wait for server to come back online
+        wait_for_connection:
+          delay: 15
+      when: _configure_interfaces is changed
+
+- hosts: pve01
+  become: True
+  roles:
+    - lae.proxmox
+
+---
+
+[variable]: [default] #[description/purpose]
+pve_group: proxmox # host group that contains the Proxmox hosts to be clustered together
+pve_repository_line: "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" # apt-repository configuration - change to enterprise if needed (although TODO further configuration may be needed)
+pve_remove_subscription_warning: true # patches the subscription warning messages in proxmox if you are using the community edition
+pve_extra_packages: [] # Any extra packages you may want to install, e.g. ngrep
+pve_run_system_upgrades: false # Let role perform system upgrades
+pve_run_proxmox_upgrades: true # Let role perform Proxmox VE upgrades
+pve_check_for_kernel_update: true # Runs a script on the host to check kernel versions
+pve_reboot_on_kernel_update: false # If set to true, will automatically reboot the machine on kernel updates
+pve_reboot_on_kernel_update_delay: 60 # Number of seconds to wait before and after a reboot process to proceed with next task in cluster mode
+pve_remove_old_kernels: true # Currently removes kernel from main Debian repository
+# pve_default_kernel_version: # version to pin proxmox-default-kernel to (see https://pve.proxmox.com/wiki/Roadmap#Kernel_6.8)
+pve_pcie_passthrough_enabled: false # Set this to true to enable PCIe passthrough.
+pve_iommu_passthrough_mode: false # Set this to true to allow VMs to bypass the DMA translation. This might increase performance for IOMMU passthrough.
+pve_iommu_unsafe_interrupts: false # Set this to true if your system doesn't support interrupt remapping.
+pve_mediated_devices_enabled: false # Set this to true if your device supports gtv-g and you wish to enable split functionality.
+pve_pcie_ovmf_enabled: false # Set this to true to enable GPU OVMF PCI passthrough.
+pve_pci_device_ids: [] # List of pci device ID's (see https://pve.proxmox.com/wiki/Pci_passthrough#GPU_Passthrough).
+pve_vfio_blacklist_drivers: [] # List of device drivers to blacklist from the Proxmox host (see https://pve.proxmox.com/wiki/PCI(e)_Passthrough).
+pve_pcie_ignore_msrs: false # Set this to true if passing through to Windows machine to prevent VM crashing.
+pve_pcie_report_msrs: true # Set this to false to prevent dmesg system from logging msrs crash reports.
+pve_watchdog: none # Set this to "ipmi" if you want to configure a hardware watchdog. Proxmox uses a software watchdog (nmi_watchdog) by default.
+pve_watchdog_ipmi_action: power_cycle # Can be one of "reset", "power_cycle", and "power_off".
+pve_watchdog_ipmi_timeout: 10 # Number of seconds the watchdog should wait
+pve_zfs_enabled: no # Specifies whether or not to install and configure ZFS packages
+# pve_zfs_options: "" # modprobe parameters to pass to zfs module on boot/modprobe
+# pve_zfs_zed_email: "" # Should be set to an email to receive ZFS notifications
+pve_zfs_create_volumes: [] # List of ZFS Volumes to create (to use as PVE Storages). See section on Storage Management.
+pve_ceph_enabled: false # Specifies wheter or not to install and configure Ceph packages. See below for an example configuration.
+pve_ceph_repository_line: "deb http://download.proxmox.com/debian/ceph-pacific bookworm main" # apt-repository configuration. Will be automatically set for 6.x and 7.x (Further information: https://pve.proxmox.com/wiki/Package_Repositories)
+pve_ceph_network: "{{ (ansible_default_ipv4.network +'/'+ ansible_default_ipv4.netmask) | ansible.utils.ipaddr('net') }}" # Ceph public network
+# pve_ceph_cluster_network: "" # Optional, if the ceph cluster network is different from the public network (see https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pve_ceph_install_wizard)
+pve_ceph_nodes: "{{ pve_group }}" # Host group containing all Ceph nodes
+pve_ceph_mon_group: "{{ pve_group }}" # Host group containing all Ceph monitor hosts
+pve_ceph_mgr_group: "{{ pve_ceph_mon_group }}" # Host group containing all Ceph manager hosts
+pve_ceph_mds_group: "{{ pve_group }}" # Host group containing all Ceph metadata server hosts
+pve_ceph_osds: [] # List of OSD disks
+pve_ceph_pools: [] # List of pools to create
+pve_ceph_fs: [] # List of CephFS filesystems to create
+pve_ceph_crush_rules: [] # List of CRUSH rules to create
+# pve_ssl_private_key: "" # Should be set to the contents of the private key to use for HTTPS
+# pve_ssl_certificate: "" # Should be set to the contents of the certificate to use for HTTPS
+pve_roles: [] # Added more roles with specific privileges. See section on User Management.
+pve_groups: [] # List of group definitions to manage in PVE. See section on User Management.
+pve_users: [] # List of user definitions to manage in PVE. See section on User Management.
+pve_storages: [] # List of storages to manage in PVE. See section on Storage Management.
+pve_metric_servers: [] # List of metric servers to configure in PVE.
+pve_datacenter_cfg: {} # Dictionary to configure the PVE datacenter.cfg config file.
+pve_domains_cfg: [] # List of realms to use as authentication sources in the PVE domains.cfg config file.
+pve_no_log: false # Set this to true in production to prevent leaking of storage credentials in run logs. (may be used in other tasks in the future)
+
+---
+
+pve_extra_packages: [] # Any extra packages you may want to install, e.g. ngrep
+pve_run_system_upgrades: false # Let role perform system upgrades
+pve_pcie_ovmf_enabled: false # Set this to true to enable GPU OVMF PCI passthrough.
+pve_pcie_ovmf_enabled: false # Set this to true to enable GPU OVMF PCI passthrough.
+pve_pci_device_ids: [] # List of pci device ID's (see https://pve.proxmox.com/wiki/Pci_passthrough#GPU_Passthrough).
+pve_vfio_blacklist_drivers: [] # List of device drivers to blacklist from the Proxmox host (see https://pve.proxmox.com/wiki/PCI(e)_Passthrough).
+pve_zfs_enabled: no # Specifies whether or not to install and configure ZFS packages
+# pve_zfs_options: "" # modprobe parameters to pass to zfs module on boot/modprobe
+# pve_zfs_zed_email: "" # Should be set to an email to receive ZFS notifications
+pve_zfs_create_volumes: [] # List of ZFS Volumes to create (to use as PVE Storages). See section on Storage Management.
+pve_ceph_enabled: false # Specifies wheter or not to install and configure Ceph packages. See below for an example configuration.
+pve_ceph_repository_line: "deb http://download.proxmox.com/debian/ceph-pacific bookworm main" # apt-repository configuration. Will be automatically set for 6.x and 7.x (Further information: https://pve.proxmox.com/wiki/Package_Repositories)
+pve_ceph_network: "{{ (ansible_default_ipv4.network +'/'+ ansible_default_ipv4.netmask) | ansible.utils.ipaddr('net') }}" # Ceph public network
+# pve_ceph_cluster_network: "" # Optional, if the ceph cluster network is different from the public network (see https://pve.proxmox.com/pve-docs/chapter-pveceph.html#pve_ceph_install_wizard)
+pve_ceph_nodes: "{{ pve_group }}" # Host group containing all Ceph nodes
+pve_ceph_mon_group: "{{ pve_group }}" # Host group containing all Ceph monitor hosts
+pve_ceph_mgr_group: "{{ pve_ceph_mon_group }}" # Host group containing all Ceph manager hosts
+pve_ceph_mds_group: "{{ pve_group }}" # Host group containing all Ceph metadata server hosts
+pve_ceph_osds: [] # List of OSD disks
+pve_ceph_pools: [] # List of pools to create
+pve_ceph_fs: [] # List of CephFS filesystems to create
+pve_ceph_crush_rules: [] # List of CRUSH rules to create
+# p
+pve_datacenter_cfg: {} # Dictionary to configure the PVE datacenter.cfg config file.
+pve_domains_cfg: [] # List of realms to use as authentication sources in the PVE domains.cfg config file.
+  
+
+---
+- hosts: pve01
+  become: True
+  roles:
+    - role: geerlingguy.ntp
+        ntp_manage_config: true
+        ntp_servers:
+          - clock.sjc.he.net,
+          - clock.fmt.he.net,
+          - clock.nyc.he.net
+    - role: lae.proxmox
+        pve_group: pve01
+        pve_cluster_enabled: yes
+        pve_reboot_on_kernel_update: true
+        pve_watchdog: ipmi
+
+pve_cluster_enabled: no # Set this to yes to configure hosts to be clustered together
+pve_cluster_clustername: "{{ pve_group }}" # Should be set to the name of the PVE cluster
+pve_manage_hosts_enabled : yes # Set this to no to NOT configure hosts file (case of using vpn and hosts file is already configured)

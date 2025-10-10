@@ -1,0 +1,142 @@
+### Preseed for automated Debian/Proxmox (no-subscription) install with mirrored ZFS root
+
+# Allow unauthenticated repos (so we can add Proxmox later)
+d-i debian-installer/allow_unauthenticated    boolean true
+d-i pkgsel/update-policy                     select none
+d-i apt-setup/disable_mirror                 boolean true
+
+#######################
+# Localization
+#######################
+d-i debian-installer/locale                  string en_US.UTF-8
+d-i keyboard-configuration/xkb-keymap        select us
+
+#######################
+# Network configuration
+#######################
+d-i netcfg/disable_dhcp                      boolean true
+d-i netcfg/choose_interface                  select {{ hostvars[item].proxmox_nic }}
+
+# Hostname & domain
+d-i netcfg/get_hostname                      string {{ item }}
+d-i netcfg/get_domain                        string {{ hostname_domain }}
+
+# Static IPv4
+d-i netcfg/get_nameservers                   string {{ hostvars[item].proxmox_dns | join(" ") }}
+d-i netcfg/get_ipaddress                     string {{ hostvars[item].proxmox_ipv4 }}
+d-i netcfg/get_netmask                       string 255.255.255.0
+d-i netcfg/get_gateway                       string {{ hostvars[item].proxmox_ipv4_gw }}
+
+# Static IPv6
+d-i netcfg/no_ipv6                           boolean false
+d-i netcfg/get_ip6address                    string {{ hostvars[item].proxmox_ipv6 }}
+d-i netcfg/get_netmask6                      string 64
+d-i netcfg/get_ipv6gateway                   string {{ hostvars[item].proxmox_ipv6_gw }}
+
+#######################
+# Mirrors & Proxmox repo
+#######################
+# Debian archive
+d-i mirror/country                           string manual
+d-i mirror/http/hostname                     string deb.debian.org
+d-i mirror/http/directory                    string /debian
+d-i mirror/http/proxy                        string
+
+# Proxmox VE No-Subscription repository
+d-i apt-setup/local0/repository              string {{ hostvars[item].pve_apt_repo }}
+d-i apt-setup/local0/comment                 string Proxmox VE No-Subscription
+{% if hostvars[item].pve_apt_key is defined %}
+d-i apt-setup/local0:key                     string {{ hostvars[item].pve_apt_key }}
+{% endif %}
+
+#######################
+# Account setup
+#######################
+d-i passwd/root-login                        boolean true
+d-i passwd/make-user                         boolean false
+d-i passwd/root-password-crypted             password {{ hostvars[item].root_passwd_hash }}
+
+# Install SSH server so we can drop in our key
+d-i openssh-server/install                   boolean true
+d-i ssh/authorized_keys_file                 string /target/root/.ssh/authorized_keys
+
+#######################
+# Package selection
+#######################
+d-i pkgsel/include                           string \
+  zfsutils-linux zfs-initramfs zfs-dkms \
+  grub-efi-amd64 linux-headers-amd64 parted zfs-mountall openssh-server
+
+#######################
+# Remove existing LVM/RAID (Ceph) so partman-auto can work
+#######################
+d-i partman-lvm/device_remove_lvm            boolean true
+d-i partman-md/device_remove_md              boolean true
+d-i partman-lvm/confirm                      boolean true
+d-i partman-lvm/confirm_nooverwrite          boolean true
+d-i partman-md/confirm                       boolean true
+
+#######################
+# Fully automate partitioning (dummy root recipe)
+#######################
+# Define a tiny dummy root FS so partman-auto never stops:
+d-i partman-auto/expert_recipe string \
+  dummyroot :: \
+    1 1 1 ext4 $primary{ } method{ format } format{ } mountpoint{ / } .  
+d-i partman-auto/init_automatically_partition boolean true
+d-i partman-auto/method                      string regular
+d-i partman-auto/disk                        string {{ hostvars[item].optane_disk }} {{ hostvars[item].nvme_disk }}
+d-i partman-auto/choose_recipe               select dummyroot
+
+# Finish and accept all prompts without UI
+d-i partman/choose_partition                 select finish
+d-i partman-auto/confirm                     boolean true
+d-i partman-auto/confirm_nooverwrite         boolean true
+d-i partman/confirm_write_new_label          boolean true
+d-i partman/confirm_nooverwrite              boolean true
+d-i partman/confirm                          boolean true
+
+#######################
+# Run ZFS mirror & GRUB setup after base install
+#######################
+d-i preseed/late_command                     string \
+  # inject root SSH key \
+  in-target mkdir -p /root/.ssh ; \
+  in-target chmod 700 /root/.ssh ; \
+  in-target bash -lc "echo '{{ hostvars[item].ssh_pubkey }}' >> /root/.ssh/authorized_keys" ; \
+  in-target chmod 600 /root/.ssh/authorized_keys ; \
+  \
+  # re-partition both disks as GPT + ESP + data \
+  in-target parted -s {{ hostvars[item].optane_disk }} mklabel gpt ; \
+  in-target parted -s {{ hostvars[item].optane_disk }} mkpart ESP fat32 1MiB 513MiB ; \
+  in-target parted -s {{ hostvars[item].optane_disk }} set 1 boot on ; \
+  in-target parted -s {{ hostvars[item].optane_disk }} mkpart primary 513MiB {{ 513 + (hostvars[item].zfs_root_partition_size_gb * 1024) }}MiB ; \
+  in-target parted -s {{ hostvars[item].nvme_disk }} mklabel gpt ; \
+  in-target parted -s {{ hostvars[item].nvme_disk }} mkpart ESP fat32 1MiB 513MiB ; \
+  in-target parted -s {{ hostvars[item].nvme_disk }} set 1 boot on ; \
+  in-target parted -s {{ hostvars[item].nvme_disk }} mkpart primary 513MiB {{ 513 + (hostvars[item].zfs_root_partition_size_gb * 1024) }}MiB ; \
+  \
+  # bring ZFS online & build mirror \
+  in-target modprobe zfs ; \
+  in-target mkfs.vfat -F32 {{ hostvars[item].optane_disk }}-part1 ; \
+  in-target mkfs.vfat -F32 {{ hostvars[item].nvme_disk }}-part1 ; \
+  in-target mkdir -p /boot/efi ; \
+  in-target mount {{ hostvars[item].optane_disk }}-part1 /boot/efi ; \
+  in-target grub-install --target=x86_64-efi --efi-directory=/boot/efi \
+    --bootloader-id=debian --recheck --no-nvram --removable ; \
+  in-target umount /boot/efi ; \
+  in-target mount {{ hostvars[item].nvme_disk }}-part1 /boot/efi ; \
+  in-target zpool create -f {{ hostvars[item].zfs_pool }} \
+    mirror {{ hostvars[item].optane_disk }}-part2 {{ hostvars[item].nvme_disk }}-part2 \
+    -o ashift=12 -O compression=lz4 -O atime=off -O mountpoint=none ; \
+  in-target zfs create -o mountpoint=/    -o canmount=noauto {{ hostvars[item].zfs_pool }}/ROOT/debian ; \
+  in-target zfs create -o mountpoint=/var/lib/vz {{ hostvars[item].zfs_pool }}/vmdata ; \
+  in-target zpool set bootfs={{ hostvars[item].zfs_pool }}/ROOT/debian {{ hostvars[item].zfs_pool }} ; \
+  in-target zfs mount {{ hostvars[item].zfs_pool }}/ROOT/debian ; \
+  in-target mount --bind /boot/efi /boot/efi ; \
+  in-target zpool set cachefile=/etc/zfs/zpool.cache {{ hostvars[item].zfs_pool }} ; \
+  in-target zpool export {{ hostvars[item].zfs_pool }} ; \
+  in-target zpool import -d /dev/disk/by-id -R / {{ hostvars[item].zfs_pool }} ; \
+  in-target chroot / update-initramfs -u ; \
+  in-target chroot / update-grub ; \
+  # in-target sleep 600

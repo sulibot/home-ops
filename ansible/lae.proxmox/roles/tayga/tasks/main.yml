@@ -1,0 +1,87 @@
+---
+- name: Ensure /usr/local/bin exists
+  ansible.builtin.file:
+    path: /usr/local/bin
+    state: directory
+    mode: '0755'
+
+- name: Download TAYGA binary
+  ansible.builtin.get_url:
+    url: "{{ tayga_binary_url }}"
+    dest: /usr/local/bin/tayga
+    mode: '0755'
+    checksum: "{{ tayga_binary_checksum }}"
+
+- name: Create TAYGA configuration directory
+  ansible.builtin.file:
+    path: /etc/tayga
+    state: directory
+    mode: '0755'
+
+- name: Create TAYGA data directory
+  ansible.builtin.file:
+    path: "{{ tayga_data_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy TAYGA configuration file
+  ansible.builtin.template:
+    src: tayga.conf.j2
+    dest: /etc/tayga/tayga.conf
+  notify: Reload systemd and restart tayga
+
+- name: Create systemd service file for TAYGA
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=TAYGA NAT64 daemon
+      After=network.target
+
+      [Service]
+      Type=forking
+      PIDFile=/var/run/tayga.pid
+      ExecStartPre=/usr/local/bin/tayga --mktun -c /etc/tayga/tayga.conf
+      ExecStart=/usr/local/bin/tayga -d -c /etc/tayga/tayga.conf --pidfile=/var/run/tayga.pid
+      ExecStopPost=/usr/local/bin/tayga --rmtun -c /etc/tayga/tayga.conf
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/tayga.service
+  notify: Reload systemd and restart tayga
+
+- name: Ensure tun kernel module is loaded
+  community.general.modprobe:
+    name: tun
+    state: present
+
+- name: Apply sysctl parameters for IP forwarding
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value | string }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop: "{{ sysctl_params | dict2items }}"
+
+- name: Install iptables-persistent (for saving rules)
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+    update_cache: yes
+
+- name: Add iptables NAT rules for TAYGA
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ egress_if }}"
+    source: "{{ tayga_dynamic_pool }}"
+    jump: MASQUERADE
+    state: present
+  notify: Save iptables rules
+
+- name: Enable and start TAYGA service
+  ansible.builtin.systemd:
+    name: tayga
+    enabled: true
+    state: started

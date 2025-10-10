@@ -1,0 +1,52 @@
+# inventory/host_vars/pve02.yml
+ceph_db_lv_size: 12G
+ceph_db_vg: ceph-db-vg
+
+ceph_osd_ids:
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+
+nvme_disk: /dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D360062P
+optane_disk: /dev/disk/by-id/nvme-INTEL_SSDPE21D015TA_PHKE335100J51P5CGN
+
+# first (nvme) OSD
+pve_ceph_osds_2:
+  - osd_id: 7
+    device:    /dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D360062P-part1
+    db_device: /dev/ceph-db-vg/osd7-db
+    class:     nvme
+# next six HDD-based OSDs
+  - osd_id: 8
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ab1ca-part1
+    db_device: /dev/ceph-db-vg/osd8-db
+    class:     hdd
+  - osd_id: 9
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ab1ca-part2
+    db_device: /dev/ceph-db-vg/osd9-db
+    class:     hdd
+  - osd_id: 10
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ac122-part1
+    db_device: /dev/ceph-db-vg/osd10-db
+    class:     hdd
+  - osd_id: 11
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ac122-part2
+    db_device: /dev/ceph-db-vg/osd11-db
+    class:     hdd
+  - osd_id: 12
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ac38f-part1
+    db_device: /dev/ceph-db-vg/osd12-db
+    class:     hdd
+  - osd_id: 13
+    device:    /dev/disk/by-id/wwn-0x5000c500e86ac38f-part2
+    db_device: /dev/ceph-db-vg/osd13-db
+    class:     hdd
+
+sata_disks:
+  - /dev/disk/by-id/wwn-0x5000c500e86ab1ca
+  - /dev/disk/by-id/wwn-0x5000c500e86ac122
+  - /dev/disk/by-id/wwn-0x5000c500e86ac38f

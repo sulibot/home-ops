@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Dracut Remote Installer Builder (for PVE kernel with ZFS built-in)
+# – Uses default systemd and network modules
+# – Registers a pre-mount hook to fetch and run installer script
+# – Simplest, community-recommended initqueue approach
+
+set -euo pipefail
+IFS=$'\n\t'
+export DEBIAN_FRONTEND=noninteractive
+
+# --------------------------------------------------
+# 0. Install Required Packages
+# --------------------------------------------------
+echo "[setup] Updating APT sources..."
+apt update
+
+echo "[setup] Installing required packages..."
+apt install -y \
+  zfsutils-linux dracut-core dracut-network \
+  wget curl dropbear \
+  gzip xz-utils parted syslinux-common
+
+# --------------------------------------------------
+# 1. Determine Target Kernel Version
+# --------------------------------------------------
+KVER=$(ls /lib/modules | grep pve | sort -V | tail -n1)
+echo "[info] Building initramfs for kernel: $KVER"
+
+# --------------------------------------------------
+# 2. Create Custom Dracut Module (90remote-build)
+#    Registers a pre-mount hook; no /init override
+# --------------------------------------------------
+MODULE_DIR="/usr/lib/dracut/modules.d/90remote-build"
+mkdir -p "$MODULE_DIR"
+chmod -R a+rx "$MODULE_DIR"
+
+# module-setup.sh
+cat > "$MODULE_DIR/module-setup.sh" <<'EOF'
+#!/usr/bin/env bash
+
+# Always include this module
+check() { return 0; }
+
+depends() {
+  # network provided by dracut-network
+  echo "network"
+}
+
+install() {
+  # Pull in required binaries
+  inst_multiple \
+    /usr/bin/bash \
+    /usr/bin/curl \
+    /usr/sbin/ip \
+    /sbin/dhclient \
+    /usr/sbin/zpool \
+    /usr/sbin/zfs
+
+  # Include ZFS kernel modules
+  instmods zfs zcommon
+
+  # Register our provisioning hook for the pre-mount stage
+  inst_hook pre-mount 50 "$moddir/init.sh"
+}
+
+installkernel() { return 0; }
+EOF
+chmod +x "$MODULE_DIR/module-setup.sh"
+
+# init.sh: executed during the pre-mount stage
+cat > "$MODULE_DIR/init.sh" <<'EOF'
+#!/usr/bin/env bash
+exec >/dev/console 2>&1
+
+echo "[remote-build] pre-mount hook started"
+
+# Use the first available interface
+for IF in enp4s0 enp61s0; do
+  ip link show dev "$IF" &>/dev/null && iface="$IF" && break
+done
+
+if [[ -z "${iface:-}" ]]; then
+  echo "[remote-build] no interface found, dropping to shell"
+  exec sh
+fi
+
+# Bring interface up and obtain DHCP
+ip link set dev "$iface" up || true
+DHCLIENT_IFACE="$iface" dhclient -v || echo "[remote-build] DHCP failed"
+
+# Fetch and execute installer
+script=$(awk -F= '/script=/{print $2}' /proc/cmdline || true)
+if [[ -n "$script" ]]; then
+  echo "[remote-build] fetching installer: $script"
+  curl -fsSL "$script" -o /tmp/install.sh && chmod +x /tmp/install.sh && exec /tmp/install.sh
+fi
+
+echo "[remote-build] no script= on cmdline, dropping to shell"
+exec sh
+EOF
+chmod +x "$MODULE_DIR/init.sh"
+
+# --------------------------------------------------
+# 3. Dracut Configuration Overrides
+# --------------------------------------------------
+# Only add our custom module; systemd and network are loaded by default
+cat > /etc/dracut.conf.d/remote-build.conf <<'EOF'
+add_dracutmodules+=" remote-build "
+EOF
+
+# --------------------------------------------------
+# 4. Build the Initramfs
+# --------------------------------------------------
+echo "[build] Generating initramfs for kernel $KVER..."
+dracut --force --verbose --kver "$KVER" /boot/initrd.img-pve
+
+# --------------------------------------------------
+# 5. Validate Build
+# --------------------------------------------------
+if [[ -f /boot/initrd.img-pve ]]; then
+  echo "[✓] initramfs created: /boot/initrd.img-pve"
+else
+  echo "[✗] build failed"
+  exit 1
+fi
+
+# Self-checking validation
+echo "Verifying pre-mount hook:"; lsinitrd /boot/initrd.img-pve | grep 'pre-mount' || echo 'HOOK MISSING'
+echo "Verifying ZFS tools:"; lsinitrd /boot/initrd.img-pve | grep 'usr/sbin/zfs' || echo 'ZFS MISSING'

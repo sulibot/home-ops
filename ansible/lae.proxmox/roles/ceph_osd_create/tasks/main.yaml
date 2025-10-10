@@ -1,0 +1,43 @@
+---
+# tasks/main.yml — Create Ceph OSDs from structured hostvars using ceph-volume
+
+# 1. Validate CRUSH device classes before creating OSDs
+- name: Validate Ceph OSD crush-device-class values
+  ansible.builtin.assert:
+    that:
+      - "item.class in ['hdd', 'ssd', 'nvme']"
+    fail_msg: "Invalid CRUSH class '{{ item.class }}' for osd{{ item.osd_id }} — must be one of: hdd, ssd, nvme"
+    success_msg: "CRUSH class '{{ item.class }}' for osd{{ item.osd_id }} is valid"
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd{{ item.osd_id }} → class={{ item.class }}"
+
+# 2. Prepare each OSD using ceph-volume (uses existing DB LVs)
+- name: Prepare Ceph OSDs with ceph-volume
+  ansible.builtin.command:
+    cmd: >
+      ceph-volume lvm prepare
+      --bluestore
+      --crush-device-class {{ item.class }}
+      --data {{ item.device }}
+      --block.db {{ item.db_device }}
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd{{ item.osd_id }} → {{ item.device }}"
+  become: true
+
+# 3. Activate all prepared OSDs in one go
+- name: Activate all prepared OSDs
+  ansible.builtin.command:
+    cmd: ceph-volume lvm activate --all
+  become: true
+
+# 4. Ensure CRUSH device class is explicitly set in Ceph
+- name: Ensure CRUSH device class set for each OSD
+  ansible.builtin.command:
+    cmd: >
+      ceph osd crush set-class {{ item.class }} osd.{{ item.osd_id }}
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd{{ item.osd_id }} class={{ item.class }}"
+  become: true

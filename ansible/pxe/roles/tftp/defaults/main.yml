@@ -1,0 +1,4 @@
+tftp_root: '/srv/tftp'
+ipxe_file: '{{ role_path }}/files/ipxe.efi'
+snponly_file: '{{ role_path }}/files/snponly.efi'
+autoexec_file: '{{ role_path }}/files/autoexec.ipxe'

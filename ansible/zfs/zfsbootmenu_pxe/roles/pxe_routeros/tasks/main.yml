@@ -1,0 +1,30 @@
+- name: Ensure Proxmox directory exists on RouterOS
+  community.routeros.command:
+    commands:
+      - ':if ([:len [/file find name="usb1/proxmox"]] = 0) do={ /file add name=usb1/proxmox type=directory }'
+
+- name: Check if iPXE binary is present locally
+  stat:
+    path: '{{ ipxe_file }}'
+  register: ipxe_stat
+
+- name: Fetch iPXE binary via scp if missing
+  ansible.builtin.shell: >
+    scp -i ~/.ssh/id_ed25519 root@10.0.9.95:/root/ipxe/src/bin-x86_64-efi/ipxe.efi {{ ipxe_file }}
+  when: not ipxe_stat.stat.exists
+
+- name: Upload iPXE EFI binary
+  ansible.netcommon.net_put:
+    src: '{{ ipxe_file }}'
+    dest: '{{ tftp_root }}/ipxe.efi'
+    mode: '0644'
+
+- name: Add TFTP entry for iPXE
+  community.routeros.command:
+    commands:
+      - '/ip tftp add real-filename="{{ tftp_root }}/ipxe.efi" req-filename=ipxe.efi'
+
+- name: Enable TFTP server on RouterOS
+  community.routeros.command:
+    commands:
+      - '/ip tftp set enabled=yes address=0.0.0.0 port=69'

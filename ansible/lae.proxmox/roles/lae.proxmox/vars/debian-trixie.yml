@@ -1,0 +1,11 @@
+---
+# Debian 13 (trixie) overrides for lae.proxmox
+pve_repository_line: "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription"
+pve_ceph_repository_line: "deb http://download.proxmox.com/debian/ceph-squid trixie no-subscription"
+pve_ssh_ciphers: "aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com"
+
+
+ssh root@10.0.10.1 'rm -f /etc/apt/sources.list.d/ceph-squid.list /etc/apt/sources.list.d/pve-no-subscription.list ; apt update'
+ssh root@10.0.10.2 'rm -f /etc/apt/sources.list.d/ceph-squid.list /etc/apt/sources.list.d/pve-no-subscription.list ; apt update'
+ssh root@10.0.10.3 'rm -f /etc/apt/sources.list.d/ceph-squid.list /etc/apt/sources.list.d/pve-no-subscription.list ; apt update'
+

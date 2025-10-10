@@ -1,0 +1,346 @@
+---
+# roles/cephfs_from_pools/tasks/main.yml
+
+########################################################
+# 1. Gather existing CephFS definitions (JSON output)
+########################################################
+- name: "Gather existing CephFS definitions"
+  command: ceph fs ls -f json
+  register: _ceph_fs_list
+  changed_when: false
+  check_mode: no
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 2. Parse JSON into a list of dicts (existing_cephfs)
+########################################################
+- name: "Set fact: existing_cephfs = list of CephFS dicts"
+  set_fact:
+    existing_cephfs: "{{ (_ceph_fs_list.stdout | from_json) | default([]) }}"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 3. Extract just the names of existing CephFS filesystems
+########################################################
+- name: "Extract list of existing CephFS names"
+  set_fact:
+    existing_cephfs_names: "{{ existing_cephfs | map(attribute='name') | list }}"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 4. Create any missing CephFS filesystems
+########################################################
+- name: "Create CephFS <{{ item.name }}> if it does not already exist"
+  command: >
+    ceph fs new {{ item.name }} {{ item.metadata_pool }} {{ item.data_pool }}
+  register: _create_fs
+  failed_when:
+    - _create_fs.rc != 0
+    - "'file system exists' not in (_create_fs.stderr | lower)"
+  changed_when: >
+    "'file system exists' not in
+    (_create_fs.stdout + _create_fs.stderr | lower)"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - item.name not in existing_cephfs_names
+  loop: "{{ pve_cephfs_from_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+########################################################
+# 5. Add (idempotently) each additional_data_pool to its FS
+########################################################
+- name: "Add each additional_data_pool to its FS"
+  command: >
+    ceph fs add_data_pool {{ fs_item.0.name }} {{ fs_item.1 }}
+  register: _add_data_pool
+  failed_when: false
+  changed_when: >
+    "'already exists' not in
+    (_add_data_pool.stdout + _add_data_pool.stderr | lower)"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - fs_item.0.additional_data_pools is defined
+    - fs_item.0.additional_data_pools is sequence
+  loop: "{{ pve_cephfs_from_pools | subelements('additional_data_pools', skip_missing=True) }}"
+  loop_control:
+    loop_var: fs_item
+    label: "{{ fs_item.0.name }} → {{ fs_item.1 }}"
+
+########################################################
+# 6. Remove any stale data pools from each FS
+########################################################
+- name: "Remove any non-default data pools no longer in additional_data_pools"
+  vars:
+    fs_entry: >
+      {{ (existing_cephfs
+         | selectattr('name', 'equalto', item.0.name)
+         | list | first)
+        | default({ 'data_pools': [item.0.data_pool] }) }}
+    nondefault_pools: >
+      {{ (fs_entry.data_pools | default([item.0.data_pool]))
+         | difference([item.0.data_pool]) }}
+    dp: "{{ item.1 }}"
+  command: >
+    ceph fs rm_data_pool {{ item.0.name }} {{ dp }}
+  register: _remove_data_pool
+  failed_when: false
+  changed_when: >
+    "'not exist' not in
+    (_remove_data_pool.stdout + _remove_data_pool.stderr | lower)"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - item.0.additional_data_pools is defined
+    - dp not in (item.0.additional_data_pools | default([]))
+  loop: "{{ pve_cephfs_from_pools | subelements('nondefault_pools', skip_missing=True) }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.0.name }} → {{ item.1 }}"
+
+########################################################
+# 7. Check Standby MDS Count and Warn If Insufficient
+########################################################
+- name: "Gather current MDS status"
+  command: ceph mds stat -f json
+  register: _mds_stat
+  changed_when: false
+  check_mode: no
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+- name: "Warn if there are fewer standby MDS than filesystems"
+  vars:
+    cephfs_list: "{{ pve_cephfs_from_pools | map(attribute='name') | list }}"
+    standby_list: "{{ (_mds_stat.stdout | from_json).fsmap.standbys | map(attribute='name') | list }}"
+  debug:
+    msg: >
+      There are {{ standby_list | length }} standby MDS daemons for
+      {{ cephfs_list | length }} filesystems. Please add additional
+      MDS daemons to ensure high availability.
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - (standby_list | length) < (cephfs_list | length)
+
+########################################################
+# 8A. Retrieve the list of existing subvolumes for each CephFS
+########################################################
+- name: "Retrieve subvolume list for <{{ item.name }}>}"
+  command: ceph fs subvolume ls {{ item.name }} --format json
+  register: _subvol_list
+  changed_when: false
+  check_mode: no
+  failed_when: false
+  loop: "{{ pve_cephfs_from_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 8B. Record existing subvolume names in a fact per filesystem
+########################################################
+- name: "Set fact: existing_subvols_{{ item.name }} = list of subvolume names"
+  set_fact:
+    "existing_subvols_{{ item.name }}": >-
+      {{ 
+        (
+          (_subvol_list.results | default([]))[ansible_loop.index0].stdout
+          | default('[]')
+          | from_json
+        )
+        | map(attribute='name')
+        | list
+      }}
+  loop: "{{ pve_cephfs_from_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 8C. Create any missing subvolumes, converting “<N>G” → bytes, and support group_name/uid
+########################################################
+- name: "Create subvolume <{{ sub.name }}> on filesystem <{{ fs.name }}> if missing"
+  vars:
+    fs: "{{ composite.0 }}"
+    sub: "{{ composite.1 }}"
+    quota_bytes: "{{ (sub.quota[:-1] | int) * 1024 ** 3 }}"
+  command: >
+    ceph fs subvolume create {{ fs.name }} {{ sub.name }}
+    --size {{ quota_bytes }}
+    {% if sub.pool_layout is defined %}
+    --pool_layout {{ sub.pool_layout }}
+    {% endif %}
+    {% if sub.group_name is defined %}
+    --group_name {{ sub.group_name }}
+    {% endif %}
+    {% if sub.uid is defined %}
+    --uid {{ sub.uid }}
+    {% endif %}
+  register: _create_subvol
+  failed_when:
+    - _create_subvol.rc != 0
+    - "'already exists' not in (_create_subvol.stderr | lower)"
+  changed_when: >
+    "'already exists' not in (_create_subvol.stdout + _create_subvol.stderr | lower)"
+  loop: "{{ pve_cephfs_from_pools | subelements('subvolumes') }}"
+  loop_control:
+    loop_var: composite
+    label: "{{ composite.0.name }} → {{ composite.1.name }}"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - sub.name not in (hostvars[inventory_hostname]['existing_subvols_' + fs.name] | default([]))
+
+########################################################
+# 8D. Set permissions on existing subvolumes, including group_name/uid
+########################################################
+- name: "Set permissions on subvolume <{{ sub.name }}> of filesystem <{{ fs.name }}> if it exists"
+  vars:
+    fs: "{{ composite.0 }}"
+    sub: "{{ composite.1 }}"
+  command: >
+    ceph fs subvolume adjust-permissions {{ fs.name }} {{ sub.name }}
+    --mode {{ sub.mode }}
+    {% if sub.group_name is defined %}
+    --group_name {{ sub.group_name }}
+    {% endif %}
+    {% if sub.uid is defined %}
+    --uid {{ sub.uid }}
+    {% endif %}
+  loop: "{{ pve_cephfs_from_pools | subelements('subvolumes') }}"
+  loop_control:
+    loop_var: composite
+    label: "{{ composite.0.name }} → {{ composite.1.name }}"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - sub.name in (hostvars[inventory_hostname]['existing_subvols_' + fs.name] | default([]))
+
+########################################################
+# 8E. Adjust size or pool_layout on existing subvolumes, converting “<N>G” → bytes,
+#     and preserve group_name/uid if provided
+########################################################
+- name: "Adjust size/pool_layout on existing subvolume <{{ sub.name }}> of FS <{{ fs.name }}>}"
+  vars:
+    fs: "{{ composite.0 }}"
+    sub: "{{ composite.1 }}"
+    quota_bytes: "{{ (sub.quota[:-1] | int) * 1024 ** 3 }}"
+  command: >
+    ceph fs subvolume set-attributes {{ fs.name }} {{ sub.name }}
+    --size {{ quota_bytes }}
+    {% if sub.pool_layout is defined %}
+    --pool_layout {{ sub.pool_layout }}
+    {% endif %}
+    {% if sub.group_name is defined %}
+    --group_name {{ sub.group_name }}
+    {% endif %}
+    {% if sub.uid is defined %}
+    --uid {{ sub.uid }}
+    {% endif %}
+  loop: "{{ pve_cephfs_from_pools | subelements('subvolumes') }}"
+  loop_control:
+    loop_var: composite
+    label: "{{ composite.0.name }} → {{ composite.1.name }}"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - sub.name in (hostvars[inventory_hostname]['existing_subvols_' + fs.name] | default([]))
+
+########################################################
+# 9A. Initialize fs_caps_list = []
+########################################################
+- name: "Initialize fs_caps_list"
+  set_fact:
+    fs_caps_list: []
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 9B. Build fs_caps_list = list of { name: FS, caps: [...] }
+########################################################
+- name: "Add one FS entry to fs_caps_list"
+  set_fact:
+    fs_caps_list: >-
+      {{ fs_caps_list +
+         [ {
+             'name': item.name,
+             'caps': (
+               ['mon allow r']
+               + ['osd allow rw pool=' ~ item.data_pool]
+               + (item.additional_data_pools
+                  | default([])
+                  | map('regex_replace','^(.*)$','osd allow rw pool=\\1')
+                  | list)
+               + ['osd allow rw pool=' ~ item.metadata_pool,
+                  'mds allow r,allow rw path=/']
+             )
+           } ]
+      }}
+  loop: "{{ pve_cephfs_from_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: inventory_hostname == groups[pve_ceph_mon_group][0]
+
+########################################################
+# 9C. Create or update exactly one client.<fs_name> key per FS
+########################################################
+- name: "Get or create a single Ceph auth key for client.{{ item.name }}"
+  command:
+    argv:
+      - ceph
+      - auth
+      - get-or-create
+      - "client.{{ item.name }}"
+      - "{{ (item.caps[0].split(' ', 1))[0] }}"
+      - "{{ (item.caps[0].split(' ', 1))[1] }}"
+      - "{{ (item.caps[1].split(' ', 1))[0] }}"
+      - "{{ (item.caps[1].split(' ', 1))[1] }}"
+      - "{{ (item.caps[2].split(' ', 1))[0] }}"
+      - "{{ (item.caps[2].split(' ', 1))[1] }}"
+      - "{{ (item.caps[3].split(' ', 1))[0] }}"
+      - "{{ (item.caps[3].split(' ', 1))[1] }}"
+      - "{{ (item.caps[4].split(' ', 1))[0] }}"
+      - "{{ (item.caps[4].split(' ', 1))[1] }}"
+  register: _fs_auth
+  changed_when: "'creating key' in (_fs_auth.stdout | lower)"
+  loop: "{{ fs_caps_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - inventory_hostname == groups[pve_ceph_mon_group][0]
+    - item.name in existing_cephfs_names
+
+########################################################
+# 10. Write the client key to /etc/pve/priv/ceph.client.<fs_name>.keyring
+#     via direct shell redirection (overwrite in-place).
+########################################################
+- name: "Overwrite client key via shell redirection"
+  become: true
+  shell: >
+    echo "$(ceph auth print-key client.{{ item }})"
+    > /etc/pve/priv/ceph.client.{{ item }}.keyring
+  args:
+    executable: /bin/bash
+  loop: "{{ existing_cephfs_names if inventory_hostname == groups[pve_ceph_mon_group][0] else [] }}"
+  loop_control:
+    label: "{{ item }}"
+
+########################################################
+# 11A. Ensure /etc/ceph directory exists (all hosts)
+########################################################
+- name: "Ensure /etc/ceph directory exists"
+  file:
+    path: /etc/ceph
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+########################################################
+# 11B. Symlink client key into /etc/ceph on all hosts
+########################################################
+- name: "Symlink /etc/ceph/client.{{ item }}.keyring → /etc/pve/priv/ceph.client.{{ item }}.keyring"
+  become: true
+  file:
+    src: "/etc/pve/priv/ceph.client.{{ item }}.keyring"
+    dest: "/etc/ceph/client.{{ item }}.keyring"
+    state: link
+    force: true
+  loop: "{{ existing_cephfs_names if inventory_hostname == groups[pve_ceph_mon_group][0] else [] }}"
+  loop_control:
+    label: "{{ item }}"
+

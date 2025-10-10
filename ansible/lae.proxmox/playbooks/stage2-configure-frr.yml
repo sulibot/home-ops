@@ -1,0 +1,9 @@
+---
+- name: Stage 2 - Configure FRR routing
+  hosts: pve
+  become: true
+  vars_files:
+    - ../group_vars/all.yaml
+    - ../group_vars/cluster.yaml
+  roles:
+    - role: frr

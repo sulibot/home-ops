@@ -1,0 +1,6 @@
+# .sops.yaml
+creation_rules:
+  - path_regex:  '.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData|.*secret$|.*password$)$'
+    age: |
+      age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg

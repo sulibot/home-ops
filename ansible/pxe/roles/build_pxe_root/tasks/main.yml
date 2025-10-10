@@ -1,0 +1,137 @@
+# roles/build_pxe_root/tasks/main.yml
+
+- name: Check DNS resolution on remote host
+  command: ping -c1 deb.debian.org
+  register: dns_check
+  changed_when: false
+  failed_when: dns_check.rc != 0
+
+- name: Ensure debootstrap installed
+  apt:
+    name: debootstrap
+    state: present
+
+- name: Create chroot directory
+  file:
+    path: "{{ pxe_chroot }}"
+    state: directory
+    mode: '0755'
+
+- name: Bootstrap Debian rootfs
+  command: >
+    debootstrap --include={{ pxe_debootstrap_packages | join(',') }}
+    {{ debian_codename }} {{ pxe_chroot }} {{ debian_mirror }}
+  args:
+    creates: "{{ pxe_chroot }}/bin/bash"
+
+- name: Bind-mount host dirs into chroot
+  mount:
+    path: "{{ item.target }}"
+    src: "{{ item.source }}"
+    fstype: none
+    opts: bind
+    state: mounted
+  loop:
+    - { source: /dev,      target: "{{ pxe_chroot }}/dev" }
+    - { source: /dev/pts,  target: "{{ pxe_chroot }}/dev/pts" }
+    - { source: /proc,     target: "{{ pxe_chroot }}/proc" }
+    - { source: /sys,      target: "{{ pxe_chroot }}/sys" }
+
+- name: Copy resolv.conf into chroot
+  copy:
+    src: /etc/resolv.conf
+    dest: "{{ pxe_chroot }}/etc/resolv.conf"
+    remote_src: yes
+
+- name: Write apt sources inside chroot
+  copy:
+    dest: "{{ pxe_chroot }}/etc/apt/sources.list"
+    content: |
+      deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+      deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+      deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+      deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
+
+- name: Link Debian archive keyring into chroot
+  copy:
+    src: /usr/share/keyrings/debian-archive-keyring.gpg
+    dest: "{{ pxe_chroot }}/usr/share/keyrings/debian-archive-keyring.gpg"
+    remote_src: yes
+
+- name: Symlink trusted.gpg
+  file:
+    src: /usr/share/keyrings/debian-archive-keyring.gpg
+    dest: "{{ pxe_chroot }}/etc/apt/trusted.gpg"
+    state: link
+
+- name: Disable auto-upgrades
+  file:
+    path: "{{ pxe_chroot }}/etc/apt/apt.conf.d/20auto-upgrades"
+    state: absent
+
+- name: Seed minimal passwd/shadow
+  block:
+    - copy:
+        dest: "{{ pxe_chroot }}/etc/passwd"
+        content: "root:x:0:0:root:/root:/bin/bash\n"
+    - copy:
+        dest: "{{ pxe_chroot }}/etc/shadow"
+        content: "root::19700:0:99999:7:::\n"
+
+- name: Kill any apt/dpkg inside chroot
+  shell: |
+    chroot {{ pxe_chroot }} bash -c '
+      ps axo pid,comm | grep -E "apt|dpkg" | awk "{ print \$1 }" | xargs -r kill -9 || true'
+
+- name: Remove stale lock files inside chroot
+  file:
+    path: "{{ pxe_chroot }}{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/dpkg/lock-frontend
+    - /var/lib/dpkg/lock
+    - /var/lib/apt/lists/lock
+    - /var/cache/apt/archives/lock
+
+- name: Configure any partially-installed packages
+  command: chroot {{ pxe_chroot }} dpkg --configure -a
+
+- name: Ensure /init exists inside chroot
+  file:
+    src: /lib/systemd/systemd
+    dest: "{{ pxe_chroot }}/init"
+    state: link
+
+- name: Generate initramfs inside chroot
+  command: chroot {{ pxe_chroot }} update-initramfs -c -k all
+
+- name: Extract Proxmox kernel
+  shell: |
+    kernel_file=$(ls {{ pxe_chroot }}/boot/vmlinuz-* | head -n1)
+    cp "$kernel_file" {{ pxe_output_kernel }}
+  args:
+    creates: "{{ pxe_output_kernel }}"
+
+- name: Compress and copy initrd to output
+  shell: |
+    initrd_file=$(ls {{ pxe_chroot }}/boot/initrd.img-* | head -n1)
+    gzip -c "$initrd_file" > {{ pxe_output_initrd }}
+  args:
+    creates: "{{ pxe_output_initrd }}"
+
+- name: Validate initrd is gzip-compressed
+  command: file {{ pxe_output_initrd }}
+  register: initrd_file_type
+  changed_when: false
+  failed_when: "'gzip compressed data' not in initrd_file_type.stdout"
+
+- name: Unmount chroot bind mounts
+  mount:
+    path: "{{ item }}"
+    state: unmounted
+    opts: bind
+  loop:
+    - "{{ pxe_chroot }}/dev/pts"
+    - "{{ pxe_chroot }}/dev"
+    - "{{ pxe_chroot }}/proc"
+    - "{{ pxe_chroot }}/sys"

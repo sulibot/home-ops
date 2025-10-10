@@ -1,0 +1,5 @@
+---
+# defaults file for jool_install
+jool_version: "4.1.14"
+jool_download_url: "https://github.com/NICMx/Jool/releases/download/v{{ jool_version }}"
+jool_pool6_prefix: "64:ff9b:1::/96"

@@ -1,0 +1,20 @@
+# Variables for Proxmox host configuration
+ssh_pubkey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com'
+hostname_domain: 'sulibot.com'
+
+# Network interface for cloud-init provisioning (e.g. eth0, ens3)
+proxmox_nic: 'eth0'
+
+# ZFS settings for cloud-init user-data
+zfs_pool: 'rpool'
+zfs_ashift: 12
+zfs_options: 'ashift=12 compression=lz4 atime=off'
+
+# group_vars/pve.yml
+root_passwd_hash: "$6$XzTLR7ZbQeayKSZk$V3C0YkflG9ZoeINgYQSt28JmKdtw3tA2.VkMHm1a.qUSh4TUt0xyTaeZ4mUSUb5qxlND1jvqOjHkQlHkMGeqd/"
+# use the Proxmox “no-subscription” repo:
+pve_apt_repo: "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription"
+# still signed by the same Proxmox public key:
+pve_apt_key:  "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg"
+
+http_web_root: "http://infraweb.sulibot.com"

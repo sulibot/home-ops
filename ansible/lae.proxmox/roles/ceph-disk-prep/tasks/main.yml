@@ -1,0 +1,121 @@
+---
+# 1) Repartition each SATA disk into two 50/50 GPT slices
+- name: Partition SATA disks (first 50%)
+  parted:
+    device: "{{ item }}"
+    label: gpt
+    state: present
+    number: 1
+    part_start: 0%
+    part_end: 50%
+  loop: "{{ sata_disks }}"
+
+- name: Partition SATA disks (second 50%)
+  parted:
+    device: "{{ item }}"
+    label: gpt
+    state: present
+    number: 2
+    part_start: 50%
+    part_end: 100%
+  loop: "{{ sata_disks }}"
+
+# 2) Mirror partitions p1–p3 from Optane onto the NVMe “ceph_nvme_mirror”
+- name: Create NVMe p1 (≈1007K) on mirror NVMe
+  parted:
+    device: "{{ ceph_nvme_mirror }}"
+    label: gpt
+    state: present
+    number: 1
+    part_start: 0%
+    part_end: 1007K
+
+- name: Create NVMe p2 (1G) on mirror NVMe
+  parted:
+    device: "{{ ceph_nvme_mirror }}"
+    state: present
+    number: 2
+    part_start: 1007K
+    part_end: 1G
+
+- name: Create NVMe p3 (match Optane’s p3) on mirror NVMe
+  parted:
+    device: "{{ ceph_nvme_mirror }}"
+    state: present
+    number: 3
+    part_start: 1G
+    part_end: "{{ optane_db_start }}"
+
+# 3) Create a 4th partition (p4) on the mirror NVMe for Ceph’s data pool
+- name: Create NVMe p4 for Ceph data pool on mirror NVMe
+  parted:
+    device: "{{ ceph_nvme_mirror }}"
+    state: present
+    number: 4
+    part_start: "{{ optane_db_start }}"
+    part_end: 100%
+
+# 4) Create a 4th partition (p4) on the Optane NVMe to hold ceph-db-vg
+- name: Create Optane p4 for Ceph DB VG
+  parted:
+    device: "{{ optane_nvme }}"
+    state: present
+    number: 4
+    part_start: "{{ optane_db_start }}"
+    part_end: 100%
+
+# 5) Force the kernel to refresh partition tables
+- name: Wait for kernel to recognize new partitions
+  command: partprobe
+
+# 6) Build a list of every partition we intend to zap (wipe old LVM/Ceph signatures)
+- name: Build list of partitions to zap
+  set_fact:
+    zap_parts: >-
+      {{
+        sata_disks
+        | map('regex_replace', '(.+)$', '\1-part1')
+        | list
+      }} +
+      {{
+        sata_disks
+        | map('regex_replace', '(.+)$', '\1-part2')
+        | list
+      }} + [
+        ceph_nvme_mirror + "-part4",
+        optane_nvme + "-part4"
+      ]
+
+# 7) Zap & wipe any leftover LVM or Ceph metadata on those partitions
+- name: Zap and wipe old Ceph/LVM metadata
+  shell: |
+    ceph-volume lvm zap {{ part }} --destroy || true
+    pvremove -ff {{ part }}       || true
+    wipefs -a {{ part }}          || true
+  loop: "{{ zap_parts }}"
+  loop_control:
+    loop_var: part
+
+# 8) Check whether our VG exists already
+- name: Check if ceph-db-vg exists
+  command: vgdisplay {{ ceph_db_vg }}
+  register: vg_check
+  ignore_errors: true
+
+# 9) If VG is missing, create a PV and VG on Optane’s p4
+- name: Create PV on Optane-part4 if VG missing
+  command: pvcreate "/dev/disk/by-id/{{ optane_nvme }}-part4"
+  when: vg_check.rc != 0
+
+- name: Create VG {{ ceph_db_vg }} if missing
+  command: vgcreate {{ ceph_db_vg }} "/dev/disk/by-id/{{ optane_nvme }}-part4"
+  when: vg_check.rc != 0
+
+# 10) Create a logical volume “osd<ID>-db” for each OSD ID
+- name: Create OSD DB logical volumes
+  lvol:
+    vg: "{{ ceph_db_vg }}"
+    lv: "osd{{ item }}-db"
+    size: "{{ ceph_db_lv_size }}"
+    state: present
+  loop: "{{ ceph_osd_ids }}"

@@ -1,0 +1,14 @@
+---
+# File: playbooks/provision_fixed_osds_playbook.yml
+
+- name: Provision Ceph OSDs with fixed IDs and dual‐actuator HDD partitioning
+  hosts: pve
+  gather_facts: false
+
+  # pull in each host’s pve_ceph_osd_map from host_vars/<hostname>.yml
+  vars_files:
+    - "../host_vars/{{ inventory_hostname }}.yml"
+
+  roles:
+    - provision_fixed_osds
+

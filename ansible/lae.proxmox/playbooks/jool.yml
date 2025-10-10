@@ -1,0 +1,6 @@
+---
+- name: Install and configure Jool for NAT64
+  hosts: jool
+  become: yes
+  roles:
+    - jool

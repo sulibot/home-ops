@@ -1,0 +1,5 @@
+- name: Build PXE root filesystem for Proxmox install
+  hosts: pxe_builder
+  become: true
+  roles:
+    - build_pxe_root
