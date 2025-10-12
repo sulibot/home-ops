@@ -43,6 +43,14 @@
   become: true
   when: not kubeadm_init_stat.stat.exists
 
+- name: Upload kubelet config to cluster (required for node joins)
+  ansible.builtin.command:
+    cmd: kubeadm init phase upload-config kubelet --config /root/kubeadm-init.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
+  become: true
+  when: not kubeadm_init_stat.stat.exists
+
 - name: Create cluster-info ConfigMap and RBAC for node joins
   ansible.builtin.command:
     cmd: kubeadm init phase bootstrap-token --skip-token-print
