@@ -35,35 +35,11 @@
     timeout: 60
   when: not kubeadm_init_stat.stat.exists
 
-- name: Create RBAC for anonymous cluster-info access (required for node joins)
-  ansible.builtin.shell: |
-    export KUBECONFIG=/etc/kubernetes/super-admin.conf
-    cat <<'EOF' | kubectl apply -f -
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    metadata:
-      name: kubeadm:public-info-viewer
-    rules:
-    - apiGroups: ['']
-      resources: ['configmaps']
-      resourceNames: ['cluster-info']
-      verbs: ['get']
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      name: kubeadm:public-info-viewer
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: kubeadm:public-info-viewer
-    subjects:
-    - apiGroup: rbac.authorization.k8s.io
-      kind: Group
-      name: system:unauthenticated
-    EOF
-  args:
-    executable: /bin/bash
+- name: Create cluster-info ConfigMap and RBAC for node joins
+  ansible.builtin.command:
+    cmd: kubeadm init phase bootstrap-token --skip-token-print
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
   become: true
   when: not kubeadm_init_stat.stat.exists
 
