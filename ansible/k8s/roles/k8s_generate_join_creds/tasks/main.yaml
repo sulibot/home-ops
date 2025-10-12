@@ -2,6 +2,8 @@
 
 - name: Create a new bootstrap token
   command: kubeadm token create
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
   register: bootstrap_token_output
   changed_when: bootstrap_token_output.rc == 0
 
@@ -26,6 +28,8 @@
 
 - name: Upload and retrieve control-plane certificate key
   command: kubeadm init phase upload-certs --upload-certs
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
   register: cert_key_output
   changed_when: false
 
