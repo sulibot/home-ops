@@ -35,6 +35,17 @@
     timeout: 60
   when: not kubeadm_init_stat.stat.exists
 
+- name: Allow anonymous users to read cluster-info ConfigMap for node joins
+  ansible.builtin.shell: |
+    export KUBECONFIG=/etc/kubernetes/super-admin.conf
+    kubectl create clusterrolebinding kubeadm:public-info-viewer \
+      --clusterrole=kubeadm:public-info-viewer \
+      --group=system:unauthenticated 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  become: true
+  when: not kubeadm_init_stat.stat.exists
+
 - name: Create remote kube dir
   file:
     path: /root/.kube
