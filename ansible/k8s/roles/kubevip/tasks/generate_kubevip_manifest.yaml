@@ -18,7 +18,7 @@
   changed_when: false
   when: not kubevip_manifest.stat.exists
 
-- name: Generate kube-vip manifest with ARP/ND
+- name: Generate kube-vip manifest with ARP (multi-master with leader election)
   ansible.builtin.shell: |
     ctr image pull ghcr.io/kube-vip/kube-vip:{{ kubevip_version.stdout }}
     ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:{{ kubevip_version.stdout }} vip /kube-vip manifest pod \
@@ -28,15 +28,6 @@
       --arp \
       --leaderElection \
     > /etc/kubernetes/manifests/kube-vip.yaml
-  args:
-    executable: /bin/bash
-  become: true
-  when: not kubevip_manifest.stat.exists
-
-- name: Patch kube-vip manifest for super-admin.conf
-  ansible.builtin.shell: |
-    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/admin.conf|path: /etc/kubernetes/super-admin.conf|' \
-      /etc/kubernetes/manifests/kube-vip.yaml
   args:
     executable: /bin/bash
   become: true
