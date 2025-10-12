@@ -24,6 +24,7 @@ __MACOSX
 crash.log
 .terraform*
 terraform.*
+.terragrunt-cache/
 
 # Python
 *.pyc

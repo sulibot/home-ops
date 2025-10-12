@@ -5,6 +5,11 @@
     path: /etc/kubernetes/admin.conf
   register: kubeadm_init_stat
 
+- name: Temporarily add VIP to interface for kubeadm init
+  ansible.builtin.shell: |
+    ip -6 addr add {{ control_plane_vip }}/128 dev {{ kube_vip_interface }} 2>/dev/null || true
+  when: not kubeadm_init_stat.stat.exists
+
 - name: Render kubeadm-init.yaml (first CP only)
   template:
     src: ../../../templates/kubeadm-init.yaml.j2
@@ -28,15 +33,6 @@
     host: "{{ control_plane_vip }}"
     port: 6443
     timeout: 60
-  when: not kubeadm_init_stat.stat.exists
-  
-- name: Patch kube-vip manifest for admin.conf path
-  ansible.builtin.shell: |
-    sed -i '/hostPath:/!b;n;s|path: /etc/kubernetes/super-admin.conf|path: /etc/kubernetes/admin.conf|' \
-      /etc/kubernetes/manifests/kube-vip.yaml
-  args:
-    executable: /bin/bash
-  become: true
   when: not kubeadm_init_stat.stat.exists
 
 - name: Create remote kube dir

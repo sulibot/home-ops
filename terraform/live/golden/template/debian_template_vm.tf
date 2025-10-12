@@ -39,7 +39,7 @@ resource "proxmox_virtual_environment_vm" "debian_template" {
 
   # Import qcow2 -> Ceph RBD, then resize
   disk {
-    datastore_id = "rdb-vm"
+    datastore_id = "rbd-vm"
     interface    = "scsi0"
     file_id      = var.template_image_id
     size         = 16
@@ -85,8 +85,24 @@ resource "null_resource" "wait_for_cloud_init_done" {
         set -e
         VM_ID=${proxmox_virtual_environment_vm.debian_template.vm_id}
         
+        echo "Waiting for qemu-guest-agent in VM $VM_ID..."
+
+        # First wait for qemu-guest-agent to be responsive
+        AGENT_TIMEOUT=300  # 5 minutes
+        AGENT_ELAPSED=0
+        until qm guest cmd $VM_ID ping >/dev/null 2>&1; do
+          if [ $AGENT_ELAPSED -ge $AGENT_TIMEOUT ]; then
+            echo "ERROR: qemu-guest-agent not responding after $AGENT_TIMEOUT seconds"
+            exit 1
+          fi
+          echo "Waiting for qemu-guest-agent... ($AGENT_ELAPSED/$AGENT_TIMEOUT seconds)"
+          sleep 2
+          AGENT_ELAPSED=$((AGENT_ELAPSED + 2))
+        done
+        echo "✓ qemu-guest-agent is responsive"
+
         echo "Waiting for cloud-init in VM $VM_ID..."
-        
+
         # Wait for completion marker with timeout
         TIMEOUT=1800  # 30 minutes
         ELAPSED=0
@@ -98,8 +114,8 @@ resource "null_resource" "wait_for_cloud_init_done" {
             exit 1
           fi
           echo "Still waiting for cloud-init to complete... ($ELAPSED/$TIMEOUT seconds)"
-          sleep 10
-          ELAPSED=$((ELAPSED + 10))
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
         done
         
         echo "cloud-init completed in VM $VM_ID"

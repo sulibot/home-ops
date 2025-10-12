@@ -21,7 +21,7 @@
     kubeconfig:        /etc/kubernetes/admin.conf
     super_admin_conf:  /etc/kubernetes/super-admin.conf
   roles:
-    #- kubevip
+    - kubevip
     # - k8s_frr
     - k8s_init
     #- sops_age_secret

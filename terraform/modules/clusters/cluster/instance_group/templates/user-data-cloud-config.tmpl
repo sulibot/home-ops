@@ -129,24 +129,6 @@ write_files:
       # Increase file descriptor limits
       MAX_FDS=8192
 
-%{ if role == "control-plane" }
-  # --- kube-vip healthcheck (control-plane only) ---
-  - path: /usr/local/bin/k8s-vip-healthcheck.sh
-    permissions: '0755'
-    content: |
-      ${indent(6, k8s_vip_script)}
-
-  - path: /etc/systemd/system/k8s-vip.service
-    permissions: '0644'
-    content: |
-      ${indent(6, k8s_vip_service)}
-
-  - path: /etc/systemd/system/k8s-vip.timer
-    permissions: '0644'
-    content: |
-      ${indent(6, k8s_vip_timer)}
-%{ endif }
-
 %{ if enable_ipv6 }
   # --- RA policy (only when IPv6 is enabled) ---
   - path: /etc/sysctl.d/80-accept-ra.conf
@@ -493,13 +475,6 @@ runcmd:
   - systemctl start bgp-monitor.timer
   - systemctl enable disk-monitor.timer
   - systemctl start disk-monitor.timer
-  
-%{ if role == "control-plane" }
-  # Start VIP management for control-plane nodes
-  - systemctl enable k8s-vip.timer
-  - systemctl start k8s-vip.timer
-%{ endif }
-  
   # Verify SR-IOV drivers from template
   - |
     echo "Verifying SR-IOV drivers from template..."
@@ -521,9 +496,6 @@ runcmd:
   - sleep 10
   - journalctl -u frr -n 50 --no-pager
   - systemctl status bgp-monitor.timer --no-pager
-%{ if role == "control-plane" }
-  - systemctl status k8s-vip.timer --no-pager
-%{ endif }
   - systemctl status ssh --no-pager
   
   # Clean cloud-init after successful first boot

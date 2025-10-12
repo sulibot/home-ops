@@ -22,7 +22,7 @@ bfd
  exit
 !
 
-! ---------- Loopback Interface (Node ID only - VIPs managed by k8s-vip script) ----------
+! ---------- Loopback Interface (Node ID + VIPs managed by kube-vip) ----------
 interface lo
 %{ if enable_ipv4 }
  ip address ${egress_ipv4_loopback_id_ip}/32
@@ -81,7 +81,7 @@ router bgp ${vm_asn}
 
 ! ---------- Route Maps & Prefix Lists ----------
 %{ if enable_ipv4 }
-! Export ALL loopback interfaces (node ID + VIPs dynamically added by k8s-vip script)
+! Export ALL loopback interfaces (node ID + VIPs dynamically added by kube-vip)
 route-map EXPORT-SERVICES-v4 permit 10
  match interface lo
  set community ${vm_asn}:100
@@ -100,7 +100,7 @@ route-map IMPORT-DEFAULT-v4 deny 20
 %{ endif }
 
 %{ if enable_ipv6 }
-! Export ALL loopback interfaces (node ID + VIPs dynamically added by k8s-vip script)
+! Export ALL loopback interfaces (node ID + VIPs dynamically added by kube-vip)
 route-map EXPORT-SERVICES-v6 permit 10
  match interface lo
  set community ${vm_asn}:100
