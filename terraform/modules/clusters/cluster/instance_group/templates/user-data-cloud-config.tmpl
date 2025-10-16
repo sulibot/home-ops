@@ -129,14 +129,6 @@ write_files:
       # Increase file descriptor limits
       MAX_FDS=8192
 
-%{ if enable_ipv6 }
-  # --- RA policy (only when IPv6 is enabled) ---
-  - path: /etc/sysctl.d/80-accept-ra.conf
-    permissions: '0644'
-    content: |
-      net.ipv6.conf.eth0.accept_ra=2
-      net.ipv6.conf.eth1.accept_ra=0
-%{ endif }
 
   # --- CPU governor and power management ---
   - path: /etc/systemd/system/performance-mode.service
@@ -213,7 +205,7 @@ write_files:
       [Service]
       Type=oneshot
       ExecStart=/usr/local/bin/bgp-monitor.sh
-      User=frr
+      User=frr n
       Group=frr
 
   - path: /etc/systemd/system/bgp-monitor.timer
@@ -229,6 +221,17 @@ write_files:
       
       [Install]
       WantedBy=timers.target
+
+  # --- VIP health routing script (replaces kube-vip) ---
+  - path: /usr/local/sbin/vip-health-bgp.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, vip_health_bgp_sh)}
+
+  - path: /etc/systemd/system/vip-health-bgp.service
+    permissions: '0644'
+    content: |
+      ${indent(6, vip_health_bgp_service)}
 
   # --- BGP session verification ---
   - path: /usr/local/bin/wait-for-bgp.sh
@@ -418,12 +421,17 @@ write_files:
 %{ endif ~}
 
 %{ if enable_ipv6 }
-  # --- systemd-networkd RA filter (IPv6 only) ---
-  - path: /etc/systemd/network/10-netplan-eth0.network.d/50-ra-filter.conf
+  # --- Disable IPv6 autoconfiguration to prevent ULA SLAAC conflicts ---
+  # Problem: Router advertisements for fd00::/8 cause kernel to create SLAAC addresses
+  # that don't match etcd peer TLS certificates, breaking cluster joins.
+  # Solution: Disable kernel-level IPv6 autoconfiguration while keeping RA for routing.
+  # This allows DHCPv6 to work for global addresses while preventing problematic SLAAC.
+  - path: /etc/sysctl.d/99-disable-ipv6-autoconf.conf
     permissions: '0644'
     content: |
-      [IPv6AcceptRA]
-      PrefixAllowList=2000::/3
+      # Disable IPv6 SLAAC to prevent autoconfigured addresses
+      # Still accept RAs for routing info, just don't autoconfigure addresses
+      net.ipv6.conf.eth0.autoconf = 0
 %{ endif }
 
 runcmd:
@@ -475,17 +483,8 @@ runcmd:
   - systemctl start bgp-monitor.timer
   - systemctl enable disk-monitor.timer
   - systemctl start disk-monitor.timer
-  # Verify SR-IOV drivers from template
-  - |
-    echo "Verifying SR-IOV drivers from template..."
-    if lsmod | grep -q i915; then
-      echo "✓ i915 SR-IOV driver loaded successfully"
-    else
-      echo "Note: i915 driver will load on next reboot"
-    fi
-    if dkms status | grep -q "i915-sriov.*installed"; then
-      echo "✓ SR-IOV drivers available from template"
-    fi
+  - systemctl enable vip-health-bgp.service
+  - systemctl start vip-health-bgp.service
   
   # Generate SSH host keys and start SSH service
   - ssh-keygen -A

@@ -49,11 +49,6 @@ locals {
 
   hostname_prefix = format("%s%s", var.cluster_name, var.group.role_id)
 
-  # VIP service templates (unchanged)
-  k8s_vip_script_template  = "${path.module}/templates/k8s-vip-healthcheck.sh.tmpl"
-  k8s_vip_service_template = "${path.module}/templates/k8s-vip.service.tmpl"
-  k8s_vip_timer_template   = "${path.module}/templates/k8s-vip.timer.tmpl"
-
   indices = [for i in range(var.group.instance_count) : tostring(i)]
 
   # Deterministic MACs, two NICs per VM (egress, mesh)
@@ -117,7 +112,6 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
       hostname                         = format("%s%03d", local.hostname_prefix, var.group.segment_start + tonumber(each.key))
       role                             = var.group.role
       cluster_name                     = var.cluster_name
-
       # Node IDs
       mesh_ipv6_loopback_id_ip         = "${local.mesh_ipv6_loopback_id_prefix}::${var.group.segment_start + tonumber(each.key)}"
       mesh_ipv4_loopback_id_ip         = "${local.mesh_ipv4_loopback_id_prefix}.${var.group.segment_start + tonumber(each.key)}"
@@ -161,32 +155,21 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         cluster_id                    = var.cluster_id
       })
 
-      # Optional VIP watchdog for control-plane nodes
-      k8s_vip_script = var.group.role == "control-plane" ? templatefile(local.k8s_vip_script_template, {
-        vip_ipv4_loopback_ip          = local.vip_ipv4_loopback_ip
-        vip_ipv6_loopback_ip          = local.vip_ipv6_loopback_ip
-        mesh_ipv4_loopback_id_ip      = "${local.mesh_ipv4_loopback_id_prefix}.${var.group.segment_start + tonumber(each.key)}"
-        mesh_ipv6_loopback_id_ip      = "${local.mesh_ipv6_loopback_id_prefix}::${var.group.segment_start + tonumber(each.key)}"
-        egress_ipv4_loopback_id_ip    = "${local.egress_ipv4_loopback_id_prefix}.${var.group.segment_start + tonumber(each.key)}"
-        egress_ipv6_loopback_id_ip    = "${local.egress_ipv6_loopback_id_prefix}::${var.group.segment_start + tonumber(each.key)}"
-        mesh_ipv4_iface_gateway       = local.mesh_ipv4_iface_gateway
-        mesh_ipv6_iface_gateway       = local.mesh_ipv6_iface_gateway
-        egress_ipv4_iface_gateway     = local.egress_ipv4_iface_gateway
-        egress_ipv6_iface_gateway     = local.egress_ipv6_iface_gateway
-        rise                          = try(var.group.k8s_vip_rise, 3)
-        fall                          = try(var.group.k8s_vip_fall, 3)
-        cooldown                      = try(var.group.k8s_vip_cooldown, 10)
-        enable_ipv4                   = var.enable_ipv4
-        enable_ipv6                   = var.enable_ipv6
-      }) : ""
+      vip_health_bgp_sh = templatefile("${path.module}/templates/vip-health-bgp.sh.tmpl", {
+        enable_ipv4          = var.enable_ipv4
+        enable_ipv6          = var.enable_ipv6
+        egress_ipv4_iface_ip = "${local.egress_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}"  # 10.0.<vlan>.<id>
+        egress_ipv6_iface_ip = "${local.egress_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}" # fd00:<vlan>::<id>
+        vip_ipv4_loopback_ip = local.vip_ipv4_loopback_ip
+        vip_ipv6_loopback_ip = local.vip_ipv6_loopback_ip
+      })
 
-      k8s_vip_service = var.group.role == "control-plane" ? templatefile(local.k8s_vip_service_template, {
-        rise     = try(var.group.k8s_vip_rise, 3)
-        fall     = try(var.group.k8s_vip_fall, 3)
-        cooldown = try(var.group.k8s_vip_cooldown, 10)
-      }) : ""
-
-      k8s_vip_timer = var.group.role == "control-plane" ? templatefile(local.k8s_vip_timer_template, {}) : ""
+      vip_health_bgp_service = templatefile("${path.module}/templates/vip-health-bgp.service.tmpl", {
+        enable_ipv4          = var.enable_ipv4
+        enable_ipv6          = var.enable_ipv6
+        vip_ipv6_loopback_ip = local.vip_ipv6_loopback_ip
+        vip_ipv4_loopback_ip = local.vip_ipv4_loopback_ip
+      })
     })
   }
 }

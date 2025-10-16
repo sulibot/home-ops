@@ -8,9 +8,6 @@ variable "group" {
     instance_count   = number
     disk_size_gb     = number
     segment_start    = number
-    k8s_vip_rise     = optional(number, 3)
-    k8s_vip_fall     = optional(number, 3)
-    k8s_vip_cooldown = optional(number, 10)
     pci_devices      = optional(map(string), {})
   })
   

@@ -1,6 +1,6 @@
 locals {
   snippet_datastore_id = "resources"
-  datastore_id         = "rdb-vm"
+  datastore_id         = "rbd-vm"
   default_tags         = ["managed-by=terraform", "environment=prod"]
   default_vm_specs = {
     cpus   = 4

@@ -1,0 +1,168 @@
+---
+# 0) Preflight: Prepare all cluster nodes
+- name: "Preflight: Prepare all cluster nodes"
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    - common
+
+
+# 1) Bootstrap primary control-plane
+- name: "Bootstrap primary control-plane"
+  hosts: "{{ groups['controlplane'][0] }}"
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+  vars:
+    kubeconfig:        /etc/kubernetes/admin.conf
+    super_admin_conf:  /etc/kubernetes/super-admin.conf
+  roles:
+    # - k8s_frr
+    - k8s_init
+    #- sops_age_secret
+
+  post_tasks:
+    - name: "Ensure super-admin.conf points to the correct VIP"
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }}
+          - --kubeconfig=/etc/kubernetes/super-admin.conf
+          - config
+          - set-cluster
+          - kubernetes
+          - --server=https://[{{ control_plane_vip }}]:6443
+      changed_when: true
+
+    - name: "Stage local super-admin kubeconfig targeting this node"
+      ansible.builtin.copy:
+        remote_src: yes
+        src: /etc/kubernetes/super-admin.conf
+        dest: /etc/kubernetes/super-admin-local.conf
+        mode: '0600'
+
+    - name: "Point super-admin-local.conf to this control-plane endpoint"
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig=/etc/kubernetes/super-admin-local.conf
+          - config
+          - set-cluster
+          - kubernetes
+          - --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }}
+      changed_when: true
+
+    - name: "Create or Update kubeadm-config ConfigMap with the correct VIP"
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }} \
+          --kubeconfig=/etc/kubernetes/super-admin-local.conf \
+          create configmap kubeadm-config \
+          --from-literal=ClusterConfiguration="{{ lookup('template', '../templates/kubeadm-init.yaml.j2').split('---')[0] }}" \
+          --dry-run=client -o yaml | \
+        kubectl --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }} \
+          --kubeconfig=/etc/kubernetes/super-admin-local.conf \
+          apply -f - \
+          --validate=false
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: /etc/kubernetes/super-admin-local.conf
+      changed_when: true
+
+
+# 2) Generate join credentials (only when we're about to join any non-primary node)
+- name: Ensure join credentials exist on primary CP
+  hosts: "all:!{{ groups['controlplane'][0] }}"
+  gather_facts: false
+  become: true
+  vars_files:
+    - "../group_vars/all.yaml"
+
+  tasks:
+    - name: "Re-upload certificates to kubeadm-certs secret"
+      ansible.builtin.command:
+        argv:
+          - kubeadm
+          - init
+          - phase
+          - upload-certs
+          - --upload-certs
+      delegate_to: "{{ groups['controlplane'][0] }}"
+      run_once: true
+      changed_when: true
+
+    - name: Create join credentials on primary control-plane
+      import_role:
+        name: k8s_generate_join_creds
+      vars:
+        k8s_api_host: "{{ hostvars[groups['controlplane'][0]].ansible_host | default(groups['controlplane'][0]) }}"
+      delegate_to: "{{ groups['controlplane'][0] }}"
+      run_once: true
+
+
+# 2.5) Cleanup failed etcd members before attempting to join new ones
+- name: "Cleanup failed etcd members"
+  hosts: "{{ groups['controlplane'][0] }}"
+  become: true
+  gather_facts: false
+  vars_files:
+    - "../group_vars/all.yaml"
+
+  tasks:
+    - name: "Get etcd cluster members"
+      ansible.builtin.command:
+        argv:
+          - etcdctl
+          - --cacert=/etc/kubernetes/pki/etcd/ca.crt
+          - --cert=/etc/kubernetes/pki/etcd/server.crt
+          - --key=/etc/kubernetes/pki/etcd/server.key
+          - --endpoints=https://[{{ ansible_host }}]:2379
+          - member
+          - list
+          - -w
+          - simple
+      register: etcd_members
+      changed_when: false
+
+    - name: "Remove unhealthy etcd members"
+      ansible.builtin.command:
+        argv:
+          - etcdctl
+          - --cacert=/etc/kubernetes/pki/etcd/ca.crt
+          - --cert=/etc/kubernetes/pki/etcd/server.crt
+          - --key=/etc/kubernetes/pki/etcd/server.key
+          - --endpoints=https://[{{ ansible_host }}]:2379
+          - member
+          - remove
+          - "{{ item.split(',')[0] }}" # Get member ID from 'ID, STATUS, ...'
+      loop: "{{ etcd_members.stdout_lines | select('search', 'unstarted') | list }}"
+      changed_when: true
+
+
+# 3) Join additional control-planes
+- name: "Join additional control-planes"
+  hosts: "{{ groups['controlplane'][1:] }}"
+  become: true
+  gather_facts: true
+  serial: 1
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    # - k8s_frr
+    - k8s_join_controlplane
+
+
+# 4) Join worker nodes
+- name: "Join worker nodes"
+  hosts: worker
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+  roles:
+    - k8s_join_worker

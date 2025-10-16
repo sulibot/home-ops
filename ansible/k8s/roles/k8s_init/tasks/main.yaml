@@ -5,11 +5,6 @@
     path: /etc/kubernetes/admin.conf
   register: kubeadm_init_stat
 
-- name: Temporarily add VIP to interface for kubeadm init
-  ansible.builtin.shell: |
-    ip -6 addr add {{ control_plane_vip }}/128 dev {{ kube_vip_interface }} 2>/dev/null || true
-  when: not kubeadm_init_stat.stat.exists
-
 - name: Render kubeadm-init.yaml (first CP only)
   template:
     src: ../../../templates/kubeadm-init.yaml.j2
@@ -58,6 +53,94 @@
     KUBECONFIG: /etc/kubernetes/super-admin.conf
   become: true
   when: not kubeadm_init_stat.stat.exists
+
+- name: Render bootstrap RBAC manifest for kubeadm configmaps
+  template:
+    src: ../../../templates/kubeadm-bootstrap-rbac.yaml.j2
+    dest: /root/kubeadm-bootstrap-rbac.yaml
+
+- name: Apply bootstrap RBAC manifest
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }}
+      - --kubeconfig=/etc/kubernetes/super-admin.conf
+      - --validate=false
+      - apply
+      - -f
+      - /root/kubeadm-bootstrap-rbac.yaml
+
+- name: Check if cluster-info ConfigMap exists
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }}
+      - --kubeconfig=/etc/kubernetes/super-admin.conf
+      - get
+      - configmap
+      - cluster-info
+      - -n
+      - kube-public
+  register: cluster_info_check
+  changed_when: false
+  failed_when: false
+
+- name: Ensure cluster-info ConfigMap and bootstrap tokens exist
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - init
+      - phase
+      - bootstrap-token
+      - --skip-token-print
+      - --config
+      - /root/kubeadm-init.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
+  when: cluster_info_check.rc != 0
+
+- name: Check kubeadm-config ConfigMap exists
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --server={{ 'https://[' ~ ansible_host ~ ']:6443' if ':' in ansible_host else 'https://' ~ ansible_host ~ ':6443' }}
+      - --kubeconfig=/etc/kubernetes/super-admin.conf
+      - get
+      - configmap
+      - kubeadm-config
+      - -n
+      - kube-system
+  register: kubeadm_config_check
+  changed_when: false
+  failed_when: false
+
+- name: Re-upload kubeadm config when missing
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - init
+      - phase
+      - upload-config
+      - kubeadm
+      - --config
+      - /root/kubeadm-init.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
+  when: kubeadm_config_check.rc != 0
+
+- name: Re-upload kubelet config when missing
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - init
+      - phase
+      - upload-config
+      - kubelet
+      - --config
+      - /root/kubeadm-init.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin.conf
+  when: kubeadm_config_check.rc != 0
 
 - name: Create remote kube dir
   file:
