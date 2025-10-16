@@ -6,7 +6,7 @@ locals {
         var.cluster_name,
         var.control_plane.role_id,
         var.control_plane.segment_start + i,
-        "fc00:${var.cluster_id}",
+        "fd00:${var.cluster_id}",
         var.control_plane.segment_start + i
       )
     ],
@@ -15,7 +15,7 @@ locals {
         var.cluster_name,
         var.workers.role_id,
         var.workers.segment_start + i,
-        "fc00:${var.cluster_id}",
+        "fd00:${var.cluster_id}",
         var.workers.segment_start + i
       )
     ]
@@ -27,7 +27,7 @@ locals {
         var.cluster_name,
         var.control_plane.role_id,
         var.control_plane.segment_start + i,
-        "fc00:${var.cluster_id}",
+        "fd00:${var.cluster_id}",
         var.control_plane.segment_start + i
       )
   ]
@@ -38,7 +38,7 @@ locals {
         var.cluster_name,
         var.workers.role_id,
         var.workers.segment_start + i,
-        "fc00:${var.cluster_id}",
+        "fd00:${var.cluster_id}",
         var.workers.segment_start + i
       )
   ]
@@ -50,7 +50,7 @@ locals {
         var.cluster_name,
         var.control_plane.role_id,
         var.control_plane.segment_start + i,
-        "fc00:${var.cluster_id}",
+        "fd00:${var.cluster_id}",
         var.control_plane.segment_start + i
       )
   ]

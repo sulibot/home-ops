@@ -32,19 +32,21 @@
     mode: '0755'
 
 - name: Download Kubernetes APT key
-  ansible.builtin.shell: |
-    mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key \
-      | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key"
+    dest: /tmp/kubernetes-release.key
+    mode: '0644'
+
+- name: Add Kubernetes APT key
+  ansible.builtin.command: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key
   args:
     creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
 - name: Add Kubernetes APT repository
-  ansible.builtin.shell: |
-    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /' \
-      | tee /etc/apt/sources.list.d/kubernetes.list
-  args:
-    creates: /etc/apt/sources.list.d/kubernetes.list
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /"
+    state: present
+    filename: kubernetes
 
 - name: Download CRI-O APT key
   ansible.builtin.shell: |
@@ -53,6 +55,7 @@
     | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
   args:
     creates: /etc/apt/keyrings/cri-o-apt-keyring.gpg
+  when: common_install_crio
 
 - name: Add CRI-O APT repository
   ansible.builtin.shell: |
@@ -60,6 +63,7 @@
     | tee /etc/apt/sources.list.d/cri-o.list
   args:
     creates: /etc/apt/sources.list.d/cri-o.list
+  when: common_install_crio
 
 - name: Install WakeMeOps repository
   ansible.builtin.shell: |
@@ -91,12 +95,14 @@
       - cri-o
 #      - cri-o-runc
     state: present
+  when: common_install_crio
 
 - name: Enable and start cri-o
   ansible.builtin.systemd:
     name: crio
     enabled: true
     state: started
+  when: common_install_crio
 
 - name: Install kubelet, kubeadm, kubectl
   ansible.builtin.apt:
@@ -131,4 +137,3 @@
   ansible.builtin.apt:
     name: helm
     state: present
-

@@ -15,7 +15,7 @@ pve_zfs_zed_email: "sulibot@gmail.com"
 # CephFS configuration
 pve_ceph_filesystems:
   - name: media
-    pool: rdb-media
+    pool: rbd-media
     rule: replicated_nvme
 
 # CRUSH rules
@@ -29,7 +29,7 @@ pve_ceph_crush_rules:
 
 # Ceph Pools
 pve_ceph_pools:
-  - name: rdb-media
+  - name: rbd-media
     rule: replicated_nvme
     size: 3
     application: rbd

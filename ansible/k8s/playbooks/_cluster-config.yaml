@@ -2,7 +2,7 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 kubernetesVersion: v1.32.3
 clusterName: sol-k8s
-controlPlaneEndpoint: "fd00:101::ac:6443"
+controlPlaneEndpoint: "fd00:255:101::ac:6443"
 networking:
   podSubnet: "fd00:101:44::/60"
   serviceSubnet: "fd00:101:96::/108"
@@ -10,7 +10,7 @@ networking:
 apiServer:
   certSANs:
     - "::1"
-    - "fd00:101::ac"
+    - "fd00:255:101::ac"
     - "localhost"
   extraArgs:
     advertise-address: "127.0.0.1"

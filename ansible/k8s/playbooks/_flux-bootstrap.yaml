@@ -1,0 +1,8 @@
+- name: Bootstrap Flux into the cluster
+  hosts: controlplane[0]
+  become: true
+  tasks:
+    - name: Install Flux
+      shell: flux bootstrap github --owner={{ flux_git_owner }} --repository={{ flux_git_repo }} --path=clusters/{{ cluster_name }} --personal
+      environment:
+        GITHUB_TOKEN: "{{ lookup('env','GITHUB_TOKEN') }}"

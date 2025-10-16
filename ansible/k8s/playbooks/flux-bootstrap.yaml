@@ -1,8 +1,144 @@
-- name: Bootstrap Flux into the cluster
-  hosts: controlplane[0]
-  become: true
+---
+# Label Kubernetes nodes with roles and topology, then bootstrap Flux
+# Usage: ansible-playbook -i inventory/hosts.ini playbooks/label-nodes-and-bootstrap-flux.yaml
+
+- name: Label worker nodes with role and topology
+  hosts: worker
+  gather_facts: false
+  vars:
+    kubeconfig_path: /etc/kubernetes/admin.conf
   tasks:
-    - name: Install Flux
-      shell: flux bootstrap github --owner={{ flux_git_owner }} --repository={{ flux_git_repo }} --path=clusters/{{ cluster_name }} --personal
+    - name: Determine PVE host from node name
+      set_fact:
+        # Extract last digit and map round-robin across 3 PVE hosts
+        # solwk021->pve01, solwk022->pve02, solwk023->pve03
+        # solwk024->pve01, solwk025->pve02, solwk026->pve03, etc.
+        pve_host: "pve0{{ ((inventory_hostname[-1] | int - 1) % 3) + 1 }}"
+
+    - name: Label worker node with role and topology
+      delegate_to: "{{ groups['controlplane'][0] }}"
+      shell: |
+        export KUBECONFIG={{ kubeconfig_path }}
+        kubectl label node "{{ inventory_hostname }}" \
+          node-role.kubernetes.io/worker=true \
+          topology.kubernetes.io/host="{{ pve_host }}" \
+          --overwrite
+      args:
+        executable: /bin/bash
+      register: label_result
+      changed_when: "'labeled' in label_result.stdout or 'not labeled' not in label_result.stdout"
+
+    - name: Show labeling result
+      debug:
+        msg: "Node {{ inventory_hostname }} labeled with role=worker, host={{ pve_host }}"
+
+- name: Bootstrap Flux on the cluster
+  hosts: localhost
+  gather_facts: false
+  vars:
+    flux_namespace: flux-system
+    sops_age_key_path: "~/.config/sops/age/age.agekey"
+    github_owner: sulibot
+    github_repo: home-ops
+    flux_path: kubernetes/clusters/sol
+    github_branch: main
+  tasks:
+    - name: Get GitHub token from 1Password
+      shell: op item get "GitHub Token - flux" --fields token --reveal
+      register: github_token_result
+      changed_when: false
+      no_log: true
+      failed_when: github_token_result.rc != 0
+
+    - name: Set GitHub token fact
+      set_fact:
+        github_token: "{{ github_token_result.stdout }}"
+      no_log: true
+
+    - name: Check if SOPS age key exists locally
+      stat:
+        path: "{{ sops_age_key_path }}"
+      register: age_key_stat
+      delegate_to: localhost
+
+    - name: Fail if SOPS age key not found
+      fail:
+        msg: "SOPS age key not found at {{ sops_age_key_path }}"
+      when: not age_key_stat.stat.exists
+
+    - name: Set KUBECONFIG for local kubectl
+      set_fact:
+        ansible_env_kubeconfig: "{{ lookup('env', 'KUBECONFIG') | default('~/.kube/config', true) }}"
+
+    - name: Check if flux-system namespace exists
+      shell: kubectl get namespace {{ flux_namespace }} --ignore-not-found
+      register: flux_ns_check
+      changed_when: false
+      failed_when: false
       environment:
-        GITHUB_TOKEN: "{{ lookup('env','GITHUB_TOKEN') }}"
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+
+    - name: Create flux-system namespace if it doesn't exist
+      shell: kubectl create namespace {{ flux_namespace }}
+      when: flux_ns_check.stdout == ""
+      environment:
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+
+    - name: Create SOPS age secret in flux-system namespace
+      shell: |
+        cat {{ sops_age_key_path }} | \
+        kubectl create secret generic sops-age \
+          --namespace={{ flux_namespace }} \
+          --from-file=age.agekey=/dev/stdin \
+          --dry-run=client -o yaml | \
+        kubectl apply -f -
+      environment:
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+      register: sops_secret_result
+      changed_when: "'created' in sops_secret_result.stdout or 'configured' in sops_secret_result.stdout"
+
+    - name: Check if Flux is installed
+      shell: flux check --pre
+      register: flux_check
+      changed_when: false
+      failed_when: false
+      environment:
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+
+    - name: Bootstrap Flux from GitHub
+      shell: |
+        flux bootstrap github \
+          --branch={{ github_branch }} \
+          --personal \
+          --private \
+          --token-auth \
+          --owner={{ github_owner }} \
+          --repository={{ github_repo }} \
+          --path={{ flux_path }} \
+          --interval=10m \
+          --timeout=5m
+      environment:
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+        GITHUB_TOKEN: "{{ github_token }}"
+      register: flux_bootstrap_result
+      when: flux_check.rc != 0
+      no_log: true
+
+    - name: Show Flux bootstrap result
+      debug:
+        msg: "{{ flux_bootstrap_result.stdout_lines }}"
+      when: flux_bootstrap_result is defined and flux_bootstrap_result.stdout_lines is defined
+
+    - name: Verify Flux installation
+      shell: flux check
+      environment:
+        KUBECONFIG: "{{ ansible_env_kubeconfig }}"
+      register: flux_verify
+      changed_when: false
+      failed_when: false
+      when: flux_bootstrap_result is changed and flux_bootstrap_result is succeeded
+
+    - name: Show Flux verification
+      debug:
+        msg: "{{ flux_verify.stdout_lines }}"
+      when: flux_verify is defined and flux_verify.stdout_lines is defined

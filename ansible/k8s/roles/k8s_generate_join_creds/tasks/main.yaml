@@ -1,16 +1,89 @@
 # roles/k8s_generate_join_creds/tasks/main.yaml
 
-- name: Create a new bootstrap token
-  command: kubeadm token create
+- name: Determine effective API host
+  set_fact:
+    k8s_api_host_effective: "{{ k8s_api_host | default(hostvars[inventory_hostname].ansible_host | default(ansible_host)) }}"
+
+- name: Compute local API endpoint URL
+  set_fact:
+    k8s_local_api_endpoint: "{{ 'https://[' ~ k8s_api_host_effective ~ ']:6443' if ':' in k8s_api_host_effective else 'https://' ~ k8s_api_host_effective ~ ':6443' }}"
+
+- name: Prepare super-admin kubeconfig targeting local API endpoint
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/super-admin.conf
+    dest: /etc/kubernetes/super-admin-local.conf
+    mode: '0600'
+
+- name: Point super-admin-local kubeconfig at local API endpoint
+  ansible.builtin.replace:
+    path: /etc/kubernetes/super-admin-local.conf
+    regexp: '^(\\s*server:\\s*).*$'
+    replace: '\1{{ k8s_local_api_endpoint }}'
+
+- name: Generate bootstrap token string
+  command: kubeadm token generate
   environment:
-    KUBECONFIG: /etc/kubernetes/super-admin.conf
+    KUBECONFIG: /etc/kubernetes/super-admin-local.conf
   register: bootstrap_token_output
   changed_when: bootstrap_token_output.rc == 0
+
+- name: Derive bootstrap token components
+  set_fact:
+    bootstrap_token: "{{ bootstrap_token_output.stdout }}"
+    bootstrap_token_id: "{{ bootstrap_token_output.stdout.split('.')[0] }}"
+    bootstrap_token_secret: "{{ bootstrap_token_output.stdout.split('.')[1] }}"
+
+- name: Prepare admin kubeconfig targeting local API endpoint
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: /etc/kubernetes/admin-local.conf
+    mode: '0600'
+
+- name: Point admin-local kubeconfig at local API endpoint
+  ansible.builtin.replace:
+    path: /etc/kubernetes/admin-local.conf
+    regexp: '^(\\s*server:\\s*).*$'
+    replace: '\1{{ k8s_local_api_endpoint }}'
+
+- name: Ensure kubernetes-admin retains cluster-admin privileges
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat <<'EOF' | kubectl --server={{ k8s_local_api_endpoint }} --kubeconfig=/etc/kubernetes/super-admin-local.conf apply -f -
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: kubeadm:kubernetes-admin
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+      - kind: User
+        name: kubernetes-admin
+        apiGroup: rbac.authorization.k8s.io
+    EOF
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Ensure bootstrap token exists via kubeadm
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubeadm token delete {{ bootstrap_token_id }} 2>/dev/null || true
+    kubeadm token create {{ bootstrap_token }} --description="generated-by-ansible" --ttl={{ bootstrap_token_ttl | default('24h0m0s') }}
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: /etc/kubernetes/super-admin-local.conf
+  register: kubeadm_token_create
+  changed_when: "'created' in kubeadm_token_create.stdout"
 
 - name: Save bootstrap token to file
   copy:
     dest: /etc/kubernetes/bootstrap-token
-    content: "{{ bootstrap_token_output.stdout }}"
+    content: "{{ bootstrap_token }}"
 
 - name: Compute discovery CA cert hash
   shell: >
@@ -26,24 +99,72 @@
     dest: /etc/kubernetes/ca-cert-hash
     content: "{{ ca_cert_hash_output.stdout }}"
 
+- name: Check for existing certificate key file
+  stat:
+    path: /etc/kubernetes/certificate-key
+  register: certificate_key_stat
+
+- name: Read existing certificate key
+  slurp:
+    src: /etc/kubernetes/certificate-key
+  register: existing_certificate_key
+  when: certificate_key_stat.stat.exists
+
+- name: Render kubeadm cert upload config with local endpoint
+  template:
+    src: ../../../templates/kubeadm-init.yaml.j2
+    dest: /root/kubeadm-cert-upload.yaml
+  vars:
+    control_plane_vip: "{{ k8s_api_host_effective }}"
+  changed_when: false
+
+- name: Ensure control-plane VIP is locally reachable
+  ansible.builtin.shell: |
+    ip {{ '-6' if ':' in control_plane_vip else '' }} addr add {{ control_plane_vip }}/{{ '128' if ':' in control_plane_vip else '32' }} dev {{ kube_vip_interface }} 2>/dev/null || true
+    ip {{ '-6' if ':' in control_plane_vip else '' }} addr add {{ control_plane_vip }}/{{ '128' if ':' in control_plane_vip else '32' }} dev lo 2>/dev/null || true
+    ip {{ '-6' if ':' in control_plane_vip else '' }} route add {{ control_plane_vip }}/{{ '128' if ':' in control_plane_vip else '32' }} dev lo 2>/dev/null || true
+  when:
+    - control_plane_vip is defined
+    - kube_vip_interface is defined
+    - not certificate_key_stat.stat.exists
+  changed_when: false
+
 - name: Upload and retrieve control-plane certificate key
-  command: kubeadm init phase upload-certs --upload-certs
-  environment:
-    KUBECONFIG: /etc/kubernetes/super-admin.conf
+  ansible.builtin.shell: >
+    kubeadm init phase upload-certs --upload-certs
+    --config=/root/kubeadm-cert-upload.yaml
+    --kubeconfig=/etc/kubernetes/admin-local.conf
   register: cert_key_output
   changed_when: false
+  when: not certificate_key_stat.stat.exists
 
 - name: Extract certificate key
   set_fact:
-    certificate_key: "{{ cert_key_output.stdout_lines[-1] }}"
+    certificate_key: "{{ (existing_certificate_key.content | b64decode | trim) if certificate_key_stat.stat.exists else cert_key_output.stdout_lines[-1] }}"
 
 - name: Save certificate key to file
   copy:
     dest: /etc/kubernetes/certificate-key
     content: "{{ certificate_key }}"
 
+- name: Render bootstrap RBAC manifest for kubeadm configmaps
+  template:
+    src: ../../../templates/kubeadm-bootstrap-rbac.yaml.j2
+    dest: /root/kubeadm-bootstrap-rbac.yaml
+
+- name: Apply bootstrap RBAC manifest
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --server={{ k8s_local_api_endpoint }}
+      - --kubeconfig=/etc/kubernetes/super-admin-local.conf
+      - --validate=false
+      - apply
+      - -f
+      - /root/kubeadm-bootstrap-rbac.yaml
+
 - name: Expose credentials for downstream roles
   set_fact:
-    bootstrap_token: "{{ bootstrap_token_output.stdout }}"
+    bootstrap_token: "{{ bootstrap_token }}"
     ca_cert_hash:    "sha256:{{ ca_cert_hash_output.stdout }}"
     certificate_key: "{{ certificate_key }}"

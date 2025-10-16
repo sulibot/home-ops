@@ -1,7 +1,7 @@
 # =============================
 # VM FRR TEMPLATE (tenants) — advertise loopback service IPs only
 # - eBGP to RouterOS border router (on-link via VLAN)
-# - EXPORTS ONLY loopback addresses (service IPs)
+# - VIPs are addresses on lo (gated by vip-health-bgp.sh)
 # - FRR 10.3.x+ with datacenter defaults
 # =============================
 
@@ -22,14 +22,14 @@ bfd
  exit
 !
 
-! ---------- Loopback Interface (Node ID only - VIPs managed by k8s-vip script) ----------
+! ---------- Loopback Interface (Node ID + VIPs managed by script) ----------
 interface lo
-%{ if enable_ipv4 }
+%{ if enable_ipv4 ~}
  ip address ${egress_ipv4_loopback_id_ip}/32
-%{ endif }
-%{ if enable_ipv6 }
+%{ endif ~}
+%{ if enable_ipv6 ~}
  ipv6 address ${egress_ipv6_loopback_id_ip}/128
-%{ endif }
+%{ endif ~}
 !
 
 ! ---------- BGP Configuration ----------
@@ -40,83 +40,79 @@ router bgp ${vm_asn}
  bgp graceful-restart
  timers bgp 10 30
 
-%{ if enable_ipv4 }
+%{ if enable_ipv4 ~}
  ! eBGP to RouterOS on-link (VLAN ${cluster_id})
  neighbor ${egress_ipv4_iface_gateway} remote-as ${ros_asn}
- neighbor ${egress_ipv4_iface_gateway} update-source ${egress_ipv4_iface_ip}
  neighbor ${egress_ipv4_iface_gateway} timers connect 5
-%{ endif }
+%{ endif ~}
 
-%{ if enable_ipv6 }
+%{ if enable_ipv6 ~}
  ! eBGP to RouterOS on-link (VLAN ${cluster_id})
  neighbor ${egress_ipv6_iface_gateway} remote-as ${ros_asn}
- neighbor ${egress_ipv6_iface_gateway} update-source ${egress_ipv6_iface_ip}
  neighbor ${egress_ipv6_iface_gateway} timers connect 5
-%{ endif }
+%{ endif ~}
 
-%{ if enable_ipv4 }
+%{ if enable_ipv4 ~}
  address-family ipv4 unicast
-  ! Export ALL loopback IPs (node ID + VIPs when added)
   redistribute connected route-map EXPORT-SERVICES-v4
-  ! Import only default route from RouterOS
   neighbor ${egress_ipv4_iface_gateway} activate
   neighbor ${egress_ipv4_iface_gateway} route-map IMPORT-DEFAULT-v4 in
   neighbor ${egress_ipv4_iface_gateway} route-map EXPORT-SERVICES-v4 out
   maximum-paths 8
  exit-address-family
-%{ endif }
+%{ endif ~}
 
-%{ if enable_ipv6 }
+%{ if enable_ipv6 ~}
  address-family ipv6 unicast
-  ! Export ALL loopback IPs (node ID + VIPs when added)
   redistribute connected route-map EXPORT-SERVICES-v6
-  ! Import only default route from RouterOS
   neighbor ${egress_ipv6_iface_gateway} activate
   neighbor ${egress_ipv6_iface_gateway} route-map IMPORT-DEFAULT-v6 in
   neighbor ${egress_ipv6_iface_gateway} route-map EXPORT-SERVICES-v6 out
   maximum-paths 8
  exit-address-family
-%{ endif }
+%{ endif ~}
 !
 
 ! ---------- Route Maps & Prefix Lists ----------
-%{ if enable_ipv4 }
-! Export ALL loopback interfaces (node ID + VIPs dynamically added by k8s-vip script)
+%{ if enable_ipv4 ~}
+ip prefix-list VIPS-v4 seq 10 permit ${vip_ipv4_loopback_ip}/32
+!
+route-map EXPORT-SERVICES-v4 permit 5
+ match ip address prefix-list VIPS-v4
+ set community ${vm_asn}:110
+!
 route-map EXPORT-SERVICES-v4 permit 10
  match interface lo
  set community ${vm_asn}:100
 !
-route-map EXPORT-SERVICES-v4 deny 20
-!
-
-! Import only default routes from RouterOS
 ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
 !
 route-map IMPORT-DEFAULT-v4 permit 10
  match ip address prefix-list DEFAULT-ONLY-v4
 !
-route-map IMPORT-DEFAULT-v4 deny 20
+route-map IMPORT-DEFAULT-v4 deny 90
 !
-%{ endif }
+%{ endif ~}
 
-%{ if enable_ipv6 }
-! Export ALL loopback interfaces (node ID + VIPs dynamically added by k8s-vip script)
+%{ if enable_ipv6 ~}
+ipv6 prefix-list VIPS-v6 seq 10 permit ${vip_ipv6_loopback_ip}/128
+!
+route-map EXPORT-SERVICES-v6 permit 5
+ match ipv6 address prefix-list VIPS-v6
+ set community ${vm_asn}:110
+!
 route-map EXPORT-SERVICES-v6 permit 10
  match interface lo
  set community ${vm_asn}:100
 !
-route-map EXPORT-SERVICES-v6 deny 20
-!
-
-! Import only default routes from RouterOS
 ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
 !
 route-map IMPORT-DEFAULT-v6 permit 10
  match ipv6 address prefix-list DEFAULT-ONLY-v6
 !
-route-map IMPORT-DEFAULT-v6 deny 20
+route-map IMPORT-DEFAULT-v6 deny 90
 !
-%{ endif }
+%{ endif ~}
 
 line vty
 !

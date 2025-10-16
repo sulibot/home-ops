@@ -17,7 +17,7 @@ k8s_repo_url: https://apt.kubernetes.io/
 # FRR / VRRP / BGP globals
 frr_asn:    65101                       # your K8s cluster ASN
 frr_peer_asn: 65000                     # RouterOS ASN
-frr_bgp_neighbors:
+frr_bgp_neighbors: # fill in your router peer IPs here
   - "fd00:255::fffe"                    # fill in your router peer IPs here
 
 frr_vrrp_interface: "{{ kube_vip_interface }}"

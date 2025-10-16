@@ -112,7 +112,6 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
       hostname                         = format("%s%03d", local.hostname_prefix, var.group.segment_start + tonumber(each.key))
       role                             = var.group.role
       cluster_name                     = var.cluster_name
-
       # Node IDs
       mesh_ipv6_loopback_id_ip         = "${local.mesh_ipv6_loopback_id_prefix}::${var.group.segment_start + tonumber(each.key)}"
       mesh_ipv4_loopback_id_ip         = "${local.mesh_ipv4_loopback_id_prefix}.${var.group.segment_start + tonumber(each.key)}"
@@ -154,6 +153,22 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         ros_neighbor_v6               = "fd00:255::fffe"
         ros_asn                       = "65000"
         cluster_id                    = var.cluster_id
+      })
+
+      vip_health_bgp_sh = templatefile("${path.module}/templates/vip-health-bgp.sh.tmpl", {
+        enable_ipv4          = var.enable_ipv4
+        enable_ipv6          = var.enable_ipv6
+        egress_ipv4_iface_ip = "${local.egress_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}"  # 10.0.<vlan>.<id>
+        egress_ipv6_iface_ip = "${local.egress_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}" # fd00:<vlan>::<id>
+        vip_ipv4_loopback_ip = local.vip_ipv4_loopback_ip
+        vip_ipv6_loopback_ip = local.vip_ipv6_loopback_ip
+      })
+
+      vip_health_bgp_service = templatefile("${path.module}/templates/vip-health-bgp.service.tmpl", {
+        enable_ipv4          = var.enable_ipv4
+        enable_ipv6          = var.enable_ipv6
+        vip_ipv6_loopback_ip = local.vip_ipv6_loopback_ip
+        vip_ipv4_loopback_ip = local.vip_ipv4_loopback_ip
       })
     })
   }
