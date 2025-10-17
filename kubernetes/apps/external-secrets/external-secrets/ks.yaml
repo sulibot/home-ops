@@ -16,7 +16,7 @@ spec:
   # Conditional dependsOn
 
   interval: 1h
-  path: ./kubernetes/apps/*namespace/*app/app
+  path: ./kubernetes/apps/external-secrets/external-secrets/app
 
   # Conditional healthChecks
 
