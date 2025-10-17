@@ -6,4 +6,6 @@ namespace: external-secrets
 #components:
 #  - ../../components/common
 resources:
+  - ./external-secrets/app/helm/namespace.yaml
   - ./external-secrets/ks.yaml
+  - ./1password-connect/ks.yaml
