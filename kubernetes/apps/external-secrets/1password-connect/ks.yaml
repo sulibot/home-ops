@@ -15,7 +15,7 @@ spec:
 #    - ../../../../components/volsync# Conditional dependsOn
 
   interval: 1h
-  path: ./kubernetes/apps/*namespace/*app/app
+  path: ./kubernetes/apps/external-secrets/1password-connect/app
 
   # Conditional healthChecks
 
