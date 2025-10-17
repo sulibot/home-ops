@@ -22,7 +22,7 @@ spec:
       kubernetes.io/os: linux
 ---
 # BGP Advertisement
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: l3-bgp-advertisement
@@ -38,7 +38,7 @@ spec:
           - { key: somekey, operator: NotIn, values: ["never-used-value"] }
 ---
 # BGP PeerConfig (IPv6 MikroTik peer)
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
   name: l3-bgp-peer-config
@@ -51,7 +51,7 @@ spec:
           advertise: bgp
 ---
 # Cluster-wide BGP Config
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
   name: l3-bgp-cluster-config
