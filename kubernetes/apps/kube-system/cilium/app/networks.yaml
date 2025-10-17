@@ -60,9 +60,11 @@ kind: CiliumBGPClusterConfig
 metadata:
   name: l3-bgp-cluster-config
 spec:
+  # Select all nodes
   nodeSelector:
-    matchLabels:
-      kubernetes.io/os: linux
+    matchExpressions:
+      - key: kubernetes.io/os
+        operator: Exists
   bgpInstances:
     - name: cilium
       localASN: 65101
