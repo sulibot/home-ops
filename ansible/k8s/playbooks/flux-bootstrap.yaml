@@ -121,13 +121,11 @@
         KUBECONFIG: "{{ ansible_env_kubeconfig }}"
         GITHUB_TOKEN: "{{ github_token }}"
       register: flux_bootstrap_result
-      when: flux_check.rc != 0
-      no_log: true
 
     - name: Show Flux bootstrap result
       debug:
         msg: "{{ flux_bootstrap_result.stdout_lines }}"
-      when: flux_bootstrap_result is defined and flux_bootstrap_result.stdout_lines is defined
+      when: flux_bootstrap_result.stdout_lines is defined
 
     - name: Verify Flux installation
       shell: flux check
@@ -135,10 +133,9 @@
         KUBECONFIG: "{{ ansible_env_kubeconfig }}"
       register: flux_verify
       changed_when: false
-      failed_when: false
-      when: flux_bootstrap_result is changed and flux_bootstrap_result is succeeded
+      failed_when: flux_verify.rc != 0
 
     - name: Show Flux verification
       debug:
         msg: "{{ flux_verify.stdout_lines }}"
-      when: flux_verify is defined and flux_verify.stdout_lines is defined
+      when: flux_verify.stdout_lines is defined

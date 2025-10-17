@@ -30,6 +30,42 @@
     timeout: 60
   when: not kubeadm_init_stat.stat.exists
 
+- name: Render CoreDNS configuration
+  template:
+    src: ../../../templates/coredns-configmap.yaml.j2
+    dest: /root/coredns-configmap.yaml
+  when: not kubeadm_init_stat.stat.exists
+
+- name: Apply CoreDNS configuration
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - apply
+      - -f
+      - /root/coredns-configmap.yaml
+  register: coredns_apply
+  retries: 5
+  delay: 6
+  until: coredns_apply.rc == 0
+  when: not kubeadm_init_stat.stat.exists
+
+- name: Restart CoreDNS deployment
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - -n
+      - kube-system
+      - rollout
+      - restart
+      - deployment/coredns
+  register: coredns_restart
+  retries: 5
+  delay: 6
+  until: coredns_restart.rc == 0
+  when: not kubeadm_init_stat.stat.exists
+
 - name: Upload kubeadm config to cluster (required for node joins)
   ansible.builtin.command:
     cmd: kubeadm init phase upload-config kubeadm --config /root/kubeadm-init.yaml
