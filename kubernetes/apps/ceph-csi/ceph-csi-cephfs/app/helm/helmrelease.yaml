@@ -3,7 +3,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: ceph-csi-cephfs
-  namespace: ceph-csi
+  namespace: ceph-csi-cephfs
 spec:
   chart:
     spec:
