@@ -43,6 +43,10 @@ kind: CiliumBGPPeerConfig
 metadata:
   name: l3-bgp-peer-config
 spec:
+  timers:
+    connectRetryTimeSeconds: 30
+    holdTimeSeconds: 30
+    keepAliveTimeSeconds: 10
   families:
     - afi: ipv6
       safi: unicast
@@ -62,6 +66,7 @@ spec:
   bgpInstances:
     - name: cilium
       localASN: 65101
+      localPort: 179
       peers:
         - name: mikrotik
           peerASN: 65000
