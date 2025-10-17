@@ -22,6 +22,21 @@ bpf:
   masquerade: true
   preallocateMaps: true
 
+# Enable masquerading for all traffic leaving the pod network
+enableIPv4Masquerade: false
+enableIPv6Masquerade: true
+enableMasqueradeRouteSource: false
+
+# Install ip-masq-agent to handle masquerading configuration
+ipMasqAgent:
+  enabled: true
+  config:
+    nonMasqueradeCIDRs:
+      - fd00:101::/64      # Node network - don't masquerade
+      - fd00:101:44::/60   # Pod network - don't masquerade
+    masqLinkLocal: false
+    masqLinkLocalIPv6: false
+
 bpfClockProbe: true
 
 bandwidthManager:
