@@ -28,6 +28,6 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: *namespace
+  # targetNamespace removed - resources have explicit namespaces
   timeout: 5m
   wait: false
