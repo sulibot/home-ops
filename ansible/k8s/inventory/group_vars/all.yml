@@ -12,6 +12,8 @@ flux_git_owner: your-github-username
 flux_git_repo: sol-k8s-cluster-config
 k8s_repo_url: https://apt.kubernetes.io/
 
+cluster_dns_forwarders:
+  - "fd00:255::fffe"
 
 
 # FRR / VRRP / BGP globals
