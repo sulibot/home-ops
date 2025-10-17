@@ -6,4 +6,5 @@ namespace: ceph-csi
 #components:
 #  - ../../components/common
 resources:
+  - ./ceph-csi-cephfs/app/helm/namespace.yaml
   - ./ceph-csi-cephfs/ks.yaml
