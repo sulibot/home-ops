@@ -4,7 +4,8 @@ kind: Kustomization
 resources:
 #  - externalsecret.yaml
   - helm/
-  - cluster-issuers/
+# Temporarily commented out until CRDs are installed
+#  - cluster-issuers/
 #  - volsync.yaml
 #  - gatus.yaml
 
