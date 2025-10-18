@@ -1,0 +1,108 @@
+## This chart relies on the common library chart from bjw-s
+## You can find it at https://github.com/bjw-s/helm-charts/tree/main/charts/library/common
+## Refer there for more detail about the supported values
+
+# These entries are shared between all the Immich components
+
+env:
+  REDIS_HOSTNAME: 'immich-redis-master'
+  DB_HOSTNAME: "immich-postgresql"
+  DB_USERNAME: "immich"
+  DB_DATABASE_NAME: "immich"
+  DB_PASSWORD: "immich"  # For enhanced security, consider using Kubernetes Secrets
+  IMMICH_MACHINE_LEARNING_URL: 'http://immich-machine-learning:3003'
+
+image:
+  tag: v1.119.0
+
+immich:
+  metrics:
+    # Enabling this will create the service monitors needed to monitor immich with the prometheus operator
+    enabled: false  # Disabled to prevent ServiceMonitor CRD errors
+  configuration:
+    trash:
+      enabled: false
+      days: 30
+    storageTemplate:
+      enabled: true
+      template: "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
+  persistence:
+    library:
+      # Remove `existingClaim` to allow dynamic provisioning
+      # existingClaim: data-cephfs-pvc
+      storageClassName: csi-cephfs-sc-retain  # Specify the desired StorageClass
+      size: 50Gi                           # Define size based on your storage requirements
+
+# Dependencies
+
+postgresql:
+  enabled: true
+  image:
+    repository: tensorchord/pgvecto-rs
+    tag: pg14-v0.2.0
+  global:
+    postgresql:
+      auth:
+        username: immich
+        database: immich
+        password: immich  # For enhanced security, consider using Kubernetes Secrets
+  primary:
+    containerSecurityContext:
+      readOnlyRootFilesystem: false
+    initdb:
+      scripts:
+        create-extensions.sql: |
+          CREATE EXTENSION cube;
+          CREATE EXTENSION earthdistance;
+          CREATE EXTENSION vectors;
+  persistence:
+    enabled: true
+    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
+    size: 10Gi                          # Adjust based on your storage requirements
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
+    size: 10Gi                          # Adjust based on your storage requirements
+
+# Immich components
+
+server:
+  enabled: true
+  image:
+    repository: ghcr.io/immich-app/immich-server
+    pullPolicy: IfNotPresent
+  ingress:
+    main:
+      enabled: true
+      ingressClassName: cilium  # Use Cilium's Ingress Controller
+      annotations:
+        # Add Cilium-specific annotations here if required
+        # Example: cilium.ingress.kubernetes.io/some-annotation: "value"
+      hosts:
+        - host: immich.local
+          paths:
+            - path: "/"
+              pathType: Prefix
+      tls: []
+
+machine-learning:
+  enabled: true
+  image:
+    repository: ghcr.io/immich-app/immich-machine-learning
+    pullPolicy: IfNotPresent
+  env:
+    TRANSFORMERS_CACHE: /cache
+  persistence:
+    cache:
+      enabled: true
+      size: 10Gi
+      type: emptyDir
+      accessMode: ReadWriteMany
+      # Optional: Set this to pvc to avoid downloading the ML models every start.
+      # storageClass: your-class

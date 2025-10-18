@@ -1,0 +1,4 @@
+resources:
+#  - gateway-external.yaml
+  - gateway-internal.yaml
+  - referencegrant-media.yaml

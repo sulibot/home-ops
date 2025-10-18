@@ -1,0 +1,75 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: audiobooks
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: chart-template
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: chart-template
+        namespace: flux-system
+      version: 0.1.0
+  interval: 1h0m0s
+  values:
+    affinity: {}
+    annotations:
+      pod: {}
+    config:
+      enabled: true
+      mountPath: /config
+      storageSize: 100Mi
+    data:
+      enabled: true
+      mountPath: /data
+      storageSize: 10Gi
+    dnsConfig:
+      enabled: true
+      options:
+      - name: ndots
+        value: "1"
+    dnsPolicy: ClusterFirst
+    env: null
+    gateway:
+      domain: sulibot.com
+      enabled: true
+      name: gateway-internal
+      namespace: network
+    headless:
+      enabled: true
+    image:
+      digest: ""
+      pullPolicy: IfNotPresent
+      repository: lscr.io/linuxserver/readarr
+      tag: develop
+    ingress:
+      className: cilium
+      enabled: false
+      tls:
+        certManagerIssuer: letsencrypt-prod
+    labels:
+      global: {}
+    name: audiobooks
+    namespace: media
+    ports:
+      servicePort: 80
+      targetPort: 8787
+    replicaCount: 1
+    resources:
+      enabled: false
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      enabled: true
+      readOnlyRootFilesystem: false
+    timezone: America/Los_Angeles
+    tolerations: []

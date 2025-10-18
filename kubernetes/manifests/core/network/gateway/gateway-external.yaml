@@ -1,0 +1,68 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-external
+  namespace: network
+  labels:
+    cilium.io/gateway: "true"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: 10.10.101.161
+    - type: IPAddress
+      value: fd00:101::cafe:161
+  listeners:
+    - name: sulibot-https
+      hostname: sulibot.com
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: sulibot-com-tls
+#      ipAddresses:
+#        - 10.10.0.140  # IP allocated from the blue-pool
+    - name: sulibot-wildcard-https
+      hostname: "*.sulibot.com"
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: sulibot-com-tls
+#      ipAddresses:
+#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
+#    - name: sulibot-http-redirect
+#      hostname: sulibot.com
+#      port: 80
+#      protocol: HTTP
+#      rules:
+#        - backendRefs: [] # No backends; we're redirecting
+#          filters:
+#            - type: HTTPRequestRedirect
+#              requestRedirect:
+#                scheme: https
+#                port: 443
+#      ipAddresses:
+#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
+#    - name: sulibot-wildcard-http-redirect
+#      hostname: "*.sulibot.com"
+#      port: 80
+#      protocol: HTTP
+#      rules:
+#        - backendRefs: [] # No backends; we're redirecting
+#          filters:
+#            - type: HTTPRequestRedirect
+#              requestRedirect:
+#                scheme: https
+#                port: 443
+#      ipAddresses:
+#        - 10.10.0.140  # Same IP as HTTPS listener for consistency
+
+
+
+
+
