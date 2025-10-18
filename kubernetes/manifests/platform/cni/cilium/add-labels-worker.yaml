@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Node
 metadata:
-  name: sol-worker-1
+  name: solwk021
   labels:
     node-role.kubernetes.io/worker: "true"
   annotations:
@@ -11,7 +11,7 @@ metadata:
 apiVersion: v1
 kind: Node
 metadata:
-  name: sol-worker-2
+  name: solwk022
   labels:
     node-role.kubernetes.io/worker: "true"
   annotations:
@@ -21,7 +21,7 @@ metadata:
 apiVersion: v1
 kind: Node
 metadata:
-  name: sol-worker-3
+  name: solwk023
   labels:
     node-role.kubernetes.io/worker: "true"
   annotations:
