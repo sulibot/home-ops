@@ -27,6 +27,21 @@
       - /root/kubeadm-join.yaml
   when: not kubeadm_worker_join_stat.stat.exists
 
+- name: Wait for node registration in API
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - --kubeconfig=/etc/kubernetes/admin.conf
+  delegate_to: "{{ groups['controlplane'][0] }}"
+  register: kube_node_presence
+  retries: 30
+  delay: 10
+  until: kube_node_presence.rc == 0
+  when: not kubeadm_worker_join_stat.stat.exists
+
 - name: Label this node as “worker”
   command: >
     kubectl label node {{ inventory_hostname }}

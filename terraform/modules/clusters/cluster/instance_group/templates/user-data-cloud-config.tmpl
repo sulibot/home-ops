@@ -102,32 +102,7 @@ write_files:
   - path: /etc/frr/daemons
     permissions: '0644'
     content: |
-      # FRR daemon configuration with performance options
-      bgpd=yes
-      ospfd=no
-      ospf6d=no
-      ripd=no
-      ripngd=no
-      isisd=no
-      pimd=no
-      pim6d=no
-      ldpd=no
-      nhrpd=no
-      eigrpd=no
-      babeld=no
-      sharpd=no
-      pbrd=no
-      bfdd=yes
-      fabricd=no
-      vrrpd=no
-      pathd=no
-      
-      # Performance options
-      bgpd_options="  -A 127.0.0.1 --log-level info"
-      bfdd_options="  -A 127.0.0.1"
-      
-      # Increase file descriptor limits
-      MAX_FDS=8192
+      ${indent(6, frr_daemons_conf)}
 
 
   # --- CPU governor and power management ---

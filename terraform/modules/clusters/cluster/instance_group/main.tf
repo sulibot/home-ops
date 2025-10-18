@@ -152,7 +152,15 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         ros_neighbor_v4               = "10.255.255.254"
         ros_neighbor_v6               = "fd00:255::fffe"
         ros_asn                       = "65000"
+        bgp_port                      = "179"
         cluster_id                    = var.cluster_id
+      })
+      frr_daemons_conf = templatefile("${path.module}/templates/frr-daemons.tmpl", {
+        enable_ipv4          = var.enable_ipv4
+        enable_ipv6          = var.enable_ipv6
+        egress_ipv4_iface_ip = "${local.egress_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}"
+        egress_ipv6_iface_ip = "${local.egress_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}"
+        bgp_port             = "179"
       })
 
       vip_health_bgp_sh = templatefile("${path.module}/templates/vip-health-bgp.sh.tmpl", {
