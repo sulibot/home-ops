@@ -69,7 +69,7 @@ spec:
       peers:
         - name: mikrotik
           peerASN: 65000
-          peerAddress: fd00:101::fffe
+          peerAddress: fd00:255::fffe
           peerConfigRef:
             name: l3-bgp-peer-config
 ---
