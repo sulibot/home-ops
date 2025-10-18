@@ -72,3 +72,66 @@ spec:
           peerAddress: fd00:101::fffe
           peerConfigRef:
             name: l3-bgp-peer-config
+---
+# Per-node BGP config overrides to set unique source IPs
+# Control plane nodes
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp011-bgp-override
+spec:
+  nodeRef: solcp011
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::11
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp012-bgp-override
+spec:
+  nodeRef: solcp012
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::12
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp013-bgp-override
+spec:
+  nodeRef: solcp013
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::13
+---
+# Worker nodes
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk021-bgp-override
+spec:
+  nodeRef: solwk021
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::21
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk022-bgp-override
+spec:
+  nodeRef: solwk022
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::22
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk023-bgp-override
+spec:
+  nodeRef: solwk023
+  bgpInstances:
+    - name: cilium
+      localAddress: fd00:255:101::23
