@@ -74,11 +74,12 @@ spec:
             name: l3-bgp-peer-config
 ---
 # Per-node BGP config overrides to set unique source IPs
+# Names must match CiliumBGPNodeConfig resource names exactly
 # Control plane nodes
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solcp011-bgp-override
+  name: solcp011
 spec:
   bgpInstances:
     - name: cilium
@@ -89,7 +90,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solcp012-bgp-override
+  name: solcp012
 spec:
   bgpInstances:
     - name: cilium
@@ -100,7 +101,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solcp013-bgp-override
+  name: solcp013
 spec:
   bgpInstances:
     - name: cilium
@@ -112,7 +113,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solwk021-bgp-override
+  name: solwk021
 spec:
   bgpInstances:
     - name: cilium
@@ -123,7 +124,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solwk022-bgp-override
+  name: solwk022
 spec:
   bgpInstances:
     - name: cilium
@@ -134,7 +135,7 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPNodeConfigOverride
 metadata:
-  name: solwk023-bgp-override
+  name: solwk023
 spec:
   bgpInstances:
     - name: cilium
