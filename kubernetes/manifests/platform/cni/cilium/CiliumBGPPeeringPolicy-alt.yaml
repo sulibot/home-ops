@@ -1,0 +1,24 @@
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumBGPPeeringPolicy
+metadata:
+  name: gateway-peering-policy
+spec:
+  virtualRouters:
+  - localASN: 65101
+    serviceSelector:
+      matchExpressions:
+      - key: cilium.io/ingress
+        operator: In
+        values:
+        - "true"
+      - key: io.cilium.gateway/owning-gateway
+        operator: In
+        values:
+        - gateway-internal
+        - gateway-external
+    serviceAdvertisements:
+    - LoadBalancerIP
+    - ExternalIP
+    neighbors:
+    - peerAddress: '10.10.101.1/32'
+      peerASN: 65000

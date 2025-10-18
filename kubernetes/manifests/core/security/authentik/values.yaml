@@ -1,0 +1,4 @@
+# Authentik Helm chart values
+postgresql:
+  auth:
+    password: "YOUR_POSTGRES_PASSWORD"

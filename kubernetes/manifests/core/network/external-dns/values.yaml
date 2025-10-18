@@ -1,0 +1,69 @@
+---
+fullnameOverride: external-dns-mikrotik
+
+logLevel: debug
+logFormat: text
+interval: 1s
+sources: ["ingress", "service", "crd"]
+registry: txt
+txtOwnerId: default
+txtPrefix: k8s.
+domainFilters: ["sulibot.com"]
+excludeDomains: []
+policy: sync
+
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/mirceanton/external-dns-provider-mikrotik
+      tag: v1.2.2@sha256:3afe75cbbf5ed66a8f99686a9eba32bf8cef60344f27d0872538f82b210c1aab
+      pullPolicy: IfNotPresent
+    env:
+      - name: LOG_FORMAT
+        value: json
+      - name: LOG_LEVEL
+        value: debug
+      - name: MIKROTIK_BASEURL
+        valueFrom:
+          secretKeyRef:
+            name: mikrotik-credentials
+            key: MIKROTIK_BASEURL
+      - name: MIKROTIK_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: mikrotik-credentials
+            key: MIKROTIK_USERNAME
+      - name: MIKROTIK_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: mikrotik-credentials
+            key: MIKROTIK_PASSWORD
+      - name: MIKROTIK_SKIP_TLS_VERIFY
+        valueFrom:
+          secretKeyRef:
+            name: mikrotik-credentials
+            key: MIKROTIK_SKIP_TLS_VERIFY
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: http-webhook
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: http-webhook
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+
+extraArgs:
+  - --ignore-ingress-tls-spec
+  - --managed-record-types=A
+  - --managed-record-types=AAAA
+  - --managed-record-types=CNAME
+  - --managed-record-types=TXT
+  - --managed-record-types=MX
+  - --managed-record-types=SRV
+  - --managed-record-types=NS
