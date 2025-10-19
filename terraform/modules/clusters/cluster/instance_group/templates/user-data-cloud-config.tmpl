@@ -344,38 +344,27 @@ write_files:
           eth0:
 %{ if enable_ipv6 ~}
             accept-ra: true
-            # 1. Define routes in a custom table (e.g., table 100)
             routes:
               - to: fd00::/8
                 via: ${egress_ipv6_iface_gateway}
                 on-link: true
                 table: 100
-
-            # 2. Define the Policy Rule (ip rule)
             routing-policy:
-              # This rule says: if the destination is fd00::/8, look up table 100.
-              # Priority 32765 is intentionally set just *before* the main table (32766)
               - to: fd00::/8
                 table: 100
                 priority: 32765
 %{ else ~}
             accept-ra: false
 %{ endif ~}
-
           eth1:
             accept-ra: false
 %{ if enable_ipv6 ~}
-            # 1. Define routes in a custom table (e.g., table 200)
             routes:
               - to: fc00::/8
                 via: ${mesh_ipv6_iface_gateway}
                 on-link: true
                 table: 200
-
-            # 2. Define the Policy Rule (ip rule)
             routing-policy:
-              # This rule says: if the destination is fc00::/8, look up table 200.
-              # Priority 32765 is a reliable high numerical value (low precedence) for fallback.
               - to: fc00::/8
                 table: 200
                 priority: 32765
