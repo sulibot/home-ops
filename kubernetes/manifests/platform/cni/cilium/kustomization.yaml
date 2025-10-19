@@ -1,4 +1,7 @@
 resources:
+  - namespace.yaml
+  - values-configmap.yaml
+  - helmrelease.yaml
   - CiliumLoadBalancerIPPool.yaml
 #  - CiliumBGPClusterConfig.yaml
   - CiliumBGPPeeringPolicy.yaml

@@ -1,5 +1,5 @@
 ---
-k8sServiceHost: fd00:101::10
+k8sServiceHost: fd00:255:101::ac
 k8sServicePort: 6443
 
 kubeProxyReplacement: true
@@ -10,12 +10,7 @@ ipv6:
   enabled: true
 
 ipam:
-  mode: cluster-pool
-  operator:
-    clusterPoolIPv4PodCIDRList: "10.244.0.0/16"
-    clusterPoolIPv6PodCIDRList: "fd00:101:244::/56"
-    clusterPoolIPv4MaskSize: 24
-    clusterPoolIPv6MaskSize: 64
+  mode: kubernetes
 
 bgpControlPlane:
   enabled: true
