@@ -40,7 +40,7 @@
     sops_age_key_path: "~/.config/sops/age/age.agekey"
     github_owner: sulibot
     github_repo: home-ops
-    flux_path: kubernetes/clusters/sol
+    flux_path: kubernetes/clusters/production
     github_branch: main
   tasks:
     - name: Get GitHub token from 1Password
