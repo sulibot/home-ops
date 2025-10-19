@@ -331,48 +331,51 @@ write_files:
       echo "=================================="
 
   # --- Extra Netplan routes (conditionally render per stack) ---
-  - path: /etc/netplan/60-extra.yaml
-    permissions: '0600'
-    content: |
-      network:
-        version: 2
-        renderer: networkd
-        ethernets:
-          eth0:
+# This file defines Policy-Based Routing (PBR) for specific ULA ranges.
+# The high numerical priority (32765) ensures these rules act as a fallback,
+# preventing interference with Cilium's BGP-advertised routes in the main table (32766).
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
 %{ if enable_ipv6 ~}
-            accept-ra: true
+      accept-ra: true
+      # 1. Define routes in a custom table (e.g., table 100)
+      routes:
+        - to: fd00::/8
+          via: ${egress_ipv6_iface_gateway}
+          on-link: true
+          table: 100
+
+      # 2. Define the Policy Rule (ip rule)
+      routing-policy:
+        # This rule says: if the destination is fd00::/8, look up table 100.
+        # Priority 32765 is intentionally set just *before* the main table (32766)
+        - to: fd00::/8
+          table: 100
+          priority: 32765
 %{ else ~}
-            accept-ra: false
-%{ endif ~}
-%{ if enable_ipv6 ~}
-            routes:
-              # v6: reach ULA GW from /128 (for link-local next-hop)
-              - to: ${egress_ipv6_iface_gateway}/128
-                scope: link
-              # ULA fallback routes (high metric so BGP can override)
-              # fd00::/8 contains pod CIDR, cluster IPs, VIPs - use ULA source
-              - to: fd00::/8
-                via: ${egress_ipv6_iface_gateway}
-                on-link: true
-                metric: 1024
-              # fc00::/7 is ULA space (includes fc00::/8 + fd00::/8)
-              - to: fc00::/7
-                via: ${egress_ipv6_iface_gateway}
-                on-link: true
-                metric: 1024
+      accept-ra: false
 %{ endif ~}
 
-          eth1:
-            accept-ra: false
+    eth1:
+      accept-ra: false
 %{ if enable_ipv6 ~}
-            routes:
-              # v6 mesh: reach GW + ULA aggregate via mesh interface
-              - to: ${mesh_ipv6_iface_gateway}/128
-                scope: link
-              - to: fc00::/8
-                via: ${mesh_ipv6_iface_gateway}
-                on-link: true
-                metric: 600
+      # 1. Define routes in a custom table (e.g., table 200)
+      routes:
+        - to: fc00::/8
+          via: ${mesh_ipv6_iface_gateway}
+          on-link: true
+          table: 200
+
+      # 2. Define the Policy Rule (ip rule)
+      routing-policy:
+        # This rule says: if the destination is fc00::/8, look up table 200.
+        # Priority 32765 is a reliable high numerical value (low precedence) for fallback.
+        - to: fc00::/8
+          table: 200
+          priority: 32765
 %{ endif ~}
 
 %{ if enable_ipv6 }
