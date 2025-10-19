@@ -155,7 +155,7 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         bgp_port                      = "179"
         cluster_id                    = var.cluster_id
       })
-      frr_daemons_conf = templatefile("${path.module}/templates/frr-daemons.tmpl", {
+      daemons_conf = templatefile("${path.module}/templates/frr-daemons.tmpl", {
         enable_ipv4          = var.enable_ipv4
         enable_ipv6          = var.enable_ipv6
         egress_ipv4_iface_ip = "${local.egress_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}"
@@ -273,7 +273,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
         for_each = var.enable_ipv4 ? [1] : []
         content {
           address = "${local.egress_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}/24"
-          # gateway = local.egress_ipv4_iface_gateway  # uncomment if you want Proxmox to set it
+          gateway = local.egress_ipv4_iface_gateway  # uncomment if you want Proxmox to set it
         }
       }
       dynamic "ipv6" {

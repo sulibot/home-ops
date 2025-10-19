@@ -102,7 +102,7 @@ write_files:
   - path: /etc/frr/daemons
     permissions: '0644'
     content: |
-      ${indent(6, frr_daemons_conf)}
+      ${indent(6, daemons_conf)}
 
 
   # --- CPU governor and power management ---
@@ -344,48 +344,29 @@ write_files:
 %{ else ~}
             accept-ra: false
 %{ endif ~}
-%{ if enable_ipv4 || enable_ipv6 ~}
-            routes:
-%{ if enable_ipv4 ~}
-              # v4: reach anycast GW from /32 + fallback default (high metric for BGP override)
-              - to: ${egress_ipv4_iface_gateway}/32
-                scope: link
-              - to: 0.0.0.0/0
-                via: ${egress_ipv4_iface_gateway}
-                on-link: true
-                metric: 500
-%{ endif ~}
 %{ if enable_ipv6 ~}
-              # v6: reach ULA GW from /128 + fallback default (high metric for BGP override)
+            routes:
+              # v6: reach ULA GW from /128 (for link-local next-hop)
               - to: ${egress_ipv6_iface_gateway}/128
                 scope: link
-              - to: ::/0
-                via: ${egress_ipv6_iface_gateway}
-                on-link: true
-                metric: 2000
-              # ULA aggregate via egress (weaker than BGP/RA)
+              # ULA fallback routes (high metric so BGP can override)
+              # fd00::/8 contains pod CIDR, cluster IPs, VIPs - use ULA source
               - to: fd00::/8
                 via: ${egress_ipv6_iface_gateway}
                 on-link: true
-                metric: 600
-%{ endif ~}
+                metric: 1024
+              # fc00::/7 is ULA space (includes fc00::/8 + fd00::/8)
+              - to: fc00::/7
+                via: ${egress_ipv6_iface_gateway}
+                on-link: true
+                metric: 1024
 %{ endif ~}
 
           eth1:
             accept-ra: false
-%{ if enable_ipv4 || enable_ipv6 ~}
-            routes:
-%{ if enable_ipv4 ~}
-              # v4 mesh: reach GW + aggregate
-              - to: ${mesh_ipv4_iface_gateway}/32
-                scope: link
-              - to: 10.10.0.0/16
-                via: ${mesh_ipv4_iface_gateway}
-                on-link: true
-                metric: 600
-%{ endif ~}
 %{ if enable_ipv6 ~}
-              # v6 mesh: reach GW + ULA aggregate
+            routes:
+              # v6 mesh: reach GW + ULA aggregate via mesh interface
               - to: ${mesh_ipv6_iface_gateway}/128
                 scope: link
               - to: fc00::/8
@@ -393,20 +374,20 @@ write_files:
                 on-link: true
                 metric: 600
 %{ endif ~}
-%{ endif ~}
 
 %{ if enable_ipv6 }
-  # --- Disable IPv6 autoconfiguration to prevent ULA SLAAC conflicts ---
-  # Problem: Router advertisements for fd00::/8 cause kernel to create SLAAC addresses
-  # that don't match etcd peer TLS certificates, breaking cluster joins.
-  # Solution: Disable kernel-level IPv6 autoconfiguration while keeping RA for routing.
-  # This allows DHCPv6 to work for global addresses while preventing problematic SLAAC.
-  - path: /etc/sysctl.d/99-disable-ipv6-autoconf.conf
+  # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---
+  # We have static ULA addresses (fd00:101::X) that must not change for etcd certs.
+  # But we also need GUA addresses from prefix delegation for internet access.
+  # Solution: Enable autoconf and accept_ra. Static addresses prevent SLAAC in same prefix,
+  # but GUA prefixes (2600::/etc) will be autoconfigured via SLAAC as intended.
+  - path: /etc/sysctl.d/99-ipv6-ra.conf
     permissions: '0644'
     content: |
-      # Disable IPv6 SLAAC to prevent autoconfigured addresses
-      # Still accept RAs for routing info, just don't autoconfigure addresses
-      net.ipv6.conf.eth0.autoconf = 0
+      # Accept RAs even with forwarding enabled (2 = always accept)
+      net.ipv6.conf.eth0.accept_ra = 2
+      # Enable SLAAC for GUA prefixes (static ULA won't be affected)
+      net.ipv6.conf.eth0.autoconf = 1
 %{ endif }
 
 runcmd:
