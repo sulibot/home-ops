@@ -1,9 +1,0 @@
----
-# roles/interfaces/tasks/main.yaml
-- name: Deploy /etc/network/interfaces
-  template:
-    src: interfaces.j2
-    dest: /etc/network/interfaces
-  notify: Reload network
-
-

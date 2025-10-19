@@ -1,4 +1,0 @@
----
-# roles/pve-config/meta/main.yml
-dependencies:
-  - bootstrap

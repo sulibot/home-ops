@@ -1,6 +1,0 @@
----
-# roles/pve-config/handlers/main.yml
-- name: restart pveproxy
-  service:
-    name: pveproxy
-    state: restarted

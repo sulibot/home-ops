@@ -1,6 +1,0 @@
----
-# roles/certbot/handlers/main.yml
-- name: restart pveproxy
-  service:
-    name: pveproxy
-    state: restarted

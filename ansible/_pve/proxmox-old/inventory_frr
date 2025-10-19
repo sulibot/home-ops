@@ -1,4 +1,0 @@
-[pve_hosts]
-pve01 ansible_host=fd00::1:1 router_id=0.0.0.1
-pve02 ansible_host=fd00::1:2 router_id=0.0.0.2
-pve03 ansible_host=fd00::1:3 router_id=0.0.0.3

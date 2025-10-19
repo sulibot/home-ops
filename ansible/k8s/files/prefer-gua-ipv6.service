@@ -1,0 +1,14 @@
+[Unit]
+Description=Prefer GUA over ULA for IPv6 masquerading
+After=network-online.target cloud-init.target systemd-networkd-wait-online.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/prefer-gua-ipv6.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,8 +1,0 @@
----
-- name: Enable root SSH login
-  lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?PermitRootLogin'
-    line: 'PermitRootLogin yes'
-    backrefs: yes
-  notify: restart sshd

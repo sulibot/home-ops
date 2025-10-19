@@ -1,5 +1,0 @@
-# roles/pxe_routeros/defaults/main.yml
-tftp_root: '/usb1/proxmox'
-ipxe_file: '{{ role_path }}/files/ipxe.efi'
-snponly_file: '{{ role_path }}/files/snponly.efi'
-autoexec_file: '{{ role_path }}/files/autoexec.ipxe'
