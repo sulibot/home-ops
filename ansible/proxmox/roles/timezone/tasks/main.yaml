@@ -1,4 +1,0 @@
----
-- name: Set timezone to UTC
-  community.general.timezone:
-    name: UTC

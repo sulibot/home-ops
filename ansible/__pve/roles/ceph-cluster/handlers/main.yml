@@ -1,4 +1,0 @@
----
-# roles/ceph-cluster/handlers/main.yml
-- name: restart ceph-mgr
-  command: ceph mgr module enable dashboard

@@ -1,4 +1,0 @@
-- hosts: all
-  roles:
-    - ceph_mon
-    - ceph_osd

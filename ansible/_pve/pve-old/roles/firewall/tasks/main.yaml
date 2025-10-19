@@ -1,5 +1,0 @@
-- name: Disable Proxmox firewall
-  lineinfile:
-    path: /etc/pve/datacenter.cfg
-    regexp: '^firewall:'
-    line: 'firewall: 0'

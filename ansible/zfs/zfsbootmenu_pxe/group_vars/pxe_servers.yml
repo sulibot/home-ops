@@ -1,2 +1,0 @@
-ipxe_file: '{{ playbook_dir }}/files/ipxe.efi'
-tftp_root: '/usb1/proxmox'

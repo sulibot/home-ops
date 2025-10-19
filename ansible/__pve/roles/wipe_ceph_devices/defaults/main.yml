@@ -1,2 +1,0 @@
----
-# No defaults needed; uses ceph_osd_map from host_vars

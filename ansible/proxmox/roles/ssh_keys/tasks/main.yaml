@@ -1,6 +1,0 @@
----
-- name: Distribute authorized SSH keys for root
-  authorized_key:
-    user: root
-    key: "{{ item }}"
-  loop: "{{ ssh_public_keys }}"

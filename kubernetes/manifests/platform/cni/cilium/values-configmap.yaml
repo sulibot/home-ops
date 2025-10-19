@@ -25,6 +25,8 @@ data:
     bpf:
       masquerade: true
 
+    enableMasqueradeRouteSource: true
+
     bgp:
       enabled: false
 

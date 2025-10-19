@@ -1,7 +1,0 @@
----
-pve_no_sub_url: "http://download.proxmox.com/debian/pve bookworm pve-no-subscription"
-ceph_source_entries:
-  - "# deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise"
-  - "# deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription"
-  - "# deb https://enterprise.proxmox.com/debian/ceph-reef bookworm enterprise"
-  - "# deb http://download.proxmox.com/debian/ceph-reef bookworm no-subscription"

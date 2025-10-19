@@ -1,7 +1,0 @@
----
-- hosts: all
-  become: true
-  vars_files:
-    - ../group_vars/all.yaml
-  roles:
-    - proxmox_repo

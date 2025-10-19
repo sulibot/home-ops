@@ -1,5 +1,0 @@
-http_file_root: '/srv/webroot/pxe'
-http_web_root: 'http://infraweb.sulibot.com'
-hostname_domain: 'sulibot.com'
-zfsbootmenu_url: 'https://github.com/zbm-dev/zfsbootmenu/releases/download/v3.0.1/zfsbootmenu-release-x86_64-v3.0.1-linux6.12.EFI'
-zfsbootmenu_file: '{{ http_file_root }}/zfsbootmenu.efi'

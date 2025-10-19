@@ -1,4 +1,0 @@
----
-# roles/ceph-init/defaults/main.yml
-pve_ceph_network: "fc00:20::/64"
-pve_ceph_cluster_network: "fc00:21::/64"

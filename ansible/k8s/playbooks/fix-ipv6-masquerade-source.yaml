@@ -1,0 +1,42 @@
+---
+- name: Fix IPv6 masquerading source IP selection
+  hosts: cluster
+  become: true
+  tasks:
+    - name: Copy prefer-gua-ipv6 script
+      ansible.builtin.copy:
+        src: ../files/prefer-gua-ipv6.sh
+        dest: /usr/local/bin/prefer-gua-ipv6.sh
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Copy systemd service file
+      ansible.builtin.copy:
+        src: ../files/prefer-gua-ipv6.service
+        dest: /etc/systemd/system/prefer-gua-ipv6.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable and start prefer-gua-ipv6 service
+      ansible.builtin.systemd:
+        name: prefer-gua-ipv6
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Run script immediately to fix current nodes
+      ansible.builtin.command: /usr/local/bin/prefer-gua-ipv6.sh
+      register: script_output
+      changed_when: "'Reordering addresses' in script_output.stdout"
+
+    - name: Display script output
+      ansible.builtin.debug:
+        var: script_output.stdout_lines
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
