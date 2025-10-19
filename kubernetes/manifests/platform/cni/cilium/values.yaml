@@ -5,7 +5,7 @@ k8sServicePort: 6443
 kubeProxyReplacement: true
 
 ipv4:
-  enabled: true
+  enabled: false
 ipv6:
   enabled: true
 

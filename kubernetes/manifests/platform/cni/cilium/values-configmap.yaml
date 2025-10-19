@@ -12,7 +12,7 @@ data:
     kubeProxyReplacement: true
 
     ipv4:
-      enabled: true
+      enabled: false
     ipv6:
       enabled: true
 
