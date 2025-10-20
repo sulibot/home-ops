@@ -11,7 +11,8 @@ ipv4:
 ipv6:
   enabled: true
 
-routingMode: "native"
+routingMode: native
+tunnelProtocol: ""
 ipv6NativeRoutingCIDR: "{{ pod_subnet }}"
 autoDirectNodeRoutes: true
 
@@ -20,7 +21,7 @@ k8s-require-ipv6-pod-cidr: true
 k8s-require-ipv4-pod-cidr: false
 
 bpf:
-  masquerade: true
+  masquerade: false
 
 endpointRoutes:
   enabled: true
