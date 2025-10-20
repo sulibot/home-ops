@@ -26,8 +26,52 @@ bpf:
 bgp:
   enabled: false
 
+metrics:
+  enabled: true
+
 hubble:
+  enabled: true
   relay:
     enabled: true
   ui:
     enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - httpV2
+      - port-distribution
+      - policy-verdict
+
+gatewayAPI:
+  enabled: true
+  enableProxyProtocol: false
+  enableAppProtocol: false
+  enableAlpn: false
+  xffNumTrustedHops: 0
+  externalTrafficPolicy: Cluster
+  gatewayClass:
+    create: auto
+  secretsNamespace:
+    create: true
+    name: cilium-secrets
+    sync: true
+  hostNetwork:
+    enabled: false
+    nodes:
+      matchLabels: {}
+
+l2NeighDiscovery:
+  enabled: true
+
+l2announcements:
+  enabled: true
+
+endpointRoutes:
+  enabled: true
+
+cni:
+  install: true
