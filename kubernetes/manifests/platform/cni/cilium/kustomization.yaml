@@ -1,10 +1,9 @@
 resources:
   - namespace.yaml
-  - bgp-config.yaml
+  - bgp-peer-config.yaml
+  - bgp-cluster-config.yaml
+  - bgp-advertisements.yaml
   - values-configmap.yaml
   - helmrelease.yaml
-  - CiliumLoadBalancerIPPool.yaml
-#  - CiliumBGPClusterConfig.yaml
-  - CiliumBGPPeeringPolicy.yaml
-  - GatewayClass.yaml
-  - add-labels-worker.yaml  
+  - CiliumLoadBalancerIPPool.yaml # This defines the IP pool for LoadBalancer services
+  - GatewayClass.yaml # This is for the Kubernetes Gateway API
