@@ -154,6 +154,7 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         ros_asn                       = "65000"
         bgp_port                      = "179"
         cluster_id                    = var.cluster_id
+        enable_bfd                    = "true"
       })
       daemons_conf = templatefile("${path.module}/templates/frr-daemons.tmpl", {
         enable_ipv4          = var.enable_ipv4
