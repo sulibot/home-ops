@@ -9,5 +9,3 @@ spec:
     enabled: true
     restartTimeSeconds: 120 # Default is 120s, 15s is quite short.
   ebgpMultihop: 2
-  holdTimeSeconds: 30
-  keepaliveTimeSeconds: 10
