@@ -65,7 +65,7 @@ gatewayAPI:
       matchLabels: {}
 
 l2NeighDiscovery:
-  enabled: true
+  enabled: false
 
 l2announcements:
   enabled: false
