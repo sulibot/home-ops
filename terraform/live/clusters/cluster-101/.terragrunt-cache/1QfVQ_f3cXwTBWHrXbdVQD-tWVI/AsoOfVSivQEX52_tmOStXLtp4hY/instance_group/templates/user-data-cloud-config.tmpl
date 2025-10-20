@@ -344,15 +344,6 @@ write_files:
           eth0:
 %{ if enable_ipv6 ~}
             accept-ra: true
-            routes:
-              - to: fd00::/8
-                via: ${egress_ipv6_iface_gateway}
-                on-link: true
-                table: 100
-            routing-policy:
-              - to: fd00::/8
-                table: 100
-                priority: 32765
 %{ else ~}
             accept-ra: false
 %{ endif ~}
