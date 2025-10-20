@@ -1,6 +1,5 @@
 resources:
   - namespace.yaml
-  - bgp-peer-config.yaml
   - bgp-cluster-config.yaml
   - bgp-advertisements.yaml
   - values-configmap.yaml
