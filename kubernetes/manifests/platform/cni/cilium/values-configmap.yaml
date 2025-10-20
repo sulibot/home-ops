@@ -19,11 +19,16 @@ data:
     ipam:
       mode: kubernetes
 
+    routingMode: native
+    tunnelProtocol: ""
+    ipv6NativeRoutingCIDR: fd00:101:44::/60
+    autoDirectNodeRoutes: true
+
     bgpControlPlane:
       enabled: true
 
     bpf:
-      masquerade: true
+      masquerade: false
 
     bgp:
       enabled: false

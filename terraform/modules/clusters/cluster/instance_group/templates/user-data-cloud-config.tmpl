@@ -345,12 +345,12 @@ write_files:
 %{ if enable_ipv6 ~}
             accept-ra: true
             routes:
-              - to: fd00::/8
+              - to: fd00:101::/64
                 via: ${egress_ipv6_iface_gateway}
                 on-link: true
                 table: 100
             routing-policy:
-              - to: fd00::/8
+              - to: fd00:101::/64
                 table: 100
                 priority: 32765
 %{ else ~}
