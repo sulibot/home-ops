@@ -71,7 +71,7 @@ l2announcements:
   enabled: false
 
 endpointRoutes:
-  enabled: true
+  enabled: false
 
 cni:
   install: true
