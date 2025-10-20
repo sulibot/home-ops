@@ -75,7 +75,7 @@ data:
       enabled: true
 
     l2announcements:
-      enabled: true
+      enabled: false
 
     endpointRoutes:
       enabled: true
