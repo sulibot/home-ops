@@ -1,4 +1,4 @@
 resources:
   - network/
-  - security/
+#  - security/
   - datastore/
