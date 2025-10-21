@@ -154,7 +154,7 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         ros_asn                       = "65000"
         bgp_port                      = "179"
         cluster_id                    = var.cluster_id
-        enable_bfd                    = "true"
+        enable_bfd                    = "false"
       })
       daemons_conf = templatefile("${path.module}/templates/frr-daemons.tmpl", {
         enable_ipv4          = var.enable_ipv4
@@ -257,6 +257,13 @@ resource "proxmox_virtual_environment_vm" "instances" {
     mac_address = local.mac_addresses[each.key].mesh
 #    vlan_id     = "20${var.cluster_id}"
   }
+
+network_device {
+  
+}
+
+
+
 
   initialization {
     datastore_id      = var.datastore_id

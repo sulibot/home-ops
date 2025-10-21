@@ -3,6 +3,7 @@
 # - eBGP to RouterOS border router (on-link via VLAN)
 # - VIPs are addresses on lo (gated by vip-health-bgp.sh)
 # - FRR 10.3.x+ with datacenter defaults
+# - FRR actively initiates BGP (connect retry 5s)
 # =============================
 
 frr version 10.3
@@ -10,6 +11,112 @@ frr defaults datacenter
 hostname ${hostname}
 log syslog informational
 service integrated-vtysh-config
+!
+
+! ---------- Route Maps & Prefix Lists ----------
+%{ if enable_ipv4 }
+ip prefix-list VIPS-v4 seq 10 permit ${vip_ipv4_loopback_ip}/32
+!
+route-map EXPORT-SERVICES-v4 permit 5
+ match ip address prefix-list VIPS-v4
+ set community ${vm_asn}:110
+exit
+!
+route-map EXPORT-SERVICES-v4 permit 10
+ match interface lo
+ set community ${vm_asn}:100
+exit
+!
+ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
+!
+route-map IMPORT-DEFAULT-v4 permit 10
+ match ip address prefix-list DEFAULT-ONLY-v4
+exit
+!
+route-map IMPORT-DEFAULT-v4 deny 90
+exit
+!
+%{ endif }
+
+%{ if enable_ipv6 }
+ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
+ipv6 prefix-list VIPS-v6 seq 10 permit ${vip_ipv6_loopback_ip}/128
+!
+route-map EXPORT-SERVICES-v6 permit 5
+ match ipv6 address prefix-list VIPS-v6
+ set community ${vm_asn}:110
+exit
+!
+route-map EXPORT-SERVICES-v6 permit 10
+ match interface lo
+ set community ${vm_asn}:100
+exit
+!
+route-map IMPORT-DEFAULT-v6 permit 10
+ match ipv6 address prefix-list DEFAULT-ONLY-v6
+exit
+!
+route-map IMPORT-DEFAULT-v6 deny 90
+exit
+!
+%{ endif }
+
+! ---------- Loopback Interface (Node ID + VIPs managed by script) ----------
+interface lo
+%{ if enable_ipv4 }
+ ip address ${egress_ipv4_loopback_id_ip}/32
+%{ endif }
+%{ if enable_ipv6 }
+ ipv6 address ${egress_ipv6_loopback_id_ip}/128
+%{ endif }
+exit
+!
+
+! ---------- BGP Configuration ----------
+router bgp ${vm_asn}
+ bgp router-id ${router_id}
+ no bgp default ipv4-unicast
+ bgp graceful-restart
+ timers bgp 10 30
+%{ if enable_ipv4 }
+ neighbor ${egress_ipv4_iface_gateway} remote-as ${ros_asn}
+ neighbor ${egress_ipv4_iface_gateway} timers connect 5
+ neighbor ${egress_ipv4_iface_gateway} port ${bgp_port}
+ neighbor ${egress_ipv4_iface_gateway} update-source ${egress_ipv4_iface_ip}
+ no neighbor ${egress_ipv4_iface_gateway} passive
+%{ if enable_bfd }
+ neighbor ${egress_ipv4_iface_gateway} bfd
+ neighbor ${egress_ipv4_iface_gateway} bfd profile fast-bfd
+%{ endif }
+ !
+ address-family ipv4 unicast
+  redistribute connected route-map EXPORT-SERVICES-v4
+  neighbor ${egress_ipv4_iface_gateway} activate
+  neighbor ${egress_ipv4_iface_gateway} route-map IMPORT-DEFAULT-v4 in
+  neighbor ${egress_ipv4_iface_gateway} route-map EXPORT-SERVICES-v4 out
+  maximum-paths 8
+ exit-address-family
+%{ endif }
+%{ if enable_ipv6 }
+ neighbor ${egress_ipv6_iface_gateway} remote-as ${ros_asn}
+ neighbor ${egress_ipv6_iface_gateway} timers connect 5
+ neighbor ${egress_ipv6_iface_gateway} port ${bgp_port}
+ neighbor ${egress_ipv6_iface_gateway} update-source ${egress_ipv6_iface_ip}
+ no neighbor ${egress_ipv6_iface_gateway} passive
+%{ if enable_bfd }
+ neighbor ${egress_ipv6_iface_gateway} bfd
+ neighbor ${egress_ipv6_iface_gateway} bfd profile fast-bfd
+%{ endif }
+ !
+ address-family ipv6 unicast
+  redistribute connected route-map EXPORT-SERVICES-v6
+  neighbor ${egress_ipv6_iface_gateway} activate
+  neighbor ${egress_ipv6_iface_gateway} route-map IMPORT-DEFAULT-v6 in
+  neighbor ${egress_ipv6_iface_gateway} route-map EXPORT-SERVICES-v6 out
+  maximum-paths 8
+ exit-address-family
+%{ endif }
+exit
 !
 
 ! ---------- BFD Configuration ----------
@@ -21,117 +128,5 @@ bfd
   echo-interval 0
  exit
 !
-%{ if enable_bfd }
-! BFD will be enabled per-neighbor below via: "neighbor ... bfd profile fast-bfd"
-%{ endif }
-!
-
-! ---------- Loopback Interface (Node ID + VIPs managed by script) ----------
-interface lo
-%{ if enable_ipv4 }
- ip address ${egress_ipv4_loopback_id_ip}/32
-%{ endif }
-%{ if enable_ipv6 }
- ipv6 address ${egress_ipv6_loopback_id_ip}/128
-%{ endif }
-!
-! (VIPs will also be added to lo by your health-gate script)
-!
-
-! ---------- BGP Configuration ----------
-router bgp ${vm_asn}
- bgp router-id ${router_id}
- bgp log-neighbor-changes
- no bgp default ipv4-unicast
- bgp graceful-restart
- timers bgp 10 30
-!
-%{ if enable_ipv4 }
-! eBGP to RouterOS on-link (VLAN ${cluster_id})
- neighbor ${egress_ipv4_iface_gateway} remote-as ${ros_asn}
- neighbor ${egress_ipv4_iface_gateway} timers connect 5
- neighbor ${egress_ipv4_iface_gateway} port ${bgp_port}
- neighbor ${egress_ipv4_iface_gateway} update-source ${egress_ipv4_iface_ip}
-%{ if enable_bfd }
- neighbor ${egress_ipv4_iface_gateway} bfd profile fast-bfd
-%{ endif }
-!
-%{ endif }
-
-%{ if enable_ipv6 }
-! eBGP to RouterOS on-link (VLAN ${cluster_id})
- neighbor ${egress_ipv6_iface_gateway} remote-as ${ros_asn}
- neighbor ${egress_ipv6_iface_gateway} timers connect 5
- neighbor ${egress_ipv6_iface_gateway} port ${bgp_port}
- neighbor ${egress_ipv6_iface_gateway} update-source ${egress_ipv6_iface_ip}
-%{ if enable_bfd }
- neighbor ${egress_ipv6_iface_gateway} bfd profile fast-bfd
-%{ endif }
-!
-%{ endif }
-
-%{ if enable_ipv4 }
- address-family ipv4 unicast
-  redistribute connected route-map EXPORT-SERVICES-v4
-  neighbor ${egress_ipv4_iface_gateway} activate
-  neighbor ${egress_ipv4_iface_gateway} route-map IMPORT-DEFAULT-v4 in
-  neighbor ${egress_ipv4_iface_gateway} route-map EXPORT-SERVICES-v4 out
-  maximum-paths 8
- exit-address-family
-!
-%{ endif }
-
-%{ if enable_ipv6 }
- address-family ipv6 unicast
-  redistribute connected route-map EXPORT-SERVICES-v6
-  neighbor ${egress_ipv6_iface_gateway} activate
-  neighbor ${egress_ipv6_iface_gateway} route-map IMPORT-DEFAULT-v6 in
-  neighbor ${egress_ipv6_iface_gateway} route-map EXPORT-SERVICES-v6 out
-  maximum-paths 8
- exit-address-family
-!
-%{ endif }
-
-! ---------- Route Maps & Prefix Lists ----------
-%{ if enable_ipv4 }
-ip prefix-list VIPS-v4 seq 10 permit ${vip_ipv4_loopback_ip}/32
-!
-route-map EXPORT-SERVICES-v4 permit 5
- match ip address prefix-list VIPS-v4
- set community ${vm_asn}:110
-!
-route-map EXPORT-SERVICES-v4 permit 10
- match interface lo
- set community ${vm_asn}:100
-!
-ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
-!
-route-map IMPORT-DEFAULT-v4 permit 10
- match ip address prefix-list DEFAULT-ONLY-v4
-!
-route-map IMPORT-DEFAULT-v4 deny 90
-!
-%{ endif }
-
-%{ if enable_ipv6 }
-ipv6 prefix-list VIPS-v6 seq 10 permit ${vip_ipv6_loopback_ip}/128
-!
-route-map EXPORT-SERVICES-v6 permit 5
- match ipv6 address prefix-list VIPS-v6
- set community ${vm_asn}:110
-!
-route-map EXPORT-SERVICES-v6 permit 10
- match interface lo
- set community ${vm_asn}:100
-!
-ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
-!
-route-map IMPORT-DEFAULT-v6 permit 10
- match ipv6 address prefix-list DEFAULT-ONLY-v6
-!
-route-map IMPORT-DEFAULT-v6 deny 90
-!
-%{ endif }
-
 line vty
 !

@@ -1,0 +1,9 @@
+# Ansible managed - Force NAT64 for domains with broken native IPv6
+# This returns NODATA for AAAA queries, forcing DNS64 to synthesize from A records
+
+server:
+{% for domain in dns64_force_nat64_domains %}
+    # Suppress AAAA records for {{ domain }} - force DNS64 synthesis
+    local-zone: "{{ domain }}." always_null
+    local-data: "{{ domain }}. IN A 0.0.0.0"
+{% endfor %}
