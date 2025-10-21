@@ -1,10 +1,10 @@
-# FRR daemon configuration with performance options
+# FRR daemon configuration - IS-IS + BGP for VIP (Cilium handles pod/service BGP)
 bgpd=yes
 ospfd=no
 ospf6d=no
 ripd=no
 ripngd=no
-isisd=no
+isisd=yes
 pimd=no
 pim6d=no
 ldpd=no
@@ -13,19 +13,14 @@ eigrpd=no
 babeld=no
 sharpd=no
 pbrd=no
-bfdd=yes
+bfdd=no
 fabricd=no
 vrrpd=no
 pathd=no
 
 # --- Listener & logging options ---
-# -A 127.0.0.1 : VTY TCP (management) bound to localhost only
-# -p ${bgp_port} : BGP TCP port (use 179 by default)
-# -l ${egress_ipv6_iface_ip} : bind bgpd to a single IPv6 address (avoid wildcard *:179)
-bgpd_options="-A 127.0.0.1 --log-level info -p ${bgp_port} -l ${egress_ipv6_iface_ip}"
-
-# BFD (mgmt socket bound to localhost)
-bfdd_options="-A 127.0.0.1"
+bgpd_options="-A 127.0.0.1 --log-level info -p ${bgp_port} -l ${egress_ipv6_loopback_id_ip}"
+fabricd_options="-A 127.0.0.1 --log-level info"
 
 # Increase file descriptor limits
 MAX_FDS=8192

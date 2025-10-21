@@ -18,6 +18,7 @@ router bgp {{ frr_asn }}
   bgp router-id {{ ansible_host }}
   {% for peer in frr_bgp_neighbors %}
   neighbor {{ peer }} remote-as {{ frr_peer_asn }}
+  neighbor {{ peer }} update-source {{ frr_update_source_ipv6 }}
   {% endfor %}
   !
   address-family ipv6 unicast

@@ -21,6 +21,7 @@ frr_asn:    65101                       # your K8s cluster ASN
 frr_peer_asn: 65000                     # RouterOS ASN
 frr_bgp_neighbors: # fill in your router peer IPs here
   - "fd00:255::fffe"                    # fill in your router peer IPs here
+frr_update_source_ipv6: "fd00:255:101::{{ ansible_host.split('::')[1] }}"  # Use loopback IP for FRR BGP
 
 frr_vrrp_interface: "{{ kube_vip_interface }}"
 frr_vrrp_group:     51
