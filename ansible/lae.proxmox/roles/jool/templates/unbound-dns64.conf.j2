@@ -1,0 +1,44 @@
+# Ansible managed - Unbound DNS64 Configuration
+server:
+    # Listen on IPv6 address
+    interface: {{ dns64_listen_address }}
+    interface: ::1
+
+    # Access control
+    access-control: ::/0 allow
+    access-control: fd00::/8 allow
+
+    # Performance tuning
+    num-threads: 2
+    msg-cache-size: 50m
+    rrset-cache-size: 100m
+    cache-max-ttl: 3600
+    cache-min-ttl: 60
+
+    # Privacy
+    hide-identity: yes
+    hide-version: yes
+
+    # DNS64 module configuration
+    module-config: "dns64 validator iterator"
+
+    # DNS64 prefix (NAT64 prefix)
+    dns64-prefix: {{ dns64_prefix }}
+
+    # Enable IPv6 preference
+    prefer-ip6: yes
+
+    # Do not return AAAA if A exists (let DNS64 handle it)
+    do-ip4: yes
+    do-ip6: yes
+
+    # Enable DNSSEC validation
+    auto-trust-anchor-file: "/var/lib/unbound/root.key"
+
+# Forward queries to upstream DNS
+forward-zone:
+    name: "."
+{% for dns in dns64_upstream_dns %}
+    forward-addr: {{ dns }}
+{% endfor %}
+    forward-first: no

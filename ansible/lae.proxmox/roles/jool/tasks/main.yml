@@ -1,6 +1,47 @@
 ---
 # roles/jool/tasks/main.yml
 
+# --- Proxmox Secure Boot Management (run from localhost via SSH) ---
+- name: Disable Secure Boot via Proxmox
+  delegate_to: localhost
+  become: false
+  block:
+    - name: Stop VM to modify EFI disk
+      ansible.builtin.command:
+        cmd: "ssh root@{{ proxmox_api_host }} 'qm stop {{ proxmox_vm_id }}'"
+      register: stop_vm
+      failed_when: false
+      changed_when: stop_vm.rc == 0
+
+    - name: Wait for VM to stop
+      ansible.builtin.pause:
+        seconds: 5
+      when: stop_vm.rc == 0
+
+    - name: Remove EFI disk with Secure Boot
+      ansible.builtin.command:
+        cmd: "ssh root@{{ proxmox_api_host }} 'qm set {{ proxmox_vm_id }} --delete efidisk0'"
+      register: delete_efi
+      failed_when: false
+      changed_when: delete_efi.rc == 0
+
+    - name: Add EFI disk without Secure Boot pre-enrolled keys
+      ansible.builtin.command:
+        cmd: "ssh root@{{ proxmox_api_host }} 'qm set {{ proxmox_vm_id }} --efidisk0 local:1,efitype=4m,pre-enrolled-keys=0'"
+
+    - name: Start VM after EFI modification
+      ansible.builtin.command:
+        cmd: "ssh root@{{ proxmox_api_host }} 'qm start {{ proxmox_vm_id }}'"
+
+    - name: Wait for VM to boot and be accessible
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        delay: 10
+        timeout: 120
+  when: disable_secure_boot
+  tags: [secure_boot]
+
 # --- Hostname configuration ---
 - name: Normalize hostname vars
   ansible.builtin.set_fact:
@@ -251,3 +292,54 @@
   failed_when: "'already exists' not in (jool_instance_status.stderr | default('')) and jool_instance_status.rc != 0"
   changed_when: "'already exists' not in (jool_instance_status.stderr | default(''))"
   tags: [configure]
+
+# --- DNS64 Server (Unbound) ---
+- name: Install Unbound DNS server
+  ansible.builtin.apt:
+    name:
+      - unbound
+      - unbound-anchor
+    state: present
+    update_cache: yes
+  when: dns64_enable
+  tags: [install, dns64]
+
+- name: Create Unbound configuration directory
+  ansible.builtin.file:
+    path: /etc/unbound/unbound.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: dns64_enable
+  tags: [configure, dns64]
+
+- name: Configure Unbound for DNS64
+  ansible.builtin.template:
+    src: unbound-dns64.conf.j2
+    dest: /etc/unbound/unbound.conf.d/dns64.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: dns64_enable
+  notify: Restart Unbound
+  tags: [configure, dns64]
+
+- name: Create local-zone overrides for problematic domains
+  ansible.builtin.template:
+    src: unbound-nat64-overrides.conf.j2
+    dest: /etc/unbound/unbound.conf.d/nat64-overrides.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: dns64_enable and (dns64_force_nat64_domains | default([]) | length > 0)
+  notify: Restart Unbound
+  tags: [configure, dns64]
+
+- name: Ensure Unbound is enabled and started
+  ansible.builtin.systemd:
+    name: unbound
+    enabled: yes
+    state: started
+  when: dns64_enable
+  tags: [configure, dns64]

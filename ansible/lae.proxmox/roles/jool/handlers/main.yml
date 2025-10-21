@@ -7,3 +7,9 @@
     pre_reboot_delay: 3
     post_reboot_delay: 10
   listen: Reboot to enroll MOK
+
+- name: Restart Unbound
+  ansible.builtin.systemd:
+    name: unbound
+    state: restarted
+  listen: Restart Unbound
