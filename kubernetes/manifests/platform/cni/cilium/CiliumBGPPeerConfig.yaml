@@ -4,6 +4,10 @@ kind: CiliumBGPPeerConfig
 metadata:
   name: default-peer-config
 spec:
+  # IPv6-only address family
+  families:
+    - afi: ipv6
+      safi: unicast
   # Enable graceful restart to prevent traffic loss during agent restarts.
   gracefulRestart:
     enabled: true

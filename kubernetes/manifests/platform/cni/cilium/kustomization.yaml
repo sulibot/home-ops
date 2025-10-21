@@ -1,4 +1,5 @@
 resources:
+  # Cilium BGP enabled alongside FRR
   - CiliumBGPAdvertisement.yaml
   - CiliumBGPClusterConfig.yaml
   - CiliumBGPPeerConfig.yaml
