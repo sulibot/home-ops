@@ -1,16 +1,10 @@
 # roles/cilium/tasks/main.yaml
 ---
-- name: Extract Cilium values from Flux ConfigMap (for consistency)
-  ansible.builtin.shell: |
-    grep -A 100 'values.yaml: |' {{ playbook_dir }}/../../../kubernetes/manifests/platform/cni/cilium/values-configmap.yaml | \
-    tail -n +2 | \
-    sed 's/^    //'
-  register: cilium_values_content
-  changed_when: false
-
 - name: Write Cilium values file
   ansible.builtin.copy:
-    content: "{{ cilium_values_content.stdout }}"
+    # Look up the ConfigMap file, parse it as YAML, and extract the 'values.yaml' data key.
+    # This is more robust than using shell commands.
+    content: "{{ (lookup('file', playbook_dir + '/../../../kubernetes/manifests/platform/cni/cilium/values-configmap.yaml') | from_yaml).data['values.yaml'] }}"
     dest: "{{ cilium_config_file }}"
     mode: "0644"
   become: true
@@ -25,6 +19,7 @@
 - name: Install or upgrade Cilium via Helm
   kubernetes.core.helm:
     chart_ref: cilium/cilium
+    chart_version: "1.18"
     release_name: cilium
     release_namespace: kube-system
     create_namespace: true
@@ -33,5 +28,5 @@
     dependency_update: true
     atomic: true
     wait: true
-    timeout: 600s
+    timeout: 1200s
   become: true
