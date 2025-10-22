@@ -1,54 +1,33 @@
-# Default values for cloudflare-tunnel.
-# Cloudflare parameters.
 cloudflare:
-    # Your Cloudflare account number.
     account: 089ac5ef7a1525cb7d7129cdde5873cd
-    # The name of the tunnel this instance will serve
     tunnelName: sulibot-tunnel
-    # The ID of the above tunnel.
     tunnelId: 0977043f-80e9-4549-a6f0-0af145a17f27
-    # The secret for the tunnel.
     secret: ENC[AES256_GCM,data:efO8VybnFnCQg0Za4FZOLPobanBzirR44bKklQ6XQWq7U37/W1rfh4blbkQ=,iv:yX+NYSDl0fqqgUmAyIgbCbybeqIGGo5cria8NZ9bE7w=,tag:RVleS8it+5eoUFsF40dp4A==,type:str]
-    # If defined, no secret is created for the credentials, and instead, the secret referenced is used
     secretName: null
-    # If true, turn on WARP routing for TCP
     enableWarp: false
-    # Define ingress rules for the tunnel. See
-    # https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress
     ingress:
-        # The first rule proxies traffic to the httpbin sample service named web-server at port 80
         - hostname: plex.sulibot.com
           service: http://plex-service.media.svc.cluster.local:80
         - hostname: overseerr.sulibot.com
           service: http://overseerr-service.media.svc.cluster.local:80
-          # This rule sends traffic to the built-in hello-world HTTP server. This can help debug connectivity
-          # issues. If hello.example.com resolves and tunnel.example.com does not, then the problem is
-          # in the connection from cloudflared to your local service, not from the internet to cloudflared.
         - hostname: hello.sulibot.com
           service: hello_world
 image:
     repository: cloudflare/cloudflared
     pullPolicy: IfNotPresent
-    # If supplied, this overrides "appVersion"
-    tag: ""
+    tag: 2025.10.0
 replicaCount: 2
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 serviceAccount:
-    # Annotations to add to the service account
     annotations: {}
-    # The name of the service account to use.
-    # If not set and create is true, a name is generated using the fullname template
     name: ""
 podAnnotations: {}
 podLabels: {}
-# Security items common to everything in the pod.  Here we require that it
-# does not run as the user defined in the image, literally named "nonroot".
 podSecurityContext:
     runAsNonRoot: true
     runAsUser: 65532
-# Security items for one container. We lock it down.
 securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -56,25 +35,15 @@ securityContext:
             - ALL
     readOnlyRootFilesystem: true
 resources: {}
-# We usually recommend not to specify default resources and to leave this as a conscious
-# choice for the user. This also increases chances charts run on environments with little
-# resources, such as Minikube. If you do want to specify resources, uncomment the following
-# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-# limits:
-#   cpu: 100m
-#   memory: 128Mi
-# requests:
-#   cpu: 100m
-#   memory: 128Mi
 nodeSelector: {}
 tolerations: []
-# Default affinity is to spread out over nodes; use this to override.
 affinity: {}
+env:
+    - name: TUNNEL_EDGE_IP_VERSION
+      value: "6"
+    - name: TUNNEL_TRANSPORT_PROTOCOL
+      value: quic
 sops:
-    kms: []
-    gcp_kms: []
-    azure_kv: []
-    hc_vault: []
     age:
         - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
           enc: |
@@ -85,8 +54,7 @@ sops:
             elVLTkx1cWgzaUF4eUpkek1kNXlOWGMKMBvymqF+4jtUYG9VkqUl6R8KGUqCjHKj
             +7mbOX487s67fouT8MfgXPiYhQUEqGBZ8QgNDZffe3nslQFFwOFvSw==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2024-12-15T09:12:49Z"
-    mac: ENC[AES256_GCM,data:Fi1dkKzDosHlMxma57PD/outA/SumRiY4Nd6jdenQgHfvw7h/mnq4EFBuRcr40HU7xVa7KQp+craDnx681Hz8mUK2NJjO3knGBfeubp0X4zN0CTP52N0BGfC/e5hXPVRhvFgs+lp8P7mKGSuoPSHlfiFQaNk/bhs+2MS9jw6CKs=,iv:orxXYEkheux8oAPXg38nAHOTniDzTll/BMd1cAUjEjQ=,tag:t8MQHntYYC3fAP79RVcmmQ==,type:str]
-    pgp: []
+    lastmodified: "2025-10-22T04:27:02Z"
+    mac: ENC[AES256_GCM,data:MpUb+YghjRKfMR9wUFCvaftG52HKYzbfBl8KNYOreOC5sDrNgqaX1b/jXcUP51JwWa4/fbtgzQbK6rkpXzdjoHhoQm+lGLmzImIqagmW3vhOifaBsrdB64FcInmMKkKleHlFQjOMaZwTdhiEhAe7wM813eK2nj9DzCqgROCleSU=,iv:e8q4ZHkwN+HggQ5BfdDDEuNKQ11yw4o+m7CfZyrpPD8=,tag:dnpzDxxf0QrxnFPoZ/ieXQ==,type:str]
     encrypted_regex: ^(adminKey|userKey|secret)$
-    version: 3.9.1
+    version: 3.10.2
