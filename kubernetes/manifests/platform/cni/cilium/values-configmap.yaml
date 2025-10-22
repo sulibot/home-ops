@@ -53,6 +53,8 @@ data:
           - port-distribution
           - policy-verdict
 
+    l7Proxy: true
+
     gatewayAPI:
       enabled: true
       enableProxyProtocol: false

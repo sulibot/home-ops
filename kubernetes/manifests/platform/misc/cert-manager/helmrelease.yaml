@@ -5,6 +5,11 @@ metadata:
   name: cert-manager
   namespace: flux-system
 spec:
+  interval: 1m
+  releaseName: cert-manager
+  targetNamespace: cert-manager
+  install:
+    createNamespace: true
   chart:
     spec:
       chart: cert-manager
@@ -13,25 +18,20 @@ spec:
         kind: HelmRepository
         name: cert-manager
         namespace: flux-system
-      version: v1.16.2
-  install:
-    createNamespace: true
-  interval: 1m0s
-  releaseName: cert-manager
-  targetNamespace: cert-manager
+      version: v1.19.1
   values:
-    config:
-      apiVersion: controller.config.cert-manager.io/v1alpha1
-      enableGatewayAPI: true
-      kind: ControllerConfiguration
     crds:
       enabled: true
+    config:
+      apiVersion: controller.config.cert-manager.io/v1alpha1
+      kind: ControllerConfiguration
+      enableGatewayAPI: true
     extraArgs:
-    - --dns01-recursive-nameservers-only
-    - --dns01-recursive-nameservers=1.1.1.1:53
+      - --dns01-recursive-nameservers-only
+      - --dns01-recursive-nameservers=[2606:4700:4700::1111]:53,[2606:4700:4700::1001]:53
+    podDnsPolicy: None
     podDnsConfig:
       nameservers:
-      - 1.1.1.1
-      - 2606:4700:4700::1111
-    podDnsPolicy: None
+        - 2606:4700:4700::1111
+        - 2606:4700:4700::1001
     replicaCount: 1
