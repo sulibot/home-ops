@@ -1,4 +1,15 @@
 ```
+flux create source helm bjw-s-repo \
+  --url=https://bjw-s-labs.github.io/helm-charts \
+  --interval=10m \
+  --namespace=flux-system \
+  --export > /Users/sulibot/repos/github/home-ops/kubernetes/shared/repo/helm/bjw-s-repo.yaml
+
+
+
+
+
+```
 flux create source helm akeyless \
   --url=https://akeylesslabs.github.io/helm-charts \
   --interval=1h \
@@ -278,3 +289,7 @@ flux create helmrelease sabnzbd \
   runAsGroup: 65534
   fsGroup: 65534
   fsGroupChangePolicy: OnRootMismatch
+
+
+
+
