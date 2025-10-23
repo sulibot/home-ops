@@ -1,0 +1,118 @@
+{{- $defaults := .Values.defaults -}}
+{{- range $appName, $app := .Values.apps }}
+{{- $type := lower (default "app-template" $app.type) -}}
+{{- if eq $type "app-template" }}
+{{- $name := include "app-scaffolder.appName" $appName -}}
+{{- $namespace := default $name $app.namespace -}}
+{{- $chartVersion := default (default $defaults.chartVersion $.Values.helmRepository.version) $app.chartVersion -}}
+{{- $interval := default $defaults.interval $app.interval -}}
+{{- $servicePort := dig $defaults.service.port "service" "port" $app -}}
+{{- $serviceTargetPort := dig $defaults.service.targetPort "service" "targetPort" $app -}}
+{{- $configSize := dig $defaults.persistence.config.size "persistence" "config" "size" $app -}}
+{{- $configMount := dig $defaults.persistence.config.mountPath "persistence" "config" "mountPath" $app -}}
+{{- $configStorage := dig $defaults.persistence.config.storageClass "persistence" "config" "storageClass" $app -}}
+{{- $dataEnabled := dig true "persistence" "data" "enabled" $app -}}
+{{- $dataSize := dig $defaults.persistence.data.size "persistence" "data" "size" $app -}}
+{{- $dataMount := dig $defaults.persistence.data.mountPath "persistence" "data" "mountPath" $app -}}
+{{- $dataStorage := dig $defaults.persistence.data.storageClass "persistence" "data" "storageClass" $app -}}
+{{- $timezone := dig $defaults.timezone "timezone" $app -}}
+{{- $allowPrivEsc := dig $defaults.securityContext.allowPrivilegeEscalation "securityContext" "allowPrivilegeEscalation" $app -}}
+{{- $readOnlyRoot := dig $defaults.securityContext.readOnlyRootFilesystem "securityContext" "readOnlyRootFilesystem" $app -}}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $name }}
+  namespace: {{ default "flux-system" $app.helmReleaseNamespace }}
+spec:
+  interval: {{ $interval }}
+  targetNamespace: {{ $namespace }}
+  chart:
+    spec:
+      chart: app-template
+      version: {{ $chartVersion }}
+      sourceRef:
+        kind: HelmRepository
+        name: {{ $.Values.helmRepository.name }}
+        namespace: {{ $.Values.helmRepository.namespace }}
+      interval: {{ $.Values.helmRepository.interval | default "1h" }}
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      main:
+        type: statefulset
+        replicas: {{ default 1 $app.replicas }}
+        pod:
+          dnsPolicy: ClusterFirst
+          dnsConfig:
+            options:
+              - name: ndots
+                value: "1"
+          securityContext:
+            allowPrivilegeEscalation: {{ $allowPrivEsc }}
+            readOnlyRootFilesystem: {{ $readOnlyRoot }}
+        containers:
+          main:
+            image:
+              repository: {{ $app.image.repository }}
+{{- if $app.image.tag }}
+              tag: {{ $app.image.tag }}
+{{- end }}
+{{- if $app.image.digest }}
+              digest: {{ $app.image.digest }}
+{{- end }}
+{{- if $app.image.pullPolicy }}
+              pullPolicy: {{ $app.image.pullPolicy }}
+{{- end }}
+            env:
+              - name: TZ
+                value: {{ $timezone }}
+{{- range $env := $app.env }}
+{{- if $env.name }}
+              - name: {{ $env.name }}
+{{- if hasKey $env "value" }}
+                value: {{ $env.value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $app.resources }}
+            resources:
+{{ toYaml $app.resources | indent 14 }}
+{{- end }}
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: {{ $servicePort }}
+            targetPort: {{ $serviceTargetPort }}
+    persistence:
+      config:
+        enabled: true
+        type: persistentVolumeClaim
+        retain: true
+        storageClass: {{ $configStorage }}
+        accessMode: ReadWriteOnce
+        size: {{ $configSize }}
+        globalMounts:
+          - path: {{ $configMount }}
+      data:
+        enabled: {{ $dataEnabled }}
+        type: persistentVolumeClaim
+        retain: true
+        storageClass: {{ $dataStorage }}
+        accessMode: ReadWriteOnce
+        size: {{ $dataSize }}
+        globalMounts:
+          - path: {{ $dataMount }}
+{{- if $app.extraValues }}
+{{ toYaml $app.extraValues | indent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

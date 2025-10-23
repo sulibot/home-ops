@@ -1,0 +1,28 @@
+{{- range $appName, $app := .Values.apps }}
+{{- if eq (lower (default "" $app.type)) "raw" }}
+{{- $name := include "app-scaffolder.appName" $appName }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $name }}
+  namespace: {{ default "flux-system" $app.helmReleaseNamespace }}
+spec:
+  interval: {{ default $.Values.defaults.interval $app.interval }}
+  targetNamespace: {{ default $name $app.namespace }}
+  chart:
+{{ toYaml $app.chart | indent 4 }}
+{{- if $app.install }}
+  install:
+{{ toYaml $app.install | indent 4 }}
+{{- end }}
+{{- if $app.upgrade }}
+  upgrade:
+{{ toYaml $app.upgrade | indent 4 }}
+{{- end }}
+{{- if $app.values }}
+  values:
+{{ toYaml $app.values | indent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

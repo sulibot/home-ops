@@ -1,0 +1,77 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lidarr
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: lidarr
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      lidarr:
+        type: statefulset
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: lscr.io/linuxserver/lidarr
+              tag: latest
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+              - name: PUID
+                value: "911"
+              - name: PGID
+                value: "911"
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: lidarr
+        ports:
+          http:
+            port: 80
+            targetPort: 8686
+    route:
+      app:
+        hostnames:
+          - lidarr.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+            sectionName: http
+        rules:
+          - backendRefs:
+              - name: lidarr
+                port: 80
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 100Mi
+        globalMounts:
+          - path: /config
+      data:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 10Gi
+        globalMounts:
+          - path: /data

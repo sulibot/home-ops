@@ -1,0 +1,5 @@
+apiVersion: v2
+name: app-scaffolder
+description: Generate Flux objects (HelmRelease, Namespace, HTTPRoute, Kustomization) for workloads
+type: application
+version: 0.1.0

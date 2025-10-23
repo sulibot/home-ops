@@ -1,0 +1,103 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: immich
+  namespace: media
+spec:
+  chart:
+    spec:
+      chart: immich
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: immich
+        namespace: flux-system
+      version: 0.8.5
+  interval: 1h0m0s
+  values:
+    env:
+      DB_DATABASE_NAME: immich
+      DB_HOSTNAME: immich-postgresql
+      DB_PASSWORD: immich
+      DB_USERNAME: immich
+      IMMICH_MACHINE_LEARNING_URL: http://immich-machine-learning:3003
+      REDIS_HOSTNAME: immich-redis-master
+    image:
+      tag: v1.119.0
+    immich:
+      configuration:
+        storageTemplate:
+          enabled: true
+          template: '{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}'
+        trash:
+          days: 30
+          enabled: false
+      metrics:
+        enabled: false
+      persistence:
+        library:
+          size: 50Gi
+          storageClassName: csi-cephfs-sc-retain
+    machine-learning:
+      enabled: true
+      env:
+        TRANSFORMERS_CACHE: /cache
+      image:
+        pullPolicy: IfNotPresent
+        repository: ghcr.io/immich-app/immich-machine-learning
+      persistence:
+        cache:
+          accessMode: ReadWriteMany
+          enabled: true
+          size: 10Gi
+          type: emptyDir
+    postgresql:
+      enabled: true
+      global:
+        postgresql:
+          auth:
+            database: immich
+            password: immich
+            username: immich
+      image:
+        repository: tensorchord/pgvecto-rs
+        tag: pg14-v0.2.0
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: csi-cephfs-sc-retain
+      primary:
+        containerSecurityContext:
+          readOnlyRootFilesystem: false
+        initdb:
+          scripts:
+            create-extensions.sql: |
+              CREATE EXTENSION cube;
+              CREATE EXTENSION earthdistance;
+              CREATE EXTENSION vectors;
+    redis:
+      architecture: standalone
+      auth:
+        enabled: false
+      enabled: true
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: csi-cephfs-sc-retain
+    server:
+      enabled: true
+      image:
+        pullPolicy: IfNotPresent
+        repository: ghcr.io/immich-app/immich-server
+      ingress:
+        main:
+          annotations: null
+          enabled: true
+          hosts:
+          - host: immich.local
+            paths:
+            - path: /
+              pathType: Prefix
+          ingressClassName: cilium
+          tls: []

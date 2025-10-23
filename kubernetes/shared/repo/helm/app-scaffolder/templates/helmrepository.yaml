@@ -1,0 +1,12 @@
+{{- if .Values.helmRepository.create }}
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: {{ .Values.helmRepository.name }}
+  namespace: {{ .Values.helmRepository.namespace }}
+spec:
+  interval: {{ .Values.helmRepository.interval | default "1h" }}
+  type: oci
+  url: {{ .Values.helmRepository.url }}
+---
+{{- end }}

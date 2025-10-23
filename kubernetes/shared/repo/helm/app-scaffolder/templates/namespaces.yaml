@@ -1,0 +1,12 @@
+{{- $created := dict }}
+{{- range $appName, $app := .Values.apps }}
+{{- $ns := default (include "app-scaffolder.appName" $appName) $app.namespace }}
+{{- if and (ne ($app.createNamespace | toString) "false") (not (hasKey $created $ns)) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+---
+{{- $_ := set $created $ns true }}
+{{- end }}
+{{- end }}

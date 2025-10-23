@@ -1,0 +1,111 @@
+helmRepository:
+  create: true
+  name: app-template
+  namespace: flux-system
+  url: oci://ghcr.io/bjw-s-labs/helm/app-template
+  interval: 1h
+  version: 4.4.0
+
+defaults:
+  interval: 30m
+  chartVersion: 4.4.0
+  timezone: America/Los_Angeles
+  gateway:
+    name: gateway-internal
+    namespace: network
+    sectionName: http
+    domain: sulibot.com
+  persistence:
+    config:
+      storageClass: csi-cephfs-sc-retain
+      size: 1Gi
+      mountPath: /config
+    data:
+      enabled: true
+      storageClass: csi-cephfs-sc-retain
+      size: 10Gi
+      mountPath: /data
+  service:
+    port: 80
+    targetPort: 8080
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+
+apps:
+  plex:
+    type: app-template
+    namespace: media
+    createNamespace: true
+    image:
+      repository: ghcr.io/home-operations/plex
+      tag: 1.42.2.10156-f737b826c
+    env:
+      - name: PUID
+        value: "911"
+      - name: PGID
+        value: "911"
+    persistence:
+      data:
+        size: 10Gi
+    service:
+      targetPort: 32400
+    gateway:
+      domain: media.sulibot.com
+    flux:
+      clusters:
+        - name: production
+          namespace: flux-system
+          path: ./kubernetes/clusters/production/apps/media/plex
+          sourceRef:
+            kind: GitRepository
+            name: home-ops
+            namespace: flux-system
+
+  lidarr:
+    type: app-template
+    namespace: media
+    createNamespace: true
+    image:
+      repository: ghcr.io/home-operations/lidarr
+      tag: 3.0.0.4855
+    env:
+      - name: PUID
+        value: "911"
+      - name: PGID
+        value: "911"
+    service:
+      targetPort: 8686
+    flux:
+      clusters:
+        - name: production
+          namespace: flux-system
+          path: ./kubernetes/clusters/production/apps/media/lidarr
+          sourceRef:
+            kind: GitRepository
+            name: home-ops
+            namespace: flux-system
+
+  sabnzbd:
+    type: app-template
+    namespace: media
+    createNamespace: true
+    image:
+      repository: ghcr.io/home-operations/sabnzbd
+      tag: 4.5.3
+    env:
+      - name: PUID
+        value: "911"
+      - name: PGID
+        value: "911"
+    service:
+      targetPort: 8080
+    flux:
+      clusters:
+        - name: production
+          namespace: flux-system
+          path: ./kubernetes/clusters/production/apps/media/sabnzbd
+          sourceRef:
+            kind: GitRepository
+            name: home-ops
+            namespace: flux-system
