@@ -1,3 +1,4 @@
 # Ignore raw secrets but allow SOPS-encrypted files
 secrets/*.yaml
 !secrets/*.enc.yaml
+!secrets/*.sops.yaml

@@ -49,7 +49,33 @@ Create a Service Account for the automation:
 3. Name it: `kubernetes-automation`
 4. Grant access to the `Kubernetes` vault (Read access)
 5. Copy the token (starts with `ops_...`)
-6. Set it as an environment variable:
+6. Store it securely using **one of these methods**:
+
+##### Method 1: SOPS-encrypted file (RECOMMENDED)
+
+This is the most secure method as the token is encrypted at rest in your repository:
+
+```bash
+cd ansible/k8s
+
+# Create the token file
+cat > secrets/1password-token.sops.yaml <<EOF
+---
+op_service_account_token: ops_YOUR_ACTUAL_TOKEN_HERE
+EOF
+
+# Encrypt with SOPS
+sops --encrypt --in-place secrets/1password-token.sops.yaml
+
+# Verify it's encrypted
+cat secrets/1password-token.sops.yaml | grep "sops:"
+```
+
+The token file will be encrypted and can be safely committed to git.
+
+##### Method 2: Environment variable
+
+Alternatively, use an environment variable (less secure, not stored in git):
 
 ```bash
 export OP_SERVICE_ACCOUNT_TOKEN='ops_...'
@@ -58,6 +84,8 @@ export OP_SERVICE_ACCOUNT_TOKEN='ops_...'
 echo 'export OP_SERVICE_ACCOUNT_TOKEN="ops_..."' >> ~/.zshrc
 source ~/.zshrc
 ```
+
+**Note**: The automation will prefer the SOPS file if it exists, otherwise it will fall back to the environment variable.
 
 ### Kubernetes Setup
 
@@ -301,10 +329,36 @@ kubectl get externalsecret -A
 
 ## Security Considerations
 
-1. **Service Account Token**: Store securely, never commit to git
-2. **SOPS Encryption**: Ensures credentials are encrypted at rest in git
-3. **Age Key**: Required for SOPS decryption, should be backed up securely
-4. **Credential Rotation**: Credentials expire periodically, use automation to renew
+### Token Storage
+
+The automation supports two methods for storing the Service Account token:
+
+1. **SOPS-encrypted file (RECOMMENDED)**
+   - ✅ Token is encrypted at rest using Age encryption
+   - ✅ Can be safely committed to git
+   - ✅ Version controlled with your infrastructure code
+   - ✅ Automatically decrypted by Ansible when needed
+   - ✅ Access controlled by Age key (only authorized users can decrypt)
+   - Location: `ansible/k8s/secrets/1password-token.sops.yaml`
+
+2. **Environment variable**
+   - ⚠️  Stored in shell profile or session
+   - ⚠️  Not version controlled
+   - ⚠️  Must be set on each machine
+   - ⚠️  Can be exposed in process listings
+   - Use case: Local development, CI/CD secrets
+
+### Best Practices
+
+1. **Use SOPS for production**: Store the token in the encrypted SOPS file
+2. **Protect Age key**: The Age private key is required to decrypt SOPS files
+   - Store securely (password manager, HSM, etc.)
+   - Backup to a secure location
+   - Never commit to git
+3. **Rotate tokens periodically**: Service Account tokens don't expire but should be rotated
+4. **Limit Service Account permissions**: Only grant read access to necessary vaults
+5. **Audit access**: Review Service Account usage regularly in 1Password
+6. **Use separate tokens**: Different tokens for dev/staging/prod environments
 
 ## Credential Lifecycle
 
