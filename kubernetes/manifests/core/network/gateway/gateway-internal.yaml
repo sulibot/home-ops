@@ -11,8 +11,6 @@ spec:
   gatewayClassName: cilium
   addresses:
     - type: IPAddress
-      value: 10.10.101.160
-    - type: IPAddress
       value: fd00:101::cafe:160
   listeners:
     - name: sulibot-https
