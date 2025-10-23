@@ -1,4 +1,5 @@
 resources:
   - network/
-  - security/
+  # security/ temporarily disabled - external-secrets moved to apps/
+  # - security/
   - datastore/
