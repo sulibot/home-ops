@@ -7,9 +7,9 @@ cloudflare:
     enableWarp: false
     ingress:
         - hostname: plex.sulibot.com
-          service: http://plex-service.media.svc.cluster.local:80
+          service: http://plex-service.default.svc.cluster.local:80
         - hostname: overseerr.sulibot.com
-          service: http://overseerr-service.media.svc.cluster.local:80
+          service: http://overseerr-service.default.svc.cluster.local:80
         - hostname: hello.sulibot.com
           service: hello_world
 image:
@@ -54,7 +54,7 @@ sops:
             elVLTkx1cWgzaUF4eUpkek1kNXlOWGMKMBvymqF+4jtUYG9VkqUl6R8KGUqCjHKj
             +7mbOX487s67fouT8MfgXPiYhQUEqGBZ8QgNDZffe3nslQFFwOFvSw==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-10-22T04:27:02Z"
-    mac: ENC[AES256_GCM,data:MpUb+YghjRKfMR9wUFCvaftG52HKYzbfBl8KNYOreOC5sDrNgqaX1b/jXcUP51JwWa4/fbtgzQbK6rkpXzdjoHhoQm+lGLmzImIqagmW3vhOifaBsrdB64FcInmMKkKleHlFQjOMaZwTdhiEhAe7wM813eK2nj9DzCqgROCleSU=,iv:e8q4ZHkwN+HggQ5BfdDDEuNKQ11yw4o+m7CfZyrpPD8=,tag:dnpzDxxf0QrxnFPoZ/ieXQ==,type:str]
+    lastmodified: "2025-10-23T08:49:23Z"
+    mac: ENC[AES256_GCM,data:PBC+V6Q+Zdmj/CHhZCOxiNjEBGGco1lIXiQqdjeDj1OC5CFrWOhWkon6CakmPMR7VCCZl33+43nbvG5AXvQ/OOKbnxdGalDTfKapf0B9vYUQVUT0JYr14fFovo0vbFpexmwBf8szUbCRd5D6S0W9QcQgJvSfa7xwk3e79A/j8Kk=,iv:yIYLJB2ed2ZMJnD//nTe/t0rJySBWrN4byFDvrs8ubo=,tag:tC3lgjPd0wrf2S7INLIVew==,type:str]
     encrypted_regex: ^(adminKey|userKey|secret)$
     version: 3.10.2
