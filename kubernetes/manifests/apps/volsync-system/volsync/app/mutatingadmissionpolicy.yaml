@@ -1,0 +1,41 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/admissionregistration.k8s.io/mutatingwebhookconfiguration_v1.json
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: volsync-copy-trigger
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: volsync
+        namespace: volsync-system
+        path: /mutate-v1-persistentvolumeclaim
+        port: 443
+    failurePolicy: Ignore
+    matchPolicy: Equivalent
+    name: default.mutate-pvc.volsync.backube
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-node-lease
+            - kube-public
+            - kube-system
+    objectSelector: {}
+    reinvocationPolicy: IfNeeded
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - persistentvolumeclaims
+        scope: Namespaced
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 30
