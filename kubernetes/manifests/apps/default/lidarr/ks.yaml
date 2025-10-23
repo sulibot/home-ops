@@ -12,7 +12,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/manifests/apps/media/lidarr/app
+  path: ./kubernetes/manifests/apps/default/lidarr/app
   postBuild:
     substitute:
       APP: lidarr

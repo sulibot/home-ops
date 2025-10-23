@@ -12,7 +12,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/manifests/apps/media/sonarr/app
+  path: ./kubernetes/manifests/apps/default/sonarr/app
   postBuild:
     substitute:
       APP: sonarr
