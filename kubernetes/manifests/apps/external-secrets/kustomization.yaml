@@ -7,5 +7,5 @@ resources:
   - ./namespace.yaml
   # Flux-Kustomizations
   - ./external-secrets/ks.yaml
-  # onepassword-connect with Service Account token
-  - ./onepassword-connect/ks.yaml
+  # onepassword Connect Server with credentials file
+  - ./onepassword/ks.yaml
