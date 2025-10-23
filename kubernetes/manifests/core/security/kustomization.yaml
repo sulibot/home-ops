@@ -1,5 +1,7 @@
 resources:
 #  - authelia/
 #  - authentik/
-  - external-secrets/
-  - 1password/
+  # external-secrets moved to apps/ to avoid duplicate Kustomizations
+#  - external-secrets/
+  # 1password-connect not needed when using Service Account
+#  - 1password/
