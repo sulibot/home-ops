@@ -78,18 +78,38 @@ check_requirements() {
 }
 
 check_env_vars() {
+    local token_file="$SCRIPT_DIR/secrets/1password-token.sops.yaml"
+
+    # Check if SOPS token file exists
+    if [ -f "$token_file" ]; then
+        print_success "Found SOPS-encrypted token file"
+        print_info "Token will be loaded from: $token_file"
+        return 0
+    fi
+
+    # Fall back to environment variable
     if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
-        print_error "OP_SERVICE_ACCOUNT_TOKEN environment variable is not set"
+        print_error "OP_SERVICE_ACCOUNT_TOKEN not found"
         echo ""
-        echo "Please set your 1Password Service Account token:"
+        echo "Please provide your 1Password Service Account token using one of these methods:"
+        echo ""
+        echo "Method 1: SOPS-encrypted file (RECOMMENDED)"
+        echo "  1. Create the file: vim $token_file"
+        echo "  2. Add content:"
+        echo "     ---"
+        echo "     op_service_account_token: ops_..."
+        echo "  3. Encrypt: sops --encrypt --in-place $token_file"
+        echo ""
+        echo "Method 2: Environment variable"
         echo "  export OP_SERVICE_ACCOUNT_TOKEN='ops_...'"
         echo ""
-        echo "To make it persistent, add it to your shell profile:"
+        echo "  To make it persistent:"
         echo "  echo 'export OP_SERVICE_ACCOUNT_TOKEN=\"ops_...\"' >> ~/.zshrc"
         exit 1
     fi
 
-    print_success "OP_SERVICE_ACCOUNT_TOKEN is set"
+    print_success "OP_SERVICE_ACCOUNT_TOKEN is set (from environment variable)"
+    print_warning "Consider storing the token in a SOPS file instead: $token_file"
 }
 
 check_kubectl_context() {
