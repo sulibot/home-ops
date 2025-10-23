@@ -3,8 +3,6 @@ kind: HelmRelease
 metadata:
     name: ceph-csi
     namespace: ceph-csi-cephfs
-    annotations:
-        kustomize.toolkit.fluxcd.io/ssa: Ignore
 spec:
     chart:
         spec:
