@@ -23,7 +23,7 @@ spec:
       strategy: rollback
       retries: 3
   dependsOn:
-    - name: onepassword-connect
+    - name: onepassword
       namespace: external-secrets
   values:
     installCRDs: true
