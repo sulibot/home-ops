@@ -15,3 +15,7 @@ spec:
     namespace: flux-system
   targetNamespace: ceph-csi-cephfs
   wait: false
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
