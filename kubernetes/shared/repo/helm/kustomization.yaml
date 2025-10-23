@@ -10,5 +10,6 @@ resources:
   - bitnami-source.yaml
   - cnpg-helmrepository.yaml
   - akeyless-helmrepository.yaml
+  - bjw-s-repo.yaml
   # Add other Helm repositories here
 
