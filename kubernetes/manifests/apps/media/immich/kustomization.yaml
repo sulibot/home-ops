@@ -1,5 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
-#  - postgresql-pv.yaml
-#  - redis-pv.yaml
-  - helmrelease.yaml
-
+  - app
+  - pv-immich-postgresql.yaml
+  - pv-immich-redis.yaml

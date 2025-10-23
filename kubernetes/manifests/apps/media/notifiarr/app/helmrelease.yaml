@@ -1,0 +1,68 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: notifiarr
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: notifiarr
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      notifiarr:
+        type: statefulset
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: golift/notifiarr
+              tag: latest
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+              - name: DN_API_KEY
+                value: dd8b540e-89f3-46ad-a8bd-e7e0f92a24e5
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: notifiarr
+        ports:
+          http:
+            port: 80
+            targetPort: 5454
+    route:
+      app:
+        hostnames:
+          - notifiarr.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+            sectionName: http
+        rules:
+          - backendRefs:
+              - name: notifiarr
+                port: 80
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 100Mi
+        globalMounts:
+          - path: /config

@@ -1,0 +1,85 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: radarr
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: radarr
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      radarr:
+        type: statefulset
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: ghcr.io/onedr0p/radarr-develop
+              tag: 5.17.0.9555@sha256:ca1d1f55524c1d58cd9aa58e747b7ee37536aed4f95852ab07eb0b984dcf1817
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+              - name: RADARR__APP__INSTANCENAME
+                value: Radarr
+              - name: RADARR__APP__THEME
+                value: dark
+              - name: RADARR__AUTH__METHOD
+                value: External
+              - name: RADARR__AUTH__REQUIRED
+                value: DisabledForLocalAddresses
+              - name: RADARR__LOG__DBENABLED
+                value: "False"
+              - name: RADARR__LOG__LEVEL
+                value: info
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: radarr
+        ports:
+          http:
+            port: 80
+            targetPort: 7878
+    route:
+      app:
+        hostnames:
+          - radarr.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+            sectionName: http
+        rules:
+          - backendRefs:
+              - name: radarr
+                port: 80
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 100Mi
+        globalMounts:
+          - path: /config
+      data:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 10Gi
+        globalMounts:
+          - path: /data

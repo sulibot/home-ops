@@ -1,0 +1,26 @@
+{{- range $appName, $app := .Values.apps }}
+{{- if $app.flux }}
+{{- $name := include "app-scaffolder.appName" $appName }}
+{{- range $cluster := $app.flux.clusters }}
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: {{ default $name $cluster.nameOverride | default $name }}
+  namespace: {{ default "flux-system" $cluster.namespace }}
+spec:
+  interval: {{ default $.Values.defaults.interval $cluster.interval }}
+  prune: {{ default true $cluster.prune }}
+  wait: {{ default true $cluster.wait }}
+  path: {{ default (printf "./kubernetes/clusters/%s/apps/%s/%s" $cluster.name (default $name $app.namespace) $name) $cluster.path }}
+{{- with $cluster.sourceRef }}
+  sourceRef:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- if $cluster.dependsOn }}
+  dependsOn:
+{{ toYaml $cluster.dependsOn | indent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

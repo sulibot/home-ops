@@ -1,0 +1,30 @@
+{{- $defaults := .Values.defaults }}
+{{- range $appName, $app := .Values.apps }}
+{{- $type := lower (default "app-template" $app.type) }}
+{{- if and (ne $type "raw") (ne (default false $app.gateway.disabled) true) }}
+{{- $name := include "app-scaffolder.appName" $appName }}
+{{- $ns := default $name $app.namespace }}
+{{- $gateway := dict "name" (default $defaults.gateway.name $app.gateway.name) "namespace" (default $defaults.gateway.namespace $app.gateway.namespace) "section" (default $defaults.gateway.sectionName $app.gateway.sectionName) "domain" (default $defaults.gateway.domain $app.gateway.domain) }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  namespace: {{ $ns }}
+spec:
+  parentRefs:
+    - name: {{ $gateway.name }}
+      namespace: {{ $gateway.namespace }}
+      sectionName: {{ $gateway.section }}
+  hostnames:
+    - {{ include "app-scaffolder.hostname" (dict "name" $appName "domain" $gateway.domain "custom" $app.gateway.hostname) }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ $name }}
+          port: {{ default $defaults.service.port $app.service.port }}
+---
+{{- end }}
+{{- end }}
