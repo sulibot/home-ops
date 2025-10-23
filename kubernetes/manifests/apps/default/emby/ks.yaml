@@ -12,7 +12,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/manifests/apps/media/emby/app
+  path: ./kubernetes/manifests/apps/default/emby/app
   postBuild:
     substitute:
       APP: emby
