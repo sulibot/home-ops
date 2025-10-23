@@ -1,2 +1,2 @@
 resources:
-  - ceph-csi-cephfs/
+  - ceph-csi-cephfs/ks.yaml
