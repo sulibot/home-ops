@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: data-cephfs-pvc
-  namespace: media
+  namespace: default
 spec:
   accessModes:
     - ReadWriteMany
