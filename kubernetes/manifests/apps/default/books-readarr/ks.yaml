@@ -6,8 +6,6 @@ metadata:
   name: books
   namespace: flux-system
 spec:
-  components:
-    - /kubernetes/components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
