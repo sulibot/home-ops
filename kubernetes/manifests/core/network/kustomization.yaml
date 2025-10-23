@@ -1,5 +1,6 @@
 resources:
   - cluster-issuers/
   - gateway/
-  - cloudflared/
+  # cloudflared temporarily disabled due to install timeouts
+  # - cloudflared/
   - external-dns/
