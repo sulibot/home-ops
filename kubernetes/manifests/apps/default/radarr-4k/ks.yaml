@@ -6,8 +6,6 @@ metadata:
   name: radarr-4k
   namespace: flux-system
 spec:
-  components:
-    - /kubernetes/components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
