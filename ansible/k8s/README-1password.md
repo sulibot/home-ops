@@ -2,6 +2,45 @@
 
 This directory contains Ansible automation for managing 1Password Connect credentials for External Secrets in your Kubernetes cluster.
 
+## Quick Start
+
+**Already set up? Just run this:**
+
+```bash
+cd ansible/k8s
+./update-1password.sh
+```
+
+**First time? Follow these steps:**
+
+1. **Get your 1Password Service Account token**
+   - Go to [my.1password.com](https://my.1password.com) → Profile → Integrations → Service Accounts
+   - Click "Create Service Account"
+   - Grant access to "Kubernetes" vault (Read permission)
+   - Copy the `ops_...` token (shown only once!)
+
+2. **Store the token securely**
+   ```bash
+   cd ansible/k8s
+
+   # Create and encrypt token file
+   cat > secrets/1password-token.sops.yaml <<EOF
+   ---
+   op_service_account_token: ops_YOUR_ACTUAL_TOKEN_HERE
+   EOF
+
+   sops --encrypt --in-place secrets/1password-token.sops.yaml
+   ```
+
+3. **Run the automation**
+   ```bash
+   ./update-1password.sh
+   ```
+
+**Read below for detailed setup, troubleshooting, and automation options.**
+
+---
+
 ## Overview
 
 The automation handles the complete lifecycle of updating 1Password Connect credentials:
@@ -42,14 +81,51 @@ First, you need to generate and store your Connect Server credentials:
 
 #### Step 2: Create Service Account Token
 
-Create a Service Account for the automation:
+A Service Account allows the automation to access your 1Password vault programmatically.
 
-1. In 1Password, go to **Integrations** → **Service Accounts**
-2. Click **Create Service Account**
-3. Name it: `kubernetes-automation`
-4. Grant access to the `Kubernetes` vault (Read access)
-5. Copy the token (starts with `ops_...`)
-6. Store it securely using **one of these methods**:
+**How to create a Service Account:**
+
+1. **Open 1Password web app**
+   - Go to [my.1password.com](https://my.1password.com)
+   - Sign in with your account
+
+2. **Navigate to Integrations**
+   - Click your profile icon (top right)
+   - Select **Integrations** from the dropdown
+   - Or go directly to: Settings → Developer → Service Accounts
+
+3. **Create new Service Account**
+   - Click **"Create Service Account"** button
+   - You may need to confirm with your password or biometric authentication
+
+4. **Configure the Service Account**
+   - **Name**: `kubernetes-automation` (or any descriptive name)
+   - **Description**: "Automated credential rotation for Kubernetes External Secrets"
+
+5. **Grant vault access**
+   - In the **Vaults** section, click **"Grant access to vaults"**
+   - Select the **"Kubernetes"** vault
+   - Choose **Read** permissions (View items only)
+   - Click **"Add access"**
+
+6. **Save and get your token**
+   - Click **"Issue Service Account"** or **"Save"**
+   - **IMPORTANT**: The token will be displayed **only once**!
+   - The token format: `ops_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+   - Click **"Copy"** to copy the token to clipboard
+   - ⚠️ **Save it immediately** - you cannot retrieve it later!
+
+7. **Verify the Service Account**
+   - The new Service Account should appear in your Service Accounts list
+   - Status should show as "Active"
+   - Vault access should show "Kubernetes (Read)"
+
+**If you lose the token:**
+- You cannot retrieve it again
+- You must delete the old Service Account and create a new one
+- Any automation using the old token will stop working
+
+**Now store the token securely using one of these methods:**
 
 ##### Method 1: SOPS-encrypted file (RECOMMENDED)
 
@@ -245,13 +321,67 @@ launchctl load ~/Library/LaunchAgents/com.homeops.1password-update.plist
 
 #### 1. "OP_SERVICE_ACCOUNT_TOKEN is not set"
 
-**Solution**: Set the environment variable:
+**Solution**: Choose one of these methods:
 
+**Option A: SOPS file (Recommended)**
 ```bash
-export OP_SERVICE_ACCOUNT_TOKEN='ops_...'
+cd ansible/k8s
+
+# Create and encrypt the token file
+cat > secrets/1password-token.sops.yaml <<EOF
+---
+op_service_account_token: ops_YOUR_ACTUAL_TOKEN_HERE
+EOF
+
+sops --encrypt --in-place secrets/1password-token.sops.yaml
 ```
 
-Make it persistent by adding to `~/.zshrc` or `~/.bash_profile`.
+**Option B: Environment variable**
+```bash
+export OP_SERVICE_ACCOUNT_TOKEN='ops_...'
+
+# Make it persistent
+echo 'export OP_SERVICE_ACCOUNT_TOKEN="ops_..."' >> ~/.zshrc
+source ~/.zshrc
+```
+
+#### 1a. "Cannot create Service Account - Feature not available"
+
+**Cause**: Service Accounts require a 1Password Business or Team account.
+
+**Solutions**:
+- Upgrade to 1Password Business/Team
+- Use 1Password Connect Server with credentials file instead (traditional method)
+- Contact your 1Password administrator to create the Service Account
+
+#### 1b. "Service Account token starts with 'ops_' but doesn't work"
+
+**Common mistakes**:
+- **Extra spaces**: Token should not have leading/trailing spaces
+- **Incomplete token**: Ensure you copied the entire token (usually ~100 characters)
+- **Wrong token**: Make sure you copied the Service Account token, not a different credential
+
+**Verify token format**:
+```bash
+# Check token length (should be around 100+ characters)
+echo "$OP_SERVICE_ACCOUNT_TOKEN" | wc -c
+
+# Check it starts with ops_
+echo "$OP_SERVICE_ACCOUNT_TOKEN" | grep "^ops_"
+```
+
+#### 1c. "Service Account doesn't appear in 1Password"
+
+**Possible causes**:
+- You may be looking in the wrong 1Password account
+- You may need owner/admin permissions to see Service Accounts
+- Service Accounts are in Settings → Developer → Service Accounts (not in vaults)
+
+**How to find Service Accounts**:
+1. Go to [my.1password.com](https://my.1password.com)
+2. Click profile icon → **Integrations**
+3. Or: Settings → Developer → **Service Accounts**
+4. All Service Accounts will be listed here
 
 #### 2. "Failed to fetch credentials from 1Password"
 
