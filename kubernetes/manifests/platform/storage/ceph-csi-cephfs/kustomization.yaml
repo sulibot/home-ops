@@ -5,4 +5,3 @@ resources:
   - storageclass-ceph-csi-cephfs-retain.yaml
   - data-cephfs-pv.yaml
   - data-cephfs-pvc.yaml
-  - ks.yaml
