@@ -39,11 +39,11 @@ spec:
               OP_HTTP_PORT: &apiPort 80
               OP_BUS_PORT: 11220
               OP_BUS_PEERS: localhost:11221
-              OP_SESSION:
+              OP_SERVICE_ACCOUNT_TOKEN:
                 valueFrom:
                   secretKeyRef:
                     name: onepassword-connect-secret
-                    key: 1password-credentials.json
+                    key: token
             probes:
               liveness:
                 enabled: true
@@ -81,11 +81,11 @@ spec:
               OP_HTTP_PORT: &syncPort 8081
               OP_BUS_PORT: 11221
               OP_BUS_PEERS: localhost:11220
-              OP_SESSION:
+              OP_SERVICE_ACCOUNT_TOKEN:
                 valueFrom:
                   secretKeyRef:
                     name: onepassword-connect-secret
-                    key: 1password-credentials.json
+                    key: token
             probes:
               liveness:
                 enabled: true
