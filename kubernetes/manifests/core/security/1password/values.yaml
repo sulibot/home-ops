@@ -1,3 +1,0 @@
-# 1Password Helm chart values
-connect:
-  token: "YOUR_OP_CONNECT_TOKEN"
