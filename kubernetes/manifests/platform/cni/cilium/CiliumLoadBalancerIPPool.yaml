@@ -8,3 +8,5 @@ spec:
 #  - cidr: "2004::0/64"
   # Using a dedicated, routable subnet for LoadBalancer IPs.
   - cidr: "fd00:101:55::/64"
+  # Additional range for Gateway LoadBalancer IPs
+  - cidr: "fd00:101::cafe:0/120"
