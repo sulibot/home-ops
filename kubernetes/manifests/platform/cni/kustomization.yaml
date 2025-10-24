@@ -1,3 +1,2 @@
 resources:
-  - gateway-api/
   - cilium/
