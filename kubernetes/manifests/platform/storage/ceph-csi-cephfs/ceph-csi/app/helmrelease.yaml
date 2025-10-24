@@ -20,11 +20,8 @@ spec:
           subvolumeGroup: csi
         clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
         monitors:
-          - '[fc00:20::1]:6789'
           - '[fc00:20::1]:3300'
-          - '[fc00:20::2]:6789'
           - '[fc00:20::2]:3300'
-          - '[fc00:20::3]:6789'
           - '[fc00:20::3]:3300'
     logLevel: 5
     secret:
