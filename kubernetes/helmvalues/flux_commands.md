@@ -199,7 +199,7 @@ flux create source helm ceph-csi \
 ```
 flux create helmrelease ceph-csi \
   --chart=ceph-csi-cephfs \
-  --chart-version=3.12.3 \
+  --chart-version=3.15.0 \
   --namespace=ceph-csi-cephfs \
   --source=HelmRepository/ceph-csi.flux-system \
   --values=<(sops -d values.yaml) \
