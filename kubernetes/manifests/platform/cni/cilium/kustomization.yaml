@@ -1,11 +1,6 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
-  # Cilium BGP enabled alongside FRR
-  - CiliumBGPAdvertisement.yaml
-  - CiliumBGPClusterConfig.yaml
-  - CiliumBGPPeerConfig.yaml
-  - CiliumLoadBalancerIPPool.yaml
-  - GatewayClass.yaml
-  - gateway-api-experimental-crds.yaml
-  - helmrelease.yaml
-  - namespace.yaml
-  - values-configmap.yaml
+  - ./ks.yaml
