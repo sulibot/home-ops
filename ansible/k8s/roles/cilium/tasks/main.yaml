@@ -2,8 +2,8 @@
 ---
 - name: Write Cilium values file
   ansible.builtin.copy:
-    # Extract values from the HelmRelease spec.values
-    content: "{{ (lookup('file', playbook_dir + '/../../../kubernetes/manifests/platform/cni/cilium/app/helmrelease.yaml') | from_yaml).spec.values | to_nice_yaml }}"
+    # Extract values from the HelmRelease spec['values']
+    content: "{{ (lookup('file', playbook_dir + '/../../../kubernetes/manifests/platform/cni/cilium/app/helmrelease.yaml') | from_yaml)['spec']['values'] | to_nice_yaml }}"
     dest: "{{ cilium_config_file }}"
     mode: "0644"
   become: true
