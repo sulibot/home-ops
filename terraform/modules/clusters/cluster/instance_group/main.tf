@@ -261,13 +261,6 @@ resource "proxmox_virtual_environment_vm" "instances" {
 #    vlan_id     = "20${var.cluster_id}"
   }
 
-network_device {
-  
-}
-
-
-
-
   initialization {
     datastore_id      = var.datastore_id
     user_data_file_id = proxmox_virtual_environment_file.cloudinit[each.key].id
