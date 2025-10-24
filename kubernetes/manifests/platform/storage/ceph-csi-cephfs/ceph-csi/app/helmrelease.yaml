@@ -38,7 +38,8 @@ spec:
             controllerExpandSecret: csi-cephfs-secret
             controllerExpandSecretNamespace: ceph-csi-cephfs
             create: true
-            fsName: cephfs
+            fsName: kubernetes
+            pool: kubernetes_data
             name: csi-cephfs-sc
             nodeStageSecret: csi-cephfs-secret
             nodeStageSecretNamespace: ceph-csi-cephfs
