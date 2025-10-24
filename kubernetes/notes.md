@@ -100,7 +100,7 @@ flux create helmrelease ceph-csi --chart ceph-csi/ceph-csi-cephfs \
   --namespace=ceph-csi-cephfs \
   --create-target-namespace=true \
   --source=HelmRepository/ceph-csi.flux-system \
-  --chart-version=3.12.3 --export
+  --chart-version=3.15.0 --export
 
 
 
