@@ -1,9 +1,9 @@
 csiConfig:
     - clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
       monitors:
-        - '[fd00::1:1]:6789'
-        - '[fd00::1:2]:6789'
-        - '[fd00::1:3]:6789'
+        - '[fc00:20::1]:3300'
+        - '[fc00:20::2]:3300'
+        - '[fc00:20::3]:3300'
       cephFS:
         subvolumeGroup: csi
 logLevel: 5
@@ -33,10 +33,6 @@ storageClass:
 # Example:
 # mountOptions:
 sops:
-    kms: []
-    gcp_kms: []
-    azure_kv: []
-    hc_vault: []
     age:
         - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
           enc: |
@@ -47,8 +43,7 @@ sops:
             RFMrOWxsSzNCa3BUMm4xWG1IeWNCSmsKGXRjVF4X/qpsG3PrvNvdfP24EUg0FjE4
             Ahv099mM2TsbZD31wMVaAxpP+cal3YmMCec5B6v1hugnc7dn085kcw==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2024-12-02T11:18:31Z"
-    mac: ENC[AES256_GCM,data:aYznoRH/uE3Fsm2LBXWMixXu2OR1/wrDz7nr4xlIzBisDB3s7VG7yiwBVF56m0xJKwzO7KqSyNVZ47ch1MTCHWZBc7f0SZlHeyap2rQG3DLWuINqe1fvr0dIx0l0bd3l9xcznfv9fu4cPHFwSDj5fmHGt9x5qml5mHV8UAdtk70=,iv:80ckjEnTCjsvJ8+DbC63PvQlc7fKUsM3Oz8HpXM7yk0=,tag:oVIhWOk08emlHlMGbx/YTw==,type:str]
-    pgp: []
+    lastmodified: "2025-10-24T23:37:52Z"
+    mac: ENC[AES256_GCM,data:OMqiLB0kqkNBzbXTafM1FYMIBiwT4yJONxXvJirMUoYzhBl4rB+m+s8wlq7bwKsENzj14Atl2F79OtBo2/vUsNZm4VzcJcOYA1XUQjkilsCIlruCloGmOGj85EgwO2Q40Yp8PenR6eyJ1rbo3AHlC76ZGfmyMjdU3+JScvY4vRE=,iv:BtfjbxM4umNFcMGAz2YNnFActTo24d+/n+2Ftxz7PZo=,tag:ncOzB0BJYLQyFJ24LQydDg==,type:str]
     encrypted_regex: ^(adminKey)$
-    version: 3.9.1
+    version: 3.10.2
