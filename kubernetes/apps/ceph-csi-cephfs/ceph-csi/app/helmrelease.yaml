@@ -5,9 +5,14 @@ kind: HelmRelease
 metadata:
   name: ceph-csi
 spec:
-  chartRef:
-    kind: OCIRepository
-    name: ceph-csi-cephfs
+  chart:
+    spec:
+      chart: ceph-csi-cephfs
+      version: 3.15.0
+      sourceRef:
+        kind: HelmRepository
+        name: ceph-csi
+        namespace: flux-system
   interval: 1h
   values:
     csiConfig:
