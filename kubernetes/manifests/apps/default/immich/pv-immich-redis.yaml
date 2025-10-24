@@ -4,21 +4,21 @@ kind: PersistentVolume
 metadata:
   name: immich-redis
 spec:
-  accessModes:
-    - ReadWriteOnce
   capacity:
     storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
   csi:
     driver: cephfs.csi.ceph.com
-    fsType: ceph
     nodeStageSecretRef:
       name: csi-cephfs-secret
       namespace: ceph-csi-cephfs
     volumeAttributes:
       clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
-      fsname: media
+      fsName: media
       pool: media_data
-      monitors: '[fd00:20::1]:3300,[fd00:20::2]:3300,[fd00:20::3]:3300'
+      monitors: >-
+        [fd00:20::1]:3300,[fd00:20::2]:3300,[fd00:20::3]:3300
     volumeHandle: immich-redis
   persistentVolumeReclaimPolicy: Retain
   storageClassName: csi-cephfs-sc-retain
