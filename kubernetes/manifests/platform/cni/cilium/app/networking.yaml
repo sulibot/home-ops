@@ -86,12 +86,11 @@ spec:
           peerAddress: "fd00:255::fffe"
           peerConfigRef:
             name: default-peer-config
-      # Temporarily commented for Cilium upgrade - uncomment after 1.19 is running
-      # advertisements:
-      #   - advertisementRef:
-      #       name: advertise-pod-cidr
-      #   - advertisementRef:
-      #       name: advertise-services
+      advertisements:
+        - advertisementRef:
+            name: advertise-pod-cidr
+        - advertisementRef:
+            name: advertise-services
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gatewayclass_v1.json
 apiVersion: gateway.networking.k8s.io/v1
