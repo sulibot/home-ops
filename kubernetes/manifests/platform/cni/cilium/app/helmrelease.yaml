@@ -79,9 +79,9 @@ spec:
         nodes:
           matchLabels: {}
     l2NeighDiscovery:
-      enabled: false
+      enabled: true
     l2announcements:
-      enabled: false
+      enabled: true
     endpointRoutes:
       enabled: true
     enableHealthCheckLoadBalancerIP: true
