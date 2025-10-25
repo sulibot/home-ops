@@ -31,66 +31,34 @@ spec:
         values:
           - linux
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
-apiVersion: cilium.io/v2
-kind: CiliumBGPAdvertisement
+# Using legacy BGP API (v2alpha1) for Cilium 1.18
+# The v2 API with advertisementRef requires Cilium 1.19+
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeeringPolicy
 metadata:
-  name: advertise-pod-cidr
+  name: home-ops-bgp
 spec:
-  # Advertise the PodCIDR assigned to each node.
-  # This makes pods directly routable from your external network.
-  advertisements:
-    - advertisementType: PodCIDR
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
-apiVersion: cilium.io/v2
-kind: CiliumBGPAdvertisement
-metadata:
-  name: advertise-services
-spec:
-  # Advertise all LoadBalancer Service IPs via BGP.
-  # This includes Gateway LoadBalancer IPs managed by Cilium.
-  advertisements:
-    - advertisementType: Service
-      service:
-        addresses: [LoadBalancerIP]
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
-apiVersion: cilium.io/v2
-kind: CiliumBGPPeerConfig
-metadata:
-  name: default-peer-config
-spec:
-  # IPv6-only address family
-  families:
-    - afi: ipv6
-      safi: unicast
-  # Enable graceful restart to prevent traffic loss during agent restarts.
-  gracefulRestart:
-    enabled: true
-    restartTimeSeconds: 120
-  ebgpMultihop: 2
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpclusterconfig_v2.json
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: home-ops-bgp-config
-spec:
-  bgpInstances:
-    - name: cilium-instance
-      localASN: 65101
-      peers:
-        - name: edge-router-cilium
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  virtualRouters:
+    - localASN: 65101
+      exportPodCIDR: true
+      serviceSelector:
+        matchExpressions:
+          - key: somekey
+            operator: NotIn
+            values: ['never-used-value']
+      neighbors:
+        - peerAddress: "fd00:255::fffe/128"
           peerASN: 65000
-          peerAddress: "fd00:255::fffe"
-          peerConfigRef:
-            name: default-peer-config
-      advertisements:
-        - advertisementRef:
-            name: advertise-pod-cidr
-        - advertisementRef:
-            name: advertise-services
+          eBGPMultihopTTL: 2
+          connectRetryTimeSeconds: 120
+          holdTimeSeconds: 90
+          keepAliveTimeSeconds: 30
+          gracefulRestart:
+            enabled: true
+            restartTimeSeconds: 120
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gatewayclass_v1.json
 apiVersion: gateway.networking.k8s.io/v1
