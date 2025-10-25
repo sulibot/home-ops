@@ -84,5 +84,6 @@ spec:
       enabled: false
     endpointRoutes:
       enabled: true
+    enableHealthCheckLoadBalancerIP: true
     cni:
       install: true
