@@ -9,6 +9,6 @@ driver: cephfs.csi.ceph.com
 deletionPolicy: Delete
 #fsName: kubernetes
 parameters:
-  clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+  clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
   csi.storage.k8s.io/snapshotter-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: ceph-csi-cephfs

@@ -1,5 +1,5 @@
 csiConfig:
-    - clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+    - clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
       monitors:
         - '[fc00::20:1]:3300'
         - '[fc00::20:2]:3300'
@@ -15,7 +15,7 @@ secret:
 storageClass:
     create: true
     name: csi-cephfs-sc-retain
-    clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+    clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
     # (required) CephFS filesystem name into which the volume shall be created
     pool: kubernetes_data
     fsName: kubernetes
