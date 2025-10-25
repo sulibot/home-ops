@@ -48,14 +48,12 @@ kind: CiliumBGPAdvertisement
 metadata:
   name: advertise-services
 spec:
-  # Advertise Kubernetes Service IPs via BGP.
+  # Advertise all LoadBalancer Service IPs via BGP.
+  # This includes Gateway LoadBalancer IPs managed by Cilium.
   advertisements:
     - advertisementType: Service
       service:
-        addresses: [LoadBalancerIP, ClusterIP]
-      selector:
-        matchLabels:
-          bgp-advertise: "true"
+        addresses: [LoadBalancerIP]
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
 apiVersion: cilium.io/v2alpha1
