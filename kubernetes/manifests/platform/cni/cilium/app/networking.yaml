@@ -32,7 +32,7 @@ spec:
           - linux
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: advertise-pod-cidr
@@ -43,7 +43,7 @@ spec:
     - advertisementType: PodCIDR
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: advertise-services
@@ -56,7 +56,7 @@ spec:
         addresses: [LoadBalancerIP]
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
   name: default-peer-config
@@ -77,12 +77,6 @@ kind: CiliumBGPClusterConfig
 metadata:
   name: home-ops-bgp-config
 spec:
-  nodeSelector:
-    matchExpressions:
-      - key: kubernetes.io/os
-        operator: In
-        values:
-          - linux
   bgpInstances:
     - name: cilium-instance
       localASN: 65101
@@ -92,11 +86,6 @@ spec:
           peerAddress: "fd00:255::fffe"
           peerConfigRef:
             name: default-peer-config
-      advertisements:
-        - advertisementType: PodCIDR
-        - advertisementType: Service
-          service:
-            addresses: [LoadBalancerIP]
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gatewayclass_v1.json
 apiVersion: gateway.networking.k8s.io/v1
