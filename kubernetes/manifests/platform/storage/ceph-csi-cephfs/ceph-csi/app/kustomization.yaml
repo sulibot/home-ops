@@ -4,7 +4,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: ceph-csi-cephfs
 resources:
-  - ./helmrelease.yaml
+  - ./helmrelease-secret.yaml
   - ./node-stage-secret.yaml
   - ./storageclass-ceph-csi-cephfs-retain.yaml
   - ./volumesnapshotclass.yaml
