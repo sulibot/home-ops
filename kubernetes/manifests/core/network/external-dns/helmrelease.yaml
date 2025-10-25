@@ -81,6 +81,7 @@ spec:
     sources:
     - ingress
     - service
-    - crd
+    - gateway-httproute
+    - gateway-grpcroute
     txtOwnerId: default
     txtPrefix: k8s.
