@@ -22,4 +22,4 @@ spec:
       rootPath: /
       provisionVolume: "false"
       monitors: >-
-        [fc00:20::1]:3300,[fc00:20::2]:3300,[fc00:20::3]:3300
+        [fc00:20::1]:6789,[fc00:20::2]:6789,[fc00:20::3]:6789
