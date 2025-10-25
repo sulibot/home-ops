@@ -18,7 +18,7 @@ spec:
       name: csi-cephfs-pv-secret
       namespace: ceph-csi-cephfs
     volumeAttributes:
-      clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+      clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
       fsName: kubernetes
       pool: kubernetes_data
       rootPath: /
