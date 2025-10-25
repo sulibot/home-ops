@@ -12,7 +12,7 @@ parameters:
   # Ensure to create an entry in the configmap named ceph-csi-config, based on
   # csi-config-map-sample.yaml, to accompany the string chosen to
   # represent the Ceph cluster in clusterID below
-  clusterID: e919300b-6e62-4c63-90ca-199d5307f9bf
+  clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
 
   # (required) CephFS filesystem name into which the volume shall be created
   # eg: fsName: cephfs
