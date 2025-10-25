@@ -17,6 +17,9 @@ spec:
       hostname: sulibot.com
       port: 443
       protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
       tls:
         mode: Terminate
         certificateRefs:
@@ -27,6 +30,9 @@ spec:
       hostname: "*.sulibot.com"
       port: 443
       protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
       tls:
         mode: Terminate
         certificateRefs:
