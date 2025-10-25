@@ -63,7 +63,6 @@ spec:
         parentRefs:
           - name: gateway-internal
             namespace: network
-            sectionName: http
         rules:
           - backendRefs:
               - name: sonarr-4k
