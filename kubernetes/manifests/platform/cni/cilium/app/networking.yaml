@@ -16,8 +16,12 @@ metadata:
   name: l2-announcement-policy
 spec:
   # Announce LoadBalancer IPs on all network interfaces
+  # Using broader patterns to match various interface naming schemes
   interfaces:
     - ^eth[0-9]+
+    - ^ens[0-9]+
+    - ^eno[0-9]+
+    - ^enp[0-9]+s[0-9]+
   # Select LoadBalancer services from the blue-pool
   loadBalancerIPs: true
   nodeSelector:
