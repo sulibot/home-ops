@@ -1,8 +1,0 @@
----
-apiVersion: checker.gatus.io/v1
-kind: Check
-metadata:
-  name: external-secrets-health
-spec:
-  endpoint: http://external-secrets.sulibot.com/healthz
-  schedule: "@every 1m"
