@@ -36,6 +36,8 @@ apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: advertise-pod-cidr
+  labels:
+    cilium.io/bgp-advertise: pod-cidr
 spec:
   # Advertise the PodCIDR assigned to each node.
   # This makes pods directly routable from your external network.
@@ -47,6 +49,8 @@ apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: advertise-services
+  labels:
+    cilium.io/bgp-advertise: services
 spec:
   # Advertise all LoadBalancer Service IPs via BGP.
   # This includes Gateway LoadBalancer IPs managed by Cilium.
@@ -65,6 +69,11 @@ spec:
   families:
     - afi: ipv6
       safi: unicast
+      advertisements:
+        - matchLabels:
+            cilium.io/bgp-advertise: pod-cidr
+        - matchLabels:
+            cilium.io/bgp-advertise: services
   # Enable graceful restart to prevent traffic loss during agent restarts.
   gracefulRestart:
     enabled: true
