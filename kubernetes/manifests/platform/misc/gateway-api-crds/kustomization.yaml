@@ -1,3 +1,2 @@
 resources:
-- gateway-api-crds-v1.3.0-experimental.yaml
-
+- gateway-api-crds-v1.3.0-standard.yaml
