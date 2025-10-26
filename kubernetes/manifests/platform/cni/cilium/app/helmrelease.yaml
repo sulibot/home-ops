@@ -76,12 +76,9 @@ spec:
         sync: true
       hostNetwork:
         enabled: false
-        nodes:
-          matchLabels: {}
-    l2NeighDiscovery:
-      enabled: true
-    l2announcements:
-      enabled: true
+    # L2 features are disabled in favor of a pure BGP (Layer 3) setup.
+    l2NeighDiscovery: false
+    l2announcements: false
     endpointRoutes:
       enabled: true
     enableHealthCheckLoadBalancerIP: true
