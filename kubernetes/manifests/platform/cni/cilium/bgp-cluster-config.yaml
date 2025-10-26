@@ -1,0 +1,31 @@
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: home-ops-bgp-config
+spec:
+  # Apply this BGP configuration to all Linux nodes in the cluster.
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: "main-instance"
+      localASN: 65101
+      peers:
+        - name: "edge-router"
+          peerASN: 65000
+          peerAddress: "fd00:255::fffe"
+          # Reference the reusable peer configuration.
+          peerConfigRef:
+            name: default-peer-config
+      # In Cilium v1.19+, advertisements must be explicitly linked to the BGP instance.
+      advertisements:
+        - advertisementType: PodCIDR
+        - advertisementType: Service
+          service:
+            addresses:
+              - LoadBalancerIP
+              - ClusterIP
+          selector:
+            matchLabels:
+              bgp-advertise: "true"

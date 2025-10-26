@@ -86,11 +86,13 @@ spec:
           peerAddress: "fd00:255::fffe"
           peerConfigRef:
             name: default-peer-config
-      advertisements:
-        - advertisementRef:
-            name: advertise-pod-cidr
-        - advertisementRef:
-            name: advertise-services
+      # NOTE: advertisementRef not available in 1.19.0-pre.1
+      # This feature may be in a later version or RC/stable release
+      # advertisements:
+      #   - advertisementRef:
+      #       name: advertise-pod-cidr
+      #   - advertisementRef:
+      #       name: advertise-services
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gatewayclass_v1.json
 apiVersion: gateway.networking.k8s.io/v1
