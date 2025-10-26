@@ -9,28 +9,6 @@ spec:
     # Range for Gateway LoadBalancer IPs (fd00:101::cafe:0 - fd00:101::cafe:ffff)
     - cidr: "fd00:101::cafe:0/112"
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumingressclass_v2.json
-apiVersion: cilium.io/v2alpha1
-kind: CiliumL2AnnouncementPolicy
-metadata:
-  name: l2-announcement-policy
-spec:
-  # Announce LoadBalancer IPs on all network interfaces
-  # Using broader patterns to match various interface naming schemes
-  interfaces:
-    - ^eth[0-9]+
-    - ^ens[0-9]+
-    - ^eno[0-9]+
-    - ^enp[0-9]+s[0-9]+
-  # Select LoadBalancer services from the blue-pool
-  loadBalancerIPs: true
-  nodeSelector:
-    matchExpressions:
-      - key: kubernetes.io/os
-        operator: In
-        values:
-          - linux
----
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
 apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
