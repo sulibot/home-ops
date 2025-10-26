@@ -4,11 +4,12 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: cilium
+  namespace: kube-system
 spec:
   chart:
     spec:
       chart: cilium
-      version: 1.18.3
+      version: 1.18.x
       sourceRef:
         kind: HelmRepository
         name: cilium
@@ -76,9 +77,12 @@ spec:
         sync: true
       hostNetwork:
         enabled: false
-    # L2 features are disabled in favor of a pure BGP (Layer 3) setup.
-    l2NeighDiscovery: false
-    l2announcements: false
+        nodes:
+          matchLabels: {}
+    l2NeighDiscovery:
+      enabled: false
+    l2announcements:
+      enabled: false
     endpointRoutes:
       enabled: true
     enableHealthCheckLoadBalancerIP: true
