@@ -1,4 +1,5 @@
 resources:
 #  - gateway-external.yaml
   - gateway-internal.yaml
+  - cilium-gatewayclassconfig.yaml
   - referencegrant-media.yaml
