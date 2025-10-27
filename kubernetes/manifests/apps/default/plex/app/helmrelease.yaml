@@ -1,46 +1,61 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: plex
 spec:
-  interval: 30m
   chartRef:
     kind: OCIRepository
     name: plex
-  install:
-    remediation:
-      retries: -1
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      retries: 3
+  interval: 1h
   values:
     controllers:
       plex:
-        type: statefulset
-        replicas: 1
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: plexinc/pms-docker
-              tag: latest
+              repository: ghcr.io/home-operations/plex
+              tag: 1.42.2.10156@sha256:9ad8a3506e1d8ebda873a668603c1a2c10e6887969564561be669efd65ae8871
+            env:
+              TZ: America/Los_Angeles
+              PLEX_ADVERTISE_URL: https://plex.sulibot.com:443,http://[fd00:101::cafe:120]:32400,http://plex.default.svc.cluster.local:32400
+              PLEX_NO_AUTH_NETWORKS: fd00:10::/64
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /identity
+                    port: &port 32400
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-            env:
-              - name: TZ
-                value: America/Los_Angeles
-              - name: PLEX_CLAIM
-                value: claim-xbbokW3ps4eByYN2GJo5
-              - name: HOSTNAME
-                value: plex
-              - name: PLEX_UPDATE_CHANNEL
-                value: plexpass
-              - name: ALLOWED_NETWORKS
-                value: 10.0.0.0/8
-              - name: ADVERTISE_IP
-                value: http://plex-service.media.svc.cluster.local:80, https://10.10.101.151:443, https://plex.sulibot.com:443
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              claims:
+                - name: gpu
+              requests:
+                cpu: 100m
+              limits:
+                memory: 16Gi
     defaultPodOptions:
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: plex
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -49,34 +64,51 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        controller: plex
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: fd00:101::cafe:120
+        externalTrafficPolicy: Local
         ports:
           http:
-            port: 80
-            targetPort: 32400
+            port: *port
     route:
       app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 401"]
         hostnames:
-          - plex.sulibot.com
+          - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
-          - name: gateway-internal
+          - name: gateway-external
             namespace: network
         rules:
+          - # Ref: https://forums.plex.tv/t/external-srt-subtitles-are-not-working-w-reverse-proxy/886540
+            backendRefs:
+              - identifier: app
+                port: *port
+            filters:
+              - type: RequestHeaderModifier
+                requestHeaderModifier:
+                  remove:
+                    - Range
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /library/streams
           - backendRefs:
-              - name: plex
-                port: 80
+              - identifier: app
+                port: *port
     persistence:
       config:
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
-        size: 10Gi
-        globalMounts:
-          - path: /config
-      data:
+        size: 100Mi
+      media:
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
-        accessMode: ReadWriteOnce
-        size: 10Gi
+        existingClaim: data-cephfs-pvc
         globalMounts:
-          - path: /data
+          - path: /media
+            readOnly: true
+      tmp:
+        type: emptyDir

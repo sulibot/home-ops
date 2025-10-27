@@ -4,20 +4,18 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: prowlarr
-  namespace: flux-system
 spec:
+  components:
+    - ../../../../components/volsync
   dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
   interval: 1h
-  path: ./kubernetes/manifests/apps/default/prowlarr/app
+  path: ./kubernetes/apps/default/prowlarr/app
   postBuild:
     substitute:
       APP: prowlarr
-      VOLSYNC_CAPACITY: 10Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-sc-retain
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-sc-retain
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-sc-retain
+      VOLSYNC_CAPACITY: 1Gi
   prune: true
   sourceRef:
     kind: GitRepository

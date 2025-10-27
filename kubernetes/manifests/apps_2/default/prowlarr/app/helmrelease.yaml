@@ -1,0 +1,84 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prowlarr
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: prowlarr
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      prowlarr:
+        type: statefulset
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: ghcr.io/onedr0p/prowlarr-develop
+              tag: 1.29.0.4897@sha256:dbbc3ba87472bd61dd0138f7bc81d7a7f5295995bd6b8ed8ff3bd0187db2faab
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+              - name: PROWLARR__APP__INSTANCENAME
+                value: Prowlarr
+              - name: PROWLARR__APP__THEME
+                value: dark
+              - name: PROWLARR__AUTH__METHOD
+                value: External
+              - name: PROWLARR__AUTH__REQUIRED
+                value: DisabledForLocalAddresses
+              - name: PROWLARR__LOG__DBENABLED
+                value: "False"
+              - name: PROWLARR__LOG__LEVEL
+                value: info
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: prowlarr
+        ports:
+          http:
+            port: 80
+            targetPort: 9696
+    route:
+      app:
+        hostnames:
+          - prowlarr.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: prowlarr
+                port: 80
+    persistence:
+      config:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 100Mi
+        globalMounts:
+          - path: /config
+      data:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 10Gi
+        globalMounts:
+          - path: /data

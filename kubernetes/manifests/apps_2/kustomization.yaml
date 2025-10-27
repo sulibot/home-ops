@@ -1,0 +1,4 @@
+resources:
+ - default/
+ - volsync-system/
+ - external-secrets/

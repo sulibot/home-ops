@@ -1,0 +1,48 @@
+---
+connectivity:
+  checker:
+    target: "[2606:4700:4700::1111]:53"
+    interval: 1m
+
+endpoints:
+  - name: Cloudflare
+    group: connectivity
+    url: icmp://2606:4700:4700::1111
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Google
+    group: connectivity
+    url: icmp://2001:4860:4860::8888
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Quad9
+    group: connectivity
+    url: icmp://2620:fe::fe
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+metrics: true
+
+storage:
+  type: sqlite
+  caching: true
+  path: ${GATUS_CONFIG_PATH}/gatus.db
+
+ui:
+  title: Status | Gatus
+  header: Status
+  logo: https://avatars.githubusercontent.com/u/213795
+  link: https://github.com/onedr0p
+  buttons:
+    - name: Github
+      link: https://github.com/onedr0p
+    - name: Homelab
+      link: https://github.com/onedr0p/home-ops
+
+web:
+  port: ${GATUS_WEB_PORT}
