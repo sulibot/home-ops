@@ -69,8 +69,8 @@ spec:
       enableAlpn: false
       xffNumTrustedHops: 0
       externalTrafficPolicy: Cluster
-      gatewayClass:
-        create: auto
+    gatewayClass:
+      create: false
       secretsNamespace:
         create: true
         name: cilium-secrets
