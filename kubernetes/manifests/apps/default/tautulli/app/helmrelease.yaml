@@ -1,35 +1,53 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: tautulli
 spec:
-  interval: 30m
   chartRef:
     kind: OCIRepository
     name: tautulli
-  install:
-    remediation:
-      retries: -1
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      retries: 3
+  interval: 1h
   values:
     controllers:
       tautulli:
-        type: statefulset
-        replicas: 1
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: ghcr.io/onedr0p/tautulli
-              tag: 2.15.0@sha256:189f7b29da755a8e20da45af1e56bc9fc88d836a363da4273a52b267609511c4
+              repository: ghcr.io/home-operations/tautulli
+              tag: 2.16.0@sha256:2a092f86a51f5718111097b0fced33eaa876b5904a543b7504f92357a4f75635
+            env:
+              TZ: America/Los_Angeles
+              TAUTULLI_HTTP_BASE_URL: https://tautulli.sulibot.com
+              TAUTULLI_HTTP_PORT: &port 80
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /status
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-            env:
-              - name: TZ
-                value: America/Los_Angeles
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 1Gi
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
@@ -39,34 +57,21 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        controller: tautulli
         ports:
           http:
-            port: 80
-            targetPort: 8181
+            port: *port
     route:
       app:
         hostnames:
-          - tautulli.sulibot.com
+          - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
           - name: gateway-internal
             namespace: network
-        rules:
-          - backendRefs:
-              - name: tautulli
-                port: 80
     persistence:
       config:
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
         size: 100Mi
-        globalMounts:
-          - path: /config
-      data:
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
-        accessMode: ReadWriteOnce
-        size: 10Gi
-        globalMounts:
-          - path: /data
+      tmp:
+        type: emptyDir

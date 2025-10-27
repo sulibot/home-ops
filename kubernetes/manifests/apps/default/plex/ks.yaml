@@ -4,20 +4,36 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: plex
-  namespace: flux-system
 spec:
+  components:
+    - ../../../../components/volsync
   dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
+    - name: intel-gpu-resource-driver
+      namespace: kube-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
   interval: 1h
-  path: ./kubernetes/manifests/apps/default/plex/app
+  path: ./kubernetes/apps/default/plex/app
   postBuild:
     substitute:
       APP: plex
-      VOLSYNC_CAPACITY: 10Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-sc-retain
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-sc-retain
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-sc-retain
+      VOLSYNC_CAPACITY: 50Gi
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: default
+  wait: false
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: plex-tools
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/default/plex/tools
   prune: true
   sourceRef:
     kind: GitRepository
