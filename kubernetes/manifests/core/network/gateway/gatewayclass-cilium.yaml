@@ -9,4 +9,4 @@ spec:
     group: cilium.io
     kind: CiliumGatewayClassConfig
     name: cilium
-    namespace: network
+    namespace: kube-system
