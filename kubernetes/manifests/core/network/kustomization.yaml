@@ -3,4 +3,4 @@ resources:
   - gateway/
   # cloudflared temporarily disabled due to install timeouts
   # - cloudflared/
-  - external-dns/
+  - external-dns/ks.yaml
