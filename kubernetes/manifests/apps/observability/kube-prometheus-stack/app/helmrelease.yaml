@@ -87,7 +87,7 @@ spec:
       fullnameOverride: kube-state-metrics
     grafana:
       enabled: false
-      forceDeployDashboards: true
+      forceDeployDashboards: false
       operator:
         dashboardsConfigMapRefEnabled: true
         folder: observability
