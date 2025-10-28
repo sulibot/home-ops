@@ -18,7 +18,7 @@ spec:
       namespace: ceph-csi-cephfs
     volumeAttributes:
       clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
-      fsName: media
+      fsName: content_default
       rootPath: /
       provisionVolume: "false"
       monitors: >-
