@@ -39,7 +39,7 @@ spec:
     txtOwnerId: default
     txtPrefix: k8s.
     domainFilters:
-      - turbo.ac
+      - sulibot.com
     serviceMonitor:
       enabled: true
     podAnnotations:

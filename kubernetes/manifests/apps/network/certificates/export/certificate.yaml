@@ -3,13 +3,13 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: turbo-ac
+  name: sulibot-com
 spec:
-  secretName: turbo-ac-tls
+  secretName: sulibot-com-tls
   issuerRef:
     name: letsencrypt-production
     kind: ClusterIssuer
-  commonName: turbo.ac
+  commonName: sulibot.com
   dnsNames:
-    - turbo.ac
+    - sulibot.com
     - "*.sulibot.com"
