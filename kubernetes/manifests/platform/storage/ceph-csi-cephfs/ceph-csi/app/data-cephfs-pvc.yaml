@@ -7,8 +7,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
+  volumeMode: Filesystem
   resources:
     requests:
       storage: 40Ti
-  storageClassName: ""
+  storageClassName: ""         # no storage class = static PV binding
   volumeName: data-cephfs-pv
+
