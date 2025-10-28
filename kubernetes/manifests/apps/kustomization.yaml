@@ -1,5 +1,6 @@
 resources:
  - observability/
+ - kube-system/
  - default/
  - volsync-system/
  - external-secrets/
