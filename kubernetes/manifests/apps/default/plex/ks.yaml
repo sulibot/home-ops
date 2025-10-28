@@ -8,6 +8,8 @@ spec:
   components:
     - ../../../../components/volsync
   dependsOn:
+    - name: intel-gpu-resource-driver
+      namespace: kube-system
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
