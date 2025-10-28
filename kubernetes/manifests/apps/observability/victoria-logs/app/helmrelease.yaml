@@ -22,7 +22,7 @@ spec:
         hostnames:
           - victoria-logs.sulibot.com
         parentRefs:
-          - name: gateway-internal
+          - name: gateway-external
             namespace: network
         extraRules:
           - filters:
