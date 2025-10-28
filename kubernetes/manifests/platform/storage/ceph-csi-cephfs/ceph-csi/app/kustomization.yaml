@@ -6,7 +6,9 @@ namespace: ceph-csi-cephfs
 resources:
   - ./helmrelease-secret.yaml
   - ./node-stage-secret.yaml
+  - ./storageclass-ceph-csi-cephfs.yaml
   - ./storageclass-ceph-csi-cephfs-retain.yaml
+  - ./storageclass-ceph-csi-cephfs-backup.yaml
   - ./volumesnapshotclass.yaml
   - ./data-cephfs-pv.yaml
   - ./data-cephfs-pvc.yaml
