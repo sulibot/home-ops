@@ -22,7 +22,7 @@ spec:
           hostnames:
             - alertmanager.sulibot.com
           parentRefs:
-            - name: gateway-internal
+            - name: gateway-external
               namespace: network
       alertmanagerSpec:
         alertmanagerConfiguration:
@@ -48,7 +48,7 @@ spec:
           hostnames:
             - prometheus.sulibot.com
           parentRefs:
-            - name: gateway-internal
+            - name: gateway-external
               namespace: network
       prometheusSpec:
         externalUrl: https://prometheus.sulibot.com
