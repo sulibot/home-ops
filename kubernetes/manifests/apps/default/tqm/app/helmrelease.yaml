@@ -81,12 +81,10 @@ spec:
         globalMounts:
           - path: /.config/tqm/config.yaml
             subPath: config.yaml
-      # TODO: Replace NFS with appropriate storage solution
-      # media:
-      #   type: nfs
-      #   server: expanse.internal
-      #   path: /mnt/eros/Media
-      #   globalMounts:
-      #     - path: /media/Downloads/qbittorrent
-      #       subPath: Downloads/qbittorrent
-      #       readOnly: true
+      media:
+        type: persistentVolumeClaim
+        existingClaim: data-cephfs-pvc
+        globalMounts:
+          - path: /media/Downloads/qbittorrent
+            subPath: media/Downloads/qbittorrent
+            readOnly: true

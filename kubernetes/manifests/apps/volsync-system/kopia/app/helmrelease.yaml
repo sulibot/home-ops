@@ -92,13 +92,13 @@ spec:
         globalMounts:
           - path: /config/repository.config
             subPath: repository.config
-      # TODO: Replace NFS with appropriate storage solution
-      # repository:
-      #   type: nfs
-      #   server: expanse.internal
-      #   path: /mnt/eros/VolsyncKopia
-      #   globalMounts:
-      #     - path: /repository
+      repository:
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteMany
+        size: 500Gi
+        globalMounts:
+          - path: /repository
       tmpfs:
         type: emptyDir
         advancedMounts:
