@@ -57,3 +57,7 @@ spec:
     persistence:
       config:
         existingClaim: "{{ .Release.Name }}"
+values:
+  persistence:
+    config:
+      enabled: true

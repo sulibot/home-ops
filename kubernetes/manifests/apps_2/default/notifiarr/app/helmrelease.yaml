@@ -65,3 +65,7 @@ spec:
         size: 100Mi
         globalMounts:
           - path: /config
+values:
+  persistence:
+    config:
+      enabled: true

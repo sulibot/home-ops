@@ -62,3 +62,7 @@ spec:
             subPath: recyclarr.yml
       tmp:
         type: emptyDir
+values:
+  persistence:
+    config:
+      enabled: true

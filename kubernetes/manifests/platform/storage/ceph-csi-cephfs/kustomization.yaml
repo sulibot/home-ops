@@ -5,3 +5,4 @@ kind: Kustomization
 resources:
   - ./namespace.yaml
   - ./ceph-csi/ks.yaml
+  - ./backups/ks.yaml

@@ -83,3 +83,7 @@ spec:
             subPath: Downloads/nzbget
       tmp:
         type: emptyDir
+values:
+  persistence:
+    config:
+      enabled: true
