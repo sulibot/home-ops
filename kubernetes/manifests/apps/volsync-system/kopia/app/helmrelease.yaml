@@ -92,12 +92,13 @@ spec:
         globalMounts:
           - path: /config/repository.config
             subPath: repository.config
-      repository:
-        type: nfs
-        server: expanse.internal
-        path: /mnt/eros/VolsyncKopia
-        globalMounts:
-          - path: /repository
+      # TODO: Replace NFS with appropriate storage solution
+      # repository:
+      #   type: nfs
+      #   server: expanse.internal
+      #   path: /mnt/eros/VolsyncKopia
+      #   globalMounts:
+      #     - path: /repository
       tmpfs:
         type: emptyDir
         advancedMounts:
