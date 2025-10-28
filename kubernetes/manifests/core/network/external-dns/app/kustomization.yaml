@@ -1,6 +1,6 @@
 resources:
   - namespace.yaml
-  - mikrotik-credentials-secret.yaml
+  - mikrotik-credentials-secret.sops.yaml
   - helmrelease.yaml
 #configMapGenerator:
 #  - name: external-dns-values
