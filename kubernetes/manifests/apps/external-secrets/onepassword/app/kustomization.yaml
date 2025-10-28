@@ -6,4 +6,4 @@ resources:
   - ./clustersecretstore.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
-  - ./secret.sops.yaml
+  - ./credentials.json-secret.sops.yaml
