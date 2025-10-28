@@ -6,7 +6,7 @@ metadata:
   name: snapshot-controller
 spec:
   interval: 1h
-  path: ./kubernetes/apps/kube-system/snapshot-controller/app
+  path: kubernetes/manifests/apps/kube-system/snapshot-controller/app
   prune: true
   sourceRef:
     kind: GitRepository

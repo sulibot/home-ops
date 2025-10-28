@@ -6,7 +6,7 @@ metadata:
   name: tqm
 spec:
   interval: 1h
-  path: ./kubernetes/apps/default/tqm/app
+  path: kubernetes/manifests/apps/default/tqm/app
   prune: true
   sourceRef:
     kind: GitRepository

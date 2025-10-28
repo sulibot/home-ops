@@ -6,7 +6,7 @@ metadata:
   name: unpoller
 spec:
   interval: 1h
-  path: ./kubernetes/apps/observability/unpoller/app
+  path: kubernetes/manifests/apps/observability/unpoller/app
   prune: true
   sourceRef:
     kind: GitRepository

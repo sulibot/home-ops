@@ -6,7 +6,7 @@ metadata:
   name: keda
 spec:
   interval: 1h
-  path: ./kubernetes/apps/observability/keda/app
+  path: kubernetes/manifests/apps/observability/keda/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -13,7 +13,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/apps/default/plex/app
+  path: kubernetes/manifests/apps/default/plex/app
   postBuild:
     substitute:
       APP: plex
@@ -33,7 +33,7 @@ metadata:
   name: plex-tools
 spec:
   interval: 1h
-  path: ./kubernetes/apps/default/plex/tools
+  path: kubernetes/manifests/apps/default/plex/tools
   prune: true
   sourceRef:
     kind: GitRepository

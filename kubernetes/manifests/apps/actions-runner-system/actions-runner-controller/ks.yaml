@@ -6,7 +6,7 @@ metadata:
   name: actions-runner-controller
 spec:
   interval: 1h
-  path: ./kubernetes/apps/actions-runner-system/actions-runner-controller/app
+  path: kubernetes/manifests/apps/actions-runner-system/actions-runner-controller/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -26,7 +26,7 @@ spec:
     - name: openebs
       namespace: openebs-system
   interval: 1h
-  path: ./kubernetes/apps/actions-runner-system/actions-runner-controller/runners
+  path: kubernetes/manifests/apps/actions-runner-system/actions-runner-controller/runners
   prune: true
   sourceRef:
     kind: GitRepository

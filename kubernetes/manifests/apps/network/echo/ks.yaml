@@ -6,7 +6,7 @@ metadata:
   name: echo
 spec:
   interval: 1h
-  path: ./kubernetes/apps/network/echo/app
+  path: kubernetes/manifests/apps/network/echo/app
   prune: true
   sourceRef:
     kind: GitRepository

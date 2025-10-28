@@ -11,7 +11,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/apps/default/radarr/app
+  path: kubernetes/manifests/apps/default/radarr/app
   postBuild:
     substitute:
       APP: radarr
