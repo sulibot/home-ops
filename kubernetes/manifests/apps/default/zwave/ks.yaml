@@ -9,7 +9,7 @@ spec:
 #    - ../../../../components/volsync
   dependsOn:
     - name: rook-ceph-cluster
-      namespace: rook-ceph
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/zwave/app
   postBuild:
