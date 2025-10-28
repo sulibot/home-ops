@@ -15,6 +15,7 @@ spec:
       enabled: true
     grafanaDashboard:
       enabled: false
+      create: false
     certController:
       serviceMonitor:
         enabled: true
