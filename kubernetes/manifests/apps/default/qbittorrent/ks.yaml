@@ -11,7 +11,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/apps/default/qbittorrent/app
+  path: kubernetes/manifests/apps/default/qbittorrent/app
   postBuild:
     substitute:
       APP: qbittorrent

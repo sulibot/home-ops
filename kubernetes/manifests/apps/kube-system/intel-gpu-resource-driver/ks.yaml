@@ -11,7 +11,7 @@ spec:
       name: intel-gpu-resource-driver
       namespace: kube-system
   interval: 1h
-  path: ./kubernetes/apps/kube-system/intel-gpu-resource-driver/app
+  path: kubernetes/manifests/apps/kube-system/intel-gpu-resource-driver/app
   prune: true
   sourceRef:
     kind: GitRepository

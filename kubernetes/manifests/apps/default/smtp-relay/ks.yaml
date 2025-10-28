@@ -6,7 +6,7 @@ metadata:
   name: smtp-relay
 spec:
   interval: 1h
-  path: ./kubernetes/apps/default/smtp-relay/app
+  path: kubernetes/manifests/apps/default/smtp-relay/app
   prune: true
   sourceRef:
     kind: GitRepository

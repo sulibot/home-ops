@@ -6,7 +6,7 @@ metadata:
   name: go2rtc
 spec:
   interval: 1h
-  path: ./kubernetes/apps/default/go2rtc/app
+  path: kubernetes/manifests/apps/default/go2rtc/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -6,7 +6,7 @@ metadata:
   name: csi-driver-nfs
 spec:
   interval: 1h
-  path: ./kubernetes/apps/kube-system/csi-driver-nfs/app
+  path: kubernetes/manifests/apps/kube-system/csi-driver-nfs/app
   prune: true
   sourceRef:
     kind: GitRepository
