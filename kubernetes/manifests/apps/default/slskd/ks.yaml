@@ -5,8 +5,6 @@ kind: Kustomization
 metadata:
   name: slskd
 spec:
-  components:
-
   dependsOn:
     - name: multus-networks
       namespace: kube-system
