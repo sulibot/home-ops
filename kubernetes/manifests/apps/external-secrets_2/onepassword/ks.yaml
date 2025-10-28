@@ -3,14 +3,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: external-secrets
+  name: &app onepassword
+  namespace: flux-system
 spec:
-  interval: 1h
-  path: ./kubernetes/apps/external-secrets/external-secrets/app
+  targetNamespace: external-secrets
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  path: ./kubernetes/manifests/apps/external-secrets/onepassword/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: external-secrets
-  wait: true
+  wait: false
+  interval: 30m
+  timeout: 5m
