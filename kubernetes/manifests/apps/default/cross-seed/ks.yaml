@@ -6,7 +6,7 @@ metadata:
   name: cross-seed
 spec:
   dependsOn:
-    - name: rook-ceph-cluster
+    - name: ceph-csi
       namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/cross-seed/app

@@ -6,7 +6,7 @@ metadata:
   name: kube-prometheus-stack
 spec:
   dependsOn:
-    - name: rook-ceph-cluster
+    - name: ceph-csi
       namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/observability/kube-prometheus-stack/app
