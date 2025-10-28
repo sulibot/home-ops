@@ -109,7 +109,7 @@ spec:
         existingClaim: data-cephfs-pvc
         globalMounts:
           - path: /media
-            readOnly: true
+            # readOnly: true
       tmp:
         type: emptyDir
 values:
