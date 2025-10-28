@@ -65,5 +65,5 @@ spec:
       resources:
         requests:
           storage: 10Gi
-      storageClassName: ceph-block
+      storageClassName: ceph-csi-cephfs-sc-retain
   disableDefaultSecurityContext: All
