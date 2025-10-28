@@ -116,3 +116,7 @@ spec:
         type: emptyDir
         globalMounts:
           - path: *configDir
+values:
+  persistence:
+    config:
+      enabled: true

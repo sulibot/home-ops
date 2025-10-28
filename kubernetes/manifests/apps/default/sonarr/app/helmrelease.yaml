@@ -92,3 +92,7 @@ spec:
           - path: /media
       tmp:
         type: emptyDir
+values:
+  persistence:
+    config:
+      enabled: true

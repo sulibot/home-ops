@@ -42,7 +42,7 @@ spec:
               capabilities: {drop: ["ALL"]}
         containers:
           clean:
-            <<: *container
+            !!merge <<: *container
             args:
               - clean
               - qb
@@ -51,12 +51,12 @@ spec:
       orphaned:
         type: cronjob
         cronjob:
-          <<: *cronJobSpec
+          !!merge <<: *cronJobSpec
           schedule: 0 0 * * 0
           suspend: true
         containers:
           app:
-            <<: *container
+            !!merge <<: *container
             args:
               - orphan
               - qb
@@ -88,3 +88,7 @@ spec:
           - path: /media/Downloads/qbittorrent
             subPath: media/Downloads/qbittorrent
             readOnly: true
+values:
+  persistence:
+    config:
+      enabled: true

@@ -1,0 +1,30 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-sc-backup
+provisioner: cephfs.csi.ceph.com
+parameters:
+  # Ceph cluster ID - matches existing configuration
+  clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+
+  # CephFS filesystem for backups - using "content" pool
+  fsName: content
+
+  # Data pool for backup volumes
+  pool: content_default
+
+  # Secrets for CSI operations
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
+
+  # Prefix for backup volumes
+  volumeNamePrefix: "backup-csi-vol-"
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
