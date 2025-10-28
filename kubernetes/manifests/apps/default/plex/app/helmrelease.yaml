@@ -22,7 +22,7 @@ spec:
             env:
               TZ: America/Los_Angeles
               PLEX_ADVERTISE_URL: https://plex.sulibot.com:443,http://[fd00:101::cafe:120]:32400,http://plex.default.svc.cluster.local:32400
-              PLEX_NO_AUTH_NETWORKS: fd00:10::/64
+              PLEX_NO_AUTH_NETWORKS: fd00:30::/64
             probes:
               liveness: &probes
                 enabled: true
@@ -53,9 +53,9 @@ spec:
               limits:
                 memory: 16Gi
     defaultPodOptions:
-      resourceClaims:
-        - name: gpu
-          resourceClaimTemplateName: plex
+    #  resourceClaims:
+    #    - name: gpu
+    #      resourceClaimTemplateName: plex
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
