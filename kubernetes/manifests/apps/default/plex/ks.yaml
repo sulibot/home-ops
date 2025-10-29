@@ -5,8 +5,6 @@ kind: Kustomization
 metadata:
   name: plex
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     # Temporarily disabled until Intel GPU host stack is ready
     # - name: intel-gpu-resource-driver

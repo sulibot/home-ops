@@ -5,8 +5,6 @@ kind: Kustomization
 metadata:
   name: qbittorrent
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
