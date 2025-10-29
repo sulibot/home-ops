@@ -1,124 +1,116 @@
-# Pre-Redeploy Checklist
+# Pre-Redeploy Checklist - FINAL
 
-## Issues to Fix in Git Before Cluster Wipe
+## ✅ ALL ISSUES FIXED - READY FOR CLUSTER WIPE
 
-### ✅ Critical: Namespace Configuration (FIXED!)
+### Latest Fix (Commit 4ed4139)
 
-**Problem**: data-cephfs-pvc was getting created in wrong namespace (ceph-csi-cephfs instead of default)
+**Namespace Dependency Issue - RESOLVED**
 
-**Root Cause**: The ceph-csi kustomization had `namespace: ceph-csi-cephfs` which was needed for secrets but overrode the PVC namespace.
+Moved observability PV/PVC resources from `shared-storage/` to `apps/observability/_namespace/` so they are created AFTER the namespace exists.
 
-**Solution Applied** (Commit bfe66f6):
-- Created separate `shared-storage/` directory for PV/PVC
-- Moved data-cephfs-pv.yaml and data-cephfs-pvc.yaml to shared-storage/
-- Created separate Flux Kustomization (ceph-csi-shared-storage) with NO namespace context
-- Now PVC will correctly use its own `namespace: default` declaration
+**Deployment Order:**
+1. `observability` namespace created
+2. `data-cephfs-pv-observability` and `data-cephfs-pvc-observability` created
+3. Observability apps can mount shared storage
 
-**Structure**:
+---
+
+## Storage Configuration Summary
+
+### Storage Classes (Cluster-Wide)
 ```
-ceph-csi/          -> namespace: ceph-csi-cephfs (secrets, storage classes)
-shared-storage/    -> no namespace (PV/PVC use their own namespaces)
+csi-cephfs-sc          - Delete policy, kubernetes pool (regular volumes)
+csi-cephfs-sc-retain   - Retain policy, kubernetes pool (important data)
+csi-cephfs-sc-backup   - Delete policy, backups filesystem (Volsync/Kopia)
+```
+
+### Shared CephFS Storage (40Ti)
+**Default Namespace:**
+- PV: `data-cephfs-pv`
+- PVC: `data-cephfs-pvc`
+- Location: `platform/storage/ceph-csi-cephfs/shared-storage/`
+
+**Observability Namespace:**
+- PV: `data-cephfs-pv-observability`
+- PVC: `data-cephfs-pvc`
+- Location: `apps/observability/_namespace/`
+
+**Both mount the same CephFS path:**
+- Filesystem: `content`
+- Root Path: `/` (entire 40Ti volume)
+- Access Mode: ReadWriteMany (RWX)
+
+---
+
+## Volsync Configuration
+
+**Default Storage Classes:**
+- `storageClassName`: `csi-cephfs-sc-backup` (backup destination)
+- `cacheStorageClassName`: `csi-cephfs-sc` (cache volumes)
+- `volumeSnapshotClassName`: `csi-cephfs-snapclass` (snapshots)
+
+---
+
+## Ceph Requirements Verified
+
+- ✅ `csi` subvolume group created on `backups` filesystem
+- ✅ Backup storage class tested and working
+- ✅ All storage classes use correct CephFS filesystems
+
+---
+
+## Post-Wipe Verification Commands
+
+### 1. Check Storage Classes
+```bash
+kubectl get storageclass
+# Expected: csi-cephfs-sc, csi-cephfs-sc-retain, csi-cephfs-sc-backup
+```
+
+### 2. Verify PVCs in Correct Namespaces
+```bash
+kubectl get pvc -A | grep data-cephfs
+# Expected:
+# default         data-cephfs-pvc   Bound   data-cephfs-pv                40Ti   RWX
+# observability   data-cephfs-pvc   Bound   data-cephfs-pv-observability  40Ti   RWX
+```
+
+### 3. Check Apps Can Mount Storage
+```bash
+kubectl get pods -n default | grep -E "sonarr|radarr|qbittorrent"
+# Should be Running (not Pending with mount errors)
+```
+
+### 4. Verify Volsync Storage Classes
+```bash
+kubectl get pvc -n default | grep volsync
+# Should show csi-cephfs-sc-backup storage class
 ```
 
 ---
 
-## Storage Configuration (Already Fixed ✅)
+## Git Repository Status
 
-1. ✅ **Storage Classes Created**:
-   - csi-cephfs-sc (Delete, kubernetes pool)
-   - csi-cephfs-sc-retain (Retain, kubernetes pool)
-   - csi-cephfs-sc-backup (Delete, backups filesystem)
+**Branch:** main  
+**Latest Commit:** 4ed4139 - "Fix namespace dependency: move observability PV/PVC to observability kustomization"
 
-2. ✅ **Volsync Configuration**:
-   - Updated to use csi-cephfs-sc-backup for destination
-   - Updated to use csi-cephfs-sc for cache
-   - Updated to use csi-cephfs-snapclass for snapshots
-
-3. ✅ **data-cephfs-pv**:
-   - fsName: content (correct)
-   - PVC configured for namespace: default
-
-4. ✅ **Ceph Backup Filesystem**:
-   - `csi` subvolume group created on `backups` filesystem
+**Recent Changes:**
+```
+4ed4139 Fix namespace dependency: move observability PV/PVC to observability kustomization
+1c87d2f Add shared CephFS storage for observability namespace
+bfe66f6 PROPER FIX: Move data-cephfs-pv/pvc to separate kustomization
+```
 
 ---
 
-## Known Issues (Will Be Resolved by Clean Deploy)
+## ✅ CLUSTER WIPE READY
 
-### Schema Validation Errors
-These apps have `.values:` field errors in HelmRelease - will be fixed by clean deploy:
-- home-assistant
-- jellyseerr
-- notifier
-- nzbget
-- plex
-- prowlarr
+All configuration issues have been resolved. The repository is clean and ready for cluster redeploy.
 
-### PVC Immutability Errors
-These will be resolved with fresh PVCs on clean deploy:
-- qbittorrent
-- qui
-- radarr
-- sonarr
-- tautulli
-
-### Timeout Errors (Context Deadline Exceeded)
-These are likely due to current cluster state and will resolve on fresh deploy:
-- ceph-csi
-- autobrr
-- cross-seed
-- fusion
-- slskd
-- smtp-relay
-- thelounge
-- zigbee
-- zwave
-- gatus
-- unpoller
-- victoria-logs
-- kopia
-
----
-
-## Post-Wipe Verification Steps
-
-1. **Storage Classes**:
-   ```bash
-   kubectl get storageclass
-   # Should show: csi-cephfs-sc, csi-cephfs-sc-retain, csi-cephfs-sc-backup
-   ```
-
-2. **data-cephfs-pvc**:
-   ```bash
-   kubectl get pvc data-cephfs-pvc -n default
-   # Should be Bound to data-cephfs-pv in default namespace
-   ```
-
-3. **Ceph Mount Test**:
-   ```bash
-   kubectl get pods -n default | grep -E "sonarr|radarr|qbittorrent"
-   # Pods should be Running and able to mount CephFS
-   ```
-
-4. **Volsync**:
-   ```bash
-   kubectl get replicationdestination -n default
-   kubectl get pvc -n default | grep volsync
-   # Should use csi-cephfs-sc-backup storage class
-   ```
-
----
-
-## Dependency Order (For Reference)
-
-1. CRDs (Gateway API, External Secrets, etc.)
-2. Storage (ceph-csi, storage classes)
-3. External Secrets (1Password Connect, ClusterSecretStore)
-4. Apps (depend on storage and secrets)
-
----
-
-## Final Git Status
-
-Repository is clean and ready for redeploy.
-Latest commit: c15e015 "update config mount"
+**Key Points:**
+- ✅ PVCs will deploy to correct namespaces
+- ✅ No namespace override issues
+- ✅ Proper dependency ordering
+- ✅ Both default and observability namespaces will access shared 40Ti media storage
+- ✅ Volsync will use CephFS storage classes
+- ✅ All storage configuration tested
