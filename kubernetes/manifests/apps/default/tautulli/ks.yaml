@@ -5,8 +5,6 @@ kind: Kustomization
 metadata:
   name: tautulli
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
