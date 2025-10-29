@@ -2,13 +2,23 @@
 
 ## Issues to Fix in Git Before Cluster Wipe
 
-### Critical: Namespace Configuration
+### ✅ Critical: Namespace Configuration (FIXED!)
 
-**Problem**: data-cephfs-pvc gets created in wrong namespace (ceph-csi-cephfs instead of default)
+**Problem**: data-cephfs-pvc was getting created in wrong namespace (ceph-csi-cephfs instead of default)
 
-**Root Cause**: [kubernetes/manifests/platform/storage/ceph-csi-cephfs/ceph-csi/app/kustomization.yaml](kubernetes/manifests/platform/storage/ceph-csi-cephfs/ceph-csi/app/kustomization.yaml) has `namespace: ceph-csi-cephfs` which overrides individual resource namespaces.
+**Root Cause**: The ceph-csi kustomization had `namespace: ceph-csi-cephfs` which was needed for secrets but overrode the PVC namespace.
 
-**Fix**: Remove `namespace: ceph-csi-cephfs` from line 5 of kustomization.yaml since storage classes are cluster-scoped and the PVC needs to be in default namespace.
+**Solution Applied** (Commit bfe66f6):
+- Created separate `shared-storage/` directory for PV/PVC
+- Moved data-cephfs-pv.yaml and data-cephfs-pvc.yaml to shared-storage/
+- Created separate Flux Kustomization (ceph-csi-shared-storage) with NO namespace context
+- Now PVC will correctly use its own `namespace: default` declaration
+
+**Structure**:
+```
+ceph-csi/          -> namespace: ceph-csi-cephfs (secrets, storage classes)
+shared-storage/    -> no namespace (PV/PVC use their own namespaces)
+```
 
 ---
 
