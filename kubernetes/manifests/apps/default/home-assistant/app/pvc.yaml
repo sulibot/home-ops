@@ -9,6 +9,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: ceph-csi-cephfs-sc-retain
+  storageClassName: csi-cephfs-sc-retain
   volumeName: home-assistant-cache
 
