@@ -63,4 +63,4 @@ spec:
             namespace: network
     persistence:
       data:
-        existingClaim: "{{ .Release.Name }}"
+        type: emptyDir
