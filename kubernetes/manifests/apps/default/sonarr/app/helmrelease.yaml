@@ -75,6 +75,7 @@ spec:
             namespace: network
     persistence:
       config:
+        enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
@@ -92,7 +93,4 @@ spec:
           - path: /media
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

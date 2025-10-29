@@ -69,6 +69,7 @@ spec:
             namespace: network
     persistence:
       config:
+        enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce

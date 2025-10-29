@@ -88,7 +88,4 @@ spec:
           - path: /media/Downloads/qbittorrent
             subPath: media/Downloads/qbittorrent
             readOnly: true
-values:
-  persistence:
-    config:
-      enabled: true
+

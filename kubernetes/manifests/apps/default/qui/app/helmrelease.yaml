@@ -70,11 +70,9 @@ spec:
             namespace: network
     persistence:
       config:
+        enabled: true      
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
         size: 100Mi
-values:
-  persistence:
-    config:
-      enabled: true
+
