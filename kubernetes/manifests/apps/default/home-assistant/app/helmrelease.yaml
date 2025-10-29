@@ -82,7 +82,4 @@ spec:
           - path: /config/.venv
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

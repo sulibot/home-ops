@@ -82,7 +82,4 @@ spec:
           - path: /app/config
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

@@ -55,7 +55,3 @@ spec:
         defaultMode: 0775
         globalMounts:
           - readOnly: true
-values:
-  persistence:
-    config:
-      enabled: true
