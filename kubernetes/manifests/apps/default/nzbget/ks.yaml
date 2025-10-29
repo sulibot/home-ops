@@ -5,17 +5,11 @@ kind: Kustomization
 metadata:
   name: nzbget
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/default/nzbget/app
-  postBuild:
-    substitute:
-      APP: nzbget
-      VOLSYNC_CAPACITY: 1Gi
   prune: true
   sourceRef:
     kind: GitRepository
