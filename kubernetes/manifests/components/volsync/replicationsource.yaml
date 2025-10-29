@@ -26,5 +26,5 @@ spec:
     retain:
       hourly: 24
       daily: 7
-    storageClassName: ${VOLSYNC_STORAGECLASS:=ceph-block}
-    volumeSnapshotClassName: ${VOLSYNC_SNAPSHOTCLASS:=csi-ceph-blockpool}
+    storageClassName: ${VOLSYNC_STORAGECLASS:=csi-cephfs-sc-backup}
+    volumeSnapshotClassName: ${VOLSYNC_SNAPSHOTCLASS:=csi-cephfs-snapclass}
