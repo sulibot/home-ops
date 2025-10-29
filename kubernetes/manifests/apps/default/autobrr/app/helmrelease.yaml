@@ -91,9 +91,6 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
-        accessMode: ReadWriteOnce
-        size: 100Mi
+        existingClaim: "{{ .Release.Name }}"
       tmp:
         type: emptyDir
-
