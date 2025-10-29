@@ -61,7 +61,4 @@ spec:
           - path: /usr/src/app/store
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

@@ -50,6 +50,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     persistence:
       config:
+        enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
@@ -62,7 +63,4 @@ spec:
             subPath: recyclarr.yml
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

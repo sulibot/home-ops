@@ -96,7 +96,4 @@ spec:
         size: 100Mi
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+

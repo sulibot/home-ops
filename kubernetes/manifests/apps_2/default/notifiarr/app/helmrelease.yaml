@@ -59,13 +59,11 @@ spec:
                 port: 80
     persistence:
       config:
+        enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
         size: 100Mi
         globalMounts:
           - path: /config
-values:
-  persistence:
-    config:
-      enabled: true
+
