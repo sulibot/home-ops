@@ -94,9 +94,9 @@ spec:
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
         size: 100Mi
-      config-file:
-        type: configMap
-        identifier: config
+      #config-file:
+      #  type: configMap
+      #  identifier: config
         globalMounts:
           - path: /config/.qbt.toml
             subPath: .qbt.toml
