@@ -1,6 +1,6 @@
 resources:
   - namespace.yaml
   - cni/
-  - external-secrets/kustomization.yaml
+  - external-secrets/
   - storage/
   - misc/
