@@ -2,11 +2,10 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: ceph-csi-cephfs
 resources:
   - ./helmrelease-secret.yaml
   - ./node-stage-secret.yaml
   - ./storageclass-ceph-csi-cephfs-retain.yaml
   - ./storageclass-ceph-csi-cephfs-backup.yaml
   - ./volumesnapshotclass.yaml
-  - ./data-cephfs-pv.yaml
-  - ./data-cephfs-pvc.yaml
