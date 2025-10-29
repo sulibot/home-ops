@@ -7,7 +7,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./kubernetes/manifests/apps/external-secrets/external-secrets/app
+  path: ./kubernetes/manifests/platform/external-secrets/external-secrets/app
   prune: true
   sourceRef:
     kind: GitRepository
