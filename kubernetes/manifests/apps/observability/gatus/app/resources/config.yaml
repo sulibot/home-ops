@@ -21,7 +21,7 @@ endpoints:
 
   - name: Quad9
     group: connectivity
-    url: icmp://2620:fe::fe
+    url: icmp://[2620:fe::fe]
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
