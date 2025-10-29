@@ -5,5 +5,3 @@ kind: Kustomization
 resources:
   - ./data-cephfs-pv.yaml
   - ./data-cephfs-pvc.yaml
-  - ./data-cephfs-pv-observability.yaml
-  - ./data-cephfs-pvc-observability.yaml
