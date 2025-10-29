@@ -17,6 +17,23 @@ spec:
         enabled: true
         storageClassName: csi-cephfs-sc-retain
         size: 20Gi
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+          host: 127.0.0.1
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        tcpSocket:
+          port: http
+          host: 127.0.0.1
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 10
       route:
         enabled: true
         hostnames:

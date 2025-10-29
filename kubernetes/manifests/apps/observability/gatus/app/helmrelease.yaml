@@ -70,8 +70,6 @@ spec:
               storageClass: csi-cephfs-sc-retain
               accessMode: ReadWriteOnce
               size: 5Gi
-    defaultPodOptions:
-      hostUsers: false
     service:
       app:
         ports:
