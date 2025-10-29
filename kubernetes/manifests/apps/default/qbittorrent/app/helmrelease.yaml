@@ -48,8 +48,9 @@ spec:
             resources:
               requests:
                 cpu: 100m
+                memory: 2Gi
               limits:
-                memory: 12Gi
+                memory: 4Gi
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -111,4 +112,3 @@ spec:
         image: ghcr.io/buroa/qbrr:0.1.1@sha256:fe4a1d100ba896999253a5122d9c77cc4920779d618c23f765458cb6ec7383ca
       tmp:
         type: emptyDir
-
