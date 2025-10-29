@@ -3,5 +3,3 @@ resources:
  - kube-system/
  - volsync-system/
  - default/
- - external-secrets/
-
