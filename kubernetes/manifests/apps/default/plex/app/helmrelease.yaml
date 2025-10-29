@@ -113,7 +113,4 @@ spec:
             # readOnly: true
       tmp:
         type: emptyDir
-values:
-  persistence:
-    config:
-      enabled: true
+
