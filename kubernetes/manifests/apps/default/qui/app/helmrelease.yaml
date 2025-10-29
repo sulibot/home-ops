@@ -20,7 +20,7 @@ spec:
               repository: ghcr.io/autobrr/qui
               tag: v1.5.0@sha256:393055be10e7b11b893f665c02b936cf50529ed1dbd6166ad1177bf36e1a68cb
             env:
-              QUI__HOST: "::"
+              QUI__HOST: "0.0.0.0"
               QUI__PORT: &port 80
               QUI__LOG_LEVEL: INFO
               TZ: America/Los_Angeles
