@@ -56,5 +56,9 @@ spec:
             namespace: network
     persistence:
       config:
-        existingClaim: "{{ .Release.Name }}"
+        enabled: true
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteOnce
+        size: 100Mi
 
