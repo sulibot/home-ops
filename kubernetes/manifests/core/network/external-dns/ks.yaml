@@ -6,6 +6,9 @@ metadata:
   name: external-dns
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: external-secrets
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/core/network/external-dns/app
   prune: true
