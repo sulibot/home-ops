@@ -23,6 +23,7 @@ spec:
               TZ: America/Los_Angeles
               TAUTULLI_HTTP_BASE_URL: https://tautulli.sulibot.com
               TAUTULLI_HTTP_PORT: &port 80
+              TAUTULLI_HTTP_HOST: "::"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
