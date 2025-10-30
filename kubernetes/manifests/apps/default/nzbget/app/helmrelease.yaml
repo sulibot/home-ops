@@ -12,10 +12,12 @@ spec:
   values:
     controllers:
       nzbget:
-        # --- Init container to force IPv6 binding ---------------------------
+        # --- Init container to enable IPv6 binding -------------------------
         initContainers:
-          patch-config:
-            image: busybox:1.36
+          - name: patch-config
+            image:
+              repository: busybox
+              tag: "1.36"
             command:
               - sh
               - -c
@@ -27,7 +29,7 @@ spec:
               - name: config
                 mountPath: /config
 
-        # --- Primary application container ---------------------------------
+        # --- Main NZBGet container ----------------------------------------
         containers:
           app:
             image:
@@ -59,7 +61,7 @@ spec:
               limits:
                 memory: 200Mi
 
-    # --- Default pod-level options -----------------------------------------
+    # --- Default pod security context -------------------------------------
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -76,14 +78,14 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
 
-    # --- Service definition -------------------------------------------------
+    # --- Service definition -----------------------------------------------
     service:
       app:
         ports:
           http:
             port: *port
 
-    # --- Gateway API route --------------------------------------------------
+    # --- Gateway API route ------------------------------------------------
     route:
       app:
         hostnames:
@@ -92,7 +94,7 @@ spec:
           - name: gateway-external
             namespace: network
 
-    # --- Persistent storage definitions ------------------------------------
+    # --- Persistent storage -----------------------------------------------
     persistence:
       config:
         enabled: true
