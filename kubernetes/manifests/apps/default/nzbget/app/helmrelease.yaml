@@ -23,8 +23,25 @@ spec:
               - -c
               - |
                 echo "[init] Enabling IPv6 binding for NZBGet"
-                sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf || \
-                echo 'ControlIP=::' >> /config/nzbget.conf
+                if [ ! -f /config/nzbget.conf ]; then
+                  echo "[init] No nzbget.conf found, creating placeholder"
+                  touch /config/nzbget.conf
+                fi
+                if grep -q '^ControlIP=' /config/nzbget.conf; then
+                  sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
+                else
+                  echo 'ControlIP=::' >> /config/nzbget.conf
+                fi
+                for dir in tmp queue nzb ; do
+                  mkdir -p "/downloads/${dir}"
+                done
+                touch /downloads/nzbget.log
+                chown -R 1000:1000 /config /downloads
+            securityContext:
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: false
 
         # --- Main NZBGet container ----------------------------------------
         containers:
@@ -101,3 +118,10 @@ spec:
         size: 100Mi
         globalMounts:
           - path: /config
+      downloads:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: data-cephfs-pvc
+        globalMounts:
+          - path: /downloads
+            subPath: Downloads/nzbget
