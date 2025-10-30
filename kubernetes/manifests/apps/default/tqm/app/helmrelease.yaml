@@ -81,11 +81,10 @@ spec:
         globalMounts:
           - path: /.config/tqm/config.yaml
             subPath: config.yaml
-      media:
+      content:
         type: persistentVolumeClaim
-        existingClaim: data-cephfs-pvc
+        existingClaim: cephfs-content-pvc
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: media/Downloads/qbittorrent
             readOnly: true
-

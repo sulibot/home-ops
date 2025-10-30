@@ -75,7 +75,7 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
+        storageClass: cephfs-csi-sc-retain
         accessMode: ReadWriteMany
         size: 100Mi
         globalMounts:

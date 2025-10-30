@@ -31,7 +31,7 @@ spec:
         storage:
           volumeClaimTemplate:
             spec:
-              storageClassName: csi-cephfs-sc-retain
+              storageClassName: cephfs-csi-sc-retain
               resources:
                 requests:
                   storage: 1Gi
@@ -77,7 +77,7 @@ spec:
         storageSpec:
           volumeClaimTemplate:
             spec:
-              storageClassName: csi-cephfs-sc-retain
+              storageClassName: cephfs-csi-sc-retain
               resources:
                 requests:
                   storage: 50Gi

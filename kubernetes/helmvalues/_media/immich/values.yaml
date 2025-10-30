@@ -29,8 +29,8 @@ immich:
   persistence:
     library:
       # Remove `existingClaim` to allow dynamic provisioning
-      # existingClaim: data-cephfs-pvc
-      storageClassName: csi-cephfs-sc-retain  # Specify the desired StorageClass
+      # existingClaim: cephfs-content-pvc
+      storageClassName: cephfs-csi-sc-retain  # Specify the desired StorageClass
       size: 50Gi                           # Define size based on your storage requirements
 
 # Dependencies
@@ -57,7 +57,7 @@ postgresql:
           CREATE EXTENSION vectors;
   persistence:
     enabled: true
-    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
+    storageClass: cephfs-csi-sc-retain  # Specify the desired StorageClass
     size: 10Gi                          # Adjust based on your storage requirements
 
 redis:
@@ -67,7 +67,7 @@ redis:
     enabled: false
   persistence:
     enabled: true
-    storageClass: csi-cephfs-sc-retain  # Specify the desired StorageClass
+    storageClass: cephfs-csi-sc-retain  # Specify the desired StorageClass
     size: 10Gi                          # Adjust based on your storage requirements
 
 # Immich components

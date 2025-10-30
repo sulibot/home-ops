@@ -14,7 +14,7 @@ secret:
     create: true
 storageClass:
     create: true
-    name: csi-cephfs-sc
+    name: cephfs-csi-sc
     clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
     # (required) CephFS filesystem name into which the volume shall be created
     pool: cephfs_data
