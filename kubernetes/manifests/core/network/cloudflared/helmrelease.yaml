@@ -17,7 +17,7 @@ spec:
   values:
     image:
       repository: cloudflare/cloudflared
-      tag: "2025.10.0"
+      tag: "2025.10.1"
       pullPolicy: IfNotPresent
     env:
       - name: TUNNEL_EDGE_IP_VERSION

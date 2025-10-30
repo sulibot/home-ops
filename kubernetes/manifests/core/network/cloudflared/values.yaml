@@ -15,7 +15,7 @@ cloudflare:
 image:
     repository: cloudflare/cloudflared
     pullPolicy: IfNotPresent
-    tag: 2025.10.0
+    tag: 2025.10.1
 replicaCount: 2
 imagePullSecrets: []
 nameOverride: ""
