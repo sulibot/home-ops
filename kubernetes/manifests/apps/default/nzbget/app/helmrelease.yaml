@@ -28,6 +28,7 @@ spec:
                   httpGet:
                     path: /jsonrpc/status
                     port: *port
+                    host: 127.0.0.1
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
