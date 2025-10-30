@@ -48,7 +48,7 @@ elastic-apm ; python_version >= '3.6'
 passlib[argon2]
 
 #requirements for nomad_token modules
-python-nomad < 2.0.0 ; python_version <= '3.6'
+python-nomad <2.1.1 ; python_version <= '3.6'
 python-nomad >= 2.0.0 ; python_version >= '3.7'
 
 # requirement for jenkins_build, jenkins_node, jenkins_plugin modules
