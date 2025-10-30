@@ -77,9 +77,12 @@ spec:
         globalMounts:
           - path: /config
       config-cache:
-        existingClaim: "{{ .Release.Name }}-cache"
+        enabled: true
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-sc-retain
+        accessMode: ReadWriteMany
+        size: 1Gi
         globalMounts:
           - path: /config/.venv
       tmp:
         type: emptyDir
-
