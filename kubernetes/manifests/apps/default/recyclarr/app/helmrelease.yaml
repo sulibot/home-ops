@@ -53,7 +53,7 @@ spec:
         enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
-        accessMode: ReadWriteOnce
+        accessMode: ReadWriteMany
         size: 100Mi
       config-file:
         type: configMap

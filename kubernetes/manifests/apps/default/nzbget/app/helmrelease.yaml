@@ -14,7 +14,7 @@ spec:
       nzbget:
         # --- Init container to enable IPv6 binding -------------------------
         initContainers:
-          - name: patch-config
+          patch-config:
             image:
               repository: busybox
               tag: "1.36"
@@ -25,9 +25,6 @@ spec:
                 echo "[init] Enabling IPv6 binding for NZBGet"
                 sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf || \
                 echo 'ControlIP=::' >> /config/nzbget.conf
-            volumeMounts:
-              - name: config
-                mountPath: /config
 
         # --- Main NZBGet container ----------------------------------------
         containers:
@@ -61,7 +58,7 @@ spec:
               limits:
                 memory: 200Mi
 
-    # --- Default pod security context -------------------------------------
+    # --- Default pod-level options ----------------------------------------
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -78,14 +75,14 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
 
-    # --- Service definition -----------------------------------------------
+    # --- Service definition ------------------------------------------------
     service:
       app:
         ports:
           http:
             port: *port
 
-    # --- Gateway API route ------------------------------------------------
+    # --- Gateway API route -------------------------------------------------
     route:
       app:
         hostnames:
@@ -94,7 +91,7 @@ spec:
           - name: gateway-external
             namespace: network
 
-    # --- Persistent storage -----------------------------------------------
+    # --- Persistent storage definitions -----------------------------------
     persistence:
       config:
         enabled: true
@@ -102,11 +99,5 @@ spec:
         storageClass: csi-cephfs-sc-retain
         accessMode: ReadWriteOnce
         size: 100Mi
-      media:
-        type: persistentVolumeClaim
-        existingClaim: data-cephfs-pvc
         globalMounts:
-          - path: /media/Downloads/nzbget
-            subPath: Downloads/nzbget
-      tmp:
-        type: emptyDir
+          - path: /config

@@ -7,7 +7,7 @@ spec:
   capacity:
     storage: 10Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   volumeMode: Filesystem
   storageClassName: csi-cephfs-sc-retain
   persistentVolumeReclaimPolicy: Retain
