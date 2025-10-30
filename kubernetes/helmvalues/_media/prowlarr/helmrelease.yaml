@@ -56,7 +56,7 @@ spec:
     image:
       pullPolicy: IfNotPresent
       repository: ghcr.io/onedr0p/prowlarr-develop
-      tag: 1.29.0.4897@sha256:dbbc3ba87472bd61dd0138f7bc81d7a7f5295995bd6b8ed8ff3bd0187db2faab
+      tag: 1.32.2.4987@sha256:f3c0edbd19d744c8306ae8f72e75f0fb54ff662e9f7b22a4d9029e5c0b7f075c
     ingress:
       className: cilium
       enabled: false
