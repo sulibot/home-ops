@@ -77,6 +77,13 @@ spec:
             port: http-webhook
           initialDelaySeconds: 10
           timeoutSeconds: 5
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 30
     registry: txt
     sources:
     - ingress
