@@ -45,7 +45,7 @@ spec:
       digest: ""
       pullPolicy: IfNotPresent
       repository: ghcr.io/onedr0p/tautulli
-      tag: 2.15.0@sha256:189f7b29da755a8e20da45af1e56bc9fc88d836a363da4273a52b267609511c4
+      tag: 2.15.1@sha256:74468ecce40f44c449675ec7fcb7c86ebff89961572d141ad743b8ccbdde3c98
     ingress:
       className: cilium
       enabled: false
