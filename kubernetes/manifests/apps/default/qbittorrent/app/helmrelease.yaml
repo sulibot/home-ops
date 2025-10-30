@@ -58,6 +58,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
+              runAsNonRoot: true
               capabilities: {drop: ["ALL"]}
             resources:
               requests:
@@ -75,7 +76,7 @@ spec:
 #            "mac": "32:0b:d8:1f:b6:e4"
 #          }]
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
