@@ -9,5 +9,5 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./kopia/ks.yaml
+  # - ./kopia/ks.yaml  # Commented out - needs proper repository setup
   - ./volsync/ks.yaml
