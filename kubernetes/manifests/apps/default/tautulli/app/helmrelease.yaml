@@ -34,6 +34,7 @@ spec:
                   httpGet:
                     path: /api/v2/status
                     port: *port
+                    host: 127.0.0.1
                   initialDelaySeconds: 5
                   periodSeconds: 10
                   timeoutSeconds: 5
