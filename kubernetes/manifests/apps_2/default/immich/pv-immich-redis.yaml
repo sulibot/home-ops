@@ -7,7 +7,7 @@ spec:
   capacity:
     storage: 10Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   csi:
     driver: cephfs.csi.ceph.com
     nodeStageSecretRef:

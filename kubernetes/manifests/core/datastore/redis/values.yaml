@@ -502,7 +502,7 @@ master:
     ## @param master.persistence.accessModes Persistent Volume access modes
     ##
     accessModes:
-      - ReadWriteOnce
+      - ReadWriteMany
     ## @param master.persistence.size Persistent Volume size
     ##
     size: 8Gi

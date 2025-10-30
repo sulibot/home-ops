@@ -14,6 +14,20 @@ spec:
       qbittorrent:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          volume-permissions:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: 1.36.1
+            command:
+              - sh
+              - -c
+              - |
+                set -eux
+                mkdir -p /config/qBittorrent/logs
+                chown -R 1000:1000 /config
+            securityContext:
+              runAsUser: 0
         containers:
           app:
             image:
@@ -93,14 +107,23 @@ spec:
         enabled: true
         type: persistentVolumeClaim
         storageClass: csi-cephfs-sc-retain
-        accessMode: ReadWriteOnce
+        accessMode: ReadWriteMany
         size: 100Mi
-      #config-file:
-      #  type: configMap
-      #  identifier: config
-        globalMounts:
-          - path: /config/.qbt.toml
-            subPath: .qbt.toml
+        advancedMounts:
+          qbittorrent:
+            app:
+              - path: /config
+            volume-permissions:
+              - path: /config
+      config-file:
+        enabled: true
+        type: configMap
+        identifier: config
+        advancedMounts:
+          qbittorrent:
+            app:
+              - path: /config/.qbt.toml
+                subPath: .qbt.toml
       media:
         type: persistentVolumeClaim
         existingClaim: data-cephfs-pvc

@@ -151,7 +151,7 @@ spec:
         minAvailable: ""
       persistence:
         accessModes:
-        - ReadWriteOnce
+        - ReadWriteMany
         annotations: {}
         dataSource: {}
         enabled: true
