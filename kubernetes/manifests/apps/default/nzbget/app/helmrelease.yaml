@@ -12,6 +12,22 @@ spec:
   values:
     controllers:
       nzbget:
+        # --- Init container to force IPv6 binding ---------------------------
+        initContainers:
+          patch-config:
+            image: busybox:1.36
+            command:
+              - sh
+              - -c
+              - |
+                echo "[init] Enabling IPv6 binding for NZBGet"
+                sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf || \
+                echo 'ControlIP=::' >> /config/nzbget.conf
+            volumeMounts:
+              - name: config
+                mountPath: /config
+
+        # --- Primary application container ---------------------------------
         containers:
           app:
             image:
@@ -19,7 +35,6 @@ spec:
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
               NZBGET__PORT: &port 6789
-              NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             probes:
               liveness: &probes
@@ -36,12 +51,15 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities:
+                drop: ["ALL"]
             resources:
               requests:
                 cpu: 100m
               limits:
                 memory: 200Mi
+
+    # --- Default pod-level options -----------------------------------------
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -57,11 +75,15 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+
+    # --- Service definition -------------------------------------------------
     service:
       app:
         ports:
           http:
             port: *port
+
+    # --- Gateway API route --------------------------------------------------
     route:
       app:
         hostnames:
@@ -69,6 +91,8 @@ spec:
         parentRefs:
           - name: gateway-external
             namespace: network
+
+    # --- Persistent storage definitions ------------------------------------
     persistence:
       config:
         enabled: true
