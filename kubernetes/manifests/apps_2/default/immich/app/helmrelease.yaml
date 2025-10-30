@@ -38,7 +38,7 @@ spec:
       persistence:
         library:
           size: 50Gi
-          storageClassName: csi-cephfs-sc-retain
+          storageClassName: cephfs-csi-sc-retain
     machine-learning:
       enabled: true
       env:
@@ -66,7 +66,7 @@ spec:
       persistence:
         enabled: true
         size: 10Gi
-        storageClass: csi-cephfs-sc-retain
+        storageClass: cephfs-csi-sc-retain
       primary:
         containerSecurityContext:
           readOnlyRootFilesystem: false
@@ -84,7 +84,7 @@ spec:
       persistence:
         enabled: true
         size: 10Gi
-        storageClass: csi-cephfs-sc-retain
+        storageClass: cephfs-csi-sc-retain
     server:
       enabled: true
       image:

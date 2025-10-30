@@ -106,7 +106,7 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
+        storageClass: cephfs-csi-sc-retain
         accessMode: ReadWriteMany
         size: 100Mi
         advancedMounts:
@@ -124,9 +124,9 @@ spec:
             app:
               - path: /config/.qbt.toml
                 subPath: .qbt.toml
-      media:
+      content:
         type: persistentVolumeClaim
-        existingClaim: data-cephfs-pvc
+        existingClaim: cephfs-content-pvc
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent

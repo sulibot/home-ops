@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: csi-cephfs-sc-backup
+  name: cephfs-backup-sc
 provisioner: cephfs.csi.ceph.com
 parameters:
   # Ceph cluster ID

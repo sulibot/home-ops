@@ -9,5 +9,5 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: csi-cephfs-sc-retain
+  storageClassName: cephfs-csi-sc-retain
 

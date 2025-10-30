@@ -77,7 +77,7 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-sc-retain
+        storageClass: cephfs-csi-sc-retain
         accessMode: ReadWriteMany
         size: 100Mi
       scripts:
@@ -86,11 +86,10 @@ spec:
         defaultMode: 0775
         globalMounts:
           - readOnly: true
-      media:
+      content:
         type: persistentVolumeClaim
-        existingClaim: data-cephfs-pvc
+        existingClaim: cephfs-content-pvc
         globalMounts:
           - path: /media
       tmp:
         type: emptyDir
-

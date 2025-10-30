@@ -15,7 +15,7 @@ spec:
     substitute:
       APP: overseerr
       VOLSYNC_CAPACITY: 10Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-sc-retain
+      VOLSYNC_STORAGECLASS: cephfs-csi-sc-retain
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-snapclass
       VOLSYNC_SNAPSHOTCLASS: csi-cephfs-snapclass
   prune: true

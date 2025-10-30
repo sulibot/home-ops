@@ -15,9 +15,9 @@ spec:
     substitute:
       APP: plex
       VOLSYNC_CAPACITY: 10Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-sc-retain
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-sc-retain
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-sc-retain
+      VOLSYNC_STORAGECLASS: cephfs-csi-sc-retain
+      VOLSYNC_CACHE_SNAPSHOTCLASS: cephfs-csi-sc-retain
+      VOLSYNC_SNAPSHOTCLASS: cephfs-csi-sc-retain
   prune: true
   sourceRef:
     kind: GitRepository

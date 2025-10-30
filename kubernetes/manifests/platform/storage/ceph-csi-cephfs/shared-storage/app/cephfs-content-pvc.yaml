@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: data-cephfs-pvc
+  name: cephfs-content-pvc
   namespace: default
 spec:
   accessModes:
@@ -12,5 +12,5 @@ spec:
     requests:
       storage: 40Ti
   storageClassName: ""         # no storage class = static PV binding
-  volumeName: data-cephfs-pv
+  volumeName: cephfs-content-pv
 

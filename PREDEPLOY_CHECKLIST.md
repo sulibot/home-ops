@@ -10,7 +10,7 @@ Moved observability PV/PVC resources from `shared-storage/` to `apps/observabili
 
 **Deployment Order:**
 1. `observability` namespace created
-2. `data-cephfs-pv-observability` and `data-cephfs-pvc-observability` created
+2. `cephfs-content-pv-observability` and `cephfs-content-pvc-observability` created
 3. Observability apps can mount shared storage
 
 ---
@@ -19,20 +19,20 @@ Moved observability PV/PVC resources from `shared-storage/` to `apps/observabili
 
 ### Storage Classes (Cluster-Wide)
 ```
-csi-cephfs-sc          - Delete policy, kubernetes pool (regular volumes)
-csi-cephfs-sc-retain   - Retain policy, kubernetes pool (important data)
-csi-cephfs-sc-backup   - Delete policy, backups filesystem (Volsync/Kopia)
+cephfs-csi-sc          - Delete policy, kubernetes pool (regular volumes)
+cephfs-csi-sc-retain   - Retain policy, kubernetes pool (important data)
+cephfs-backup-sc   - Delete policy, backups filesystem (Volsync/Kopia)
 ```
 
 ### Shared CephFS Storage (40Ti)
 **Default Namespace:**
-- PV: `data-cephfs-pv`
-- PVC: `data-cephfs-pvc`
+- PV: `cephfs-content-pv`
+- PVC: `cephfs-content-pvc`
 - Location: `platform/storage/ceph-csi-cephfs/shared-storage/`
 
 **Observability Namespace:**
-- PV: `data-cephfs-pv-observability`
-- PVC: `data-cephfs-pvc`
+- PV: `cephfs-content-pv-observability`
+- PVC: `cephfs-content-pvc`
 - Location: `apps/observability/_namespace/`
 
 **Both mount the same CephFS path:**
@@ -45,8 +45,8 @@ csi-cephfs-sc-backup   - Delete policy, backups filesystem (Volsync/Kopia)
 ## Volsync Configuration
 
 **Default Storage Classes:**
-- `storageClassName`: `csi-cephfs-sc-backup` (backup destination)
-- `cacheStorageClassName`: `csi-cephfs-sc` (cache volumes)
+- `storageClassName`: `cephfs-backup-sc` (backup destination)
+- `cacheStorageClassName`: `cephfs-csi-sc` (cache volumes)
 - `volumeSnapshotClassName`: `csi-cephfs-snapclass` (snapshots)
 
 ---
@@ -64,15 +64,15 @@ csi-cephfs-sc-backup   - Delete policy, backups filesystem (Volsync/Kopia)
 ### 1. Check Storage Classes
 ```bash
 kubectl get storageclass
-# Expected: csi-cephfs-sc, csi-cephfs-sc-retain, csi-cephfs-sc-backup
+# Expected: cephfs-csi-sc, cephfs-csi-sc-retain, cephfs-backup-sc
 ```
 
 ### 2. Verify PVCs in Correct Namespaces
 ```bash
 kubectl get pvc -A | grep data-cephfs
 # Expected:
-# default         data-cephfs-pvc   Bound   data-cephfs-pv                40Ti   RWX
-# observability   data-cephfs-pvc   Bound   data-cephfs-pv-observability  40Ti   RWX
+# default         cephfs-content-pvc   Bound   cephfs-content-pv                40Ti   RWX
+# observability   cephfs-content-pvc   Bound   cephfs-content-pv-observability  40Ti   RWX
 ```
 
 ### 3. Check Apps Can Mount Storage
@@ -84,7 +84,7 @@ kubectl get pods -n default | grep -E "sonarr|radarr|qbittorrent"
 ### 4. Verify Volsync Storage Classes
 ```bash
 kubectl get pvc -n default | grep volsync
-# Should show csi-cephfs-sc-backup storage class
+# Should show cephfs-backup-sc storage class
 ```
 
 ---
@@ -98,7 +98,7 @@ kubectl get pvc -n default | grep volsync
 ```
 4ed4139 Fix namespace dependency: move observability PV/PVC to observability kustomization
 1c87d2f Add shared CephFS storage for observability namespace
-bfe66f6 PROPER FIX: Move data-cephfs-pv/pvc to separate kustomization
+bfe66f6 PROPER FIX: Move cephfs-content-pv/pvc to separate kustomization
 ```
 
 ---
