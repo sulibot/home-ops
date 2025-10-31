@@ -1,6 +1,8 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-data"
   name: overseerr
 spec:
   interval: 30m
@@ -56,19 +58,13 @@ spec:
               - name: overseerr
                 port: 80
     persistence:
-      config:
         enabled: true
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 100Mi
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /app/config
       data:
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 10Gi
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-data"
         globalMounts:
           - path: /data
 

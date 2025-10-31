@@ -70,18 +70,12 @@ spec:
     persistence:
       config:
         enabled: true
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 100Mi
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
       config-cache:
         enabled: true
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 1Gi
+        existingClaim: "{{ .Release.Name }}-config-cache"
         globalMounts:
           - path: /config/.venv
       tmp:

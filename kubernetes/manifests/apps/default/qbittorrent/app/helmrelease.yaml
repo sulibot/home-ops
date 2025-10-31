@@ -97,18 +97,8 @@ spec:
               - identifier: app
                 port: *port
     configMaps:
-      config:
-        data:
-          .qbt.toml: |-
-            [qbittorrent]
-            addr = "http://localhost:80"
-    persistence:
-      config:
         enabled: true
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 100Mi
+        existingClaim: "{{ .Release.Name }}-config"
         advancedMounts:
           qbittorrent:
             app:

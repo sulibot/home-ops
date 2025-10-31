@@ -72,12 +72,8 @@ spec:
           - name: gateway-external
             namespace: network
     persistence:
-      config:
         enabled: true
-        type: persistentVolumeClaim
-        storageClass: csi-cephfs-config-sc
-        accessMode: ReadWriteMany
-        size: 100Mi
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /app/config
       tmp:
