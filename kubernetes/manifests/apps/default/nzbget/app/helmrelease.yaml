@@ -118,7 +118,7 @@ spec:
       downloads:
         enabled: true
         type: persistentVolumeClaim
-        existingClaim: cephfs-content-pvc
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /downloads
             subPath: Downloads/nzbget

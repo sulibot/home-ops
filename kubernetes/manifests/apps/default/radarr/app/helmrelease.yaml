@@ -79,7 +79,7 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
       content:
         type: persistentVolumeClaim
-        existingClaim: cephfs-content-pvc
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /media
       tmp:

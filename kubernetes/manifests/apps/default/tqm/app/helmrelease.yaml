@@ -85,7 +85,7 @@ spec:
           - path: /.config/tqm
       content:
         type: persistentVolumeClaim
-        existingClaim: cephfs-content-pvc
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: media/Downloads/qbittorrent

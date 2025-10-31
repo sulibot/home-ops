@@ -74,7 +74,7 @@ spec:
             subPath: config.js
       content:
         type: persistentVolumeClaim
-        existingClaim: cephfs-content-pvc
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /media/Downloads
             subPath: Downloads
