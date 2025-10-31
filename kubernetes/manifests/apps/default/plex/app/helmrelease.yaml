@@ -103,6 +103,8 @@ spec:
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /config
       content:
         type: persistentVolumeClaim
         existingClaim: cephfs-content-pvc
