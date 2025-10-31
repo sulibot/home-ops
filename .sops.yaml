@@ -31,7 +31,7 @@ creation_rules:
   - path_regex: '^kubernetes/.*/.*[-_]secret\.ya?ml$'
     encrypted_regex: '^(adminKey|userKey|api_key|MIKROTIK_PASSWORD|credentials\.json)$'
     age: *age_key
-  - path_regex: '^kubernetes/.*/values\.ya?ml$'
+  - path_regex: '^kubernetes/.*/values.*\.ya?ml$'
     encrypted_regex: '^(adminKey|userKey|secret|password)$'
     age: *age_key
   - path_regex: '^kubernetes/.*/helmrelease\.ya?ml$'

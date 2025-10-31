@@ -8,10 +8,10 @@ csiConfig:
         subvolumeGroup: csi
 logLevel: 5
 secret:
-    name: csi-cephfs-secret
-    adminID: admin
-    adminKey: ENC[AES256_GCM,data:mOUTKRNJd7lPGCxzloH+mkMyiyfoaO3n5T4fI8Dvz1+61a64I9IIlQ==,iv:xfKYOfuFhDONY4KNnBlVGQvWHV8BIOruBBpOJzHd3MI=,tag:zDG8KaTq9HGbKY7YKsmxVA==,type:str]
-    create: true
+    name: ENC[AES256_GCM,data:EBMry0csF1nsr6ADbYlM0iE=,iv:ImNPziWCT/sIyw+2MM/6uaHZwgKW7acKr3UFqttAMFg=,tag:HZclp9Bj+kMCM2IovQHAig==,type:str]
+    adminID: ENC[AES256_GCM,data:7rrM/+k=,iv:tNXFdAAzLXSdzyMXHbxNdOIC9clyg5v2Bklw9a8UJ8g=,tag:4V1I+jUpg0uCG2C+HzkYPA==,type:str]
+    adminKey: ENC[AES256_GCM,data:+nftaXz7Ka00vgtImFIgUZOOVzW+Z9MPpgVNV21YAy3Plye+wwFnsA==,iv:0osEOI3SOGjkOw2DaCbq5BKyOfrO+YGk3A3VkLOYEOY=,tag:KkkBpAQ6A6AT0uGNbCmXoA==,type:str]
+    create: ENC[AES256_GCM,data:TagIYA==,iv:zfO6Cj5KNq95lgMoI8rr+2KBykjmQd0hpCAgM1oB04A=,tag:TIHI4B5GG9f13/CV4ErRew==,type:bool]
 storageClass:
     create: true
     name: cephfs-csi-sc
@@ -37,13 +37,13 @@ sops:
         - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBNc28wMjA0TnZmaHV2Q25i
-            empobmVtaGFMaS9TUkVXM3Y2Wk9PZ0MzV0hjCjZTcTlFU1NNQmVsSVgzODd3Zm1j
-            UlY1WkFXSHc2QWlneTdjMk9JRFlsdkEKLS0tICtSRHRRVzd5VGtnZnFjalJnL3c3
-            RFMrOWxsSzNCa3BUMm4xWG1IeWNCSmsKGXRjVF4X/qpsG3PrvNvdfP24EUg0FjE4
-            Ahv099mM2TsbZD31wMVaAxpP+cal3YmMCec5B6v1hugnc7dn085kcw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA2TGc1KzJncmRmRGpxWThM
+            cWZhMHd3MlV0UU4zdFRZb0NzTFR1OGNLM1ZNCjV4MnAvRXppWXY1c2hhWmJ5L2l2
+            eXV2V01CL3dzYjFoRlBSeHJ0dU00WHcKLS0tIHV0am9Sa200Q1Jmd25DS3U2QWd0
+            TFRqOUxRcE5jc250aEd4WG5PQzA5MDAKJ5HlX/lj968Ao2w19moyGCKnaTGg0Aaq
+            xxYG3JovFl1K6Lv9G8bB2PwMdfg9h/hUBQCkUs4l0Hhd4Wolj5Ikzg==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-10-24T23:37:52Z"
-    mac: ENC[AES256_GCM,data:OMqiLB0kqkNBzbXTafM1FYMIBiwT4yJONxXvJirMUoYzhBl4rB+m+s8wlq7bwKsENzj14Atl2F79OtBo2/vUsNZm4VzcJcOYA1XUQjkilsCIlruCloGmOGj85EgwO2Q40Yp8PenR6eyJ1rbo3AHlC76ZGfmyMjdU3+JScvY4vRE=,iv:BtfjbxM4umNFcMGAz2YNnFActTo24d+/n+2Ftxz7PZo=,tag:ncOzB0BJYLQyFJ24LQydDg==,type:str]
-    encrypted_regex: ^(adminKey)$
+    lastmodified: "2025-10-31T21:17:02Z"
+    mac: ENC[AES256_GCM,data:bGvrhLx6DWO4kdanMx2K+pGvV4yR8U+tv6cDoc6bVtu1Zy4jpoJwhw3oBaXcPv2EuZwuemRsZ0Lb7jFZm50alvvdRbgi6nQ8I/3UIhe+zlROA2cjTVMEACRTskSmejDG3jbTwv6oO1k1hCX84zzr0lrYfQRhjTGEAxHs/3AuUVE=,iv:jUfqYStfVjnaKkI8u8XZryBvvp4s0HO+O5SNPus5SZs=,tag:CdY0cISD0WroJH+2C1NUgg==,type:str]
+    encrypted_regex: ^(adminKey|userKey|secret|password)$
     version: 3.10.2
