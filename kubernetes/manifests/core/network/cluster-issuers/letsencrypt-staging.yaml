@@ -15,6 +15,7 @@ spec:
             email: sulibot@gmail.com
             apiTokenSecretRef:
               name: cloudflare-token-secret
+              namespace: cert-manager
               key: cloudflare-token
         selector:
           dnsZones:

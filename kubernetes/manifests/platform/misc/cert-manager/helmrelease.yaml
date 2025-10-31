@@ -34,4 +34,4 @@ spec:
       nameservers:
         - 2606:4700:4700::1111
         - 2606:4700:4700::1001
-    replicaCount: 1
+    replicaCount: 2
