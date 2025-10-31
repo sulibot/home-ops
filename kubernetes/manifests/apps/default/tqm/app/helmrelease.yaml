@@ -84,6 +84,7 @@ spec:
         globalMounts:
           - path: /.config/tqm
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:

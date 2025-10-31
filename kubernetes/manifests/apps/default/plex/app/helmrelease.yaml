@@ -106,6 +106,7 @@ spec:
         globalMounts:
           - path: /config
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
