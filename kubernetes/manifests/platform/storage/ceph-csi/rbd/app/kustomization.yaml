@@ -6,9 +6,9 @@ namespace: ceph-csi
 resources:
   - ./helmrelease.yaml
   - ./secret-csi-rbd-secret.yaml
-  - ./storageclass-csi-rbd-rbd-vm-sc.yaml
-  - ./storageclass-csi-rbd-rbd-vm-sc-retain.yaml
-  - ./storageclass-csi-rbd-rbd-backups-sc.yaml
-  - ./storageclass-csi-rbd-rbd-backups-sc-retain.yaml
-  - ./volumesnapshotclass-csi-rbd-rbd-vm-snapclass.yaml
-  - ./volumesnapshotclass-csi-rbd-rbd-backups-snapclass.yaml
+  - ./csi-rbd-vm-sc.yaml
+  - ./csi-rbd-vm-sc-retain.yaml
+  - ./csi-rbd-backups-sc.yaml
+  - ./csi-rbd-backups-sc-retain.yaml
+  - ./csi-rbd-vm-snapclass.yaml
+  - ./csi-rbd-backups-snapclass.yaml
