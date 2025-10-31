@@ -6,6 +6,6 @@ namespace: ceph-csi
 resources:
   - ./helmrelease.yaml
   - ./secret-csi-cephfs-pv-secret.yaml
-  - ./storageclass-ceph-csi-cephfs-retain.yaml
-  - ./storageclass-ceph-csi-cephfs-backup.yaml
-  - ./volumesnapshotclass.yaml
+  - ./csi-cephfs-kubernetes-sc-retain.yaml
+  - ./csi-cephfs-backups-sc.yaml
+  - ./csi-cephfs-kubernetes-snapclass.yaml
