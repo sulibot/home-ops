@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: nzbget
 spec:
+  components:
+    - ./kubernetes/manifests/components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system

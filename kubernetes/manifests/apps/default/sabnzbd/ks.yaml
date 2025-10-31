@@ -6,6 +6,8 @@ metadata:
   name: sabnzbd
   namespace: flux-system
 spec:
+  components:
+    - ./kubernetes/manifests/components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system

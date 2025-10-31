@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: plex
 spec:
+  components:
+    - ./kubernetes/manifests/components/volsync
   dependsOn:
     # Temporarily disabled until Intel GPU host stack is ready
     # - name: intel-gpu-resource-driver
@@ -30,6 +32,8 @@ kind: Kustomization
 metadata:
   name: plex-tools
 spec:
+  components:
+    - ./kubernetes/manifests/components/volsync
   interval: 1h
   path: kubernetes/manifests/apps/default/plex/tools
   prune: true
