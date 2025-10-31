@@ -4,5 +4,3 @@ resources:
   - cloudflare_token.sops.yaml
   - letsencrypt-production.yaml
   - letsencrypt-staging.yaml
-  #- certificate-media-wild.yaml
-  #- certificate-network-wild.yaml
