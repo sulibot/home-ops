@@ -14,7 +14,7 @@ spec:
     driver: cephfs.csi.ceph.com
     volumeHandle: csi-cephfs-content-pv
     nodeStageSecretRef:
-      name: csi-cephfs-pv-secret
+      name: csi-ceph-admin-secret
       namespace: ceph-csi
     volumeAttributes:
       clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
