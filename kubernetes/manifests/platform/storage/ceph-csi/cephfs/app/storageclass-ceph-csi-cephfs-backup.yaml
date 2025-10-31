@@ -16,11 +16,11 @@ parameters:
 
   # Secrets for CSI operations
   csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
-  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
 
   # Prefix for backup volumes
   volumeNamePrefix: "backup-csi-vol-"

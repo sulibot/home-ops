@@ -3,19 +3,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: ceph-csi
+  name: ceph-csi-rbd
   namespace: flux-system
 spec:
   dependsOn:
     - name: snapshot-controller-crds
   interval: 1h
-  path: ./kubernetes/manifests/platform/storage/ceph-csi-cephfs/ceph-csi/app
+  path: ./kubernetes/manifests/platform/storage/ceph-csi/rbd/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: ceph-csi-cephfs
+  targetNamespace: ceph-csi
   wait: false
   decryption:
     provider: sops

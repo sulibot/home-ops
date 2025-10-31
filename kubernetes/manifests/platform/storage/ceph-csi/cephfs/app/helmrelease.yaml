@@ -2,7 +2,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-    name: ceph-csi
+    name: ceph-csi-cephfs
 spec:
     chart:
         spec:
@@ -32,15 +32,15 @@ spec:
             allowVolumeExpansion: true
             clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
             controllerExpandSecret: csi-cephfs-secret
-            controllerExpandSecretNamespace: ceph-csi-cephfs
+            controllerExpandSecretNamespace: ceph-csi
             create: true
             fsName: kubernetes
             pool: kubernetes_data
             name: cephfs-csi-sc
             nodeStageSecret: csi-cephfs-secret
-            nodeStageSecretNamespace: ceph-csi-cephfs
+            nodeStageSecretNamespace: ceph-csi
             provisionerSecret: csi-cephfs-secret
-            provisionerSecretNamespace: ceph-csi-cephfs
+            provisionerSecretNamespace: ceph-csi
             reclaimPolicy: Delete
             volumeNamePrefix: sol-csi-vol
 sops:
