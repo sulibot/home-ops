@@ -37,8 +37,7 @@ spec:
         enabled: false
       persistence:
         library:
-          size: 50Gi
-          storageClassName: csi-cephfs-config-sc
+          existingClaim: immich-config
     machine-learning:
       enabled: true
       env:
@@ -65,8 +64,7 @@ spec:
         tag: pg14-v0.2.0
       persistence:
         enabled: true
-        size: 10Gi
-        storageClass: csi-cephfs-config-sc
+        existingClaim: immich-postgresql-config
       primary:
         containerSecurityContext:
           readOnlyRootFilesystem: false
@@ -83,8 +81,7 @@ spec:
       enabled: true
       persistence:
         enabled: true
-        size: 10Gi
-        storageClass: csi-cephfs-config-sc
+        existingClaim: immich-redis-config
     server:
       enabled: true
       image:
