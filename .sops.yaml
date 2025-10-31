@@ -1,6 +1,43 @@
 # .sops.yaml
+age_key: &age_key 'age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg'
+
 creation_rules:
-  - path_regex:  '.*\.sops\.ya?ml$'
-    encrypted_regex: '^(data|stringData|.*_secret$|.*_password$)$'
-    age: |
-      age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
+  # Terraform
+  - path_regex: '^terraform/.*cluster-sulibot/(global|clusters)/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData)$'
+    age: *age_key
+  - path_regex: '^terraform/live/common/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData|.*secret$|.*password$)$'
+    age: *age_key
+  - path_regex: '^terraform/live/golden/images/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData|.*password|vm_password_hash)$'
+    age: *age_key
+  - path_regex: '^terraform/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData)$'
+    age: *age_key
+
+  # Ansible
+  - path_regex: '^ansible/k8s/secrets/sensitive\.enc\.yaml$'
+    encrypted_regex: '^(bootstrap_token|ca_cert_hash)$'
+    age: *age_key
+  - path_regex: '^ansible/k8s/secrets/.*\.sops\.yaml$'
+    encrypted_regex: '^(.*_token|.*_secret|.*_key|password)$'
+    age: *age_key
+
+  # Kubernetes (general)
+  - path_regex: '^kubernetes/sulibot-homeops/(global|clusters)/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData)$'
+    age: *age_key
+  - path_regex: '^kubernetes/.*/.*[-_]secret\.ya?ml$'
+    encrypted_regex: '^(adminKey|userKey|api_key|MIKROTIK_PASSWORD|credentials\.json)$'
+    age: *age_key
+  - path_regex: '^kubernetes/.*/values\.ya?ml$'
+    encrypted_regex: '^(adminKey|userKey|secret|password)$'
+    age: *age_key
+  - path_regex: '^kubernetes/.*/helmrelease\.ya?ml$'
+    encrypted_regex: '^(adminKey|userKey|secret|password)$'
+    age: *age_key
+
+  # Repository-wide fallback
+  - path_regex: '.*\.sops\.ya?ml$'
+    age: *age_key
