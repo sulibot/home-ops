@@ -8,3 +8,4 @@ resources:
   - ./csi-cephfs-config-sc.yaml
   - ./csi-cephfs-backups-sc.yaml
   - ./csi-cephfs-config-snapclass.yaml
+  - ./csi-cephfs-backups-snapclass.yaml
