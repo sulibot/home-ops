@@ -29,9 +29,13 @@ spec:
               repository: ghcr.io/home-operations/tqm
               tag: 1.17.0@sha256:05b62239063ad1e884f2254532e3dc9b60cff08870112dca244af328d761be0d
             env:
+              - name: XDG_CONFIG_HOME
+                value: /.config
               - name: CONFIG
                 value: /.config/tqm/config.yaml
             args:
+              - --config-dir
+              - /.config/tqm
               - retag
               - qb
             resources:
@@ -41,7 +45,7 @@ spec:
                 memory: 64Mi
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
+              readOnlyRootFilesystem: false
               capabilities: {drop: ["ALL"]}
         containers:
           clean:
@@ -75,15 +79,10 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     persistence:
       config:
-        type: emptyDir
-        globalMounts:
-          - path: /.config/tqm
-      secret-file:
         type: secret
         name: tqm-secret
         globalMounts:
-          - path: /.config/tqm/config.yaml
-            subPath: config.yaml
+          - path: /.config/tqm
       content:
         type: persistentVolumeClaim
         existingClaim: cephfs-content-pvc
