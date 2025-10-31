@@ -97,6 +97,13 @@ spec:
               - identifier: app
                 port: *port
     configMaps:
+      config:
+        enabled: true
+        data:
+          .qbt.toml: |
+            # qBittorrent configuration
+    persistence:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         advancedMounts:
@@ -115,6 +122,7 @@ spec:
               - path: /config/.qbt.toml
                 subPath: .qbt.toml
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:

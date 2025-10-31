@@ -78,6 +78,7 @@ spec:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:

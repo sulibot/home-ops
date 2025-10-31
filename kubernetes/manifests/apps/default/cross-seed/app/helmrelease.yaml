@@ -73,6 +73,7 @@ spec:
           - path: /config/config.js
             subPath: config.js
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:

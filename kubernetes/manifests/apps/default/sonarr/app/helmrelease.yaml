@@ -84,6 +84,7 @@ spec:
         globalMounts:
           - readOnly: true
       content:
+        enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
