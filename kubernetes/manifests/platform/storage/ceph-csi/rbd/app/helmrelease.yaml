@@ -24,26 +24,9 @@ spec:
                 radosNamespace: ""
         logLevel: 5
         secret:
-            userID: admin
-            userKey: ENC[AES256_GCM,data:1mdRo1R//BQpj5QmxtxnUoqblHOYzhGXXffg31qVg+05plwjPYdwuA==,iv:mPRJWipSZj8PlMkSqbl76xTJkgROugILjcQ1gbzbS/w=,tag:PHO1MYiQX/dU6ht8IutbTQ==,type:str]
-            create: true
-            name: csi-rbd-secret
+            create: false
+            name: csi-ceph-admin-secret
         storageClass:
             create: false
         volumeSnapshotClass:
             create: false
-sops:
-    age:
-        - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBCSUhjRzNBelpNaTVHL0NC
-            SXpsaE9pUUhnbStrWTdDeU9JK2U4QVBHaVRrCkNZcmVyTHZ3SWhmOUVjTjl1cVIr
-            UXBrdHFaT3RDeUNrNE9meEUzQ0tPSTAKLS0tIEUwWWdNQU5WL2t0SDZkRWtUWWNU
-            Z3QwM1dmR1RHTjJPYXdqNHpIQVBMTHMKajIPToo/v+SNbYzvTAfg17vtx68qKSXD
-            YcbNvfWfOLfcjCGRZ2AykNcuoXSjLcYsr4dplahCLtKVWZwxV2n5jg==
-            -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-10-25T08:30:29Z"
-    mac: ENC[AES256_GCM,data:pZtF+Xx7Kbl8G1sYz+RXVZInsYOgxeCcjeCorkIX+nl7ijMx2CCHa+Qw50whQS9cJiN7lRxdqVTKwci6MQHpAYLRWBfqwE/TL69qxIL4p/29KHYVp+XNbkVp49VSo57GKYIM6WtRhJ8buCs+ajO9bhlmyQg7J36jAbeNHbxbXfg=,iv:MHaBspyz0Avt1rrkvSjo4a1eUhaYMczfyFhkNO26O74=,tag:gXdlZJ3yxsRCQPKbHrF/1g==,type:str]
-    encrypted_regex: ^(adminKey|userKey|api_key|MIKROTIK_PASSWORD|credentials\.json)$
-    version: 3.10.2

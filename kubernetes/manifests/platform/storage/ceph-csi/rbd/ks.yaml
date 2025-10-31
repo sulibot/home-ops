@@ -8,6 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: snapshot-controller-crds
+    - name: ceph-csi-shared-secret
   interval: 1h
   path: ./kubernetes/manifests/platform/storage/ceph-csi/rbd/app
   prune: true
