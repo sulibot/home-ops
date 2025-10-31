@@ -93,3 +93,34 @@ spec:
               - identifier: app
                 port: *port
     configMaps:
+      config:
+        data:
+          slskd.yml: |-
+            directories:
+              downloads: /media/Downloads/soulseek/complete
+              incomplete: /media/Downloads/soulseek/incomplete
+            permissions:
+              file:
+                mode: 750
+            shares:
+              directories:
+                - /media/Downloads/soulseek/shared
+              filters:
+                - \.ini$
+                - Thumbs.db$
+                - \.DS_Store$
+    persistence:
+      config-file:
+        type: configMap
+        identifier: config
+        globalMounts:
+          - path: /config/slskd.yml
+            subPath: slskd.yml
+      media:
+        type: persistentVolumeClaim
+        existingClaim: cephfs-content-pvc
+        globalMounts:
+          - path: /media/Downloads/soulseek
+            subPath: Downloads/soulseek
+      tmp:
+        type: emptyDir
