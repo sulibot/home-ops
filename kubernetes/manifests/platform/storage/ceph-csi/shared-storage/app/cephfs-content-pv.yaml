@@ -15,7 +15,7 @@ spec:
     volumeHandle: cephfs-content-pv
     nodeStageSecretRef:
       name: csi-cephfs-pv-secret
-      namespace: ceph-csi-cephfs
+      namespace: ceph-csi
     volumeAttributes:
       clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
       fsName: content

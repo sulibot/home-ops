@@ -6,11 +6,12 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./kubernetes/manifests/platform/storage/ceph-csi-cephfs/shared-storage/app
+  path: ./kubernetes/manifests/platform/storage/ceph-csi/shared-storage/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
+  targetNamespace: ceph-csi
   wait: false
   dependsOn:
-    - name: ceph-csi
+    - name: ceph-csi-cephfs
