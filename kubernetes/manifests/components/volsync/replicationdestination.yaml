@@ -4,7 +4,6 @@ apiVersion: volsync.backube/v1alpha1
 kind: ReplicationDestination
 metadata:
   name: "${APP}-dst"
-  namespace: "${VOLSYNC_NAMESPACE:=volsync-system}"
   labels:
     app.kubernetes.io/name: "${APP}"
     app.kubernetes.io/component: backup-restore
@@ -25,7 +24,7 @@ spec:
     # PVC creation & restore behavior
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
     accessModes:
-      - "${VOLSYNC_ACCESSMODES:=ReadWriteOnce}"
+      - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
     capacity: "${VOLSYNC_CAPACITY:=5Gi}"
     copyMethod: Snapshot
     enableFileDeletion: true
@@ -36,7 +35,7 @@ spec:
     # Cache configuration
     cacheStorageClassName: "${VOLSYNC_CACHE_STORAGECLASS:=csi-cephfs-config-sc}"
     cacheAccessModes:
-      - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteOnce}"
+      - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteMany}"
     cacheCapacity: "${VOLSYNC_CACHE_CAPACITY:=5Gi}"
     cleanupCachePVC: true
     cleanupTempPVC: true
@@ -49,4 +48,4 @@ spec:
 
   # --- Explicit destination PVC -------------------------------------------
   # This ensures the PVC always exists, even if no backup has been created yet.
-  destinationPVC: "${APP}"
+  destinationPVC: "${APP}-config"
