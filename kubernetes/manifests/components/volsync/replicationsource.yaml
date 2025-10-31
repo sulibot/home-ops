@@ -1,5 +1,6 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/volsync.backube/replicationsource_v1alpha1.json
+# This is a template file with variable substitution - disable schema validation
+# yaml-language-server: disable
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
