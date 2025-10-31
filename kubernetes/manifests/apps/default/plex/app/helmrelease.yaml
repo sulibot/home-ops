@@ -100,6 +100,7 @@ spec:
               - identifier: app
                 port: *port
     persistence:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
       content:
