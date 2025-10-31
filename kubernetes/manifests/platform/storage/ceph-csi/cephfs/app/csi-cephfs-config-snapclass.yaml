@@ -2,12 +2,11 @@
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
-  name: csi-cephfs-snapclass
+  name: csi-cephfs-config-snapclass
   annotations:
     snapshot.storage.kubernetes.io/is-default-class: "true"
 driver: cephfs.csi.ceph.com
 deletionPolicy: Delete
-#fsName: kubernetes
 parameters:
   clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
   csi.storage.k8s.io/snapshotter-secret-name: csi-cephfs-secret

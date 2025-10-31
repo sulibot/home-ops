@@ -13,7 +13,7 @@ spec:
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: cephfs-csi-sc-retain
+  storageClassName: csi-cephfs-config-sc
   csi:
     driver: cephfs.csi.ceph.com
     volumeHandle: pv-immich-redis

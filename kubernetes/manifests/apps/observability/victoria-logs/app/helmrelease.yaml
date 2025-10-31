@@ -15,7 +15,7 @@ spec:
     server:
       persistentVolume:
         enabled: true
-        storageClassName: cephfs-csi-sc-retain
+        storageClassName: csi-cephfs-config-sc
         size: 20Gi
       readinessProbe:
         httpGet:
