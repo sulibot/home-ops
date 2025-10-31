@@ -9,8 +9,8 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./_namespace/cephfs-content-pv-observability.yaml
-  - ./_namespace/cephfs-content-pvc-observability.yaml
+  - ./_namespace/csi-cephfs-content-pv-observability-retain.yaml
+  - ./_namespace/csi-cephfs-content-pvc-observability.yaml
   - ./blackbox-exporter/ks.yaml
   - ./fluent-bit/ks.yaml
   - ./gatus/ks.yaml

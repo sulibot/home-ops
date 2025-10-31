@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: cephfs-content-pv
+  name: csi-cephfs-content-pv-observability
 spec:
   capacity:
     storage: 40Ti
@@ -12,7 +12,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: cephfs.csi.ceph.com
-    volumeHandle: cephfs-content-pv
+    volumeHandle: csi-cephfs-content-pv-observability
     nodeStageSecretRef:
       name: csi-cephfs-pv-secret
       namespace: ceph-csi
