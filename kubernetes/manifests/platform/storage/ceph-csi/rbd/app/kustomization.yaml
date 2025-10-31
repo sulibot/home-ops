@@ -5,7 +5,7 @@ kind: Kustomization
 namespace: ceph-csi
 resources:
   - ./helmrelease.yaml
-  - ./secret.yaml
+  - ./secret-csi-rbd-secret.yaml
   - ./storageclass-csi-rbd-rbd-vm-sc.yaml
   - ./storageclass-csi-rbd-rbd-vm-sc-retain.yaml
   - ./storageclass-csi-rbd-rbd-backups-sc.yaml
