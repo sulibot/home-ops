@@ -72,6 +72,7 @@ spec:
           - name: gateway-external
             namespace: network
     persistence:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:

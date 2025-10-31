@@ -1,0 +1,52 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/volsync.backube/replicationdestination_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: "${APP}-dst"
+  namespace: "${VOLSYNC_NAMESPACE:=volsync-system}"
+  labels:
+    app.kubernetes.io/name: "${APP}"
+    app.kubernetes.io/component: backup-restore
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  # --- Trigger behavior ---------------------------------------------------
+  # "restore-once" ensures the PVC is created on bootstrap
+  # but data restoration only runs once when manually triggered or backup appears.
+  trigger:
+    manual: restore-once
+
+  # --- Kopia restore configuration ----------------------------------------
+  kopia:
+    repository: "${APP}-volsync-secret"
+    sourceIdentity:
+      sourceName: "${APP}"
+
+    # PVC creation & restore behavior
+    storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
+    accessModes:
+      - "${VOLSYNC_ACCESSMODES:=ReadWriteOnce}"
+    capacity: "${VOLSYNC_CAPACITY:=5Gi}"
+    copyMethod: Snapshot
+    enableFileDeletion: true
+
+    # Snapshot integration
+    volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:=csi-cephfs-config-snapclass}"
+
+    # Cache configuration
+    cacheStorageClassName: "${VOLSYNC_CACHE_STORAGECLASS:=csi-cephfs-config-sc}"
+    cacheAccessModes:
+      - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteOnce}"
+    cacheCapacity: "${VOLSYNC_CACHE_CAPACITY:=5Gi}"
+    cleanupCachePVC: true
+    cleanupTempPVC: true
+
+    # Security context for restored files
+    moverSecurityContext:
+      runAsUser: "${VOLSYNC_PUID:=1000}"
+      runAsGroup: "${VOLSYNC_PGID:=1000}"
+      fsGroup: "${VOLSYNC_PGID:=1000}"
+
+  # --- Explicit destination PVC -------------------------------------------
+  # This ensures the PVC always exists, even if no backup has been created yet.
+  destinationPVC: "${APP}"

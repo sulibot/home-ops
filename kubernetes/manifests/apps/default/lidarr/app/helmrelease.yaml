@@ -62,6 +62,7 @@ spec:
               - name: lidarr
                 port: 80
     persistence:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:

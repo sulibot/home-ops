@@ -58,6 +58,7 @@ spec:
               - name: overseerr
                 port: 80
     persistence:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
