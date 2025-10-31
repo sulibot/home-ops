@@ -5,8 +5,8 @@ kind: Kustomization
 metadata:
   name: atuin
 spec:
-#  components:
-#    - ../../../../components/volsync
+  components:
+    - ./kubernetes/manifests/components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
