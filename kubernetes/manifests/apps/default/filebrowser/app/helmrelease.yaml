@@ -65,9 +65,10 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
-      data:
+      content:
         enabled: true
-        existingClaim: "{{ .Release.Name }}-data"
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /srv
 
