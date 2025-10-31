@@ -59,14 +59,14 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: cephfs-csi-sc-retain
+        storageClass: csi-cephfs-config-sc
         accessMode: ReadWriteMany
         size: 100Mi
         globalMounts:
           - path: /config
       data:
         type: persistentVolumeClaim
-        storageClass: cephfs-csi-sc-retain
+        storageClass: csi-cephfs-config-sc
         accessMode: ReadWriteMany
         size: 10Gi
         globalMounts:

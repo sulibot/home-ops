@@ -94,7 +94,7 @@ spec:
             subPath: repository.config
       repository:
         type: persistentVolumeClaim
-        storageClass: cephfs-csi-sc-retain
+        storageClass: csi-cephfs-config-sc
         accessMode: ReadWriteMany
         size: 500Gi
         globalMounts:

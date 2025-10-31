@@ -58,7 +58,7 @@ spec:
         statefulset:
           volumeClaimTemplates:
             - name: config
-              storageClass: cephfs-csi-sc-retain
+              storageClass: csi-cephfs-config-sc
               accessMode: ReadWriteMany
               size: 5Gi
     defaultPodOptions:

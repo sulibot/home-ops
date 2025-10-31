@@ -1,0 +1,32 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-config-sc
+provisioner: cephfs.csi.ceph.com
+parameters:
+  # Ceph cluster configuration
+  clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+
+  # CephFS filesystem for app configs
+  fsName: kubernetes
+
+  # Data pool for config volumes
+  pool: kubernetes_data
+
+  # Secrets for CSI operations
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+
+  # Prefix for config volumes
+  volumeNamePrefix: "sol-config-csi-vol-"
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+#volumeBindingMode: WaitForFirstConsumer
+# mountOptions:
+#   - context="system_u:object_r:container_file_t:s0:c0,c1"
