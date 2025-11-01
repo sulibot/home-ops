@@ -39,8 +39,6 @@ spec:
     cacheAccessModes:
       - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteMany}"
     cacheCapacity: "${VOLSYNC_CACHE_CAPACITY:=5Gi}"
-    cleanupCachePVC: true
-    cleanupTempPVC: true
 
     # Security context for backup mover
     moverSecurityContext:
