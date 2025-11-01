@@ -10,7 +10,7 @@ spec:
   dependsOn:
     - name: volsync
   interval: 1h
-  path: ./kubernetes/apps/volsync-system/kopia/app
+  path: ./kubernetes/manifests/apps/volsync-system/kopia/app
   postBuild:
     substitute:
       APP: kopia
