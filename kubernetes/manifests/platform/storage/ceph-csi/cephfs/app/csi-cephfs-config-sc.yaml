@@ -12,7 +12,7 @@ parameters:
   fsName: kubernetes
 
   # Data pool for config volumes
-  pool: kubernetes_data
+  pool: config_data
 
   # Secrets for CSI operations
   csi.storage.k8s.io/controller-expand-secret-name: csi-ceph-admin-secret
