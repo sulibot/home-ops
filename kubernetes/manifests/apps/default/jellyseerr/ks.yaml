@@ -6,7 +6,7 @@ metadata:
   name: jellyseerr
 spec:
   components:
-    - ./kubernetes/manifests/components/volsync
+    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
