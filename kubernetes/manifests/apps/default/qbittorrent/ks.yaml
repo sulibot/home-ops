@@ -15,6 +15,7 @@ spec:
   postBuild:
     substitute:
       APP: qbittorrent
+      # VOLSYNC_CAPACITY: 2Gi
   prune: true
   sourceRef:
     kind: GitRepository
