@@ -17,12 +17,12 @@ defaults:
     domain: sulibot.com
   persistence:
     config:
-      storageClass: cephfs-csi-sc-retain
+      storageClass: csi-cephfs-config-sc-retain
       size: 1Gi
       mountPath: /config
     data:
       enabled: true
-      storageClass: cephfs-csi-sc-retain
+      storageClass: csi-cephfs-config-sc-retain
       size: 10Gi
       mountPath: /data
   service:

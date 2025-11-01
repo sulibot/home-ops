@@ -48,4 +48,4 @@ spec:
 
   # --- Explicit destination PVC -------------------------------------------
   # This ensures the PVC always exists, even if no backup has been created yet.
-  destinationPVC: "${APP}-config"
+    destinationPVC: "${APP}-config"
