@@ -16,4 +16,4 @@ spec:
   resources:
     requests:
       storage: ${VOLSYNC_CAPACITY:=5Gi}
-  storageClassName: ${VOLSYNC_STORAGECLASS:=csi-rbd-rbd-vm-sc}
+  storageClassName: ${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}
