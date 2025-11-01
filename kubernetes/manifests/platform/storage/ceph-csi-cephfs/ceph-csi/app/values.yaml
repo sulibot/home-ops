@@ -1,0 +1,54 @@
+csiConfig:
+    - clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+      monitors:
+        - '[fc00::20:1]:3300'
+        - '[fc00::20:2]:3300'
+        - '[fc00::20:3]:3300'
+      cephFS:
+        subvolumeGroup: csi
+logLevel: 5
+secret:
+    name: csi-cephfs-secret
+    adminID: admin
+    adminKey: ENC[AES256_GCM,data:OF0C6R8IWqIHKSN04ePuyrs1Ccl5jBxG7TWUDtIQ4uc+LjKwqPB3Yg==,iv:jUhaRBdSB4Hhp5fm4TfVmXZzeK/H68fCL7VNraB9ZWE=,tag:pU85LIGtzD2FrFCmEVyAmg==,type:str]
+    create: true
+storageClass:
+    create: true
+    name: csi-cephfs-config-sc-retain
+    clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+    # (required) CephFS filesystem name into which the volume shall be created
+    pool: kubernetes_data
+    fsName: kubernetes
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeNamePrefix: sol-csi-vol
+    provisionerSecret: csi-cephfs-secret
+    provisionerSecretNamespace: ceph-csi-cephfs
+    controllerExpandSecret: csi-cephfs-secret
+    controllerExpandSecretNamespace: ceph-csi-cephfs
+    nodeStageSecret: csi-cephfs-secret
+    nodeStageSecretNamespace: ceph-csi-cephfs
+#mountOptions: []
+# Mount Options
+# Example:
+# mountOptions:
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB2RGl0djFWQldVVGV2eWhP
+            YlYrcHUyWFBGVzh5TExQVGoyd21mZ08ySFRBCm1tZEhxWlllTjRPeUc5THp6Tlpq
+            Z2VIMGQ5VTZEWTk1N1VrT2lPc29SWEkKLS0tIFFCTFk1OTZEeE9FOWhaTGc3LzhN
+            ZGtDWnVYWEx0S1VGWXlHR2U3bWJQK3MKDZvvH5MKd/3xkI5UzwrMbzs749wGFvwH
+            ITn91b7PXH/ICkwsdvSOQMqusxhTLk0EnSMhQI1K01QLyT+Iydx13A==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2024-12-13T04:12:36Z"
+    mac: ENC[AES256_GCM,data:dOjsK31BDpDDp9fe2HKgLRQ9Qu8UR70kdvxQUxTMygELfRNOZK0bRy1rI/VihToZFARwUqe6ZUFmrp7bcY6V1HeX0+f3z/dzkJZ2ejjOXC4MCEbu/8l/+W9MY0t+SEar8EnWz10ArIUBDgaEos2JiCKN4aQtDxV9nAwXHVouv0M=,iv:h561wqbRXDFErdSjQWBwg8+pk1CfnBVp5e2+SUKkbes=,tag:yVJIVVIQWiMjEZHyQyEmmQ==,type:str]
+    pgp: []
+    encrypted_regex: ^(adminKey|userKey)$
+    version: 3.9.1

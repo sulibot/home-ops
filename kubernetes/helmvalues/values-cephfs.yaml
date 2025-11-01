@@ -14,7 +14,7 @@ secret:
     create: ENC[AES256_GCM,data:TagIYA==,iv:zfO6Cj5KNq95lgMoI8rr+2KBykjmQd0hpCAgM1oB04A=,tag:TIHI4B5GG9f13/CV4ErRew==,type:bool]
 storageClass:
     create: true
-    name: cephfs-csi-sc
+    name: csi-cephfs-config-sc
     clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
     # (required) CephFS filesystem name into which the volume shall be created
     pool: cephfs_data
