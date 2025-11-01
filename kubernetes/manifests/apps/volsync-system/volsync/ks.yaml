@@ -7,11 +7,11 @@ metadata:
 spec:
   dependsOn:
     - name: ceph-csi-cephfs
-      namespace: ceph-csi
+      namespace: flux-system
     - name: snapshot-controller
       namespace: kube-system
   interval: 1h
-  path: ./kubernetes/apps/volsync-system/volsync/app
+  path: ./kubernetes/manifests/apps/volsync-system/volsync/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -29,7 +29,7 @@ spec:
   dependsOn:
     - name: volsync
   interval: 1h
-  path: ./kubernetes/apps/volsync-system/volsync/maintenance
+  path: ./kubernetes/manifests/apps/volsync-system/volsync/maintenance
   prune: true
   sourceRef:
     kind: GitRepository
