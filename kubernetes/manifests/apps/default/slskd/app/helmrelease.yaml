@@ -118,7 +118,7 @@ spec:
             subPath: slskd.yml
       media:
         type: persistentVolumeClaim
-        existingClaim: cephfs-content-pvc
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /media/Downloads/soulseek
             subPath: Downloads/soulseek
