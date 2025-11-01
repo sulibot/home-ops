@@ -34,6 +34,9 @@ spec:
                 value: "911"
               - name: PGID
                 value: "911"
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
