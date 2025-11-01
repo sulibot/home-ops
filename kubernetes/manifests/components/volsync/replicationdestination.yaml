@@ -18,16 +18,13 @@ spec:
   # --- Kopia restore configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
-    sourceIdentity:
-      sourceName: "${APP}"
 
     # PVC creation & restore behavior
+    destinationPVC: "${APP}-config"
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
     accessModes:
       - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
     capacity: "${VOLSYNC_CAPACITY:=5Gi}"
-    copyMethod: Snapshot
-    enableFileDeletion: true
 
     # Snapshot integration
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:=csi-cephfs-config-snapclass}"
@@ -37,15 +34,9 @@ spec:
     cacheAccessModes:
       - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteMany}"
     cacheCapacity: "${VOLSYNC_CACHE_CAPACITY:=5Gi}"
-    cleanupCachePVC: true
-    cleanupTempPVC: true
 
     # Security context for restored files
     moverSecurityContext:
       runAsUser: "${VOLSYNC_PUID:=1000}"
       runAsGroup: "${VOLSYNC_PGID:=1000}"
       fsGroup: "${VOLSYNC_PGID:=1000}"
-
-  # --- Explicit destination PVC -------------------------------------------
-  # This ensures the PVC always exists, even if no backup has been created yet.
-    destinationPVC: "${APP}-config"
