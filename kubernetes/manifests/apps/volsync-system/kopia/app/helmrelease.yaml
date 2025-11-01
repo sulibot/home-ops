@@ -67,7 +67,7 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
-          - name: envoy-internal
+          - name: gateway-internal
             namespace: network
     configMaps:
       config:
