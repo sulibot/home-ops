@@ -6,10 +6,13 @@ metadata:
 spec:
   accessModes:
     - ${VOLSYNC_ACCESSMODES:=ReadWriteMany}
-  dataSourceRef:
-    kind: ReplicationDestination
-    apiGroup: volsync.backube
-    name: ${APP}-dst
+  # dataSourceRef is used to restore from a ReplicationDestination
+  # Comment this out for initial deployment when no backups exist
+  # Uncomment after first backup to enable restore capability
+  # dataSourceRef:
+  #   kind: ReplicationDestination
+  #   apiGroup: volsync.backube
+  #   name: ${APP}-dst
   resources:
     requests:
       storage: ${VOLSYNC_CAPACITY:=5Gi}
