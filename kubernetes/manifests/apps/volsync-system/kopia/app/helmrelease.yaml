@@ -65,7 +65,7 @@ spec:
     route:
       app:
         hostnames:
-          - "{{ .Release.Name }}.turbo.ac"
+          - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
           - name: envoy-internal
             namespace: network
@@ -93,9 +93,11 @@ spec:
           - path: /config/repository.config
             subPath: repository.config
       repository:
-        type: nfs
-        server: expanse.internal
-        path: /mnt/eros/VolsyncKopia
+        enabled: true
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-backups-sc
+        accessMode: ReadWriteMany
+        size: 100Gi
         globalMounts:
           - path: /repository
       tmpfs:

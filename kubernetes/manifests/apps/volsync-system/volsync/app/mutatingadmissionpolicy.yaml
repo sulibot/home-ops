@@ -107,9 +107,8 @@ spec:
               op: "add", path: "/spec/template/spec/volumes/-",
               value: Object.spec.template.spec.volumes{
                 name: "repository",
-                nfs: Object.spec.template.spec.volumes.nfs{
-                  server: "expanse.internal",
-                  path: "/mnt/eros/VolsyncKopia"
+                persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
+                  claimName: "kopia-repository"
                 }
               }
             }
