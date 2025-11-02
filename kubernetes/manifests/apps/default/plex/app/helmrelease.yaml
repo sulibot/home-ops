@@ -68,7 +68,7 @@ spec:
         type: LoadBalancer
         annotations:
           lbipam.cilium.io/ips: fd00:101::cafe:120
-        externalTrafficPolicy: Local
+        externalTrafficPolicy: Cluster
         ports:
           http:
             port: *port
