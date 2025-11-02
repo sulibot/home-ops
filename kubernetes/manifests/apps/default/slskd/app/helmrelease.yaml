@@ -12,7 +12,7 @@ spec:
   values:
     controllers:
       slskd:
-        type: statefulset
+        type: deployment
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
@@ -55,12 +55,6 @@ spec:
                 memory: 128Mi
               limits:
                 memory: 1Gi
-        statefulset:
-          volumeClaimTemplates:
-            - name: config
-              storageClass: csi-cephfs-config-sc
-              accessMode: ReadWriteMany
-              size: 5Gi
     defaultPodOptions:
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
@@ -110,6 +104,11 @@ spec:
                 - Thumbs.db$
                 - \.DS_Store$
     persistence:
+      config:
+        type: persistentVolumeClaim
+        existingClaim: slskd-config
+        globalMounts:
+          - path: /config
       config-file:
         type: configMap
         identifier: config
