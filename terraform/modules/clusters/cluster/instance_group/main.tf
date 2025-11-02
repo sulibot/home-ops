@@ -324,6 +324,13 @@ resource "proxmox_virtual_environment_vm" "instances" {
 
   depends_on = [null_resource.validate_nodes]
 
+  # Prevent hanging during state refresh and destroy operations
+  timeouts {
+    create = "30m"
+    update = "30m"
+    delete = "5m"
+  }
+
   # (Optional) Ignore GUI edits to IPs/DNS to prevent drift:
   # lifecycle {
   #   ignore_changes = [ initialization ]
