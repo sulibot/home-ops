@@ -22,6 +22,8 @@ apiServer:
       value: "::"
     - name: service-cluster-ip-range
       value: "{{ svc_subnet }}"
+    - name: feature-gates
+      value: "MutatingAdmissionPolicy=true"
 
 controllerManager:
   extraArgs:
