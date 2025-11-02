@@ -213,6 +213,11 @@ resource "proxmox_virtual_environment_vm" "instances" {
   on_boot       = true
   scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
 
+  # Disable QEMU guest agent wait - not needed, causes 12min timeout
+  agent {
+    enabled = false
+  }
+
   # EFI disk (required for OVMF, but without Secure Boot keys)
   efi_disk {
     datastore_id      = var.datastore_id
