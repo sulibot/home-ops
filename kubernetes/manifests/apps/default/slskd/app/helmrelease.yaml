@@ -105,8 +105,8 @@ spec:
                 - \.DS_Store$
     persistence:
       config:
-        type: persistentVolumeClaim
-        existingClaim: slskd-config
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
       config-file:
