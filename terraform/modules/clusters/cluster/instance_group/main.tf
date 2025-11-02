@@ -213,9 +213,10 @@ resource "proxmox_virtual_environment_vm" "instances" {
   on_boot       = true
   scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
 
-  # Disable QEMU guest agent wait - not needed, causes 12min timeout
+  # Enable QEMU guest agent for Proxmox integration, but don't wait for it
   agent {
-    enabled = false
+    enabled = true
+    timeout = "1s"      # Don't wait for agent during Terraform operations
   }
 
   # EFI disk (required for OVMF, but without Secure Boot keys)
