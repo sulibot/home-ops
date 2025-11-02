@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: slskd
 spec:
+  components:
+    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
@@ -13,6 +15,7 @@ spec:
   postBuild:
     substitute:
       APP: slskd
+      VOLSYNC_CAPACITY: 5Gi
   prune: true
   sourceRef:
     kind: GitRepository
