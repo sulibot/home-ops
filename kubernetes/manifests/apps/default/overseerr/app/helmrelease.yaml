@@ -30,6 +30,9 @@ spec:
             env:
               - name: TZ
                 value: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
