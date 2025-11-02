@@ -208,29 +208,31 @@ resource "proxmox_virtual_environment_vm" "instances" {
     node_name = local.proxmox_instances[0]
   }
 
-  bios          = "ovmf"
+  bios          = "ovmf"            # UEFI without Secure Boot
   machine       = "q35"
   on_boot       = true
-  scsi_hardware = "virtio-scsi-single"
+  scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
 
-  # TPM for security
-  tpm_state {
-    datastore_id = var.datastore_id
-    version      = "v2.0"
+  # Enable QEMU guest agent for Proxmox integration
+  # No explicit timeout - let provider handle it quickly
+  agent {
+    enabled = true
   }
 
-  # EFI disk for secure boot
+  # EFI disk (required for OVMF, but without Secure Boot keys)
   efi_disk {
     datastore_id      = var.datastore_id
     file_format       = "raw"
     type              = "4m"
-    pre_enrolled_keys = true
+    pre_enrolled_keys = false        # No Secure Boot - faster boot
   }
 
   cpu {
     type    = "host"
     sockets = 1
     cores   = var.group.cpu_count
+    # Performance flags
+    flags   = ["+aes"]  # Enable AES-NI for faster crypto
   }
 
   memory {
@@ -243,6 +245,11 @@ resource "proxmox_virtual_environment_vm" "instances" {
     datastore_id = var.datastore_id
     file_format  = "raw"
     size         = var.group.disk_size_gb
+    # Performance optimizations for Ceph RBD
+    discard      = "on"           # Enable TRIM for better performance
+    iothread     = true           # Dedicated I/O thread per disk
+    ssd          = true           # Optimize for SSD
+    cache        = "writeback"    # Best performance with RBD (Ceph handles durability)
   }
 
   # nic0: egress (vmbrX) — default gateway lives here
