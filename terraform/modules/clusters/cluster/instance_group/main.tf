@@ -245,11 +245,11 @@ resource "proxmox_virtual_environment_vm" "instances" {
     datastore_id = var.datastore_id
     file_format  = "raw"
     size         = var.group.disk_size_gb
-    # Performance optimizations
-    discard      = "on"      # Enable TRIM for better performance
-    iothread     = true      # Dedicated I/O thread per disk
-    ssd          = true      # Optimize for SSD (if using ZFS on SSD)
-    cache        = "writethrough"  # Balance safety and performance
+    # Performance optimizations for Ceph RBD
+    discard      = "on"           # Enable TRIM for better performance
+    iothread     = true           # Dedicated I/O thread per disk
+    ssd          = true           # Optimize for SSD
+    cache        = "writeback"    # Best performance with RBD (Ceph handles durability)
   }
 
   # nic0: egress (vmbrX) — default gateway lives here
