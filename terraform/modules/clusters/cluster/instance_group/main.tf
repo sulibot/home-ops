@@ -208,10 +208,18 @@ resource "proxmox_virtual_environment_vm" "instances" {
     node_name = local.proxmox_instances[0]
   }
 
-  bios          = "seabios"         # Faster boot than OVMF/UEFI
+  bios          = "ovmf"            # UEFI without Secure Boot
   machine       = "q35"
   on_boot       = true
   scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
+
+  # EFI disk (required for OVMF, but without Secure Boot keys)
+  efi_disk {
+    datastore_id      = var.datastore_id
+    file_format       = "raw"
+    type              = "4m"
+    pre_enrolled_keys = false        # No Secure Boot - faster boot
+  }
 
   cpu {
     type    = "host"
