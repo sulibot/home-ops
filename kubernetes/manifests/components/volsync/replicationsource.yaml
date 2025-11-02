@@ -21,6 +21,7 @@ spec:
   # --- Kopia backup configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
+    repositoryPVC: "kopia"  # PVC created by volsync component in each namespace
 
     # Access and storage configuration
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
