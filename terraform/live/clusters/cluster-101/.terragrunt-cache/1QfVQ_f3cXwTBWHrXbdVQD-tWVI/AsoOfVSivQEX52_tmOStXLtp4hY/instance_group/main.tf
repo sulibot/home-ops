@@ -201,11 +201,13 @@ resource "proxmox_virtual_environment_vm" "instances" {
   tags        = concat(["debian", var.cluster_name, var.group.role], [])
   protection  = false
 
+  started         = true   # Start the VM
   stop_on_destroy = true
 
   clone {
     vm_id     = var.template_vmid
-    node_name = local.proxmox_instances[0]
+    node_name = local.proxmox_instances[0]  # Template is on pve01
+    full      = true       # Full clone required for cross-node placement with RBD
   }
 
   bios          = "ovmf"            # UEFI without Secure Boot
@@ -213,11 +215,14 @@ resource "proxmox_virtual_environment_vm" "instances" {
   on_boot       = true
   scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
 
-  # Enable QEMU guest agent for Proxmox integration
-  # No explicit timeout - let provider handle it quickly
+  # Enable agent to add virtio-serial hardware and enable Proxmox features
+  # Timeout parameters limit how long Terraform waits (vs 15-30 min defaults)
   agent {
-    enabled = true
+    enabled = true  # Adds virtio-serial device, allows qemu-guest-agent to run
   }
+
+  timeout_create   = 180  # 3 minutes for VM creation (vs 30 min default)
+  timeout_start_vm = 120  # 2 minutes for VM to start (vs 5 min default)
 
   # EFI disk (required for OVMF, but without Secure Boot keys)
   efi_disk {
