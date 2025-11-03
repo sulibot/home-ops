@@ -11,7 +11,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
     - name: volsync
-      namespace: flux-system
+      namespace: volsync-system
   interval: 1h
   path: kubernetes/manifests/apps/default/thelounge/app
   postBuild:
