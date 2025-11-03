@@ -10,6 +10,8 @@ spec:
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
+    - name: volsync
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/default/zwave/app
   postBuild:
@@ -23,3 +25,4 @@ spec:
     namespace: flux-system
   targetNamespace: default
   wait: false
+
