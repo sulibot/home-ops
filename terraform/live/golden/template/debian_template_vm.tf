@@ -31,10 +31,11 @@ resource "proxmox_virtual_environment_vm" "debian_template" {
   }
 
   # Keep EFI vars off Ceph for reliability
+  # No Secure Boot for faster boot and consistency with cloned VMs
   efi_disk {
     datastore_id      = "local"
     type              = "4m"
-    pre_enrolled_keys = true
+    pre_enrolled_keys = false  # Disable Secure Boot (not needed for K8s)
   }
 
   # Import qcow2 -> Ceph RBD, then resize
