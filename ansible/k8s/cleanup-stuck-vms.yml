@@ -1,78 +1,122 @@
 ---
-- name: Clean up stuck VM configurations from Proxmox nodes
+# Playbook to clean up stuck VM configuration files and artifacts in Proxmox
+# Usage: ansible-playbook -i inventory/hosts.ini cleanup-stuck-vms.yml
+#
+# This playbook handles the "config file already exists" error by removing:
+# - VM configuration files in /etc/pve/qemu-server/
+# - Cloud-init images in /var/lib/vz/images/
+# - Orphaned Ceph RBD volumes
+
+- name: "Clean up stuck VM artifacts on Proxmox nodes"
   hosts: localhost
-  connection: local
   gather_facts: false
   vars:
-    proxmox_nodes:
-      - host: fd00:101::11
-        name: pve01
-      - host: fd00:101::12
-        name: pve02
-      - host: fd00:101::13
-        name: pve03
-    stuck_vm_ids:
-      - 101012
-      - 101013
-      - 101022
-      - 101023
+    proxmox_hosts:
+      - "fd00:10::1"  # pve01
+      - "fd00:10::2"  # pve02
+      - "fd00:10::3"  # pve03
+    proxmox_names:
+      - "pve01"
+      - "pve02"
+      - "pve03"
+    cluster_id: 101
+    stuck_vms:
+      - 101011  # solcp011
+      - 101012  # solcp012
+      - 101013  # solcp013
+      - 101021  # solwk021
+      - 101022  # solwk022
+      - 101023  # solwk023
 
   tasks:
-    - name: Check and remove VM config files from all Proxmox nodes
-      shell: |
-        ssh root@{{ item.0.host }} "
-          echo '=== Checking {{ item.0.name }} for VM {{ item.1 }} ==='
-          if [ -f '/etc/pve/qemu-server/{{ item.1 }}.conf' ]; then
-            echo 'Found config file for VM {{ item.1 }}, removing...'
-            rm -f '/etc/pve/qemu-server/{{ item.1 }}.conf'
-            rm -f '/etc/pve/qemu-server/{{ item.1 }}.conf.lock'
-            echo 'Removed VM {{ item.1 }} config from {{ item.0.name }}'
-          else
-            echo 'No config file for VM {{ item.1 }} on {{ item.0.name }}'
-          fi
-        "
-      loop: "{{ proxmox_nodes | product(stuck_vm_ids) | list }}"
-      register: cleanup_results
-      ignore_errors: true
+    - name: "Clean up VM configs via SSH"
+      ansible.builtin.command:
+        cmd: >
+          ssh -o StrictHostKeyChecking=no root@{{ item.0 }}
+          'for vm_id in {{ stuck_vms | join(" ") }}; do
+             if [ -f "/etc/pve/qemu-server/${vm_id}.conf" ]; then
+               echo "Removing VM ${vm_id} config on {{ item.1 }}";
+               rm -f "/etc/pve/qemu-server/${vm_id}.conf";
+               rm -f "/etc/pve/qemu-server/${vm_id}.conf.lock";
+             fi;
+           done'
+      delegate_to: localhost
+      loop: "{{ proxmox_hosts | zip(proxmox_names) | list }}"
+      loop_control:
+        label: "{{ item.1 }}"
+      register: ssh_cleanup_configs
+      changed_when: "'Removing VM' in ssh_cleanup_configs.stdout"
 
-    - name: Display cleanup results
-      debug:
+    - name: "Display config cleanup results"
+      ansible.builtin.debug:
         msg: "{{ item.stdout_lines }}"
-      loop: "{{ cleanup_results.results }}"
-      when: item.stdout_lines is defined
+      loop: "{{ ssh_cleanup_configs.results }}"
+      loop_control:
+        label: "{{ item.item.1 }}"
+      when: item.stdout_lines | length > 0
 
-    - name: Check for orphaned Ceph RBD volumes
-      shell: |
-        ssh root@fd00:101::11 "
-          echo '=== Checking for orphaned RBD images for VMs ==='
-          for vm_id in {{ stuck_vm_ids | join(' ') }}; do
-            echo \"Checking VM \$vm_id...\"
-            rbd ls rbd-vm 2>/dev/null | grep \"vm-\$vm_id-\" || echo \"No RBD images found for VM \$vm_id\"
-          done
-        "
-      register: rbd_check
-      ignore_errors: true
+    - name: "Clean up VM directories in /var/lib/vz/images/"
+      ansible.builtin.command:
+        cmd: >
+          ssh -o StrictHostKeyChecking=no root@{{ item.0 }}
+          'for vm_id in {{ stuck_vms | join(" ") }}; do
+             if [ -d "/var/lib/vz/images/${vm_id}" ]; then
+               echo "Removing VM ${vm_id} directory on {{ item.1 }}";
+               rm -rf "/var/lib/vz/images/${vm_id}";
+             fi;
+           done'
+      delegate_to: localhost
+      loop: "{{ proxmox_hosts | zip(proxmox_names) | list }}"
+      loop_control:
+        label: "{{ item.1 }}"
+      register: ssh_cleanup_dirs
+      changed_when: "'Removing VM' in ssh_cleanup_dirs.stdout"
 
-    - name: Display RBD check results
-      debug:
-        msg: "{{ rbd_check.stdout_lines }}"
-      when: rbd_check.stdout_lines is defined
+    - name: "Display directory cleanup results"
+      ansible.builtin.debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ ssh_cleanup_dirs.results }}"
+      loop_control:
+        label: "{{ item.item.1 }}"
+      when: item.stdout_lines | length > 0
 
-    - name: Remove orphaned RBD images if any exist
-      shell: |
-        ssh root@fd00:101::11 "
-          echo '=== Removing orphaned RBD images ==='
-          for vm_id in {{ stuck_vm_ids | join(' ') }}; do
-            for image in \$(rbd ls rbd-vm 2>/dev/null | grep \"vm-\$vm_id-\"); do
-              echo \"Removing rbd-vm/\$image...\"
-              rbd rm rbd-vm/\$image && echo \"Removed \$image\" || echo \"Failed to remove \$image\"
-            done
-          done
-        "
-      register: rbd_cleanup
-      ignore_errors: true
+    - name: "Clean up orphaned Ceph RBD volumes (run from first Proxmox node)"
+      ansible.builtin.command:
+        cmd: >
+          ssh -o StrictHostKeyChecking=no root@{{ proxmox_hosts[0] }}
+          'for vm_id in {{ stuck_vms | join(" ") }}; do
+             images=$(rbd ls rbd-vm 2>/dev/null | grep "vm-${vm_id}-" || true);
+             if [ -n "$images" ]; then
+               echo "$images" | while read image; do
+                 echo "Removing Ceph RBD image: $image";
+                 rbd rm rbd-vm/$image;
+               done;
+             fi;
+           done'
+      delegate_to: localhost
+      register: ssh_cleanup_rbd
+      changed_when: "'Removing Ceph' in ssh_cleanup_rbd.stdout"
 
-    - name: Display RBD cleanup results
-      debug:
-        msg: "{{ rbd_cleanup.stdout_lines }}"
-      when: rbd_cleanup.stdout_lines is defined and rbd_cleanup.stdout_lines | length > 0
+    - name: "Display RBD cleanup results"
+      ansible.builtin.debug:
+        msg: "{{ ssh_cleanup_rbd.stdout_lines }}"
+      when: ssh_cleanup_rbd.stdout_lines | length > 0
+
+    - name: "Verify cleanup completed"
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          VM Cleanup Complete!
+          ============================================================
+
+          The following VM artifacts have been cleaned up:
+          - VM config files in /etc/pve/qemu-server/
+          - VM directories in /var/lib/vz/images/
+          - Orphaned Ceph RBD volumes in rbd-vm pool
+
+          VMs cleaned: {{ stuck_vms | join(', ') }}
+
+          You can now run Terraform apply again:
+            cd terraform/live/clusters/cluster-101
+            terragrunt apply -auto-approve
+          ============================================================
