@@ -1,0 +1,24 @@
+---
+- name: "Cleanup Ceph config CSI volumes"
+  hosts: pve
+  become: true
+  gather_facts: false
+  vars:
+    cleanup_csi_role_path: "{{ playbook_dir }}/../roles/cleanup_config_csi_volumes"
+  pre_tasks:
+    - name: "Ensure at least one Proxmox host is available"
+      ansible.builtin.assert:
+        that:
+          - (groups['pve'] | default([])) | length > 0
+        fail_msg: "No hosts defined in 'pve' group. Unable to run cleanup."
+      run_once: true
+
+    - name: "Mark the primary cleanup host"
+      ansible.builtin.set_fact:
+        cleanup_csi_is_primary: "{{ inventory_hostname == (groups['pve'] | default([]) | first) }}"
+
+  tasks:
+    - name: "Include cleanup role on primary host"
+      ansible.builtin.import_role:
+        name: "{{ cleanup_csi_role_path }}"
+      when: cleanup_csi_is_primary | default(false) | bool

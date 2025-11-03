@@ -166,3 +166,51 @@
     - "../group_vars/all.yaml"
   roles:
     - k8s_join_worker
+
+
+# 5) Install Cilium when the cluster is whole
+- name: "Install Cilium via Helm"
+  hosts: "{{ groups['controlplane'][0] }}"
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+  vars:
+    kubeconfig: /etc/kubernetes/admin.conf
+  pre_tasks:
+    - name: "Query cluster nodes"
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - nodes
+          - -o
+          - json
+      register: kubectl_nodes
+      changed_when: false
+      failed_when: false
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: "Determine whether the cluster is whole"
+      ansible.builtin.set_fact:
+        cluster_is_whole: "{{ expected_nodes | length > 0
+          and (expected_nodes | difference(cluster_nodes) | length == 0)
+          and (cluster_nodes | difference(expected_nodes) | length == 0) }}"
+      vars:
+        expected_nodes: "{{ (groups['cluster'] | default([])) | unique | list }}"
+        node_payload: "{{ kubectl_nodes.stdout | default('{}') | from_json }}"
+        node_items: "{{ node_payload | json_query('items') | default([]) }}"
+        cluster_nodes: "{{ node_items | json_query('[].metadata.name') | default([]) | unique | list }}"
+      when: kubectl_nodes.rc == 0
+
+    - name: "Set cluster_is_whole to false when nodes query fails"
+      ansible.builtin.set_fact:
+        cluster_is_whole: false
+      when: kubectl_nodes.rc != 0
+  tasks:
+    - name: "Install Cilium when cluster ready"
+      import_role:
+        name: cilium
+      when:
+        - cluster_is_whole | default(false)

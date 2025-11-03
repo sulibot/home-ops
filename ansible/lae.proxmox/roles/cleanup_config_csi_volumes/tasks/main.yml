@@ -1,0 +1,135 @@
+---
+- name: "Initialize config CSI volume list"
+  ansible.builtin.set_fact:
+    cleanup_csi_volume_items: []
+    cleanup_csi_subvolume_names: []
+    cleanup_csi_group_args: []
+    cleanup_csi_group_flag_args: []
+
+- name: "Check for config CSI base directory"
+  ansible.builtin.stat:
+    path: "{{ cleanup_csi_base_path }}"
+  register: cleanup_csi_base_path_stat
+  become: true
+
+- name: "Gather config CSI volume directories"
+  ansible.builtin.find:
+    paths: "{{ cleanup_csi_base_path }}"
+    patterns: "{{ cleanup_csi_volume_pattern }}"
+    use_regex: false
+    file_type: directory
+    recurse: false
+  register: cleanup_csi_found
+  become: true
+  when: cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+
+- name: "Track matched config CSI volume directories"
+  ansible.builtin.set_fact:
+    cleanup_csi_volume_items: "{{ cleanup_csi_found.files | default([]) }}"
+  when:
+    - cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+    - cleanup_csi_found is defined
+
+- name: "Build CephFS group argument lists"
+  ansible.builtin.set_fact:
+    cleanup_csi_group_args: "{{ [cleanup_csi_group_name] if cleanup_csi_group_name | default('') | length > 0 else [] }}"
+    cleanup_csi_group_flag_args: "{{ ['--group-name', cleanup_csi_group_name] if cleanup_csi_group_name | default('') | length > 0 else [] }}"
+  when: cleanup_csi_remove_subvolumes | default(true) | bool
+
+- name: "List CephFS subvolumes for cleanup"
+  ansible.builtin.command:
+    argv: "{{ cleanup_csi_ceph_ls_argv }}"
+  vars:
+    cleanup_csi_ceph_ls_argv: >-
+      {{
+        [cleanup_csi_ceph_cmd, 'fs', 'subvolume', 'ls', cleanup_csi_fs_name]
+        + cleanup_csi_group_args
+        + ['--format', 'json']
+      }}
+  register: cleanup_csi_subvolume_list
+  changed_when: false
+  when: cleanup_csi_remove_subvolumes | default(true) | bool
+
+- name: "Extract CephFS subvolume names"
+  ansible.builtin.set_fact:
+    cleanup_csi_subvolume_names: "{{ (cleanup_csi_subvolume_list.stdout | default('[]') | from_json)
+      | map(attribute='name') | select('match', cleanup_csi_volume_regex) | list }}"
+  vars:
+    cleanup_csi_volume_regex: >-
+      {{
+        '^' ~ (
+          cleanup_csi_volume_pattern
+          | regex_escape
+          | replace('\\*', '.*')
+          | replace('\\?', '.')
+        ) ~ '$'
+      }}
+  when:
+    - cleanup_csi_remove_subvolumes | default(true) | bool
+    - cleanup_csi_subvolume_list is defined
+
+- name: "Remove CephFS subvolumes"
+  ansible.builtin.command:
+    argv: "{{ cleanup_csi_ceph_rm_argv }}"
+  vars:
+    cleanup_csi_ceph_rm_argv: >-
+      {{
+        [cleanup_csi_ceph_cmd, 'fs', 'subvolume', 'rm', cleanup_csi_fs_name, item]
+        + cleanup_csi_group_flag_args
+        + ['--retain-snapshots', 'false']
+        + (cleanup_csi_remove_force | default(true) | bool | ternary(['--force'], []))
+      }}
+  loop: "{{ cleanup_csi_subvolume_names }}"
+  loop_control:
+    label: "{{ item }}"
+  register: cleanup_csi_rm_result
+  changed_when: cleanup_csi_rm_result.rc == 0
+  when:
+    - cleanup_csi_remove_subvolumes | default(true) | bool
+    - cleanup_csi_subvolume_names | length > 0
+
+- name: "Remove config CSI volume directories"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+    force: true
+  loop: "{{ cleanup_csi_volume_items }}"
+  loop_control:
+    label: "{{ item.path }}"
+  become: true
+  when:
+    - cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+    - cleanup_csi_volume_items | length > 0
+
+- name: "No config CSI volume directories matched pattern"
+  ansible.builtin.debug:
+    msg: "No directories matching '{{ cleanup_csi_volume_pattern }}' found beneath {{ cleanup_csi_base_path }}."
+  when:
+    - cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+    - cleanup_csi_volume_items | length == 0
+
+- name: "Config CSI base directory not found"
+  ansible.builtin.debug:
+    msg: "Base directory {{ cleanup_csi_base_path }} does not exist; skipping cleanup."
+  when: not (cleanup_csi_base_path_stat.stat.exists | default(false) | bool)
+
+- name: "Report remaining config CSI volume directories after cleanup"
+  ansible.builtin.find:
+    paths: "{{ cleanup_csi_base_path }}"
+    patterns: "{{ cleanup_csi_volume_pattern }}"
+    use_regex: false
+    file_type: directory
+    recurse: false
+  register: cleanup_csi_remaining
+  become: true
+  when: cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+
+- name: "Display remaining config CSI volume directories"
+  ansible.builtin.debug:
+    msg: >
+      "Directories still present after cleanup:
+      {{ cleanup_csi_remaining.files | map(attribute='path') | list }}"
+  when:
+    - cleanup_csi_base_path_stat.stat.exists | default(false) | bool
+    - cleanup_csi_remaining is defined
+    - cleanup_csi_remaining.matched | default(0) > 0

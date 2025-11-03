@@ -128,7 +128,7 @@
     name: k9s
     state: present
 
-- name: Install k9s
+- name: Install flux
   ansible.builtin.apt:
     name: flux
     state: present
