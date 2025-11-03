@@ -21,7 +21,7 @@
     kubeconfig:        /etc/kubernetes/admin.conf
     super_admin_conf:  /etc/kubernetes/super-admin.conf
   roles:
-    - k8s_frr
+    # - k8s_frr
     - k8s_init
     #- sops_age_secret
 
@@ -153,7 +153,7 @@
   vars_files:
     - "../group_vars/all.yaml"
   roles:
-    - k8s_frr
+    # - k8s_frr
     - k8s_join_controlplane
 
 
