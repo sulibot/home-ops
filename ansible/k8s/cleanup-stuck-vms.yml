@@ -1,0 +1,78 @@
+---
+- name: Clean up stuck VM configurations from Proxmox nodes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    proxmox_nodes:
+      - host: fd00:101::11
+        name: pve01
+      - host: fd00:101::12
+        name: pve02
+      - host: fd00:101::13
+        name: pve03
+    stuck_vm_ids:
+      - 101012
+      - 101013
+      - 101022
+      - 101023
+
+  tasks:
+    - name: Check and remove VM config files from all Proxmox nodes
+      shell: |
+        ssh root@{{ item.0.host }} "
+          echo '=== Checking {{ item.0.name }} for VM {{ item.1 }} ==='
+          if [ -f '/etc/pve/qemu-server/{{ item.1 }}.conf' ]; then
+            echo 'Found config file for VM {{ item.1 }}, removing...'
+            rm -f '/etc/pve/qemu-server/{{ item.1 }}.conf'
+            rm -f '/etc/pve/qemu-server/{{ item.1 }}.conf.lock'
+            echo 'Removed VM {{ item.1 }} config from {{ item.0.name }}'
+          else
+            echo 'No config file for VM {{ item.1 }} on {{ item.0.name }}'
+          fi
+        "
+      loop: "{{ proxmox_nodes | product(stuck_vm_ids) | list }}"
+      register: cleanup_results
+      ignore_errors: true
+
+    - name: Display cleanup results
+      debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ cleanup_results.results }}"
+      when: item.stdout_lines is defined
+
+    - name: Check for orphaned Ceph RBD volumes
+      shell: |
+        ssh root@fd00:101::11 "
+          echo '=== Checking for orphaned RBD images for VMs ==='
+          for vm_id in {{ stuck_vm_ids | join(' ') }}; do
+            echo \"Checking VM \$vm_id...\"
+            rbd ls rbd-vm 2>/dev/null | grep \"vm-\$vm_id-\" || echo \"No RBD images found for VM \$vm_id\"
+          done
+        "
+      register: rbd_check
+      ignore_errors: true
+
+    - name: Display RBD check results
+      debug:
+        msg: "{{ rbd_check.stdout_lines }}"
+      when: rbd_check.stdout_lines is defined
+
+    - name: Remove orphaned RBD images if any exist
+      shell: |
+        ssh root@fd00:101::11 "
+          echo '=== Removing orphaned RBD images ==='
+          for vm_id in {{ stuck_vm_ids | join(' ') }}; do
+            for image in \$(rbd ls rbd-vm 2>/dev/null | grep \"vm-\$vm_id-\"); do
+              echo \"Removing rbd-vm/\$image...\"
+              rbd rm rbd-vm/\$image && echo \"Removed \$image\" || echo \"Failed to remove \$image\"
+            done
+          done
+        "
+      register: rbd_cleanup
+      ignore_errors: true
+
+    - name: Display RBD cleanup results
+      debug:
+        msg: "{{ rbd_cleanup.stdout_lines }}"
+      when: rbd_cleanup.stdout_lines is defined and rbd_cleanup.stdout_lines | length > 0
