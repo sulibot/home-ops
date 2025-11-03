@@ -18,7 +18,6 @@ spec:
   # --- Kopia restore configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
-    repositoryPVC: "kopia"  # Shared PVC for kopia repository
 
     # PVC creation & restore behavior
     destinationPVC: "${APP}-config"
