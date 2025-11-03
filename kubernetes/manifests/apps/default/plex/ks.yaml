@@ -13,6 +13,8 @@ spec:
     #   namespace: kube-system
     - name: ceph-csi
       namespace: flux-system
+    - name: volsync
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/default/plex/app
   postBuild:
@@ -35,6 +37,9 @@ metadata:
 spec:
   components:
     - ../../../../components/volsync
+  dependsOn:
+    - name: volsync
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/default/plex/tools
   prune: true
