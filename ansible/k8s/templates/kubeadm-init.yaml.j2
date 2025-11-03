@@ -49,11 +49,7 @@ controllerManager:
     # peerCertSANs:
     #   - "etcd.some-domain.local"
 etcd:
-  local:
-    initialCluster: >-
-      {% for host in groups['controlplane'] -%}
-      {{ hostvars[host].inventory_hostname }}=https://{{ hostvars[host].ansible_host }}:2380{{ ',' if not loop.last else '' }}
-      {%- endfor %}
+  local: {}
 
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
