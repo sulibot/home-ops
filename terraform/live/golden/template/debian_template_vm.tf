@@ -9,7 +9,7 @@ resource "proxmox_virtual_environment_vm" "debian_template" {
   bios            = "ovmf"
   stop_on_destroy = true
   keyboard_layout = "en-us"
-  scsi_hardware   = "virtio-scsi-single"
+  scsi_hardware   = "virtio-scsi-pci"  # Match cloned VMs for consistency
 
   operating_system { type = "l26" }
 
@@ -88,7 +88,7 @@ resource "null_resource" "wait_for_cloud_init_done" {
         echo "Waiting for qemu-guest-agent in VM $VM_ID..."
 
         # First wait for qemu-guest-agent to be responsive
-        AGENT_TIMEOUT=300  # 5 minutes
+        AGENT_TIMEOUT=120  # 2 minutes (reduced from 5 min)
         AGENT_ELAPSED=0
         until qm guest cmd $VM_ID ping >/dev/null 2>&1; do
           if [ $AGENT_ELAPSED -ge $AGENT_TIMEOUT ]; then
@@ -104,7 +104,7 @@ resource "null_resource" "wait_for_cloud_init_done" {
         echo "Waiting for cloud-init in VM $VM_ID..."
 
         # Wait for completion marker with timeout
-        TIMEOUT=1800  # 30 minutes
+        TIMEOUT=900  # 15 minutes (reduced from 30 min)
         ELAPSED=0
         until qm guest exec $VM_ID -- test -f /tmp/golden-cloud-config.done >/dev/null 2>&1; do
           if [ $ELAPSED -ge $TIMEOUT ]; then
