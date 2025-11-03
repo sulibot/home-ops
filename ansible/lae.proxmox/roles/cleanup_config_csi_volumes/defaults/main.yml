@@ -1,0 +1,13 @@
+---
+# Base directory that holds CephFS config CSI volume folders.
+cleanup_csi_base_path: /mnt/pve/config/volumes/csi
+
+# Glob-style pattern matching the volume directories that should be removed.
+cleanup_csi_volume_pattern: sol-config-csi-vol-*
+
+# Optional CephFS metadata for corresponding subvolumes.
+cleanup_csi_fs_name: config
+cleanup_csi_group_name: csi
+cleanup_csi_ceph_cmd: ceph
+cleanup_csi_remove_subvolumes: true
+cleanup_csi_remove_force: true
