@@ -206,8 +206,8 @@ resource "proxmox_virtual_environment_vm" "instances" {
 
   clone {
     vm_id     = var.template_vmid
-    node_name = local.proxmox_instances[tonumber(each.key) % length(local.proxmox_instances)]
-    full      = false      # Linked clone - faster
+    node_name = local.proxmox_instances[0]  # Template is on pve01
+    full      = true       # Full clone required for cross-node placement with RBD
   }
 
   bios          = "ovmf"            # UEFI without Secure Boot
