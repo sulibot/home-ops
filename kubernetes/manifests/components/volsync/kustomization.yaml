@@ -6,5 +6,7 @@ resources:
   - ./externalsecret.yaml
   - ./kopia-repository-pvc.yaml
   - ./pvc.yaml
-  - ./replicationdestination.yaml
+  # ReplicationDestination commented out - requires remote storage backend (S3/NFS/etc)
+  # Currently using local filesystem repository which is not compatible with ReplicationDestination
+  # - ./replicationdestination.yaml
   - ./replicationsource.yaml
