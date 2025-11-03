@@ -206,7 +206,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
 
   clone {
     vm_id     = var.template_vmid
-    node_name = local.proxmox_instances[0]
+    node_name = local.proxmox_instances[tonumber(each.key) % length(local.proxmox_instances)]
     full      = false      # Linked clone - faster
   }
 
