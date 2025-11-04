@@ -34,6 +34,12 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
     defaultPodOptions:
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
