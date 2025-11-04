@@ -12,46 +12,18 @@ spec:
   values:
     controllers:
       nzbget:
-        # --- Init container to enable IPv6 binding -------------------------
-        initContainers:
-          patch-config:
-            image:
-              repository: busybox
-              tag: "1.36"
-            command:
-              - sh
-              - -c
-              - |
-                echo "[init] Enabling IPv6 binding for NZBGet"
-                if [ ! -f /config/nzbget.conf ]; then
-                  echo "[init] No nzbget.conf found, creating placeholder"
-                  touch /config/nzbget.conf
-                fi
-                if grep -q '^ControlIP=' /config/nzbget.conf; then
-                  sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
-                else
-                  echo 'ControlIP=::' >> /config/nzbget.conf
-                fi
-                for dir in tmp queue nzb ; do
-                  mkdir -p "/downloads/${dir}"
-                done
-                touch /downloads/nzbget.log
-                chown -R 1000:1000 /config /downloads
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-              runAsGroup: 0
-              allowPrivilegeEscalation: false
-
-        # --- Main NZBGet container ----------------------------------------
         containers:
           app:
             image:
               repository: ghcr.io/home-operations/nzbget
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
-              NZBGET__PORT: &port 6789
-              TZ: America/Los_Angeles
+              - name: NZBGET__PORT
+                value: &port "6789"
+              - name: NZBGET__CONTROLIP
+                value: "::"
+              - name: TZ
+                value: America/Los_Angeles
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -100,7 +72,7 @@ spec:
       app:
         ports:
           http:
-            port: *port
+            port: &port 6789
 
     # --- Gateway API route -------------------------------------------------
     route:
