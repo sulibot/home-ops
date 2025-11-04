@@ -24,8 +24,8 @@ spec:
                 value: America/Los_Angeles
               - name: PLEX_ADVERTISE_URL
                 value: https://plex.sulibot.com:443,http://[fd00:101::cafe:120]:32400,http://plex.default.svc.cluster.local:32400
-              - name: PLEX_NO_AUTH_NETWORKS
-                value: fd00:30::/64
+              #- name: PLEX_NO_AUTH_NETWORKS
+              #  value: fd00:30::/64
               - name: PLEX_CLAIM
                 valueFrom:
                   secretKeyRef:
