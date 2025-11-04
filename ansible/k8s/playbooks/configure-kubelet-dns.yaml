@@ -1,0 +1,76 @@
+---
+# Playbook to configure kubelet DNS resolver options for IPv6-only cluster
+# This fixes DNS resolution issues with musl libc (Alpine) and .NET applications
+# in IPv6-only environments where both A and AAAA records are returned
+
+- name: "Configure kubelet DNS resolver options for IPv6-only cluster"
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_files:
+    - "../group_vars/all.yaml"
+
+  tasks:
+    - name: "Check if kubelet drop-in directory exists"
+      ansible.builtin.file:
+        path: /etc/systemd/system/kubelet.service.d
+        state: directory
+        mode: '0755'
+
+    - name: "Configure kubelet with DNS resolver options for IPv6-only cluster"
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/kubelet.service.d/20-dns-options.conf
+        content: |
+          [Service]
+          Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
+        mode: '0644'
+      notify: restart kubelet
+
+    - name: "Create systemd-resolved drop-in directory"
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        mode: '0755'
+
+    - name: "Configure systemd-resolved with IPv6-only DNS options"
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/ipv6-dns.conf
+        content: |
+          [Resolve]
+          DNS=fd00:101:96::53
+          Domains=~.
+          DNSStubListener=no
+        mode: '0644'
+      notify:
+        - restart systemd-resolved
+        - restart kubelet
+
+    - name: "Create /run/systemd/resolve if it doesn't exist"
+      ansible.builtin.file:
+        path: /run/systemd/resolve
+        state: directory
+        mode: '0755'
+
+    - name: "Create custom resolv.conf for kubelet with IPv6-only options"
+      ansible.builtin.copy:
+        dest: /run/systemd/resolve/resolv.conf
+        content: |
+          nameserver fd00:101:96::53
+          options single-request single-request-reopen ndots:1
+        mode: '0644'
+      notify: restart kubelet
+
+    - name: "Reload systemd daemon"
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+  handlers:
+    - name: restart systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+
+    - name: restart kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
