@@ -32,8 +32,8 @@ spec:
                 # Set IPv6 binding
                 sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
 
-                # Fix paths to use correct mount points
-                sed -i 's|/app/downloads|/downloads|g' /config/nzbget.conf
+                # Fix MainDir to use correct mount point
+                sed -i 's|^MainDir=.*|MainDir=/downloads|' /config/nzbget.conf
 
                 # Create required directories in downloads
                 for dir in tmp queue nzb; do
