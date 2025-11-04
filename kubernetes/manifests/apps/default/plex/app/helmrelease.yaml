@@ -23,7 +23,7 @@ spec:
               - name: TZ
                 value: America/Los_Angeles
               - name: PLEX_ADVERTISE_URL
-                value: http://plex.default.svc.cluster.local:32400,https://plex.sulibot.com:443
+                value: http://plex.default.svc.cluster.local:80,https://plex.sulibot.com:443
               #- name: PLEX_NO_AUTH_NETWORKS
               #  value: fd00:30::/64
               - name: PLEX_CLAIM
@@ -38,7 +38,7 @@ spec:
                 spec:
                   httpGet:
                     path: /identity
-                    port: &port 32400
+                    port: &port 80
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1

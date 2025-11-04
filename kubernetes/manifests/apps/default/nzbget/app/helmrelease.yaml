@@ -60,7 +60,7 @@ spec:
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
               - name: NZBGET__PORT
-                value: &port "6789"
+                value: &port "80"
               - name: NZBGET__CONTROLIP
                 value: "::"
               - name: TZ
@@ -74,7 +74,7 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    port: 6789
+                    port: *port
                   initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -85,7 +85,7 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    port: 6789
+                    port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 5
                   timeoutSeconds: 1
@@ -129,7 +129,7 @@ spec:
       app:
         ports:
           http:
-            port: &port 6789
+            port: *port
 
     # --- Gateway API route -------------------------------------------------
     route:
