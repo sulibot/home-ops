@@ -29,8 +29,9 @@ spec:
                   cp /app/nzbget.conf /config/nzbget.conf
                 fi
 
-                # Set IPv6 binding
+                # Set IPv6 binding and port
                 sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
+                sed -i 's/^ControlPort=.*/ControlPort=80/' /config/nzbget.conf
 
                 # Fix MainDir to use correct mount point
                 sed -i 's|^MainDir=.*|MainDir=/downloads|' /config/nzbget.conf
