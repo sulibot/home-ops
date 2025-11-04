@@ -129,7 +129,8 @@ spec:
       app:
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
 
     # --- Gateway API route -------------------------------------------------
     route:
