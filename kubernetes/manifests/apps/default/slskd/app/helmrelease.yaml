@@ -15,6 +15,25 @@ spec:
         type: deployment
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          init-dirs:
+            image:
+              repository: ghcr.io/slskd/slskd
+              tag: 0.23.2@sha256:28df5325f301537ea8669b2ef90112a30cc9f2efd3eb714c9a778460b5dc6288
+            command:
+              - sh
+              - -c
+              - |
+                echo "[init] Creating required directories"
+                mkdir -p /media/Downloads/soulseek/complete
+                mkdir -p /media/Downloads/soulseek/incomplete
+                mkdir -p /media/Downloads/soulseek/shared
+                echo "[init] Setting permissions"
+                chown -R 1000:1000 /media/Downloads/soulseek/complete /media/Downloads/soulseek/incomplete /media/Downloads/soulseek/shared 2>/dev/null || true
+                echo "[init] Initialization complete"
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
         containers:
           app:
             image:
@@ -64,6 +83,12 @@ spec:
             "ips": ["fd00:90::12/64"],
             "mac": "c6:58:f2:a7:62:ce"
           }]
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
