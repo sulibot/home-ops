@@ -20,9 +20,17 @@ spec:
               repository: ghcr.io/home-operations/plex
               tag: 1.42.2.10156@sha256:9ad8a3506e1d8ebda873a668603c1a2c10e6887969564561be669efd65ae8871
             env:
-              TZ: America/Los_Angeles
-              PLEX_ADVERTISE_URL: https://plex.sulibot.com:443,http://[fd00:101::cafe:120]:32400,http://plex.default.svc.cluster.local:32400
-              PLEX_NO_AUTH_NETWORKS: fd00:30::/64
+              - name: TZ
+                value: America/Los_Angeles
+              - name: PLEX_ADVERTISE_URL
+                value: https://plex.sulibot.com:443,http://[fd00:101::cafe:120]:32400,http://plex.default.svc.cluster.local:32400
+              - name: PLEX_NO_AUTH_NETWORKS
+                value: fd00:30::/64
+              - name: PLEX_CLAIM
+                valueFrom:
+                  secretKeyRef:
+                    name: plex-secret
+                    key: PLEX_CLAIM
             probes:
               liveness: &probes
                 enabled: true
