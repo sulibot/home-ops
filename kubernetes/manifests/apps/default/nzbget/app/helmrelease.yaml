@@ -29,7 +29,8 @@ spec:
                   cp /app/nzbget.conf /config/nzbget.conf
                 fi
 
-                # Set IPv6 binding and port
+                # Always set IPv6 binding and port (run every startup)
+                echo "[init] Configuring IPv6 and port settings"
                 sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
                 sed -i 's/^ControlPort=.*/ControlPort=80/' /config/nzbget.conf
 
