@@ -12,6 +12,44 @@ spec:
   values:
     controllers:
       nzbget:
+        initContainers:
+          init-config:
+            image:
+              repository: ghcr.io/home-operations/nzbget
+              tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
+            command:
+              - sh
+              - -c
+              - |
+                echo "[init] Initializing NZBGet configuration"
+
+                # Copy template config if it doesn't exist or is minimal
+                if [ ! -f /config/nzbget.conf ] || [ $(wc -l < /config/nzbget.conf) -lt 100 ]; then
+                  echo "[init] Copying template configuration"
+                  cp /app/nzbget.conf /config/nzbget.conf
+                fi
+
+                # Set IPv6 binding
+                sed -i 's/^ControlIP=.*/ControlIP=::/' /config/nzbget.conf
+
+                # Create required directories in downloads
+                for dir in tmp queue nzb; do
+                  mkdir -p "/downloads/$dir"
+                done
+
+                # Create log file
+                touch /downloads/nzbget.log
+
+                # Fix ownership only for new files/dirs (not recursive on entire tree)
+                chown 1000:1000 /config/nzbget.conf /downloads/nzbget.log
+                chown 1000:1000 /downloads/tmp /downloads/queue /downloads/nzb 2>/dev/null || true
+
+                echo "[init] Initialization complete"
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              allowPrivilegeEscalation: false
         containers:
           app:
             image:
@@ -32,13 +70,25 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: *port
-                  initialDelaySeconds: 0
+                  httpGet:
+                    path: /
+                    port: 6789
+                  initialDelaySeconds: 10
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 3
                   failureThreshold: 3
               readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 6789
+                  initialDelaySeconds: 0
+                  periodSeconds: 5
+                  timeoutSeconds: 3
+                  failureThreshold: 30
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
