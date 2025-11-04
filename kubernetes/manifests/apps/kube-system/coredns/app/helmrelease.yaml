@@ -41,10 +41,14 @@ spec:
             parameters: "@kubernetes"
           - name: forward
             parameters: . /etc/resolv.conf
+            configBlock: |-
+              policy sequential
           - name: cache
             configBlock: |-
               prefetch 20
               serve_stale
+              success 10000 3600 300
+              denial 5000 60 30
           - name: loop
           - name: reload
           - name: loadbalance
