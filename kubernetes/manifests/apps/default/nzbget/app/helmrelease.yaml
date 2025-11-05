@@ -105,14 +105,14 @@ spec:
 
     # --- Default pod-level options ----------------------------------------
     defaultPodOptions:
-#      annotations:
-#        k8s.v1.cni.cncf.io/networks: |-
-#          [{
-#            "name": "vpn",
-#            "namespace": "kube-system",
-#            "ips": ["fd00:90::11/64"],
-#            "mac": "a6:3e:4f:09:e4:9c"
-#          }]
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [{
+            "name": "vpn",
+            "namespace": "kube-system",
+            "ips": ["fd00:90::11/64"],
+            "mac": "a6:3e:4f:09:e4:9c"
+          }]
       dnsConfig:
         options:
           - name: single-request
