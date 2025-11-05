@@ -23,7 +23,7 @@ spec:
               - name: TZ
                 value: America/Los_Angeles
               - name: PLEX_ADVERTISE_URL
-                value: http://plex.default.svc.cluster.local:80,https://plex.sulibot.com:443
+                value: https://plex.sulibot.com:443
               #- name: PLEX_NO_AUTH_NETWORKS
               #  value: fd00:30::/64
               - name: PLEX_CLAIM
@@ -79,10 +79,6 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        type: LoadBalancer
-#        annotations:
-#          lbipam.cilium.io/ips: fd00:101::cafe:120
-        externalTrafficPolicy: Cluster
         ports:
           http:
             port: 80
