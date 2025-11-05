@@ -155,5 +155,5 @@ spec:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /downloads
-            subPath: Downloads/nzbget
+          - path: /data
+            subPath: data
