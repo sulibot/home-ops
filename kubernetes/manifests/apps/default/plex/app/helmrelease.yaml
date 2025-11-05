@@ -109,6 +109,10 @@ spec:
           - backendRefs:
               - identifier: app
     persistence:
+
+
+
+    
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
