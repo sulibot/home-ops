@@ -45,10 +45,12 @@ spec:
               TZ: America/Los_Angeles
               SLSKD_APP_DIR: /config
               SLSKD_HTTP_PORT: &port 80
+              SLSKD_HTTP_ADDRESS: '::'
               SLSKD_NO_AUTH: true
               SLSKD_NO_HTTPS: true
               SLSKD_NO_VERSION_CHECK: true
               SLSKD_SLSK_LISTEN_PORT: 50429
+              SLSKD_SLSK_ADDRESS: '::'
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
