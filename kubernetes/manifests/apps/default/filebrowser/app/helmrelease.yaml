@@ -70,5 +70,6 @@ spec:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /srv
+          - path: /data
+            subPath: data
 

@@ -125,8 +125,7 @@ spec:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /media
-          - subPath: media
-            # readOnly: true
+          - path: /data
+            subPath: data
       tmp:
         type: emptyDir
