@@ -150,7 +150,7 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
-      downloads:
+      content:
         enabled: true
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
