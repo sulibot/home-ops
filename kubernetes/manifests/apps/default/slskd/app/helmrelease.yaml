@@ -153,6 +153,6 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /media/Downloads/soulseek
-            subPath: /data/media/soulseek
+            subPath: data/media/soulseek
       tmp:
         type: emptyDir
