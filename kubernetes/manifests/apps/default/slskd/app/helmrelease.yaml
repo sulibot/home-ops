@@ -116,6 +116,11 @@ spec:
       config:
         data:
           slskd.yml: |-
+            web:
+              http:
+                address: '::'
+            soulseek:
+              address: '::'
             directories:
               downloads: /media/Downloads/soulseek/complete
               incomplete: /media/Downloads/soulseek/incomplete
