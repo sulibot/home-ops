@@ -23,7 +23,7 @@ spec:
               - name: TZ
                 value: America/Los_Angeles
               - name: PLEX_ADVERTISE_URL
-                value: https://plex.sulibot.com:443
+                value: http://[fd00:101::cafe:120]:32400,https://plex.sulibot.com:443
               #- name: PLEX_NO_AUTH_NETWORKS
               #  value: fd00:30::/64
               - name: PLEX_CLAIM
@@ -79,10 +79,15 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
+        controller: plex
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: fd00:101::cafe:120
         ports:
           http:
-            port: 80
+            port: 32400
             targetPort: *port
+            protocol: TCP
     route:
       app:
         annotations:
