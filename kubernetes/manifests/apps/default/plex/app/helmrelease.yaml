@@ -126,6 +126,7 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /media
+          - subPath: media
             # readOnly: true
       tmp:
         type: emptyDir
