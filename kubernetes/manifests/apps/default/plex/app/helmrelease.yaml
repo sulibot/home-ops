@@ -97,7 +97,6 @@ spec:
           - # Ref: https://forums.plex.tv/t/external-srt-subtitles-are-not-working-w-reverse-proxy/886540
             backendRefs:
               - identifier: app
-                port: *port
             filters:
               - type: RequestHeaderModifier
                 requestHeaderModifier:
@@ -109,7 +108,6 @@ spec:
                   value: /library/streams
           - backendRefs:
               - identifier: app
-                port: *port
     persistence:
       config:
         enabled: true
