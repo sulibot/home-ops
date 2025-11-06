@@ -17,7 +17,7 @@ spec:
   values:
     controllers:
       emby:
-        type: statefulset
+        type: Deployment
         replicas: 1
         containers:
           app:
