@@ -7,8 +7,8 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: cilium
-      namespace: kube-system
+    - name: platform
+      namespace: flux-system
     - name: external-secrets
       namespace: flux-system
   interval: 1h
