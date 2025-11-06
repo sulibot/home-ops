@@ -21,12 +21,15 @@ spec:
       repository: cloudflare/cloudflared
       tag: "2025.10.0"
       pullPolicy: IfNotPresent
-    extraArgs:
+    arguments:
+      - tunnel
       - --edge-ip-version
       - "6"
-    env:
-      - name: TUNNEL_TRANSPORT_PROTOCOL
-        value: "http2"
+      - --protocol
+      - http2
+      - --config
+      - /etc/cloudflared/config/config.yaml
+      - run
     cloudflare:
       account: 089ac5ef7a1525cb7d7129cdde5873cd
       enableWarp: false
