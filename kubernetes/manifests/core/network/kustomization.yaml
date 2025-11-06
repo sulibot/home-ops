@@ -1,5 +1,4 @@
 resources:
-  - cluster-issuers/
   - gateway/
   - cloudflared/ks.yaml
   - external-dns/ks.yaml
