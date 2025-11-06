@@ -1,7 +1,5 @@
 resources:
-#  - gateway-external.yaml
   - gatewayclass-cilium.yaml
   - gateway-internal.yaml
   - gateway-external.yaml
-  - cilium-gatewayclassconfig.yaml
   - referencegrant-media.yaml
