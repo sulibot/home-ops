@@ -11,6 +11,8 @@ spec:
       namespace: flux-system
     - name: cert-manager
       namespace: flux-system
+    - name: external-secrets
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/manifests/platform/cni/cilium/gateway
   prune: true
