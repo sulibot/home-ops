@@ -83,6 +83,8 @@ spec:
         type: LoadBalancer
         annotations:
           lbipam.cilium.io/ips: fd00:101::cafe:120
+        labels:
+          bgp-advertise: "true"
         ports:
           http:
             port: 32400
