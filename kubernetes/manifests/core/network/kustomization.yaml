@@ -1,6 +1,5 @@
 resources:
   - cluster-issuers/
   - gateway/
-  # cloudflared temporarily disabled due to install timeouts
-  # - cloudflared/
+  - cloudflared/ks.yaml
   - external-dns/ks.yaml
