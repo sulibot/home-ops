@@ -21,13 +21,12 @@ spec:
       repository: cloudflare/cloudflared
       tag: "2025.10.0"
       pullPolicy: IfNotPresent
+    extraArgs:
+      - --edge-ip-version
+      - "6"
     env:
-      - name: TUNNEL_EDGE_IP_VERSION
-        value: "6"
       - name: TUNNEL_TRANSPORT_PROTOCOL
         value: "http2"
-      - name: TUNNEL_FORCE_PROVISIONING_DNS
-        value: "true"
     cloudflare:
       account: 089ac5ef7a1525cb7d7129cdde5873cd
       enableWarp: false
