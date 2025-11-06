@@ -1,4 +1,4 @@
 resources:
 - gateway-api-crds/
-- cert-manager/
+- cert-manager/ks.yaml
 
