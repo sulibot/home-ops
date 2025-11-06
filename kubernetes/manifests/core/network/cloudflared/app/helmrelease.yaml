@@ -28,7 +28,7 @@ spec:
                 value: |
                   tunnel: sulibot-tunnel
                   credentials-file: /etc/cloudflared/creds/credentials.json
-                  edge-ip-version: 6
+                  edge-ip-version: "6"
                   protocol: http2
                   warp-routing:
                     enabled: false
