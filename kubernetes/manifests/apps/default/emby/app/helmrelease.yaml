@@ -55,7 +55,6 @@ spec:
           - backendRefs:
               - name: emby
                 port: 80
-    persistence:
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
@@ -67,4 +66,8 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /data
+            subPath: data
+      tmp:
+        type: emptyDir
+
 
