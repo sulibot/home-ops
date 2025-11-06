@@ -16,20 +16,37 @@ spec:
         name: cloudflare
         namespace: flux-system
       version: 0.3.2
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: ConfigMap
+              name: cloudflared-cloudflare-tunnel
+            patch: |
+              - op: add
+                path: /data/config.yaml
+                value: |
+                  tunnel: sulibot-tunnel
+                  credentials-file: /etc/cloudflared/creds/credentials.json
+                  edge-ip-version: 6
+                  protocol: http2
+                  warp-routing:
+                    enabled: false
+                  metrics: 0.0.0.0:2000
+                  no-autoupdate: true
+                  ingress:
+                    - hostname: plex.sulibot.com
+                      service: http://plex.default.svc.cluster.local:32400
+                    - hostname: overseerr.sulibot.com
+                      service: http://overseerr.default.svc.cluster.local:80
+                    - hostname: hello.sulibot.com
+                      service: hello_world
+                    - service: http_status:404
   values:
     image:
       repository: cloudflare/cloudflared
       tag: "2025.10.0"
       pullPolicy: IfNotPresent
-    arguments:
-      - tunnel
-      - --edge-ip-version
-      - "6"
-      - --protocol
-      - http2
-      - --config
-      - /etc/cloudflared/config/config.yaml
-      - run
     cloudflare:
       account: 089ac5ef7a1525cb7d7129cdde5873cd
       enableWarp: false
