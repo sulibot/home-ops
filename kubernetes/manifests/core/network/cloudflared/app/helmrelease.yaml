@@ -25,7 +25,9 @@ spec:
       - name: TUNNEL_EDGE_IP_VERSION
         value: "6"
       - name: TUNNEL_TRANSPORT_PROTOCOL
-        value: "quic"
+        value: "http2"
+      - name: TUNNEL_FORCE_PROVISIONING_DNS
+        value: "true"
     cloudflare:
       account: 089ac5ef7a1525cb7d7129cdde5873cd
       enableWarp: false
