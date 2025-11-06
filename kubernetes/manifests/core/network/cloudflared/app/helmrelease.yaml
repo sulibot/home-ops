@@ -39,6 +39,8 @@ spec:
                       service: http://plex.default.svc.cluster.local:32400
                     - hostname: overseerr.sulibot.com
                       service: http://overseerr.default.svc.cluster.local:80
+                    - hostname: requests.sulibot.com
+                      service: http://jellyseerr.default.svc.cluster.local:80
                     - hostname: hello.sulibot.com
                       service: hello_world
                     - service: http_status:404
@@ -55,6 +57,8 @@ spec:
           service: http://plex.default.svc.cluster.local:32400
         - hostname: overseerr.sulibot.com
           service: http://overseerr.default.svc.cluster.local:80
+        - hostname: requests.sulibot.com
+          service: http://jellyseerr.default.svc.cluster.local:80
         - hostname: hello.sulibot.com
           service: hello_world
       secretName: cloudflared-secret
