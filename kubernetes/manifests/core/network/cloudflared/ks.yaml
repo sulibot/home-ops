@@ -9,6 +9,8 @@ spec:
   dependsOn:
     - name: cilium
       namespace: kube-system
+    - name: external-secrets
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/core/network/cloudflared/app
   prune: true
