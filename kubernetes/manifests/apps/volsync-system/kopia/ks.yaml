@@ -8,6 +8,8 @@ spec:
 #  components:
 #    - ../../../../components/nfs-scaler
   dependsOn:
+    - name: onepassword
+      namespace: flux-system
     - name: volsync
       namespace: volsync-system
   interval: 1h

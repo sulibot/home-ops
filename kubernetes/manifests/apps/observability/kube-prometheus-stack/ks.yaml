@@ -6,6 +6,8 @@ metadata:
   name: kube-prometheus-stack
 spec:
   dependsOn:
+    - name: onepassword
+      namespace: flux-system
     - name: ceph-csi
       namespace: flux-system
   interval: 1h

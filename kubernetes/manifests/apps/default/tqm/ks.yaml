@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: tqm
 spec:
+  dependsOn:
+    - name: onepassword
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/default/tqm/app
   prune: true

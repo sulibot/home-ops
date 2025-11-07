@@ -5,6 +5,11 @@ kind: Kustomization
 metadata:
   name: certificates-import
 spec:
+  dependsOn:
+    - name: cert-manager
+      namespace: flux-system
+    - name: cilium-gateway
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/network/certificates/import
   prune: true
