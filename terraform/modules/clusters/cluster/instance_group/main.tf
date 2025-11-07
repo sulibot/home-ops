@@ -225,7 +225,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
     enabled = true  # Adds virtio-serial device, allows qemu-guest-agent to run
   }
 
-  rng { backend = "/dev/urandom" }  # Prevent entropy starvation during boot
+  rng { source = "/dev/urandom" }  # Prevent entropy starvation during boot
 
   timeout_create   = 180  # 3 minutes for VM creation (vs 30 min default)
   timeout_start_vm = 120  # 2 minutes for VM to start (vs 5 min default)
