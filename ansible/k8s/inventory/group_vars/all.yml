@@ -3,8 +3,13 @@ kubernetes_version: "1.34"
 crio_version: "1.34"
 k8s_semver: "1.34.0"
 control_plane_vip: "fd00:255:101::ac"
-pod_subnet: "fd00:101:44::/60"
-svc_subnet: "fd00:101:96::/108"
+pod_subnet_ipv6: "fd00:101:44::/60"
+pod_subnet_ipv4: "10.244.0.0/16"
+svc_subnet_ipv6: "fd00:101:96::/108"
+svc_subnet_ipv4: "10.96.0.0/12"
+# Legacy variables for backward compatibility
+pod_subnet: "{{ pod_subnet_ipv6 }}"
+svc_subnet: "{{ svc_subnet_ipv6 }}"
 cilium_bgp_enabled: true
 kube_vip_interface: eth0
 cilium_config_file: "/root/cilium-values.yaml"

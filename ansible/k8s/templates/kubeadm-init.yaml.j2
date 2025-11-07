@@ -10,8 +10,8 @@ proxy:
   disabled: true
 
 networking:
-  podSubnet: "{{ pod_subnet }},10.244.0.0/16"
-  serviceSubnet: "{{ svc_subnet }},10.96.0.0/12"
+  podSubnet: "{{ pod_subnet_ipv6 }},{{ pod_subnet_ipv4 }}"
+  serviceSubnet: "{{ svc_subnet_ipv6 }},{{ svc_subnet_ipv4 }}"
   dnsDomain: "cluster.local"
 
 apiServer:
@@ -21,14 +21,14 @@ apiServer:
     - name: bind-address
       value: "::"
     - name: service-cluster-ip-range
-      value: "{{ svc_subnet }},10.96.0.0/12"
+      value: "{{ svc_subnet_ipv6 }},{{ svc_subnet_ipv4 }}"
 
 controllerManager:
   extraArgs:
     - name: cluster-cidr
-      value: "{{ pod_subnet }},10.244.0.0/16"
+      value: "{{ pod_subnet_ipv6 }},{{ pod_subnet_ipv4 }}"
     - name: service-cluster-ip-range
-      value: "{{ svc_subnet }},10.96.0.0/12"
+      value: "{{ svc_subnet_ipv6 }},{{ svc_subnet_ipv4 }}"
     - name: node-cidr-mask-size-ipv4
       value: "24"
     - name: node-cidr-mask-size-ipv6
