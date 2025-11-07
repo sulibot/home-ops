@@ -213,7 +213,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
   bios          = "ovmf"            # UEFI without Secure Boot
   machine       = "q35"
   on_boot       = true
-  scsi_hardware = "virtio-scsi-pci"  # Faster than virtio-scsi-single
+  scsi_hardware = "virtio-scsi-single"  # Enables iothread support for scsi disks
 
   # Enable agent to add virtio-serial hardware and enable Proxmox features
   # Timeout parameters limit how long Terraform waits (vs 15-30 min defaults)
