@@ -7,9 +7,11 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: platform
+    - name: cilium
       namespace: flux-system
     - name: external-secrets
+      namespace: flux-system
+    - name: onepassword
       namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/core/network/cloudflared/app

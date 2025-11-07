@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: unpoller
 spec:
+  dependsOn:
+    - name: onepassword
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/observability/unpoller/app
   prune: true

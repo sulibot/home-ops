@@ -9,6 +9,8 @@ spec:
   dependsOn:
     - name: external-secrets
       namespace: flux-system
+    - name: onepassword
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/manifests/platform/misc/cert-manager
   prune: true

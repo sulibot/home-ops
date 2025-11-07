@@ -11,6 +11,8 @@ spec:
     secretRef:
       name: sops-age
   dependsOn:
+    - name: cilium
+      namespace: flux-system
     - name: external-secrets
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2

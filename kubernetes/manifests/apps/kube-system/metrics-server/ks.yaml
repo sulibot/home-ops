@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: metrics-server
 spec:
+  dependsOn:
+    - name: cilium
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/kube-system/metrics-server/app
   prune: true
