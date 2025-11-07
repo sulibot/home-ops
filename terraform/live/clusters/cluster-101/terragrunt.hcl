@@ -46,7 +46,7 @@ inputs = merge(
       k8s_vip_rise     = 3
       k8s_vip_fall     = 3
       k8s_vip_cooldown = 10
-      enable_ipv4    = false2
+      enable_ipv4    = false
       enable_ipv6    = true
     }
     workers = {
