@@ -1,0 +1,98 @@
+---
+# playbooks/update-controlplane-dualstack.yaml
+# Updates control plane static pod manifests for dual-stack networking
+- name: Update control plane for dual-stack networking
+  hosts: controlplane
+  become: true
+  vars:
+    pod_cidr_dual: "{{ pod_subnet_ipv6 }},{{ pod_subnet_ipv4 }}"
+    svc_cidr_dual: "{{ svc_subnet_ipv6 }},{{ svc_subnet_ipv4 }}"
+  tasks:
+    - name: Check if kube-controller-manager manifest exists
+      stat:
+        path: /etc/kubernetes/manifests/kube-controller-manager.yaml
+      register: kcm_manifest
+
+    - name: Backup current kube-controller-manager manifest
+      copy:
+        src: /etc/kubernetes/manifests/kube-controller-manager.yaml
+        dest: /etc/kubernetes/manifests/kube-controller-manager.yaml.backup
+        remote_src: yes
+      when: kcm_manifest.stat.exists
+
+    - name: Update cluster-cidr to dual-stack in kube-controller-manager
+      replace:
+        path: /etc/kubernetes/manifests/kube-controller-manager.yaml
+        regexp: '--cluster-cidr={{ pod_subnet_ipv6 }}'
+        replace: '--cluster-cidr={{ pod_cidr_dual }}'
+      when: kcm_manifest.stat.exists
+
+    - name: Update service-cluster-ip-range to dual-stack in kube-controller-manager
+      replace:
+        path: /etc/kubernetes/manifests/kube-controller-manager.yaml
+        regexp: '--service-cluster-ip-range={{ svc_subnet_ipv6 }}'
+        replace: '--service-cluster-ip-range={{ svc_cidr_dual }}'
+      when: kcm_manifest.stat.exists
+
+    - name: Check if node-cidr-mask-size-ipv4 already exists
+      shell: grep -q 'node-cidr-mask-size-ipv4' /etc/kubernetes/manifests/kube-controller-manager.yaml
+      register: ipv4_mask_exists
+      failed_when: false
+      changed_when: false
+      when: kcm_manifest.stat.exists
+
+    - name: Add node-cidr-mask-size-ipv4 parameter
+      lineinfile:
+        path: /etc/kubernetes/manifests/kube-controller-manager.yaml
+        insertafter: '--node-cidr-mask-size-ipv6=64'
+        line: '    - --node-cidr-mask-size-ipv4=24'
+      when:
+        - kcm_manifest.stat.exists
+        - ipv4_mask_exists.rc != 0
+
+    - name: Check if kube-apiserver manifest exists
+      stat:
+        path: /etc/kubernetes/manifests/kube-apiserver.yaml
+      register: apiserver_manifest
+
+    - name: Backup current kube-apiserver manifest
+      copy:
+        src: /etc/kubernetes/manifests/kube-apiserver.yaml
+        dest: /etc/kubernetes/manifests/kube-apiserver.yaml.backup
+        remote_src: yes
+      when: apiserver_manifest.stat.exists
+
+    - name: Update service-cluster-ip-range to dual-stack in kube-apiserver
+      replace:
+        path: /etc/kubernetes/manifests/kube-apiserver.yaml
+        regexp: '--service-cluster-ip-range={{ svc_subnet_ipv6 }}'
+        replace: '--service-cluster-ip-range={{ svc_cidr_dual }}'
+      when: apiserver_manifest.stat.exists
+
+    - name: Wait for kube-apiserver to restart
+      wait_for:
+        host: "{{ control_plane_vip }}"
+        port: 6443
+        timeout: 120
+      delegate_to: localhost
+      run_once: true
+
+    - name: Wait for kube-controller-manager to be ready
+      shell: |
+        kubectl --kubeconfig=/etc/kubernetes/admin.conf get pod -n kube-system kube-controller-manager-{{ inventory_hostname }} -o jsonpath='{.status.phase}'
+      register: kcm_status
+      until: kcm_status.stdout == "Running"
+      retries: 30
+      delay: 5
+      changed_when: false
+
+    - name: Verify dual-stack configuration is active
+      shell: |
+        kubectl --kubeconfig=/etc/kubernetes/admin.conf get pod -n kube-system kube-controller-manager-{{ inventory_hostname }} -o yaml | grep -c "cluster-cidr.*10.244.0.0"
+      register: dualstack_check
+      failed_when: dualstack_check.stdout == "0"
+      changed_when: false
+
+    - name: Display success message
+      debug:
+        msg: "Control plane node {{ inventory_hostname }} successfully updated to dual-stack"
