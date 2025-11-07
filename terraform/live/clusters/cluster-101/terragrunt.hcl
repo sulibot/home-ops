@@ -46,7 +46,7 @@ inputs = merge(
       k8s_vip_rise     = 3
       k8s_vip_fall     = 3
       k8s_vip_cooldown = 10
-      enable_ipv4    = false
+      enable_ipv4    = true
       enable_ipv6    = true
     }
     workers = {
@@ -57,7 +57,7 @@ inputs = merge(
       instance_count   = 3
       disk_size_gb     = 100
       segment_start    = 21
-      enable_ipv4       = false
+      enable_ipv4       = true
       enable_ipv6       = true
     }
   }
