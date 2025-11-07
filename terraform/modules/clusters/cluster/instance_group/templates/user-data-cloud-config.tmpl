@@ -330,10 +330,9 @@ write_files:
 %{ endif ~}
       echo "=================================="
 
-  # --- Extra Netplan routes with Policy-Based Routing (PBR) ---
-  # This file defines Policy-Based Routing for specific ULA/mesh ranges.
-  # The high numerical priority (32765) ensures these rules act as a fallback,
-  # preventing interference with Cilium's BGP-advertised routes in the main table (32766).
+  # --- Extra Netplan routes for Ceph and cluster networking ---
+  # eth0 = cluster network (P2P ring via EVPN, fast 25Gb)
+  # eth1 = management/egress (ROS, slower 2.5Gb)
   - path: /etc/netplan/60-pbr-routes.yaml
     permissions: '0600'
     content: |
@@ -342,38 +341,38 @@ write_files:
         renderer: networkd
         ethernets:
           eth0:
-%{ if enable_ipv6 ~}
-            accept-ra: true
-%{ else ~}
-            accept-ra: false
-%{ endif ~}
-          eth1:
             accept-ra: false
 %{ if enable_ipv6 ~}
             routes:
-              - to: fc00::/8
+              # Ceph public network via P2P gateway
+              - to: fc00:20::/64
                 via: ${mesh_ipv6_iface_gateway}
                 on-link: true
-                table: 200
-            routing-policy:
-              - to: fc00::/8
-                table: 200
-                priority: 32765
+                metric: 100
+              # Ceph cluster network via P2P gateway
+              - to: fc00:21::/64
+                via: ${mesh_ipv6_iface_gateway}
+                on-link: true
+                metric: 100
 %{ endif ~}
+          eth1:
+            accept-ra: true
 
 %{ if enable_ipv6 }
   # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---
-  # We have static ULA addresses (fd00:101::X) that must not change for etcd certs.
-  # But we also need GUA addresses from prefix delegation for internet access.
-  # Solution: Enable autoconf and accept_ra. Static addresses prevent SLAAC in same prefix,
-  # but GUA prefixes (2600::/etc) will be autoconfigured via SLAAC as intended.
+  # We have static ULA addresses that must not change for etcd certs.
+  # But we also need GUA addresses from prefix delegation for internet access on eth1.
+  # Solution: Enable autoconf and accept_ra on eth1 (management/egress).
   - path: /etc/sysctl.d/99-ipv6-ra.conf
     permissions: '0644'
     content: |
-      # Accept RAs even with forwarding enabled (2 = always accept)
-      net.ipv6.conf.eth0.accept_ra = 2
-      # Enable SLAAC for GUA prefixes (static ULA won't be affected)
-      net.ipv6.conf.eth0.autoconf = 1
+      # Accept RAs on management interface (eth1) even with forwarding enabled
+      net.ipv6.conf.eth1.accept_ra = 2
+      # Enable SLAAC for GUA prefixes on management interface
+      net.ipv6.conf.eth1.autoconf = 1
+      # Disable RA on cluster interface (eth0)
+      net.ipv6.conf.eth0.accept_ra = 0
+      net.ipv6.conf.eth0.autoconf = 0
 %{ endif }
 
 runcmd:
