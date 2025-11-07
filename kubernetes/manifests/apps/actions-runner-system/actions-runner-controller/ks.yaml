@@ -23,8 +23,8 @@ metadata:
 spec:
   dependsOn:
     - name: actions-runner-controller
-    - name: openebs
-      namespace: openebs-system
+    - name: ceph-csi
+      namespace: flux-system
   interval: 1h
   path: kubernetes/manifests/apps/actions-runner-system/actions-runner-controller/runners
   prune: true
