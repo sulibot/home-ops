@@ -266,7 +266,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
   # nic0: egress (vmbrX) — default gateway lives here
   network_device {
     bridge      = local.egress_bridge
-    mtu         = 1
+    mtu         = 1500
     mac_address = local.mac_addresses[each.key].egress
     vlan_id     = var.cluster_id
   }
@@ -274,7 +274,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
   # nic1: mesh (meshX) — no default gateway
   network_device {
     bridge      = local.mesh_bridge
-    mtu         = 8930
+    mtu         = 8950
     mac_address = local.mac_addresses[each.key].mesh
 #    vlan_id     = "20${var.cluster_id}"
   }
@@ -310,12 +310,12 @@ resource "proxmox_virtual_environment_vm" "instances" {
 
     # ---- IP CONFIG for NIC1 (Mesh) ----
     ip_config {
-      dynamic "ipv4" {
-        for_each = var.enable_ipv4 ? [1] : []
-        content {
-          address = "${local.mesh_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}/24"
-        }
-      }
+      #dynamic "ipv4" {
+      #  for_each = var.enable_ipv4 ? [1] : []
+      #  content {
+      #    address = "${local.mesh_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}/24"
+      #  }
+      #}
       dynamic "ipv6" {
         for_each = var.enable_ipv6 ? [1] : []
         content {

@@ -75,13 +75,12 @@
     force: yes
 
 - name: Patch containerd config.toml with SystemdCgroup = true
-  ansible.builtin.shell: |
-    sed -i '/\[plugins\.\x27io\.containerd\.cri\.v1\.runtime\x27\.containerd\.runtimes\.runc\.options\]/a\            SystemdCgroup = true' /etc/containerd/config.toml
-  args:
-    executable: /bin/bash
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)SystemdCgroup\s*=\s*false'
+    replace: '\1SystemdCgroup = true'
   notify:
     - Restart containerd
-  when: containerd_config.stdout is not search('SystemdCgroup\s*=\s*true')
 
 
 - name: Enable and start containerd
@@ -90,8 +89,8 @@
     enabled: true
     state: started
 
-- name: Assert that SystemdCgroup is enabled in containerd config
-  ansible.builtin.shell: grep -E '^\s*SystemdCgroup\s*=\s*true' /etc/containerd/config.toml
+- name: Verify SystemdCgroup is enabled in containerd config
+  ansible.builtin.shell: grep -E 'SystemdCgroup\s*=\s*true' /etc/containerd/config.toml
   register: containerd_systemd_check
   changed_when: false
   failed_when: containerd_systemd_check.rc != 0

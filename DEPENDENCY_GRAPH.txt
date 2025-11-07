@@ -1,0 +1,199 @@
+================================================================================
+FLUX KUSTOMIZATION DEPENDENCY GRAPH - CRITICAL COMPONENTS
+================================================================================
+
+LEGEND:
+  [ROOT]     = No dependencies (foundation components)
+  →          = depends on
+  ├──        = required by (partial list)
+  └──        = required by (last in list)
+
+================================================================================
+PLATFORM - NETWORKING LAYER
+================================================================================
+
+[ROOT] gateway-api-crds
+  └── cilium
+        ├── onepassword
+        │     ├── cert-manager
+        │     │     ├── cilium-gateway
+        │     │     │     ├── certificates-import
+        │     │     │     │     └── certificates-export
+        │     │     │     ├── cloudflare-dns
+        │     │     │     ├── echo
+        │     │     │     └── external-dns
+        │     │     └── certificates-import
+        │     ├── grafana
+        │     ├── gatus
+        │     ├── kube-prometheus-stack
+        │     ├── home-assistant
+        │     ├── plex
+        │     ├── sonarr
+        │     ├── radarr
+        │     ├── prowlarr
+        │     ├── kopia
+        │     └── 19 more apps...
+        ├── coredns
+        ├── metrics-server
+        ├── multus
+        ├── spegel
+        ├── fluent-bit
+        ├── ceph-csi-rbd
+        ├── ceph-csi-cephfs
+        ├── external-dns
+        └── cloudflared
+
+[ROOT] external-secrets
+  ├── onepassword (see above)
+  ├── cilium-gateway (see above)
+  ├── cert-manager (see above)
+  ├── external-dns
+  ├── cloudflared
+  └── cloudflare-dns
+
+================================================================================
+PLATFORM - STORAGE LAYER
+================================================================================
+
+[ROOT] snapshot-controller-crds
+  ├── snapshot-controller
+  ├── ceph-csi-rbd
+  └── ceph-csi-cephfs
+        ├── volsync
+        │     ├── kopia
+        │     ├── volsync-maintenance
+        │     ├── home-assistant
+        │     ├── plex
+        │     ├── plex-tools
+        │     ├── immich
+        │     ├── emby
+        │     ├── sabnzbd
+        │     ├── qbittorrent
+        │     ├── sonarr
+        │     ├── radarr
+        │     ├── prowlarr
+        │     └── 7 more apps...
+        └── ceph-csi-shared-storage
+
+[ROOT] ceph-csi-shared-secret
+  ├── ceph-csi-rbd
+  └── ceph-csi-cephfs
+
+[ROOT] ceph-csi (shared config)
+  ├── kube-prometheus-stack
+  ├── grafana-instance
+  ├── victoria-logs
+  ├── mosquitto
+  ├── home-assistant
+  ├── plex
+  ├── immich
+  ├── emby
+  └── 21 more apps...
+
+================================================================================
+DEPENDENCY CHAIN ANALYSIS
+================================================================================
+
+Longest Chain (6 levels):
+certificates-export
+  └─→ certificates-import
+       └─→ cilium-gateway
+            └─→ cert-manager
+                 └─→ onepassword
+                      └─→ cilium
+                           └─→ gateway-api-crds
+
+Common Chains:
+
+Network Apps Chain (5 levels):
+cloudflare-dns / echo / external-dns
+  └─→ cilium-gateway
+       └─→ cert-manager
+            └─→ onepassword
+                 └─→ cilium
+                      └─→ gateway-api-crds
+
+Storage Apps Chain (4 levels):
+kopia / most volsync apps
+  └─→ volsync
+       └─→ ceph-csi-cephfs
+            └─→ cilium
+                 └─→ gateway-api-crds
+
+Secret-Dependent Apps Chain (3-4 levels):
+grafana / gatus / kube-prometheus-stack / most apps
+  └─→ onepassword
+       └─→ cilium + external-secrets
+            └─→ gateway-api-crds (via cilium)
+
+================================================================================
+CRITICAL COMPONENTS (High Dependent Count)
+================================================================================
+
+1. onepassword         → 29 dependents ⚠️ CRITICAL PATH
+2. ceph-csi            → 29 dependents ⚠️ CRITICAL PATH
+3. cilium              → 11 dependents ⚠️ CRITICAL PATH
+4. external-secrets    → 6 dependents
+5. cilium-gateway      → 4 dependents
+6. snapshot-controller-crds → 3 dependents
+7. volsync             → 13+ dependents
+8. ceph-csi-cephfs     → 2 dependents
+9. cert-manager        → 2 dependents
+10. ceph-csi-shared-secret → 2 dependents
+
+================================================================================
+BOOTSTRAP ORDER (Recommended Reconciliation Sequence)
+================================================================================
+
+PHASE 1 - Foundation (No dependencies):
+  1. gateway-api-crds
+  2. external-secrets
+  3. snapshot-controller-crds
+  4. ceph-csi (shared config)
+  5. ceph-csi-shared-secret
+
+PHASE 2 - Core Platform:
+  6. cilium
+  7. snapshot-controller
+
+PHASE 3 - Platform Services:
+  8. onepassword
+  9. ceph-csi-rbd
+  10. ceph-csi-cephfs
+  11. coredns
+  12. metrics-server
+  13. multus
+  14. spegel
+
+PHASE 4 - Extended Platform:
+  15. cert-manager
+  16. volsync
+  17. cilium-gateway
+
+PHASE 5 - Network Services:
+  18. external-dns
+  19. cloudflared
+  20. cloudflare-dns
+  21. echo
+  22. certificates-import
+  23. certificates-export
+
+PHASE 6 - Applications:
+  24. grafana, kube-prometheus-stack
+  25. home-assistant, plex, immich, emby
+  26. sonarr, radarr, prowlarr, etc.
+  27. kopia (backups)
+
+================================================================================
+ISSUES DETECTED
+================================================================================
+
+⚠️  MISSING DEPENDENCY:
+  Component: actions-runner-controller-runners
+  Missing:   openebs (namespace: openebs-system)
+  Impact:    Kustomization will wait indefinitely for non-existent dependency
+  Action:    Remove dependency or create openebs kustomization
+
+✅  NO CIRCULAR DEPENDENCIES FOUND
+
+================================================================================
