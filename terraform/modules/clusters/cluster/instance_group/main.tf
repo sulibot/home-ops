@@ -215,11 +215,17 @@ resource "proxmox_virtual_environment_vm" "instances" {
   on_boot       = true
   scsi_hardware = "virtio-scsi-single"  # Enables iothread support for scsi disks
 
+  serial_device {
+    device = "socket"  # Allows `qm terminal` console access
+  }
+
   # Enable agent to add virtio-serial hardware and enable Proxmox features
   # Timeout parameters limit how long Terraform waits (vs 15-30 min defaults)
   agent {
     enabled = true  # Adds virtio-serial device, allows qemu-guest-agent to run
   }
+
+  rng { backend = "/dev/urandom" }  # Prevent entropy starvation during boot
 
   timeout_create   = 180  # 3 minutes for VM creation (vs 30 min default)
   timeout_start_vm = 120  # 2 minutes for VM to start (vs 5 min default)
@@ -254,7 +260,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
     discard      = "on"           # Enable TRIM for better performance
     iothread     = true           # Dedicated I/O thread per disk
     ssd          = true           # Optimize for SSD
-    cache        = "writeback"    # Best performance with RBD (Ceph handles durability)
+    cache        = "none"         # Recommended for Ceph RBD to avoid double buffering
   }
 
   # nic0: egress (vmbrX) — default gateway lives here
@@ -268,7 +274,7 @@ resource "proxmox_virtual_environment_vm" "instances" {
   # nic1: mesh (meshX) — no default gateway
   network_device {
     bridge      = local.mesh_bridge
-    mtu         = 1
+    mtu         = 8930
     mac_address = local.mac_addresses[each.key].mesh
 #    vlan_id     = "20${var.cluster_id}"
   }
