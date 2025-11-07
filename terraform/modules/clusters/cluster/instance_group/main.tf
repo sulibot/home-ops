@@ -263,20 +263,20 @@ resource "proxmox_virtual_environment_vm" "instances" {
     cache        = "none"         # Recommended for Ceph RBD to avoid double buffering
   }
 
-  # nic0: egress (vmbrX) — default gateway lives here
-  network_device {
-    bridge      = local.egress_bridge
-    mtu         = 1500
-    mac_address = local.mac_addresses[each.key].egress
-    vlan_id     = var.cluster_id
-  }
-
-  # nic1: mesh (meshX) — no default gateway
+  # nic0: mesh (meshX) — primary cluster network (P2P ring, fast)
   network_device {
     bridge      = local.mesh_bridge
     mtu         = 8950
     mac_address = local.mac_addresses[each.key].mesh
 #    vlan_id     = "20${var.cluster_id}"
+  }
+
+  # nic1: egress (vmbrX) — management/internet egress only (ROS, slow)
+  network_device {
+    bridge      = local.egress_bridge
+    mtu         = 1500
+    mac_address = local.mac_addresses[each.key].egress
+    vlan_id     = var.cluster_id
   }
 
   initialization {
@@ -289,7 +289,23 @@ resource "proxmox_virtual_environment_vm" "instances" {
       servers = local.dns_servers
     }
 
-    # ---- IP CONFIG for NIC0 (Egress) ----
+    # ---- IP CONFIG for NIC0 (Mesh - Primary Cluster Network) ----
+    ip_config {
+      #dynamic "ipv4" {
+      #  for_each = var.enable_ipv4 ? [1] : []
+      #  content {
+      #    address = "${local.mesh_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}/24"
+      #  }
+      #}
+      dynamic "ipv6" {
+        for_each = var.enable_ipv6 ? [1] : []
+        content {
+          address = "${local.mesh_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}/64"
+        }
+      }
+    }
+
+    # ---- IP CONFIG for NIC1 (Egress - Management/Internet) ----
     ip_config {
       dynamic "ipv4" {
         for_each = var.enable_ipv4 ? [1] : []
@@ -304,22 +320,6 @@ resource "proxmox_virtual_environment_vm" "instances" {
           address = "${local.egress_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}/64"
           # gateway = local.egress_ipv6_iface_gateway  # uncomment if you want Proxmox to set it
           # OR: address = "auto" / "dhcp" (pick one style across your fleet)
-        }
-      }
-    }
-
-    # ---- IP CONFIG for NIC1 (Mesh) ----
-    ip_config {
-      #dynamic "ipv4" {
-      #  for_each = var.enable_ipv4 ? [1] : []
-      #  content {
-      #    address = "${local.mesh_ipv4_iface_prefix}.${var.group.segment_start + tonumber(each.key)}/24"
-      #  }
-      #}
-      dynamic "ipv6" {
-        for_each = var.enable_ipv6 ? [1] : []
-        content {
-          address = "${local.mesh_ipv6_iface_prefix}::${var.group.segment_start + tonumber(each.key)}/64"
         }
       }
     }

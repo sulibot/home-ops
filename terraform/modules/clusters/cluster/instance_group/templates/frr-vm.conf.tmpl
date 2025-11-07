@@ -50,7 +50,7 @@ interface lo
 exit
 !
 
-! ---------- Primary Egress Interface (L2 / broadcast segment) ----------
+! ---------- Cluster Network Interface (P2P Ring via EVPN) ----------
 interface eth0
 %{ if enable_ipv4 }
  ip router isis core
@@ -59,15 +59,15 @@ interface eth0
  ipv6 router isis core
 %{ endif }
  isis circuit-type level-2-only
- ! LAN-friendly timers (adjust if needed)
  isis hello-interval 5
  isis hello-multiplier 3
- ! Prefer not to be DIS on a shared VLAN (tune to your taste)
- !isis priority 10
- ! Cost for this transit (align with your fabric design)
- !isis metric 50
- ! Ensure broadcast mode (default); only needed if reverting from ptp:
- ! no isis network point-to-point
+ isis metric 10
+exit
+!
+
+! ---------- Management/Egress Interface (BGP Peering Only) ----------
+interface eth1
+ ! No routing protocols - BGP peering via loopback update-source
 exit
 !
 
