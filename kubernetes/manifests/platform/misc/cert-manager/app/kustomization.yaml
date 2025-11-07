@@ -5,5 +5,3 @@ resources:
   - namespace.yaml
   - helmrelease.yaml
   - externalsecret.yaml
-  - letsencrypt-production.yaml
-  - letsencrypt-staging.yaml

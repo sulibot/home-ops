@@ -6,7 +6,7 @@ metadata:
   name: certificates-import
 spec:
   dependsOn:
-    - name: cert-manager
+    - name: cert-manager-issuers
       namespace: flux-system
     - name: cilium-gateway
       namespace: flux-system

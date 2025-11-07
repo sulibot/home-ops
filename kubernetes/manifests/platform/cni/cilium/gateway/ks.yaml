@@ -9,7 +9,7 @@ spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
-    - name: cert-manager
+    - name: cert-manager-issuers
       namespace: flux-system
     - name: external-secrets
       namespace: flux-system
