@@ -5,10 +5,25 @@ metadata:
   name: cilium
   namespace: kube-system
 spec:
-  description: Default Cilium Gateway configuration
+  description: Default Cilium Gateway configuration (IPv6-only)
   service:
     type: LoadBalancer
     externalTrafficPolicy: Cluster
     ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv6
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumGatewayClassConfig
+metadata:
+  name: cilium-dual-stack
+  namespace: kube-system
+spec:
+  description: Cilium Gateway with dual-stack support
+  service:
+    type: LoadBalancer
+    externalTrafficPolicy: Cluster
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies:
+      - IPv6
+      - IPv4
