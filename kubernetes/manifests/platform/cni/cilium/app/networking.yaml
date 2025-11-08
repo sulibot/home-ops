@@ -59,7 +59,6 @@ spec:
   gracefulRestart:
     enabled: true
     restartTimeSeconds: 120
-  ebgpMultihop: 2
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
 apiVersion: cilium.io/v2
@@ -101,32 +100,32 @@ spec:
       peers:
         - name: solcp011-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::11"
+          peerAddress: "fc00:101::11"
           peerConfigRef:
             name: internal-peer-config
         - name: solcp012-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::12"
+          peerAddress: "fc00:101::12"
           peerConfigRef:
             name: internal-peer-config
         - name: solcp013-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::13"
+          peerAddress: "fc00:101::13"
           peerConfigRef:
             name: internal-peer-config
         - name: solwk021-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::21"
+          peerAddress: "fc00:101::21"
           peerConfigRef:
             name: internal-peer-config
         - name: solwk022-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::22"
+          peerAddress: "fc00:101::22"
           peerConfigRef:
             name: internal-peer-config
         - name: solwk023-internal
           peerASN: 65101
-          peerAddress: "fc00:255:101::23"
+          peerAddress: "fc00:101::23"
           peerConfigRef:
             name: internal-peer-config
     - name: external-ros
