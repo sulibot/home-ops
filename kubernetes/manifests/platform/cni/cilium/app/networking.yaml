@@ -43,9 +43,31 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: default-peer-config
+  name: internal-peer-config
 spec:
-  # IPv6-only address family
+  # IPv6-only address family for internal P2P mesh
+  families:
+    - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchExpressions:
+          - key: cilium-bgp-policy
+            operator: In
+            values:
+              - pod-cidr
+  # Enable graceful restart to prevent traffic loss during agent restarts.
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 120
+  ebgpMultihop: 2
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: external-peer-config
+spec:
+  # IPv6-only address family for external ROS
   families:
     - afi: ipv6
       safi: unicast
@@ -55,7 +77,6 @@ spec:
             operator: In
             values:
               - services
-              - pod-cidr
   # Enable graceful restart to prevent traffic loss during agent restarts.
   gracefulRestart:
     enabled: true
@@ -75,11 +96,44 @@ spec:
         values:
           - linux
   bgpInstances:
-    - name: cilium-instance
+    - name: internal-p2p-mesh
       localASN: 65101
       peers:
-        - name: edge-router-cilium
+        - name: solcp011-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::11"
+          peerConfigRef:
+            name: internal-peer-config
+        - name: solcp012-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::12"
+          peerConfigRef:
+            name: internal-peer-config
+        - name: solcp013-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::13"
+          peerConfigRef:
+            name: internal-peer-config
+        - name: solwk021-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::21"
+          peerConfigRef:
+            name: internal-peer-config
+        - name: solwk022-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::22"
+          peerConfigRef:
+            name: internal-peer-config
+        - name: solwk023-internal
+          peerASN: 65101
+          peerAddress: "fc00:255:101::23"
+          peerConfigRef:
+            name: internal-peer-config
+    - name: external-ros
+      localASN: 65101
+      peers:
+        - name: edge-router-external
           peerASN: 65000
           peerAddress: "fd00:101::fffe"
           peerConfigRef:
-            name: default-peer-config
+            name: external-peer-config
