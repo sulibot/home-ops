@@ -59,6 +59,9 @@ spec:
   gracefulRestart:
     enabled: true
     restartTimeSeconds: 120
+  # Use custom port for iBGP mesh to avoid conflict with FRR on port 179
+  transport:
+    peerPort: 1179
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2.json
 apiVersion: cilium.io/v2
@@ -97,6 +100,7 @@ spec:
   bgpInstances:
     - name: internal-p2p-mesh
       localASN: 65101
+      localPort: 1179
       peers:
         - name: solcp011-internal
           peerASN: 65101
