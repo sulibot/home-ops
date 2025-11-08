@@ -357,21 +357,8 @@ write_files:
 %{ endif ~}
           eth1:
             accept-ra: true
-%{ if enable_ipv6 ~}
-            routes:
-              # Force Cilium BGP to use Cilium loopback as source (not eth1 IP)
-              # This prevents port conflict with FRR BGP on fd00:255:101::X
-              - to: ${egress_ipv6_iface_gateway}/128
-                via: fe80::ff:fe00:1
-                from: ${mesh_ipv6_loopback_id_ip}
-                metric: 50
-%{ endif ~}
           lo:
-            addresses:
-%{ if enable_ipv6 ~}
-              # Second loopback IP for Cilium BGP (separate from FRR)
-              - ${mesh_ipv6_loopback_id_ip}/128
-%{ endif ~}
+            addresses: []
 
 %{ if enable_ipv6 }
   # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---
