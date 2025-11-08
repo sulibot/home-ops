@@ -3,11 +3,21 @@
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
-  name: blue-pool
+  name: blue-pool-ipv6
 spec:
   blocks:
     # Range for Gateway LoadBalancer IPs (fd00:101::cafe:0 - fd00:101::cafe:ffff)
     - cidr: "fd00:101::cafe:0/112"
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumloadbalancerippool_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: blue-pool-ipv4
+spec:
+  blocks:
+    # Range for dual-stack services (10.96.192.0 - 10.96.195.255, 1024 IPs)
+    - cidr: "10.96.192.0/22"
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2.json
 apiVersion: cilium.io/v2
@@ -69,9 +79,17 @@ kind: CiliumBGPPeerConfig
 metadata:
   name: external-peer-config
 spec:
-  # IPv6-only address family for external ROS
+  # Dual-stack address families for external ROS
   families:
     - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchExpressions:
+          - key: cilium-bgp-policy
+            operator: In
+            values:
+              - services
+    - afi: ipv4
       safi: unicast
       advertisements:
         matchExpressions:
