@@ -90,19 +90,19 @@ router bgp ${vm_asn}
  bgp graceful-restart
  timers bgp 10 30
 %{ if enable_ipv6 }
- neighbor ${egress_ipv6_iface_gateway} remote-as ${ros_asn}
- neighbor ${egress_ipv6_iface_gateway} timers connect 5
- neighbor ${egress_ipv6_iface_gateway} port ${bgp_port}
+ neighbor ${ros_neighbor_v6} remote-as ${ros_asn}
+ neighbor ${ros_neighbor_v6} timers connect 5
+ neighbor ${ros_neighbor_v6} port ${bgp_port}
  ! Using loopback as update-source implies eBGP multihop:
- neighbor ${egress_ipv6_iface_gateway} update-source ${egress_ipv6_loopback_id_ip}
- neighbor ${egress_ipv6_iface_gateway} ebgp-multihop 2
- no neighbor ${egress_ipv6_iface_gateway} passive
+ neighbor ${ros_neighbor_v6} update-source ${egress_ipv6_loopback_id_ip}
+ neighbor ${ros_neighbor_v6} ebgp-multihop 2
+ no neighbor ${ros_neighbor_v6} passive
  !
  address-family ipv6 unicast
   redistribute connected route-map EXPORT-VIP-v6
-  neighbor ${egress_ipv6_iface_gateway} activate
-  neighbor ${egress_ipv6_iface_gateway} route-map IMPORT-DEFAULT-v6 in
-  neighbor ${egress_ipv6_iface_gateway} route-map EXPORT-VIP-v6 out
+  neighbor ${ros_neighbor_v6} activate
+  neighbor ${ros_neighbor_v6} route-map IMPORT-DEFAULT-v6 in
+  neighbor ${ros_neighbor_v6} route-map EXPORT-VIP-v6 out
   maximum-paths 8
  exit-address-family
 %{ endif }
