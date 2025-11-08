@@ -357,6 +357,12 @@ write_files:
 %{ endif ~}
           eth1:
             accept-ra: true
+          lo:
+            addresses:
+%{ if enable_ipv6 ~}
+              # Second loopback IP for Cilium BGP (separate from FRR)
+              - ${mesh_ipv6_loopback_id_ip}/128
+%{ endif ~}
 
 %{ if enable_ipv6 }
   # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---

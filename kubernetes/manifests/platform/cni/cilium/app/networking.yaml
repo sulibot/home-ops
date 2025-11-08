@@ -80,6 +80,6 @@ spec:
       peers:
         - name: edge-router-cilium
           peerASN: 65000
-          peerAddress: "fd00:255::fffe"
+          peerAddress: "fd00:101::fffe"
           peerConfigRef:
             name: default-peer-config
