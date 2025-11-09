@@ -24,6 +24,15 @@ spec:
                 - '[fc00:20::2]:6789'
                 - '[fc00:20::3]:6789'
         logLevel: 5
+        provisioner:
+            httpMetrics:
+                enabled: false
+        nodeplugin:
+            httpMetrics:
+                enabled: false
+        cephfsplugin:
+            extraArgs:
+                - --disable-cephfs-snapshot=true
         secret:
             create: false
             name: csi-ceph-admin-secret
