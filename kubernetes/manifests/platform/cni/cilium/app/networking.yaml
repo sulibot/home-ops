@@ -6,8 +6,8 @@ metadata:
   name: blue-pool-ipv6
 spec:
   blocks:
-    # Range for Gateway LoadBalancer IPs (fd00:101::cafe:0 - fd00:101::cafe:ffff)
-    - cidr: "fd00:101::cafe:0/112"
+    # Range for Gateway LoadBalancer IPs (fd00:101:cafe:: - fd00:101:cafe::ffff)
+    - cidr: "fd00:101:cafe::/112"
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumloadbalancerippool_v2.json
 apiVersion: cilium.io/v2
