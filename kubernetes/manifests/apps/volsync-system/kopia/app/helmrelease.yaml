@@ -95,9 +95,7 @@ spec:
       repository:
         enabled: true
         type: persistentVolumeClaim
-        storageClass: csi-cephfs-backups-sc
-        accessMode: ReadWriteMany
-        size: 100Gi
+        existingClaim: kopia
         globalMounts:
           - path: /repository
       tmpfs:
