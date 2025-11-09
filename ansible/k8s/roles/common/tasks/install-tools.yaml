@@ -75,9 +75,9 @@
 - name: Install kubelet, kubeadm, kubectl
   ansible.builtin.apt:
     name:
-      - "kubelet={{ k8s_semver }}-*"
-      - "kubeadm={{ k8s_semver }}-*"
-      - "kubectl={{ k8s_semver }}-*"
+      - "kubelet={{ k8s_pkg_semver }}-*"
+      - "kubeadm={{ k8s_pkg_semver }}-*"
+      - "kubectl={{ k8s_pkg_semver }}-*"
     state: present
     allow_downgrades: yes
 
