@@ -358,7 +358,11 @@ write_files:
           eth1:
             accept-ra: true
           lo:
-            addresses: []
+            addresses:
+%{ if enable_ipv6 ~}
+              # Egress loopback for both FRR and Cilium external BGP
+              - ${egress_ipv6_loopback_id_ip}/128
+%{ endif ~}
 
 %{ if enable_ipv6 }
   # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---
