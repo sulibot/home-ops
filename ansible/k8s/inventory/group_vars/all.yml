@@ -1,7 +1,12 @@
 cluster_name: sol-k8s
-kubernetes_version: "1.34"
+
+# Kubernetes version configuration
+# k8s_channel: Use "stable" for production releases or "prerelease" for alpha/beta/rc versions
+# To rollback to stable 1.34: Set k8s_channel="stable", kubernetes_version="1.34", k8s_semver="1.34.0"
+k8s_channel: "prerelease"
+kubernetes_version: "1.35"
+k8s_semver: "1.35.0-alpha.3"
 crio_version: "1.34"
-k8s_semver: "1.34.0"
 control_plane_vip: "fd00:255:101::ac"
 pod_subnet_ipv6: "fd00:101:44::/60"
 pod_subnet_ipv4: "10.244.0.0/16"
