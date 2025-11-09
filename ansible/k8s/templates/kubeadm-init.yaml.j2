@@ -22,6 +22,8 @@ apiServer:
       value: "::"
     - name: service-cluster-ip-range
       value: "{{ svc_subnet_ipv6 }},{{ svc_subnet_ipv4 }}"
+    - name: feature-gates
+      value: "MutatingAdmissionPolicy=true"
 
 controllerManager:
   extraArgs:
@@ -35,6 +37,8 @@ controllerManager:
       value: "64"
     - name: allocate-node-cidrs
       value: "true"
+    - name: feature-gates
+      value: "MutatingAdmissionPolicy=true"
 # etcd:
 #   local: {}
     # ONLY truly global options here! (no per-node advertise/initial-* flags)
