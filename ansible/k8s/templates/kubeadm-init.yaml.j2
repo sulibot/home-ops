@@ -1,7 +1,7 @@
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 
-kubernetesVersion: v{{ k8s_semver }}
+kubernetesVersion: v{{ k8s_semver | replace('~', '-') }}
 clusterName: {{ cluster_name }}
 
 controlPlaneEndpoint: "[{{ control_plane_vip }}]:6443"
@@ -17,7 +17,7 @@ networking:
 apiServer:
   extraArgs:
     - name: advertise-address
-      value: "{{ control_plane_vip }}"
+      value: "{{ ansible_host }}"
     - name: bind-address
       value: "::"
     - name: service-cluster-ip-range
@@ -39,26 +39,6 @@ controllerManager:
       value: "true"
     - name: feature-gates
       value: "MutatingAdmissionPolicy=true"
-# etcd:
-#   local: {}
-    # ONLY truly global options here! (no per-node advertise/initial-* flags)
-    # dataDir: /var/lib/etcd
-    # extraArgs:
-    #   - name: heartbeat-interval
-    #     value: "100"
-    #   - name: election-timeout
-    #     value: "1000"
-    # serverCertSANs:
-    #   - "etcd.some-domain.local"
-    # peerCertSANs:
-    #   - "etcd.some-domain.local"
-etcd:
-  local:
-    initialCluster: >-
-      {% for host in groups['controlplane'] -%}
-      {{ hostvars[host].inventory_hostname }}=https://{{ hostvars[host].ansible_host }}:2380{{ ',' if not loop.last else '' }}
-      {%- endfor %}
-
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
@@ -72,7 +52,7 @@ localAPIEndpoint:
 
 nodeRegistration:
   name: "{{ inventory_hostname }}"
-  criSocket: "/var/run/containerd/containerd.sock"
+  criSocket: "unix:///var/run/containerd/containerd.sock"
   kubeletExtraArgs:
     - name: node-ip
       value: "{{ ansible_host }}"
