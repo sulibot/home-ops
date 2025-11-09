@@ -30,9 +30,6 @@ spec:
         nodeplugin:
             httpMetrics:
                 enabled: false
-        cephfsplugin:
-            extraArgs:
-                - --disable-cephfs-snapshot=true
         secret:
             create: false
             name: csi-ceph-admin-secret
