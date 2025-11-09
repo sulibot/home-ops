@@ -14,6 +14,9 @@ parameters:
   # Data pool for backup volumes
   pool: backups_data
 
+  # Subvolume group for organizing backup volumes
+  subvolumeGroup: csi
+
   # Secrets for CSI operations
   csi.storage.k8s.io/controller-expand-secret-name: csi-ceph-admin-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi

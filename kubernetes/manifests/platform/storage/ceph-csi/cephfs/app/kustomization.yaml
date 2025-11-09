@@ -9,3 +9,8 @@ resources:
   - ./csi-cephfs-backups-sc.yaml
   - ./csi-cephfs-config-snapclass.yaml
   - ./csi-cephfs-backups-snapclass.yaml
+patches:
+  - path: deployment-patch.yaml
+    target:
+      kind: Deployment
+      name: ceph-csi-cephfs-provisioner
