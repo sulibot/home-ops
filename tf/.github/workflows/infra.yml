@@ -1,0 +1,38 @@
+name: infra
+
+on:
+  pull_request:
+    paths:
+      - 'tf/**'
+  workflow_dispatch:
+    inputs:
+      cluster_id:
+        description: 'Cluster ID to build (e.g., 101)'
+        required: true
+        default: '101'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Task
+        run: curl -sL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
+      - name: Terraform fmt/validate/plan
+        working-directory: ./tf
+        run: |
+          task clusters:terraform-plan CLUSTER_ID=101
+
+  apply:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Task
+        run: curl -sL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
+      - name: Build all
+        working-directory: ./tf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          task build:all CLUSTER_ID=${{ inputs.cluster_id }}

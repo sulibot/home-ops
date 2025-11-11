@@ -1,0 +1,283 @@
+name: Destroy Cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster_id:
+        description: 'Cluster ID to destroy (e.g., 101, 102)'
+        required: true
+        type: choice
+        options:
+          - '101'
+          - '102'
+          - '103'
+      cluster_type:
+        description: 'Cluster type'
+        required: true
+        type: choice
+        default: 'talos'
+        options:
+          - 'talos'
+          - 'debian'
+      confirmation:
+        description: 'Type "destroy" to confirm deletion'
+        required: true
+        type: string
+      drain_cluster:
+        description: 'Drain workloads before destroying'
+        required: false
+        type: boolean
+        default: true
+      cleanup_configs:
+        description: 'Remove local config files'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
+  TALOS_CONFIG_DIR: ${{ github.workspace }}/.talos/cluster-${{ github.event.inputs.cluster_id }}
+  KUBECONFIG: ${{ github.workspace }}/.talos/cluster-${{ github.event.inputs.cluster_id }}/kubeconfig
+
+jobs:
+  validate:
+    name: Validate Destruction Request
+    runs-on: self-hosted
+    steps:
+      - name: Verify confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "destroy" ]; then
+            echo "ERROR: Confirmation must be 'destroy' to proceed"
+            echo "You entered: '${{ github.event.inputs.confirmation }}'"
+            exit 1
+          fi
+          echo "✓ Confirmation verified"
+
+      - name: Display warning
+        run: |
+          echo "## ⚠️ CLUSTER DESTRUCTION WARNING" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "You are about to **permanently destroy** the following cluster:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cluster ID | cluster-${{ github.event.inputs.cluster_id }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cluster Type | ${{ github.event.inputs.cluster_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Drain Workloads | ${{ github.event.inputs.drain_cluster }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cleanup Configs | ${{ github.event.inputs.cleanup_configs }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**This action cannot be undone!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All VMs, storage, and configurations will be deleted." >> $GITHUB_STEP_SUMMARY
+
+  destroy:
+    name: Destroy Cluster ${{ github.event.inputs.cluster_id }}
+    runs-on: self-hosted
+    needs: validate
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SOPS Age key
+        run: |
+          echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
+          chmod 600 $SOPS_AGE_KEY_FILE
+
+      - name: Verify required tools
+        run: |
+          echo "Checking for required tools..."
+          TOOLS="terraform terragrunt jq"
+
+          if [ "${{ github.event.inputs.cluster_type }}" = "talos" ]; then
+            TOOLS="$TOOLS talosctl"
+          fi
+
+          if [ "${{ github.event.inputs.drain_cluster }}" = "true" ]; then
+            TOOLS="$TOOLS kubectl"
+          fi
+
+          for tool in $TOOLS; do
+            if ! command -v $tool &> /dev/null; then
+              echo "ERROR: $tool is not installed"
+              exit 1
+            fi
+            echo "✓ $tool: $(command -v $tool)"
+          done
+
+      - name: Restore cluster configs
+        if: github.event.inputs.drain_cluster == 'true'
+        run: |
+          echo "Attempting to restore cluster configs from previous workflow runs..."
+
+          # Try to get configs from artifacts or local cache
+          if [ -d "$HOME/.talos/cluster-${{ github.event.inputs.cluster_id }}" ]; then
+            cp -r "$HOME/.talos/cluster-${{ github.event.inputs.cluster_id }}" "$TALOS_CONFIG_DIR"
+            echo "✓ Configs restored from local cache"
+          else
+            echo "⚠️ No cached configs found - drain may not be possible"
+          fi
+
+      - name: Drain cluster workloads
+        if: github.event.inputs.drain_cluster == 'true' && github.event.inputs.cluster_type == 'talos'
+        continue-on-error: true
+        run: |
+          echo "Draining cluster workloads..."
+
+          if [ ! -f "$TALOS_CONFIG_DIR/talosconfig" ]; then
+            echo "⚠️ Talos config not found - skipping drain"
+            exit 0
+          fi
+
+          export TALOSCONFIG="$TALOS_CONFIG_DIR/talosconfig"
+
+          # Get first control plane IP
+          if [ -f "$TALOS_CONFIG_DIR/control-plane-ips.txt" ]; then
+            FIRST_CP=$(head -1 "$TALOS_CONFIG_DIR/control-plane-ips.txt")
+
+            # Get kubeconfig
+            talosctl --nodes "$FIRST_CP" kubeconfig "$KUBECONFIG" 2>/dev/null || true
+
+            if [ -f "$KUBECONFIG" ]; then
+              echo "Draining all nodes..."
+              kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=5m || true
+
+              echo "Deleting all non-system workloads..."
+              kubectl delete helmreleases --all -A --wait=false || true
+              kubectl delete kustomizations --all -A --wait=false || true
+
+              echo "✓ Cluster drained"
+            else
+              echo "⚠️ Could not retrieve kubeconfig - skipping drain"
+            fi
+          else
+            echo "⚠️ No control plane IPs found - skipping drain"
+          fi
+
+      - name: Drain cluster workloads (Debian)
+        if: github.event.inputs.drain_cluster == 'true' && github.event.inputs.cluster_type == 'debian'
+        continue-on-error: true
+        run: |
+          echo "Draining Debian cluster workloads..."
+
+          # Attempt to use existing kubeconfig
+          if kubectl cluster-info &>/dev/null; then
+            echo "Draining all nodes..."
+            kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=5m || true
+
+            echo "Deleting all non-system workloads..."
+            kubectl delete helmreleases --all -A --wait=false || true
+            kubectl delete kustomizations --all -A --wait=false || true
+
+            echo "✓ Cluster drained"
+          else
+            echo "⚠️ Could not connect to cluster - skipping drain"
+          fi
+
+      - name: Remove BGP routes (if applicable)
+        continue-on-error: true
+        run: |
+          echo "Attempting to remove BGP routes from RouterOS..."
+
+          # This would call a script to clean up BGP peers
+          if [ -x "./.github/scripts/cleanup-routeros.sh" ]; then
+            ./.github/scripts/cleanup-routeros.sh ${{ github.event.inputs.cluster_id }} || true
+          else
+            echo "⚠️ RouterOS cleanup script not found - manual cleanup may be required"
+          fi
+
+      - name: Run Terraform destroy
+        working-directory: terraform/live/clusters/cluster-${{ github.event.inputs.cluster_id }}
+        run: |
+          echo "Initializing Terraform..."
+          terragrunt init
+
+          echo "Destroying infrastructure..."
+          terragrunt destroy -auto-approve
+
+          echo "✓ Infrastructure destroyed"
+
+      - name: Verify VMs are deleted
+        working-directory: terraform/live/clusters/cluster-${{ github.event.inputs.cluster_id }}
+        run: |
+          echo "Verifying VMs are deleted..."
+
+          # Try to get VM IPs from state (should be empty)
+          CONTROL_PLANE_IPS=$(terragrunt output -json 2>/dev/null | jq -r '.control_plane_ips.value[]' 2>/dev/null || echo "")
+
+          if [ -z "$CONTROL_PLANE_IPS" ]; then
+            echo "✓ VMs confirmed deleted"
+          else
+            echo "⚠️ Warning: Some VMs may still exist in state"
+          fi
+
+      - name: Cleanup local configurations
+        if: github.event.inputs.cleanup_configs == 'true'
+        run: |
+          echo "Cleaning up local configuration files..."
+
+          # Remove Talos configs
+          if [ -d "$HOME/.talos/cluster-${{ github.event.inputs.cluster_id }}" ]; then
+            rm -rf "$HOME/.talos/cluster-${{ github.event.inputs.cluster_id }}"
+            echo "✓ Removed Talos configs"
+          fi
+
+          # Remove kubeconfig entries
+          if [ -f "$HOME/.kube/config" ]; then
+            kubectl config delete-context "admin@cluster-${{ github.event.inputs.cluster_id }}" 2>/dev/null || true
+            kubectl config delete-cluster "cluster-${{ github.event.inputs.cluster_id }}" 2>/dev/null || true
+            kubectl config delete-user "admin@cluster-${{ github.event.inputs.cluster_id }}" 2>/dev/null || true
+            echo "✓ Removed kubeconfig entries"
+          fi
+
+          echo "✓ Local cleanup complete"
+
+      - name: Cleanup Terraform state backups
+        continue-on-error: true
+        working-directory: terraform/live/clusters/cluster-${{ github.event.inputs.cluster_id }}
+        run: |
+          echo "Cleaning up Terraform state backups..."
+          rm -f terraform.tfstate.*.backup 2>/dev/null || true
+          rm -f .terragrunt-cache 2>/dev/null || true
+          echo "✓ Terraform cleanup complete"
+
+      - name: Generate destruction summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Cluster Destroyed Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Cluster**: cluster-${{ github.event.inputs.cluster_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ VMs destroyed via Terraform" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Workloads drained: ${{ github.event.inputs.drain_cluster }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Configs removed: ${{ github.event.inputs.cleanup_configs }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Manual Steps (if needed)" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify BGP routes removed from RouterOS" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check Proxmox UI for any remaining VMs" >> $GITHUB_STEP_SUMMARY
+          echo "3. Clean up any external DNS entries" >> $GITHUB_STEP_SUMMARY
+          echo "4. Remove any firewall rules specific to this cluster" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f $SOPS_AGE_KEY_FILE
+          rm -rf $TALOS_CONFIG_DIR
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Destruction Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The cluster destruction process encountered errors." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Important**: Check for orphaned resources:" >> $GITHUB_STEP_SUMMARY
+          echo "- VMs in Proxmox" >> $GITHUB_STEP_SUMMARY
+          echo "- Storage volumes" >> $GITHUB_STEP_SUMMARY
+          echo "- BGP routes in RouterOS" >> $GITHUB_STEP_SUMMARY
+          echo "- Firewall rules" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Manual cleanup may be required. See workflow logs for details." >> $GITHUB_STEP_SUMMARY

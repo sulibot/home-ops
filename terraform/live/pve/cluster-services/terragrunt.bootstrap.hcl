@@ -24,7 +24,7 @@ inputs = {
 
   dns_plugin = {
     id  = "cloudflare"
-    api = "cf"           # not "dns_cf"
+    api = "cf" # not "dns_cf"
     data = {
       CF_Token      = local.secrets.cloudflare_api_token
       CF_Account_ID = local.secrets.cloudflare_account_id

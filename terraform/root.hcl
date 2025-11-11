@@ -1,7 +1,7 @@
 # Terragrunt configuration for provider and required_providers file generation
 remote_state {
   backend = "local"
-  config = { path = "${path_relative_to_include()}/terraform.tfstate" }
+  config  = { path = "${path_relative_to_include()}/terraform.tfstate" }
 }
 
 generate "backend" {
@@ -24,8 +24,8 @@ locals {
 # --- Provider file ---
 generate "provider" {
   path      = "provider.tf"
-  if_exists = "overwrite"  # <— overwrite so the root-generated provider is used
-  contents  = local.tg_generate_provider ? (
+  if_exists = "overwrite" # <— overwrite so the root-generated provider is used
+  contents = local.tg_generate_provider ? (
     local.tg_enable_routeros_provider ? <<-EOF
       locals {
         use_token = trimspace(var.pve_api_token_id) != "" && trimspace(var.pve_api_token_secret) != ""
@@ -86,10 +86,10 @@ generate "provider" {
 
 # --- required_providers file ---
 generate "required_providers" {
-  path      = "required_providers.tf"
+  path = "required_providers.tf"
   # Also skip if a hand-written file exists in the module
   if_exists = "skip"
-  contents  = local.tg_generate_required ? (
+  contents = local.tg_generate_required ? (
     local.tg_enable_routeros_provider ? <<-EOF
       terraform {
         required_providers {

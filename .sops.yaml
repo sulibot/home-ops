@@ -7,7 +7,7 @@ creation_rules:
     encrypted_regex: '^(data|stringData)$'
     age: *age_key
   - path_regex: '^terraform/live/common/.*\.sops\.ya?ml$'
-    encrypted_regex: '^(data|stringData|.*secret$|.*password$)$'
+    encrypted_regex: '^(data|stringData|.*secret$|.*password$|cloudflare_api_token|cloudflare_account_id)$'
     age: *age_key
   - path_regex: '^terraform/live/golden/images/.*\.sops\.ya?ml$'
     encrypted_regex: '^(data|stringData|.*password|vm_password_hash)$'

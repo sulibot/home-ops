@@ -1,0 +1,24 @@
+- name: Install Helm
+  shell: |
+    set -euo pipefail
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args: { executable: /bin/bash }
+  run_once: true
+  delegate_to: "{{ groups['controlplane'][0] }}"
+
+- name: Add Cilium repo
+  shell: helm repo add cilium https://helm.cilium.io && helm repo update
+  args: { executable: /bin/bash }
+  run_once: true
+  delegate_to: "{{ groups['controlplane'][0] }}"
+
+- name: Install/upgrade Cilium
+  shell: |
+    set -euo pipefail
+    helm upgrade --install cilium cilium/cilium       --namespace kube-system       --version {{ cilium_version }}       --values <(cat <<'EOF'
+{{ cilium_values }}
+EOF
+)
+  args: { executable: /bin/bash }
+  run_once: true
+  delegate_to: "{{ groups['controlplane'][0] }}"

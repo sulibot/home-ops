@@ -1,0 +1,248 @@
+name: Provision Cluster (Talos)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster_id:
+        description: 'Cluster ID to provision (e.g., 101, 102)'
+        required: true
+        type: choice
+        options:
+          - '101'
+          - '102'
+          - '103'
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        default: 'plan'
+        options:
+          - 'plan'
+          - 'apply'
+      skip_flux:
+        description: 'Skip Flux CD installation'
+        required: false
+        type: boolean
+        default: false
+      skip_verify:
+        description: 'Skip post-provision health checks'
+        required: false
+        type: boolean
+        default: false
+      talos_version:
+        description: 'Talos version to use'
+        required: false
+        type: string
+        default: 'v1.11.3'
+
+  # Optional: Auto-provision on push to main (disabled by default)
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'terraform/live/clusters/cluster-*/**'
+
+env:
+  SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
+  TALOS_CONFIG_DIR: ${{ github.workspace }}/.talos/cluster-${{ github.event.inputs.cluster_id }}
+
+jobs:
+  provision:
+    name: Provision Talos Cluster ${{ github.event.inputs.cluster_id }}
+    runs-on: self-hosted
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SOPS Age key
+        run: |
+          echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
+          chmod 600 $SOPS_AGE_KEY_FILE
+          echo "SOPS Age key configured"
+
+      - name: Verify required tools
+        run: |
+          echo "Checking for required tools..."
+          for tool in terraform terragrunt talosctl kubectl flux jq; do
+            if ! command -v $tool &> /dev/null; then
+              echo "ERROR: $tool is not installed"
+              exit 1
+            fi
+            echo "✓ $tool: $(command -v $tool)"
+          done
+
+      - name: Display configuration
+        run: |
+          echo "### Talos Cluster Provisioning" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cluster ID | cluster-${{ github.event.inputs.cluster_id }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Action | ${{ github.event.inputs.action }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Talos Version | ${{ github.event.inputs.talos_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skip Flux | ${{ github.event.inputs.skip_flux }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Skip Verify | ${{ github.event.inputs.skip_verify }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Workflow Run | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run Talos cluster provisioning
+        env:
+          GITHUB_TOKEN: ${{ secrets.FLUX_GITHUB_TOKEN }}
+        run: |
+          # Build command with options
+          CMD="./.github/scripts/provision-cluster-talos.sh ${{ github.event.inputs.cluster_id }} ${{ github.event.inputs.action }}"
+
+          if [ "${{ github.event.inputs.skip_flux }}" = "true" ]; then
+            CMD="$CMD --skip-flux"
+          fi
+
+          if [ "${{ github.event.inputs.skip_verify }}" = "true" ]; then
+            CMD="$CMD --skip-verify"
+          fi
+
+          if [ -n "${{ github.event.inputs.talos_version }}" ] && [ "${{ github.event.inputs.talos_version }}" != "v1.11.3" ]; then
+            CMD="$CMD --talos-version ${{ github.event.inputs.talos_version }}"
+          fi
+
+          echo "Executing: $CMD"
+          $CMD
+
+      - name: Capture cluster information
+        if: github.event.inputs.action == 'apply'
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cluster Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "$TALOS_CONFIG_DIR/control-plane-ips.txt" ]; then
+            echo "#### Control Plane IPs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat "$TALOS_CONFIG_DIR/control-plane-ips.txt" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "$TALOS_CONFIG_DIR/worker-ips.txt" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Worker IPs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat "$TALOS_CONFIG_DIR/worker-ips.txt" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Get VIP from Terraform output
+          cd terraform/live/clusters/cluster-${{ github.event.inputs.cluster_id }}
+          VIP=$(terragrunt output -json 2>/dev/null | jq -r '.control_plane_vip.value // "fd00:255:101::ac"')
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Access Commands" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Set Talos context" >> $GITHUB_STEP_SUMMARY
+          echo "export TALOSCONFIG=$TALOS_CONFIG_DIR/talosconfig" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# View cluster nodes" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get nodes -o wide" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Check Talos health" >> $GITHUB_STEP_SUMMARY
+          FIRST_CP=$(head -1 "$TALOS_CONFIG_DIR/control-plane-ips.txt")
+          echo "talosctl --nodes $FIRST_CP health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Talos dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "talosctl --nodes $FIRST_CP dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Kubernetes API endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "https://[${VIP}]:6443" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify cluster health
+        if: github.event.inputs.action == 'apply' && github.event.inputs.skip_verify != 'true'
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get first control plane IP
+          FIRST_CP=$(head -1 "$TALOS_CONFIG_DIR/control-plane-ips.txt")
+          export TALOSCONFIG="$TALOS_CONFIG_DIR/talosconfig"
+          export KUBECONFIG="$TALOS_CONFIG_DIR/kubeconfig"
+
+          # Talos health
+          echo "#### Talos Health" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          talosctl --nodes "$FIRST_CP" health 2>&1 | tee -a $GITHUB_STEP_SUMMARY || echo "Talos health check failed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Kubernetes nodes
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Kubernetes Nodes" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get nodes -o wide >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Pods status
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### System Pods" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -A >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Flux status
+          if [ "${{ github.event.inputs.skip_flux }}" != "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Flux Status" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            flux get all -A >> $GITHUB_STEP_SUMMARY || echo "Flux not yet ready" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Talos configs as artifacts
+        if: github.event.inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: talos-configs-cluster-${{ github.event.inputs.cluster_id }}
+          path: |
+            ${{ env.TALOS_CONFIG_DIR }}/talosconfig
+            ${{ env.TALOS_CONFIG_DIR }}/kubeconfig
+            ${{ env.TALOS_CONFIG_DIR }}/*-ips.txt
+          retention-days: 7
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          echo "Cleaning up sensitive files..."
+          rm -f $SOPS_AGE_KEY_FILE
+          rm -rf $TALOS_CONFIG_DIR/*.yaml
+          echo "Cleanup complete"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Provisioning Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the workflow logs for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify Proxmox connectivity" >> $GITHUB_STEP_SUMMARY
+          echo "- Check SOPS Age key configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Validate Terraform configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Review Talos machine configs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [CI/CD Pipeline Documentation](../../docs/CI_CD_PIPELINE.md) for more information." >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on success
+        if: success() && github.event.inputs.action == 'apply'
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Cluster Provisioning Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your Talos Kubernetes cluster is ready." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the Talos/Kube configs from workflow artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify nodes: \`kubectl get nodes\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check Talos health: \`talosctl health\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.skip_flux }}" != "true" ]; then
+            echo "4. Monitor Flux: \`flux get all -A\`" >> $GITHUB_STEP_SUMMARY
+            echo "5. Watch app deployments: \`kubectl get helmreleases -A -w\`" >> $GITHUB_STEP_SUMMARY
+          fi

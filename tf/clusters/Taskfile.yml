@@ -1,0 +1,50 @@
+version: '3'
+
+vars:
+  CLUSTER_ID: '{{.CLUSTER_ID}}'
+  # Map cluster IDs to names (adjust as needed)
+  CLUSTER_NAME: |
+    {{
+      if eq .CLUSTER_ID "101" -}}
+      sol
+      {{- else if eq .CLUSTER_ID "102" -}}
+      sol
+      {{- else if eq .CLUSTER_ID "103" -}}
+      sol
+      {{- else -}}
+      sol
+      {{- end }}
+    }}
+  CLUSTER_DIR: 'clusters/cluster-{{.CLUSTER_ID}}'
+
+tasks:
+  download-image:
+    desc: Fetch the base cloud image used by Terraform uploads (idempotent)
+    cmds:
+      - |
+        curl -L -o images/debian-12-generic-amd64.qcow2           https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+    status:
+      - test -f images/debian-12-generic-amd64.qcow2
+
+  terraform-init:
+    dir: '{{.CLUSTER_DIR}}/terraform'
+    cmds:
+      - terraform init -upgrade
+
+  terraform-plan:
+    dir: '{{.CLUSTER_DIR}}/terraform'
+    cmds:
+      - terraform fmt -recursive
+      - terraform validate
+      - terraform plan
+
+  terraform-apply:
+    dir: '{{.CLUSTER_DIR}}/terraform'
+    cmds:
+      - task: terraform-init
+      - terraform apply -auto-approve
+
+  terraform-destroy:
+    dir: '{{.CLUSTER_DIR}}/terraform'
+    cmds:
+      - terraform destroy -auto-approve

@@ -322,7 +322,7 @@ job "example" {
 
         network {
           mbits = 10
-          port  "db"  {}
+          port "db" {}
         }
       }
       # The "service" stanza instructs Nomad to register this task as a service
