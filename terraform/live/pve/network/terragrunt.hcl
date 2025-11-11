@@ -31,7 +31,7 @@ inputs = {
   sdn_controller = {
     id    = "evpn-ctrl"
     asn   = 65001
-    peers = ["10.255.255.1","10.255.255.2"] # <-- replace with your real RR loopbacks
+    peers = ["10.255.255.1", "10.255.255.2"] # <-- replace with your real RR loopbacks
     # fabric intentionally omitted in peer model
   }
 

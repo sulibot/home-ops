@@ -1,0 +1,230 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-plan.yml'
+
+env:
+  SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
+
+jobs:
+  detect-changes:
+    name: Detect Changed Clusters
+    runs-on: self-hosted
+    outputs:
+      clusters: ${{ steps.detect.outputs.clusters }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed cluster directories
+        id: detect
+        run: |
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # Find cluster directories that changed
+          CLUSTERS=$(echo "$CHANGED_FILES" | \
+            grep "^terraform/live/clusters/cluster-" | \
+            sed -E 's|^terraform/live/clusters/(cluster-[0-9]+)/.*|\1|' | \
+            sort -u | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "clusters=$CLUSTERS" >> $GITHUB_OUTPUT
+
+          if [ "$CLUSTERS" = "[]" ] || [ -z "$CLUSTERS" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No cluster changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Detected changes in clusters: $CLUSTERS"
+          fi
+
+  terraform-plan:
+    name: Plan ${{ matrix.cluster }}
+    runs-on: self-hosted
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        cluster: ${{ fromJson(needs.detect-changes.outputs.clusters) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SOPS Age key
+        run: |
+          echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
+          chmod 600 $SOPS_AGE_KEY_FILE
+
+      - name: Verify required tools
+        run: |
+          echo "Checking for required tools..."
+          for tool in terraform terragrunt sops jq; do
+            if ! command -v $tool &> /dev/null; then
+              echo "ERROR: $tool is not installed"
+              exit 1
+            fi
+            echo "✓ $tool: $(command -v $tool)"
+          done
+
+      - name: Initialize Terraform
+        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        run: |
+          echo "Initializing Terraform for ${{ matrix.cluster }}..."
+          terragrunt init
+
+      - name: Validate Terraform
+        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        run: |
+          echo "Validating Terraform configuration..."
+          terragrunt validate
+
+      - name: Generate Terraform Plan
+        id: plan
+        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        run: |
+          echo "Generating Terraform plan..."
+          terragrunt plan -no-color -out=tfplan 2>&1 | tee plan.txt
+
+          # Save plan output for comment
+          echo "PLAN_OUTPUT<<EOF" >> $GITHUB_ENV
+          cat plan.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          # Check if plan has changes
+          if grep -q "No changes" plan.txt; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show Terraform Plan
+        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        run: |
+          echo "Detailed Terraform plan:"
+          terragrunt show tfplan
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cluster = '${{ matrix.cluster }}';
+            const planOutput = process.env.PLAN_OUTPUT;
+            const hasChanges = '${{ steps.plan.outputs.has_changes }}' === 'true';
+
+            // Truncate plan if too long (GitHub comment limit)
+            const maxLength = 60000;
+            let truncatedPlan = planOutput;
+            if (planOutput.length > maxLength) {
+              truncatedPlan = planOutput.substring(0, maxLength) + '\n\n... (output truncated)';
+            }
+
+            const body = `## Terraform Plan: ${cluster}
+
+            **Status**: ${hasChanges ? '⚠️ Changes detected' : '✅ No changes'}
+
+            <details>
+            <summary>Show Plan Output</summary>
+
+            \`\`\`terraform
+            ${truncatedPlan}
+            \`\`\`
+
+            </details>
+
+            **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes(`Terraform Plan: ${cluster}`)
+            );
+
+            // Create or update comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.cluster }}
+          path: terraform/live/clusters/${{ matrix.cluster }}/tfplan
+          retention-days: 7
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f $SOPS_AGE_KEY_FILE
+          rm -f terraform/live/clusters/${{ matrix.cluster }}/tfplan
+          rm -f terraform/live/clusters/${{ matrix.cluster }}/plan.txt
+
+  summary:
+    name: Plan Summary
+    runs-on: self-hosted
+    needs: [detect-changes, terraform-plan]
+    if: always() && needs.detect-changes.outputs.has_changes == 'true'
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.terraform-plan.result }}" = "success" ]; then
+            echo "✅ All Terraform plans completed successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.terraform-plan.result }}" = "failure" ]; then
+            echo "❌ One or more Terraform plans failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Terraform plan status: ${{ needs.terraform-plan.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Clusters analyzed**: ${{ needs.detect-changes.outputs.clusters }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the individual job outputs and PR comments for detailed plans." >> $GITHUB_STEP_SUMMARY
+
+  no-changes:
+    name: No Terraform Changes
+    runs-on: self-hosted
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'false'
+    steps:
+      - name: Report no changes
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ No cluster configuration changes detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This PR does not modify any files in \`terraform/live/clusters/\`" >> $GITHUB_STEP_SUMMARY

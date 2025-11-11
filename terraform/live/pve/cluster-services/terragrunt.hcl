@@ -16,8 +16,8 @@ inputs = {
   pve_api_token_secret = local.secrets.pve_api_token_secret
 
   # root creds used only by the proxmox.rootpam alias for ACME
-  pve_username         = local.secrets.pve_username     # root@pam
-  pve_password         = local.secrets.pve_password
+  pve_username = local.secrets.pve_username # root@pam
+  pve_password = local.secrets.pve_password
 
   # --- ACME + DNS ---
   acme_account_name  = "default"
@@ -26,7 +26,7 @@ inputs = {
 
   dns_plugin = {
     id  = "cloudflare"
-    api = "cf"           # not "dns_cf"
+    api = "cf" # not "dns_cf"
     data = {
       CF_Token      = local.secrets.cloudflare_api_token
       CF_Account_ID = local.secrets.cloudflare_account_id

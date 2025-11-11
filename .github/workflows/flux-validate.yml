@@ -1,0 +1,305 @@
+name: Flux Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'kubernetes/**'
+      - '.github/workflows/flux-validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'kubernetes/**'
+
+env:
+  SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
+
+jobs:
+  validate:
+    name: Validate Flux Manifests
+    runs-on: self-hosted
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SOPS Age key
+        run: |
+          echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
+          chmod 600 $SOPS_AGE_KEY_FILE
+
+      - name: Verify Flux CLI
+        run: |
+          if ! command -v flux &> /dev/null; then
+            echo "ERROR: flux CLI not found"
+            exit 1
+          fi
+          flux --version
+
+      - name: Verify kubectl
+        run: |
+          if ! command -v kubectl &> /dev/null; then
+            echo "ERROR: kubectl not found"
+            exit 1
+          fi
+          kubectl version --client
+
+      - name: Validate Flux components
+        run: |
+          echo "## Flux Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check Flux installation compatibility
+          flux check --pre 2>&1 | tee flux-check.txt
+
+          if [ $? -eq 0 ]; then
+            echo "✅ **Flux prerequisites check passed**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Flux prerequisites check failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Flux Check Output</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat flux-check.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Find Flux directories
+        id: find-dirs
+        run: |
+          # Find all directories containing flux root (kustomization.yaml with flux infrastructure)
+          FLUX_DIRS=$(find kubernetes -type f -name "kustomization.yaml" | xargs dirname | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "flux_dirs=$FLUX_DIRS" >> $GITHUB_OUTPUT
+          echo "Found Flux directories: $FLUX_DIRS"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Kubernetes Manifest Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          ERROR_COUNT=0
+          WARNING_COUNT=0
+
+          # Find all YAML files in kubernetes directory
+          while IFS= read -r file; do
+            # Skip encrypted files (they contain SOPS metadata)
+            if grep -q "sops:" "$file" 2>/dev/null; then
+              echo "⏭️ Skipping encrypted file: $file"
+              continue
+            fi
+
+            # Validate with kubectl dry-run
+            if kubectl apply --dry-run=client -f "$file" &>/dev/null; then
+              echo "✅ Valid: $file"
+            else
+              echo "❌ Invalid: $file"
+              echo "- ❌ \`$file\`" >> $GITHUB_STEP_SUMMARY
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
+          done < <(find kubernetes -type f \( -name "*.yaml" -o -name "*.yml" \) ! -path "*/.*")
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $ERROR_COUNT -eq 0 ]; then
+            echo "✅ All Kubernetes manifests are valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Found $ERROR_COUNT invalid manifest(s)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Validate Flux Kustomizations
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Flux Kustomization Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          ERROR_COUNT=0
+
+          # Find all kustomization.yaml files
+          while IFS= read -r kustomization; do
+            DIR=$(dirname "$kustomization")
+            echo "Validating kustomization in: $DIR"
+
+            # Build kustomization
+            if kubectl kustomize "$DIR" > /dev/null 2>&1; then
+              echo "✅ Valid kustomization: $DIR"
+              echo "- ✅ \`$DIR\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Invalid kustomization: $DIR"
+              echo "- ❌ \`$DIR\`" >> $GITHUB_STEP_SUMMARY
+              kubectl kustomize "$DIR" 2>&1 | head -10
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
+          done < <(find kubernetes -type f -name "kustomization.yaml" ! -path "*/.*")
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $ERROR_COUNT -eq 0 ]; then
+            echo "✅ All Flux kustomizations are valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Found $ERROR_COUNT invalid kustomization(s)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Validate HelmRelease resources
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### HelmRelease Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all HelmRelease resources
+          HELM_RELEASES=$(find kubernetes -type f \( -name "*.yaml" -o -name "*.yml" \) -exec grep -l "kind: HelmRelease" {} \;)
+
+          if [ -z "$HELM_RELEASES" ]; then
+            echo "ℹ️ No HelmRelease resources found" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          ERROR_COUNT=0
+
+          for hr in $HELM_RELEASES; do
+            # Extract chart name and version
+            CHART_NAME=$(yq eval '.spec.chart.spec.chart' "$hr" 2>/dev/null || echo "unknown")
+            CHART_VERSION=$(yq eval '.spec.chart.spec.version' "$hr" 2>/dev/null || echo "unknown")
+
+            # Check for common issues
+            if [ "$CHART_NAME" = "null" ] || [ "$CHART_NAME" = "unknown" ]; then
+              echo "⚠️ Warning: Missing chart name in $hr"
+              echo "- ⚠️ \`$hr\` - Missing chart name" >> $GITHUB_STEP_SUMMARY
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            elif [ "$CHART_VERSION" = "null" ] || [ "$CHART_VERSION" = "unknown" ]; then
+              echo "⚠️ Warning: Missing chart version in $hr"
+              echo "- ⚠️ \`$hr\` - Chart: $CHART_NAME (no version specified)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ Valid HelmRelease: $hr (Chart: $CHART_NAME v$CHART_VERSION)"
+              echo "- ✅ \`$hr\` - Chart: $CHART_NAME v$CHART_VERSION" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $ERROR_COUNT -eq 0 ]; then
+            echo "✅ All HelmRelease resources are valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Found $ERROR_COUNT HelmRelease warning(s)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for SOPS encrypted secrets
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### SOPS Encrypted Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find files with sops encryption
+          ENCRYPTED_FILES=$(find kubernetes -type f \( -name "*.yaml" -o -name "*.yml" \) -exec grep -l "sops:" {} \; | wc -l)
+
+          echo "Found $ENCRYPTED_FILES encrypted file(s)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Validate SOPS files can be decrypted
+          ERROR_COUNT=0
+          while IFS= read -r file; do
+            if sops -d "$file" > /dev/null 2>&1; then
+              echo "✅ Can decrypt: $file"
+              echo "- ✅ \`$file\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Cannot decrypt: $file"
+              echo "- ❌ \`$file\`" >> $GITHUB_STEP_SUMMARY
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
+          done < <(find kubernetes -type f \( -name "*.yaml" -o -name "*.yml" \) -exec grep -l "sops:" {} \;)
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "⚠️ Warning: $ERROR_COUNT file(s) cannot be decrypted" >> $GITHUB_STEP_SUMMARY
+            echo "This may be expected if using different Age keys per environment" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Lint YAML files
+        continue-on-error: true
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### YAML Linting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if ! command -v yamllint &> /dev/null; then
+            echo "ℹ️ yamllint not installed, skipping lint check" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Run yamllint on kubernetes directory
+          yamllint kubernetes/ -f parsable > yamllint.txt 2>&1 || true
+
+          if [ -s yamllint.txt ]; then
+            LINT_COUNT=$(wc -l < yamllint.txt)
+            echo "⚠️ Found $LINT_COUNT linting issue(s)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Linting Issues</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -50 yamllint.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No YAML linting issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate validation summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Complete**: Check individual sections above for details" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f $SOPS_AGE_KEY_FILE
+          rm -f flux-check.txt
+          rm -f yamllint.txt
+
+      - name: Comment PR with validation results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Read step summary (contains all validation results)
+            let summary = "## Flux Validation Results\n\n";
+            summary += "✅ Validation completed successfully\n\n";
+            summary += `**Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Flux Validation Results')
+            );
+
+            // Create or update comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }
