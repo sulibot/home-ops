@@ -26,6 +26,15 @@ crash.log
 terraform.*
 .terragrunt-cache/
 
+# Talos/OS Images (cached locally, don't commit large binaries)
+*.iso
+*.img
+*.raw
+*.qcow2
+*.vmdk
+*.vdi
+tf/infra/cache/
+
 # Python
 *.pyc
 *.pyo

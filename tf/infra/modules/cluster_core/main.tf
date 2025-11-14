@@ -100,15 +100,6 @@ resource "proxmox_virtual_environment_vm" "nodes" {
 
   machine = "q35"
   bios    = "seabios" # SeaBIOS (legacy BIOS) works reliably with Talos nocloud ISO boot
-  bios    = "ovmf" # OVMF (UEFI) is the modern standard and preferred for Talos.
-
-  # An EFI disk is required for UEFI boot. It stores the boot entries.
-  # This disk should be on reliable, non-replicated storage if possible,
-  # but using the same as the VM disk is also fine.
-  efi_disk {
-    datastore_id = var.proxmox.vm_datastore
-    file_format  = "raw"
-  }
 
   cpu {
     sockets = 1
