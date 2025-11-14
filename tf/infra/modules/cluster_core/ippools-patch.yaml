@@ -1,0 +1,14 @@
+---
+- op: replace
+  path: /spec/cidrs/0/cidr
+  value: "10.103.27.0/24"
+target:
+  kind: CiliumLoadBalancerIPPool
+  name: ipv4-lb-pool
+---
+- op: replace
+  path: /spec/cidrs/0/cidr
+  value: "fd00:103:1b::/120"
+target:
+  kind: CiliumLoadBalancerIPPool
+  name: ipv6-lb-pool

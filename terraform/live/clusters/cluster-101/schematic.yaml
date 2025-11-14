@@ -18,15 +18,17 @@ customization:
   systemExtensions:
     officialExtensions:
       - siderolabs/cloudflared
+      - siderolabs/crun
+      - siderolabs/ctr
       - siderolabs/i915
       - siderolabs/intel-ice-firmware
       - siderolabs/intel-ucode
+      - siderolabs/lldpd
       - siderolabs/mei
       - siderolabs/nfsd
       - siderolabs/nfsrahead
       - siderolabs/qemu-guest-agent
       - siderolabs/realtek-firmware
-      - siderolabs/usb-modem-drivers
+      - siderolabs/tailscale
       - siderolabs/util-linux-tools
-      - siderolabs/vmtoolsd-guest-agent
       - siderolabs/zfs
