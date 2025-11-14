@@ -1,0 +1,22 @@
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "ipv4-lb-pool"
+  namespace: "kube-system"
+spec:
+  cidrs:
+    # This placeholder will be replaced by Kustomize for each cluster.
+    # For cluster 101, this would be "10.101.27.0/24".
+    - cidr: "10.101.27.0/24" # kustomize-patch-me
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "ipv6-lb-pool"
+  namespace: "kube-system"
+spec:
+  cidrs:
+    # This placeholder will be replaced by Kustomize for each cluster.
+    # For cluster 101, this would be "fd00:101:1b::/120".
+    - cidr: "fd00:101:1b::/120" # kustomize-patch-me

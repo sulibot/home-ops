@@ -13,6 +13,8 @@ locals {
     vlan_public   = 101
     bridge_mesh   = "vnet101"
     vlan_mesh     = 0
+    public_mtu    = 1500
+    mesh_mtu      = 8930
   }
   node_overrides = {
     # Example: give a specific node more memory

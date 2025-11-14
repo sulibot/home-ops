@@ -2,12 +2,19 @@ include "root" {
   path = find_in_parent_folders("terragrunt.hcl")
 }
 
-# dependency "image" {
-#   config_path = "../image"
-#
-#   # Retry up to 5 times, waiting 15s between retries, if the output is not available yet
-#   mock_outputs_allowed_terraform_commands = ["plan", "validate", "show"]
-# }
+dependency "image" {
+  config_path = "../image"
+
+  # Provide mocks so `plan` can run without first applying the image stack.
+  mock_outputs = {
+    talos_image_file_ids = {
+      "pve01" = "resources:iso/mock-talos-image.iso"
+    }
+    talos_image_file_name = "mock-talos-image.iso"
+    talos_image_id        = "mock-schematic-id"
+  }
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+}
 
 terraform {
   source = "../../../modules/cluster_core"
@@ -17,11 +24,27 @@ locals {
   # Read the high-level cluster definition from the parent folder
   cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
 
+  # Define role-based hardware defaults
+  control_plane_defaults = {
+    cpu_cores = 4
+    memory_mb = 8192
+    disk_gb   = 40 # Smaller disk for CP nodes
+  }
+  worker_defaults = {
+    cpu_cores = 6
+    memory_mb = 16384
+    disk_gb   = 80 # Larger disk for worker nodes
+  }
+
   # Generate control plane nodes
   control_planes = [for i in range(local.cluster_config.controlplanes) : {
     name      = format("%s-cp%02d", local.cluster_config.cluster_name, i + 1)
     vm_id     = tonumber(format("%d0%d", local.cluster_config.cluster_id, i + 11))
     ip_suffix = i + 11
+    # Merge role-specific defaults
+    cpu_cores = local.control_plane_defaults.cpu_cores
+    memory_mb = local.control_plane_defaults.memory_mb
+    disk_gb   = local.control_plane_defaults.disk_gb
   }]
 
   # Generate worker nodes
@@ -29,6 +52,10 @@ locals {
     name      = format("%s-wk%02d", local.cluster_config.cluster_name, i + 1)
     vm_id     = tonumber(format("%d0%d", local.cluster_config.cluster_id, i + 21))
     ip_suffix = i + 21
+    # Merge role-specific defaults
+    cpu_cores = local.worker_defaults.cpu_cores
+    memory_mb = local.worker_defaults.memory_mb
+    disk_gb   = local.worker_defaults.disk_gb
   }]
 
   # Combine all nodes and apply any specific overrides
@@ -73,14 +100,27 @@ EOF
 inputs = merge(
   {
     # Pass the generated node list and IP config to the module
-    nodes               = local.final_nodes
-    talos_image_file_id = "resources:iso/sol101-43738cb3ab16b5ee9c62f4bf35b23364dfa2ae8e737a481627e5c27088e17e11.iso"
-    ip_config           = {
-      ipv6_prefix  = "fd00:${local.cluster_config.cluster_id}::"
-      ipv4_prefix  = "10.${local.cluster_config.cluster_id}.0."
-      ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::fffe"
-      ipv4_gateway = "10.${local.cluster_config.cluster_id}.0.254"
-      dns_servers  = ["fd00:${local.cluster_config.cluster_id}::fffe", "10.${local.cluster_config.cluster_id}.0.254"]
+    nodes = local.final_nodes
+    # Dynamically get the image ID from the 'image' module dependency.
+    # This assumes the image is uploaded to the primary proxmox node.
+    talos_image_file_id = dependency.image.outputs.talos_image_file_ids[local.cluster_config.proxmox_nodes[0]]
+    ip_config = {
+      mesh = {
+        ipv6_prefix  = "fc00:${local.cluster_config.cluster_id}::"
+        ipv4_prefix  = "10.10.${local.cluster_config.cluster_id}."
+        ipv6_gateway = "fc00:${local.cluster_config.cluster_id}::fffe"
+        ipv4_gateway = "10.10.${local.cluster_config.cluster_id}.254"
+      }
+      public = {
+        ipv6_prefix  = "fd00:${local.cluster_config.cluster_id}::"
+        ipv4_prefix  = "10.0.${local.cluster_config.cluster_id}."
+        ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::fffe"
+        ipv4_gateway = "10.0.${local.cluster_config.cluster_id}.254"
+      }
+      dns_servers = [
+        "fd00:${local.cluster_config.cluster_id}::fffe",
+        "10.0.${local.cluster_config.cluster_id}.254",
+      ]
     }
 
     # Default wiring for both NICs
@@ -93,10 +133,12 @@ inputs = merge(
       node_primary = "pve01"
       nodes        = local.cluster_config.proxmox_nodes
     }
+
+    # Provide generic fallbacks for the module (all nodes already have explicit sizing)
     vm_defaults = {
-      cpu_cores = 4
-      memory_mb = 8192
-      disk_gb   = 60
+      cpu_cores = local.control_plane_defaults.cpu_cores
+      memory_mb = local.control_plane_defaults.memory_mb
+      disk_gb   = local.worker_defaults.disk_gb
     }
   },
 )

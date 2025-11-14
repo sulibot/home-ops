@@ -141,7 +141,7 @@ jobs:
 
             if [ -f "$KUBECONFIG" ]; then
               echo "Draining all nodes..."
-              kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=5m || true
+              kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=30s || true
 
               echo "Deleting all non-system workloads..."
               kubectl delete helmreleases --all -A --wait=false || true
@@ -164,7 +164,7 @@ jobs:
           # Attempt to use existing kubeconfig
           if kubectl cluster-info &>/dev/null; then
             echo "Draining all nodes..."
-            kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=5m || true
+            kubectl drain --all --ignore-daemonsets --delete-emptydir-data --force --timeout=30s || true
 
             echo "Deleting all non-system workloads..."
             kubectl delete helmreleases --all -A --wait=false || true
