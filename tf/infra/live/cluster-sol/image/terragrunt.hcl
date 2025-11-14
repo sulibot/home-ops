@@ -3,6 +3,7 @@ include "root" {
 }
 
 terraform {
+  # Point to the talos_proxmox_image module
   source = "../../../modules/talos_proxmox_image"
 }
 
@@ -16,9 +17,9 @@ locals {
 
   default_version  = try(local.cluster.talos_version, local.globals.talos_version, "v1.8.2")
   file_name_prefix = format("%s%d", local.cluster.cluster_name, local.cluster.cluster_id)
-  datastore_id     = try(local.nodes_inputs.proxmox.datastore_id, local.cluster.storage_default)
-  # For shared storage (CephFS/NFS), only upload to one node
-  upload_nodes     = [try(local.cluster.proxmox_nodes[0], local.nodes_inputs.proxmox.node_primary, "pve01")]
+  # Upload the image to only one node to avoid disk space/network timeout issues
+  datastore_id     = "resources"
+  upload_nodes     = [local.cluster.proxmox_nodes[0]]  # Only upload to first node
 
   extra_kernel_args = try(local.image_opts.talos_extra_kernel_args, [])
   system_extensions = try(local.image_opts.talos_system_extensions, [])
@@ -41,8 +42,9 @@ provider "proxmox" {
   insecure  = true
 
   ssh {
-    agent    = true
-    username = "root"
+    agent       = false
+    username    = "root"
+    private_key = file(pathexpand("~/.ssh/id_ed25519"))
   }
 }
 EOF
@@ -58,4 +60,5 @@ inputs = {
   proxmox_datastore_id     = local.datastore_id
   proxmox_node_names       = local.upload_nodes
   file_name_prefix         = local.file_name_prefix
+  image_cache_dir          = local.globals.image_cache_dir
 }

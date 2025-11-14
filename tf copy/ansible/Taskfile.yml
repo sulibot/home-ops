@@ -1,0 +1,26 @@
+version: '3'
+
+vars:
+  CLUSTER_ID: '{{.CLUSTER_ID}}'
+  INVENTORY: 'ansible/inventory/cluster-{{.CLUSTER_ID}}.ini'
+
+tasks:
+  bootstrap:
+    desc: kubeadm + containerd on all nodes; init + join
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} ansible/bootstrap.yml
+
+  cilium:
+    desc: Install/upgrade Cilium via Helm
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} ansible/cilium.yml
+
+  flux:
+    desc: Bootstrap Flux (requires GITHUB_TOKEN in env)
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} ansible/flux.yml
+
+  validate:
+    desc: Validate cluster (nodes, cilium, flux)
+    cmds:
+      - ansible-playbook -i {{.INVENTORY}} ansible/validate.yml

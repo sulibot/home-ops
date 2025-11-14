@@ -49,64 +49,92 @@ variable "nodes" {
   type = list(object({
     name         = string
     vm_id        = optional(number)
-    ip_suffix    = optional(number)
-    ipv6_public  = optional(string)
-    ipv4_public  = optional(string)
+    ip_suffix    = number # Suffix for IP calculation
+    # Optional overrides for specific nodes
     node_name    = optional(string)
     cpu_cores    = optional(number)
     memory_mb    = optional(number)
     disk_gb      = optional(number)
-    bridge_public = optional(string)
-    vlan_public   = optional(number)
-    bridge_mesh   = optional(string)
-    vlan_mesh     = optional(number)
+    vlan_public  = optional(number)
+    vlan_mesh    = optional(number)
   }))
 }
 
-variable "talos_image_file_ids" {
-  description = "Map of node name to uploaded Talos image file ID in Proxmox"
-  type        = map(string)
+variable "ip_config" {
+  description = "Configuration for generating node IP addresses"
+  type = object({
+    ipv6_prefix  = string
+    ipv4_prefix  = string
+    ipv6_gateway = string
+    ipv4_gateway = string
+    dns_servers  = list(string)
+  })
+}
+
+variable "talos_image_file_id" {
+  description = "The Proxmox file ID of the uploaded Talos image (e.g., local:iso/talos-....img)"
+  type        = string
 }
 
 locals {
-  nodes = { for idx, node in var.nodes : node.name => merge(node, { index = idx }) }
+  # Generate full node configuration, including calculated IP addresses
+  nodes = { for idx, node in var.nodes : node.name => merge(node, {
+    index       = idx
+    ipv6_public = format("%s%d", var.ip_config.ipv6_prefix, node.ip_suffix)
+    ipv4_public = format("%s%d", var.ip_config.ipv4_prefix, node.ip_suffix)
+  }) }
+
   hypervisors = length(var.proxmox.nodes) > 0 ? var.proxmox.nodes : [var.proxmox.node_primary]
 }
 
 resource "proxmox_virtual_environment_vm" "nodes" {
   for_each = local.nodes
 
-  vm_id     = try(each.value.vm_id, null)
-  name      = each.value.name
+  vm_id = try(each.value.vm_id, null)
+  name  = each.value.name
   node_name = coalesce(
     try(each.value.node_name, null),
-    local.hypervisors[ each.value.index % length(local.hypervisors) ],
+    local.hypervisors[each.value.index % length(local.hypervisors)],
     var.proxmox.node_primary
   )
 
   machine = "q35"
-  bios    = "ovmf"
+  bios    = "seabios" # SeaBIOS (legacy BIOS) works reliably with Talos nocloud ISO boot
+  bios    = "ovmf" # OVMF (UEFI) is the modern standard and preferred for Talos.
+
+  # An EFI disk is required for UEFI boot. It stores the boot entries.
+  # This disk should be on reliable, non-replicated storage if possible,
+  # but using the same as the VM disk is also fine.
+  efi_disk {
+    datastore_id = var.proxmox.vm_datastore
+    file_format  = "raw"
+  }
 
   cpu {
     sockets = 1
     cores   = coalesce(try(each.value.cpu_cores, null), var.vm_defaults.cpu_cores)
+    type    = "host" # Pass through host CPU flags for best performance.
   }
 
   memory {
     dedicated = coalesce(try(each.value.memory_mb, null), var.vm_defaults.memory_mb)
   }
 
+  # Boot disk that Talos will install to
   disk {
-    interface    = "scsi0"
     datastore_id = var.proxmox.vm_datastore
+    file_format  = "raw"
+    interface    = "scsi0"
     size         = coalesce(try(each.value.disk_gb, null), var.vm_defaults.disk_gb)
-    # For shared storage, all nodes use the same file_id
-    # For local storage, lookup by node name
-    file_id      = length(var.talos_image_file_ids) == 1 ? values(var.talos_image_file_ids)[0] : var.talos_image_file_ids[coalesce(
-      try(each.value.node_name, null),
-      local.hypervisors[ each.value.index % length(local.hypervisors) ],
-      var.proxmox.node_primary
-    )]
+    cache        = "none"
+    iothread     = true
+    aio          = "io_uring"
+  }
+
+  # CD-ROM with Talos nocloud ISO
+  cdrom {
+    file_id   = var.talos_image_file_id
+    interface = "ide0"
   }
 
   network_device {
@@ -119,11 +147,47 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     vlan_id = coalesce(try(each.value.vlan_public, null), var.network.vlan_public)
   }
 
-  agent { enabled = false }
-  boot_order = ["scsi0"]
+  # Use Cloud-Init to inject a static IP into the Talos installer environment.
+  # This makes the node reachable at a predictable IP for `talosctl apply-config`.
+  # The permanent static IP in the machine config must match what's defined here.
+  initialization {
+    # Use the same datastore as the VM disk for Cloud-Init data.
+    datastore_id = var.proxmox.vm_datastore
+    ip_config {
+      ipv4 {
+        address = "${each.value.ipv4_public}/24"
+        gateway = var.ip_config.ipv4_gateway
+      }
+      ipv6 {
+        address = "${each.value.ipv6_public}/64"
+        gateway = var.ip_config.ipv6_gateway
+      }
+    }
+    dns {
+      servers = var.ip_config.dns_servers
+    }
+  }
+
+  agent {
+    enabled = true # QEMU Guest Agent is useful for getting status and IPs
+    trim    = true # Enable TRIM passthrough from the guest OS to the storage
+  }
+
+  # Boot from CD-ROM first (for Talos installation), then from disk
+  boot_order = ["ide0", "scsi0"]
+}
+
+output "node_ips" {
+  description = "Map of node names to their configured IP addresses"
+  value = {
+    for name, node in local.nodes : name => {
+      ipv4 = node.ipv4_public
+      ipv6 = node.ipv6_public
+    }
+  }
 }
 
 output "vm_names" {
   description = "List of VM names created"
-  value       = keys(local.nodes)
+  value = keys(local.nodes)
 }

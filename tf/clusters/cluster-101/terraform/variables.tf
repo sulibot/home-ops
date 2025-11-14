@@ -35,6 +35,25 @@ variable "pve_insecure" {
   default = true
 }
 
+variable "pve_ssh_user" {
+  type        = string
+  description = "SSH username for uploading files to Proxmox nodes"
+  default     = "root"
+}
+
+variable "pve_ssh_agent" {
+  type        = bool
+  description = "Use ssh-agent for uploading files to Proxmox nodes"
+  default     = true
+}
+
+variable "pve_ssh_private_key" {
+  type        = string
+  description = "PEM-encoded private key for SSH uploads (leave null to rely on ssh-agent)"
+  default     = null
+  sensitive   = true
+}
+
 variable "pm_datastore_id" {
   type        = string
   description = "Where to upload image (e.g., local)"
@@ -92,8 +111,7 @@ variable "vm_memory_mb" {
 
 variable "vm_disk_gb" {
   type    = number
-  default = 60
-}
+  default = 20
 
 variable "talos_version" {
   type        = string
@@ -129,4 +147,15 @@ variable "talos_patches" {
   type        = any
   description = "Talos JSON patch operations"
   default     = []
+}
+
+variable "ip_config" {
+  type = object({
+    dns_servers  = list(string)
+    template_id = number
+    ipv4_address = string
+    ipv6_address = string
+  })
+  description = "IP configuration for VMs, including DNS servers and static IP addresses."
+  # You will need to provide a default or pass this variable from your Terragrunt configuration.
 }

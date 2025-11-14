@@ -1,17 +1,21 @@
-locals {
-  cluster_name      = "sol"
-  cluster_id        = 101
-  controlplanes     = 3
-  workers           = 2
-  proxmox_nodes     = ["pve01", "pve02", "pve03"]
-  storage_default   = "rbd-vm"
-  talos_version     = "v1.8.2"
-  description       = "Primary production cluster"
+# This file contains the high-level definition for the 'sol' cluster.
+# It is read by the terragrunt.hcl in the child directories (e.g., `nodes`).
 
-  # Optional: Override specific nodes (by name)
-  node_overrides    = {
-    # Example:
-    # "solcp011" = { cpu_cores = 8, memory_mb = 32768 }
-    # "solwk021" = { cpu_cores = 2, memory_mb = 8192 }
+locals {
+  cluster_name   = "sol"
+  cluster_id     = 101
+  controlplanes  = 3
+  workers        = 3
+  proxmox_nodes  = ["pve01", "pve02", "pve03"]
+  storage_default = "rbd-vm"
+  network = {
+    bridge_public = "vmbr0"
+    vlan_public   = 101
+    bridge_mesh   = "vnet101"
+    vlan_mesh     = 0
+  }
+  node_overrides = {
+    # Example: give a specific node more memory
+    # "sol-wk01" = { memory_mb = 32768 }
   }
 }

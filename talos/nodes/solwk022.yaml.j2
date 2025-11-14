@@ -1,0 +1,20 @@
+---
+machine:
+  network:
+    hostname: solwk022
+    interfaces:
+      - interface: eth1
+        addresses:
+          - fd00:101::22/64
+          - 10.101.0.22/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 10.101.0.254
+          - network: ::/0
+            gateway: fd00:101::fffe
+    nameservers:
+      - fd00:101::fffe
+      - 10.101.0.254
+  nodeLabels:
+    topology.kubernetes.io/zone: pve02
+  type: worker

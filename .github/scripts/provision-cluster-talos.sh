@@ -348,12 +348,25 @@ export TALOSCONFIG="${TALOS_CONFIG_DIR}/talosconfig"
 # Apply control plane configs
 log_info "Applying control plane configurations..."
 for ip in $CONTROL_PLANE_IPS; do
-    log_info "Applying config to control plane: $ip"
-    # Note: In production, customize each node's config with proper IPs
+    log_info "Preparing and applying config to control plane: $ip"
+
+    # Create a node-specific config from the template
+    NODE_CONFIG_FILE="${TALOS_CONFIG_DIR}/controlplane-${ip}.yaml"
+    cp "${TALOS_CONFIG_DIR}/controlplane.yaml" "$NODE_CONFIG_FILE"
+
+    # Inject the node's static IP into the machine config to make it permanent.
+    # This IP must match the one injected by Cloud-Init.
+    log_info "Injecting permanent static IP $ip into $NODE_CONFIG_FILE"
+    # Note: This assumes your generated config has placeholders like REPLACE_WITH_NODE_IP.
+    # The IPv6 address is assumed to be the primary for the first interface.
+    sed -i "s|REPLACE_WITH_NODE_IP|${ip}/64|g" "$NODE_CONFIG_FILE"
+    # TODO: Add sed replacement for the second (egress) NIC if needed.
+
     talosctl apply-config \
+        --insecure \
         --nodes "$ip" \
-        --file "${TALOS_CONFIG_DIR}/controlplane.yaml" \
-        --insecure || log_warn "Failed to apply config to $ip (may need retry)"
+        --file "$NODE_CONFIG_FILE" \
+        || log_warn "Failed to apply config to $ip (may need a retry)"
 done
 
 # Wait for control planes to be ready
@@ -364,11 +377,19 @@ sleep 30
 if [[ -n "$WORKER_IPS" ]]; then
     log_info "Applying worker configurations..."
     for ip in $WORKER_IPS; do
-        log_info "Applying config to worker: $ip"
+        log_info "Preparing and applying config to worker: $ip"
+
+        NODE_CONFIG_FILE="${TALOS_CONFIG_DIR}/worker-${ip}.yaml"
+        cp "${TALOS_CONFIG_DIR}/worker.yaml" "$NODE_CONFIG_FILE"
+
+        log_info "Injecting permanent static IP $ip into $NODE_CONFIG_FILE"
+        sed -i "s|REPLACE_WITH_NODE_IP|${ip}/64|g" "$NODE_CONFIG_FILE"
+
         talosctl apply-config \
+            --insecure \
             --nodes "$ip" \
-            --file "${TALOS_CONFIG_DIR}/worker.yaml" \
-            --insecure || log_warn "Failed to apply config to $ip (may need retry)"
+            --file "$NODE_CONFIG_FILE" \
+            || log_warn "Failed to apply config to $ip (may need a retry)"
     done
 fi
 
