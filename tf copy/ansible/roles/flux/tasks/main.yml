@@ -1,0 +1,16 @@
+- name: Install Flux CLI
+  shell: |
+    set -euo pipefail
+    curl -s https://fluxcd.io/install.sh | bash
+  args: { executable: /bin/bash }
+  run_once: true
+  delegate_to: "{{ groups['controlplane'][0] }}"
+
+- name: Bootstrap Flux against GitHub repo
+  shell: |
+    set -euo pipefail
+    export GITHUB_TOKEN="${GITHUB_TOKEN:-CHANGE_ME}"
+    flux bootstrap github       --owner="{{ flux_github_owner }}"       --repository="{{ flux_github_repo }}"       --branch=main       --path="{{ flux_path }}"       --personal
+  args: { executable: /bin/bash }
+  run_once: true
+  delegate_to: "{{ groups['controlplane'][0] }}"

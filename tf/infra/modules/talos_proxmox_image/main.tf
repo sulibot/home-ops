@@ -75,6 +75,12 @@ variable "file_name_prefix" {
   description = "Prefix for uploaded image name"
 }
 
+variable "image_cache_dir" {
+  type        = string
+  default     = ""
+  description = "Directory to cache downloaded images (defaults to .talos-images in module root)"
+}
+
 locals {
   # Build schematic payload for new API (only customization, not version/platform/arch)
   # Only include customization fields if they have values
@@ -95,14 +101,15 @@ locals {
 
   # Determine the image format path based on platform
   # See: https://github.com/siderolabs/image-factory
+  # Using ISO format for nocloud to ensure proper UEFI boot support
   image_format_map = {
-    "nocloud" = "nocloud-${var.talos_architecture}.raw.xz"
+    "nocloud" = "nocloud-${var.talos_architecture}.iso"
     "metal"   = "metal-${var.talos_architecture}.raw.xz"
     "aws"     = "aws-${var.talos_architecture}.raw.xz"
     "azure"   = "azure-${var.talos_architecture}.raw.xz"
     "gcp"     = "gcp-${var.talos_architecture}.raw.xz"
   }
-  image_format = lookup(local.image_format_map, var.talos_platform, "nocloud-${var.talos_architecture}.raw.xz")
+  image_format = lookup(local.image_format_map, var.talos_platform, "nocloud-${var.talos_architecture}.iso")
 }
 
 # Step 1: Create schematic and get ID
@@ -121,8 +128,12 @@ locals {
   # Format: https://factory.talos.dev/image/{schematic_id}/{version}/{format}
   image_url = "https://factory.talos.dev/image/${local.schematic_id}/${var.talos_version}/${local.image_format}"
 
-  image_dir  = "${path.root}/.talos-images"
-  image_name = "${var.file_name_prefix}-${local.schematic_id}.img"
+  # Use provided cache directory or default to module-local directory
+  # This avoids downloading the same image multiple times for different clusters
+  image_dir  = var.image_cache_dir != "" ? var.image_cache_dir : "${path.root}/.talos-images"
+  # Use .iso extension for nocloud ISO images
+  image_extension = var.talos_platform == "nocloud" ? "iso" : "img"
+  image_name = "${var.file_name_prefix}-${local.schematic_id}.${local.image_extension}"
   image_path = "${local.image_dir}/${local.image_name}"
 
   # Check if image already exists locally to avoid redundant downloads
@@ -131,26 +142,25 @@ locals {
   image_already_cached = fileexists(local.image_path)
 }
 
+# Download the image to a local cache location
+# ISOs are downloaded directly, raw images are decompressed from .xz
 resource "terraform_data" "download" {
-  # Only download if the image doesn't already exist locally
   count = local.image_already_cached ? 0 : 1
 
   triggers_replace = {
     image_url  = local.image_url
     image_path = local.image_path
+    is_iso     = var.talos_platform == "nocloud"
   }
 
   provisioner "local-exec" {
-    when    = create
-    command = "mkdir -p ${local.image_dir} && curl -L '${self.triggers_replace.image_url}' -o '${self.triggers_replace.image_path}'"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "rm -f '${self.triggers_replace.image_path}'"
+    when = create
+    # For ISOs, download directly. For raw images, decompress from .xz
+    command = self.triggers_replace.is_iso ? "mkdir -p ${local.image_dir} && curl -L '${self.triggers_replace.image_url}' -o '${self.triggers_replace.image_path}'" : "mkdir -p ${local.image_dir} && curl -L '${self.triggers_replace.image_url}' | xz -d > '${self.triggers_replace.image_path}'"
   }
 }
 
+# Upload via the Proxmox provider (will use SCP when SSH is configured)
 resource "proxmox_virtual_environment_file" "uploaded" {
   for_each = toset(var.proxmox_node_names)
 
@@ -173,7 +183,7 @@ output "talos_image_id" {
 
 output "talos_image_file_ids" {
   value       = { for k, v in proxmox_virtual_environment_file.uploaded : k => v.id }
-  description = "Map of node name to Proxmox file ID for the uploaded Talos image"
+  description = "Map of node name to Proxmox file ID for the Talos image"
 }
 
 output "talos_image_file_name" {

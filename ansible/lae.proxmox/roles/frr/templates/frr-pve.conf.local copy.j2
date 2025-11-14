@@ -1,0 +1,40 @@
+{# ---------- Host-scoped helpers ---------- #}
+{% set HAS_MESH = inventory_hostname in ['pve01','pve02','pve03'] %}
+{% set PVE_ID = inventory_hostname | regex_replace('^pve0?', '') | int %}
+{% set EDGE_ASN = EDGE_ASN | default(65000) %}
+{% set PVE_ASN = PVE_ASN | default(65001) %}
+{% set EDGE_V6_LO = EDGE_V6_LO | default('fd00:255::fffe') %}
+! ======================================================================
+! frr.conf.local - Proxmox SDN BGP EVPN extension with L3 gateways
+! ======================================================================
+{% if HAS_MESH %}
+! ---------- BGP Edge Router Peering ----------
+router bgp {{ PVE_ASN }}
+ !
+ address-family ipv6 unicast
+  neighbor BGP activate
+  neighbor BGP soft-reconfiguration inbound
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  advertise ipv6 unicast
+ exit-address-family
+exit
+!
+
+! ---------- Anycast Gateway IPs per VNI ----------
+! These are attached directly to the VXLAN bridge devices so VMs can reach fc00:X::fffe locally.
+
+interface vnet101
+ ipv6 address fc00:101::fffe/64
+exit
+!
+interface vnet102
+ ipv6 address fc00:102::fffe/64
+exit
+!
+interface vnet103
+ ipv6 address fc00:103::fffe/64
+exit
+!
+{% endif %}
