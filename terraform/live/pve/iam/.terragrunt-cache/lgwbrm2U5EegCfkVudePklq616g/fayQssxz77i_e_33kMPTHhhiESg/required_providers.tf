@@ -13,7 +13,7 @@ terraform {
     # add these two:
     sops = {
       source  = "carlpett/sops"
-      version = "~> 1.2.1"
+      version = "~> 1.3.0"
     }
     external = {
       source  = "hashicorp/external"
