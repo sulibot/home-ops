@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-helm-values
+  namespace: kube-system
+data:
+  values.yaml: |
+    # Cluster-102 (staging) specific overrides
+
+    # Pod CIDRs for cluster-102
+    ipv4NativeRoutingCIDR: 10.102.0.0/16
+    ipv6NativeRoutingCIDR: fd00:102:1::/60

@@ -1,0 +1,11 @@
+# Generated machine configs (pattern-based for any node naming)
+cluster-*-*.yaml
+!talsecret.sops.yaml
+
+# Generated/rendered files
+talconfig.rendered.yaml
+talosconfig
+
+# Temporary files
+*.tmp
+*.bak

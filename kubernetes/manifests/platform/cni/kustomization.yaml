@@ -1,3 +1,0 @@
-resources:
-  - gateway-api-crds/ks.yaml
-  - cilium/

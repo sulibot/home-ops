@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config
+  namespace: default  # change if your HelmRelease is in another namespace
+  labels:
+    app.kubernetes.io/name: plex
+    app.kubernetes.io/instance: plex
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: csi-cephfs-config-sc  # adjust to your desired class

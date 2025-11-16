@@ -1,0 +1,141 @@
+---
+# talconfig template rendered with jinja2 before invoking talhelper.
+
+clusterName: "{{ clusterName }}"
+talosVersion: "{{ talosVersion }}"
+kubernetesVersion: "{{ kubernetesVersion }}"
+
+# The VIP for the control plane.
+endpoint: "{{ endpoint }}"
+
+# Tell talhelper where to find the encrypted secrets file.
+secretsFile: "{{ secret_file }}"
+
+# Disable kube-proxy because we are using Cilium.
+proxy:
+  disabled: true
+
+# Skip default CNI installation - we'll install Cilium manually
+cniConfig:
+  name: none
+
+# Define the dual-stack Pod and Service CIDRs for Kubernetes.
+# IPv4 must be first to match the advertise address family
+clusterPodNets:
+  - "{{ pods_ipv4 }}"
+  - "{{ pods_ipv6 }}"
+clusterServiceNets:
+  - "{{ services_ipv4 }}"
+  - "{{ services_ipv6 }}"
+
+# Define the nodes for the cluster.
+nodes:
+{% for node in nodes %}
+  - hostname: "{{ node.hostname }}"
+    ipAddress: "{{ node.ipAddress }}"
+    controlPlane: {{ "true" if node.controlPlane else "false" }}
+    installDisk: "{{ node.installDisk | default('/dev/sda') }}"
+    networkInterfaces:
+      # Public/management network - must be first for proper routing
+      - interface: ens18
+        addresses:
+{% if node.publicIPv4 %}
+          - "{{ node.publicIPv4 }}/24"
+{% endif %}
+{% if node.publicIPv6 %}
+          - "{{ node.publicIPv6 }}/64"
+{% endif %}
+{% if node.controlPlane %}
+        # VIP for control plane high availability
+        vip:
+          ip: {{ endpoint.split('://')[1].split(':')[0] }}
+{% endif %}
+{% if node.publicGatewayIPv4 or node.publicGatewayIPv6 %}
+        routes:
+{% if node.publicGatewayIPv4 %}
+          - network: 0.0.0.0/0
+            gateway: "{{ node.publicGatewayIPv4 }}"
+            metric: 1024
+{% endif %}
+{% if node.publicGatewayIPv6 %}
+          - network: "::/0"
+            gateway: "{{ node.publicGatewayIPv6 }}"
+            metric: 1024
+{% endif %}
+{% endif %}
+        mtu: {{ node.publicMTU | default(1500) }}
+      # Mesh network - internal cluster communication only, no gateway
+      - interface: ens19
+        addresses:
+{% if node.meshIPv4 %}
+          - "{{ node.meshIPv4 }}/24"
+{% endif %}
+{% if node.meshIPv6 %}
+          - "{{ node.meshIPv6 }}/64"
+{% endif %}
+        mtu: {{ node.meshMTU | default(1500) }}
+    nameservers:
+{% if dns_server_ipv6 %}
+      - "{{ dns_server_ipv6 }}"
+{% endif %}
+{% if dns_server_ipv4 %}
+      - "{{ dns_server_ipv4 }}"
+{% endif %}
+    patches:
+      # Machine-level configuration for all nodes
+      - |-
+        machine:
+          kubelet:
+            nodeIP:
+              # List subnets in priority order - kubelet will use first match
+              # Public network (10.0.x.x) is preferred for node registration
+              validSubnets:
+                - 10.0.0.0/16
+                - 10.10.0.0/16
+            extraArgs:
+              # Rotate server certificates for security
+              rotate-server-certificates: "true"
+          sysctls:
+            # Increase the maximum number of open file descriptors
+            fs.file-max: "1000000"
+            # Increase inotify limits for watching files (useful for kubelet and other agents)
+            fs.inotify.max_user_watches: "524288"
+            # Increase the size of the connection tracking table. Essential for Cilium
+            net.netfilter.nf_conntrack_max: "1048576"
+            # Increase the maximum number of connections the kernel will queue
+            net.core.somaxconn: "32768"
+            # Required for IP-in-IP encapsulation if used
+            net.ipv4.ip_forward: "1"
+            net.ipv6.conf.all.forwarding: "1"
+{% if node.controlPlane %}
+      # Control plane specific: Override service subnets with dual-stack configuration
+      # IPv4 must be first to match the advertise address family
+      - |-
+        cluster:
+          network:
+            serviceSubnets:
+              - {{ services_ipv4 }}
+              - {{ services_ipv6 }}
+          apiServer:
+            admissionControl:
+              # Enable MutatingAdmissionWebhook for volsync and other operators
+              - name: PodSecurity
+                configuration:
+                  apiVersion: pod-security.admission.config.k8s.io/v1alpha1
+                  kind: PodSecurityConfiguration
+                  defaults:
+                    enforce: "baseline"
+                    enforce-version: "latest"
+                    audit: "restricted"
+                    audit-version: "latest"
+                    warn: "restricted"
+                    warn-version: "latest"
+                  exemptions:
+                    namespaces:
+                      - kube-system
+                      - volsync-system
+                      - actions-runner-system
+                    runtimeClasses: []
+                    usernames: []
+{% endif %}
+{% endfor %}

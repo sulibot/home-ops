@@ -1,0 +1,20 @@
+---
+# Cluster-102 (staging) apps kustomization
+# Watches kubernetes/apps/ with faster reconciliation for testing
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 10m  # Faster reconciliation for staging
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./kubernetes/apps
+  prune: true
+  wait: false
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age

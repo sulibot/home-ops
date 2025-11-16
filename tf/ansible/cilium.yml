@@ -1,4 +1,0 @@
-- hosts: controlplane[0]
-  become: yes
-  roles:
-    - cilium

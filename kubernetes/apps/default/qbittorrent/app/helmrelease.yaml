@@ -1,0 +1,135 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: qbittorrent
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: qbittorrent
+  interval: 1h
+  values:
+    controllers:
+      qbittorrent:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          volume-permissions:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: 1.36.1
+            command:
+              - sh
+              - -c
+              - |
+                set -eux
+                mkdir -p /config/qBittorrent/logs
+                chown -R 1000:1000 /config
+            securityContext:
+              runAsUser: 0
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/qbittorrent
+              tag: 5.1.2@sha256:31ac39705e31f7cdcc04dc46c1c0b0cdf8dc6f9865d4894efc097a33adc41524
+            env:
+              TZ: America/Los_Angeles
+              QBT_WEBUI_PORT: &port 80
+              QBT_TORRENTING_PORT: 50469
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 100m
+                memory: 2Gi
+              limits:
+                memory: 4Gi
+    defaultPodOptions:
+#      annotations:
+#        k8s.v1.cni.cncf.io/networks: |-
+#          [{
+#            "name": "vpn",
+#            "namespace": "kube-system",
+#            "ips": ["fd00:90::10/64"],
+#            "mac": "32:0b:d8:1f:b6:e4"
+#          }]
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.sulibot.com"
+        parentRefs:
+          - name: gateway-external
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+    configMaps:
+      config:
+        enabled: true
+        data:
+          .qbt.toml: |
+            # qBittorrent configuration
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        advancedMounts:
+          qbittorrent:
+            app:
+              - path: /config
+            volume-permissions:
+              - path: /config
+      config-file:
+        enabled: true
+        type: configMap
+        identifier: config
+        advancedMounts:
+          qbittorrent:
+            app:
+              - path: /config/.qbt.toml
+                subPath: .qbt.toml
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /data
+            subPath: data
+      qbrr:
+        type: image
+        image: ghcr.io/buroa/qbrr:0.1.1@sha256:fe4a1d100ba896999253a5122d9c77cc4920779d618c23f765458cb6ec7383ca
+      tmp:
+        type: emptyDir

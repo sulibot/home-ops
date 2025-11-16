@@ -1,3 +1,0 @@
-resources:
-  - snapshot-controller/
-  - ./ceph-csi/ks.yaml

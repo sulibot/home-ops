@@ -1,0 +1,332 @@
+# Taskfile for home-ops management
+#
+# This file provides a set of commands to automate the lifecycle of
+# Kubernetes clusters, from infrastructure provisioning to cluster bootstrap.
+#
+# Workflow:
+#   1. task infra:apply -- 101              # Create VMs with Terraform
+#   2. task talos:gen-secrets -- 101        # Generate encrypted Talos secrets
+#   3. task talos:gen-config -- 101         # Generate Talos machine configs
+#   4. task talos:bootstrap -- 101          # Apply configs and bootstrap cluster
+#   5. task cni:apply -- 101                # Install Cilium CNI
+#
+# Or use the all-in-one command:
+#   task cluster:create -- 101
+#
+version: '3'
+
+vars:
+  # Default cluster ID if none is provided (clusters are named by ID)
+  CLUSTER_ID: '101'
+  CLUSTER_NAME: '101'  # Cluster directories use cluster ID as name
+  TALOS_TEMPLATE: 'templates/talconfig.j2'
+
+tasks:
+  default:
+    desc: 'List all available tasks'
+    cmds:
+      - task --list-all
+
+  # ==========================================================================
+  # Step 1: Infrastructure Provisioning (Terraform)
+  # ==========================================================================
+
+  infra:apply:
+    desc: '1️⃣  Provision cluster VMs with Terraform'
+    summary: |
+      Usage: task infra:apply -- <cluster_id>
+      Example: task infra:apply -- 101
+
+      Creates VMs on Proxmox and generates talenv.yaml
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}/nodes'
+    cmds:
+      - terragrunt apply -auto-approve
+
+  infra:plan:
+    desc: 'Preview infrastructure changes'
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}/nodes'
+    cmds:
+      - terragrunt plan
+
+  infra:destroy:
+    desc: '🗑️  Destroy cluster infrastructure'
+    summary: |
+      Usage: task infra:destroy -- <cluster_id>
+      Example: task infra:destroy -- 101
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}/nodes'
+    cmds:
+      - terragrunt destroy -auto-approve
+
+  # ==========================================================================
+  # Step 2: Generate Talos Secrets
+  # ==========================================================================
+
+  talos:gen-secrets:
+    desc: '2️⃣  Generate encrypted Talos cluster secrets'
+    summary: |
+      Usage: task talos:gen-secrets -- <cluster_id>
+      Example: task talos:gen-secrets -- 101
+
+      Generates encrypted secrets at talos/clusters/cluster-<id>/talsecret.sops.yaml
+    vars:
+      SECRETS_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
+    dir: 'talos'
+    cmds:
+      - mkdir -p clusters/cluster-{{.CLI_ARGS}}
+      - talhelper gensecret > {{.SECRETS_FILE}}
+      - sops -e -i {{.SECRETS_FILE}}
+      - echo "✅ Encrypted secrets generated at talos/{{.SECRETS_FILE}}"
+
+  # ==========================================================================
+  # Step 3: Generate Talos Machine Configs
+  # ==========================================================================
+
+  talos:gen-config:
+    desc: '3️⃣  Generate Talos machine configs with talhelper'
+    summary: |
+      Usage: task talos:gen-config -- <cluster_id>
+      Example: task talos:gen-config -- 101
+
+      Requires:
+        - talos/clusters/cluster-<id>/talenv.yaml (from Terraform)
+        - talos/clusters/cluster-<id>/talsecret.sops.yaml (from gen-secrets)
+
+      Generates machine configs in talos/clusters/cluster-<id>/
+      Also writes talos/clusters/cluster-<id>/talconfig.rendered.yaml for inspection.
+    vars:
+      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
+      ENV_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talenv.yaml'
+      SECRET_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
+      RENDERED_CONFIG: 'clusters/cluster-{{.CLI_ARGS}}/talconfig.rendered.yaml'
+    dir: 'talos'
+    cmds:
+      - python3 scripts/validate_talenv.py --file {{.ENV_FILE}}
+      - jinja2 {{.TALOS_TEMPLATE}} {{.ENV_FILE}} -D secret_file={{.SECRET_FILE}} -o {{.RENDERED_CONFIG}}
+      - talhelper genconfig --config-file {{.RENDERED_CONFIG}} --secret-file {{.SECRET_FILE}} --out-dir {{.CLUSTER_DIR}}
+
+  # ==========================================================================
+  # Step 4: Bootstrap Talos Cluster
+  # ==========================================================================
+
+  talos:bootstrap:
+    desc: '4️⃣  Bootstrap the Talos cluster'
+    summary: |
+      Usage: task talos:bootstrap -- <cluster_id>
+      Example: task talos:bootstrap -- 101
+
+      Applies configs to all nodes and bootstraps the cluster
+    vars:
+      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
+    dir: 'talos/clusters/cluster-{{.CLI_ARGS}}'
+    cmds:
+      - |
+        echo "🚀 Bootstrapping cluster {{.CLI_ARGS}}"
+        echo ""
+
+        # Read node IPs from talenv.yaml
+        CP01_IP=$(yq eval '.solcp01_ipAddress' talenv.yaml)
+        CP02_IP=$(yq eval '.solcp02_ipAddress' talenv.yaml)
+        CP03_IP=$(yq eval '.solcp03_ipAddress' talenv.yaml)
+        WK01_IP=$(yq eval '.solwk01_ipAddress' talenv.yaml)
+        WK02_IP=$(yq eval '.solwk02_ipAddress' talenv.yaml)
+        WK03_IP=$(yq eval '.solwk03_ipAddress' talenv.yaml)
+
+        echo "📋 Node IPs:"
+        echo "  Control Planes: $CP01_IP, $CP02_IP, $CP03_IP"
+        echo "  Workers: $WK01_IP, $WK02_IP, $WK03_IP"
+        echo ""
+
+        echo "🔍 Checking node connectivity..."
+        UNREACHABLE=()
+        for node_ip in $CP01_IP $CP02_IP $CP03_IP $WK01_IP $WK02_IP $WK03_IP; do
+          if ping -c 1 -W 2 $node_ip &>/dev/null; then
+            echo "  ✓ $node_ip reachable"
+          else
+            echo "  ✗ $node_ip UNREACHABLE"
+            UNREACHABLE+=($node_ip)
+          fi
+        done
+        echo ""
+
+        if [ ${#UNREACHABLE[@]} -gt 0 ]; then
+          echo "⚠️  Warning: ${#UNREACHABLE[@]} node(s) unreachable: ${UNREACHABLE[@]}"
+          echo "Proceeding with reachable nodes only..."
+          echo ""
+        fi
+
+        echo "1️⃣  Applying machine configs to reachable nodes..."
+
+        if ping -c 1 -W 2 $CP01_IP &>/dev/null; then
+          echo "  → Applying config to solcp01 ($CP01_IP)..."
+          talosctl apply-config --insecure --nodes $CP01_IP --file cluster-{{.CLI_ARGS}}-solcp01.yaml || echo "  ⚠️  Failed to apply config to solcp01"
+        fi
+
+        if ping -c 1 -W 2 $CP02_IP &>/dev/null; then
+          echo "  → Applying config to solcp02 ($CP02_IP)..."
+          talosctl apply-config --insecure --nodes $CP02_IP --file cluster-{{.CLI_ARGS}}-solcp02.yaml || echo "  ⚠️  Failed to apply config to solcp02"
+        fi
+
+        if ping -c 1 -W 2 $CP03_IP &>/dev/null; then
+          echo "  → Applying config to solcp03 ($CP03_IP)..."
+          talosctl apply-config --insecure --nodes $CP03_IP --file cluster-{{.CLI_ARGS}}-solcp03.yaml || echo "  ⚠️  Failed to apply config to solcp03"
+        fi
+
+        if ping -c 1 -W 2 $WK01_IP &>/dev/null; then
+          echo "  → Applying config to solwk01 ($WK01_IP)..."
+          talosctl apply-config --insecure --nodes $WK01_IP --file cluster-{{.CLI_ARGS}}-solwk01.yaml || echo "  ⚠️  Failed to apply config to solwk01"
+        fi
+
+        if ping -c 1 -W 2 $WK02_IP &>/dev/null; then
+          echo "  → Applying config to solwk02 ($WK02_IP)..."
+          talosctl apply-config --insecure --nodes $WK02_IP --file cluster-{{.CLI_ARGS}}-solwk02.yaml || echo "  ⚠️  Failed to apply config to solwk02"
+        fi
+
+        if ping -c 1 -W 2 $WK03_IP &>/dev/null; then
+          echo "  → Applying config to solwk03 ($WK03_IP)..."
+          talosctl apply-config --insecure --nodes $WK03_IP --file cluster-{{.CLI_ARGS}}-solwk03.yaml || echo "  ⚠️  Failed to apply config to solwk03"
+        fi
+        echo ""
+
+        echo "⏳ Waiting 30 seconds for nodes to process configs..."
+        sleep 30
+        echo ""
+
+        if ! ping -c 1 -W 2 $CP01_IP &>/dev/null; then
+          echo "❌ Cannot bootstrap: first control plane node ($CP01_IP) is unreachable!"
+          exit 1
+        fi
+
+        echo "2️⃣  Bootstrapping first control plane ($CP01_IP)..."
+        talosctl bootstrap --nodes $CP01_IP --endpoints $CP01_IP --talosconfig ./talosconfig
+        echo ""
+
+        echo "⏳ Waiting 60 seconds for cluster to initialize..."
+        sleep 60
+        echo ""
+
+        echo "3️⃣  Retrieving kubeconfig..."
+        talosctl kubeconfig --nodes $CP01_IP --endpoints $CP01_IP --talosconfig ./talosconfig --force
+        echo ""
+
+        echo "✅ Bootstrap complete!"
+        echo ""
+        if [ ${#UNREACHABLE[@]} -gt 0 ]; then
+          echo "⚠️  Note: ${#UNREACHABLE[@]} node(s) were unreachable and not configured:"
+          for ip in "${UNREACHABLE[@]}"; do
+            echo "    - $ip"
+          done
+          echo ""
+        fi
+        echo "Next steps:"
+        echo "  - Install CNI: task cni:bootstrap"
+        echo "  - Verify nodes: kubectl get nodes"
+        echo "  - Install Flux: flux bootstrap github ..."
+
+  # ==========================================================================
+  # Step 5: Install CNI (Cilium)
+  # ==========================================================================
+
+  cni:bootstrap:
+    desc: '5️⃣  Bootstrap Cilium CNI (before Flux)'
+    summary: |
+      Usage: task cni:bootstrap
+      Example: task cni:bootstrap
+
+      Installs Cilium using helmfile before Flux is running.
+      This solves the chicken-egg problem (Flux needs networking).
+
+      After Flux is installed, it will adopt this HelmRelease.
+    dir: kubernetes/bootstrap
+    cmds:
+      - |
+        echo "📡 Installing Cilium via helmfile..."
+        helmfile apply
+        echo ""
+
+        echo "⏳ Waiting for Cilium to be ready..."
+        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
+        echo ""
+
+        echo "✅ Cilium installed successfully"
+        echo ""
+        echo "Next steps:"
+        echo "  - Verify nodes: kubectl get nodes"
+        echo "  - Install Flux: flux bootstrap github ..."
+        echo "  - Flux will adopt Cilium HelmRelease"
+
+  # ==========================================================================
+  # All-in-One Commands
+  # ==========================================================================
+
+  cluster:create:
+    desc: '🚀 Create a complete cluster (steps 1-3)'
+    summary: |
+      Usage: task cluster:create -- <cluster_id>
+      Example: task cluster:create -- 101
+
+      This orchestrates:
+      1. Infrastructure provisioning (VMs)
+      2. Talos secret generation
+      3. Talos config generation
+
+      After this, you need to manually bootstrap the cluster (step 4)
+    cmds:
+      - task: infra:apply
+        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
+      - echo "⏳ Generating Talos secrets..."
+      - task: talos:gen-secrets
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+      - echo "⏳ Generating Talos machine configs..."
+      - task: talos:gen-config
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+      - echo "✅ Infrastructure created and configs generated!"
+      - echo ""
+      - echo "Next steps:"
+      - echo "  task talos:bootstrap -- {{.CLI_ARGS}}     # View bootstrap instructions"
+
+  cluster:destroy:
+    desc: '🗑️  Destroy a complete cluster'
+    summary: |
+      Usage: task cluster:destroy -- <cluster_id>
+      Example: task cluster:destroy -- 102
+
+      ⚠️  WARNING: This permanently destroys all VMs and data!
+      Production cluster (101) has extra safety confirmation.
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "❌ Cluster ID required. Usage: task cluster:destroy -- <cluster_id>"
+    prompt: |
+      ⚠️  You are about to DESTROY cluster-{{.CLI_ARGS}}
+      This will:
+        - Delete all VMs
+        - Remove all data
+        - Clean up Talos configs
+
+      Are you absolutely sure? (type 'yes' to confirm)
+    cmds:
+      - |
+        {{if eq .CLI_ARGS "101"}}
+        echo "🛑 PRODUCTION CLUSTER PROTECTION"
+        echo "You are trying to destroy cluster-101 (production: sol)"
+        echo ""
+        read -p "Type the cluster name 'sol' to confirm: " confirm
+        if [ "$confirm" != "sol" ]; then
+          echo "❌ Destruction cancelled"
+          exit 1
+        fi
+        {{end}}
+      - echo "🗑️  Destroying cluster infrastructure..."
+      - task: infra:destroy
+        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
+      - echo "🗑️  Removing Talos configs..."
+      - rm -rf talos/clusters/cluster-{{.CLI_ARGS}}
+      - echo "✅ Cluster-{{.CLI_ARGS}} destroyed"
+
+  # ==========================================================================
+  # Utility Tasks
+  # ==========================================================================
+
+  talos:gen-env:
+    desc: '🔧 Generate talenv.yaml from Terraform outputs (rarely needed - auto-generated)'
+    cmds:
+      - ./talos/scripts/generate-talenv.sh {{.CLUSTER_ID}}

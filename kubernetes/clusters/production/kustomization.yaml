@@ -1,6 +1,7 @@
 resources:
   - repo.yaml
-  - platform.yaml       
-  - core.yaml
-  - apps.yaml  
+  - apps.yaml
+#  - platform.yaml  # Deprecated - dependencies in app ks.yaml files
+#  - core.yaml      # Deprecated - dependencies in app ks.yaml files
+#  - apps-old.yaml  # Deprecated - using new kubernetes/apps structure
 #  - secrets.yaml
