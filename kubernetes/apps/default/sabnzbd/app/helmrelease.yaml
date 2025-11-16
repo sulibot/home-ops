@@ -1,0 +1,70 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sabnzbd
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: sabnzbd
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      sabnzbd:
+        type: statefulset
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: ghcr.io/onedr0p/sabnzbd
+              tag: 4.4.1@sha256:4188d3c29c53de1018edcfd5dc2d0a0c7955b9a239b91ff6c859626abd3494dc
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: sabnzbd
+        ports:
+          http:
+            port: 80
+            targetPort: 8080
+    route:
+      app:
+        hostnames:
+          - sabnzbd.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: sabnzbd
+                port: 80
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /config
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /data
+

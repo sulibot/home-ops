@@ -1,0 +1,59 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: victoria-logs
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: victoria-logs
+  interval: 1h
+  values:
+    fullnameOverride: victoria-logs
+    retentionPeriod: 14d
+    server:
+      persistentVolume:
+        enabled: true
+        storageClassName: csi-cephfs-config-sc
+        size: 20Gi
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+          host: 127.0.0.1
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        tcpSocket:
+          port: http
+          host: 127.0.0.1
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 10
+      route:
+        enabled: true
+        hostnames:
+          - victoria-logs.sulibot.com
+        parentRefs:
+          - name: gateway-external
+            namespace: network
+        extraRules:
+          - filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /select/vmui/
+                  statusCode: 302
+            matches:
+              - path:
+                  type: Exact
+                  value: /
+      serviceMonitor:
+        enabled: true
+    dashboards:
+      enabled: true

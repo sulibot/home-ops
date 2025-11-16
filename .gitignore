@@ -16,15 +16,19 @@ __MACOSX
 *~
 .nfs*
 
-# Terraform
+# Terraform/Terragrunt
 *.tfstate
 *.tfstate.backup
 .terraform/
+**/.terraform/
 .terraform.lock.hcl
+**/.terraform.lock.hcl
 crash.log
 .terraform*
 terraform.*
 .terragrunt-cache/
+**/.terragrunt-cache/
+terragrunt_rendered.json
 
 # Talos/OS Images (cached locally, don't commit large binaries)
 *.iso
@@ -33,7 +37,7 @@ terraform.*
 *.qcow2
 *.vmdk
 *.vdi
-tf/infra/cache/
+terraform/infra/cache/
 
 # Python
 *.pyc
@@ -94,3 +98,6 @@ ansible.log
 *.diff
 *.lock
 *.bak
+
+# Generated Talos configs
+talos/clusters/**/talconfig.rendered.yaml

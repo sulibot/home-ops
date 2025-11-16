@@ -1,0 +1,38 @@
+---
+# Bootstrap Helmfile for cluster-101
+# Installs critical components BEFORE Flux is running
+#
+# Components installed:
+# - Cilium CNI (networking required for Flux pods)
+#
+# Usage:
+#   helmfile apply
+#
+# After bootstrap, Flux will adopt these HelmReleases
+
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: 1.18.4
+    values:
+      - values/cilium.yaml
+    wait: true
+    timeout: 300
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: "kubectl"
+        args:
+          - "wait"
+          - "--for=condition=Ready"
+          - "pods"
+          - "-l"
+          - "k8s-app=cilium"
+          - "-n"
+          - "kube-system"
+          - "--timeout=5m"

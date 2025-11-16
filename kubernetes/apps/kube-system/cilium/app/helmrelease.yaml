@@ -1,0 +1,42 @@
+---
+# Cilium CNI HelmRelease for cluster-101
+# Managed by Flux after bootstrap
+#
+# This HelmRelease is adopted from the bootstrap installation.
+# Values must match kubernetes/bootstrap/values/cilium.yaml
+
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  chart:
+    spec:
+      chart: cilium
+      version: 1.18.x  # Auto-update within 1.18 series
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+
+  interval: 30m
+  timeout: 10m
+
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+
+  upgrade:
+    cleanupOnFail: true
+    crds: CreateReplace
+    remediation:
+      retries: 3
+      strategy: rollback
+
+  # Values from ConfigMap (generated from values.yaml)
+  valuesFrom:
+    - kind: ConfigMap
+      name: cilium-helm-values
+      valuesKey: values.yaml

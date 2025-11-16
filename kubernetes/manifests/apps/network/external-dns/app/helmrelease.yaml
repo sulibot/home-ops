@@ -1,0 +1,94 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  chart:
+    spec:
+      chart: external-dns
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns
+        namespace: flux-system
+      version: 1.15.0
+  interval: 1h0m0s
+  values:
+    domainFilters:
+    - sulibot.com
+    excludeDomains: []
+    extraArgs:
+    - --ignore-ingress-tls-spec
+    - --managed-record-types=A
+    - --managed-record-types=AAAA
+    - --managed-record-types=CNAME
+    - --managed-record-types=TXT
+    - --managed-record-types=MX
+    - --managed-record-types=SRV
+    - --managed-record-types=NS
+    fullnameOverride: external-dns-mikrotik
+    interval: 1s
+    logFormat: text
+    logLevel: debug
+    policy: sync
+    provider:
+      name: webhook
+      webhook:
+        env:
+        - name: LOG_FORMAT
+          value: json
+        - name: LOG_LEVEL
+          value: debug
+        - name: MIKROTIK_BASEURL
+          valueFrom:
+            secretKeyRef:
+              key: MIKROTIK_BASEURL
+              name: mikrotik-credentials
+        - name: MIKROTIK_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: MIKROTIK_USERNAME
+              name: mikrotik-credentials
+        - name: MIKROTIK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MIKROTIK_PASSWORD
+              name: mikrotik-credentials
+        - name: MIKROTIK_SKIP_TLS_VERIFY
+          valueFrom:
+            secretKeyRef:
+              key: MIKROTIK_SKIP_TLS_VERIFY
+              name: mikrotik-credentials
+        image:
+          pullPolicy: IfNotPresent
+          repository: ghcr.io/mirceanton/external-dns-provider-mikrotik
+          tag: v1.2.2@sha256:3afe75cbbf5ed66a8f99686a9eba32bf8cef60344f27d0872538f82b210c1aab
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http-webhook
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http-webhook
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 30
+    registry: txt
+    sources:
+    - ingress
+    - service
+    - gateway-httproute
+    - gateway-grpcroute
+    txtOwnerId: default
+    txtPrefix: k8s.

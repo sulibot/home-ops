@@ -1,0 +1,158 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: slskd
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: slskd
+  interval: 1h
+  values:
+    controllers:
+      slskd:
+        type: deployment
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-dirs:
+            image:
+              repository: ghcr.io/slskd/slskd
+              tag: 0.23.2@sha256:28df5325f301537ea8669b2ef90112a30cc9f2efd3eb714c9a778460b5dc6288
+            command:
+              - sh
+              - -c
+              - |
+                echo "[init] Creating required directories"
+                mkdir -p /media/Downloads/soulseek/complete
+                mkdir -p /media/Downloads/soulseek/incomplete
+                mkdir -p /media/Downloads/soulseek/shared
+                echo "[init] Setting permissions"
+                chown -R 1000:1000 /media/Downloads/soulseek/complete /media/Downloads/soulseek/incomplete /media/Downloads/soulseek/shared 2>/dev/null || true
+                echo "[init] Initialization complete"
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+        containers:
+          app:
+            image:
+              repository: ghcr.io/slskd/slskd
+              tag: 0.23.2@sha256:28df5325f301537ea8669b2ef90112a30cc9f2efd3eb714c9a778460b5dc6288
+            env:
+              DOTNET_BUNDLE_EXTRACT_BASE_DIR: /tmp/.net
+              TZ: America/Los_Angeles
+              SLSKD_APP_DIR: /config
+              SLSKD_HTTP_PORT: &port 80
+              SLSKD_HTTP_ADDRESS: '::'
+              SLSKD_NO_AUTH: true
+              SLSKD_NO_HTTPS: true
+              SLSKD_NO_VERSION_CHECK: true
+              SLSKD_SLSK_LISTEN_PORT: 50429
+              SLSKD_SLSK_ADDRESS: '::'
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 1Gi
+    defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [{
+            "name": "vpn",
+            "namespace": "kube-system",
+            "ips": ["fd00:90::12/64"],
+            "mac": "c6:58:f2:a7:62:ce"
+          }]
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.sulibot.com"
+        parentRefs:
+          - name: gateway-external
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+    configMaps:
+      config:
+        data:
+          slskd.yml: |-
+            web:
+              http:
+                address: '::'
+            soulseek:
+              address: '::'
+            directories:
+              downloads: /media/Downloads/soulseek/complete
+              incomplete: /media/Downloads/soulseek/incomplete
+            permissions:
+              file:
+                mode: 750
+            shares:
+              directories:
+                - /media/Downloads/soulseek/shared
+              filters:
+                - \.ini$
+                - Thumbs.db$
+                - \.DS_Store$
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /config
+      config-file:
+        type: configMap
+        identifier: config
+        globalMounts:
+          - path: /config/slskd.yml
+            subPath: slskd.yml
+      media:
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /media/Downloads/soulseek
+            subPath: data/media/soulseek
+      tmp:
+        type: emptyDir

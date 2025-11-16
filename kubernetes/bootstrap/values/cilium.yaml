@@ -1,0 +1,116 @@
+---
+# Cilium Bootstrap Values for cluster-101
+# Talos-specific configuration with dual-stack networking
+#
+# This file is used by helmfile during bootstrap.
+# After Flux takes over, these same values are managed by the HelmRelease.
+
+# API Server endpoint - use localhost for Talos
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+# Replace kube-proxy with Cilium
+kubeProxyReplacement: true
+
+# Enable dual-stack
+ipv4:
+  enabled: true
+ipv6:
+  enabled: true
+
+# IPAM mode
+ipam:
+  mode: kubernetes
+
+# Native routing (no encapsulation for better performance)
+routingMode: native
+tunnelProtocol: ""
+autoDirectNodeRoutes: true
+endpointRoutes:
+  enabled: true
+
+# Pod CIDRs for cluster-101
+ipv4NativeRoutingCIDR: 10.101.0.0/16
+ipv6NativeRoutingCIDR: fd00:101:1::/60
+
+# Enable BPF masquerading (iptables-free NAT)
+bpf:
+  masquerade: true
+
+# BGP Control Plane for VIP and LoadBalancer advertisement
+bgpControlPlane:
+  enabled: true
+
+# Operator settings
+operator:
+  replicas: 1
+
+# Hubble observability
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+
+# Install CNI plugin
+cni:
+  install: true
+
+# Talos-specific settings
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# Security context capabilities for Talos
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# Gateway API
+gatewayAPI:
+  enabled: true
+  enableProxyProtocol: false
+  enableAppProtocol: false
+  enableAlpn: true
+  xffNumTrustedHops: 0
+  externalTrafficPolicy: Cluster
+  serviceLabels:
+    bgp-advertise: "true"
+
+gatewayClass:
+  create: false
+  secretsNamespace:
+    create: true
+    name: cilium-secrets
+    sync: true
+  hostNetwork:
+    enabled: false
+
+# Metrics
+metrics:
+  enabled: true

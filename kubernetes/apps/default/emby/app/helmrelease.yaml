@@ -1,0 +1,73 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: emby
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: emby
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      emby:
+        type: Deployment
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: emby/embyserver
+              tag: latest
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+            env:
+              - name: TZ
+                value: America/Los_Angeles
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: emby
+        ports:
+          http:
+            port: 80
+            targetPort: 8096
+    route:
+      app:
+        hostnames:
+          - emby.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: emby
+                port: 80
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /config
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /data
+            subPath: data
+      tmp:
+        type: emptyDir
+
+
