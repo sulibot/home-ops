@@ -1,5 +1,4 @@
 resources:
-  - namespace.yaml
   - externalsecret.yaml
   - helmrelease.yaml
 #configMapGenerator:

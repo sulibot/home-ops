@@ -7,5 +7,4 @@ components:
   - ../../components/alerts
 
 resources:
-  - ./namespace.yaml
   - ./actions-runner-controller/ks.yaml

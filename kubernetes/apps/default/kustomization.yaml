@@ -1,3 +1,37 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
-  #- redis/
-  - cloudnative-pg/
+  - ./atuin/ks.yaml
+  - ./autobrr/ks.yaml
+  - ./cloudnative-pg/ks.yaml
+  - ./cross-seed/ks.yaml
+  - ./emby/ks.yaml
+  - ./filebrowser/ks.yaml
+  - ./fusion/ks.yaml
+  - ./go2rtc/ks.yaml
+  - ./home-assistant/ks.yaml
+  - ./immich/ks.yaml
+  - ./jellyseerr/ks.yaml
+  - ./lidarr/ks.yaml
+  - ./mosquitto/ks.yaml
+  - ./notifier/ks.yaml
+  - ./nzbget/ks.yaml
+  - ./overseerr/ks.yaml
+  - ./plex/ks.yaml
+  - ./prowlarr/ks.yaml
+  - ./qbittorrent/ks.yaml
+  - ./qui/ks.yaml
+  - ./radarr/ks.yaml
+  - ./recyclarr/ks.yaml
+  - ./redis/ks.yaml
+  - ./sabnzbd/ks.yaml
+  - ./slskd/ks.yaml
+  - ./smtp-relay/ks.yaml
+  - ./sonarr/ks.yaml
+  - ./tautulli/ks.yaml
+  - ./thelounge/ks.yaml
+  - ./tqm/ks.yaml
+  - ./zigbee/ks.yaml
+  - ./zwave/ks.yaml
