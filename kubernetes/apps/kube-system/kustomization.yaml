@@ -7,7 +7,6 @@ components:
   - ../../components/alerts
 
 resources:
-  - ./namespace.yaml
   - ./cilium/ks.yaml
   - ./cilium/bgp/ks.yaml
   - ./cilium/ippool/ks.yaml

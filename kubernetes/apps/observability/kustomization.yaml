@@ -7,7 +7,6 @@ components:
   - ../../components/alerts
 
 resources:
-  - ./namespace.yaml
   - ./_namespace/csi-cephfs-content-pv-observability-retain.yaml
   - ./_namespace/csi-cephfs-content-pvc-observability.yaml
   - ./blackbox-exporter/ks.yaml

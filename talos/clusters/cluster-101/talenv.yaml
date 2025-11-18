@@ -16,7 +16,7 @@ nodes:
     meshIPv6: fc00:101::11
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.11
     publicIPv6: fd00:101::11
     publicMTU: 1500
@@ -29,7 +29,7 @@ nodes:
     meshIPv6: fc00:101::12
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.12
     publicIPv6: fd00:101::12
     publicMTU: 1500
@@ -42,7 +42,7 @@ nodes:
     meshIPv6: fc00:101::13
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.13
     publicIPv6: fd00:101::13
     publicMTU: 1500
@@ -55,7 +55,7 @@ nodes:
     meshIPv6: fc00:101::21
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.21
     publicIPv6: fd00:101::21
     publicMTU: 1500
@@ -68,7 +68,7 @@ nodes:
     meshIPv6: fc00:101::22
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.22
     publicIPv6: fd00:101::22
     publicMTU: 1500
@@ -81,7 +81,7 @@ nodes:
     meshIPv6: fc00:101::23
     meshMTU: 8930
     publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fe80::ff:fe00:1
+    publicGatewayIPv6: null
     publicIPv4: 10.0.101.23
     publicIPv6: fd00:101::23
     publicMTU: 1500

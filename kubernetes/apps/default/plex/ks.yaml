@@ -4,6 +4,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: plex
+  namespace: flux-system
 spec:
   components:
     - ../../../../components/volsync
@@ -36,9 +37,10 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: plex-tools
+  namespace: flux-system
 spec:
-#  components:
-#    - ../../../../components/volsync
+  #  components:
+  #    - ../../../../components/volsync
   dependsOn:
     - name: volsync
       namespace: volsync-system

@@ -4,6 +4,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: grafana
+  namespace: flux-system
 spec:
   dependsOn:
     - name: onepassword
@@ -23,6 +24,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: grafana-instance
+  namespace: flux-system
 spec:
   dependsOn:
     - name: grafana
