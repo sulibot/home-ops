@@ -9,6 +9,8 @@ spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
+    - name: ceph-csi
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/cloudnative-pg
   prune: true
