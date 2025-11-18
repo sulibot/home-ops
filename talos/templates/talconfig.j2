@@ -8,6 +8,17 @@ kubernetesVersion: "{{ kubernetesVersion }}"
 # The VIP for the control plane.
 endpoint: "{{ endpoint }}"
 
+{% set endpoint_host_port = endpoint.split('://')[1] %}
+{% if endpoint_host_port.startswith('[') %}
+{% set control_plane_vip = endpoint_host_port.split(']')[0].lstrip('[') %}
+{% else %}
+{% set control_plane_vip = endpoint_host_port.split(':')[0] %}
+{% endif %}
+
+# Define dual-stack VIPs for kube-apiserver
+{% set control_plane_vip_ipv4 = "10.0." + cluster_id|string + ".10" %}
+{% set control_plane_vip_ipv6 = "fd00:" + cluster_id|string + "::10" %}
+
 # Tell talhelper where to find the encrypted secrets file.
 secretsFile: "{{ secret_file }}"
 
@@ -20,13 +31,13 @@ cniConfig:
   name: none
 
 # Define the dual-stack Pod and Service CIDRs for Kubernetes.
-# IPv4 must be first to match the advertise address family
+# IPv6 must be first to match the advertise address family (IPv6 VIP)
 clusterPodNets:
-  - "{{ pods_ipv4 }}"
   - "{{ pods_ipv6 }}"
+  - "{{ pods_ipv4 }}"
 clusterServiceNets:
-  - "{{ services_ipv4 }}"
   - "{{ services_ipv6 }}"
+  - "{{ services_ipv4 }}"
 
 # Define the nodes for the cluster.
 nodes:
@@ -46,9 +57,11 @@ nodes:
           - "{{ node.publicIPv6 }}/64"
 {% endif %}
 {% if node.controlPlane %}
-        # VIP for control plane high availability
+        # Dual-stack VIPs for control plane HA (managed by Talos)
         vip:
-          ip: {{ endpoint.split('://')[1].split(':')[0] }}
+          ip: {{ control_plane_vip }}
+        # FUTURE: When Talos supports multiple VIPs via vip.additionalIPs, add IPv4 VIP here
+        # For now, IPv4 clients must connect via the primary IPv6 VIP (kube-apiserver listens on ::)
 {% endif %}
 {% if node.publicGatewayIPv4 or node.publicGatewayIPv6 %}
         routes:
@@ -85,16 +98,44 @@ nodes:
       # Machine-level configuration for all nodes
       - |-
         machine:
+          certSANs:
+            - 127.0.0.1
+            - ::1
+            - localhost
+            - {{ node.hostname }}
+            - {{ node.hostname }}.{{ clusterName }}
+{% if node.publicIPv6 %}
+            - {{ node.publicIPv6 }}
+{% endif %}
+{% if node.publicIPv4 %}
+            - {{ node.publicIPv4 }}
+{% endif %}
+{% if node.meshIPv6 %}
+            - {{ node.meshIPv6 }}
+{% endif %}
+{% if node.meshIPv4 %}
+            - {{ node.meshIPv4 }}
+{% endif %}
+{% if node.controlPlane %}
+            - {{ control_plane_vip_ipv6 }}
+            - {{ control_plane_vip_ipv4 }}
+{% endif %}
           kubelet:
+            # Explicitly set cluster DNS to match the dual-stack service CIDR
+            # DNS service is at the 10th IP in each service subnet
+            clusterDNS:
+              - {{ services_ipv6.split('/')[0] }}a
+              - {{ services_ipv4.split('/')[0].rsplit('.', 1)[0] }}.10
+            # Explicitly set the node IP to avoid ambiguity when VIP is on same interface
+            # Using /128 and /32 masks ensures kubelet uses only the specific node IPs, not the VIP
             nodeIP:
-              # List subnets in priority order - kubelet will use first match
-              # Public network (10.0.x.x) is preferred for node registration
               validSubnets:
-                - 10.0.0.0/16
-                - 10.10.0.0/16
-            extraArgs:
-              # Rotate server certificates for security
-              rotate-server-certificates: "true"
+{% if node.publicIPv6 %}
+                - "{{ node.publicIPv6 }}/128"
+{% endif %}
+{% if node.publicIPv4 %}
+                - "{{ node.publicIPv4 }}/32"
+{% endif %}
           sysctls:
             # Increase the maximum number of open file descriptors
             fs.file-max: "1000000"
@@ -109,14 +150,46 @@ nodes:
             net.ipv6.conf.all.forwarding: "1"
 {% if node.controlPlane %}
       # Control plane specific: Override service subnets with dual-stack configuration
-      # IPv4 must be first to match the advertise address family
+      # IPv6 must be first to match the advertise address family (IPv6 VIP)
       - |-
         cluster:
           network:
             serviceSubnets:
-              - {{ services_ipv4 }}
               - {{ services_ipv6 }}
+              - {{ services_ipv4 }}
           apiServer:
+            # Configure kube-apiserver for dual-stack VIPs
+            # Listen on both IPv4 and IPv6, advertise primary (IPv6) VIP
+            certSANs:
+              - 127.0.0.1
+              - ::1
+              - localhost
+              - {{ node.hostname }}
+              - {{ node.hostname }}.{{ clusterName }}
+              - kubernetes
+              - kubernetes.default
+              - kubernetes.default.svc
+              - kubernetes.default.svc.cluster.local
+              - {{ control_plane_vip_ipv6 }}
+              - {{ control_plane_vip_ipv4 }}
+{% if node.publicIPv6 and node.publicIPv6 != control_plane_vip_ipv6 %}
+              - {{ node.publicIPv6 }}
+{% endif %}
+{% if node.publicIPv4 and node.publicIPv4 != control_plane_vip_ipv4 %}
+              - {{ node.publicIPv4 }}
+{% endif %}
+{% if node.meshIPv6 %}
+              - {{ node.meshIPv6 }}
+{% endif %}
+{% if node.meshIPv4 %}
+              - {{ node.meshIPv4 }}
+{% endif %}
+            extraArgs:
+              # Listen on all IPv6 interfaces (includes IPv4-mapped addresses in dual-stack)
+              # Using :: enables listening on both IPv4 and IPv6 in dual-stack mode
+              bind-address: "::"
+              # Advertise the primary IPv6 VIP to cluster components
+              advertise-address: "{{ control_plane_vip }}"
             admissionControl:
               # Enable MutatingAdmissionWebhook for volsync and other operators
               - name: PodSecurity
@@ -132,7 +205,6 @@ nodes:
                     warn-version: "latest"
                   exemptions:
                     namespaces:
-                      - kube-system
                       - volsync-system
                       - actions-runner-system
                     runtimeClasses: []

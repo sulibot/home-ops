@@ -300,7 +300,7 @@ output "talhelper_env" {
     publicGatewayIPv4 = try(var.ip_config.public.ipv4_gateway, null)
     meshMTU      = coalesce(try(n.mesh_mtu, null), var.network.mesh_mtu)
     publicMTU    = coalesce(try(n.public_mtu, null), var.network.public_mtu)
-    endpoint     = "fd00:${var.cluster_id}::ac" # Control Plane VIP
+    endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.0.${cluster_id}.10)
     # Determine the node role based on its name prefix
     controlPlane = substr(n.name, 4, 2) == "cp"
     # You can add other node-specific values here if needed
@@ -319,9 +319,10 @@ output "talenv_yaml" {
     {
       # Global cluster configuration
       clusterName       = "cluster-${var.cluster_id}"
+      cluster_id        = var.cluster_id
       talosVersion      = var.talos_version
       kubernetesVersion = var.kubernetes_version
-      endpoint          = "https://10.0.${var.cluster_id}.10:6443"
+      endpoint          = "https://[fd00:${var.cluster_id}::10]:6443"
 
       # Network CIDRs from k8s_network_config
       pods_ipv4     = local.k8s_network_config.pods_ipv4
@@ -374,7 +375,7 @@ output "talconfig_yaml" {
     clusterName = "cluster-${var.cluster_id}"
     talosVersion = var.talos_version
     kubernetesVersion = var.kubernetes_version
-    endpoint = "https://[fd00:${var.cluster_id}::ac]:6443"
+    endpoint = "https://[fd00:${var.cluster_id}::10]:6443"
 
     # Reference to secrets file
     secretsFile = "{{ .talos.env.dir }}/talsecret.sops.yaml"
@@ -425,7 +426,6 @@ output "talconfig_yaml" {
       kubelet = {
         extraArgs = {
           "eviction-hard" = "imagefs.available<5%,memory.available<500Mi,nodefs.available<5%"
-          "rotate-server-certificates" = "true"
         }
       }
       sysctls = {
