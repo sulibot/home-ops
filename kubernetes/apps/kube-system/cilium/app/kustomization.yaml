@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: kube-system
 
 resources:
+  - helmrepository.yaml
   - helmrelease.yaml
 
 configMapGenerator:
