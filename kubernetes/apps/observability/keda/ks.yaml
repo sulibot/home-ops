@@ -11,7 +11,7 @@ spec:
     - name: metrics-server
       namespace: kube-system
   interval: 1h
-  path: kubernetes/manifests/apps/observability/keda/app
+  path: ./kubernetes/apps/observability/keda/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -9,7 +9,7 @@ spec:
     - name: cilium-gateway
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/network/echo/app
+  path: ./kubernetes/apps/network/echo/app
   prune: true
   sourceRef:
     kind: GitRepository

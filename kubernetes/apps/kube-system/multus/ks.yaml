@@ -17,7 +17,7 @@ spec:
       kind: CustomResourceDefinition
       name: network-attachment-definitions.k8s.cni.cncf.io
   interval: 1h
-  path: kubernetes/manifests/apps/kube-system/multus/app
+  path: ./kubernetes/apps/kube-system/multus/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -34,7 +34,7 @@ spec:
   dependsOn:
     - name: multus
   interval: 1h
-  path: kubernetes/manifests/apps/kube-system/multus/networks
+  path: ./kubernetes/apps/kube-system/multus/networks
   prune: true
   sourceRef:
     kind: GitRepository

@@ -9,7 +9,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/mosquitto/app
+  path: ./kubernetes/apps/default/mosquitto/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -11,7 +11,7 @@ spec:
     - name: cilium-gateway
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/network/certificates/import
+  path: ./kubernetes/apps/network/certificates/import
   prune: true
   sourceRef:
     kind: GitRepository
@@ -29,7 +29,7 @@ spec:
   dependsOn:
     - name: certificates-import
   interval: 1h
-  path: kubernetes/manifests/apps/network/certificates/export
+  path: ./kubernetes/apps/network/certificates/export
   prune: true
   sourceRef:
     kind: GitRepository

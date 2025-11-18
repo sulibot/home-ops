@@ -17,7 +17,7 @@ spec:
     - name: volsync
       namespace: volsync-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/jellyseerr/app
+  path: ./kubernetes/apps/default/jellyseerr/app
   postBuild:
     substitute:
       APP: jellyseerr

@@ -9,7 +9,7 @@ spec:
     - name: cilium
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/kube-system/coredns/app
+  path: ./kubernetes/apps/kube-system/coredns/app
   prune: true
   sourceRef:
     kind: GitRepository
