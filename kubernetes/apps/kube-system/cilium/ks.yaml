@@ -1,6 +1,6 @@
 ---
 # Flux Kustomization for Cilium
-# No dependencies - CNI must be first!
+# Depends on Gateway API CRDs for Gateway API support
 
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -8,6 +8,9 @@ metadata:
   name: cilium
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: gateway-api-crds
+      namespace: flux-system
   interval: 30m
   path: ./kubernetes/apps/kube-system/cilium/app
   prune: true

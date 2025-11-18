@@ -34,12 +34,56 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16
 ipv6NativeRoutingCIDR: fd00:101:1::/60
 
 # Enable BPF masquerading (iptables-free NAT)
+# Only masquerade traffic going outside the cluster network
 bpf:
   masquerade: true
+
+# Disable masquerading for traffic within these CIDRs
+# This allows native routing within your cluster/network
+# Traffic to the internet will still be masqueraded
+ipMasqAgent:
+  enabled: true
+  config:
+    nonMasqueradeCIDRs:
+      # Cluster pod CIDRs - use native routing
+      - 10.101.0.0/16
+      - fd00:101:1::/60
+      # Node networks - use native routing
+      - 10.0.101.0/24
+      - fd00:101::/64
+      - 10.10.101.0/24
+      - fc00:101::/64
+      # RFC1918 private networks - typically don't masquerade
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      # IPv6 ULA - typically don't masquerade
+      - fc00::/7
+      # Link-local
+      - 169.254.0.0/16
+      - fe80::/10
 
 # BGP Control Plane for VIP and LoadBalancer advertisement
 bgpControlPlane:
   enabled: true
+
+# LoadBalancer IP Address Management (IPAM)
+# Define pools of IPs that can be assigned to LoadBalancer services
+# These IPs will be advertised via BGP to the upstream router
+l2announcements:
+  enabled: false  # Using BGP instead of L2
+
+# LB IPAM pools - IPs from these pools are assigned to LoadBalancer services
+# and advertised via BGP so the router knows how to route them back to the cluster
+ingressController:
+  enabled: false
+  loadbalancerMode: shared
+
+# Define IP pools for LoadBalancer services
+# Note: These must NOT overlap with node IPs (10.0.101.0/24, fd00:101::/64)
+loadBalancer:
+  algorithm: maglev
+  mode: dsr
 
 # Operator settings
 operator:

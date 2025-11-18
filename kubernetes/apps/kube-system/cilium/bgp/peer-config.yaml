@@ -1,0 +1,37 @@
+---
+# BGP Peer Configuration for upstream router
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: upstream-router-peer
+  namespace: kube-system
+spec:
+  # Advertise pod CIDRs to this peer
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: pod-cidr
+    - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: pod-cidr
+
+  # eBGP multihop (different AS)
+  ebgpMultihop: 1
+
+  # Transport configuration
+  transport:
+    peerPort: 179
+
+  # Timers
+  timers:
+    holdTimeSeconds: 90
+    keepAliveTimeSeconds: 30
+
+  # Graceful restart
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 120

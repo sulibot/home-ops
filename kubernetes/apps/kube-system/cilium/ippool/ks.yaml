@@ -3,26 +3,18 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cilium-gateway
+  name: cilium-ippool
   namespace: flux-system
 spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
-    - name: cilium-bgp
-      namespace: flux-system
-    - name: cilium-ippool
-      namespace: flux-system
-    - name: cert-manager-issuers
-      namespace: flux-system
-    - name: external-secrets
-      namespace: flux-system
   interval: 1h
-  path: ./kubernetes/apps/kube-system/cilium/gateway
+  path: ./kubernetes/apps/kube-system/cilium/ippool
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: network
-  wait: false
+  wait: true
+  timeout: 5m
