@@ -6,6 +6,11 @@ metadata:
   name: ceph-csi
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: snapshot-controller-crds
+      namespace: flux-system
+    - name: snapshot-controller
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/storage/ceph-csi
   prune: true
