@@ -161,6 +161,11 @@ resource "terraform_data" "download" {
 }
 
 # Upload via the Proxmox provider (will use SCP when SSH is configured)
+# The provider automatically checks if the file already exists and skips upload if:
+# - Same filename exists
+# - Same size
+# - Same checksum (if available)
+# This saves time on subsequent runs when the image hasn't changed
 resource "proxmox_virtual_environment_file" "uploaded" {
   for_each = toset(var.proxmox_node_names)
 
@@ -171,6 +176,7 @@ resource "proxmox_virtual_environment_file" "uploaded" {
   source_file {
     path      = local.image_path
     file_name = local.image_name
+    checksum  = filesha256(local.image_path)
   }
 
   depends_on = [terraform_data.download]
