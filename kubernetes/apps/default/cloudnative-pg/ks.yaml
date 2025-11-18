@@ -10,7 +10,7 @@ spec:
     - name: cilium
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/cloudnative-pg
+  path: ./kubernetes/apps/default/cloudnative-pg
   prune: true
   sourceRef:
     kind: GitRepository

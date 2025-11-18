@@ -13,7 +13,7 @@ spec:
     - name: volsync
       namespace: volsync-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/zwave/app
+  path: ./kubernetes/apps/default/zwave/app
   postBuild:
     substitute:
       APP: zwave

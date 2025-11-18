@@ -17,7 +17,7 @@ spec:
     - name: volsync
       namespace: volsync-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/radarr/app
+  path: ./kubernetes/apps/default/radarr/app
   postBuild:
     substitute:
       APP: radarr

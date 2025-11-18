@@ -9,7 +9,7 @@ spec:
     - name: onepassword
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/network/cloudflare-tunnel/app
+  path: ./kubernetes/apps/network/cloudflare-tunnel/app
   postBuild:
     substituteFrom:
       - kind: Secret

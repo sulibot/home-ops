@@ -9,7 +9,7 @@ spec:
     - name: onepassword
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/observability/grafana/app
+  path: ./kubernetes/apps/observability/grafana/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -29,7 +29,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/observability/grafana/instance
+  path: ./kubernetes/apps/observability/grafana/instance
   prune: true
   sourceRef:
     kind: GitRepository

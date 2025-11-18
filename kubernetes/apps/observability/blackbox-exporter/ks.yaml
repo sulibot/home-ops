@@ -6,7 +6,7 @@ metadata:
   name: blackbox-exporter-lan
 spec:
   interval: 1h
-  path: kubernetes/manifests/apps/observability/blackbox-exporter/lan
+  path: ./kubernetes/apps/observability/blackbox-exporter/lan
   prune: true
   sourceRef:
     kind: GitRepository
@@ -22,7 +22,7 @@ metadata:
   name: blackbox-exporter-vpn
 spec:
   interval: 1h
-  path: kubernetes/manifests/apps/observability/blackbox-exporter/vpn
+  path: ./kubernetes/apps/observability/blackbox-exporter/vpn
   prune: true
   sourceRef:
     kind: GitRepository

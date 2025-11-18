@@ -11,7 +11,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 1h
-  path: kubernetes/manifests/apps/default/cross-seed/app
+  path: ./kubernetes/apps/default/cross-seed/app
   postBuild:
     substitute:
       APP: cross-seed
