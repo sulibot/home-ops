@@ -358,13 +358,37 @@ tasks:
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
           echo "⚠️  API server not ready after ${MAX_WAIT}s"
-          echo "  💡 This is expected - will be ready after CNI install"
+          echo "  💡 Continuing - VIP should be available for kubectl"
+        else
+          echo "  ✓ Kubernetes API is ready"
         fi
         echo ""
 
         echo "3️⃣  Retrieving kubeconfig..."
         talosctl kubeconfig --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig --force
         echo "  ✓ Kubeconfig updated"
+        echo ""
+
+        echo "⏳ Waiting for VIP to be reachable..."
+        MAX_WAIT=180  # 3 minutes for VIP
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          if kubectl cluster-info &>/dev/null; then
+            echo "  ✓ VIP is reachable (took ${ELAPSED}s)"
+            break
+          fi
+          if [ $((ELAPSED % 15)) -eq 0 ]; then
+            echo "  ⏳ Waiting for VIP... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "❌ VIP not reachable after ${MAX_WAIT}s"
+          echo "  Please check VIP configuration and network connectivity"
+          exit 1
+        fi
         echo ""
 
         echo "4️⃣  Installing Gateway API CRDs..."
