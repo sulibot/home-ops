@@ -4,7 +4,6 @@ kind: Kustomization
 namespace: kube-system
 
 resources:
-  - helmrepository.yaml
   - helmrelease.yaml
 
 configMapGenerator:
@@ -13,12 +12,3 @@ configMapGenerator:
       - values.yaml
     options:
       disableNameSuffixHash: true
-
-patches:
-  - target:
-      kind: HelmRepository
-      name: cilium
-    patch: |
-      - op: replace
-        path: /metadata/namespace
-        value: flux-system
