@@ -12,7 +12,7 @@ spec:
     - name: ceph-csi-cephfs
       namespace: flux-system
     - name: snapshot-controller
-      namespace: flux-system
+      namespace: storage
   interval: 1h
   path: ./kubernetes/manifests/apps/volsync-system/volsync/app
   prune: true
