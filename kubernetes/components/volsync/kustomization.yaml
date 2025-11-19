@@ -1,0 +1,12 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ./externalsecret.yaml
+  - ./kopia-repository-pvc.yaml
+  - ./pvc.yaml
+  # ReplicationDestination commented out - requires remote storage backend (S3/NFS/etc)
+  # Currently using local filesystem repository which is not compatible with ReplicationDestination
+  # - ./replicationdestination.yaml
+  - ./replicationsource.yaml
