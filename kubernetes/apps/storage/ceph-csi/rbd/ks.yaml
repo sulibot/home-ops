@@ -12,7 +12,7 @@ spec:
     - name: snapshot-controller-crds
       namespace: storage
     - name: ceph-csi-shared-secret
-      namespace: storage
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/storage/ceph-csi/rbd/app
   prune: true
