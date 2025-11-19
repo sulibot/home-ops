@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: onepassword
-      namespace: flux-system
+      namespace: security
     - name: ceph-csi
-      namespace: flux-system
+      namespace: storage
   interval: 1h
   path: ./kubernetes/apps/default/cross-seed/app
   postBuild:

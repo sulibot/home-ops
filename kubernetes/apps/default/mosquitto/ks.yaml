@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: ceph-csi
-      namespace: flux-system
+      namespace: storage
   interval: 1h
   path: ./kubernetes/apps/default/mosquitto/app
   prune: true

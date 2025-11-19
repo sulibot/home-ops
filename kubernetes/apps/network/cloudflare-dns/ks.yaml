@@ -8,11 +8,11 @@ metadata:
 spec:
   dependsOn:
     - name: cilium-gateway
-      namespace: flux-system
+      namespace: kube-system
     - name: external-secrets
-      namespace: flux-system
+      namespace: security
     - name: onepassword
-      namespace: flux-system
+      namespace: security
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

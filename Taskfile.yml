@@ -1,193 +1,1326 @@
-# Taskfile for home-ops management
+# =============================================================================
+# Home-Ops Task Management
+# =============================================================================
 #
-# This file provides a set of commands to automate the lifecycle of
-# Kubernetes clusters, from infrastructure provisioning to cluster bootstrap.
+# Unified task runner for Kubernetes cluster lifecycle management
 #
-# Workflow:
-#   1. task infra:apply -- 101              # Create VMs with Terraform
-#   2. task talos:gen-secrets -- 101        # Generate encrypted Talos secrets
-#   3. task talos:gen-config -- 101         # Generate Talos machine configs
-#   4. task talos:bootstrap -- 101          # Apply configs and bootstrap cluster
-#   5. task cni:apply -- 101                # Install Cilium CNI
+# QUICK START
+# ───────────
+#   task cluster:create -- 101         # Create complete cluster (~15-20 min)
+#   task flux:install -- 101           # Install Flux GitOps
+#   task status:cluster                # Check cluster health
 #
-# Or use the all-in-one command:
-#   task cluster:create -- 101
+# WORKFLOWS
+# ─────────
+# Creating a Cluster:
+#   1. task infra:provision -- 101     # Provision VMs on Proxmox
+#   2. task talos:secrets -- 101       # Generate encrypted secrets
+#   3. task talos:config -- 101        # Generate machine configs
+#   4. task cluster:bootstrap -- 101   # Bootstrap cluster + CNI
+#   5. task flux:install -- 101        # Install Flux for GitOps
 #
+# Daily Operations:
+#   task status:all                    # Full health check
+#   task flux:reconcile                # Force Flux sync
+#   task logs:talos -- 101             # View Talos logs
+#   task logs:pod -- <namespace/pod>   # View pod logs
+#
+# Maintenance:
+#   task ops:drain -- <node>           # Drain node for maintenance
+#   task ops:upgrade:talos -- 101      # Upgrade Talos version
+#   task backup:etcd                   # Backup etcd cluster
+#
+# Troubleshooting:
+#   task debug:events                  # Watch cluster events
+#   task debug:network                 # Test network connectivity
+#   task status:cilium                 # Check Cilium health
+#
+# 📚 Documentation: https://github.com/sulibot/home-ops/docs
+#
+
 version: '3'
 
 vars:
-  # Default cluster ID if none is provided (clusters are named by ID)
-  CLUSTER_ID: '101'
-  CLUSTER_NAME: '101'  # Cluster directories use cluster ID as name
+  CLUSTER_ID: '{{.CLI_ARGS | default .CLUSTER_ID | default "101"}}'
+  CLUSTER_NAME: '{{.CLUSTER_ID}}'
   TALOS_TEMPLATE: 'templates/talconfig.j2'
 
 tasks:
   default:
-    desc: 'List all available tasks'
+    desc: 'Show interactive menu'
     cmds:
-      - task --list-all
+      - task: menu
 
-  # ==========================================================================
-  # Step 1: Infrastructure Provisioning (Terraform)
-  # ==========================================================================
-
-  infra:apply:
-    desc: '1️⃣  Provision cluster VMs with Terraform'
+  list:
+    desc: '📋 Interactive task browser with search'
     summary: |
-      Usage: task infra:apply -- <cluster_id>
-      Example: task infra:apply -- 101
+      Browse all available tasks with arrow keys and fuzzy search.
 
-      Creates Talos image and VMs on Proxmox, then generates talenv.yaml
+      Usage: task list
 
-      Terraform automatically skips re-uploading if image checksum matches.
+      Features:
+        - Arrow keys to navigate
+        - Type to fuzzy search
+        - Enter to see task details
+        - Press Ctrl+C to exit
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        if ! command -v gum &> /dev/null; then
+          echo "❌ Gum not installed - showing plain list"
+          task --list-all
+          exit 0
+        fi
+
+        while true; do
+          # Get all tasks and format them
+          TASKS=$(task --list-all 2>/dev/null | grep '^\*' | sed 's/^* //')
+
+          # Use gum filter for fuzzy search with arrow keys
+          # Shows 30 lines at once, supports Page Up/Down
+          SELECTED=$(echo "$TASKS" | gum filter \
+            --placeholder "Search tasks (type to filter, ↑↓ or PgUp/PgDn to navigate)..." \
+            --height 30 \
+            --prompt "→ " || true)
+
+          if [ -z "$SELECTED" ]; then
+            # User pressed Ctrl+C or Esc
+            exit 0
+          fi
+
+          # Extract task name (first word before colon)
+          TASK_NAME=$(echo "$SELECTED" | awk -F: '{print $1}')
+
+          clear
+          gum style --border rounded --padding "1 2" --bold "Task: $TASK_NAME"
+          echo ""
+
+          # Show full task details
+          task --summary "$TASK_NAME" 2>/dev/null || echo "No additional details available"
+
+          echo ""
+          echo "Commands:"
+          echo "  [R]un task"
+          echo "  [B]ack to list"
+          echo "  [Q]uit"
+          echo ""
+
+          ACTION=$(gum choose "Run task" "Back to list" "Quit")
+
+          case "$ACTION" in
+            "Run task")
+              echo ""
+              gum style --foreground 212 "Running: task $TASK_NAME"
+              echo ""
+
+              # Check if task needs arguments
+              if task --summary "$TASK_NAME" 2>/dev/null | grep -q "<cluster_id>"; then
+                ARGS=$(gum input --placeholder "Enter arguments (e.g., 101)" || echo "")
+                if [ -n "$ARGS" ]; then
+                  task "$TASK_NAME" -- $ARGS
+                else
+                  task "$TASK_NAME"
+                fi
+              else
+                task "$TASK_NAME"
+              fi
+
+              echo ""
+              gum input --placeholder "Press Enter to continue..."
+              ;;
+            "Back to list")
+              continue
+              ;;
+            "Quit")
+              exit 0
+              ;;
+          esac
+        done
+
+  menu:
+    desc: '🎨 Interactive main menu (Gum-powered)'
+    summary: |
+      Beautiful interactive menu for all cluster operations.
+      Uses Charm Gum for rich TUI experience.
+
+      Usage: task menu
+      Or simply: task
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        # Check if Gum is installed
+        if ! command -v gum &> /dev/null; then
+          echo "❌ Gum is not installed"
+          echo "Install: brew install gum"
+          echo ""
+          echo "Falling back to list view..."
+          task --list-all
+          exit 1
+        fi
+
+        while true; do
+          clear
+
+          # Header
+          gum style \
+            --foreground 212 \
+            --border double \
+            --border-foreground 212 \
+            --padding "1 2" \
+            --bold \
+            "🏠 Home-Ops Cluster Management" \
+            "" \
+            "Kubernetes cluster lifecycle automation"
+
+          echo ""
+
+          # Main menu - show all 13 items at once
+          ACTION=$(gum choose \
+            --height 15 \
+            --cursor-prefix "→ " \
+            "🚀 Create Cluster" \
+            "🗑️  Destroy Cluster" \
+            "🔧 Bootstrap Talos" \
+            "📦 Install Flux" \
+            "📊 Status Dashboard" \
+            "📜 View Logs" \
+            "⚙️  Operations" \
+            "🐛 Debug & Troubleshoot" \
+            "🤖 AI Assistant" \
+            "📚 Documentation" \
+            "🔧 Install Dependencies" \
+            "📋 List All Tasks" \
+            "❌ Exit")
+
+          case "$ACTION" in
+            *"Create Cluster"*)
+              task menu:create
+              ;;
+            *"Destroy Cluster"*)
+              task menu:destroy
+              ;;
+            *"Bootstrap Talos"*)
+              task menu:bootstrap
+              ;;
+            *"Install Flux"*)
+              task menu:flux
+              ;;
+            *"Status Dashboard"*)
+              task menu:status
+              ;;
+            *"View Logs"*)
+              task menu:logs
+              ;;
+            *"Operations"*)
+              task menu:ops
+              ;;
+            *"Debug & Troubleshoot"*)
+              task menu:debug
+              ;;
+            *"AI Assistant"*)
+              task menu:ai
+              ;;
+            *"Documentation"*)
+              task menu:docs
+              ;;
+            *"Install Dependencies"*)
+              task menu:install
+              ;;
+            *"List All Tasks"*)
+              task list
+              ;;
+            *"Exit"*)
+              exit 0
+              ;;
+          esac
+        done
+
+  menu:install:
+    desc: '🔧 Interactive dependency installer'
+    cmds:
+      - |
+        #!/bin/bash
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "🔧 Dependency Management"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 10 \
+            "Check All Dependencies" \
+            "Install All Dependencies" \
+            "Install Charm Tools" \
+            "Install Kubernetes Tools" \
+            "Install Talos Tools" \
+            "Install Infrastructure Tools" \
+            "Install Utilities" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Check All Dependencies")
+              task install:check
+              ;;
+            "Install All Dependencies")
+              if gum confirm "Install all missing dependencies?"; then
+                task install:all
+              fi
+              ;;
+            "Install Charm Tools")
+              if gum confirm "Install gum, glow, mods?"; then
+                task install:charm
+              fi
+              ;;
+            "Install Kubernetes Tools")
+              if gum confirm "Install kubectl, helm, flux?"; then
+                task install:kubernetes
+              fi
+              ;;
+            "Install Talos Tools")
+              if gum confirm "Install talosctl, talhelper?"; then
+                task install:talos
+              fi
+              ;;
+            "Install Infrastructure Tools")
+              if gum confirm "Install terraform, terragrunt?"; then
+                task install:infra
+              fi
+              ;;
+            "Install Utilities")
+              if gum confirm "Install jinja2-cli, sops, age?"; then
+                task install:utils
+              fi
+              ;;
+            "← Back")
+              break
+              ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  # ===========================================================================
+  # INTERACTIVE MENUS - Charm Gum Powered
+  # ===========================================================================
+
+  menu:create:
+    desc: '🚀 Interactive cluster creation'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        # Get cluster ID with validation
+        CLUSTER=$(gum input \
+          --placeholder "Cluster ID (e.g., 101)" \
+          --value "101" \
+          --prompt "→ ")
+
+        if [ -z "$CLUSTER" ]; then
+          gum style --foreground 196 "❌ Cluster ID required"
+          sleep 2
+          exit 1
+        fi
+
+        # Confirm
+        gum confirm \
+          --default=false \
+          "Create cluster-$CLUSTER with 3 control planes + 3 workers?" || exit 0
+
+        echo ""
+        gum style --border rounded --padding "1 2" --bold \
+          "Creating Cluster $CLUSTER"
+
+        # Step 1: Provision
+        echo ""
+        gum spin --spinner moon --title "Step 1/5: Provisioning VMs on Proxmox..." -- \
+          task infra:provision -- $CLUSTER
+        echo "$(gum style --foreground 212 '✓') VMs provisioned"
+
+        # Step 2: Secrets
+        gum spin --spinner moon --title "Step 2/5: Generating Talos secrets..." -- \
+          task talos:secrets -- $CLUSTER
+        echo "$(gum style --foreground 212 '✓') Secrets encrypted"
+
+        # Step 3: Config
+        gum spin --spinner moon --title "Step 3/5: Generating machine configs..." -- \
+          task talos:config -- $CLUSTER
+        echo "$(gum style --foreground 212 '✓') Configs generated"
+
+        # Step 4: Wait
+        gum spin --spinner pulse --title "Step 4/5: Waiting for VMs to boot (60s)..." -- \
+          sleep 60
+        echo "$(gum style --foreground 212 '✓') VMs ready"
+
+        # Step 5: Bootstrap
+        gum spin --spinner moon --title "Step 5/5: Bootstrapping Talos cluster..." -- \
+          task cluster:bootstrap -- $CLUSTER
+        echo "$(gum style --foreground 212 '✓') Cluster bootstrapped"
+
+        echo ""
+        gum style \
+          --foreground 212 --border double --padding "1 2" --bold \
+          "✓ Cluster $CLUSTER Ready!" \
+          "" \
+          "Next: Install Flux from main menu"
+
+        echo ""
+        gum input --placeholder "Press Enter to continue..."
+
+  menu:destroy:
+    desc: '🗑️  Interactive cluster destruction'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        # Get cluster ID
+        CLUSTER=$(gum input \
+          --placeholder "Cluster ID to destroy (e.g., 101)" \
+          --prompt "→ ")
+
+        if [ -z "$CLUSTER" ]; then
+          gum style --foreground 196 "❌ Cluster ID required"
+          sleep 2
+          exit 1
+        fi
+
+        # Warning message
+        echo ""
+        gum style \
+          --foreground 196 --border rounded --padding "1 2" --bold \
+          "⚠️  DESTRUCTIVE OPERATION" \
+          "" \
+          "This will DELETE cluster-$CLUSTER:" \
+          "  • All VMs destroyed" \
+          "  • All data lost" \
+          "  • All configs removed"
+
+        echo ""
+
+        # First confirmation
+        if ! gum confirm --default=false "⚠️  Are you SURE you want to destroy cluster-$CLUSTER?"; then
+          gum style --foreground 212 "Cancelled - cluster not destroyed"
+          sleep 2
+          exit 0
+        fi
+
+        # Production protection for cluster-101
+        if [ "$CLUSTER" = "101" ]; then
+          echo ""
+          gum style --foreground 196 --bold "🛑 PRODUCTION CLUSTER PROTECTION"
+          echo ""
+
+          CONFIRM=$(gum input \
+            --placeholder "Type cluster name 'sol' to confirm" \
+            --prompt "→ ")
+
+          if [ "$CONFIRM" != "sol" ]; then
+            gum style --foreground 212 "❌ Incorrect confirmation - cancelled"
+            sleep 2
+            exit 0
+          fi
+        fi
+
+        # Final confirmation
+        echo ""
+        if ! gum confirm --default=false "FINAL WARNING: Delete cluster-$CLUSTER now?"; then
+          gum style --foreground 212 "Cancelled - cluster not destroyed"
+          sleep 2
+          exit 0
+        fi
+
+        # Destroy cluster
+        echo ""
+        gum spin --spinner moon --title "Destroying cluster infrastructure..." -- \
+          task infra:destroy -- $CLUSTER
+
+        echo "$(gum style --foreground 196 '✓') VMs destroyed"
+
+        gum spin --spinner moon --title "Removing configs..." -- \
+          rm -rf talos/clusters/cluster-$CLUSTER
+
+        echo "$(gum style --foreground 196 '✓') Configs removed"
+
+        echo ""
+        gum style \
+          --foreground 196 --border double --padding "1 2" --bold \
+          "✓ Cluster $CLUSTER Destroyed" \
+          "" \
+          "All resources have been removed"
+
+        echo ""
+        gum input --placeholder "Press Enter to continue..."
+
+  menu:bootstrap:
+    desc: '🔧 Interactive bootstrap'
+    cmds:
+      - |
+        #!/bin/bash
+        CLUSTER=$(gum input --placeholder "Cluster ID" --value "101")
+        gum confirm "Bootstrap cluster-$CLUSTER?" || exit 0
+        task cluster:bootstrap -- $CLUSTER
+        gum input --placeholder "Press Enter to continue..."
+
+  menu:flux:
+    desc: '📦 Interactive Flux installation'
+    cmds:
+      - |
+        #!/bin/bash
+        CLUSTER=$(gum input --placeholder "Cluster ID" --value "101")
+        gum confirm "Install Flux on cluster-$CLUSTER?" || exit 0
+        task flux:install -- $CLUSTER
+        gum input --placeholder "Press Enter to continue..."
+
+  menu:status:
+    desc: '📊 Interactive status dashboard'
+    cmds:
+      - |
+        #!/bin/bash
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "📊 Status Dashboard"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 10 \
+            "Cluster Overview" \
+            "Node Status" \
+            "Flux Status" \
+            "Cilium Status" \
+            "Storage Status" \
+            "All Pods" \
+            "Complete Health Check" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Cluster Overview") task status:cluster ;;
+            "Node Status") task status:nodes ;;
+            "Flux Status") task status:flux ;;
+            "Cilium Status") task status:cilium ;;
+            "Storage Status") task status:storage ;;
+            "All Pods") task status:pods ;;
+            "Complete Health Check") task status:all ;;
+            "← Back") break ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  menu:logs:
+    desc: '📜 Interactive log viewer'
+    cmds:
+      - |
+        #!/bin/bash
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "📜 Log Viewer"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 7 \
+            "Talos System Logs" \
+            "Flux Controller Logs" \
+            "Cilium Logs" \
+            "Pod Logs (select)" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Talos System Logs")
+              CLUSTER=$(gum input --placeholder "Cluster ID" --value "101")
+              task logs:talos -- $CLUSTER
+              ;;
+            "Flux Controller Logs")
+              task logs:flux
+              ;;
+            "Cilium Logs")
+              task logs:cilium
+              ;;
+            "Pod Logs (select)")
+              POD=$(kubectl get pods -A --no-headers | \
+                gum filter --placeholder "Search pods..." | \
+                awk '{print $1"/"$2}')
+              if [ -n "$POD" ]; then
+                task logs:pod -- $POD
+              fi
+              ;;
+            "← Back")
+              break
+              ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  menu:ops:
+    desc: '⚙️  Interactive operations menu'
+    cmds:
+      - |
+        #!/bin/bash
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "⚙️  Operations"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 9 \
+            "Drain Node" \
+            "Cordon Node" \
+            "Uncordon Node" \
+            "Reboot Node" \
+            "Node Shell" \
+            "Upgrade Talos" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Drain Node")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                gum confirm "Drain node $NODE?" && task ops:drain -- $NODE
+              fi
+              ;;
+            "Cordon Node")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                gum confirm "Cordon node $NODE?" && task ops:cordon -- $NODE
+              fi
+              ;;
+            "Uncordon Node")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                task ops:uncordon -- $NODE
+              fi
+              ;;
+            "Reboot Node")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                gum confirm --default=false "⚠️  Reboot node $NODE?" && \
+                  CLUSTER=$(gum input --placeholder "Cluster ID" --value "101") && \
+                  task ops:reboot -- $NODE $CLUSTER
+              fi
+              ;;
+            "Node Shell")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                CLUSTER=$(gum input --placeholder "Cluster ID" --value "101")
+                task ops:shell -- $NODE $CLUSTER
+              fi
+              ;;
+            "Upgrade Talos")
+              CLUSTER=$(gum input --placeholder "Cluster ID" --value "101")
+              VERSION=$(gum input --placeholder "Talos version (e.g., 1.11.5)")
+              gum confirm --default=false "⚠️  Upgrade cluster-$CLUSTER to Talos $VERSION?" && \
+                task ops:upgrade:talos -- $CLUSTER $VERSION
+              ;;
+            "← Back")
+              break
+              ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  menu:debug:
+    desc: '🐛 Interactive debug menu'
+    cmds:
+      - |
+        #!/bin/bash
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "🐛 Debug & Troubleshoot"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 8 \
+            "Watch Events" \
+            "Test Network" \
+            "Test DNS" \
+            "Debug Pod" \
+            "Debug Node" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Watch Events") task debug:events ;;
+            "Test Network") task debug:network ;;
+            "Test DNS") task debug:dns ;;
+            "Debug Pod")
+              POD=$(kubectl get pods -A --no-headers | \
+                gum filter --placeholder "Search pods..." | \
+                awk '{print $1"/"$2}')
+              if [ -n "$POD" ]; then
+                task debug:pod -- $POD
+              fi
+              ;;
+            "Debug Node")
+              NODE=$(kubectl get nodes --no-headers | gum filter --placeholder "Select node..." | awk '{print $1}')
+              if [ -n "$NODE" ]; then
+                task debug:node -- $NODE
+              fi
+              ;;
+            "← Back")
+              break
+              ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  menu:ai:
+    desc: '🤖 AI-powered troubleshooting assistant'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        # Check if Mods is installed
+        if ! command -v mods &> /dev/null; then
+          gum style --foreground 196 "❌ Mods (AI) is not installed"
+          echo "Install: brew install mods"
+          echo "Configure: mods --settings"
+          gum input --placeholder "Press Enter to continue..."
+          exit 1
+        fi
+
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "🤖 AI Assistant"
+          echo ""
+
+          CHOICE=$(gum choose \
+            --height 8 \
+            "Analyze Recent Events" \
+            "Troubleshoot Pod Issues" \
+            "Analyze Flux Errors" \
+            "Network Diagnostics" \
+            "Ask Custom Question" \
+            "← Back")
+
+          case "$CHOICE" in
+            "Analyze Recent Events")
+              gum spin --title "Gathering events..." -- \
+                kubectl get events -A --sort-by='.lastTimestamp' | tail -30 > /tmp/k8s-events.txt
+
+              gum spin --title "AI analyzing events..." -- \
+                mods --role "kubernetes expert" \
+                "Analyze these Kubernetes events and explain any issues or warnings. Provide actionable fixes:" \
+                < /tmp/k8s-events.txt | gum pager
+              ;;
+
+            "Troubleshoot Pod Issues")
+              POD=$(kubectl get pods -A --no-headers | \
+                gum filter --placeholder "Search pods..." | \
+                awk '{print $1" "$2}')
+
+              if [ -n "$POD" ]; then
+                NAMESPACE=$(echo $POD | awk '{print $1}')
+                NAME=$(echo $POD | awk '{print $2}')
+
+                gum spin --title "Gathering pod info..." -- bash -c \
+                  "kubectl describe pod -n $NAMESPACE $NAME > /tmp/pod-describe.txt; \
+                   kubectl logs -n $NAMESPACE $NAME --tail=100 > /tmp/pod-logs.txt 2>&1 || echo 'No logs available' > /tmp/pod-logs.txt"
+
+                gum spin --title "AI analyzing pod..." -- bash -c \
+                  "cat /tmp/pod-describe.txt /tmp/pod-logs.txt | \
+                   mods --role 'kubernetes expert' \
+                   'Analyze this pod description and logs. Identify issues and provide fixes:'" | gum pager
+              fi
+              ;;
+
+            "Analyze Flux Errors")
+              gum spin --title "Gathering Flux status..." -- \
+                flux get all -A > /tmp/flux-status.txt
+
+              gum spin --title "AI analyzing Flux..." -- \
+                mods --role "flux expert" \
+                "Analyze this Flux status output. Identify any reconciliation failures and suggest fixes:" \
+                < /tmp/flux-status.txt | gum pager
+              ;;
+
+            "Network Diagnostics")
+              gum spin --title "Running network tests..." -- bash -c \
+                "kubectl get svc -A > /tmp/services.txt; \
+                 kubectl get ingress -A > /tmp/ingress.txt 2>&1 || echo 'No ingress' > /tmp/ingress.txt; \
+                 kubectl get networkpolicies -A > /tmp/netpol.txt 2>&1 || echo 'No policies' > /tmp/netpol.txt"
+
+              gum spin --title "AI analyzing network..." -- bash -c \
+                "cat /tmp/services.txt /tmp/ingress.txt /tmp/netpol.txt | \
+                 mods --role 'kubernetes networking expert' \
+                 'Analyze this network configuration. Identify potential connectivity issues:'" | gum pager
+              ;;
+
+            "Ask Custom Question")
+              QUESTION=$(gum write --placeholder "Describe your issue or question...")
+
+              if [ -n "$QUESTION" ]; then
+                # Let user select context
+                CONTEXT=$(gum choose --no-limit \
+                  "Include cluster events" \
+                  "Include pod status" \
+                  "Include Flux status" \
+                  "Include node status" \
+                  "No additional context")
+
+                CONTEXT_DATA=""
+
+                if [[ "$CONTEXT" == *"cluster events"* ]]; then
+                  CONTEXT_DATA+="\n\nRecent Events:\n$(kubectl get events -A --sort-by='.lastTimestamp' | tail -20)"
+                fi
+
+                if [[ "$CONTEXT" == *"pod status"* ]]; then
+                  CONTEXT_DATA+="\n\nPod Status:\n$(kubectl get pods -A)"
+                fi
+
+                if [[ "$CONTEXT" == *"Flux status"* ]]; then
+                  CONTEXT_DATA+="\n\nFlux Status:\n$(flux get all -A 2>&1 || echo 'Flux not available')"
+                fi
+
+                if [[ "$CONTEXT" == *"node status"* ]]; then
+                  CONTEXT_DATA+="\n\nNode Status:\n$(kubectl get nodes -o wide)"
+                fi
+
+                echo "Question: $QUESTION $CONTEXT_DATA" | \
+                  mods --role "kubernetes and talos linux expert" | gum pager
+              fi
+              ;;
+
+            "← Back")
+              break
+              ;;
+          esac
+
+          echo ""
+          gum input --placeholder "Press Enter to continue..."
+        done
+
+  menu:docs:
+    desc: '📚 Interactive documentation viewer'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        # Check if Glow is installed
+        if ! command -v glow &> /dev/null; then
+          gum style --foreground 196 "❌ Glow is not installed"
+          echo "Install: brew install glow"
+          gum input --placeholder "Press Enter to continue..."
+          exit 1
+        fi
+
+        while true; do
+          clear
+          gum style --border rounded --padding "1 2" --bold "📚 Documentation"
+          echo ""
+
+          # Find markdown files
+          DOCS=$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" | sort)
+
+          if [ -z "$DOCS" ]; then
+            gum style --foreground 196 "No documentation files found"
+            sleep 2
+            break
+          fi
+
+          DOC=$(echo "$DOCS" | gum filter --placeholder "Search documentation...")
+
+          if [ -n "$DOC" ]; then
+            glow "$DOC"
+            echo ""
+            gum input --placeholder "Press Enter to continue..."
+          else
+            break
+          fi
+        done
+
+  # ===========================================================================
+  # DEPENDENCIES - Install Required Tools
+  # ===========================================================================
+
+  install:
+    desc: '📦 Install all required dependencies'
+    summary: |
+      Installs all tools needed to run this Taskfile:
+        - Charm tools (gum, glow, mods)
+        - Kubernetes tools (kubectl, helm, flux)
+        - Talos tools (talosctl, talhelper)
+        - Infrastructure tools (terraform, terragrunt)
+        - Utilities (jinja2-cli, sops, age)
+
+      Platform support: macOS (Homebrew), Linux (binary downloads)
+
+      Usage: task install
+    cmds:
+      - task: install:check
+      - |
+        echo ""
+        if gum confirm "Install all missing dependencies?"; then
+          task install:all
+        else
+          echo "Cancelled"
+          exit 0
+        fi
+
+  install:all:
+    desc: 'Install all dependencies'
+    cmds:
+      - task: install:charm
+      - task: install:kubernetes
+      - task: install:talos
+      - task: install:infra
+      - task: install:utils
+      - |
+        echo ""
+        gum style --foreground 212 --border double --padding "1 2" --bold \
+          "✓ All Dependencies Installed!" \
+          "" \
+          "Run 'task install:check' to verify"
+
+  install:check:
+    desc: '🔍 Check installed dependencies'
+    summary: |
+      Checks which required tools are installed and shows versions.
+
+      Usage: task install:check
+    cmds:
+      - |
+        #!/bin/bash
+
+        echo "Checking dependencies..."
+        echo ""
+
+        # Colors
+        GREEN='\033[0;32m'
+        RED='\033[0;31m'
+        YELLOW='\033[1;33m'
+        NC='\033[0m'
+
+        check_cmd() {
+          local cmd=$1
+          local name=$2
+          local required=$3
+          local version_arg="${4:---version}"
+
+          if command -v $cmd &> /dev/null; then
+            version=$($cmd $version_arg 2>&1 | head -1 || echo "installed")
+            printf "${GREEN}✓${NC} %-20s %s\n" "$name" "$version"
+            return 0
+          else
+            if [ "$required" = "required" ]; then
+              printf "${RED}✗${NC} %-20s %s\n" "$name" "NOT INSTALLED (required)"
+            else
+              printf "${YELLOW}○${NC} %-20s %s\n" "$name" "NOT INSTALLED (optional)"
+            fi
+            return 1
+          fi
+        }
+
+        echo "Charm Tools (Interactive UI):"
+        check_cmd gum "gum" "optional"
+        check_cmd glow "glow" "optional"
+        check_cmd mods "mods" "optional"
+        echo ""
+
+        echo "Kubernetes Tools:"
+        check_cmd kubectl "kubectl" "required" "version --client"
+        check_cmd helm "helm" "required" "version --short"
+        check_cmd flux "flux" "required"
+        echo ""
+
+        echo "Talos Tools:"
+        check_cmd talosctl "talosctl" "required" "version --client --short"
+        check_cmd talhelper "talhelper" "required"
+        echo ""
+
+        echo "Infrastructure Tools:"
+        check_cmd terraform "terraform" "required"
+        check_cmd terragrunt "terragrunt" "required"
+        echo ""
+
+        echo "Utilities:"
+        check_cmd jinja2 "jinja2-cli" "required"
+        check_cmd sops "sops" "required"
+        check_cmd age "age" "required"
+        check_cmd python3 "python3" "required"
+        echo ""
+
+        echo "Legend:"
+        printf "${GREEN}✓${NC} Installed  ${RED}✗${NC} Missing (required)  ${YELLOW}○${NC} Missing (optional)\n"
+
+  install:charm:
+    desc: '🎨 Install Charm tools (gum, glow, mods)'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        echo "Installing Charm tools..."
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          brew install gum glow mods
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux
+          echo "Installing via go..."
+          go install github.com/charmbracelet/gum@latest
+          go install github.com/charmbracelet/glow@latest
+          go install github.com/charmbracelet/mods@latest
+        else
+          echo "❌ Unsupported OS: $OSTYPE"
+          echo "Install manually: https://github.com/charmbracelet/gum"
+          exit 1
+        fi
+
+        echo "✓ Charm tools installed"
+
+  install:kubernetes:
+    desc: '☸️  Install Kubernetes tools (kubectl, helm, flux)'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        echo "Installing Kubernetes tools..."
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          brew install kubectl helm fluxcd/tap/flux
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux - kubectl
+          if ! command -v kubectl &> /dev/null; then
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+          fi
+
+          # Linux - helm
+          if ! command -v helm &> /dev/null; then
+            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          fi
+
+          # Linux - flux
+          if ! command -v flux &> /dev/null; then
+            curl -s https://fluxcd.io/install.sh | bash
+          fi
+        else
+          echo "❌ Unsupported OS: $OSTYPE"
+          exit 1
+        fi
+
+        echo "✓ Kubernetes tools installed"
+
+  install:talos:
+    desc: '🔧 Install Talos tools (talosctl, talhelper)'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        echo "Installing Talos tools..."
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          brew install siderolabs/tap/talosctl budimanjojo/tap/talhelper
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux - talosctl
+          if ! command -v talosctl &> /dev/null; then
+            curl -sL https://talos.dev/install | sh
+          fi
+
+          # Linux - talhelper
+          if ! command -v talhelper &> /dev/null; then
+            TALHELPER_VERSION=$(curl -s https://api.github.com/repos/budimanjojo/talhelper/releases/latest | grep tag_name | cut -d '"' -f 4)
+            curl -L "https://github.com/budimanjojo/talhelper/releases/download/${TALHELPER_VERSION}/talhelper_linux_amd64" -o talhelper
+            chmod +x talhelper
+            sudo mv talhelper /usr/local/bin/
+          fi
+        else
+          echo "❌ Unsupported OS: $OSTYPE"
+          exit 1
+        fi
+
+        echo "✓ Talos tools installed"
+
+  install:infra:
+    desc: '🏗️  Install infrastructure tools (terraform, terragrunt)'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        echo "Installing infrastructure tools..."
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          brew install terraform terragrunt
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux - terraform
+          if ! command -v terraform &> /dev/null; then
+            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+            sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            sudo apt-get update && sudo apt-get install terraform
+          fi
+
+          # Linux - terragrunt
+          if ! command -v terragrunt &> /dev/null; then
+            TERRAGRUNT_VERSION=$(curl -s https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | grep tag_name | cut -d '"' -f 4)
+            curl -L "https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_amd64" -o terragrunt
+            chmod +x terragrunt
+            sudo mv terragrunt /usr/local/bin/
+          fi
+        else
+          echo "❌ Unsupported OS: $OSTYPE"
+          exit 1
+        fi
+
+        echo "✓ Infrastructure tools installed"
+
+  install:utils:
+    desc: '🔧 Install utilities (jinja2, sops, age, python3)'
+    cmds:
+      - |
+        #!/bin/bash
+        set -e
+
+        echo "Installing utilities..."
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS
+          brew install sops age
+          pip3 install jinja2-cli pyyaml --break-system-packages 2>/dev/null || pip3 install jinja2-cli pyyaml
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          # Linux - sops
+          if ! command -v sops &> /dev/null; then
+            SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | grep tag_name | cut -d '"' -f 4)
+            curl -L "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64" -o sops
+            chmod +x sops
+            sudo mv sops /usr/local/bin/
+          fi
+
+          # Linux - age
+          if ! command -v age &> /dev/null; then
+            AGE_VERSION=$(curl -s https://api.github.com/repos/FiloSottile/age/releases/latest | grep tag_name | cut -d '"' -f 4)
+            curl -L "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz" -o age.tar.gz
+            tar xzf age.tar.gz
+            sudo mv age/age age/age-keygen /usr/local/bin/
+            rm -rf age age.tar.gz
+          fi
+
+          # Linux - jinja2-cli
+          pip3 install jinja2-cli pyyaml
+        else
+          echo "❌ Unsupported OS: $OSTYPE"
+          exit 1
+        fi
+
+        echo "✓ Utilities installed"
+
+  install:ci:
+    desc: '🤖 Install dependencies for CI/CD (non-interactive)'
+    summary: |
+      Installs required tools for CI/CD environments.
+      Skips optional Charm tools (gum, glow, mods).
+
+      Usage: task install:ci
+    cmds:
+      - task: install:kubernetes
+      - task: install:talos
+      - task: install:infra
+      - task: install:utils
+      - echo "✓ CI/CD dependencies installed"
+
+  # ===========================================================================
+  # INFRASTRUCTURE - Proxmox VM Management
+  # ===========================================================================
+
+  infra:provision:
+    desc: '1️⃣  Provision cluster VMs on Proxmox'
+    aliases: ['infra:apply']
+    summary: |
+      Usage: task infra:provision -- <cluster_id>
+      Example: task infra:provision -- 101
+
+      Creates Talos VMs on Proxmox using Terraform/Terragrunt.
+      Automatically uploads Talos image (cached if checksum matches).
+
+      Time: ~2-3 min (first time), ~30s (subsequent)
+
+      📚 Docs: docs/infrastructure/proxmox.md
     dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
     cmds:
       - |
         echo "🏗️  Provisioning cluster-{{.CLUSTER_NAME}} infrastructure..."
-        echo "  💡 Creates Talos image and VMs on Proxmox (~2-3 minutes first time)"
-        echo "  💡 Subsequent runs are faster (~30s) if image unchanged"
+        echo "  💡 Creates Talos ISO and 6 VMs on Proxmox"
         echo ""
         terragrunt apply --all --auto-approve --non-interactive
         echo ""
         echo "✅ Infrastructure provisioned successfully"
+        echo ""
+        echo "Next steps:"
+        echo "  task talos:secrets -- {{.CLUSTER_NAME}}"
 
   infra:plan:
     desc: 'Preview infrastructure changes'
+    summary: |
+      Usage: task infra:plan -- <cluster_id>
+      Example: task infra:plan -- 101
+
+      Shows what Terraform will change without applying.
     dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
     cmds:
       - terragrunt plan --all
 
   infra:update-image:
-    desc: '🔄 Update Talos image in Proxmox'
+    desc: 'Force update Talos image in Proxmox'
     summary: |
       Usage: task infra:update-image -- <cluster_id>
       Example: task infra:update-image -- 101
 
-      Forces re-download and re-upload of the Talos image by replacing the resource.
-      Useful when updating to a new Talos version or fixing corrupted images.
+      Forces re-download and re-upload of Talos image.
+      Use when upgrading Talos or fixing corrupted images.
+
+      Time: ~1-2 minutes
     dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}/image'
     cmds:
       - |
         echo "🔄 Updating Talos image for cluster-{{.CLUSTER_NAME}}..."
-        echo "  💡 This will force re-download and re-upload (~1-2 minutes)"
+        echo "  💡 Forcing re-download and re-upload"
         echo ""
-        # Delete local cache to force re-download
         rm -f terraform/infra/live/cluster-{{.CLUSTER_NAME}}/.talos-images/*
-        # Use -replace to force recreation of the image resource
         terragrunt apply --auto-approve --non-interactive -replace='proxmox_virtual_environment_file.uploaded["pve01"]'
         echo ""
-        echo "✅ Talos image updated successfully"
+        echo "✅ Talos image updated"
 
   infra:destroy:
-    desc: '🗑️  Destroy cluster infrastructure'
+    desc: 'Destroy cluster infrastructure'
     summary: |
       Usage: task infra:destroy -- <cluster_id>
-      Example: task infra:destroy -- 101
+      Example: task infra:destroy -- 102
+
+      ⚠️  Destroys all VMs and removes infrastructure.
+      Use cluster:destroy for complete cleanup instead.
     dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
     cmds:
       - terragrunt destroy --all --auto-approve --non-interactive
 
-  # ==========================================================================
-  # Step 2: Generate Talos Secrets
-  # ==========================================================================
+  # ===========================================================================
+  # TALOS - Configuration Management
+  # ===========================================================================
 
-  talos:gen-secrets:
-    desc: '2️⃣  Generate encrypted Talos cluster secrets'
+  talos:secrets:
+    desc: '2️⃣  Generate encrypted Talos secrets'
+    aliases: ['talos:gen-secrets']
     summary: |
-      Usage: task talos:gen-secrets -- <cluster_id>
-      Example: task talos:gen-secrets -- 101
+      Usage: task talos:secrets -- <cluster_id>
+      Example: task talos:secrets -- 101
 
-      Generates encrypted secrets at talos/clusters/cluster-<id>/talsecret.sops.yaml
+      Generates and encrypts Talos cluster secrets with SOPS.
+      Secrets stored at: talos/clusters/cluster-<id>/talsecret.sops.yaml
 
-      To regenerate existing secrets: FORCE=1 task talos:gen-secrets -- <cluster_id>
+      To regenerate: FORCE=1 task talos:secrets -- <id>
+
+      📚 Docs: docs/talos/secrets.md
     vars:
-      SECRETS_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
+      SECRETS_FILE: 'clusters/cluster-{{.CLUSTER_ID}}/talsecret.sops.yaml'
     dir: 'talos'
     cmds:
       - |
         if [ -f "{{.SECRETS_FILE}}" ] && [ "$FORCE" != "1" ]; then
-          echo "ℹ️  Secrets already exist at talos/{{.SECRETS_FILE}}"
-          echo "  💡 To regenerate: FORCE=1 task talos:gen-secrets -- {{.CLI_ARGS}}"
+          echo "ℹ️  Secrets already exist: talos/{{.SECRETS_FILE}}"
+          echo "  💡 To regenerate: FORCE=1 task talos:secrets -- {{.CLUSTER_ID}}"
           exit 0
         fi
 
         echo "🔐 Generating Talos cluster secrets..."
-        mkdir -p clusters/cluster-{{.CLI_ARGS}}
+        mkdir -p clusters/cluster-{{.CLUSTER_ID}}
         talhelper gensecret > {{.SECRETS_FILE}}
         sops -e -i {{.SECRETS_FILE}}
-        echo "✅ Encrypted secrets generated at talos/{{.SECRETS_FILE}}"
+        echo "✅ Encrypted secrets generated"
+        echo ""
+        echo "Next steps:"
+        echo "  task talos:config -- {{.CLUSTER_ID}}"
 
-  # ==========================================================================
-  # Step 3: Generate Talos Machine Configs
-  # ==========================================================================
-
-  talos:gen-config:
-    desc: '3️⃣  Generate Talos machine configs with talhelper'
+  talos:config:
+    desc: '3️⃣  Generate Talos machine configs'
+    aliases: ['talos:gen-config']
     summary: |
-      Usage: task talos:gen-config -- <cluster_id>
-      Example: task talos:gen-config -- 101
+      Usage: task talos:config -- <cluster_id>
+      Example: task talos:config -- 101
+
+      Generates machine configs for all nodes using talhelper.
 
       Requires:
-        - talos/clusters/cluster-<id>/talenv.yaml (from Terraform)
-        - talos/clusters/cluster-<id>/talsecret.sops.yaml (from gen-secrets)
+        - talenv.yaml (from Terraform)
+        - talsecret.sops.yaml (from talos:secrets)
 
-      Generates machine configs in talos/clusters/cluster-<id>/
-      Also writes talos/clusters/cluster-<id>/talconfig.rendered.yaml for inspection.
+      Outputs: talos/clusters/cluster-<id>/*.yaml
+
+      📚 Docs: docs/talos/configuration.md
     vars:
-      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
-      ENV_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talenv.yaml'
-      SECRET_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
-      RENDERED_CONFIG: 'clusters/cluster-{{.CLI_ARGS}}/talconfig.rendered.yaml'
+      CLUSTER_DIR: 'clusters/cluster-{{.CLUSTER_ID}}'
+      ENV_FILE: 'clusters/cluster-{{.CLUSTER_ID}}/talenv.yaml'
+      SECRET_FILE: 'clusters/cluster-{{.CLUSTER_ID}}/talsecret.sops.yaml'
+      RENDERED_CONFIG: 'clusters/cluster-{{.CLUSTER_ID}}/talconfig.rendered.yaml'
     dir: 'talos'
     preconditions:
       - sh: '[ -f "{{.ENV_FILE}}" ]'
         msg: |
-          ❌ Missing talenv.yaml file: {{.ENV_FILE}}
+          ❌ Missing talenv.yaml: {{.ENV_FILE}}
 
-          This file should be generated by Terraform.
-          Run: task infra:apply -- {{.CLI_ARGS}}
+          Generate with: task infra:provision -- {{.CLUSTER_ID}}
       - sh: '[ -f "{{.SECRET_FILE}}" ]'
         msg: |
-          ❌ Missing talsecret.sops.yaml file: {{.SECRET_FILE}}
+          ❌ Missing talsecret.sops.yaml: {{.SECRET_FILE}}
 
-          Generate secrets first:
-          Run: task talos:gen-secrets -- {{.CLI_ARGS}}
+          Generate with: task talos:secrets -- {{.CLUSTER_ID}}
     cmds:
       - |
         echo "⚙️  Generating Talos machine configs..."
-        echo "  💡 Validating talenv.yaml and rendering templates"
         python3 scripts/validate_talenv.py --file {{.ENV_FILE}}
         jinja2 {{.TALOS_TEMPLATE}} {{.ENV_FILE}} -D secret_file={{.SECRET_FILE}} -o {{.RENDERED_CONFIG}}
         talhelper genconfig --config-file {{.RENDERED_CONFIG}} --secret-file {{.SECRET_FILE}} --out-dir {{.CLUSTER_DIR}}
         echo ""
-        echo "✅ Machine configs generated in talos/{{.CLUSTER_DIR}}"
+        echo "✅ Machine configs generated: talos/{{.CLUSTER_DIR}}/"
+        echo ""
+        echo "Next steps:"
+        echo "  task cluster:bootstrap -- {{.CLUSTER_ID}}"
 
-  # ==========================================================================
-  # Step 4: Bootstrap Talos Cluster
-  # ==========================================================================
+  # ===========================================================================
+  # CLUSTER - Bootstrap & Lifecycle
+  # ===========================================================================
 
-  talos:bootstrap:
-    desc: '4️⃣  Bootstrap the Talos cluster with CNI'
+  cluster:bootstrap:
+    desc: '4️⃣  Bootstrap Talos cluster with CNI'
+    aliases: ['talos:bootstrap']
     summary: |
-      Usage: task talos:bootstrap -- <cluster_id>
-      Example: task talos:bootstrap -- 101
+      Usage: task cluster:bootstrap -- <cluster_id>
+      Example: task cluster:bootstrap -- 101
 
-      Applies configs to all nodes, bootstraps the cluster, and installs CNI.
-      This is a complete bootstrap including:
-      - Talos machine config application
-      - etcd cluster bootstrap
-      - Gateway API CRDs installation
-      - Cilium CNI installation
+      Complete cluster bootstrap:
+        1. Apply configs to all nodes
+        2. Bootstrap etcd cluster
+        3. Install Cilium CNI
+        4. Wait for nodes Ready
 
-      After completion, cluster is ready for Flux installation.
+      Time: ~5-10 minutes
+
+      📚 Docs: docs/cluster/bootstrap.md
     vars:
-      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
-    dir: 'talos/clusters/cluster-{{.CLI_ARGS}}'
+      CLUSTER_DIR: 'clusters/cluster-{{.CLUSTER_ID}}'
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
     cmds:
       - |
-        echo "🚀 Bootstrapping cluster {{.CLI_ARGS}}"
+        echo "🚀 Bootstrapping cluster {{.CLUSTER_ID}}"
         echo ""
 
+        # Helper functions
         format_node() {
           local ip="$1"
           if [[ -z "$ip" || "$ip" == "null" ]]; then
@@ -205,9 +1338,7 @@ tasks:
             return 1
           fi
           if [[ "$ip" == *:* ]]; then
-            # macOS uses ping6 for IPv6, Linux uses ping -6
             if command -v ping6 &>/dev/null; then
-              # macOS ping6
               ping6 -c 1 "$ip" &>/dev/null
             else
               ping -6 -c 1 -W 2 "$ip" &>/dev/null
@@ -217,7 +1348,7 @@ tasks:
           fi
         }
 
-        # Read node IPs from talenv.yaml, preferring IPv6 when available
+        # Read node IPs (prefer IPv6)
         CP01_IP=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talenv.yaml)
         CP02_IP=$(yq -r '.solcp02_public_ipv6 // .solcp02_ipAddress // ""' talenv.yaml)
         CP03_IP=$(yq -r '.solcp03_public_ipv6 // .solcp03_ipAddress // ""' talenv.yaml)
@@ -225,21 +1356,14 @@ tasks:
         WK02_IP=$(yq -r '.solwk02_public_ipv6 // .solwk02_ipAddress // ""' talenv.yaml)
         WK03_IP=$(yq -r '.solwk03_public_ipv6 // .solwk03_ipAddress // ""' talenv.yaml)
 
-        CP01_NODE=$(format_node "$CP01_IP")
-        CP02_NODE=$(format_node "$CP02_IP")
-        CP03_NODE=$(format_node "$CP03_IP")
-        WK01_NODE=$(format_node "$WK01_IP")
-        WK02_NODE=$(format_node "$WK02_IP")
-        WK03_NODE=$(format_node "$WK03_IP")
-
         echo "📋 Node IPs:"
         echo "  Control Planes: $CP01_IP, $CP02_IP, $CP03_IP"
         echo "  Workers: $WK01_IP, $WK02_IP, $WK03_IP"
         echo ""
 
-        echo "⏳ Waiting for all nodes to become reachable..."
-        echo "  💡 This may take several minutes as nodes boot up"
-        MAX_WAIT=600  # 10 minutes for nodes to boot
+        # Wait for nodes to be reachable
+        echo "⏳ Waiting for nodes to be reachable..."
+        MAX_WAIT=600
         ELAPSED=0
         ALL_REACHABLE=false
 
@@ -252,13 +1376,13 @@ tasks:
           done
 
           if [ ${#UNREACHABLE[@]} -eq 0 ]; then
-            echo "  ✓ All nodes are reachable (took ${ELAPSED}s)"
+            echo "  ✓ All nodes reachable (${ELAPSED}s)"
             ALL_REACHABLE=true
             break
           fi
 
           if [ $((ELAPSED % 30)) -eq 0 ]; then
-            echo "  ⏳ Waiting for ${#UNREACHABLE[@]} node(s) to become reachable... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ ${#UNREACHABLE[@]} nodes pending... (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 10
           ELAPSED=$((ELAPSED + 10))
@@ -266,326 +1390,333 @@ tasks:
         echo ""
 
         if [ "$ALL_REACHABLE" = false ]; then
-          echo "⚠️  Warning: ${#UNREACHABLE[@]} node(s) still unreachable after ${MAX_WAIT}s: ${UNREACHABLE[@]}"
-          echo "Proceeding with reachable nodes only..."
+          echo "⚠️  ${#UNREACHABLE[@]} node(s) unreachable: ${UNREACHABLE[@]}"
+          echo "  Continuing with reachable nodes..."
           echo ""
         fi
 
-        echo "1️⃣  Applying machine configs to all nodes..."
-
-        # Array of node definitions: "hostname|ip|formatted_node"
+        # Apply machine configs
+        echo "1️⃣  Applying machine configs..."
         declare -a NODES=(
-          "solcp01|$CP01_IP|$CP01_NODE"
-          "solcp02|$CP02_IP|$CP02_NODE"
-          "solcp03|$CP03_IP|$CP03_NODE"
-          "solwk01|$WK01_IP|$WK01_NODE"
-          "solwk02|$WK02_IP|$WK02_NODE"
-          "solwk03|$WK03_IP|$WK03_NODE"
+          "solcp01|$CP01_IP"
+          "solcp02|$CP02_IP"
+          "solcp03|$CP03_IP"
+          "solwk01|$WK01_IP"
+          "solwk02|$WK02_IP"
+          "solwk03|$WK03_IP"
         )
 
         for node_def in "${NODES[@]}"; do
-          IFS='|' read -r hostname ip formatted_node <<< "$node_def"
-          echo "  → Applying config to $hostname ($ip)..."
-          talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLI_ARGS}}-${hostname}.yaml" || echo "  ⚠️  Failed to apply config to $hostname"
+          IFS='|' read -r hostname ip <<< "$node_def"
+          echo "  → $hostname ($ip)"
+          talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" || echo "  ⚠️  Failed"
         done
         echo ""
 
-        echo "⏳ Waiting for Talos API to become ready on first control plane..."
-        echo "  💡 This may take 5-8 minutes on first boot (Talos install + reboot)"
-        MAX_WAIT=600  # 10 minutes for initial install
+        # Wait for Talos API
+        echo "⏳ Waiting for Talos API..."
+        MAX_WAIT=600
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
-          if talosctl --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig version &>/dev/null; then
-            echo "  ✓ Talos API is ready on $CP01_IP (took ${ELAPSED}s)"
+          if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig version &>/dev/null; then
+            echo "  ✓ Talos API ready (${ELAPSED}s)"
             break
           fi
-          # Show progress every 30s instead of 10s to reduce noise
           if [ $((ELAPSED % 30)) -eq 0 ]; then
-            echo "  ⏳ Still waiting for Talos installation and boot... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ Waiting for Talos... (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 10
           ELAPSED=$((ELAPSED + 10))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "❌ Timeout waiting for Talos API on $CP01_IP after ${MAX_WAIT}s"
+          echo "❌ Talos API timeout"
           exit 1
         fi
         echo ""
 
-        echo "2️⃣  Bootstrapping etcd on first control plane ($CP01_IP)..."
-        talosctl bootstrap --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig
-        echo "  ✓ Bootstrap command sent"
+        # Bootstrap etcd
+        echo "2️⃣  Bootstrapping etcd..."
+        talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig
+        echo "  ✓ Bootstrap sent"
         echo ""
 
-        echo "⏳ Waiting for etcd to become healthy..."
-        MAX_WAIT=180  # 3 minutes for etcd
+        # Wait for etcd
+        echo "⏳ Waiting for etcd..."
+        MAX_WAIT=180
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
-          if talosctl --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
-            echo "  ✓ etcd is healthy (took ${ELAPSED}s)"
+          if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
+            echo "  ✓ etcd healthy (${ELAPSED}s)"
             break
           fi
           if [ $((ELAPSED % 10)) -eq 0 ]; then
-            echo "  ⏳ Waiting for etcd... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ Waiting... (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 5
           ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "❌ Timeout waiting for etcd after ${MAX_WAIT}s"
+          echo "❌ etcd timeout"
           exit 1
         fi
         echo ""
 
-        echo "⏳ Waiting for Kubernetes API server to start..."
-        echo "  💡 API server needs etcd + control plane components (~60-90s)"
-        MAX_WAIT=180  # 3 minutes for API server
-        ELAPSED=0
-        while [ $ELAPSED -lt $MAX_WAIT ]; do
-          # Check if API server is responding (not full health, just connectivity)
-          if kubectl cluster-info &>/dev/null; then
-            echo "  ✓ Kubernetes API is accessible (took ${ELAPSED}s)"
-            break
-          fi
-          if [ $((ELAPSED % 15)) -eq 0 ]; then
-            echo "  ⏳ Waiting for API server... (${ELAPSED}s/${MAX_WAIT}s)"
-          fi
-          sleep 5
-          ELAPSED=$((ELAPSED + 5))
-        done
-
-        if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "⚠️  API server not ready after ${MAX_WAIT}s"
-          echo "  💡 Continuing - VIP should be available for kubectl"
-        else
-          echo "  ✓ Kubernetes API is ready"
-        fi
-        echo ""
-
+        # Get kubeconfig
         echo "3️⃣  Retrieving kubeconfig..."
-        talosctl kubeconfig --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig --force
+        talosctl kubeconfig --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig --force
         echo "  ✓ Kubeconfig updated"
         echo ""
 
-        echo "⏳ Waiting for VIP to be reachable..."
-        echo "  💡 VIP typically becomes available 60-120s after API server starts"
-        MAX_WAIT=450  # 7.5 minutes for VIP (typically ~90s)
+        # Wait for VIP
+        echo "⏳ Waiting for VIP..."
+        MAX_WAIT=450
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           if kubectl cluster-info &>/dev/null; then
-            echo "  ✓ VIP is reachable (took ${ELAPSED}s)"
+            echo "  ✓ VIP reachable (${ELAPSED}s)"
             break
           fi
           if [ $((ELAPSED % 15)) -eq 0 ]; then
-            echo "  ⏳ Waiting for VIP... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ Waiting... (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 5
           ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "❌ VIP not reachable after ${MAX_WAIT}s"
-          echo "  Please check VIP configuration and network connectivity"
+          echo "❌ VIP timeout"
           exit 1
         fi
         echo ""
 
+        # Install Cilium
         echo "4️⃣  Installing Cilium CNI..."
-        echo "  💡 Gateway API CRDs will be installed later by Flux"
         cd kubernetes/apps/kube-system/cilium/app
-
-        echo "  → Adding Cilium helm repository..."
         helm repo add cilium https://helm.cilium.io 2>/dev/null || true
         helm repo update cilium
-
-        echo "  → Installing Cilium..."
         helm upgrade --install cilium cilium/cilium \
           --version 1.18.4 \
           --namespace kube-system \
           --values values.yaml \
           --wait \
-          --timeout 5m
+          --timeout 10m
         echo ""
 
-        echo "⏳ Waiting for Cilium pods to be ready..."
-        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
-        echo "  ✓ Cilium is running"
+        echo "⏳ Waiting for Cilium..."
+        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=10m
+        echo "  ✓ Cilium running"
         echo ""
 
-        echo "⏳ Waiting for nodes to be Ready..."
-        kubectl wait --for=condition=Ready nodes --all --timeout=3m
+        echo "⏳ Waiting for nodes..."
+        kubectl wait --for=condition=Ready nodes --all --timeout=5m
         echo ""
 
-        echo "✅ Bootstrap complete!"
+        echo "✅ Cluster bootstrapped!"
         echo ""
-        if [ ${#UNREACHABLE[@]} -gt 0 ]; then
-          echo "⚠️  Note: ${#UNREACHABLE[@]} node(s) were unreachable and not configured:"
-          for ip in "${UNREACHABLE[@]}"; do
-            echo "    - $ip"
-          done
-          echo ""
-        fi
-
-        echo "Cluster status:"
         kubectl get nodes
         echo ""
         echo "Next steps:"
-        echo "  - Install Flux: task flux:bootstrap -- {{.CLI_ARGS}}"
-        echo "  - Flux will install Gateway API CRDs and adopt Cilium"
+        echo "  task flux:install -- {{.CLUSTER_ID}}"
 
-  # ==========================================================================
-  # Step 5: Install CNI (Cilium)
-  # ==========================================================================
-
-  cni:bootstrap:
-    desc: '5️⃣  Bootstrap Cilium CNI (before Flux)'
+  cluster:create:
+    desc: '🚀 Create complete cluster (steps 1-4)'
     summary: |
-      Usage: task cni:bootstrap
-      Example: task cni:bootstrap
+      Usage: task cluster:create -- <cluster_id>
+      Example: task cluster:create -- 101
 
-      Installs Gateway API CRDs and Cilium using helm before Flux is running.
-      This solves the chicken-egg problem (Flux needs networking).
+      Automated cluster creation workflow:
+        1. Provision infrastructure
+        2. Generate secrets
+        3. Generate configs
+        4. Bootstrap cluster
 
-      After Flux is installed, it will adopt both resources.
-    preconditions:
-      - sh: 'kubectl cluster-info &>/dev/null'
-        msg: |
-          ❌ Kubernetes API is not accessible
+      Time: ~15-20 minutes
 
-          Ensure the cluster is bootstrapped first:
-          Run: task talos:bootstrap -- <cluster_id>
+      Interactive mode: Uses Gum for progress bars (local)
+      CI/CD mode: Plain text output (detected automatically)
+
+      📚 Docs: docs/cluster/creation.md
     cmds:
       - |
-        echo "📡 Bootstrapping CNI prerequisites and Cilium..."
-        echo "  💡 This enables pod networking (~1-2 minutes)"
-        echo ""
+        #!/bin/bash
+        set -e
 
-        # Step 1: Install Gateway API CRDs (required by Cilium)
-        echo "1️⃣  Installing Gateway API CRDs..."
-        kubectl apply -f kubernetes/apps/kube-system/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
-        echo "  ✓ Gateway API CRDs installed"
-        echo ""
-
-        # Step 2: Install Cilium
-        cd kubernetes/apps/kube-system/cilium/app
-
-        # Check if Cilium is already installed
-        if helm list -n kube-system | grep -q "^cilium"; then
-          echo "ℹ️  Cilium is already installed"
-          echo "  💡 To reinstall: helm uninstall cilium -n kube-system"
+        # Detect TTY for interactive vs CI/CD
+        if [ -t 0 ] && command -v gum &> /dev/null; then
+          # Interactive mode with Gum
+          echo "🚀 Creating cluster {{.CLUSTER_ID}} (interactive mode)"
           echo ""
-          kubectl get pods -n kube-system -l k8s-app=cilium
-          exit 0
+
+          gum spin --spinner moon --title "Step 1/5: Provisioning VMs..." -- \
+            task infra:provision -- {{.CLUSTER_ID}}
+          echo "$(gum style --foreground 212 '✓') VMs provisioned"
+
+          gum spin --spinner moon --title "Step 2/5: Generating secrets..." -- \
+            task talos:secrets -- {{.CLUSTER_ID}}
+          echo "$(gum style --foreground 212 '✓') Secrets generated"
+
+          gum spin --spinner moon --title "Step 3/5: Generating configs..." -- \
+            task talos:config -- {{.CLUSTER_ID}}
+          echo "$(gum style --foreground 212 '✓') Configs generated"
+
+          gum spin --spinner pulse --title "Step 4/5: Waiting for VMs (60s)..." -- \
+            sleep 60
+          echo "$(gum style --foreground 212 '✓') VMs ready"
+
+          gum spin --spinner moon --title "Step 5/5: Bootstrapping cluster..." -- \
+            task cluster:bootstrap -- {{.CLUSTER_ID}}
+          echo "$(gum style --foreground 212 '✓') Cluster bootstrapped"
+
+          echo ""
+          gum style --foreground 212 --border double --padding "1 2" --bold \
+            "✓ Cluster {{.CLUSTER_ID}} Created!" \
+            "" \
+            "Next: task flux:install -- {{.CLUSTER_ID}}"
+        else
+          # CI/CD mode (plain text)
+          echo "🚀 Creating cluster {{.CLUSTER_ID}} (CI/CD mode)"
+          echo ""
+
+          echo "Step 1/5: Provisioning infrastructure..."
+          task infra:provision -- {{.CLUSTER_ID}}
+          echo ""
+
+          echo "Step 2/5: Generating secrets..."
+          task talos:secrets -- {{.CLUSTER_ID}}
+          echo ""
+
+          echo "Step 3/5: Generating configs..."
+          task talos:config -- {{.CLUSTER_ID}}
+          echo ""
+
+          echo "Step 4/5: Waiting 60s for VMs..."
+          sleep 60
+          echo ""
+
+          echo "Step 5/5: Bootstrapping cluster..."
+          task cluster:bootstrap -- {{.CLUSTER_ID}}
+          echo ""
+
+          echo "✅ Cluster {{.CLUSTER_ID}} created successfully!"
+          echo ""
+          echo "Next steps:"
+          echo "  kubectl get nodes"
+          echo "  task flux:install -- {{.CLUSTER_ID}}"
         fi
 
-        echo "2️⃣  Adding Cilium helm repository..."
-        helm repo add cilium https://helm.cilium.io 2>/dev/null || true
-        helm repo update cilium
-
-        echo "Installing Cilium..."
-        helm upgrade --install cilium cilium/cilium \
-          --version 1.18.4 \
-          --namespace kube-system \
-          --values values.yaml \
-          --wait \
-          --timeout 5m
-        echo ""
-
-        echo "⏳ Waiting for Cilium pods to be ready..."
-        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
-        echo ""
-
-        echo "✅ CNI bootstrap complete!"
-        echo ""
-        echo "Checking node status..."
-        kubectl get nodes
-        echo ""
-        echo "Next steps:"
-        echo "  - Install Flux: task flux:bootstrap"
-        echo "  - Flux will adopt Gateway API CRDs and Cilium HelmRelease"
-
-  # ==========================================================================
-  # Step 6: Bootstrap Flux GitOps
-  # ==========================================================================
-
-  flux:bootstrap:
-    desc: '6️⃣  Bootstrap Flux CD for GitOps'
+  cluster:destroy:
+    desc: '🗑️  Destroy complete cluster'
     summary: |
-      Usage: task flux:bootstrap -- <cluster_id>
-      Example: task flux:bootstrap -- 101
+      Usage: task cluster:destroy -- <cluster_id>
+      Example: task cluster:destroy -- 102
 
-      Bootstraps Flux CD to enable GitOps continuous delivery.
+      ⚠️  DESTRUCTIVE: Removes all VMs and configuration
+
+      Protection: cluster-101 requires name confirmation
+      Skip: SKIP_CONFIRM=1 task cluster:destroy -- <id>
+
+      📚 Docs: docs/cluster/destruction.md
+    preconditions:
+      - sh: '[ -n "{{.CLUSTER_ID}}" ]'
+        msg: "❌ Usage: task cluster:destroy -- <cluster_id>"
+    prompt: |
+      {{if ne .SKIP_CONFIRM "1"}}
+      ⚠️  DESTROY cluster-{{.CLUSTER_ID}}?
+
+      This will:
+        - Delete all VMs
+        - Remove all data
+        - Clean up configs
+
+      Type 'yes' to confirm:
+      {{end}}
+    cmds:
+      - |
+        {{if and (eq .CLUSTER_ID "101") (ne .SKIP_CONFIRM "1")}}
+        echo "🛑 PRODUCTION PROTECTION"
+        echo "Type cluster name 'sol' to confirm:"
+        read -p "> " confirm
+        if [ "$confirm" != "sol" ]; then
+          echo "❌ Cancelled"
+          exit 1
+        fi
+        {{end}}
+      - echo "🗑️  Destroying infrastructure..."
+      - task: infra:destroy
+        vars: { CLUSTER_NAME: '{{.CLUSTER_ID}}' }
+      - echo "🗑️  Removing configs..."
+      - rm -rf talos/clusters/cluster-{{.CLUSTER_ID}}
+      - echo "✅ Cluster destroyed"
+
+  # ===========================================================================
+  # FLUX - GitOps Management
+  # ===========================================================================
+
+  flux:install:
+    desc: '5️⃣  Install Flux CD for GitOps'
+    aliases: ['flux:bootstrap']
+    summary: |
+      Usage: task flux:install -- <cluster_id>
+      Example: task flux:install -- 101
+
+      Installs Flux CD for GitOps continuous delivery.
 
       Prerequisites:
-      - GITHUB_TOKEN environment variable or 1Password CLI
-      - SOPS age key at ~/.config/sops/age/keys.txt
-      - Kubernetes cluster with CNI installed
+        - GITHUB_TOKEN env var or 1Password CLI
+        - SOPS age key: ~/.config/sops/age/keys.txt
+        - Cluster with CNI (task cluster:bootstrap)
 
-      Flux will:
-      - Install Flux controllers in flux-system namespace
-      - Create SOPS age secret for decrypting secrets
-      - Connect to GitHub repository for GitOps
-      - Start reconciling kubernetes/clusters/cluster-<id>/
+      Time: ~2-3 minutes
+
+      📚 Docs: docs/flux/installation.md
     preconditions:
       - sh: 'kubectl cluster-info &>/dev/null'
         msg: |
-          ❌ Kubernetes API is not accessible
+          ❌ Kubernetes API not accessible
 
-          Ensure the cluster is bootstrapped first:
-          Run: task talos:bootstrap -- <cluster_id>
+          Run: task cluster:bootstrap -- {{.CLUSTER_ID}}
       - sh: 'kubectl get nodes | grep -q Ready'
         msg: |
-          ❌ No Ready nodes found
+          ❌ No Ready nodes
 
-          Ensure CNI is installed first:
-          Run: task cni:bootstrap
+          Run: task cluster:bootstrap -- {{.CLUSTER_ID}}
       - sh: '[ -f ~/.config/sops/age/keys.txt ]'
         msg: |
-          ❌ SOPS age key not found at ~/.config/sops/age/keys.txt
+          ❌ SOPS age key not found
 
-          Generate or copy your SOPS age key to this location.
+          Location: ~/.config/sops/age/keys.txt
       - sh: 'command -v flux &>/dev/null'
         msg: |
           ❌ flux CLI not found
 
-          Install Flux CLI:
-          brew install fluxcd/tap/flux
+          Install: brew install fluxcd/tap/flux
     cmds:
       - |
-        echo "🔄 Bootstrapping Flux CD..."
-        echo "  💡 This installs Flux controllers and connects to GitHub (~2-3 minutes)"
+        echo "🔄 Installing Flux CD..."
         echo ""
 
-        # Determine cluster path
-        CLUSTER_ID="{{.CLI_ARGS}}"
-        FLUX_PATH="kubernetes/clusters/cluster-${CLUSTER_ID}"
+        FLUX_PATH="kubernetes/clusters/cluster-{{.CLUSTER_ID}}"
 
-        # Get GitHub token (try 1Password first, fall back to env var)
+        # Get GitHub token
         if command -v op &>/dev/null; then
-          echo "🔑 Getting GitHub token from 1Password..."
           GITHUB_TOKEN=$(op item get "GitHub Token - flux" --fields token --reveal 2>/dev/null || echo "$GITHUB_TOKEN")
         fi
 
         if [ -z "$GITHUB_TOKEN" ]; then
-          echo "❌ GitHub token not found"
+          echo "❌ GitHub token required"
           echo ""
-          echo "Set GITHUB_TOKEN environment variable or store in 1Password:"
-          echo "  export GITHUB_TOKEN=ghp_..."
-          echo "  OR"
-          echo "  op item create --category=login --title='GitHub Token - flux' token=ghp_..."
+          echo "Set: export GITHUB_TOKEN=ghp_..."
           exit 1
         fi
 
         export GITHUB_TOKEN
 
-        # Create flux-system namespace if it doesn't exist
-        echo "📦 Creating flux-system namespace..."
+        # Create namespace
         kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
 
-        # Create SOPS age secret
-        echo "🔐 Creating SOPS age secret..."
+        # Create SOPS secret
         cat ~/.config/sops/age/keys.txt | \
         kubectl create secret generic sops-age \
           --namespace=flux-system \
@@ -593,14 +1724,12 @@ tasks:
           --dry-run=client -o yaml | \
         kubectl apply -f -
 
-        # Run flux pre-check (informational only, don't fail on version warnings)
-        echo ""
-        echo "🔍 Running Flux pre-flight checks..."
-        flux check --pre || echo "  ⚠️  Pre-check warnings detected (this is normal for Kubernetes < 1.32)"
+        # Pre-check
+        flux check --pre || echo "  ⚠️  Pre-check warnings (expected for K8s < 1.32)"
 
-        # Bootstrap Flux
+        # Bootstrap
         echo ""
-        echo "🚀 Bootstrapping Flux from GitHub..."
+        echo "🚀 Bootstrapping Flux..."
         flux bootstrap github \
           --owner=sulibot \
           --repository=home-ops \
@@ -613,104 +1742,445 @@ tasks:
           --timeout=5m
 
         echo ""
-        echo "⏳ Verifying Flux installation..."
         flux check
 
         echo ""
-        echo "✅ Flux bootstrap complete!"
+        echo "✅ Flux installed!"
         echo ""
-        echo "Flux is now managing your cluster from:"
-        echo "  Repository: sulibot/home-ops"
-        echo "  Path: ${FLUX_PATH}"
-        echo "  Branch: main"
+        echo "Repository: sulibot/home-ops"
+        echo "Path: ${FLUX_PATH}"
         echo ""
-        echo "Monitor Flux:"
-        echo "  flux get all -A"
-        echo "  flux logs --all-namespaces --follow"
-        echo ""
-        echo "Next steps:"
-        echo "  - Commit/push changes to ${FLUX_PATH}/ to deploy apps"
-        echo "  - Flux will automatically reconcile every 10m or on git push"
+        echo "Monitor:"
+        echo "  task flux:status"
+        echo "  task flux:logs"
 
-  # ==========================================================================
-  # All-in-One Commands
-  # ==========================================================================
-
-  cluster:create:
-    desc: '🚀 Create a complete cluster (steps 1-3)'
+  flux:reconcile:
+    desc: 'Force Flux to reconcile all resources'
     summary: |
-      Usage: task cluster:create -- <cluster_id>
-      Example: task cluster:create -- 101
+      Usage: task flux:reconcile [--namespace=<ns>]
+      Example: task flux:reconcile
 
-      This orchestrates:
-      1. Infrastructure provisioning (VMs)
-      2. Talos secret generation
-      3. Talos config generation
+      Forces Flux to sync from Git immediately.
 
-      After this, you need to manually bootstrap the cluster (step 4)
-    cmds:
-      - task: infra:apply
-        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
-      - echo "⏳ Generating Talos secrets..."
-      - task: talos:gen-secrets
-        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
-      - echo "⏳ Generating Talos machine configs..."
-      - task: talos:gen-config
-        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
-      - echo "✅ Infrastructure created and configs generated!"
-      - echo ""
-      - echo "Next steps:"
-      - echo "  task talos:bootstrap -- {{.CLI_ARGS}}     # View bootstrap instructions"
-
-  cluster:destroy:
-    desc: '🗑️  Destroy a complete cluster'
-    summary: |
-      Usage: task cluster:destroy -- <cluster_id>
-      Example: task cluster:destroy -- 102
-
-      ⚠️  WARNING: This permanently destroys all VMs and data!
-      Production cluster (101) has extra safety confirmation.
-
-      To skip confirmations: SKIP_CONFIRM=1 task cluster:destroy -- <cluster_id>
-    preconditions:
-      - sh: '[ -n "{{.CLI_ARGS}}" ]'
-        msg: "❌ Cluster ID required. Usage: task cluster:destroy -- <cluster_id>"
-    prompt: |
-      {{if ne .SKIP_CONFIRM "1"}}
-      ⚠️  You are about to DESTROY cluster-{{.CLI_ARGS}}
-      This will:
-        - Delete all VMs
-        - Remove all data
-        - Clean up Talos configs
-
-      Are you absolutely sure? (type 'yes' to confirm)
-      {{end}}
+      📚 Docs: docs/flux/operations.md
     cmds:
       - |
-        {{if and (eq .CLI_ARGS "101") (ne .SKIP_CONFIRM "1")}}
-        echo "🛑 PRODUCTION CLUSTER PROTECTION"
-        echo "You are trying to destroy cluster-101 (production: sol)"
-        echo ""
-        read -p "Type the cluster name 'sol' to confirm: " confirm
-        if [ "$confirm" != "sol" ]; then
-          echo "❌ Destruction cancelled"
-          exit 1
-        fi
-        {{else if eq .SKIP_CONFIRM "1"}}
-        echo "⚠️  Skipping confirmation (SKIP_CONFIRM=1)"
-        {{end}}
-      - echo "🗑️  Destroying cluster infrastructure..."
-      - task: infra:destroy
-        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
-      - echo "🗑️  Removing Talos configs..."
-      - rm -rf talos/clusters/cluster-{{.CLI_ARGS}}
-      - echo "✅ Cluster-{{.CLI_ARGS}} destroyed"
+        echo "🔄 Forcing Flux reconciliation..."
+        flux reconcile source git flux-system
+        flux reconcile kustomization flux-system
+        echo "✅ Reconciliation triggered"
 
-  # ==========================================================================
-  # Utility Tasks
-  # ==========================================================================
+  flux:status:
+    desc: 'Show Flux reconciliation status'
+    summary: |
+      Usage: task flux:status
 
-  talos:gen-env:
-    desc: '🔧 Generate talenv.yaml from Terraform outputs (rarely needed - auto-generated)'
+      Shows status of all Flux resources.
     cmds:
-      - ./talos/scripts/generate-talenv.sh {{.CLUSTER_ID}}
+      - |
+        echo "📊 Flux Status"
+        echo ""
+        echo "Sources:"
+        flux get sources git
+        echo ""
+        echo "Kustomizations:"
+        flux get kustomizations
+        echo ""
+        echo "HelmReleases:"
+        flux get helmreleases -A
+
+  flux:logs:
+    desc: 'Stream Flux controller logs'
+    summary: |
+      Usage: task flux:logs [--follow] [--since=<duration>]
+      Example: task flux:logs --follow
+    cmds:
+      - flux logs --all-namespaces {{.CLI_ARGS}}
+
+  flux:suspend:
+    desc: 'Suspend Flux reconciliation'
+    summary: |
+      Usage: task flux:suspend -- <resource>
+      Example: task flux:suspend -- kustomization/apps
+    cmds:
+      - flux suspend {{.CLI_ARGS}}
+
+  flux:resume:
+    desc: 'Resume Flux reconciliation'
+    summary: |
+      Usage: task flux:resume -- <resource>
+      Example: task flux:resume -- kustomization/apps
+    cmds:
+      - flux resume {{.CLI_ARGS}}
+
+  # ===========================================================================
+  # STATUS - Health & Monitoring
+  # ===========================================================================
+
+  status:cluster:
+    desc: 'Show overall cluster health'
+    summary: |
+      Usage: task status:cluster
+
+      Comprehensive cluster health check.
+
+      📚 Docs: docs/operations/monitoring.md
+    cmds:
+      - |
+        echo "🏥 Cluster Health Report"
+        echo ""
+        echo "Nodes:"
+        kubectl get nodes
+        echo ""
+        echo "System Pods:"
+        kubectl get pods -n kube-system -o wide
+        echo ""
+        echo "Flux Status:"
+        flux get all -A 2>/dev/null || echo "  Flux not installed"
+        echo ""
+        echo "Recent Events:"
+        kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -10
+
+  status:nodes:
+    desc: 'Show node status and resource usage'
+    summary: |
+      Usage: task status:nodes
+    cmds:
+      - |
+        echo "📊 Node Status"
+        echo ""
+        kubectl get nodes -o wide
+        echo ""
+        echo "Resource Usage:"
+        kubectl top nodes 2>/dev/null || echo "  Metrics server not available"
+
+  status:flux:
+    desc: 'Show Flux reconciliation status'
+    summary: |
+      Usage: task status:flux
+    cmds:
+      - task: flux:status
+
+  status:cilium:
+    desc: 'Check Cilium CNI health'
+    summary: |
+      Usage: task status:cilium
+
+      Checks Cilium pod status and connectivity.
+    cmds:
+      - |
+        echo "🔌 Cilium Status"
+        echo ""
+        kubectl get pods -n kube-system -l k8s-app=cilium
+        echo ""
+        echo "Cilium Status:"
+        kubectl exec -n kube-system -c cilium-agent $(kubectl get pods -n kube-system -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}') -- cilium status 2>/dev/null || echo "  Unable to get status"
+
+  status:storage:
+    desc: 'Show storage and PV status'
+    summary: |
+      Usage: task status:storage
+    cmds:
+      - |
+        echo "💾 Storage Status"
+        echo ""
+        echo "Storage Classes:"
+        kubectl get storageclasses
+        echo ""
+        echo "Persistent Volumes:"
+        kubectl get pv
+        echo ""
+        echo "Persistent Volume Claims:"
+        kubectl get pvc -A
+
+  status:pods:
+    desc: 'Show pod status across all namespaces'
+    summary: |
+      Usage: task status:pods [--namespace=<ns>]
+    cmds:
+      - kubectl get pods -A {{.CLI_ARGS}}
+
+  status:all:
+    desc: 'Run all health checks'
+    summary: |
+      Usage: task status:all
+
+      Comprehensive health check of entire cluster.
+    cmds:
+      - task: status:cluster
+      - echo ""
+      - task: status:cilium
+      - echo ""
+      - task: status:storage
+
+  # ===========================================================================
+  # LOGS - Log Viewing
+  # ===========================================================================
+
+  logs:talos:
+    desc: 'Stream Talos node logs'
+    summary: |
+      Usage: task logs:talos -- <cluster_id> [--node=<ip>]
+      Example: task logs:talos -- 101
+
+      📚 Docs: docs/talos/troubleshooting.md
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - |
+        NODE=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talenv.yaml)
+        echo "📋 Talos logs from $NODE"
+        talosctl dmesg --nodes "$NODE" --talosconfig ./talosconfig {{.CLI_ARGS}}
+
+  logs:flux:
+    desc: 'Stream Flux controller logs'
+    summary: |
+      Usage: task logs:flux [--follow]
+    cmds:
+      - task: flux:logs
+
+  logs:cilium:
+    desc: 'Stream Cilium logs'
+    summary: |
+      Usage: task logs:cilium
+    cmds:
+      - kubectl logs -n kube-system -l k8s-app=cilium --tail=100 -f
+
+  logs:pod:
+    desc: 'Stream pod logs'
+    summary: |
+      Usage: task logs:pod -- <namespace/pod> [--follow] [--tail=<lines>]
+      Example: task logs:pod -- kube-system/cilium-abc123 --follow
+    cmds:
+      - kubectl logs {{.CLI_ARGS}}
+
+  # ===========================================================================
+  # OPS - Operations & Maintenance
+  # ===========================================================================
+
+  ops:drain:
+    desc: 'Drain node for maintenance'
+    summary: |
+      Usage: task ops:drain -- <node_name>
+      Example: task ops:drain -- solwk01
+
+      Safely drains node by evicting all pods.
+
+      📚 Docs: docs/operations/maintenance.md
+    cmds:
+      - |
+        echo "🚧 Draining node {{.CLI_ARGS}}..."
+        kubectl drain {{.CLI_ARGS}} --ignore-daemonsets --delete-emptydir-data
+        echo "✅ Node drained"
+
+  ops:cordon:
+    desc: 'Cordon node (mark unschedulable)'
+    summary: |
+      Usage: task ops:cordon -- <node_name>
+      Example: task ops:cordon -- solwk01
+    cmds:
+      - kubectl cordon {{.CLI_ARGS}}
+
+  ops:uncordon:
+    desc: 'Uncordon node (mark schedulable)'
+    summary: |
+      Usage: task ops:uncordon -- <node_name>
+      Example: task ops:uncordon -- solwk01
+    cmds:
+      - kubectl uncordon {{.CLI_ARGS}}
+
+  ops:reboot:
+    desc: 'Safely reboot Talos node'
+    summary: |
+      Usage: task ops:reboot -- <cluster_id> <node_ip>
+      Example: task ops:reboot -- 101 fd00:101::11
+
+      📚 Docs: docs/talos/operations.md
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - |
+        echo "🔄 Rebooting node {{.CLI_ARGS}}..."
+        talosctl reboot --nodes {{.CLI_ARGS}} --talosconfig ./talosconfig
+        echo "✅ Reboot initiated"
+
+  ops:shell:
+    desc: 'Open interactive Talos shell'
+    summary: |
+      Usage: task ops:shell -- <cluster_id> <node_ip>
+      Example: task ops:shell -- 101 fd00:101::11
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - talosctl shell --nodes {{.CLI_ARGS}} --talosconfig ./talosconfig
+
+  ops:upgrade:talos:
+    desc: 'Upgrade Talos version'
+    summary: |
+      Usage: task ops:upgrade:talos -- <cluster_id> <version>
+      Example: task ops:upgrade:talos -- 101 v1.11.6
+
+      Upgrades Talos across all nodes safely.
+
+      📚 Docs: docs/talos/upgrades.md
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - |
+        VERSION={{.CLI_ARGS}}
+        echo "⬆️  Upgrading Talos to $VERSION..."
+        echo ""
+        echo "Control Plane Nodes:"
+        for node in $(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'); do
+          echo "  → Upgrading $node..."
+          talosctl upgrade --nodes "$node" --talosconfig ./talosconfig --image "ghcr.io/siderolabs/installer:$VERSION"
+          echo "  ⏳ Waiting for node to be ready..."
+          kubectl wait --for=condition=Ready node/$node --timeout=10m
+        done
+        echo ""
+        echo "Worker Nodes:"
+        for node in $(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'); do
+          echo "  → Upgrading $node..."
+          talosctl upgrade --nodes "$node" --talosconfig ./talosconfig --image "ghcr.io/siderolabs/installer:$VERSION"
+          echo "  ⏳ Waiting for node to be ready..."
+          kubectl wait --for=condition=Ready node/$node --timeout=10m
+        done
+        echo ""
+        echo "✅ Talos upgrade complete"
+
+  # ===========================================================================
+  # DEBUG - Troubleshooting
+  # ===========================================================================
+
+  debug:events:
+    desc: 'Watch cluster events in real-time'
+    summary: |
+      Usage: task debug:events [--namespace=<ns>]
+      Example: task debug:events --namespace=default
+    cmds:
+      - kubectl get events --watch {{.CLI_ARGS}}
+
+  debug:network:
+    desc: 'Test network connectivity'
+    summary: |
+      Usage: task debug:network
+
+      Runs network connectivity tests.
+    cmds:
+      - |
+        echo "🔌 Network Connectivity Test"
+        echo ""
+        echo "Testing pod-to-pod connectivity..."
+        kubectl run netshoot --rm -i --tty --image nicolaka/netshoot -- /bin/bash -c "
+          echo 'DNS test:';
+          nslookup kubernetes.default.svc.cluster.local;
+          echo '';
+          echo 'Internet test:';
+          ping -c 3 1.1.1.1
+        " 2>/dev/null || echo "  Test pod failed"
+
+  debug:dns:
+    desc: 'Test DNS resolution'
+    summary: |
+      Usage: task debug:dns
+    cmds:
+      - |
+        echo "🔍 DNS Test"
+        kubectl run dnstest --rm -i --tty --image busybox --restart=Never -- nslookup kubernetes.default.svc.cluster.local
+
+  debug:pod:
+    desc: 'Debug pod issues'
+    summary: |
+      Usage: task debug:pod -- <namespace/pod>
+      Example: task debug:pod -- default/my-app-abc123
+    cmds:
+      - |
+        echo "🔍 Pod Debug Info"
+        echo ""
+        kubectl describe pod {{.CLI_ARGS}}
+        echo ""
+        echo "Recent Logs:"
+        kubectl logs {{.CLI_ARGS}} --tail=50
+
+  debug:node:
+    desc: 'Debug node issues'
+    summary: |
+      Usage: task debug:node -- <node_name>
+      Example: task debug:node -- solcp01
+    cmds:
+      - |
+        echo "🔍 Node Debug Info"
+        echo ""
+        kubectl describe node {{.CLI_ARGS}}
+        echo ""
+        echo "Node Conditions:"
+        kubectl get node {{.CLI_ARGS}} -o jsonpath='{.status.conditions[*].type}: {.status.conditions[*].status}'
+
+  # ===========================================================================
+  # BACKUP - Backup & Recovery
+  # ===========================================================================
+
+  backup:etcd:
+    desc: 'Backup etcd cluster'
+    summary: |
+      Usage: task backup:etcd -- <cluster_id>
+      Example: task backup:etcd -- 101
+
+      Creates etcd snapshot for disaster recovery.
+
+      📚 Docs: docs/operations/backup.md
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - |
+        NODE=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talenv.yaml)
+        BACKUP_FILE="etcd-backup-$(date +%Y%m%d-%H%M%S).snapshot"
+
+        echo "💾 Backing up etcd..."
+        talosctl -n "$NODE" --talosconfig ./talosconfig etcd snapshot "$BACKUP_FILE"
+        echo "✅ Backup saved: $BACKUP_FILE"
+
+  backup:list:
+    desc: 'List available backups'
+    summary: |
+      Usage: task backup:list -- <cluster_id>
+    dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
+    cmds:
+      - |
+        echo "📋 Available Backups:"
+        ls -lh etcd-backup-*.snapshot 2>/dev/null || echo "  No backups found"
+
+  # ===========================================================================
+  # K8S - Kubernetes Utilities
+  # ===========================================================================
+
+  k8s:context:
+    desc: 'Show current kubectl context'
+    summary: |
+      Usage: task k8s:context
+    cmds:
+      - kubectl config current-context
+
+  k8s:namespaces:
+    desc: 'List all namespaces'
+    summary: |
+      Usage: task k8s:namespaces
+    cmds:
+      - kubectl get namespaces
+
+  k8s:resources:
+    desc: 'Show resource usage across cluster'
+    summary: |
+      Usage: task k8s:resources
+    cmds:
+      - |
+        echo "📊 Cluster Resources"
+        echo ""
+        echo "Nodes:"
+        kubectl top nodes
+        echo ""
+        echo "Pods (Top 20):"
+        kubectl top pods -A | sort -k3 -rn | head -20
+
+  k8s:port-forward:
+    desc: 'Port forward to service/pod'
+    summary: |
+      Usage: task k8s:port-forward -- <local_port>:<namespace/resource:remote_port>
+      Example: task k8s:port-forward -- 8080:default/svc/my-app:80
+    cmds:
+      - kubectl port-forward {{.CLI_ARGS}}

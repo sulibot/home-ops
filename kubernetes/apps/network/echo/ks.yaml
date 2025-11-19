@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: cilium-gateway
-      namespace: flux-system
+      namespace: kube-system
   interval: 1h
   path: ./kubernetes/apps/network/echo/app
   prune: true
