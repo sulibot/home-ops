@@ -10,7 +10,9 @@ spec:
     - name: cilium
       namespace: kube-system
     - name: snapshot-controller-crds
+      namespace: storage
     - name: ceph-csi-shared-secret
+      namespace: storage
   interval: 1h
   path: ./kubernetes/apps/storage/ceph-csi/cephfs/app
   prune: true
