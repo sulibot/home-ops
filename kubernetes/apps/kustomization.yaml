@@ -5,7 +5,10 @@ kind: Kustomization
 resources:
   - ./kube-system
   - ./cert-manager
+  - ./security/external-secrets/namespace.yaml
   - ./security
+  - ./storage/ceph-csi/namespace.yaml
+  - ./storage/snapshot-controller/namespace.yaml
   - ./storage
   - ./network
   - ./default
