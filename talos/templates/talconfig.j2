@@ -22,14 +22,6 @@ endpoint: "{{ endpoint }}"
 # Tell talhelper where to find the encrypted secrets file.
 secretsFile: "{{ secret_file }}"
 
-# Disable kube-proxy because we are using Cilium.
-proxy:
-  disabled: true
-
-# Skip default CNI installation - we'll install Cilium manually
-cniConfig:
-  name: none
-
 # Define the dual-stack Pod and Service CIDRs for Kubernetes.
 # IPv6 must be first to match the advertise address family (IPv6 VIP)
 clusterPodNets:
@@ -157,6 +149,12 @@ nodes:
             serviceSubnets:
               - {{ services_ipv6 }}
               - {{ services_ipv4 }}
+            # Skip default CNI installation - we'll install Cilium manually
+            cni:
+              name: none
+          # Disable kube-proxy because we are using Cilium
+          proxy:
+            disabled: true
           apiServer:
             # Configure kube-apiserver for dual-stack VIPs
             # Listen on both IPv4 and IPv6, advertise primary (IPv6) VIP
