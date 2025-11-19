@@ -370,7 +370,8 @@ tasks:
         echo ""
 
         echo "⏳ Waiting for VIP to be reachable..."
-        MAX_WAIT=180  # 3 minutes for VIP
+        echo "  💡 VIP typically becomes available 60-120s after API server starts"
+        MAX_WAIT=450  # 7.5 minutes for VIP (typically ~90s)
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           if kubectl cluster-info &>/dev/null; then
@@ -391,13 +392,8 @@ tasks:
         fi
         echo ""
 
-        echo "4️⃣  Installing Gateway API CRDs..."
-        cd /Users/sulibot/repos/github/home-ops
-        kubectl apply -f kubernetes/apps/kube-system/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
-        echo "  ✓ Gateway API CRDs installed"
-        echo ""
-
-        echo "5️⃣  Installing Cilium CNI..."
+        echo "4️⃣  Installing Cilium CNI..."
+        echo "  💡 Gateway API CRDs will be installed later by Flux"
         cd kubernetes/apps/kube-system/cilium/app
 
         echo "  → Adding Cilium helm repository..."
@@ -437,7 +433,7 @@ tasks:
         echo ""
         echo "Next steps:"
         echo "  - Install Flux: task flux:bootstrap -- {{.CLI_ARGS}}"
-        echo "  - Flux will adopt Gateway API CRDs and Cilium"
+        echo "  - Flux will install Gateway API CRDs and adopt Cilium"
 
   # ==========================================================================
   # Step 5: Install CNI (Cilium)
