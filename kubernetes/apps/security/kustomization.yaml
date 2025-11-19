@@ -4,6 +4,4 @@ kind: Kustomization
 namespace: security
 resources:
   - ./namespace.yaml
-  - ./external-secrets/namespace.yaml
-  - ./external-secrets/external-secrets/ks.yaml
-  - ./external-secrets/onepassword/ks.yaml
+  - ./external-secrets
