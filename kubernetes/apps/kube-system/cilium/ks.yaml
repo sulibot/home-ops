@@ -10,9 +10,9 @@ metadata:
 spec:
   dependsOn:
     - name: gateway-api-crds
-      namespace: flux-system
+      namespace: kube-system
     - name: cilium-helm-repo
-      namespace: flux-system
+      namespace: kube-system
   interval: 30m
   path: ./kubernetes/apps/kube-system/cilium/app
   prune: true
