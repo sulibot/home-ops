@@ -4,8 +4,5 @@ kind: Kustomization
 namespace: storage
 resources:
   - ./namespace.yaml
-  - ./ceph-csi/namespace.yaml
-  - ./snapshot-controller/namespace.yaml
-  - ./snapshot-controller/crds/ks.yaml
-  - ./snapshot-controller/app/ks.yaml
-  - ./ceph-csi/ks.yaml
+  - ./ceph-csi
+  - ./snapshot-controller
