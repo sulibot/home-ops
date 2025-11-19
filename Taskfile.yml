@@ -384,11 +384,10 @@ tasks:
       Usage: task cni:bootstrap
       Example: task cni:bootstrap
 
-      Installs Cilium using helm before Flux is running.
+      Installs Gateway API CRDs and Cilium using helm before Flux is running.
       This solves the chicken-egg problem (Flux needs networking).
 
-      After Flux is installed, it will adopt this HelmRelease.
-    dir: kubernetes/apps/kube-system/cilium/app
+      After Flux is installed, it will adopt both resources.
     preconditions:
       - sh: 'kubectl cluster-info &>/dev/null'
         msg: |
@@ -398,9 +397,18 @@ tasks:
           Run: task talos:bootstrap -- <cluster_id>
     cmds:
       - |
-        echo "📡 Installing Cilium CNI via helm..."
+        echo "📡 Bootstrapping CNI prerequisites and Cilium..."
         echo "  💡 This enables pod networking (~1-2 minutes)"
         echo ""
+
+        # Step 1: Install Gateway API CRDs (required by Cilium)
+        echo "1️⃣  Installing Gateway API CRDs..."
+        kubectl apply -f kubernetes/apps/kube-system/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
+        echo "  ✓ Gateway API CRDs installed"
+        echo ""
+
+        # Step 2: Install Cilium
+        cd kubernetes/apps/kube-system/cilium/app
 
         # Check if Cilium is already installed
         if helm list -n kube-system | grep -q "^cilium"; then
@@ -411,7 +419,7 @@ tasks:
           exit 0
         fi
 
-        echo "Adding Cilium helm repository..."
+        echo "2️⃣  Adding Cilium helm repository..."
         helm repo add cilium https://helm.cilium.io 2>/dev/null || true
         helm repo update cilium
 
@@ -428,14 +436,14 @@ tasks:
         kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
         echo ""
 
-        echo "✅ Cilium installed successfully"
+        echo "✅ CNI bootstrap complete!"
         echo ""
         echo "Checking node status..."
         kubectl get nodes
         echo ""
         echo "Next steps:"
         echo "  - Install Flux: task flux:bootstrap"
-        echo "  - Flux will adopt Cilium HelmRelease"
+        echo "  - Flux will adopt Gateway API CRDs and Cilium HelmRelease"
 
   # ==========================================================================
   # Step 6: Bootstrap Flux GitOps
