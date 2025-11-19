@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: flux-system
+      namespace: kube-system
     - name: ceph-csi
-      namespace: flux-system
+      namespace: storage
   interval: 1h
   path: ./kubernetes/apps/default/redis
   prune: true

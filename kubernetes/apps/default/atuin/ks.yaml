@@ -10,7 +10,7 @@ spec:
     - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
-      namespace: flux-system
+      namespace: storage
     - name: volsync
       namespace: volsync-system
   interval: 1h

@@ -14,9 +14,9 @@ spec:
     - name: cilium-ippool
       namespace: flux-system
     - name: cert-manager-issuers
-      namespace: flux-system
+      namespace: cert-manager
     - name: external-secrets
-      namespace: flux-system
+      namespace: security
   interval: 1h
   path: ./kubernetes/apps/kube-system/cilium/gateway
   prune: true

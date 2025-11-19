@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: external-secrets
-      namespace: flux-system
+      namespace: security
     - name: onepassword
-      namespace: flux-system
+      namespace: security
   interval: 1h
   path: ./kubernetes/apps/default/tqm/app
   prune: true

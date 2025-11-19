@@ -25,10 +25,10 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: flux-system
+      namespace: kube-system
     - name: actions-runner-controller
     - name: ceph-csi
-      namespace: flux-system
+      namespace: storage
   interval: 1h
   path: ./kubernetes/apps/actions-runner-system/actions-runner-controller/runners
   prune: true

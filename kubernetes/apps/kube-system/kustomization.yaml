@@ -8,6 +8,7 @@ components:
   - ../../components/alerts
 
 resources:
+  - ./namespace.yaml
   - ./cilium/helm-repo/ks.yaml
   - ./cilium/ks.yaml
   - ./cilium/bgp/ks.yaml

@@ -8,13 +8,13 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: flux-system
+      namespace: kube-system
     - name: cilium-gateway
-      namespace: flux-system
+      namespace: kube-system
     - name: external-secrets
-      namespace: flux-system
+      namespace: security
     - name: onepassword
-      namespace: flux-system
+      namespace: security
   interval: 1h
   path: ./kubernetes/manifests/apps/network/external-dns/app
   prune: true

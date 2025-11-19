@@ -1,0 +1,660 @@
+# Taskfile for home-ops management
+#
+# This file provides a set of commands to automate the lifecycle of
+# Kubernetes clusters, from infrastructure provisioning to cluster bootstrap.
+#
+# Quick start - Create a complete cluster:
+#   task cluster:create -- 101              # Steps 1-4 automated (~15-20 min)
+#   task flux:bootstrap -- 101              # Step 5: Install Flux GitOps
+#
+# Manual workflow (if you prefer step-by-step):
+#   1. task infra:apply -- 101              # Create VMs with Terraform
+#   2. task talos:gen-secrets -- 101        # Generate encrypted Talos secrets
+#   3. task talos:gen-config -- 101         # Generate Talos machine configs
+#   4. task talos:bootstrap -- 101          # Apply configs, bootstrap etcd, install Cilium
+#   5. task flux:bootstrap -- 101           # Install Flux for GitOps
+#
+version: '3'
+
+vars:
+  # Default cluster ID if none is provided (clusters are named by ID)
+  CLUSTER_ID: '101'
+  CLUSTER_NAME: '101'  # Cluster directories use cluster ID as name
+  TALOS_TEMPLATE: 'templates/talconfig.j2'
+
+tasks:
+  default:
+    desc: 'List all available tasks'
+    cmds:
+      - task --list-all
+
+  # ==========================================================================
+  # Step 1: Infrastructure Provisioning (Terraform)
+  # ==========================================================================
+
+  infra:apply:
+    desc: '1️⃣  Provision cluster VMs with Terraform'
+    summary: |
+      Usage: task infra:apply -- <cluster_id>
+      Example: task infra:apply -- 101
+
+      Creates Talos image and VMs on Proxmox, then generates talenv.yaml
+
+      Terraform automatically skips re-uploading if image checksum matches.
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
+    cmds:
+      - |
+        echo "🏗️  Provisioning cluster-{{.CLUSTER_NAME}} infrastructure..."
+        echo "  💡 Creates Talos image and VMs on Proxmox (~2-3 minutes first time)"
+        echo "  💡 Subsequent runs are faster (~30s) if image unchanged"
+        echo ""
+        terragrunt apply --all --auto-approve --non-interactive
+        echo ""
+        echo "✅ Infrastructure provisioned successfully"
+
+  infra:plan:
+    desc: 'Preview infrastructure changes'
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
+    cmds:
+      - terragrunt plan --all
+
+  infra:update-image:
+    desc: '🔄 Update Talos image in Proxmox'
+    summary: |
+      Usage: task infra:update-image -- <cluster_id>
+      Example: task infra:update-image -- 101
+
+      Forces re-download and re-upload of the Talos image by replacing the resource.
+      Useful when updating to a new Talos version or fixing corrupted images.
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}/image'
+    cmds:
+      - |
+        echo "🔄 Updating Talos image for cluster-{{.CLUSTER_NAME}}..."
+        echo "  💡 This will force re-download and re-upload (~1-2 minutes)"
+        echo ""
+        # Delete local cache to force re-download
+        rm -f terraform/infra/live/cluster-{{.CLUSTER_NAME}}/.talos-images/*
+        # Use -replace to force recreation of the image resource
+        terragrunt apply --auto-approve --non-interactive -replace='proxmox_virtual_environment_file.uploaded["pve01"]'
+        echo ""
+        echo "✅ Talos image updated successfully"
+
+  infra:destroy:
+    desc: '🗑️  Destroy cluster infrastructure'
+    summary: |
+      Usage: task infra:destroy -- <cluster_id>
+      Example: task infra:destroy -- 101
+    dir: 'terraform/infra/live/cluster-{{.CLUSTER_NAME}}'
+    cmds:
+      - terragrunt destroy --all --auto-approve --non-interactive
+
+  # ==========================================================================
+  # Step 2: Generate Talos Secrets
+  # ==========================================================================
+
+  talos:gen-secrets:
+    desc: '2️⃣  Generate encrypted Talos cluster secrets'
+    summary: |
+      Usage: task talos:gen-secrets -- <cluster_id>
+      Example: task talos:gen-secrets -- 101
+
+      Generates encrypted secrets at talos/clusters/cluster-<id>/talsecret.sops.yaml
+
+      To regenerate existing secrets: FORCE=1 task talos:gen-secrets -- <cluster_id>
+    vars:
+      SECRETS_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
+    dir: 'talos'
+    cmds:
+      - |
+        if [ -f "{{.SECRETS_FILE}}" ] && [ "$FORCE" != "1" ]; then
+          echo "ℹ️  Secrets already exist at talos/{{.SECRETS_FILE}}"
+          echo "  💡 To regenerate: FORCE=1 task talos:gen-secrets -- {{.CLI_ARGS}}"
+          exit 0
+        fi
+
+        echo "🔐 Generating Talos cluster secrets..."
+        mkdir -p clusters/cluster-{{.CLI_ARGS}}
+        talhelper gensecret > {{.SECRETS_FILE}}
+        sops -e -i {{.SECRETS_FILE}}
+        echo "✅ Encrypted secrets generated at talos/{{.SECRETS_FILE}}"
+
+  # ==========================================================================
+  # Step 3: Generate Talos Machine Configs
+  # ==========================================================================
+
+  talos:gen-config:
+    desc: '3️⃣  Generate Talos machine configs with talhelper'
+    summary: |
+      Usage: task talos:gen-config -- <cluster_id>
+      Example: task talos:gen-config -- 101
+
+      Requires:
+        - talos/clusters/cluster-<id>/talenv.yaml (from Terraform)
+        - talos/clusters/cluster-<id>/talsecret.sops.yaml (from gen-secrets)
+
+      Generates machine configs in talos/clusters/cluster-<id>/
+      Also writes talos/clusters/cluster-<id>/talconfig.rendered.yaml for inspection.
+    vars:
+      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
+      ENV_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talenv.yaml'
+      SECRET_FILE: 'clusters/cluster-{{.CLI_ARGS}}/talsecret.sops.yaml'
+      RENDERED_CONFIG: 'clusters/cluster-{{.CLI_ARGS}}/talconfig.rendered.yaml'
+    dir: 'talos'
+    preconditions:
+      - sh: '[ -f "{{.ENV_FILE}}" ]'
+        msg: |
+          ❌ Missing talenv.yaml file: {{.ENV_FILE}}
+
+          This file should be generated by Terraform.
+          Run: task infra:apply -- {{.CLI_ARGS}}
+      - sh: '[ -f "{{.SECRET_FILE}}" ]'
+        msg: |
+          ❌ Missing talsecret.sops.yaml file: {{.SECRET_FILE}}
+
+          Generate secrets first:
+          Run: task talos:gen-secrets -- {{.CLI_ARGS}}
+    cmds:
+      - |
+        echo "⚙️  Generating Talos machine configs..."
+        echo "  💡 Validating talenv.yaml and rendering templates"
+        python3 scripts/validate_talenv.py --file {{.ENV_FILE}}
+        jinja2 {{.TALOS_TEMPLATE}} {{.ENV_FILE}} -D secret_file={{.SECRET_FILE}} -o {{.RENDERED_CONFIG}}
+        talhelper genconfig --config-file {{.RENDERED_CONFIG}} --secret-file {{.SECRET_FILE}} --out-dir {{.CLUSTER_DIR}}
+        echo ""
+        echo "✅ Machine configs generated in talos/{{.CLUSTER_DIR}}"
+
+  # ==========================================================================
+  # Step 4: Bootstrap Talos Cluster
+  # ==========================================================================
+
+  talos:bootstrap:
+    desc: '4️⃣  Bootstrap the Talos cluster with CNI'
+    summary: |
+      Usage: task talos:bootstrap -- <cluster_id>
+      Example: task talos:bootstrap -- 101
+
+      Applies configs to all nodes, bootstraps the cluster, and installs CNI.
+      This is a complete bootstrap including:
+      - Talos machine config application
+      - etcd cluster bootstrap
+      - Gateway API CRDs installation
+      - Cilium CNI installation
+
+      After completion, cluster is ready for Flux installation.
+    vars:
+      CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
+    dir: 'talos/clusters/cluster-{{.CLI_ARGS}}'
+    cmds:
+      - |
+        echo "🚀 Bootstrapping cluster {{.CLI_ARGS}}"
+        echo ""
+
+        format_node() {
+          local ip="$1"
+          if [[ -z "$ip" || "$ip" == "null" ]]; then
+            echo ""
+          elif [[ "$ip" == *:* ]]; then
+            echo "[$ip]"
+          else
+            echo "$ip"
+          fi
+        }
+
+        ping_node() {
+          local ip="$1"
+          if [[ -z "$ip" || "$ip" == "null" ]]; then
+            return 1
+          fi
+          if [[ "$ip" == *:* ]]; then
+            # macOS uses ping6 for IPv6, Linux uses ping -6
+            if command -v ping6 &>/dev/null; then
+              # macOS ping6
+              ping6 -c 1 "$ip" &>/dev/null
+            else
+              ping -6 -c 1 -W 2 "$ip" &>/dev/null
+            fi
+          else
+            ping -c 1 -W 2 "$ip" &>/dev/null
+          fi
+        }
+
+        # Read node IPs from talenv.yaml, preferring IPv6 when available
+        CP01_IP=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talenv.yaml)
+        CP02_IP=$(yq -r '.solcp02_public_ipv6 // .solcp02_ipAddress // ""' talenv.yaml)
+        CP03_IP=$(yq -r '.solcp03_public_ipv6 // .solcp03_ipAddress // ""' talenv.yaml)
+        WK01_IP=$(yq -r '.solwk01_public_ipv6 // .solwk01_ipAddress // ""' talenv.yaml)
+        WK02_IP=$(yq -r '.solwk02_public_ipv6 // .solwk02_ipAddress // ""' talenv.yaml)
+        WK03_IP=$(yq -r '.solwk03_public_ipv6 // .solwk03_ipAddress // ""' talenv.yaml)
+
+        CP01_NODE=$(format_node "$CP01_IP")
+        CP02_NODE=$(format_node "$CP02_IP")
+        CP03_NODE=$(format_node "$CP03_IP")
+        WK01_NODE=$(format_node "$WK01_IP")
+        WK02_NODE=$(format_node "$WK02_IP")
+        WK03_NODE=$(format_node "$WK03_IP")
+
+        echo "📋 Node IPs:"
+        echo "  Control Planes: $CP01_IP, $CP02_IP, $CP03_IP"
+        echo "  Workers: $WK01_IP, $WK02_IP, $WK03_IP"
+        echo ""
+
+        echo "⏳ Waiting for all nodes to become reachable..."
+        echo "  💡 This may take several minutes as nodes boot up"
+        MAX_WAIT=600  # 10 minutes for nodes to boot
+        ELAPSED=0
+        ALL_REACHABLE=false
+
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          UNREACHABLE=()
+          for node_ip in "$CP01_IP" "$CP02_IP" "$CP03_IP" "$WK01_IP" "$WK02_IP" "$WK03_IP"; do
+            if ! ping_node "$node_ip"; then
+              UNREACHABLE+=("$node_ip")
+            fi
+          done
+
+          if [ ${#UNREACHABLE[@]} -eq 0 ]; then
+            echo "  ✓ All nodes are reachable (took ${ELAPSED}s)"
+            ALL_REACHABLE=true
+            break
+          fi
+
+          if [ $((ELAPSED % 30)) -eq 0 ]; then
+            echo "  ⏳ Waiting for ${#UNREACHABLE[@]} node(s) to become reachable... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 10
+          ELAPSED=$((ELAPSED + 10))
+        done
+        echo ""
+
+        if [ "$ALL_REACHABLE" = false ]; then
+          echo "⚠️  Warning: ${#UNREACHABLE[@]} node(s) still unreachable after ${MAX_WAIT}s: ${UNREACHABLE[@]}"
+          echo "Proceeding with reachable nodes only..."
+          echo ""
+        fi
+
+        echo "1️⃣  Applying machine configs to all nodes..."
+
+        # Array of node definitions: "hostname|ip|formatted_node"
+        declare -a NODES=(
+          "solcp01|$CP01_IP|$CP01_NODE"
+          "solcp02|$CP02_IP|$CP02_NODE"
+          "solcp03|$CP03_IP|$CP03_NODE"
+          "solwk01|$WK01_IP|$WK01_NODE"
+          "solwk02|$WK02_IP|$WK02_NODE"
+          "solwk03|$WK03_IP|$WK03_NODE"
+        )
+
+        for node_def in "${NODES[@]}"; do
+          IFS='|' read -r hostname ip formatted_node <<< "$node_def"
+          echo "  → Applying config to $hostname ($ip)..."
+          talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLI_ARGS}}-${hostname}.yaml" || echo "  ⚠️  Failed to apply config to $hostname"
+        done
+        echo ""
+
+        echo "⏳ Waiting for Talos API to become ready on first control plane..."
+        echo "  💡 This may take 5-8 minutes on first boot (Talos install + reboot)"
+        MAX_WAIT=600  # 10 minutes for initial install
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          # Use explicit nodes/endpoints flags instead of relying on talosconfig context
+          if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig version &>/dev/null; then
+            echo "  ✓ Talos API is ready on $CP01_IP (took ${ELAPSED}s)"
+            break
+          fi
+          # Show progress every 30s instead of 10s to reduce noise
+          if [ $((ELAPSED % 30)) -eq 0 ]; then
+            echo "  ⏳ Still waiting for Talos installation and boot... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 10
+          ELAPSED=$((ELAPSED + 10))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "❌ Timeout waiting for Talos API on $CP01_IP after ${MAX_WAIT}s"
+          exit 1
+        fi
+        echo ""
+
+        echo "2️⃣  Bootstrapping etcd on first control plane ($CP01_IP)..."
+        talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig
+        echo "  ✓ Bootstrap command sent"
+        echo ""
+
+        echo "⏳ Waiting for etcd to become healthy..."
+        MAX_WAIT=180  # 3 minutes for etcd
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
+            echo "  ✓ etcd is healthy (took ${ELAPSED}s)"
+            break
+          fi
+          if [ $((ELAPSED % 10)) -eq 0 ]; then
+            echo "  ⏳ Waiting for etcd... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "❌ Timeout waiting for etcd after ${MAX_WAIT}s"
+          exit 1
+        fi
+        echo ""
+
+        echo "⏳ Waiting for Kubernetes API server to start..."
+        echo "  💡 API server needs etcd + control plane components (~60-90s)"
+        MAX_WAIT=180  # 3 minutes for API server
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          # Check if API server is responding (not full health, just connectivity)
+          if kubectl cluster-info &>/dev/null; then
+            echo "  ✓ Kubernetes API is accessible (took ${ELAPSED}s)"
+            break
+          fi
+          if [ $((ELAPSED % 15)) -eq 0 ]; then
+            echo "  ⏳ Waiting for API server... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "⚠️  API server not ready after ${MAX_WAIT}s"
+          echo "  💡 Continuing - VIP should be available for kubectl"
+        else
+          echo "  ✓ Kubernetes API is ready"
+        fi
+        echo ""
+
+        echo "3️⃣  Retrieving kubeconfig..."
+        talosctl kubeconfig --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig --force
+        echo "  ✓ Kubeconfig updated"
+        echo ""
+
+        echo "⏳ Waiting for VIP to be reachable..."
+        echo "  💡 VIP typically becomes available 60-120s after API server starts"
+        MAX_WAIT=450  # 7.5 minutes for VIP (typically ~90s)
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          if kubectl cluster-info &>/dev/null; then
+            echo "  ✓ VIP is reachable (took ${ELAPSED}s)"
+            break
+          fi
+          if [ $((ELAPSED % 15)) -eq 0 ]; then
+            echo "  ⏳ Waiting for VIP... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "❌ VIP not reachable after ${MAX_WAIT}s"
+          echo "  Please check VIP configuration and network connectivity"
+          exit 1
+        fi
+        echo ""
+
+        echo "4️⃣  Installing Cilium CNI..."
+        echo "  💡 Gateway API CRDs will be installed later by Flux"
+        cd kubernetes/apps/kube-system/cilium/app
+
+        echo "  → Adding Cilium helm repository..."
+        helm repo add cilium https://helm.cilium.io 2>/dev/null || true
+        helm repo update cilium
+
+        echo "  → Installing Cilium..."
+        helm upgrade --install cilium cilium/cilium \
+          --version 1.18.4 \
+          --namespace kube-system \
+          --values values.yaml \
+          --wait \
+          --timeout 5m
+        echo ""
+
+        echo "⏳ Waiting for Cilium pods to be ready..."
+        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
+        echo "  ✓ Cilium is running"
+        echo ""
+
+        echo "⏳ Waiting for nodes to be Ready..."
+        kubectl wait --for=condition=Ready nodes --all --timeout=3m
+        echo ""
+
+        echo "✅ Bootstrap complete!"
+        echo ""
+        if [ ${#UNREACHABLE[@]} -gt 0 ]; then
+          echo "⚠️  Note: ${#UNREACHABLE[@]} node(s) were unreachable and not configured:"
+          for ip in "${UNREACHABLE[@]}"; do
+            echo "    - $ip"
+          done
+          echo ""
+        fi
+
+        echo "Cluster status:"
+        kubectl get nodes
+        echo ""
+        echo "Next steps:"
+        echo "  - Install Flux: task flux:bootstrap -- {{.CLI_ARGS}}"
+        echo "  - Flux will install Gateway API CRDs and adopt Cilium"
+
+  # ==========================================================================
+  # Step 5: Bootstrap Flux GitOps
+  # ==========================================================================
+
+  flux:bootstrap:
+    desc: '5️⃣  Bootstrap Flux CD for GitOps'
+    summary: |
+      Usage: task flux:bootstrap -- <cluster_id>
+      Example: task flux:bootstrap -- 101
+
+      Bootstraps Flux CD to enable GitOps continuous delivery.
+
+      Prerequisites:
+      - GITHUB_TOKEN environment variable or 1Password CLI
+      - SOPS age key at ~/.config/sops/age/keys.txt
+      - Kubernetes cluster with CNI installed
+
+      Flux will:
+      - Install Flux controllers in flux-system namespace
+      - Create SOPS age secret for decrypting secrets
+      - Connect to GitHub repository for GitOps
+      - Start reconciling kubernetes/clusters/cluster-<id>/
+    preconditions:
+      - sh: 'kubectl cluster-info &>/dev/null'
+        msg: |
+          ❌ Kubernetes API is not accessible
+
+          Ensure the cluster is bootstrapped first:
+          Run: task talos:bootstrap -- <cluster_id>
+      - sh: 'kubectl get nodes | grep -q Ready'
+        msg: |
+          ❌ No Ready nodes found
+
+          Ensure the cluster is bootstrapped first:
+          Run: task talos:bootstrap -- <cluster_id>
+      - sh: '[ -f ~/.config/sops/age/keys.txt ]'
+        msg: |
+          ❌ SOPS age key not found at ~/.config/sops/age/keys.txt
+
+          Generate or copy your SOPS age key to this location.
+      - sh: 'command -v flux &>/dev/null'
+        msg: |
+          ❌ flux CLI not found
+
+          Install Flux CLI:
+          brew install fluxcd/tap/flux
+    cmds:
+      - |
+        echo "🔄 Bootstrapping Flux CD..."
+        echo "  💡 This installs Flux controllers and connects to GitHub (~2-3 minutes)"
+        echo ""
+
+        # Determine cluster path
+        CLUSTER_ID="{{.CLI_ARGS}}"
+        FLUX_PATH="kubernetes/clusters/cluster-${CLUSTER_ID}"
+
+        # Get GitHub token (try 1Password first, fall back to env var)
+        if command -v op &>/dev/null; then
+          echo "🔑 Getting GitHub token from 1Password..."
+          GITHUB_TOKEN=$(op item get "GitHub Token - flux" --fields token --reveal 2>/dev/null || echo "$GITHUB_TOKEN")
+        fi
+
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "❌ GitHub token not found"
+          echo ""
+          echo "Set GITHUB_TOKEN environment variable or store in 1Password:"
+          echo "  export GITHUB_TOKEN=ghp_..."
+          echo "  OR"
+          echo "  op item create --category=login --title='GitHub Token - flux' token=ghp_..."
+          exit 1
+        fi
+
+        export GITHUB_TOKEN
+
+        # Create flux-system namespace if it doesn't exist
+        echo "📦 Creating flux-system namespace..."
+        kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
+
+        # Create SOPS age secret
+        echo "🔐 Creating SOPS age secret..."
+        cat ~/.config/sops/age/keys.txt | \
+        kubectl create secret generic sops-age \
+          --namespace=flux-system \
+          --from-file=age.agekey=/dev/stdin \
+          --dry-run=client -o yaml | \
+        kubectl apply -f -
+
+        # Run flux pre-check (informational only, don't fail on version warnings)
+        echo ""
+        echo "🔍 Running Flux pre-flight checks..."
+        flux check --pre || echo "  ⚠️  Pre-check warnings detected (this is normal for Kubernetes < 1.32)"
+
+        # Bootstrap Flux
+        echo ""
+        echo "🚀 Bootstrapping Flux from GitHub..."
+        flux bootstrap github \
+          --owner=sulibot \
+          --repository=home-ops \
+          --branch=main \
+          --path="${FLUX_PATH}" \
+          --personal \
+          --private \
+          --token-auth \
+          --interval=10m \
+          --timeout=5m
+
+        echo ""
+        echo "⏳ Verifying Flux installation..."
+        flux check
+
+        echo ""
+        echo "✅ Flux bootstrap complete!"
+        echo ""
+        echo "Flux is now managing your cluster from:"
+        echo "  Repository: sulibot/home-ops"
+        echo "  Path: ${FLUX_PATH}"
+        echo "  Branch: main"
+        echo ""
+        echo "Monitor Flux:"
+        echo "  flux get all -A"
+        echo "  flux logs --all-namespaces --follow"
+        echo ""
+        echo "Next steps:"
+        echo "  - Commit/push changes to ${FLUX_PATH}/ to deploy apps"
+        echo "  - Flux will automatically reconcile every 10m or on git push"
+
+  # ==========================================================================
+  # All-in-One Commands
+  # ==========================================================================
+
+  cluster:create:
+    desc: '🚀 Create a complete cluster (steps 1-4)'
+    summary: |
+      Usage: task cluster:create -- <cluster_id>
+      Example: task cluster:create -- 101
+
+      This orchestrates the complete cluster creation:
+      1. Infrastructure provisioning (VMs)
+      2. Talos secret generation
+      3. Talos config generation
+      4. Cluster bootstrap (apply configs, bootstrap etcd, install Cilium)
+
+      Total time: ~15-20 minutes (10 min for VMs to boot, 5 min for bootstrap)
+
+      After this, install Flux to enable GitOps:
+        task flux:bootstrap -- {{.CLI_ARGS}}
+    cmds:
+      - task: infra:apply
+        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
+      - echo "⏳ Generating Talos secrets..."
+      - task: talos:gen-secrets
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+      - echo "⏳ Generating Talos machine configs..."
+      - task: talos:gen-config
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+      - echo ""
+      - echo "✅ Infrastructure created and configs generated!"
+      - echo "⏳ Waiting 60s for VMs to finish initial boot before bootstrap..."
+      - sleep 60
+      - echo ""
+      - task: talos:bootstrap
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+      - echo ""
+      - echo "✅ Cluster created successfully!"
+      - echo ""
+      - echo "Next steps:"
+      - echo "  kubectl get nodes                          # Verify cluster"
+      - echo "  task flux:bootstrap -- {{.CLI_ARGS}}       # Install Flux (GitOps)"
+
+  cluster:destroy:
+    desc: '🗑️  Destroy a complete cluster'
+    summary: |
+      Usage: task cluster:destroy -- <cluster_id>
+      Example: task cluster:destroy -- 102
+
+      ⚠️  WARNING: This permanently destroys all VMs and data!
+      Production cluster (101) has extra safety confirmation.
+
+      To skip confirmations: SKIP_CONFIRM=1 task cluster:destroy -- <cluster_id>
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "❌ Cluster ID required. Usage: task cluster:destroy -- <cluster_id>"
+    prompt: |
+      {{if ne .SKIP_CONFIRM "1"}}
+      ⚠️  You are about to DESTROY cluster-{{.CLI_ARGS}}
+      This will:
+        - Delete all VMs
+        - Remove all data
+        - Clean up Talos configs
+
+      Are you absolutely sure? (type 'yes' to confirm)
+      {{end}}
+    cmds:
+      - |
+        {{if and (eq .CLI_ARGS "101") (ne .SKIP_CONFIRM "1")}}
+        echo "🛑 PRODUCTION CLUSTER PROTECTION"
+        echo "You are trying to destroy cluster-101 (production: sol)"
+        echo ""
+        read -p "Type the cluster name 'sol' to confirm: " confirm
+        if [ "$confirm" != "sol" ]; then
+          echo "❌ Destruction cancelled"
+          exit 1
+        fi
+        {{else if eq .SKIP_CONFIRM "1"}}
+        echo "⚠️  Skipping confirmation (SKIP_CONFIRM=1)"
+        {{end}}
+      - echo "🗑️  Destroying cluster infrastructure..."
+      - task: infra:destroy
+        vars: { CLUSTER_NAME: '{{.CLI_ARGS}}' }
+      - echo "🗑️  Removing Talos configs..."
+      - rm -rf talos/clusters/cluster-{{.CLI_ARGS}}
+      - echo "✅ Cluster-{{.CLI_ARGS}} destroyed"
+
+  # ==========================================================================
+  # Utility Tasks
+  # ==========================================================================
+
+  talos:gen-env:
+    desc: '🔧 Generate talenv.yaml from Terraform outputs (rarely needed - auto-generated)'
+    cmds:
+      - ./talos/scripts/generate-talenv.sh {{.CLUSTER_ID}}

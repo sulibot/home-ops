@@ -10,9 +10,9 @@ spec:
   #    - ../../../../components/nfs-scaler
   dependsOn:
     - name: external-secrets
-      namespace: flux-system
+      namespace: security
     - name: onepassword
-      namespace: flux-system
+      namespace: security
     - name: volsync
       namespace: volsync-system
   interval: 1h

@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: cert-manager-issuers
-      namespace: flux-system
+      namespace: cert-manager
     - name: cilium-gateway
-      namespace: flux-system
+      namespace: kube-system
   interval: 1h
   path: ./kubernetes/apps/network/certificates/import
   prune: true
