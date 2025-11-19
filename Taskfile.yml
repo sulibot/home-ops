@@ -167,12 +167,19 @@ tasks:
   # ==========================================================================
 
   talos:bootstrap:
-    desc: '4️⃣  Bootstrap the Talos cluster'
+    desc: '4️⃣  Bootstrap the Talos cluster with CNI'
     summary: |
       Usage: task talos:bootstrap -- <cluster_id>
       Example: task talos:bootstrap -- 101
 
-      Applies configs to all nodes and bootstraps the cluster
+      Applies configs to all nodes, bootstraps the cluster, and installs CNI.
+      This is a complete bootstrap including:
+      - Talos machine config application
+      - etcd cluster bootstrap
+      - Gateway API CRDs installation
+      - Cilium CNI installation
+
+      After completion, cluster is ready for Flux installation.
     vars:
       CLUSTER_DIR: 'clusters/cluster-{{.CLI_ARGS}}'
     dir: 'talos/clusters/cluster-{{.CLI_ARGS}}'
@@ -351,13 +358,44 @@ tasks:
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
           echo "⚠️  API server not ready after ${MAX_WAIT}s"
-          echo "  💡 This is expected if CNI is not installed yet"
-        else
-          echo ""
-          echo "3️⃣  Retrieving kubeconfig..."
-          talosctl kubeconfig --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig --force
-          echo "  ✓ Kubeconfig updated"
+          echo "  💡 This is expected - will be ready after CNI install"
         fi
+        echo ""
+
+        echo "3️⃣  Retrieving kubeconfig..."
+        talosctl kubeconfig --nodes $CP01_NODE --endpoints $CP01_NODE --talosconfig ./talosconfig --force
+        echo "  ✓ Kubeconfig updated"
+        echo ""
+
+        echo "4️⃣  Installing Gateway API CRDs..."
+        cd /Users/sulibot/repos/github/home-ops
+        kubectl apply -f kubernetes/apps/kube-system/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
+        echo "  ✓ Gateway API CRDs installed"
+        echo ""
+
+        echo "5️⃣  Installing Cilium CNI..."
+        cd kubernetes/apps/kube-system/cilium/app
+
+        echo "  → Adding Cilium helm repository..."
+        helm repo add cilium https://helm.cilium.io 2>/dev/null || true
+        helm repo update cilium
+
+        echo "  → Installing Cilium..."
+        helm upgrade --install cilium cilium/cilium \
+          --version 1.18.4 \
+          --namespace kube-system \
+          --values values.yaml \
+          --wait \
+          --timeout 5m
+        echo ""
+
+        echo "⏳ Waiting for Cilium pods to be ready..."
+        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=5m
+        echo "  ✓ Cilium is running"
+        echo ""
+
+        echo "⏳ Waiting for nodes to be Ready..."
+        kubectl wait --for=condition=Ready nodes --all --timeout=3m
         echo ""
 
         echo "✅ Bootstrap complete!"
@@ -369,10 +407,13 @@ tasks:
           done
           echo ""
         fi
+
+        echo "Cluster status:"
+        kubectl get nodes
+        echo ""
         echo "Next steps:"
-        echo "  - Install CNI: task cni:bootstrap"
-        echo "  - Verify nodes: kubectl get nodes"
         echo "  - Install Flux: task flux:bootstrap -- {{.CLI_ARGS}}"
+        echo "  - Flux will adopt Gateway API CRDs and Cilium"
 
   # ==========================================================================
   # Step 5: Install CNI (Cilium)
