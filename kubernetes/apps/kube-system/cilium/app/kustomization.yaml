@@ -11,3 +11,5 @@ configMapGenerator:
   - name: cilium-helm-values
     files:
       - values.yaml
+    options:
+      disableNameSuffixHash: true
