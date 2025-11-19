@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: flux-system
+      namespace: kube-system
     - name: cilium-bgp
       namespace: flux-system
     - name: cilium-ippool
