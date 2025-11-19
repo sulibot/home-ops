@@ -1501,16 +1501,16 @@ tasks:
           --namespace kube-system \
           --values values.yaml \
           --wait \
-          --timeout 10m
+          --timeout 15m
         echo ""
 
         echo "⏳ Waiting for Cilium..."
-        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=10m
+        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=15m
         echo "  ✓ Cilium running"
         echo ""
 
         echo "⏳ Waiting for nodes..."
-        kubectl wait --for=condition=Ready nodes --all --timeout=5m
+        kubectl wait --for=condition=Ready nodes --all --timeout=10m
         echo ""
 
         echo "✅ Cluster bootstrapped!"
@@ -1739,7 +1739,7 @@ tasks:
           --private \
           --token-auth \
           --interval=10m \
-          --timeout=5m
+          --timeout=10m
 
         echo ""
         flux check
