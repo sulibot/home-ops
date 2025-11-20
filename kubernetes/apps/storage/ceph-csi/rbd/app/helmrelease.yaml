@@ -25,6 +25,8 @@ spec:
               rbd:
                 radosNamespace: ""
         logLevel: 5
+        provisioner:
+            enableHostNetwork: true
         secret:
             create: false
             name: csi-ceph-admin-secret

@@ -26,6 +26,7 @@ spec:
                 - '[fc00:20::3]:6789'
         logLevel: 5
         provisioner:
+            enableHostNetwork: true
             httpMetrics:
                 enabled: false
         nodeplugin:
