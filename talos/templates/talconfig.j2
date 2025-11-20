@@ -81,6 +81,7 @@ nodes:
         routes:
           # Route to Ceph cluster network via ens19
           - network: fc00:20::/64
+            gateway: fc00:{{ cluster_id }}::fffe
             metric: 1024
         mtu: {{ node.meshMTU | default(1500) }}
     nameservers:
