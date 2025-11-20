@@ -10,7 +10,7 @@ spec:
     - name: cilium
       namespace: kube-system
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: onepassword
       namespace: security
   interval: 1h
