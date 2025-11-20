@@ -13,6 +13,7 @@ resources:
   - ./cilium/ks.yaml
   - ./cilium/bgp/ks.yaml
   - ./cilium/ippool/ks.yaml
+  - ./cilium/gateway/ks.yaml
   - ./gateway-api-crds/ks.yaml
 #  - ./coredns/ks.yaml
 #  - ./csi-driver-nfs/ks.yaml
