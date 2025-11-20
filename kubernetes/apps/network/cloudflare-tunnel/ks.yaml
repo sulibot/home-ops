@@ -4,10 +4,11 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: cloudflare-tunnel-secret
+  namespace: flux-system
 spec:
   dependsOn:
     - name: onepassword
-      namespace: security
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/network/cloudflare-tunnel/secret
   prune: true
@@ -31,9 +32,9 @@ metadata:
 spec:
   dependsOn:
     - name: onepassword
-      namespace: security
+      namespace: flux-system
     - name: cloudflare-tunnel-secret
-      namespace: network
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/network/cloudflare-tunnel/app
   postBuild:
