@@ -7,7 +7,7 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: kube-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/storage/snapshot-controller/crds
   prune: false

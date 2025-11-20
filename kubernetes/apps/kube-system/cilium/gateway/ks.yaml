@@ -8,11 +8,11 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: kube-system
+      namespace: flux-system
     - name: cilium-bgp
-      namespace: kube-system
+      namespace: flux-system
     - name: cilium-ippool
-      namespace: kube-system
+      namespace: flux-system
     - name: cert-manager-issuers
       namespace: flux-system
     - name: external-secrets

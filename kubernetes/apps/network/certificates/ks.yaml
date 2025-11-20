@@ -10,7 +10,7 @@ spec:
     - name: cert-manager-issuers
       namespace: flux-system
     - name: cilium-gateway
-      namespace: kube-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/network/certificates/import
   prune: true

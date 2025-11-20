@@ -25,7 +25,7 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: kube-system
+      namespace: flux-system
     - name: actions-runner-controller
     - name: ceph-csi
       namespace: flux-system
