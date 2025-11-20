@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: onepassword
-      namespace: security
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/smtp-relay/app
   prune: true

@@ -10,9 +10,9 @@ spec:
     - name: cilium-gateway
       namespace: kube-system
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: onepassword
-      namespace: security
+      namespace: flux-system
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

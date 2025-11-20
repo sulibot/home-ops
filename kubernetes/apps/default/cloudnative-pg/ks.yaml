@@ -10,7 +10,7 @@ spec:
     - name: cilium
       namespace: kube-system
     - name: ceph-csi
-      namespace: storage
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/cloudnative-pg
   prune: true

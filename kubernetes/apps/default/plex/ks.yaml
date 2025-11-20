@@ -11,14 +11,14 @@ spec:
 
   dependsOn:
     - name: onepassword
-      namespace: security
+      namespace: flux-system
     # Temporarily disabled until Intel GPU host stack is ready
     # - name: intel-gpu-resource-driver
     #   namespace: kube-system
     - name: ceph-csi
-      namespace: storage
+      namespace: flux-system
     - name: volsync
-      namespace: volsync-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/plex/app
   postBuild:
@@ -44,7 +44,7 @@ spec:
   #    - ../../../../components/volsync
   dependsOn:
     - name: volsync
-      namespace: volsync-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/plex/tools
   prune: true
