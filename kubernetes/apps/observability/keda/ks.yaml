@@ -10,7 +10,7 @@ spec:
     - name: cilium
       namespace: flux-system
     - name: metrics-server
-      namespace: kube-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/observability/keda/app
   prune: true
