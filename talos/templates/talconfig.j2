@@ -78,6 +78,10 @@ nodes:
 {% if node.meshIPv6 %}
           - "{{ node.meshIPv6 }}/64"
 {% endif %}
+        routes:
+          # Route to Ceph cluster network via ens19
+          - network: fc00:20::/64
+            metric: 1024
         mtu: {{ node.meshMTU | default(1500) }}
     nameservers:
 {% if dns_server_ipv6 %}
