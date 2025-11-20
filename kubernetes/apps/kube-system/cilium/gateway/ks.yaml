@@ -10,9 +10,9 @@ spec:
     - name: cilium
       namespace: kube-system
     - name: cilium-bgp
-      namespace: flux-system
+      namespace: kube-system
     - name: cilium-ippool
-      namespace: flux-system
+      namespace: kube-system
     - name: cert-manager-issuers
       namespace: cert-manager
     - name: external-secrets
