@@ -14,5 +14,5 @@ resources:
   - ./default
   - ./observability
   - ./actions-runner-system
-  - ./system-upgrade
+#  - ./system-upgrade
   - ./volsync-system
