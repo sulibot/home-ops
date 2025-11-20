@@ -8,11 +8,11 @@ metadata:
 spec:
   dependsOn:
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: onepassword
-      namespace: security
+      namespace: flux-system
     - name: ceph-csi
-      namespace: storage
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/observability/kube-prometheus-stack/app
   prune: true

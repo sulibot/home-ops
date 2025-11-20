@@ -11,9 +11,9 @@ spec:
 
   dependsOn:
     - name: ceph-csi
-      namespace: storage
+      namespace: flux-system
     - name: volsync
-      namespace: volsync-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/manifests/apps/default/emby/app
   postBuild:

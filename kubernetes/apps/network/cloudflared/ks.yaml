@@ -10,9 +10,9 @@ spec:
     - name: cilium
       namespace: kube-system
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: onepassword
-      namespace: security
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/manifests/apps/network/cloudflared/app
   prune: true

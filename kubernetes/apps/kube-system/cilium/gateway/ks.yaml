@@ -16,7 +16,7 @@ spec:
     - name: cert-manager-issuers
       namespace: cert-manager
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/kube-system/cilium/gateway
   prune: true

@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: ceph-csi-cephfs
       namespace: flux-system
     - name: snapshot-controller
@@ -32,9 +32,9 @@ metadata:
 spec:
   dependsOn:
     - name: external-secrets
-      namespace: security
+      namespace: flux-system
     - name: volsync
-      namespace: volsync-system
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/manifests/apps/volsync-system/volsync/maintenance
   prune: true
