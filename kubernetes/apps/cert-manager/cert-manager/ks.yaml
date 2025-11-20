@@ -12,7 +12,7 @@ spec:
     - name: external-secrets
       namespace: flux-system
     - name: onepassword
-      namespace: security
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/cert-manager/cert-manager/app
   prune: true
