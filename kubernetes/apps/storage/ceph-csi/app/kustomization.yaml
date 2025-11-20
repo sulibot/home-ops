@@ -5,3 +5,4 @@ kind: Kustomization
 namespace: ceph-csi
 resources:
   - ./csi-ceph-admin-secret.yaml
+  - ./ceph-csi-config.yaml
