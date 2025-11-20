@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: cilium
-      namespace: kube-system
+      namespace: flux-system
     - name: snapshot-controller-crds
       namespace: flux-system
   interval: 1h
