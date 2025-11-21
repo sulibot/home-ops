@@ -5,15 +5,9 @@ metadata:
   name: redis
   namespace: datastore
 spec:
-  chart:
-    spec:
-      chart: redis
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: bitnami
-        namespace: flux-system
-      version: 20.6.1
+  chartRef:
+    kind: OCIRepository
+    name: redis
   interval: 1h0m0s
   values:
     architecture: replication
