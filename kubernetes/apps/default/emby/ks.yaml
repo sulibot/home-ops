@@ -15,7 +15,7 @@ spec:
     - name: volsync
       namespace: flux-system
   interval: 1h
-  path: ./kubernetes/manifests/apps/default/emby/app
+  path: ./kubernetes/apps/default/emby/app
   postBuild:
     substitute:
       APP: emby

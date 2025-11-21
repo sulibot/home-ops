@@ -26,3 +26,8 @@ spec:
           peerASN: 65000  # Router's AS number (matches your Mikrotik config)
           peerConfigRef:
             name: upstream-router-peer
+        - name: upstream-router-ipv6
+          peerAddress: fd00:101::fffe  # Upstream router IPv6 address
+          peerASN: 65000  # Router's AS number (matches your Mikrotik config)
+          peerConfigRef:
+            name: upstream-router-peer-ipv6
