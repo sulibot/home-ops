@@ -26,7 +26,7 @@ spec:
               tag: s6
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
+              readOnlyRootFilesystem: false
             env:
               - name: TZ
                 value: America/Los_Angeles
@@ -72,12 +72,4 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
-      run:
-        type: emptyDir
-        globalMounts:
-          - path: /run
-      tmp:
-        type: emptyDir
-        globalMounts:
-          - path: /tmp
 
