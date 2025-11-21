@@ -7,8 +7,6 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: redis-helm-repo
-      namespace: flux-system
     - name: cilium
       namespace: flux-system
     - name: ceph-csi
