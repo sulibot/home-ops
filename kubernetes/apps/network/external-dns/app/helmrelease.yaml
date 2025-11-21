@@ -20,8 +20,6 @@ spec:
     - sulibot.com
     excludeDomains: []
     extraArgs:
-    - --kube-api-qps=10
-    - --kube-api-burst=20
     - --managed-record-types=A
     - --managed-record-types=AAAA
     - --managed-record-types=CNAME
