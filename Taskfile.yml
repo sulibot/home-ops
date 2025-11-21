@@ -1457,23 +1457,25 @@ tasks:
         echo ""
 
         # Wait for etcd
-        echo "⏳ Waiting for etcd..."
+        echo "⏳ Waiting for etcd cluster..."
         MAX_WAIT=180
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
+          MEMBER_COUNT=$(talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -c "Hostname:" || echo "0")
           if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
-            echo "  ✓ etcd healthy (${ELAPSED}s)"
+            echo "  ✓ etcd healthy ($MEMBER_COUNT members, ${ELAPSED}s)"
             break
           fi
           if [ $((ELAPSED % 10)) -eq 0 ]; then
-            echo "  ⏳ Waiting... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ etcd members: $MEMBER_COUNT/3 (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 5
           ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "❌ etcd timeout"
+          echo "❌ etcd timeout after ${MAX_WAIT}s"
+          echo "  💡 Check etcd status: talosctl --nodes $CP01_IP get members"
           exit 1
         fi
         echo ""
@@ -1485,23 +1487,25 @@ tasks:
         echo ""
 
         # Wait for VIP
-        echo "⏳ Waiting for VIP..."
+        echo "⏳ Waiting for Kubernetes VIP (kube-vip)..."
         MAX_WAIT=450
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           if kubectl cluster-info &>/dev/null; then
-            echo "  ✓ VIP reachable (${ELAPSED}s)"
+            K8S_VERSION=$(kubectl version --short 2>/dev/null | grep "Server Version" | awk '{print $3}' || echo "unknown")
+            echo "  ✓ VIP reachable, Kubernetes $K8S_VERSION (${ELAPSED}s)"
             break
           fi
           if [ $((ELAPSED % 15)) -eq 0 ]; then
-            echo "  ⏳ Waiting... (${ELAPSED}s/${MAX_WAIT}s)"
+            echo "  ⏳ Waiting for VIP to become available... (${ELAPSED}s/${MAX_WAIT}s)"
           fi
           sleep 5
           ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "❌ VIP timeout"
+          echo "❌ VIP timeout after ${MAX_WAIT}s"
+          echo "  💡 Check kube-vip status on control plane nodes"
           exit 1
         fi
         echo ""
@@ -1541,9 +1545,13 @@ tasks:
         echo "⏳ Waiting for Cilium pods (up to 8 minutes)..."
         MAX_WAIT=480
         ELAPSED=0
+        LAST_STATUS=""
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           READY=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
           TOTAL=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | wc -l || echo "0")
+
+          # Get detailed pod status for better visibility
+          POD_STATUS=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | awk '{print $3}' | sort | uniq -c | tr '\n' ' ' || echo "")
 
           if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
             if kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=30s 2>/dev/null; then
@@ -1552,15 +1560,26 @@ tasks:
             fi
           fi
 
-          if [ $((ELAPSED % 30)) -eq 0 ]; then
-            echo "  ⏳ Cilium pods: $READY/$TOTAL ready... (${ELAPSED}s/${MAX_WAIT}s)"
+          # Show status updates every 15s or when status changes
+          CURRENT_STATUS="$READY/$TOTAL pods | $POD_STATUS"
+          if [ $((ELAPSED % 15)) -eq 0 ] || [ "$CURRENT_STATUS" != "$LAST_STATUS" ]; then
+            if [ "$TOTAL" -gt 0 ]; then
+              echo "  ⏳ Cilium: $READY/$TOTAL ready | Status: $POD_STATUS(${ELAPSED}s/${MAX_WAIT}s)"
+            else
+              echo "  ⏳ Waiting for Cilium pods to be created... (${ELAPSED}s/${MAX_WAIT}s)"
+            fi
+            LAST_STATUS="$CURRENT_STATUS"
           fi
-          sleep 10
-          ELAPSED=$((ELAPSED + 10))
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "  ⚠️  Cilium pods not all ready yet, but continuing..."
+          echo ""
+          echo "  ⚠️  Cilium pods not all ready yet after ${MAX_WAIT}s"
+          echo "  📊 Final status: $READY/$TOTAL ready"
+          kubectl get pods -n kube-system -l k8s-app=cilium 2>/dev/null || true
+          echo ""
           echo "  💡 You can check status later with: kubectl get pods -n kube-system -l k8s-app=cilium"
           echo "  💡 To complete Cilium installation, re-run: task cluster:bootstrap -- {{.CLUSTER_ID}}"
         fi
@@ -1570,34 +1589,57 @@ tasks:
         echo "⏳ Waiting for nodes to be Ready (up to 8 minutes)..."
         MAX_WAIT=480
         ELAPSED=0
+        LAST_NODE_STATUS=""
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           READY=$(kubectl get nodes --no-headers 2>/dev/null | grep " Ready " | wc -l || echo "0")
           TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+          NOT_READY=$(kubectl get nodes --no-headers 2>/dev/null | grep " NotReady " | wc -l || echo "0")
 
           if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
             echo "  ✓ All nodes Ready ($READY/$TOTAL nodes, ${ELAPSED}s)"
             break
           fi
 
-          if [ $((ELAPSED % 30)) -eq 0 ]; then
-            echo "  ⏳ Nodes: $READY/$TOTAL ready... (${ELAPSED}s/${MAX_WAIT}s)"
+          # Show status updates every 15s or when status changes
+          CURRENT_NODE_STATUS="$READY/$TOTAL ready, $NOT_READY NotReady"
+          if [ $((ELAPSED % 15)) -eq 0 ] || [ "$CURRENT_NODE_STATUS" != "$LAST_NODE_STATUS" ]; then
+            if [ "$TOTAL" -gt 0 ]; then
+              echo "  ⏳ Nodes: $READY/$TOTAL ready, $NOT_READY NotReady (${ELAPSED}s/${MAX_WAIT}s)"
+            else
+              echo "  ⏳ Waiting for nodes to register... (${ELAPSED}s/${MAX_WAIT}s)"
+            fi
+            LAST_NODE_STATUS="$CURRENT_NODE_STATUS"
           fi
-          sleep 10
-          ELAPSED=$((ELAPSED + 10))
+          sleep 5
+          ELAPSED=$((ELAPSED + 5))
         done
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
-          echo "  ⚠️  Not all nodes ready yet"
+          echo ""
+          echo "  ⚠️  Not all nodes ready after ${MAX_WAIT}s"
+          echo "  📊 Final status: $READY/$TOTAL ready, $NOT_READY NotReady"
+          kubectl get nodes 2>/dev/null || true
+          echo ""
           echo "  💡 Re-run this task to retry: task cluster:bootstrap -- {{.CLUSTER_ID}}"
         fi
         echo ""
 
-        echo "✅ Cluster bootstrapped!"
+        echo "✅ Cluster bootstrapped successfully!"
         echo ""
+        echo "📊 Cluster Status:"
         kubectl get nodes
         echo ""
-        echo "Next steps:"
-        echo "  task flux:install -- {{.CLUSTER_ID}}"
+        kubectl get pods -n kube-system -l k8s-app=cilium
+        echo ""
+        echo "🎯 Next steps:"
+        echo "  1. Install Flux GitOps:"
+        echo "     task flux:install -- {{.CLUSTER_ID}}"
+        echo ""
+        echo "  2. Check cluster health:"
+        echo "     task status:cluster"
+        echo ""
+        echo "  3. View Cilium status:"
+        echo "     kubectl exec -n kube-system ds/cilium -- cilium status"
 
   cluster:create:
     desc: '🚀 Create complete cluster (steps 1-4)'
