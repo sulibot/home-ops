@@ -1491,26 +1491,83 @@ tasks:
         fi
         echo ""
 
-        # Install Cilium
+        # Install Cilium (idempotent)
         echo "4️⃣  Installing Cilium CNI..."
+
+        # Check if Cilium is already installed
+        if helm list -n kube-system | grep -q "^cilium"; then
+          echo "  ℹ️  Cilium already installed, upgrading if needed..."
+        fi
+
         cd kubernetes/apps/kube-system/cilium/app
         helm repo add cilium https://helm.cilium.io 2>/dev/null || true
         helm repo update cilium
+
+        # Install/upgrade with extended timeout
         helm upgrade --install cilium cilium/cilium \
           --version 1.18.4 \
           --namespace kube-system \
           --values values.yaml \
           --wait \
-          --timeout 15m
+          --timeout 20m || {
+            echo "  ⚠️  Helm install timed out or failed, checking Cilium status..."
+            # Continue to wait below in case pods are still coming up
+          }
         echo ""
 
-        echo "⏳ Waiting for Cilium..."
-        kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=15m
-        echo "  ✓ Cilium running"
+        # Extended wait for Cilium pods with progress updates
+        echo "⏳ Waiting for Cilium pods (up to 8 minutes)..."
+        MAX_WAIT=480
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          READY=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
+          TOTAL=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | wc -l || echo "0")
+
+          if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
+            if kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=30s 2>/dev/null; then
+              echo "  ✓ Cilium running ($READY/$TOTAL pods ready, ${ELAPSED}s)"
+              break
+            fi
+          fi
+
+          if [ $((ELAPSED % 30)) -eq 0 ]; then
+            echo "  ⏳ Cilium pods: $READY/$TOTAL ready... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 10
+          ELAPSED=$((ELAPSED + 10))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "  ⚠️  Cilium pods not all ready yet, but continuing..."
+          echo "  💡 You can check status later with: kubectl get pods -n kube-system -l k8s-app=cilium"
+          echo "  💡 To complete Cilium installation, re-run: task cluster:bootstrap -- {{.CLUSTER_ID}}"
+        fi
         echo ""
 
-        echo "⏳ Waiting for nodes..."
-        kubectl wait --for=condition=Ready nodes --all --timeout=10m
+        # Wait for nodes with extended timeout
+        echo "⏳ Waiting for nodes to be Ready (up to 8 minutes)..."
+        MAX_WAIT=480
+        ELAPSED=0
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          READY=$(kubectl get nodes --no-headers 2>/dev/null | grep " Ready " | wc -l || echo "0")
+          TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+
+          if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
+            echo "  ✓ All nodes Ready ($READY/$TOTAL nodes, ${ELAPSED}s)"
+            break
+          fi
+
+          if [ $((ELAPSED % 30)) -eq 0 ]; then
+            echo "  ⏳ Nodes: $READY/$TOTAL ready... (${ELAPSED}s/${MAX_WAIT}s)"
+          fi
+          sleep 10
+          ELAPSED=$((ELAPSED + 10))
+        done
+
+        if [ $ELAPSED -ge $MAX_WAIT ]; then
+          echo "  ⚠️  Not all nodes ready yet"
+          echo "  💡 Re-run this task to retry: task cluster:bootstrap -- {{.CLUSTER_ID}}"
+        fi
         echo ""
 
         echo "✅ Cluster bootstrapped!"
