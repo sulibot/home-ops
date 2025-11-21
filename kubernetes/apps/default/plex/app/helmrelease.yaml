@@ -23,7 +23,7 @@ spec:
               TZ: America/Los_Angeles
               PLEX_ADVERTISE_URL: http://10.101.27.120:32400,http://[fd00:101::1b:120]:32400,https://plex.sulibot.com:443
               PLEX_NO_AUTH_NETWORKS: 10.0.30.0/24,fd00:30::/64
-              - name: PLEX_CLAIM
+              PLEX_CLAIM:
                 valueFrom:
                   secretKeyRef:
                     name: plex-secret
