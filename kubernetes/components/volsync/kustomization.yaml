@@ -8,5 +8,5 @@ resources:
   - ./pvc.yaml
   # ReplicationDestination commented out - requires remote storage backend (S3/NFS/etc)
   # Currently using local filesystem repository which is not compatible with ReplicationDestination
-  # - ./replicationdestination.yaml
+  - ./replicationdestination.yaml
   - ./replicationsource.yaml
