@@ -26,7 +26,8 @@ spec:
               tag: latest
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
             env:
               - name: TZ
                 value: America/Los_Angeles
@@ -74,4 +75,12 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /data
+      run:
+        type: emptyDir
+        globalMounts:
+          - path: /run
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
 

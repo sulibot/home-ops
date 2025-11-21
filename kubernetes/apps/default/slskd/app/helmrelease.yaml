@@ -122,7 +122,10 @@ spec:
               http:
                 address: '::'
             soulseek:
-              address: '::'
+              address: '0.0.0.0'
+              connection:
+                address: 'server.slsknet.org'
+                port: 2271
             directories:
               downloads: /media/Downloads/soulseek/complete
               incomplete: /media/Downloads/soulseek/incomplete
