@@ -5,8 +5,7 @@ kind: Component
 resources:
   - ./externalsecret.yaml
   - ./kopia-repository-pvc.yaml
-  - ./pvc.yaml
-  # ReplicationDestination commented out - requires remote storage backend (S3/NFS/etc)
-  # Currently using local filesystem repository which is not compatible with ReplicationDestination
+  # pvc.yaml commented out - using ReplicationDestination to manage PVC with restore capability
+  # - ./pvc.yaml
   - ./replicationdestination.yaml
   - ./replicationsource.yaml
