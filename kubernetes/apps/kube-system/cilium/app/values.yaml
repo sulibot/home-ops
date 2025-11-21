@@ -25,7 +25,6 @@ ipam:
 # Native routing (no encapsulation for better performance)
 routingMode: native
 tunnelProtocol: disabled
-tunnel: disabled
 autoDirectNodeRoutes: true
 endpointRoutes:
   enabled: true
