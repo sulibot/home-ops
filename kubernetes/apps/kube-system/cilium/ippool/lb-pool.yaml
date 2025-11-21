@@ -44,7 +44,7 @@ spec:
     # Use fd00:101:40::/120 to avoid node IPs (fd00:101::1-3f)
     - cidr: fd00:101:40::/120  # fd00:101:40::0-ff (256 IPs)
     # Gateway API subnet (your existing gateway IPs)
-    - cidr: fd00:101:cafe::/120  # fd00:101:cafe::0-ff (256 IPs)
+    - cidr: fd00:101:1b::/120  # fd00:101:1b::0-ff (256 IPs)
 
 ---
 # Optional: Dedicated pool for ingress controllers
