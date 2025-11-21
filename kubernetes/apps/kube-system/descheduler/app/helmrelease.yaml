@@ -10,7 +10,7 @@ spec:
     name: descheduler
   interval: 1h
   values:
-    kind: Deployment
+    kind: deployment
     deschedulerPolicyAPIVersion: descheduler/v1alpha2
     deschedulerPolicy:
       metricsProviders:
