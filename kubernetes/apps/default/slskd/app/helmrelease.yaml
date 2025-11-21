@@ -122,7 +122,6 @@ spec:
               http:
                 address: '::'
             soulseek:
-              address: '::'
               connection:
                 address: 'server.slsknet.org'
                 port: 2271
