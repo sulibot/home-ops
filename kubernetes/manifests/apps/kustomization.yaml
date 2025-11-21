@@ -1,6 +1,0 @@
-resources:
- - observability/
- - kube-system/
- - volsync-system/
- - default/
-
