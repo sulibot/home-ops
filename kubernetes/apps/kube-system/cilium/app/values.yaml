@@ -23,7 +23,6 @@ ipam:
   mode: kubernetes
 
 # Native routing (no encapsulation for better performance)
-tunnel: disabled
 routingMode: native
 autoDirectNodeRoutes: true
 endpointRoutes:

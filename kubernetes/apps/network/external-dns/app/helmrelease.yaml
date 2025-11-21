@@ -20,7 +20,8 @@ spec:
     - sulibot.com
     excludeDomains: []
     extraArgs:
-    - --ignore-ingress-tls-spec
+    - --kube-api-qps=10
+    - --kube-api-burst=20
     - --managed-record-types=A
     - --managed-record-types=AAAA
     - --managed-record-types=CNAME
@@ -86,7 +87,6 @@ spec:
           failureThreshold: 30
     registry: txt
     sources:
-    - ingress
     - service
     - gateway-httproute
     - gateway-grpcroute
