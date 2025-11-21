@@ -19,6 +19,7 @@ metadata:
 spec:
   blocks:
     - cidr: 10.0.101.64/26  # 10.0.101.64-127 (64 IPs)
+    - cidr: 10.101.27.0/24  # 10.101.27.1-254 (Your existing gateway IPs)
 
   # Optional: Reserve specific IPs for known services
   # Uncomment to prevent auto-assignment to these IPs
