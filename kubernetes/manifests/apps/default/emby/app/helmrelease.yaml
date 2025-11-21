@@ -17,7 +17,7 @@ spec:
   values:
     controllers:
       emby:
-        type: Deployment
+        type: deployment
         replicas: 1
         containers:
           app:
@@ -55,6 +55,7 @@ spec:
           - backendRefs:
               - name: emby
                 port: 80
+    persistence:
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
