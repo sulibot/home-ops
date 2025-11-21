@@ -11,3 +11,15 @@ spec:
       storage: 1Gi
   storageClassName: csi-cephfs-config-sc
 
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config-cache
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-cephfs-config-sc
