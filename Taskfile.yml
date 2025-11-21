@@ -1676,19 +1676,19 @@ tasks:
           echo "🚀 Creating cluster {{.CLUSTER_ID}} (interactive mode)"
           echo ""
 
-          gum spin --spinner moon --title "Step 1/5: Provisioning VMs..." -- \
+          gum spin --spinner moon --title "Step 1/6: Provisioning VMs..." -- \
             task infra:provision -- {{.CLUSTER_ID}}
           echo "$(gum style --foreground 212 '✓') VMs provisioned"
 
-          gum spin --spinner moon --title "Step 2/5: Generating secrets..." -- \
+          gum spin --spinner moon --title "Step 2/6: Generating secrets..." -- \
             task talos:secrets -- {{.CLUSTER_ID}}
           echo "$(gum style --foreground 212 '✓') Secrets generated"
 
-          gum spin --spinner moon --title "Step 3/5: Generating configs..." -- \
+          gum spin --spinner moon --title "Step 3/6: Generating configs..." -- \
             task talos:config -- {{.CLUSTER_ID}}
           echo "$(gum style --foreground 212 '✓') Configs generated"
 
-          gum spin --spinner pulse --title "Step 4/5: Waiting for VMs (60s)..." -- \
+          gum spin --spinner pulse --title "Step 4/6: Waiting for VMs (60s)..." -- \
             sleep 60
           echo "$(gum style --foreground 212 '✓') VMs ready"
 
