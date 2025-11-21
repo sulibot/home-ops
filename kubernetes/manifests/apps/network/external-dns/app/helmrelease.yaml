@@ -28,6 +28,7 @@ spec:
     - --managed-record-types=MX
     - --managed-record-types=SRV
     - --managed-record-types=NS
+    - --webhook-provider-url=http://localhost:8080
     fullnameOverride: external-dns-mikrotik
     interval: 1s
     logFormat: text
