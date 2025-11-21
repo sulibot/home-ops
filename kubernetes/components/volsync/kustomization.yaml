@@ -5,7 +5,7 @@ kind: Component
 resources:
   - ./externalsecret.yaml
   - ./kopia-repository-pvc.yaml
-  # pvc.yaml commented out - using ReplicationDestination to manage PVC with restore capability
-  # - ./pvc.yaml
+  # pvc.yaml creates initial PVCs, ReplicationDestination handles restores when PVC is deleted
+  - ./pvc.yaml
   - ./replicationdestination.yaml
   - ./replicationsource.yaml
