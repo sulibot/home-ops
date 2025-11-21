@@ -8,7 +8,7 @@ resources:
   - ./autobrr/ks.yaml
   - ./cloudnative-pg/helm-repo/ks.yaml
   - ./cloudnative-pg/ks.yaml
-  - ./cross-seed/ks.yaml
+  # - ./cross-seed/ks.yaml  # Commented out - qBittorrent auth 401
   - ./emby/ks.yaml
   - ./filebrowser/ks.yaml
   - ./fusion/ks.yaml
@@ -35,5 +35,5 @@ resources:
   - ./tautulli/ks.yaml
   - ./thelounge/ks.yaml
   - ./tqm/ks.yaml
-  - ./zigbee/ks.yaml
-  - ./zwave/ks.yaml
+  # - ./zigbee/ks.yaml  # Commented out - pending investigation
+  # - ./zwave/ks.yaml  # Commented out - pending investigation
