@@ -27,6 +27,11 @@ spec:
         logLevel: 5
         provisioner:
             enableHostNetwork: true
+            httpMetrics:
+                enabled: false
+        nodeplugin:
+            httpMetrics:
+                enabled: false
         secret:
             create: false
             name: csi-ceph-admin-secret
