@@ -17,7 +17,7 @@ spec:
   values:
     controllers:
       lidarr:
-        type: statefulset
+        type: deployment
         replicas: 1
         containers:
           app:
