@@ -1642,18 +1642,24 @@ tasks:
         echo "     kubectl exec -n kube-system ds/cilium -- cilium status"
 
   cluster:create:
-    desc: '🚀 Create complete cluster (steps 1-4)'
+    desc: '🚀 Create complete cluster with GitOps (1-button deploy)'
     summary: |
       Usage: task cluster:create -- <cluster_id>
       Example: task cluster:create -- 101
 
-      Automated cluster creation workflow:
-        1. Provision infrastructure
-        2. Generate secrets
-        3. Generate configs
-        4. Bootstrap cluster
+      Complete automated cluster deployment workflow:
+        1. Provision infrastructure (VMs on Proxmox)
+        2. Generate encrypted secrets
+        3. Generate machine configs
+        4. Bootstrap Talos cluster + Cilium CNI
+        5. Install Flux CD for GitOps
+        6. Cluster ready with GitOps management
 
-      Time: ~15-20 minutes
+      Prerequisites:
+        - GITHUB_TOKEN env var set (export GITHUB_TOKEN=ghp_...)
+        - SOPS age key: ~/.config/sops/age/keys.txt
+
+      Time: ~18-25 minutes
 
       Interactive mode: Uses Gum for progress bars (local)
       CI/CD mode: Plain text output (detected automatically)
@@ -1686,45 +1692,57 @@ tasks:
             sleep 60
           echo "$(gum style --foreground 212 '✓') VMs ready"
 
-          gum spin --spinner moon --title "Step 5/5: Bootstrapping cluster..." -- \
+          gum spin --spinner moon --title "Step 5/6: Bootstrapping cluster..." -- \
             task cluster:bootstrap -- {{.CLUSTER_ID}}
           echo "$(gum style --foreground 212 '✓') Cluster bootstrapped"
 
+          gum spin --spinner moon --title "Step 6/6: Installing Flux GitOps..." -- \
+            task flux:install -- {{.CLUSTER_ID}}
+          echo "$(gum style --foreground 212 '✓') Flux installed"
+
           echo ""
           gum style --foreground 212 --border double --padding "1 2" --bold \
-            "✓ Cluster {{.CLUSTER_ID}} Created!" \
+            "✓ Cluster {{.CLUSTER_ID}} Fully Deployed!" \
             "" \
-            "Next: task flux:install -- {{.CLUSTER_ID}}"
+            "Flux is managing your cluster via GitOps" \
+            "" \
+            "Monitor: task flux:status"
         else
           # CI/CD mode (plain text)
           echo "🚀 Creating cluster {{.CLUSTER_ID}} (CI/CD mode)"
           echo ""
 
-          echo "Step 1/5: Provisioning infrastructure..."
+          echo "Step 1/6: Provisioning infrastructure..."
           task infra:provision -- {{.CLUSTER_ID}}
           echo ""
 
-          echo "Step 2/5: Generating secrets..."
+          echo "Step 2/6: Generating secrets..."
           task talos:secrets -- {{.CLUSTER_ID}}
           echo ""
 
-          echo "Step 3/5: Generating configs..."
+          echo "Step 3/6: Generating configs..."
           task talos:config -- {{.CLUSTER_ID}}
           echo ""
 
-          echo "Step 4/5: Waiting 60s for VMs..."
+          echo "Step 4/6: Waiting 60s for VMs..."
           sleep 60
           echo ""
 
-          echo "Step 5/5: Bootstrapping cluster..."
+          echo "Step 5/6: Bootstrapping cluster..."
           task cluster:bootstrap -- {{.CLUSTER_ID}}
           echo ""
 
-          echo "✅ Cluster {{.CLUSTER_ID}} created successfully!"
+          echo "Step 6/6: Installing Flux GitOps..."
+          task flux:install -- {{.CLUSTER_ID}}
           echo ""
-          echo "Next steps:"
-          echo "  kubectl get nodes"
-          echo "  task flux:install -- {{.CLUSTER_ID}}"
+
+          echo "✅ Cluster {{.CLUSTER_ID}} fully deployed!"
+          echo ""
+          echo "Flux is managing your cluster via GitOps"
+          echo ""
+          echo "Monitor:"
+          echo "  task flux:status"
+          echo "  task status:cluster"
         fi
 
   cluster:destroy:
@@ -1785,7 +1803,7 @@ tasks:
       Installs Flux CD for GitOps continuous delivery.
 
       Prerequisites:
-        - GITHUB_TOKEN env var or 1Password CLI
+        - GITHUB_TOKEN env var (export GITHUB_TOKEN=ghp_...)
         - SOPS age key: ~/.config/sops/age/keys.txt
         - Cluster with CNI (task cluster:bootstrap)
 
@@ -1820,15 +1838,14 @@ tasks:
 
         FLUX_PATH="kubernetes/clusters/cluster-{{.CLUSTER_ID}}"
 
-        # Get GitHub token
-        if command -v op &>/dev/null; then
-          GITHUB_TOKEN=$(op item get "GitHub Token - flux" --fields token --reveal 2>/dev/null || echo "$GITHUB_TOKEN")
-        fi
-
+        # Use GITHUB_TOKEN environment variable
         if [ -z "$GITHUB_TOKEN" ]; then
-          echo "❌ GitHub token required"
+          echo "❌ GITHUB_TOKEN environment variable required"
           echo ""
           echo "Set: export GITHUB_TOKEN=ghp_..."
+          echo ""
+          echo "Get token from: https://github.com/settings/tokens"
+          echo "Required scopes: repo (full control)"
           exit 1
         fi
 
