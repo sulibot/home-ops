@@ -20,9 +20,12 @@ spec:
               repository: ghcr.io/home-operations/plex
               tag: 1.42.2.10156@sha256:9ad8a3506e1d8ebda873a668603c1a2c10e6887969564561be669efd65ae8871
             env:
-              TZ: America/Los_Angeles
-              PLEX_ADVERTISE_URL: http://10.101.27.120:32400,http://[fd00:101::1b:120]:32400,https://plex.sulibot.com:443
-              PLEX_NO_AUTH_NETWORKS: 10.0.30.0/24,fd00:30::/64
+              - name: TZ
+                value: America/Los_Angeles
+              - name: PLEX_ADVERTISE_URL
+                value: http://[fd00:101::cafe:120]:32400,https://plex.sulibot.com:443
+              #- name: PLEX_NO_AUTH_NETWORKS
+              #  value: fd00:30::/64
               - name: PLEX_CLAIM
                 valueFrom:
                   secretKeyRef:
@@ -51,16 +54,23 @@ spec:
               readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             resources:
-            #  claims:
-            #    - name: gpu
+              # claims:
+              #   - name: gpu
               requests:
                 cpu: 100m
+                memory: 6Gi
               limits:
-                memory: 6Gi # 16Gi
+                memory: 8Gi
     defaultPodOptions:
     #  resourceClaims:
     #    - name: gpu
     #      resourceClaimTemplateName: plex
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -69,15 +79,17 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
+        controller: plex
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: fd00:101::1b:120;10.101.27.120
-        externalTrafficPolicy: Local
+          lbipam.cilium.io/ips: fd00:101::cafe:120
         labels:
           bgp-advertise: "true"
         ports:
           http:
-            port: *port
+            port: 32400
+            targetPort: *port
+            protocol: TCP
     route:
       app:
         annotations:
@@ -92,7 +104,6 @@ spec:
           - # Ref: https://forums.plex.tv/t/external-srt-subtitles-are-not-working-w-reverse-proxy/886540
             backendRefs:
               - identifier: app
-                port: *port
             filters:
               - type: RequestHeaderModifier
                 requestHeaderModifier:
@@ -104,9 +115,11 @@ spec:
                   value: /library/streams
           - backendRefs:
               - identifier: app
-                port: *port
     persistence:
 
+
+
+    
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
