@@ -26,12 +26,6 @@ spec:
       apiVersion: controller.config.cert-manager.io/v1alpha1
       kind: ControllerConfiguration
       enableGatewayAPI: true
-    extraArgs:
-      - --dns01-recursive-nameservers-only
-      - --dns01-recursive-nameservers=[2606:4700:4700::1111]:53,[2606:4700:4700::1001]:53
-    podDnsPolicy: None
-    podDnsConfig:
-      nameservers:
-        - 2606:4700:4700::1111
-        - 2606:4700:4700::1001
+    # Use cluster CoreDNS which forwards to ROS DNS servers
+    # This works across all clusters without hardcoding cluster IDs
     replicaCount: 2
