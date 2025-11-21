@@ -19,7 +19,10 @@ spec:
   postBuild:
     substitute:
       APP: thelounge
-      # VOLSYNC_CAPACITY: 1Gi
+      VOLSYNC_CAPACITY: 3Gi
+      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
+      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
+      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
   prune: true
   sourceRef:
     kind: GitRepository

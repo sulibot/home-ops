@@ -6,11 +6,22 @@ metadata:
   name: mosquitto
   namespace: flux-system
 spec:
+  components:
+    - ../../../../components/volsync
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
+    - name: volsync
+      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/default/mosquitto/app
+  postBuild:
+    substitute:
+      APP: mosquitto
+      VOLSYNC_CAPACITY: 5Gi
+      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
+      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
+      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
   prune: true
   sourceRef:
     kind: GitRepository
