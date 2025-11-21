@@ -1395,22 +1395,28 @@ tasks:
           echo ""
         fi
 
-        # Apply machine configs
+        # Apply machine configs (skip if cluster already configured)
         echo "1️⃣  Applying machine configs..."
-        declare -a NODES=(
-          "solcp01|$CP01_IP"
-          "solcp02|$CP02_IP"
-          "solcp03|$CP03_IP"
-          "solwk01|$WK01_IP"
-          "solwk02|$WK02_IP"
-          "solwk03|$WK03_IP"
-        )
 
-        for node_def in "${NODES[@]}"; do
-          IFS='|' read -r hostname ip <<< "$node_def"
-          echo "  → $hostname ($ip)"
-          talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" || echo "  ⚠️  Failed"
-        done
+        # Check if cluster is already configured by trying authenticated talosctl
+        if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig version &>/dev/null; then
+          echo "  ℹ️  Cluster already configured, skipping config application"
+        else
+          declare -a NODES=(
+            "solcp01|$CP01_IP"
+            "solcp02|$CP02_IP"
+            "solcp03|$CP03_IP"
+            "solwk01|$WK01_IP"
+            "solwk02|$WK02_IP"
+            "solwk03|$WK03_IP"
+          )
+
+          for node_def in "${NODES[@]}"; do
+            IFS='|' read -r hostname ip <<< "$node_def"
+            echo "  → $hostname ($ip)"
+            talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" || echo "  ⚠️  Failed"
+          done
+        fi
         echo ""
 
         # Wait for Talos API
@@ -1435,10 +1441,19 @@ tasks:
         fi
         echo ""
 
-        # Bootstrap etcd
+        # Bootstrap etcd (skip if already bootstrapped)
         echo "2️⃣  Bootstrapping etcd..."
-        talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig
-        echo "  ✓ Bootstrap sent"
+
+        # Check if etcd is already running
+        if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
+          echo "  ℹ️  etcd already bootstrapped and healthy"
+        else
+          talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig 2>&1 | grep -v "AlreadyExists" || {
+            # Bootstrap may fail with AlreadyExists if etcd data directory exists
+            echo "  ℹ️  etcd may already be bootstrapped, checking status..."
+          }
+          echo "  ✓ Bootstrap sent"
+        fi
         echo ""
 
         # Wait for etcd
@@ -1500,6 +1515,13 @@ tasks:
         fi
 
         cd kubernetes/apps/kube-system/cilium/app
+
+        # Fix helm plugin issues that may cause failures
+        if helm list -n kube-system 2>&1 | grep -q "failed to load plugin"; then
+          echo "  ⚙️  Fixing helm plugin issues..."
+          rm -rf ~/Library/helm/plugins/helm-diff 2>/dev/null || true
+        fi
+
         helm repo add cilium https://helm.cilium.io 2>/dev/null || true
         helm repo update cilium
 
