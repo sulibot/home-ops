@@ -71,7 +71,11 @@ spec:
       app:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: fd00:101::1b:120;10.101.27.120
+          lbipam.cilium.io/ips: fd00:101::1b:120,10.101.27.120
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         externalTrafficPolicy: Local
         labels:
           bgp-advertise: "true"

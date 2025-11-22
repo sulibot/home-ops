@@ -165,23 +165,26 @@ tasks:
         while true; do
           clear
 
-          # Header
+          # Header with Catppuccin Mocha styling
           gum style \
-            --foreground 212 \
-            --border double \
-            --border-foreground 212 \
-            --padding "1 2" \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
             --bold \
             "🏠 Home-Ops Cluster Management" \
             "" \
-            "Kubernetes cluster lifecycle automation"
+            "$(gum style --foreground "#a6adc8" "Kubernetes cluster lifecycle automation")"
 
           echo ""
 
           # Main menu - show all 13 items at once
           ACTION=$(gum choose \
             --height 15 \
-            --cursor-prefix "→ " \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
+            --cursor.foreground "#89b4fa" \
             "🚀 Create Cluster" \
             "🗑️  Destroy Cluster" \
             "🔧 Bootstrap Talos" \
@@ -246,11 +249,22 @@ tasks:
         #!/bin/bash
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "🔧 Dependency Management"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "🔧 Dependency Management" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Install and manage required tools")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 10 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Check All Dependencies" \
             "Install All Dependencies" \
             "Install Charm Tools" \
@@ -321,7 +335,15 @@ tasks:
           --prompt "→ ")
 
         if [ -z "$CLUSTER" ]; then
-          gum style --foreground 196 "❌ Cluster ID required"
+          echo ""
+          gum style \
+            --foreground "#f38ba8" \
+            --border rounded \
+            --border-foreground "#f38ba8" \
+            --padding "1 3" \
+            --margin "1 2" \
+            "❌ Cluster ID required"
+          echo ""
           sleep 2
           exit 1
         fi
@@ -332,41 +354,131 @@ tasks:
           "Create cluster-$CLUSTER with 3 control planes + 3 workers?" || exit 0
 
         echo ""
-        gum style --border rounded --padding "1 2" --bold \
-          "Creating Cluster $CLUSTER"
+        gum style \
+          --foreground "#89b4fa" \
+          --border rounded \
+          --border-foreground "#585b70" \
+          --padding "1 3" \
+          --margin "1 2" \
+          --bold \
+          "Creating Cluster $CLUSTER" \
+          "" \
+          "$(gum style --foreground "#94e2d5" "1. Provision infrastructure (ISO + VMs)")" \
+          "$(gum style --foreground "#94e2d5" "2. Generate Talos secrets")" \
+          "$(gum style --foreground "#94e2d5" "3. Generate machine configs")" \
+          "$(gum style --foreground "#94e2d5" "4. Wait for VMs to boot")" \
+          "$(gum style --foreground "#94e2d5" "5. Bootstrap cluster + Cilium CNI")" \
+          "$(gum style --foreground "#94e2d5" "6. Install Flux CD for GitOps")"
 
         # Step 1: Provision
         echo ""
-        gum spin --spinner moon --title "Step 1/5: Provisioning VMs on Proxmox..." -- \
-          task infra:provision -- $CLUSTER
-        echo "$(gum style --foreground 212 '✓') VMs provisioned"
+        if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 1/6:') Provisioning VMs on Proxmox..." -- \
+          task infra:provision -- $CLUSTER; then
+          echo ""
+          gum style --foreground "#f38ba8" "  ✗ Failed to provision VMs"
+          echo ""
+          echo "Check logs above for errors. Common issues:"
+          echo "  • Proxmox connectivity"
+          echo "  • Insufficient resources"
+          echo "  • Network configuration"
+          exit 1
+        fi
+        gum style --foreground "#a6e3a1" "  ✓ VMs provisioned"
+        echo ""
 
         # Step 2: Secrets
-        gum spin --spinner moon --title "Step 2/5: Generating Talos secrets..." -- \
-          task talos:secrets -- $CLUSTER
-        echo "$(gum style --foreground 212 '✓') Secrets encrypted"
+        if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 2/6:') Generating Talos secrets..." -- \
+          task talos:secrets -- $CLUSTER; then
+          echo ""
+          gum style --foreground "#f38ba8" "  ✗ Failed to generate secrets"
+          exit 1
+        fi
+        gum style --foreground "#a6e3a1" "  ✓ Secrets encrypted"
+        echo ""
 
         # Step 3: Config
-        gum spin --spinner moon --title "Step 3/5: Generating machine configs..." -- \
-          task talos:config -- $CLUSTER
-        echo "$(gum style --foreground 212 '✓') Configs generated"
+        if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 3/6:') Generating machine configs..." -- \
+          task talos:config -- $CLUSTER; then
+          echo ""
+          gum style --foreground "#f38ba8" "  ✗ Failed to generate configs"
+          exit 1
+        fi
+        gum style --foreground "#a6e3a1" "  ✓ Configs generated"
+        echo ""
 
-        # Step 4: Wait
-        gum spin --spinner pulse --title "Step 4/5: Waiting for VMs to boot (60s)..." -- \
-          sleep 60
-        echo "$(gum style --foreground 212 '✓') VMs ready"
+        # Step 4: Wait for VMs (smart wait - check if already up)
+        echo ""
+        echo "$(gum style --foreground '#89b4fa' --bold 'Step 4/6:') Checking VM readiness..."
 
-        # Step 5: Bootstrap
-        gum spin --spinner moon --title "Step 5/5: Bootstrapping Talos cluster..." -- \
-          task cluster:bootstrap -- $CLUSTER
-        echo "$(gum style --foreground 212 '✓') Cluster bootstrapped"
+        # Check if VMs are already responsive
+        cd talos/clusters/cluster-$CLUSTER
+        CP01_IP=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talenv.yaml)
+
+        if timeout 5 ping -c 1 "$CP01_IP" &>/dev/null 2>&1 || timeout 5 ping6 -c 1 "$CP01_IP" &>/dev/null 2>&1; then
+          gum style --foreground "#a6e3a1" "  ✓ VMs already responsive, skipping wait"
+        else
+          gum spin --spinner pulse --title "  ⏳ Waiting for VMs to boot (60s)..." -- \
+            sleep 60
+          gum style --foreground "#a6e3a1" "  ✓ VMs ready"
+        fi
+        cd ../../..
+        echo ""
+
+        # Step 5: Bootstrap (no spinner - show detailed progress)
+        echo ""
+        gum style --foreground '#89b4fa' --bold 'Step 5/6: Bootstrapping Talos cluster + Cilium CNI...'
+        echo ""
+        if ! task cluster:bootstrap -- $CLUSTER; then
+          echo ""
+          gum style --foreground "#f38ba8" "  ✗ Cluster bootstrap failed"
+          echo ""
+          echo "The cluster VMs are running but bootstrap failed. Common causes:"
+          echo "  • etcd timeout (cluster formation took too long)"
+          echo "  • Stale etcd data from previous failed attempt"
+          echo "  • Network connectivity between control plane nodes"
+          echo ""
+          echo "Recommended action:"
+          echo "  task cluster:destroy -- $CLUSTER"
+          echo "  task cluster:create -- $CLUSTER"
+          echo ""
+          echo "Debug commands:"
+          echo "  cd talos/clusters/cluster-$CLUSTER"
+          echo "  export TALOSCONFIG=./talosconfig"
+          echo "  talosctl --nodes \$(yq '.nodes[0].ipAddress' talenv.yaml) service etcd"
+          exit 1
+        fi
+        echo ""
+        gum style --foreground "#a6e3a1" "  ✓ Cluster bootstrapped"
+        echo ""
+
+        # Step 6: Flux
+        if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 6/6:') Installing Flux CD for GitOps..." -- \
+          task flux:install -- $CLUSTER; then
+          echo ""
+          gum style --foreground "#f38ba8" "  ✗ Flux installation failed"
+          echo ""
+          echo "Cluster is running but Flux failed to install. You can:"
+          echo "  • Retry: task flux:install -- $CLUSTER"
+          echo "  • Check status: task flux:status"
+          echo "  • Manual install: flux install"
+          exit 1
+        fi
+        gum style --foreground "#a6e3a1" "  ✓ Flux installed"
 
         echo ""
+        echo ""
         gum style \
-          --foreground 212 --border double --padding "1 2" --bold \
-          "✓ Cluster $CLUSTER Ready!" \
+          --foreground "#a6e3a1" \
+          --border double \
+          --border-foreground "#a6e3a1" \
+          --padding "1 3" \
+          --margin "1 2" \
+          --bold \
+          "✓ Cluster $CLUSTER Fully Deployed!" \
           "" \
-          "Next: Install Flux from main menu"
+          "$(gum style --foreground "#a6adc8" "🎯 Your cluster is now managed via GitOps")" \
+          "" \
+          "$(gum style --foreground '#89b4fa' "Next: task flux:status")"
 
         echo ""
         gum input --placeholder "Press Enter to continue..."
@@ -384,7 +496,15 @@ tasks:
           --prompt "→ ")
 
         if [ -z "$CLUSTER" ]; then
-          gum style --foreground 196 "❌ Cluster ID required"
+          echo ""
+          gum style \
+            --foreground "#f38ba8" \
+            --border rounded \
+            --border-foreground "#f38ba8" \
+            --padding "1 3" \
+            --margin "1 2" \
+            "❌ Cluster ID required"
+          echo ""
           sleep 2
           exit 1
         fi
@@ -404,7 +524,12 @@ tasks:
 
         # First confirmation
         if ! gum confirm --default=false "⚠️  Are you SURE you want to destroy cluster-$CLUSTER?"; then
-          gum style --foreground 212 "Cancelled - cluster not destroyed"
+          echo ""
+          gum style \
+            --foreground "#a6e3a1" \
+            --padding "1 3" \
+            "✓ Cancelled - cluster not destroyed"
+          echo ""
           sleep 2
           exit 0
         fi
@@ -412,7 +537,16 @@ tasks:
         # Production protection for cluster-101
         if [ "$CLUSTER" = "101" ]; then
           echo ""
-          gum style --foreground 196 --bold "🛑 PRODUCTION CLUSTER PROTECTION"
+          gum style \
+            --foreground "#f38ba8" \
+            --border rounded \
+            --border-foreground "#f38ba8" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "🛑 PRODUCTION CLUSTER PROTECTION" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Type cluster name 'sol' to confirm")"
           echo ""
 
           CONFIRM=$(gum input \
@@ -420,7 +554,12 @@ tasks:
             --prompt "→ ")
 
           if [ "$CONFIRM" != "sol" ]; then
-            gum style --foreground 212 "❌ Incorrect confirmation - cancelled"
+            echo ""
+            gum style \
+              --foreground "#a6e3a1" \
+              --padding "1 3" \
+              "✓ Incorrect confirmation - cancelled"
+            echo ""
             sleep 2
             exit 0
           fi
@@ -429,29 +568,41 @@ tasks:
         # Final confirmation
         echo ""
         if ! gum confirm --default=false "FINAL WARNING: Delete cluster-$CLUSTER now?"; then
-          gum style --foreground 212 "Cancelled - cluster not destroyed"
+          echo ""
+          gum style \
+            --foreground "#a6e3a1" \
+            --padding "1 3" \
+            "✓ Cancelled - cluster not destroyed"
+          echo ""
           sleep 2
           exit 0
         fi
 
         # Destroy cluster
         echo ""
-        gum spin --spinner moon --title "Destroying cluster infrastructure..." -- \
+        gum spin --spinner dot --title "Destroying cluster infrastructure..." -- \
           task infra:destroy -- $CLUSTER
 
-        echo "$(gum style --foreground 196 '✓') VMs destroyed"
+        gum style --foreground "#f38ba8" "  ✓ VMs destroyed"
+        echo ""
 
-        gum spin --spinner moon --title "Removing configs..." -- \
+        gum spin --spinner dot --title "Removing configs..." -- \
           rm -rf talos/clusters/cluster-$CLUSTER
 
-        echo "$(gum style --foreground 196 '✓') Configs removed"
+        gum style --foreground "#f38ba8" "  ✓ Configs removed"
 
         echo ""
+        echo ""
         gum style \
-          --foreground 196 --border double --padding "1 2" --bold \
+          --foreground "#f38ba8" \
+          --border double \
+          --border-foreground "#f38ba8" \
+          --padding "1 3" \
+          --margin "1 2" \
+          --bold \
           "✓ Cluster $CLUSTER Destroyed" \
           "" \
-          "All resources have been removed"
+          "$(gum style --foreground "#a6adc8" "All resources have been removed")"
 
         echo ""
         gum input --placeholder "Press Enter to continue..."
@@ -483,11 +634,22 @@ tasks:
         #!/bin/bash
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "📊 Status Dashboard"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "📊 Status Dashboard" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Monitor cluster health and resources")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 10 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Cluster Overview" \
             "Node Status" \
             "Flux Status" \
@@ -519,11 +681,22 @@ tasks:
         #!/bin/bash
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "📜 Log Viewer"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "📜 Log Viewer" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "View system and application logs")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 7 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Talos System Logs" \
             "Flux Controller Logs" \
             "Cilium Logs" \
@@ -565,11 +738,22 @@ tasks:
         #!/bin/bash
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "⚙️  Operations"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "⚙️  Operations" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Node management and maintenance tasks")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 9 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Drain Node" \
             "Cordon Node" \
             "Uncordon Node" \
@@ -634,11 +818,22 @@ tasks:
         #!/bin/bash
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "🐛 Debug & Troubleshoot"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "🐛 Debug & Troubleshoot" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Diagnose and resolve cluster issues")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 8 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Watch Events" \
             "Test Network" \
             "Test DNS" \
@@ -691,11 +886,22 @@ tasks:
 
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "🤖 AI Assistant"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "🤖 AI Assistant" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "AI-powered cluster troubleshooting")"
           echo ""
 
           CHOICE=$(gum choose \
             --height 8 \
+            --cursor-prefix "$(gum style --foreground '#89b4fa' '▸ ')" \
+            --selected-prefix "$(gum style --foreground '#a6e3a1' '▸ ')" \
             "Analyze Recent Events" \
             "Troubleshoot Pod Issues" \
             "Analyze Flux Errors" \
@@ -817,7 +1023,16 @@ tasks:
 
         while true; do
           clear
-          gum style --border rounded --padding "1 2" --bold "📚 Documentation"
+          gum style \
+            --foreground "#a6e3a1" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "📚 Documentation" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Browse and search documentation")"
           echo ""
 
           # Find markdown files
@@ -1317,8 +1532,43 @@ tasks:
     dir: 'talos/clusters/cluster-{{.CLUSTER_ID}}'
     cmds:
       - |
-        echo "🚀 Bootstrapping cluster {{.CLUSTER_ID}}"
-        echo ""
+        # Display header with Catppuccin styling (if gum available)
+        if command -v gum &> /dev/null; then
+          clear
+          echo ""
+          gum style \
+            --foreground "#89b4fa" \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            "🚀 Cluster Bootstrap - cluster-{{.CLUSTER_ID}}" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Initializing Talos cluster with Cilium CNI")" \
+            "" \
+            "$(gum style --foreground "#94e2d5" "1. Apply machine configs to nodes")" \
+            "$(gum style --foreground "#94e2d5" "2. Bootstrap etcd cluster")" \
+            "$(gum style --foreground "#94e2d5" "3. Retrieve kubeconfig")" \
+            "$(gum style --foreground "#94e2d5" "4. Wait for VIP (kube-apiserver)")" \
+            "$(gum style --foreground "#94e2d5" "5. Install Cilium CNI")" \
+            "$(gum style --foreground "#94e2d5" "6. Wait for nodes Ready")"
+          echo ""
+        else
+          echo "🚀 Bootstrapping cluster {{.CLUSTER_ID}}"
+          echo ""
+          echo "Steps:"
+          echo "  1. Apply machine configs to nodes"
+          echo "  2. Bootstrap etcd cluster"
+          echo "  3. Retrieve kubeconfig"
+          echo "  4. Wait for VIP (kube-apiserver)"
+          echo "  5. Install Cilium CNI"
+          echo "  6. Wait for nodes Ready"
+          echo ""
+        fi
+
+        # Set TERM for kubectl compatibility
+        export TERM=dumb
 
         # Helper functions
         format_node() {
@@ -1395,28 +1645,55 @@ tasks:
           echo ""
         fi
 
-        # Apply machine configs (skip if cluster already configured)
+        # Apply machine configs
         echo "1️⃣  Applying machine configs..."
+        echo "    🚀 Applying configs to all nodes (insecure first, secure fallback)..."
 
-        # Check if cluster is already configured by trying authenticated talosctl
-        if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig version &>/dev/null; then
-          echo "  ℹ️  Cluster already configured, skipping config application"
-        else
-          declare -a NODES=(
-            "solcp01|$CP01_IP"
-            "solcp02|$CP02_IP"
-            "solcp03|$CP03_IP"
-            "solwk01|$WK01_IP"
-            "solwk02|$WK02_IP"
-            "solwk03|$WK03_IP"
-          )
+        declare -a NODES=(
+          "solcp01|$CP01_IP"
+          "solcp02|$CP02_IP"
+          "solcp03|$CP03_IP"
+          "solwk01|$WK01_IP"
+          "solwk02|$WK02_IP"
+          "solwk03|$WK03_IP"
+        )
 
-          for node_def in "${NODES[@]}"; do
-            IFS='|' read -r hostname ip <<< "$node_def"
-            echo "  → $hostname ($ip)"
-            talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" || echo "  ⚠️  Failed"
-          done
-        fi
+        APPLIED=0
+        FAILED=0
+        for node_def in "${NODES[@]}"; do
+          IFS='|' read -r hostname ip <<< "$node_def"
+          echo "      → $hostname ($ip)..."
+
+          # First try insecure apply (maintenance mode)
+          set +e
+          OUTPUT_INSECURE=$(talosctl apply-config --insecure --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" 2>&1)
+          EXIT_INSECURE=$?
+          set -e
+
+          if [ $EXIT_INSECURE -eq 0 ]; then
+            APPLIED=$((APPLIED + 1))
+            echo "        ✓ Applied (insecure)"
+            continue
+          fi
+
+          echo "        ↩︎ Insecure apply failed, retrying with secure mode..."
+
+          # Secure apply (authenticated)
+          set +e
+          OUTPUT_SECURE=$(talosctl apply-config --nodes "$ip" --endpoints "$ip" --talosconfig ./talosconfig --file "cluster-{{.CLUSTER_ID}}-${hostname}.yaml" 2>&1)
+          EXIT_SECURE=$?
+          set -e
+
+          if [ $EXIT_SECURE -eq 0 ]; then
+            APPLIED=$((APPLIED + 1))
+            echo "        ✓ Applied (secure)"
+          else
+            FAILED=$((FAILED + 1))
+            echo "        ✗ Failed (secure attempt). Error: $(echo "$OUTPUT_SECURE" | head -1)"
+          fi
+        done
+
+        echo "    📊 Summary: $APPLIED succeeded, $FAILED failed"
         echo ""
 
         # Wait for Talos API
@@ -1443,22 +1720,29 @@ tasks:
 
         # Bootstrap etcd (skip if already bootstrapped)
         echo "2️⃣  Bootstrapping etcd..."
+        echo "    🔍 Checking if etcd is already running..."
 
         # Check if etcd is already running
         if talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -q "solcp01"; then
-          echo "  ℹ️  etcd already bootstrapped and healthy"
+          echo "    ✓ etcd already bootstrapped and healthy"
         else
-          talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig 2>&1 | grep -v "AlreadyExists" || {
-            # Bootstrap may fail with AlreadyExists if etcd data directory exists
-            echo "  ℹ️  etcd may already be bootstrapped, checking status..."
-          }
-          echo "  ✓ Bootstrap sent"
+          echo "    🚀 Sending bootstrap command to control plane..."
+          BOOTSTRAP_OUTPUT=$(talosctl bootstrap --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig 2>&1)
+          if echo "$BOOTSTRAP_OUTPUT" | grep -q "AlreadyExists"; then
+            # Bootstrap may fail with AlreadyExists if etcd data directory exists from previous failed attempt
+            echo "    ⚠️  etcd data directory exists, cluster may need manual cleanup"
+            echo "    💡 If bootstrap keeps failing, destroy cluster and recreate: task cluster:destroy -- 101"
+          elif [ -z "$BOOTSTRAP_OUTPUT" ] || echo "$BOOTSTRAP_OUTPUT" | grep -q "success"; then
+            echo "    ✓ Bootstrap command sent successfully"
+          else
+            echo "    ⚠️  Bootstrap command output: $BOOTSTRAP_OUTPUT"
+          fi
         fi
         echo ""
 
-        # Wait for etcd
+        # Wait for etcd (increased timeout for 3-node cluster formation)
         echo "⏳ Waiting for etcd cluster..."
-        MAX_WAIT=180
+        MAX_WAIT=480
         ELAPSED=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
           MEMBER_COUNT=$(talosctl --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig get members 2>/dev/null | grep -c "Hostname:" || echo "0")
@@ -1475,29 +1759,61 @@ tasks:
 
         if [ $ELAPSED -ge $MAX_WAIT ]; then
           echo "❌ etcd timeout after ${MAX_WAIT}s"
-          echo "  💡 Check etcd status: talosctl --nodes $CP01_IP get members"
+          echo "  💡 Check etcd status: talosctl --nodes $CP01_IP --endpoints $CP01_IP --talosconfig ./talosconfig get members"
+          echo "  💡 Check etcd service: talosctl --nodes $CP01_IP --endpoints $CP01_IP --talosconfig ./talosconfig service etcd"
+          echo "  ⚠️  Cluster may have stale etcd data from previous failed bootstrap"
+          echo "  💡 Recommended: Destroy and recreate cluster: task cluster:destroy -- 101 && task cluster:create -- 101"
           exit 1
         fi
         echo ""
 
         # Get kubeconfig
         echo "3️⃣  Retrieving kubeconfig..."
-        talosctl kubeconfig --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig --force
-        echo "  ✓ Kubeconfig updated"
+        echo "    📥 Fetching cluster credentials..."
+        if talosctl kubeconfig --nodes "$CP01_IP" --endpoints "$CP01_IP" --talosconfig ./talosconfig --force 2>&1 | grep -q "merging"; then
+          echo "    ✓ Kubeconfig merged successfully"
+        else
+          echo "    ✓ Kubeconfig updated"
+        fi
+        echo "    🔐 Testing cluster connectivity..."
+        if kubectl version -o json &>/dev/null; then
+          echo "    ✓ Successfully connected to cluster"
+        else
+          echo "    ⚠️  Connection test skipped (cluster may still be initializing)"
+        fi
         echo ""
 
-        # Wait for VIP
+        # Wait for VIP with enhanced status
         echo "⏳ Waiting for Kubernetes VIP (kube-vip)..."
-        MAX_WAIT=450
+        VIP_ENDPOINT=$(yq -r '.endpoint' talenv.yaml)
+        echo "    Testing endpoint: $VIP_ENDPOINT"
+        MAX_WAIT=600
         ELAPSED=0
+        VIP_ATTEMPTS=0
         while [ $ELAPSED -lt $MAX_WAIT ]; do
-          if kubectl cluster-info &>/dev/null; then
-            K8S_VERSION=$(kubectl version --short 2>/dev/null | grep "Server Version" | awk '{print $3}' || echo "unknown")
-            echo "  ✓ VIP reachable, Kubernetes $K8S_VERSION (${ELAPSED}s)"
+          VIP_ATTEMPTS=$((VIP_ATTEMPTS + 1))
+          # Test API server health endpoint directly (401/Unauthorized means API is responding)
+          HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 5 "${VIP_ENDPOINT}/livez" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" != "000" ]; then
+            K8S_VERSION=$(TERM=dumb kubectl version -o json 2>/dev/null | grep -o '"gitVersion":"v[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            echo "  ✓ VIP healthy, Kubernetes $K8S_VERSION (${ELAPSED}s, $VIP_ATTEMPTS attempts)"
             break
           fi
-          if [ $((ELAPSED % 15)) -eq 0 ]; then
-            echo "  ⏳ Waiting for VIP to become available... (${ELAPSED}s/${MAX_WAIT}s)"
+          if [ $((ELAPSED % 10)) -eq 0 ]; then
+            PERCENT=$((ELAPSED * 100 / MAX_WAIT))
+            FILLED=$((PERCENT / 5))
+            if [ "$FILLED" -gt 0 ]; then
+              PROGRESS_BAR=$(yes '█' 2>/dev/null | head -n "$FILLED" | tr -d '\n')
+            else
+              PROGRESS_BAR=""
+            fi
+            EMPTY=$((20 - FILLED))
+            if [ "$EMPTY" -gt 0 ]; then
+              EMPTY_BAR=$(yes ' ' 2>/dev/null | head -n "$EMPTY" | tr -d '\n')
+            else
+              EMPTY_BAR=""
+            fi
+            echo "  ⏳ VIP: [${PROGRESS_BAR}${EMPTY_BAR}] Testing... (${ELAPSED}s/${MAX_WAIT}s, attempt $VIP_ATTEMPTS)"
           fi
           sleep 5
           ELAPSED=$((ELAPSED + 5))
@@ -1512,37 +1828,45 @@ tasks:
 
         # Install Cilium (idempotent)
         echo "4️⃣  Installing Cilium CNI..."
+        echo "    🔍 Checking Cilium installation status..."
 
         # Check if Cilium is already installed
-        if helm list -n kube-system | grep -q "^cilium"; then
-          echo "  ℹ️  Cilium already installed, upgrading if needed..."
+        if helm list -n kube-system 2>/dev/null | grep -q "^cilium"; then
+          echo "    ℹ️  Cilium already installed, checking for upgrades..."
+        else
+          echo "    📦 Cilium not found, preparing fresh installation..."
         fi
 
-        cd kubernetes/apps/kube-system/cilium/app
+        cd ../../kubernetes/apps/kube-system/cilium/app
 
         # Fix helm plugin issues that may cause failures
+        echo "    🔧 Verifying Helm configuration..."
         if helm list -n kube-system 2>&1 | grep -q "failed to load plugin"; then
-          echo "  ⚙️  Fixing helm plugin issues..."
+          echo "    ⚙️  Fixing helm plugin issues..."
           rm -rf ~/Library/helm/plugins/helm-diff 2>/dev/null || true
         fi
 
+        echo "    📥 Updating Helm repository..."
         helm repo add cilium https://helm.cilium.io 2>/dev/null || true
-        helm repo update cilium
+        helm repo update cilium 2>&1 | grep -E "Update Complete|Successfully" || true
 
         # Install/upgrade with extended timeout
-        helm upgrade --install cilium cilium/cilium \
+        echo "    🚀 Installing/upgrading Cilium (this may take several minutes)..."
+        if helm upgrade --install cilium cilium/cilium \
           --version 1.18.4 \
           --namespace kube-system \
           --values values.yaml \
           --wait \
-          --timeout 20m || {
-            echo "  ⚠️  Helm install timed out or failed, checking Cilium status..."
-            # Continue to wait below in case pods are still coming up
-          }
+          --timeout 20m 2>&1 | tee /tmp/cilium-install.log | grep -E "STATUS|deployed|upgraded"; then
+          echo "    ✓ Helm operation completed"
+        else
+          echo "    ⚠️  Helm timed out or reported issues, will verify pod status..."
+        fi
         echo ""
 
-        # Extended wait for Cilium pods with progress updates
+        # Extended wait for Cilium pods with enhanced progress updates
         echo "⏳ Waiting for Cilium pods (up to 8 minutes)..."
+        echo "    📊 Monitoring pod deployment and initialization..."
         MAX_WAIT=480
         ELAPSED=0
         LAST_STATUS=""
@@ -1550,8 +1874,11 @@ tasks:
           READY=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
           TOTAL=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | wc -l || echo "0")
 
-          # Get detailed pod status for better visibility
-          POD_STATUS=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | awk '{print $3}' | sort | uniq -c | tr '\n' ' ' || echo "")
+          # Get detailed pod status breakdown for better visibility
+          POD_RUNNING=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+          POD_INIT=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -c "Init:" || echo "0")
+          POD_PENDING=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -c "Pending" || echo "0")
+          POD_ERROR=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -cE "Error|CrashLoop" || echo "0")
 
           if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
             if kubectl wait --for=condition=Ready pods -l k8s-app=cilium -n kube-system --timeout=30s 2>/dev/null; then
@@ -1560,11 +1887,20 @@ tasks:
             fi
           fi
 
-          # Show status updates every 15s or when status changes
-          CURRENT_STATUS="$READY/$TOTAL pods | $POD_STATUS"
-          if [ $((ELAPSED % 15)) -eq 0 ] || [ "$CURRENT_STATUS" != "$LAST_STATUS" ]; then
+          # Build status string with visual indicators
+          STATUS_PARTS=""
+          [ "$POD_RUNNING" -gt 0 ] && STATUS_PARTS="${STATUS_PARTS}✓ Running:$POD_RUNNING "
+          [ "$POD_INIT" -gt 0 ] && STATUS_PARTS="${STATUS_PARTS}⏳ Init:$POD_INIT "
+          [ "$POD_PENDING" -gt 0 ] && STATUS_PARTS="${STATUS_PARTS}⏸ Pending:$POD_PENDING "
+          [ "$POD_ERROR" -gt 0 ] && STATUS_PARTS="${STATUS_PARTS}⚠ Error:$POD_ERROR "
+
+          # Show status updates every 10s or when status changes
+          CURRENT_STATUS="$READY/$TOTAL | $STATUS_PARTS"
+          if [ $((ELAPSED % 10)) -eq 0 ] || [ "$CURRENT_STATUS" != "$LAST_STATUS" ]; then
             if [ "$TOTAL" -gt 0 ]; then
-              echo "  ⏳ Cilium: $READY/$TOTAL ready | Status: $POD_STATUS(${ELAPSED}s/${MAX_WAIT}s)"
+              PERCENT=$((READY * 100 / TOTAL))
+              PROGRESS_BAR=$(printf "%-20s" $(printf '█%.0s' $(seq 1 $((PERCENT / 5)))))
+              echo "  ⏳ Cilium: [$PROGRESS_BAR] $PERCENT% ($READY/$TOTAL) | $STATUS_PARTS(${ELAPSED}s/${MAX_WAIT}s)"
             else
               echo "  ⏳ Waiting for Cilium pods to be created... (${ELAPSED}s/${MAX_WAIT}s)"
             fi
@@ -1585,8 +1921,9 @@ tasks:
         fi
         echo ""
 
-        # Wait for nodes with extended timeout
+        # Wait for nodes with extended timeout and enhanced status
         echo "⏳ Waiting for nodes to be Ready (up to 8 minutes)..."
+        echo "    📊 Monitoring node registration and CNI initialization..."
         MAX_WAIT=480
         ELAPSED=0
         LAST_NODE_STATUS=""
@@ -1595,16 +1932,28 @@ tasks:
           TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
           NOT_READY=$(kubectl get nodes --no-headers 2>/dev/null | grep " NotReady " | wc -l || echo "0")
 
+          # Get node role breakdown
+          CP_READY=$(kubectl get nodes --no-headers 2>/dev/null | grep "control-plane" | grep " Ready " | wc -l || echo "0")
+          CP_TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | grep -c "control-plane" || echo "0")
+          WK_READY=$(kubectl get nodes --no-headers 2>/dev/null | grep -v "control-plane" | grep " Ready " | wc -l || echo "0")
+          WK_TOTAL=$(kubectl get nodes --no-headers 2>/dev/null | grep -cv "control-plane" || echo "0")
+
           if [ "$READY" -gt 0 ] && [ "$READY" -eq "$TOTAL" ]; then
             echo "  ✓ All nodes Ready ($READY/$TOTAL nodes, ${ELAPSED}s)"
             break
           fi
 
-          # Show status updates every 15s or when status changes
-          CURRENT_NODE_STATUS="$READY/$TOTAL ready, $NOT_READY NotReady"
-          if [ $((ELAPSED % 15)) -eq 0 ] || [ "$CURRENT_NODE_STATUS" != "$LAST_NODE_STATUS" ]; then
+          # Build detailed status string
+          STATUS_LINE="CP: $CP_READY/$CP_TOTAL | Workers: $WK_READY/$WK_TOTAL"
+          [ "$NOT_READY" -gt 0 ] && STATUS_LINE="$STATUS_LINE | ⚠ NotReady:$NOT_READY"
+
+          # Show status updates every 10s or when status changes
+          CURRENT_NODE_STATUS="$READY/$TOTAL | $STATUS_LINE"
+          if [ $((ELAPSED % 10)) -eq 0 ] || [ "$CURRENT_NODE_STATUS" != "$LAST_NODE_STATUS" ]; then
             if [ "$TOTAL" -gt 0 ]; then
-              echo "  ⏳ Nodes: $READY/$TOTAL ready, $NOT_READY NotReady (${ELAPSED}s/${MAX_WAIT}s)"
+              PERCENT=$((READY * 100 / TOTAL))
+              PROGRESS_BAR=$(printf "%-20s" $(printf '█%.0s' $(seq 1 $((PERCENT / 5)))))
+              echo "  ⏳ Nodes: [$PROGRESS_BAR] $PERCENT% | $STATUS_LINE (${ELAPSED}s/${MAX_WAIT}s)"
             else
               echo "  ⏳ Waiting for nodes to register... (${ELAPSED}s/${MAX_WAIT}s)"
             fi
@@ -1624,22 +1973,52 @@ tasks:
         fi
         echo ""
 
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "✅ Cluster bootstrapped successfully!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        echo "📊 Cluster Status:"
-        kubectl get nodes
+
+        # Display cluster status with formatting
+        echo "📊 Cluster Status Summary:"
         echo ""
-        kubectl get pods -n kube-system -l k8s-app=cilium
+        echo "  🖥️  Nodes:"
+        TERM=dumb kubectl get nodes --no-headers 2>/dev/null | awk '{printf "    • %-12s %-8s %-12s %s\n", $1, $2, $3, $5}' || echo "    ⚠ Unable to retrieve nodes"
         echo ""
-        echo "🎯 Next steps:"
-        echo "  1. Install Flux GitOps:"
-        echo "     task flux:install -- {{.CLUSTER_ID}}"
+
+        echo "  🌐 Cilium Pods:"
+        TERM=dumb kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | awk '{printf "    • %-40s %-12s %s\n", $1, $3, $2}' || echo "    ⚠ Unable to retrieve Cilium pods"
         echo ""
-        echo "  2. Check cluster health:"
-        echo "     task status:cluster"
+
+        # Get cluster info
+        TOTAL_NODES=$(TERM=dumb kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+        READY_NODES=$(TERM=dumb kubectl get nodes --no-headers 2>/dev/null | grep " Ready " | wc -l || echo "0")
+        CILIUM_READY=$(TERM=dumb kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
+        CILIUM_TOTAL=$(TERM=dumb kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | wc -l || echo "0")
+        K8S_VERSION=$(TERM=dumb kubectl version -o json 2>/dev/null | grep -o '"gitVersion":"v[^"]*"' | cut -d'"' -f4 || echo "unknown")
+
+        echo "  📈 Summary:"
+        echo "    • Kubernetes:   $K8S_VERSION"
+        echo "    • Nodes Ready:  $READY_NODES/$TOTAL_NODES"
+        echo "    • Cilium Ready: $CILIUM_READY/$CILIUM_TOTAL"
         echo ""
-        echo "  3. View Cilium status:"
-        echo "     kubectl exec -n kube-system ds/cilium -- cilium status"
+
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🎯 Next Steps:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "  1️⃣  Install Flux CD for GitOps:"
+        echo "      task flux:install -- {{.CLUSTER_ID}}"
+        echo ""
+        echo "  2️⃣  Check cluster health:"
+        echo "      task status:cluster"
+        echo ""
+        echo "  3️⃣  View detailed Cilium status:"
+        echo "      kubectl exec -n kube-system ds/cilium -- cilium status"
+        echo ""
+        echo "  4️⃣  Watch cluster events:"
+        echo "      kubectl get events -A --watch"
+        echo ""
 
   cluster:create:
     desc: '🚀 Create complete cluster with GitOps (1-button deploy)'
@@ -1672,41 +2051,109 @@ tasks:
 
         # Detect TTY for interactive vs CI/CD
         if [ -t 0 ] && command -v gum &> /dev/null; then
-          # Interactive mode with Gum
-          echo "🚀 Creating cluster {{.CLUSTER_ID}} (interactive mode)"
+          # Interactive mode with Gum - Catppuccin Mocha themed UI
+          clear
+          echo ""
+          gum style \
+            --border rounded \
+            --border-foreground "#585b70" \
+            --padding "1 4" \
+            --margin "1 2" \
+            --bold \
+            --foreground "#a6e3a1" \
+            "🚀 Cluster Creation Wizard" \
+            "" \
+            "$(gum style --foreground "#a6adc8" "Cluster ID: {{.CLUSTER_ID}}")" \
+            "$(gum style --foreground "#a6adc8" "Estimated time: 18-25 minutes")"
           echo ""
 
-          gum spin --spinner moon --title "Step 1/6: Provisioning VMs..." -- \
-            task infra:provision -- {{.CLUSTER_ID}}
-          echo "$(gum style --foreground 212 '✓') VMs provisioned"
-
-          gum spin --spinner moon --title "Step 2/6: Generating secrets..." -- \
-            task talos:secrets -- {{.CLUSTER_ID}}
-          echo "$(gum style --foreground 212 '✓') Secrets generated"
-
-          gum spin --spinner moon --title "Step 3/6: Generating configs..." -- \
-            task talos:config -- {{.CLUSTER_ID}}
-          echo "$(gum style --foreground 212 '✓') Configs generated"
-
-          gum spin --spinner pulse --title "Step 4/6: Waiting for VMs (60s)..." -- \
-            sleep 60
-          echo "$(gum style --foreground 212 '✓') VMs ready"
-
-          gum spin --spinner moon --title "Step 5/6: Bootstrapping cluster..." -- \
-            task cluster:bootstrap -- {{.CLUSTER_ID}}
-          echo "$(gum style --foreground 212 '✓') Cluster bootstrapped"
-
-          gum spin --spinner moon --title "Step 6/6: Installing Flux GitOps..." -- \
-            task flux:install -- {{.CLUSTER_ID}}
-          echo "$(gum style --foreground 212 '✓') Flux installed"
-
+          # Step 1
+          if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 1/6:') Provisioning VMs on Proxmox..." -- \
+            task infra:provision -- {{.CLUSTER_ID}}; then
+            echo ""
+            gum style --foreground "#f38ba8" "  ✗ Failed at Step 1: VM provisioning"
+            exit 1
+          fi
+          gum style --foreground "#a6e3a1" "  ✓ VMs provisioned"
           echo ""
-          gum style --foreground 212 --border double --padding "1 2" --bold \
+
+          # Step 2
+          if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 2/6:') Generating encrypted secrets..." -- \
+            task talos:secrets -- {{.CLUSTER_ID}}; then
+            echo ""
+            gum style --foreground "#f38ba8" "  ✗ Failed at Step 2: Secret generation"
+            exit 1
+          fi
+          gum style --foreground "#a6e3a1" "  ✓ Secrets encrypted"
+          echo ""
+
+          # Step 3
+          if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 3/6:') Generating machine configs..." -- \
+            task talos:config -- {{.CLUSTER_ID}}; then
+            echo ""
+            gum style --foreground "#f38ba8" "  ✗ Failed at Step 3: Config generation"
+            exit 1
+          fi
+          gum style --foreground "#a6e3a1" "  ✓ Configs generated"
+          echo ""
+
+          # Step 4 - Smart VM wait
+          echo "$(gum style --foreground '#89b4fa' --bold 'Step 4/6:') Checking VM readiness..."
+
+          # Check if VMs are already responsive
+          CP01_IP=$(yq -r '.solcp01_public_ipv6 // .solcp01_ipAddress // ""' talos/clusters/cluster-{{.CLUSTER_ID}}/talenv.yaml)
+
+          if timeout 5 ping -c 1 "$CP01_IP" &>/dev/null 2>&1 || timeout 5 ping6 -c 1 "$CP01_IP" &>/dev/null 2>&1; then
+            gum style --foreground "#a6e3a1" "  ✓ VMs already responsive, skipping wait"
+          else
+            gum spin --spinner pulse --title "  ⏳ Waiting for VMs to boot (60s)..." -- \
+              sleep 60
+            gum style --foreground "#a6e3a1" "  ✓ VMs ready"
+          fi
+          echo ""
+
+          # Step 5 (no spinner - show detailed progress)
+          echo ""
+          gum style --foreground '#89b4fa' --bold 'Step 5/6: Bootstrapping Talos cluster + Cilium CNI...'
+          echo ""
+          if ! task cluster:bootstrap -- {{.CLUSTER_ID}}; then
+            echo ""
+            gum style --foreground "#f38ba8" "  ✗ Failed at Step 5: Cluster bootstrap (see error above)"
+            echo ""
+            echo "Debug: task cluster:bootstrap -- {{.CLUSTER_ID}}"
+            exit 1
+          fi
+          echo ""
+          gum style --foreground "#a6e3a1" "  ✓ Cluster bootstrapped"
+          echo ""
+
+          # Step 6
+          if ! gum spin --spinner dot --title "$(gum style --foreground '#89b4fa' --bold 'Step 6/6:') Installing Flux CD for GitOps..." -- \
+            task flux:install -- {{.CLUSTER_ID}}; then
+            echo ""
+            gum style --foreground "#f38ba8" "  ✗ Failed at Step 6: Flux installation"
+            echo ""
+            echo "Cluster is healthy but Flux failed. Retry: task flux:install -- {{.CLUSTER_ID}}"
+            exit 1
+          fi
+          gum style --foreground "#a6e3a1" "  ✓ Flux installed"
+          echo ""
+
+          # Success message
+          echo ""
+          gum style \
+            --border double \
+            --border-foreground "#a6e3a1" \
+            --padding "1 3" \
+            --margin "1 2" \
+            --bold \
+            --foreground "#a6e3a1" \
             "✓ Cluster {{.CLUSTER_ID}} Fully Deployed!" \
             "" \
-            "Flux is managing your cluster via GitOps" \
+            "$(gum style --foreground "#a6adc8" "🎯 Your cluster is now managed via GitOps")" \
             "" \
-            "Monitor: task flux:status"
+            "$(gum style --foreground '#89b4fa' "Next: task flux:status")"
+          echo ""
         else
           # CI/CD mode (plain text)
           echo "🚀 Creating cluster {{.CLUSTER_ID}} (CI/CD mode)"

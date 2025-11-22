@@ -19,6 +19,12 @@ spec:
       emby:
         type: deployment
         replicas: 1
+        initContainers:
+          - name: s6-fix
+            image: busybox:latest
+            command: ["sh", "-c", "mkdir -p /var/run/s6 && chmod 777 /var/run/s6"]
+            securityContext:
+              runAsUser: 0
         containers:
           app:
             image:
