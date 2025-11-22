@@ -19,28 +19,22 @@ spec:
       emby:
         type: deployment
         replicas: 1
-        initContainers:
-          - name: s6-fix
-            image: busybox:latest
-            command: ["sh", "-c", "mkdir -p /var/run/s6 && chmod 777 /var/run/s6"]
-            securityContext:
-              runAsUser: 0
         containers:
           app:
             image:
-              repository: emby/embyserver
-              tag: latest
+              repository: ghcr.io/home-operations/emby
+              tag: 4.9.1.90@sha256:44d6164ccf89ef26dffeb544a274321234d29d8360d99e33c0a03614fb2b0007
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
             env:
-              - name: TZ
-                value: America/Los_Angeles
+              TZ: America/Los_Angeles
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: false
-        runAsUser: 0
-        runAsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
     service:
