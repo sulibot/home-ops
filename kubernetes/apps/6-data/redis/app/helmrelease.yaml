@@ -55,7 +55,6 @@ spec:
       pullSecrets: []
       registry: docker.io
       repository: bitnami/redis
-      tag: 7.4.1-debian-12-r3
     kubeVersion: ""
     kubectl:
       command:
@@ -79,7 +78,6 @@ spec:
         pullSecrets: []
         registry: docker.io
         repository: bitnami/kubectl
-        tag: 1.32.0-debian-12-r0
       resources:
         limits: {}
         requests: {}
@@ -255,7 +253,6 @@ spec:
         pullSecrets: []
         registry: docker.io
         repository: bitnami/redis-exporter
-        tag: 1.67.0-debian-12-r0
       livenessProbe:
         enabled: true
         failureThreshold: 5
@@ -550,7 +547,6 @@ spec:
         pullSecrets: []
         registry: docker.io
         repository: bitnami/redis-sentinel
-        tag: 7.4.1-debian-12-r3
       lifecycleHooks: {}
       livenessProbe:
         enabled: true
@@ -650,7 +646,6 @@ spec:
         pullSecrets: []
         registry: docker.io
         repository: bitnami/os-shell
-        tag: 12-debian-12-r34
       mountHostSys: false
       resources: {}
       resourcesPreset: nano
@@ -682,6 +677,5 @@ spec:
         pullSecrets: []
         registry: docker.io
         repository: bitnami/os-shell
-        tag: 12-debian-12-r34
       resources: {}
       resourcesPreset: nano
