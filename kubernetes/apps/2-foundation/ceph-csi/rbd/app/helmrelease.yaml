@@ -26,7 +26,7 @@ spec:
                 radosNamespace: ""
         logLevel: 5
         provisioner:
-            enableHostNetwork: true
+            enableHostNetwork: false
             httpMetrics:
                 enabled: true
                 containerPort: 8082
