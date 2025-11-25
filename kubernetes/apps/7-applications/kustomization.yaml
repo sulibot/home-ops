@@ -6,7 +6,7 @@ resources:
   - ./actions-runner-controller/ks.yaml
   - ./atuin/ks.yaml
   - ./autobrr/ks.yaml
-  - ./cross-seed/ks.yaml
+#  - ./cross-seed/ks.yaml  # Disabled: qBittorrent authentication failing (401)
   - ./emby/ks.yaml
   - ./filebrowser/ks.yaml
   - ./fusion/ks.yaml
