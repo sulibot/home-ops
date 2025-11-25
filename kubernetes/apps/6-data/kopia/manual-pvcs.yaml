@@ -1,0 +1,38 @@
+---
+# Manual PVC for Kopia repository data
+# Apply this before cluster teardown to preserve backup data:
+#   kubectl apply -f manual-pvcs.yaml
+#
+# After cluster rebuild, the data will be available at these PVC names
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kopia
+  namespace: volsync-system
+  labels:
+    app: kopia
+    preserve: "true"
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-backups-sc
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Manual PVC for Kopia config (connection metadata)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kopia-config
+  namespace: volsync-system
+  labels:
+    app: kopia
+    preserve: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 1Gi
