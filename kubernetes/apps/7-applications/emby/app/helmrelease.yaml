@@ -22,18 +22,19 @@ spec:
         containers:
           app:
             image:
-              repository: lscr.io/linuxserver/emby
-              tag: 4.9.1
+              repository: ghcr.io/home-operations/emby
+              tag: sha256-31448f230530fbeac1164fa3bee775cdc3fb8434cfdda3ce9edcb5e4ee523033
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
+              readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             env:
               TZ: America/Los_Angeles
-              PUID: "1000"
-              PGID: "1000"
     defaultPodOptions:
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
     service:
