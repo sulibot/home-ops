@@ -13,10 +13,6 @@ spec:
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
-    - name: ceph-csi-helm-repo
-      namespace: flux-system
-    - name: snapshot-controller-crds
-      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/2-foundation/ceph-csi/app
   prune: true
