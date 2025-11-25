@@ -18,10 +18,8 @@ spec:
         storageClassName: csi-cephfs-config-sc
         size: 20Gi
       readinessProbe:
-        httpGet:
-          path: /health
+        tcpSocket:
           port: http
-          host: 127.0.0.1
         initialDelaySeconds: 5
         periodSeconds: 5
         timeoutSeconds: 5
@@ -29,7 +27,6 @@ spec:
       livenessProbe:
         tcpSocket:
           port: http
-          host: 127.0.0.1
         initialDelaySeconds: 30
         periodSeconds: 30
         timeoutSeconds: 5
