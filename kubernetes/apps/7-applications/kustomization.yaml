@@ -33,5 +33,5 @@ resources:
   - ./thelounge/ks.yaml
   - ./tqm/ks.yaml
   - ./tuppr/ks.yaml
-  - ./zigbee/ks.yaml
-  - ./zwave/ks.yaml
+  #- ./zigbee/ks.yaml
+  #- ./zwave/ks.yaml
