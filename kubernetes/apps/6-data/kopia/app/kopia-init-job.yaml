@@ -1,0 +1,71 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kopia-repository-connect
+  namespace: data
+spec:
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      name: kopia-repository-connect
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: connect
+          image: ghcr.io/home-operations/kopia:0.21.1@sha256:f666b5f2c1ea4649cd2bd703507d4b81c2b515782e8476ba4a145b091a704a53
+          env:
+            - name: KOPIA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kopia-secret
+                  key: KOPIA_PASSWORD
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Check if repository is already connected
+              if kopia repository status --config-file=/config/repository.config 2>/dev/null; then
+                echo "Repository already connected"
+                exit 0
+              fi
+
+              # Connect to existing repository
+              echo "Connecting to existing Kopia repository..."
+              kopia repository connect filesystem \
+                --path=/repository \
+                --password="$KOPIA_PASSWORD" \
+                --config-file=/config/repository.config \
+                --override-hostname=volsync.volsync-system.svc.cluster.local \
+                --override-username=volsync
+
+              echo "Repository connected successfully"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: repository
+              mountPath: /repository
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: kopia-config
+        - name: repository
+          persistentVolumeClaim:
+            claimName: kopia
+        - name: tmp
+          emptyDir: {}

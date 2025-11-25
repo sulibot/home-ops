@@ -69,43 +69,20 @@ spec:
         parentRefs:
           - name: gateway-internal
             namespace: network
-    configMaps:
-      config:
-        data:
-          repository.config: |-
-            {
-              "storage": {
-                "type": "filesystem",
-                "config": {
-                  "path": "/repository"
-                }
-              },
-              "hostname": "volsync.{{ .Release.Namespace }}.svc.cluster.local",
-              "username": "volsync",
-              "description": "volsync",
-              "enableActions": false
-            }
     persistence:
-      config-file:
-        type: configMap
-        identifier: config
+      config:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: kopia-config
         globalMounts:
-          - path: /config/repository.config
-            subPath: repository.config
+          - path: /config
       repository:
         enabled: true
         type: persistentVolumeClaim
         existingClaim: kopia
         globalMounts:
           - path: /repository
-      tmpfs:
+      tmp:
         type: emptyDir
-        advancedMounts:
-          kopia:
-            app:
-              - path: /config/cache
-                subPath: cache
-              - path: /config/logs
-                subPath: logs
-              - path: /tmp
-                subPath: tmp
+        globalMounts:
+          - path: /tmp
