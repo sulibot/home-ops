@@ -31,7 +31,7 @@ resources:
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
   - ./thelounge/ks.yaml
-  - ./tqm/ks.yaml
+#  - ./tqm/ks.yaml  # Disabled: duplicate 1Password item 'tqm' - needs cleanup in 1Password
   - ./tuppr/ks.yaml
   #- ./zigbee/ks.yaml
   #- ./zwave/ks.yaml
