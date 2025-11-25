@@ -11,6 +11,8 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
+    - name: ceph-csi
+      namespace: flux-system
     - name: ceph-csi-helm-repo
       namespace: flux-system
     - name: snapshot-controller-crds
