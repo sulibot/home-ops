@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/emby
-              tag: sha256-31448f230530fbeac1164fa3bee775cdc3fb8434cfdda3ce9edcb5e4ee523033
+              tag: rolling
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
