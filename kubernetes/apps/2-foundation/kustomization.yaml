@@ -1,0 +1,19 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # External Secrets
+  - ./external-secrets/external-secrets/ks.yaml
+  - ./external-secrets/onepassword/ks.yaml
+
+  # Ceph CSI Storage
+  - ./ceph-csi/helm-repo/ks.yaml
+  - ./ceph-csi/ks.yaml
+  - ./ceph-csi/app/ks.yaml
+  - ./ceph-csi/cephfs/ks.yaml
+  - ./ceph-csi/rbd/ks.yaml
+  - ./ceph-csi/shared-storage/ks.yaml
+
+  # Snapshot Controller
+  - ./snapshot-controller/ks.yaml

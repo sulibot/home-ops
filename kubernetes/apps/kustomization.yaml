@@ -3,16 +3,31 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ./kube-system
-  - ./cert-manager
-  - ./security/external-secrets/namespace.yaml
+  # Layer 0: CRDs (install first)
+  - ./0-crds
+
+  # Layer 1: Network (CNI)
+  - ./1-network
+
+  # Layer 2: Foundation (secrets, storage)
+  - ./2-foundation
+
+  # Layer 3: Core Services
+  - ./3-core
+
+  # Layer 4: Network Services
+  - ./4-network-services
+
+  # Layer 5: Observability
+  - ./5-observability
+
+  # Layer 6: Data (databases, backup)
+  - ./6-data
+
+  # Layer 7: Applications
+  - ./7-applications
+
+  # Legacy directories (to be migrated or removed)
   - ./security
-  - ./storage/ceph-csi/namespace.yaml
-  - ./storage/snapshot-controller/namespace.yaml
-  - ./storage
-  - ./network
-  - ./default
+  - ./kube-system
   - ./observability
-  - ./actions-runner-system
-#  - ./system-upgrade
-  - ./volsync-system

@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: snmp-exporter
+  namespace: flux-system
+  labels:
+    layer: "5-observability"
+    component: observability
+    critical: "false"
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/5-observability/snmp-exporter/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: observability
+  wait: false

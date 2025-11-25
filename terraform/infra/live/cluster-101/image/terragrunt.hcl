@@ -13,8 +13,8 @@ locals {
   credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 
-  # Read common schematic defaults
-  common_schematic = read_terragrunt_config(find_in_parent_folders("common/schematic.hcl")).locals
+  # Read BOOT schematic for minimal nocloud ISO
+  boot_schematic = read_terragrunt_config(find_in_parent_folders("common/boot-schematic.hcl")).locals
 
   # Try to read cluster-specific overrides, fall back to empty map if no overrides
   cluster_image_opts = try(read_terragrunt_config(find_in_parent_folders("image.hcl")).locals, {})
@@ -25,10 +25,12 @@ locals {
   datastore_id     = "resources"
   upload_nodes     = [local.cluster.proxmox_nodes[0]]  # Only upload to first node
 
-  # Use cluster-specific overrides if defined, otherwise use common defaults
-  extra_kernel_args = try(local.cluster_image_opts.talos_extra_kernel_args, local.common_schematic.talos_extra_kernel_args)
-  system_extensions = try(local.cluster_image_opts.talos_system_extensions, local.common_schematic.talos_system_extensions)
-  talos_patches     = try(local.cluster_image_opts.talos_patches, local.common_schematic.talos_patches)
+  # Use BOOT schematic - minimal extensions for Proxmox VM boot
+  extra_kernel_args           = local.boot_schematic.boot_kernel_args
+  system_extensions           = local.boot_schematic.boot_system_extensions
+  custom_extensions           = []  # No custom extensions in boot image
+  allow_unsigned_extensions   = false  # No unsigned extensions in boot image
+  talos_patches               = []
 }
 
 generate "providers" {
@@ -61,9 +63,10 @@ inputs = {
   talos_architecture       = try(local.globals.talos_architecture, "amd64")
   talos_extra_kernel_args  = local.extra_kernel_args
   talos_system_extensions  = local.system_extensions
+  talos_custom_extensions  = local.custom_extensions
+  allow_unsigned_extensions = local.allow_unsigned_extensions
   talos_patches            = local.talos_patches
   proxmox_datastore_id     = local.datastore_id
   proxmox_node_names       = local.upload_nodes
   file_name_prefix         = local.file_name_prefix
-  image_cache_dir          = local.globals.image_cache_dir
 }

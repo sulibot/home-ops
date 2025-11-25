@@ -294,7 +294,7 @@ tasks:
               fi
               ;;
             "Install Talos Tools")
-              if gum confirm "Install talosctl, talhelper?"; then
+              if gum confirm "Install talosctl?"; then
                 task install:talos
               fi
               ;;
@@ -1065,7 +1065,7 @@ tasks:
       Installs all tools needed to run this Taskfile:
         - Charm tools (gum, glow, mods)
         - Kubernetes tools (kubectl, helm, flux)
-        - Talos tools (talosctl, talhelper)
+        - Talos tools (talosctl)
         - Infrastructure tools (terraform, terragrunt)
         - Utilities (jinja2-cli, sops, age)
 
@@ -1151,7 +1151,6 @@ tasks:
 
         echo "Talos Tools:"
         check_cmd talosctl "talosctl" "required" "version --client --short"
-        check_cmd talhelper "talhelper" "required"
         echo ""
 
         echo "Infrastructure Tools:"
@@ -1232,7 +1231,7 @@ tasks:
         echo "✓ Kubernetes tools installed"
 
   install:talos:
-    desc: '🔧 Install Talos tools (talosctl, talhelper)'
+    desc: '🔧 Install Talos tools (talosctl)'
     cmds:
       - |
         #!/bin/bash
@@ -1242,19 +1241,11 @@ tasks:
 
         if [[ "$OSTYPE" == "darwin"* ]]; then
           # macOS
-          brew install siderolabs/tap/talosctl budimanjojo/tap/talhelper
+          brew install siderolabs/tap/talosctl
         elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
           # Linux - talosctl
           if ! command -v talosctl &> /dev/null; then
             curl -sL https://talos.dev/install | sh
-          fi
-
-          # Linux - talhelper
-          if ! command -v talhelper &> /dev/null; then
-            TALHELPER_VERSION=$(curl -s https://api.github.com/repos/budimanjojo/talhelper/releases/latest | grep tag_name | cut -d '"' -f 4)
-            curl -L "https://github.com/budimanjojo/talhelper/releases/download/${TALHELPER_VERSION}/talhelper_linux_amd64" -o talhelper
-            chmod +x talhelper
-            sudo mv talhelper /usr/local/bin/
           fi
         else
           echo "❌ Unsupported OS: $OSTYPE"

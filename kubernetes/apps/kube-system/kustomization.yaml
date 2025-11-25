@@ -1,24 +1,9 @@
 ---
-# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Legacy directory - apps moved to layer-based structure
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 components:
   - ../../components/alerts
-
 resources:
   - ./namespace.yaml
-  - ./cilium/helm-repo/ks.yaml
-  - ./cilium/ks.yaml
-  - ./cilium/bgp/ks.yaml
-  - ./cilium/ippool/ks.yaml
-  - ./cilium/gateway/ks.yaml
-  - ./gateway-api-crds/ks.yaml
-#  - ./coredns/ks.yaml
-#  - ./csi-driver-nfs/ks.yaml
-  - ./descheduler/ks.yaml
-#  - ./intel-gpu-resource-driver/ks.yaml
-  - ./metrics-server/ks.yaml
-  - ./multus/ks.yaml
-  - ./reloader/ks.yaml
-  - ./spegel/ks.yaml
+  # snapshot-controller namespace files remain here

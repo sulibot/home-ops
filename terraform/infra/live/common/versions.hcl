@@ -10,6 +10,21 @@ locals {
   # Kubernetes version (managed by Talos)
   kubernetes_version = "v1.31.4"
 
+  # Terraform provider versions
+  provider_versions = {
+    talos      = "~> 0.7.0"
+    proxmox    = "~> 0.86.0"
+    sops       = "~> 1.2.1"
+    helm       = "~> 2.16.0"
+    kubernetes = "~> 2.35.0"
+    kubectl    = "~> 1.14.0"
+    time       = "~> 0.12.0"
+  }
+
+  # Application versions
+  cilium_version = "1.18.4"
+  flux_version   = "latest"
+
   # Can be overridden per-cluster in cluster.hcl if needed
   # Example in cluster.hcl:
   #   talos_version = "v1.12.0"  # Override for this cluster only

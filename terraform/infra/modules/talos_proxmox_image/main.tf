@@ -3,9 +3,9 @@ terraform {
   backend "local" {}
 
   required_providers {
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.5"
+    talos = {
+      source  = "siderolabs/talos"
+      version = "~> 0.7.0"
     }
     proxmox = {
       source  = "bpg/proxmox"
@@ -59,6 +59,18 @@ variable "talos_patches" {
   description = "JSON patch ops for Talos customization"
 }
 
+variable "talos_custom_extensions" {
+  type        = list(string)
+  default     = []
+  description = "Talos custom system extensions (container images)"
+}
+
+variable "allow_unsigned_extensions" {
+  type        = bool
+  default     = false
+  description = "Allow unsigned Talos extensions"
+}
+
 variable "proxmox_datastore_id" {
   type        = string
   description = "Proxmox datastore to upload the image to"
@@ -75,30 +87,23 @@ variable "file_name_prefix" {
   description = "Prefix for uploaded image name"
 }
 
-variable "image_cache_dir" {
-  type        = string
-  default     = ""
-  description = "Directory to cache downloaded images (defaults to .talos-images in module root)"
+# Create Talos factory schematic using official provider
+resource "talos_image_factory_schematic" "this" {
+  schematic = yamlencode({
+    customization = {
+      extraKernelArgs = var.talos_extra_kernel_args
+      systemExtensions = {
+        officialExtensions = var.talos_system_extensions
+        customExtensions   = [for image in var.talos_custom_extensions : { image = image }]
+        security = {
+          "allow-unsigned-extensions" = var.allow_unsigned_extensions
+        }
+      }
+    }
+  })
 }
 
 locals {
-  # Build schematic payload for new API (only customization, not version/platform/arch)
-  # Only include customization fields if they have values
-  has_kernel_args = length(var.talos_extra_kernel_args) > 0
-  has_extensions  = length(var.talos_system_extensions) > 0
-  has_customization = local.has_kernel_args || local.has_extensions
-
-  schematic_payload = local.has_customization ? {
-    customization = merge(
-      local.has_kernel_args ? { extraKernelArgs = var.talos_extra_kernel_args } : {},
-      local.has_extensions ? {
-        systemExtensions = {
-          officialExtensions = var.talos_system_extensions
-        }
-      } : {}
-    )
-  } : {}
-
   # Determine the image format path based on platform
   # See: https://github.com/siderolabs/image-factory
   # Using ISO format for nocloud to ensure proper UEFI boot support
@@ -110,62 +115,22 @@ locals {
     "gcp"     = "gcp-${var.talos_architecture}.raw.xz"
   }
   image_format = lookup(local.image_format_map, var.talos_platform, "nocloud-${var.talos_architecture}.iso")
-}
 
-# Step 1: Create schematic and get ID
-data "http" "talos_schematic" {
-  url             = "https://factory.talos.dev/schematics"
-  method          = "POST"
-  request_headers = { "Content-Type" = "application/json" }
-  request_body    = jsonencode(local.schematic_payload)
-}
-
-locals {
-  schematic_response = jsondecode(data.http.talos_schematic.response_body)
-  schematic_id       = local.schematic_response.id
-
-  # Step 2: Construct download URL using schematic ID
+  # Construct download URL using schematic ID from official resource
   # Format: https://factory.talos.dev/image/{schematic_id}/{version}/{format}
-  image_url = "https://factory.talos.dev/image/${local.schematic_id}/${var.talos_version}/${local.image_format}"
+  image_url = "https://factory.talos.dev/image/${talos_image_factory_schematic.this.id}/${var.talos_version}/${local.image_format}"
 
-  # Use provided cache directory or default to module-local directory
-  # This avoids downloading the same image multiple times for different clusters
-  image_dir  = var.image_cache_dir != "" ? var.image_cache_dir : "${path.root}/.talos-images"
-  # Use .iso extension for nocloud ISO images
+  # Use .iso extension for nocloud ISO images, .img for raw images
   image_extension = var.talos_platform == "nocloud" ? "iso" : "img"
-  image_name = "${var.file_name_prefix}-${local.schematic_id}.${local.image_extension}"
-  image_path = "${local.image_dir}/${local.image_name}"
-
-  # Check if image already exists locally to avoid redundant downloads
-  # Since schematic IDs are content-addressable (same customization = same ID),
-  # we can safely reuse cached images
-  image_already_cached = fileexists(local.image_path)
+  # Include schematic ID in filename for content-addressable caching
+  # Proxmox will skip re-downloading if a file with this exact name already exists
+  image_name = "${var.file_name_prefix}-${talos_image_factory_schematic.this.id}.${local.image_extension}"
 }
 
-# Download the image to a local cache location
-# ISOs are downloaded directly, raw images are decompressed from .xz
-resource "terraform_data" "download" {
-  count = local.image_already_cached ? 0 : 1
-
-  triggers_replace = {
-    image_url  = local.image_url
-    image_path = local.image_path
-    is_iso     = var.talos_platform == "nocloud"
-  }
-
-  provisioner "local-exec" {
-    when = create
-    # For ISOs, download directly. For raw images, decompress from .xz
-    command = self.triggers_replace.is_iso ? "mkdir -p ${local.image_dir} && curl -L '${self.triggers_replace.image_url}' -o '${self.triggers_replace.image_path}'" : "mkdir -p ${local.image_dir} && curl -L '${self.triggers_replace.image_url}' | xz -d > '${self.triggers_replace.image_path}'"
-  }
-}
-
-# Upload via the Proxmox provider (will use SCP when SSH is configured)
-# The provider automatically checks if the file already exists and skips upload if:
-# - Same filename exists
-# - Same size
-# - Same checksum (if available)
-# This saves time on subsequent runs when the image hasn't changed
+# Direct download to Proxmox datastore from Talos Factory URL
+# The provider checks if the file already exists in the datastore by filename
+# If found with same name, it skips the download entirely
+# This provides automatic caching based on the content-addressable schematic ID
 resource "proxmox_virtual_environment_file" "uploaded" {
   for_each = toset(var.proxmox_node_names)
 
@@ -174,16 +139,13 @@ resource "proxmox_virtual_environment_file" "uploaded" {
   node_name    = each.value
 
   source_file {
-    path      = local.image_path
+    path      = local.image_url
     file_name = local.image_name
-    checksum  = filesha256(local.image_path)
   }
-
-  depends_on = [terraform_data.download]
 }
 
 output "talos_image_id" {
-  value       = local.schematic_id
+  value       = talos_image_factory_schematic.this.id
   description = "Talos factory schematic ID"
 }
 

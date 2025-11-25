@@ -7,8 +7,8 @@ creation_rules:
   - path_regex: '^terraform/.*cluster-sulibot/(global|clusters)/.*\.sops\.ya?ml$'
     encrypted_regex: '^(data|stringData)$'
     age: *age_key
-  - path_regex: '^terraform/live/common/.*\.sops\.ya?ml$'
-    encrypted_regex: '^(data|stringData|.*secret$|.*password$|cloudflare_api_token|cloudflare_account_id)$'
+  - path_regex: '^terraform/(infra/)?live/common/.*\.sops\.ya?ml$'
+    encrypted_regex: '^(data|stringData|.*secret.*|.*token.*|.*password.*|.*endpoint)$'
     age: *age_key
   - path_regex: '^terraform/live/golden/images/.*\.sops\.ya?ml$'
     encrypted_regex: '^(data|stringData|.*password|vm_password_hash)$'
@@ -38,11 +38,6 @@ creation_rules:
   - path_regex: '^kubernetes/.*/helmrelease\.ya?ml$'
     encrypted_regex: '^(adminKey|userKey|secret|password)$'
     age: *age_key
-
-  # Talos Secrets
-  - path_regex: '^talos/clusters/.*/secrets\.sops\.yaml$'
-    # This uses a new, dedicated key for cluster secrets.
-    age: 'age1...<your-new-talos-public-key>...xyz'
 
   # Repository-wide fallback
   - path_regex: '.*\.sops\.ya?ml$'
