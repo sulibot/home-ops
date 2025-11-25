@@ -29,11 +29,11 @@ spec:
             enableHostNetwork: true
             httpMetrics:
                 enabled: true
-                containerPort: 8081
+                containerPort: 8082
         nodeplugin:
             httpMetrics:
                 enabled: true
-                containerPort: 8081
+                containerPort: 8082
         secret:
             create: false
             name: csi-ceph-admin-secret
