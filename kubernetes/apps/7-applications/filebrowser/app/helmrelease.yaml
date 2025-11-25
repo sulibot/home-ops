@@ -74,10 +74,12 @@ spec:
             subPath: data
       run:
         type: emptyDir
+        medium: Memory
         globalMounts:
           - path: /run
       tmp:
         type: emptyDir
+        medium: Memory
         globalMounts:
           - path: /tmp
 
