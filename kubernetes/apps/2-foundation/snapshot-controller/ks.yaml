@@ -20,6 +20,6 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: snapshot-controller
-  wait: true
+  wait: false
   timeout: 5m
   retryInterval: 30s
