@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kopia
+  namespace: flux-system
+  labels:
+    layer: "6-data"
+    component: backup
+    critical: "false"
+spec:
+  #  components:
+  #    - ../../../../components/nfs-scaler
+  dependsOn:
+    - name: external-secrets
+      namespace: flux-system
+    - name: external-secrets
+      namespace: flux-system
+    - name: volsync
+      namespace: flux-system
+  interval: 1h
+  path: ./kubernetes/apps/6-data/kopia/app
+  postBuild:
+    substitute:
+      APP: kopia
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: volsync-system
+  wait: false

@@ -7,6 +7,8 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
+  retryInterval: 30s  # Retry every 30 seconds on failure
+  timeout: 5m         # Fail after 5 minutes of retries
   path: ./kubernetes/apps
   prune: false
   sourceRef:
@@ -17,3 +19,9 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # Add health check to ensure secret exists before reconciling
+  healthChecks:
+    - apiVersion: v1
+      kind: Secret
+      name: sops-age
+      namespace: flux-system

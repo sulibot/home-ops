@@ -1,0 +1,247 @@
+version: '3.6.0'
+
+vars:
+  CLUSTER_ID: '{{.CLUSTER_ID | default "101"}}'
+  CLUSTER_DIR: '{{.ROOT_DIR}}/terraform/infra/live/cluster-{{.CLUSTER_ID}}'
+  TALOS_DIR: '{{.ROOT_DIR}}/talos/clusters/cluster-{{.CLUSTER_ID}}'
+
+tasks:
+  # =============================================================================
+  # Full Cluster Lifecycle Tasks
+  # =============================================================================
+
+  create:
+    desc: "Create complete cluster (image → nodes → talos-config → bootstrap)"
+    summary: |
+      Creates a complete Kubernetes cluster using Terraform/Terragrunt:
+      1. Builds custom Talos image
+      2. Provisions VMs on Proxmox
+      3. Generates Talos machine configurations
+      4. Bootstraps cluster with Cilium and Flux
+
+      Usage: task cluster:create CLUSTER_ID=101
+    cmds:
+      - task: image:apply
+      - task: nodes:apply
+      - task: talos-config:apply
+      - task: bootstrap:apply
+      - task: status
+    preconditions:
+      - sh: test -d "{{.CLUSTER_DIR}}"
+        msg: "Cluster directory {{.CLUSTER_DIR}} does not exist"
+
+  destroy:
+    desc: "Destroy complete cluster (reverse order)"
+    summary: |
+      Destroys the cluster in reverse order:
+      1. Destroys bootstrap resources (Flux, Cilium)
+      2. Removes Talos configurations
+      3. Deletes VMs
+      4. Optionally removes Talos image
+
+      Usage: task cluster:destroy CLUSTER_ID=101
+    prompt: "This will destroy cluster {{.CLUSTER_ID}}. Continue?"
+    cmds:
+      - task: bootstrap:destroy
+      - task: talos-config:destroy
+      - task: nodes:destroy
+      - echo "Cluster {{.CLUSTER_ID}} destroyed. Image retained (destroy manually if needed)."
+
+  # =============================================================================
+  # Individual Stack Tasks
+  # =============================================================================
+
+  image:apply:
+    desc: "Build and upload Talos image"
+    dir: "{{.CLUSTER_DIR}}/image"
+    cmds:
+      - echo "Building Talos image for cluster {{.CLUSTER_ID}}..."
+      - terragrunt apply -auto-approve
+
+  image:destroy:
+    desc: "Remove Talos image"
+    dir: "{{.CLUSTER_DIR}}/image"
+    cmds:
+      - terragrunt destroy -auto-approve
+
+  nodes:apply:
+    desc: "Provision VMs"
+    dir: "{{.CLUSTER_DIR}}/nodes"
+    cmds:
+      - echo "Provisioning VMs for cluster {{.CLUSTER_ID}}..."
+      - terragrunt apply -auto-approve
+
+  nodes:destroy:
+    desc: "Destroy VMs"
+    dir: "{{.CLUSTER_DIR}}/nodes"
+    prompt: "This will destroy all VMs for cluster {{.CLUSTER_ID}}. Continue?"
+    cmds:
+      - terragrunt destroy -auto-approve
+
+  talos-config:apply:
+    desc: "Generate Talos configurations"
+    dir: "{{.CLUSTER_DIR}}/talos-config"
+    cmds:
+      - echo "Generating Talos machine configurations..."
+      - terragrunt apply -auto-approve
+      - echo "Talosconfig exported to {{.TALOS_DIR}}/talosconfig"
+
+  talos-config:destroy:
+    desc: "Remove Talos configurations"
+    dir: "{{.CLUSTER_DIR}}/talos-config"
+    cmds:
+      - terragrunt destroy -auto-approve
+
+  bootstrap:apply:
+    desc: "Bootstrap cluster (Cilium + Flux)"
+    dir: "{{.CLUSTER_DIR}}/bootstrap"
+    cmds:
+      - echo "Bootstrapping cluster {{.CLUSTER_ID}}..."
+      - echo "Installing Cilium CNI and Flux GitOps..."
+      - terragrunt apply -auto-approve
+      - echo "Kubeconfig exported to {{.TALOS_DIR}}/kubeconfig"
+      - echo ""
+      - echo "Cluster is ready! Configure kubectl:"
+      - echo "  export KUBECONFIG={{.TALOS_DIR}}/kubeconfig"
+
+  bootstrap:destroy:
+    desc: "Destroy bootstrap resources"
+    dir: "{{.CLUSTER_DIR}}/bootstrap"
+    cmds:
+      - terragrunt destroy -auto-approve
+
+  # =============================================================================
+  # Plan/Validation Tasks
+  # =============================================================================
+
+  plan:
+    desc: "Show Terraform plan for all stacks"
+    cmds:
+      - task: image:plan
+      - task: nodes:plan
+      - task: talos-config:plan
+      - task: bootstrap:plan
+
+  image:plan:
+    desc: "Show plan for image stack"
+    dir: "{{.CLUSTER_DIR}}/image"
+    cmds:
+      - terragrunt plan
+
+  nodes:plan:
+    desc: "Show plan for nodes stack"
+    dir: "{{.CLUSTER_DIR}}/nodes"
+    cmds:
+      - terragrunt plan
+
+  talos-config:plan:
+    desc: "Show plan for talos-config stack"
+    dir: "{{.CLUSTER_DIR}}/talos-config"
+    cmds:
+      - terragrunt plan
+
+  bootstrap:plan:
+    desc: "Show plan for bootstrap stack"
+    dir: "{{.CLUSTER_DIR}}/bootstrap"
+    cmds:
+      - terragrunt plan
+
+  # =============================================================================
+  # Utility Tasks
+  # =============================================================================
+
+  status:
+    desc: "Show cluster status"
+    summary: |
+      Displays the current status of the cluster including:
+      - Node status
+      - Cilium status
+      - Flux kustomizations
+
+      Usage: task cluster:status CLUSTER_ID=101
+    cmds:
+      - |
+        if [ ! -f "{{.TALOS_DIR}}/kubeconfig" ]; then
+          echo "Kubeconfig not found at {{.TALOS_DIR}}/kubeconfig"
+          echo "Cluster may not be bootstrapped yet."
+          exit 1
+        fi
+        export KUBECONFIG={{.TALOS_DIR}}/kubeconfig
+        echo "=== Cluster Status ==="
+        kubectl get nodes -o wide
+        echo ""
+        echo "=== Cilium Status ==="
+        kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium
+        echo ""
+        echo "=== Flux Kustomizations ==="
+        kubectl get kustomizations -n flux-system
+
+  kubeconfig:
+    desc: "Export kubeconfig path"
+    silent: true
+    cmds:
+      - echo "export KUBECONFIG={{.TALOS_DIR}}/kubeconfig"
+
+  talosconfig:
+    desc: "Export talosconfig path"
+    silent: true
+    cmds:
+      - echo "export TALOSCONFIG={{.TALOS_DIR}}/talosconfig"
+
+  health:
+    desc: "Check cluster health"
+    cmds:
+      - |
+        export KUBECONFIG={{.TALOS_DIR}}/kubeconfig
+        echo "=== Checking node health ==="
+        kubectl get nodes
+        echo ""
+        echo "=== Checking pod health ==="
+        kubectl get pods -A | grep -v Running | grep -v Completed || echo "All pods running"
+        echo ""
+        echo "=== Checking Cilium connectivity ==="
+        kubectl exec -n kube-system ds/cilium -- cilium status --brief || true
+
+  init:
+    desc: "Initialize all Terragrunt stacks"
+    cmds:
+      - cd "{{.CLUSTER_DIR}}/image" && terragrunt init
+      - cd "{{.CLUSTER_DIR}}/nodes" && terragrunt init
+      - cd "{{.CLUSTER_DIR}}/talos-config" && terragrunt init
+      - cd "{{.CLUSTER_DIR}}/bootstrap" && terragrunt init
+
+  clean:
+    desc: "Clean Terraform cache files"
+    cmds:
+      - find "{{.CLUSTER_DIR}}" -type d -name ".terragrunt-cache" -exec rm -rf {} + 2>/dev/null || true
+      - find "{{.CLUSTER_DIR}}" -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null || true
+      - echo "Cleaned Terraform cache files"
+
+  # =============================================================================
+  # Advanced Operations
+  # =============================================================================
+
+  upgrade:
+    desc: "Upgrade cluster versions (Talos/Kubernetes)"
+    summary: |
+      Updates cluster to new versions defined in common/versions.hcl
+
+      This will:
+      1. Rebuild image with new Talos version
+      2. Apply new configurations
+      3. Trigger rolling upgrade
+
+      Usage: task cluster:upgrade CLUSTER_ID=101
+    cmds:
+      - task: image:apply
+      - task: talos-config:apply
+      - echo "Version upgrade applied. Monitor node upgrades with: kubectl get nodes -w"
+
+  reset:
+    desc: "Reset and recreate cluster (keeps image)"
+    prompt: "This will destroy and recreate cluster {{.CLUSTER_ID}}. Continue?"
+    cmds:
+      - task: destroy
+      - task: nodes:apply
+      - task: talos-config:apply
+      - task: bootstrap:apply

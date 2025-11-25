@@ -19,13 +19,13 @@ customization:
       officialExtensions:
           - siderolabs/cloudflared
           - siderolabs/i915
-          - siderolabs/intel-ice-firmware
           - siderolabs/intel-ucode
-          - siderolabs/mei
           - siderolabs/qemu-guest-agent
-          - siderolabs/realtek-firmware
-          - siderolabs/usb-modem-drivers
           - siderolabs/util-linux-tools
           - siderolabs/zfs
           - siderolabs/nfsd
           - siderolabs/nfsrahead
+      customExtensions:
+          - image: ghcr.io/jsenecal/frr-talos-extension:v1.0.2
+      security:
+          allow-unsigned-extensions: true

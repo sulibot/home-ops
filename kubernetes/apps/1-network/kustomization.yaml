@@ -1,0 +1,11 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./cilium/helm-repo/ks.yaml
+  - ./cilium/ks.yaml
+  - ./cilium/ippool/ks.yaml
+  - ./cilium/bgp/ks.yaml
+  - ./cilium/gateway/ks.yaml
+  - ./multus/ks.yaml

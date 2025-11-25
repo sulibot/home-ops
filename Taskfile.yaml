@@ -5,6 +5,7 @@ silent: true
 includes:
   app: .taskfiles/app/generate.yaml
   kube: .taskfiles/kube-system/deploy.yaml
+  cluster: .taskfiles/cluster/deploy.yaml
 
 tasks:
   # if you run `task` with no args, render *every* app
