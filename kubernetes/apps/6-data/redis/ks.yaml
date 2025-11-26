@@ -11,7 +11,7 @@ metadata:
     critical: "false"
 spec:
   components:
-    - ../../../components/volsync
+    - ../../../../components/volsync
 
   dependsOn:
     - name: external-secrets
