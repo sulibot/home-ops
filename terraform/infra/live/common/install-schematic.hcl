@@ -2,8 +2,9 @@
 # Full configuration with all kernel args and extensions
 
 locals {
-  # Kernel args for production system
+  # Kernel args for production system (metal platform)
   install_kernel_args = [
+    "talos.platform=metal",  # Use metal platform for bare metal/VM installation
     "-init_on_alloc",        # Less security, faster performance
     "-init_on_free",         # Less security, faster performance
     "-selinux",              # Less security, faster performance
