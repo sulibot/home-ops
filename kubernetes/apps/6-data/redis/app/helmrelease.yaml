@@ -48,6 +48,8 @@ spec:
       security:
         allowInsecureImages: false
       storageClass: ""
+    image:
+      tag: latest
     kubeVersion: ""
     kubectl:
       command:
