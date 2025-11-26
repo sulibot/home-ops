@@ -428,7 +428,7 @@ spec:
         selector: {}
         size: 8Gi
         sizeLimit: ""
-        storageClass: ""
+        storageClass: csi-cephfs-config-sc
         subPath: ""
         subPathExpr: ""
       persistentVolumeClaimRetentionPolicy:
