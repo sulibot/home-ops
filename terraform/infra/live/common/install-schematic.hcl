@@ -2,8 +2,8 @@
 # Full set of extensions minus cloudflared
 
 locals {
-  # Reuse kernel args from main schematic
-  install_kernel_args = read_terragrunt_config("${path_relative_to_include()}/schematic.hcl").locals.talos_extra_kernel_args
+  # Reuse kernel args from shared schematic
+  install_kernel_args = read_terragrunt_config("${path_relative_to_include()}/shared-schematic.hcl").locals.talos_extra_kernel_args
 
   # Full install extensions (minus cloudflared)
   install_system_extensions = [

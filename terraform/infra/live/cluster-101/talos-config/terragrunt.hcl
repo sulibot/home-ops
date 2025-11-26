@@ -64,7 +64,7 @@ locals {
 
   # Read common configurations
   versions = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
-  schematic = read_terragrunt_config(find_in_parent_folders("common/schematic.hcl")).locals
+  schematic = read_terragrunt_config(find_in_parent_folders("common/shared-schematic.hcl")).locals
 }
 
 

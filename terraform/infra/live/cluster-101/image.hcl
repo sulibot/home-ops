@@ -1,5 +1,5 @@
 # This file can be used to override the default schematic configuration
-# defined in common/schematic.hcl for this specific cluster.
+# defined in common/shared-schematic.hcl for this specific cluster.
 #
 # To override, uncomment and modify the locals block below:
 #
@@ -25,4 +25,4 @@
 #   ]
 # }
 #
-# If not overridden here, values from common/schematic.hcl will be used.
+# If not overridden here, values from common/shared-schematic.hcl will be used.
