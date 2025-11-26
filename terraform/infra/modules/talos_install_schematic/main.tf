@@ -25,15 +25,33 @@ variable "talos_system_extensions" {
   description = "Talos official system extensions"
 }
 
+variable "talos_custom_extensions" {
+  type        = list(string)
+  description = "Talos custom system extensions"
+  default     = []
+}
+
 # Generate install schematic with full extensions
 resource "talos_image_factory_schematic" "install" {
   schematic = yamlencode({
-    customization = {
-      extraKernelArgs = var.talos_extra_kernel_args
-      systemExtensions = {
-        officialExtensions = var.talos_system_extensions
-      }
-    }
+    customization = merge(
+      {
+        extraKernelArgs = var.talos_extra_kernel_args
+        systemExtensions = {
+          officialExtensions = var.talos_system_extensions
+        }
+      },
+      length(var.talos_custom_extensions) > 0 ? {
+        customExtensions = [
+          for ext in var.talos_custom_extensions : {
+            image = ext
+          }
+        ]
+        security = {
+          allow-unsigned-extensions = true
+        }
+      } : {}
+    )
   })
 }
 

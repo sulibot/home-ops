@@ -14,4 +14,5 @@ locals {
 inputs = {
   talos_extra_kernel_args = local.install_schematic.install_kernel_args
   talos_system_extensions = local.install_schematic.install_system_extensions
+  talos_custom_extensions = local.install_schematic.install_custom_extensions
 }

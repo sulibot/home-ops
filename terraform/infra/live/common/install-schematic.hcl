@@ -15,4 +15,9 @@ locals {
     "siderolabs/nfsd",
     "siderolabs/nfsrahead",
   ]
+
+  # Custom extensions
+  install_custom_extensions = [
+    "ghcr.io/jsenecal/frr-talos-extension:latest",
+  ]
 }
