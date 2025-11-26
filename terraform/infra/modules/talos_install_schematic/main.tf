@@ -31,27 +31,33 @@ variable "talos_custom_extensions" {
   default     = []
 }
 
+locals {
+  # Build customization object conditionally
+  customization = {
+    extraKernelArgs = var.talos_extra_kernel_args
+    systemExtensions = {
+      officialExtensions = var.talos_system_extensions
+    }
+    customExtensions = length(var.talos_custom_extensions) > 0 ? [
+      for ext in var.talos_custom_extensions : {
+        image = ext
+      }
+    ] : null
+    security = length(var.talos_custom_extensions) > 0 ? {
+      allow-unsigned-extensions = true
+    } : null
+  }
+
+  # Remove null values for clean YAML output
+  customization_clean = {
+    for k, v in local.customization : k => v if v != null
+  }
+}
+
 # Generate install schematic with full extensions
 resource "talos_image_factory_schematic" "install" {
   schematic = yamlencode({
-    customization = merge(
-      {
-        extraKernelArgs = var.talos_extra_kernel_args
-        systemExtensions = {
-          officialExtensions = var.talos_system_extensions
-        }
-      },
-      length(var.talos_custom_extensions) > 0 ? {
-        customExtensions = [
-          for ext in var.talos_custom_extensions : {
-            image = ext
-          }
-        ]
-        security = {
-          allow-unsigned-extensions = true
-        }
-      } : {}
-    )
+    customization = local.customization_clean
   })
 }
 
