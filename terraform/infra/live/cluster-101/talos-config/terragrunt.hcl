@@ -64,7 +64,7 @@ locals {
 
   # Read common configurations
   versions = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
-  schematic = read_terragrunt_config(find_in_parent_folders("common/shared-schematic.hcl")).locals
+  install_schematic_config = read_terragrunt_config(find_in_parent_folders("common/install-schematic.hcl")).locals
 }
 
 
@@ -100,9 +100,9 @@ inputs = {
     "10.0.${local.cluster_config.cluster_id}.254",    # IPv4 DNS
   ]
 
-  # Schematic configuration for Talos image customization
-  kernel_args       = local.schematic.talos_extra_kernel_args
-  system_extensions = local.schematic.talos_system_extensions
+  # Schematic configuration for Talos image customization (from install schematic)
+  kernel_args       = local.install_schematic_config.install_kernel_args
+  system_extensions = local.install_schematic_config.install_system_extensions
 
   # Install disk
   install_disk = "/dev/sda"

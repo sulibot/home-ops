@@ -1,11 +1,26 @@
 # Install schematic for actual system
-# Full set of extensions minus cloudflared
+# Full configuration with all kernel args and extensions
 
 locals {
-  # Reuse kernel args from shared schematic
-  install_kernel_args = read_terragrunt_config("${path_relative_to_include()}/shared-schematic.hcl").locals.talos_extra_kernel_args
+  # Kernel args for production system
+  install_kernel_args = [
+    "-init_on_alloc",        # Less security, faster performance
+    "-init_on_free",         # Less security, faster performance
+    "-selinux",              # Less security, faster performance
+    "apparmor=0",            # Less security, faster performance
+    "i915.enable_guc=3",     # Meteor Lake CPU & Intel iGPU
+    "init_on_alloc=0",       # Less security, faster performance
+    "init_on_free=0",        # Less security, faster performance
+    "intel_iommu=on",        # PCI Passthrough
+    "iommu=pt",              # PCI Passthrough
+    "mitigations=off",       # Less security, faster performance
+    "module_blacklist=igc",  # Disable onboard NIC
+    "security=none",         # Less security, faster performance
+    "sysctl.kernel.kexec_load_disabled=1",  # Meteor Lake CPU & Intel iGPU
+    "talos.auditd.disabled=1",  # Less security, faster performance
+  ]
 
-  # Full install extensions (minus cloudflared)
+  # Full install extensions (minus cloudflared which is boot-only)
   install_system_extensions = [
     "siderolabs/i915",
     "siderolabs/intel-ucode",
@@ -16,7 +31,7 @@ locals {
     "siderolabs/nfsrahead",
   ]
 
-  # Custom extensions
+  # Custom third-party extensions
   install_custom_extensions = [
     "ghcr.io/jsenecal/frr-talos-extension:latest",
   ]

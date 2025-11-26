@@ -1,9 +1,9 @@
 # Boot schematic for nocloud ISO
-# Minimal extensions for Proxmox VM boot
+# Minimal configuration for Proxmox VM boot
 
 locals {
-  # Reuse kernel args from shared schematic
-  boot_kernel_args = read_terragrunt_config("${path_relative_to_include()}/shared-schematic.hcl").locals.talos_extra_kernel_args
+  # Minimal kernel args for boot (empty - use defaults)
+  boot_kernel_args = []
 
   # Minimal boot extensions - just what Proxmox needs
   boot_system_extensions = [

@@ -1,5 +1,5 @@
-# This file can be used to override the default schematic configuration
-# defined in common/shared-schematic.hcl for this specific cluster.
+# This file can be used to override boot schematic configuration
+# for cluster-specific customizations.
 #
 # To override, uncomment and modify the locals block below:
 #
@@ -25,4 +25,4 @@
 #   ]
 # }
 #
-# If not overridden here, values from common/shared-schematic.hcl will be used.
+# If not overridden here, values from common/boot-schematic.hcl will be used.
