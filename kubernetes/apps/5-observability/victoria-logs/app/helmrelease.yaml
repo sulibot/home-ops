@@ -13,6 +13,9 @@ spec:
     fullnameOverride: victoria-logs
     retentionPeriod: 14d
     server:
+      env:
+        - name: VM_httpListenAddr
+          value: "[::]"
       persistentVolume:
         enabled: true
         storageClassName: csi-cephfs-config-sc
