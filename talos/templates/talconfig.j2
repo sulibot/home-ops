@@ -95,6 +95,9 @@ nodes:
       # Machine-level configuration for all nodes
       - |-
         machine:
+          install:
+            extensions:
+              - image: ghcr.io/jsenecal/frr-talos-extension:latest
           certSANs:
             - 127.0.0.1
             - ::1
