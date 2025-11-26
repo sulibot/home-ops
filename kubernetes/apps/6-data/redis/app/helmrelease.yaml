@@ -48,14 +48,6 @@ spec:
       security:
         allowInsecureImages: false
       storageClass: ""
-    image:
-      debug: false
-      digest: ""
-      pullPolicy: IfNotPresent
-      pullSecrets: []
-      registry: docker.io
-      repository: bitnami/redis
-      tag: "7.4"
     kubeVersion: ""
     kubectl:
       command:
