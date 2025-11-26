@@ -1,10 +1,18 @@
 terraform {
+  backend "local" {}
+
   required_providers {
     null = {
       source  = "hashicorp/null"
       version = "~> 3.0"
     }
   }
+}
+
+variable "region" {
+  type        = string
+  description = "Region identifier (injected by root terragrunt)"
+  default     = "home-lab"
 }
 
 variable "talos_version" {
@@ -62,11 +70,11 @@ resource "null_resource" "build_installer" {
         --base-installer-image ghcr.io/siderolabs/installer:${var.talos_version} \
         ${local.extension_flags}
 
-      # Load the built image
-      IMAGE_ID=$(docker load < $TEMP_DIR/installer-amd64.tar | grep -oP 'Loaded image ID: sha256:\K.*')
+      # Load the built image and get the image reference
+      LOADED_IMAGE=$(docker load < $TEMP_DIR/installer-amd64.tar | sed -n 's/^Loaded image: //p')
 
       # Tag and push
-      docker tag sha256:$IMAGE_ID ${local.installer_tag}
+      docker tag "$LOADED_IMAGE" ${local.installer_tag}
       docker push ${local.installer_tag}
 
       echo "Custom installer pushed to ${local.installer_tag}"

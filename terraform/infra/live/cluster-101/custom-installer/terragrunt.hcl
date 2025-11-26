@@ -1,12 +1,11 @@
 # Custom Talos installer with FRR extension
 
-terraform {
-  source = "${get_repo_root()}/terraform/infra/modules/talos_custom_installer"
+include "root" {
+  path = find_in_parent_folders("root.hcl")
 }
 
-include "root" {
-  path   = find_in_parent_folders()
-  expose = true
+terraform {
+  source = "../../../modules/talos_custom_installer"
 }
 
 locals {
