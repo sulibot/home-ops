@@ -24,6 +24,6 @@ inputs = {
   ]
 
   # Registry to push the custom installer image
-  # TODO: Update this with your actual registry
-  output_registry = "ghcr.io/${local.cluster_config.cluster_name}/talos-installer-frr"
+  # Using GitHub Container Registry (ghcr.io)
+  output_registry = "ghcr.io/sulibot/${local.cluster_config.cluster_name}-talos-installer-frr"
 }
