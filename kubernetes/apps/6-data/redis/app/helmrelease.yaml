@@ -142,7 +142,7 @@ spec:
         annotations: {}
         dataSource: {}
         enabled: true
-        existingClaim: ""
+        existingClaim: redis-config
         labels: {}
         medium: ""
         path: /data
@@ -150,7 +150,7 @@ spec:
         size: 8Gi
         sizeLimit: ""
         storageClass: csi-cephfs-config-sc
-        subPath: ""
+        subPath: master
         subPathExpr: ""
       persistentVolumeClaimRetentionPolicy:
         enabled: false
@@ -417,11 +417,11 @@ spec:
         minAvailable: ""
       persistence:
         accessModes:
-        - ReadWriteOnce
+        - ReadWriteMany
         annotations: {}
         dataSource: {}
         enabled: true
-        existingClaim: ""
+        existingClaim: redis-config
         labels: {}
         medium: ""
         path: /data
@@ -429,7 +429,7 @@ spec:
         size: 8Gi
         sizeLimit: ""
         storageClass: csi-cephfs-config-sc
-        subPath: ""
+        subPath: replica
         subPathExpr: ""
       persistentVolumeClaimRetentionPolicy:
         enabled: false
