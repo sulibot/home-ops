@@ -76,7 +76,6 @@ spec:
         ipFamilies:
           - IPv6
           - IPv4
-        externalTrafficPolicy: Local
         labels:
           bgp-advertise: "true"
         ports:

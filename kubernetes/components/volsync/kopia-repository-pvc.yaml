@@ -10,4 +10,4 @@ spec:
   storageClassName: csi-cephfs-backups-sc
   resources:
     requests:
-      storage: 1Gi  # Minimal size since this just mounts the shared repository
+      storage: 20Gi  # Increased for production backups (multiple apps with retention)
