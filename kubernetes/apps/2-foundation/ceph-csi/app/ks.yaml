@@ -10,9 +10,6 @@ metadata:
     component: storage
     critical: "true"
 spec:
-  dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/2-foundation/ceph-csi/app
   prune: true
