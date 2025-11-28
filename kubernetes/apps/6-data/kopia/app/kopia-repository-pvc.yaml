@@ -10,4 +10,4 @@ spec:
   storageClassName: csi-cephfs-backups-sc
   resources:
     requests:
-      storage: 1Gi
+      storage: 100Gi
