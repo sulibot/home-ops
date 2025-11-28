@@ -18,7 +18,6 @@ spec:
   # --- Kopia restore configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
-    repositoryPVC: "kopia"  # Mount Kopia repository PVC for direct filesystem access
     sourceIdentity:
       sourceName: "${APP}"  # Identify which backup source to restore from
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
