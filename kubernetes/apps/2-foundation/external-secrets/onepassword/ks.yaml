@@ -18,6 +18,10 @@ spec:
     - name: external-secrets
       namespace: flux-system
   healthChecks:
+    - apiVersion: v1
+      kind: Secret
+      name: sops-age
+      namespace: flux-system
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
       name: onepassword

@@ -25,3 +25,8 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  healthChecks:
+    - apiVersion: v1
+      kind: Secret
+      name: sops-age
+      namespace: flux-system
