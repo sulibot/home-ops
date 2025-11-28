@@ -1,0 +1,124 @@
+---
+# Manual Kopia Restore Job Template
+#
+# This job restores a PVC from a Kopia snapshot stored in the local repository.
+# Use this for cluster rebuilds or disaster recovery within the same cluster.
+#
+# Usage:
+#   1. Set APP, NAMESPACE, and SNAPSHOT_ID (optional - latest if not set)
+#   2. Ensure target PVC does not exist
+#   3. Apply: kubectl apply -f this-file.yaml
+#   4. Monitor: kubectl logs -f job/kopia-restore-${APP}
+#
+# Example:
+#   APP=plex NAMESPACE=default kubectl apply -f kopia-restore-job.yaml
+#
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kopia-restore-${APP}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app.kubernetes.io/name: ${APP}
+    app.kubernetes.io/component: restore
+spec:
+  ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ${APP}
+        app.kubernetes.io/component: restore
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: kopia-restore
+          image: ghcr.io/home-operations/kopia:0.21.1@sha256:f666b5f2c1ea4649cd2bd703507d4b81c2b515782e8476ba4a145b091a704a53
+          env:
+            - name: KOPIA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ${APP}-volsync-secret
+                  key: KOPIA_PASSWORD
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Kopia Restore Job for ${APP} ==="
+              echo "Repository: /repository/repository"
+              echo "Target PVC: ${APP}-config"
+              echo ""
+
+              # Connect to repository
+              echo "[1/4] Connecting to Kopia repository..."
+              kopia repository connect filesystem \
+                --path=/repository/repository \
+                --password="$KOPIA_PASSWORD" \
+                --config-file=/tmp/kopia.config
+
+              # List available snapshots
+              echo "[2/4] Finding snapshots for ${APP}..."
+              kopia snapshot list --all --config-file=/tmp/kopia.config | grep "${APP}-src@${NAMESPACE:-default}" || {
+                echo "ERROR: No snapshots found for ${APP}-src@${NAMESPACE:-default}"
+                echo "Available snapshots:"
+                kopia snapshot list --all --config-file=/tmp/kopia.config
+                exit 1
+              }
+
+              # Determine snapshot to restore
+              SNAPSHOT_ID="${SNAPSHOT_ID:-latest}"
+              if [ "$SNAPSHOT_ID" = "latest" ]; then
+                echo "Using latest snapshot..."
+                SNAPSHOT_PATH="${APP}-src@${NAMESPACE:-default}:/data"
+              else
+                echo "Using snapshot ID: $SNAPSHOT_ID"
+                SNAPSHOT_PATH="$SNAPSHOT_ID"
+              fi
+
+              # Restore snapshot to PVC
+              echo "[3/4] Restoring snapshot to /data..."
+              kopia snapshot restore "$SNAPSHOT_PATH" /data \
+                --config-file=/tmp/kopia.config \
+                --parallel=8 \
+                --ignore-permission-errors
+
+              echo "[4/4] Restore complete!"
+              echo "=== SUCCESS ==="
+              df -h /data
+              ls -lah /data | head -20
+
+          volumeMounts:
+            - name: repository
+              mountPath: /repository
+              readOnly: true
+            - name: data
+              mountPath: /data
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 2Gi
+
+      volumes:
+        - name: repository
+          persistentVolumeClaim:
+            claimName: kopia
+        - name: data
+          persistentVolumeClaim:
+            claimName: ${APP}-config
