@@ -8,22 +8,30 @@ This document describes how to reclaim the Kopia repository PVC after rebuilding
 - CephFS subvolume ID was saved before destroying the old cluster
 - Storage class `csi-cephfs-backups-sc` has `reclaimPolicy: Retain`
 
-## Step 1: Save Subvolume ID (Before Destroying Old Cluster)
+## Step 1: Get Subvolume ID from Git
 
-**CRITICAL:** Run this command on the OLD cluster BEFORE destroying it:
+The subvolume ID is stored in Git as a Kubernetes Secret, so you don't need to manually save it!
+
+**File:** `kubernetes/apps/6-data/kopia/app/kopia-repository-subvolume-secret.yaml`
 
 ```bash
-# Get the CephFS subvolume ID for the Kopia repository
-kubectl get pv $(kubectl get pvc kopia -n default -o jsonpath='{.spec.volumeName}') \
-  -o jsonpath='{.spec.csi.volumeHandle}'
+# View the saved subvolume ID from Git
+cat kubernetes/apps/6-data/kopia/app/kopia-repository-subvolume-secret.yaml | grep volumeHandle
 ```
 
 **Example output:**
-```
-0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e
+```yaml
+volumeHandle: "0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e"
 ```
 
-**Save this ID in a safe place** (e.g., password manager, notebook, etc.)
+**Note:** If you ever recreate the Kopia PVC, update this secret with the new subvolume ID:
+```bash
+# Get current subvolume ID
+kubectl get pv $(kubectl get pvc kopia -n default -o jsonpath='{.spec.volumeName}') \
+  -o jsonpath='{.spec.csi.volumeHandle}'
+
+# Update the secret file and commit to Git
+```
 
 ## Step 2: Verify Subvolume Exists in Ceph (After Cluster Rebuild)
 
@@ -39,86 +47,57 @@ ceph fs subvolume ls backups csi
 # You should see the subvolume ID from Step 1 in the list
 ```
 
-## Step 3: Create PV Manifest
+## Step 3: Reclaim PV/PVC (Automated Script)
 
-Create a PersistentVolume pointing to the existing subvolume:
-
-**File:** `kopia-repository-pv.yaml`
-
-```yaml
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: kopia-repository-pv
-spec:
-  capacity:
-    storage: 20Gi
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: csi-cephfs-backups-sc
-  csi:
-    driver: cephfs.csi.ceph.com
-    # REPLACE THIS WITH YOUR SAVED SUBVOLUME ID FROM STEP 1
-    volumeHandle: 0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e
-    volumeAttributes:
-      clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
-      fsName: backups
-      storage.kubernetes.io/csiProvisionerIdentity: "cephfs.csi.ceph.com"
-    nodeStageSecretRef:
-      name: csi-ceph-admin-secret
-      namespace: ceph-csi
-```
-
-## Step 4: Create PVC Manifest
-
-Create a PersistentVolumeClaim that binds to the PV:
-
-**File:** `kopia-repository-pvc.yaml`
-
-```yaml
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: kopia
-  namespace: default
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: csi-cephfs-backups-sc
-  volumeName: kopia-repository-pv
-  resources:
-    requests:
-      storage: 20Gi
-```
-
-## Step 5: Apply Manifests and Verify
-
-**Important:** Apply in order - PV first, then PVC
+Use the automated script to reclaim the repository PV/PVC:
 
 ```bash
-# Apply PV
-kubectl apply -f kopia-repository-pv.yaml
-
-# Verify PV is Available
-kubectl get pv kopia-repository-pv
-# Expected: STATUS = Available
-
-# Apply PVC
-kubectl apply -f kopia-repository-pvc.yaml
-
-# Verify PVC is Bound
-kubectl get pvc kopia -n default
-# Expected: STATUS = Bound
-
-# Verify it bound to the correct PV
-kubectl get pvc kopia -n default -o jsonpath='{.spec.volumeName}'
-# Expected: kopia-repository-pv
+# Run the reclaim script
+./scripts/reclaim-kopia-repository.sh
 ```
 
-## Step 6: Let Flux Deploy Kopia
+The script will:
+1. Read the subvolume ID from Git (`kopia-repository-subvolume-secret.yaml`)
+2. Verify ceph-csi is deployed
+3. Create the PersistentVolume pointing to the existing subvolume
+4. Create the PersistentVolumeClaim bound to the PV
+5. Wait for PVC to become Bound
+
+**Example output:**
+```
+=== Kopia Repository PV Reclaim Tool ===
+
+Read from Git:
+  Volume Handle: 0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e
+  Cluster ID:    407036f5-1f73-44ff-ba81-1f219b7a8a64
+  FS Name:       backups
+  Storage Class: csi-cephfs-backups-sc
+
+Creating PersistentVolume...
+✓ PV created
+
+Waiting for PV to become Available...
+persistentvolume/kopia-repository-pv condition met
+
+Creating PersistentVolumeClaim...
+✓ PVC created
+
+Waiting for PVC to become Bound...
+persistentvolumeclaim/kopia condition met
+
+=== Success! ===
+
+Next steps:
+  1. Let Flux deploy the Kopia application
+  2. Verify Kopia connects to repository
+  3. Check Volsync restores start working
+```
+
+### Manual Method (Alternative)
+
+If you prefer to create manifests manually, see the script source at `scripts/reclaim-kopia-repository.sh` for the exact PV/PVC YAML templates.
+
+## Step 4: Let Flux Deploy Kopia
 
 Once the PVC is bound, Flux can deploy the Kopia application:
 
@@ -138,7 +117,7 @@ kubectl logs -n default -l app.kubernetes.io/name=kopia -f
 - Web UI started on port 80
 - Server mode enabled
 
-## Step 7: Verify Repository Contents
+## Step 5: Verify Repository Contents
 
 Access the Kopia web UI and verify the repository contains backups:
 
@@ -151,7 +130,7 @@ kubectl port-forward -n default svc/kopia-app 8080:80
 # Verify snapshots exist for plex, radarr, etc.
 ```
 
-## Step 8: Trigger Volsync Restores
+## Step 6: Trigger Volsync Restores
 
 Once Kopia is running and serving the repository via HTTP, Volsync ReplicationDestination will automatically restore data:
 

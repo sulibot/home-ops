@@ -6,6 +6,7 @@ resources:
   - ./externalsecret.yaml
   - ./kopia-config-pvc.yaml
   - ./kopia-repository-pvc.yaml
+  - ./kopia-repository-subvolume-secret.yaml
   - ./kopia-init-job.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
