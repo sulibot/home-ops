@@ -22,12 +22,18 @@ spec:
             env:
               KOPIA_WEB_ENABLED: true
               KOPIA_WEB_PORT: &port 80
+              KOPIA_PERSIST_CREDENTIALS_ON_CONNECT: "false"
+              KOPIA_CHECK_FOR_UPDATES: "false"
               TZ: America/Los_Angeles
             envFrom:
               - secretRef:
                   name: kopia-secret
             args:
+              - server
+              - start
+              - --insecure
               - --without-password
+              - --address=0.0.0.0:80
             probes:
               liveness: &probes
                 enabled: true

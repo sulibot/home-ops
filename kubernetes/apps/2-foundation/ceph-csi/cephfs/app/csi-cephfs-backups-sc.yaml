@@ -28,6 +28,6 @@ parameters:
   # Prefix for backup volumes
   volumeNamePrefix: "backup-csi-vol-"
 
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
