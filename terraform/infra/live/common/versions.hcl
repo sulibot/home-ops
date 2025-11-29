@@ -3,12 +3,12 @@
 
 locals {
   # Talos versions
-  talos_version      = "v1.11.5"
+  talos_version      = "v1.12.0-beta.0"  # Supports K8s v1.35.0
   talos_platform     = "nocloud"
   talos_architecture = "amd64"
 
   # Kubernetes version (managed by Talos)
-  kubernetes_version = "v1.31.4"
+  kubernetes_version = "v1.35.0"  # MutatingAdmissionPolicy is beta (enabled by default)
 
   # Terraform provider versions
   provider_versions = {
