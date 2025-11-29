@@ -104,28 +104,11 @@ spec:
               }
             },
             JSONPatch{
-              op: "add", path: "/spec/template/spec/containers/0/volumeMounts/-",
-              value: Object.spec.template.spec.containers.volumeMounts{
-                name: "credentials",
-                mountPath: "/credentials",
-                readOnly: true
-              }
-            },
-            JSONPatch{
               op: "add", path: "/spec/template/spec/volumes/-",
               value: Object.spec.template.spec.volumes{
                 name: "repository",
                 persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
                   claimName: "kopia"
-                }
-              }
-            },
-            JSONPatch{
-              op: "add", path: "/spec/template/spec/volumes/-",
-              value: Object.spec.template.spec.volumes{
-                name: "credentials",
-                persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
-                  claimName: "kopia-config"
                 }
               }
             }
