@@ -1,12 +1,26 @@
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ${APP}-config
+  name: "${APP}-config"
+  labels:
+    app.kubernetes.io/name: "${APP}"
+    app.kubernetes.io/component: storage
+    volsync.backube/auto-restore: "true"
 spec:
+  # --- Volume Populator: Auto-restore from ReplicationDestination ---
+  # This PVC will be automatically populated with data from the latest backup
+  # when created. No manual intervention required for disaster recovery.
+  dataSourceRef:
+    kind: ReplicationDestination
+    apiGroup: volsync.backube
+    name: "${APP}-dst"
+
+  # --- Storage configuration ---
   accessModes:
-    - ${VOLSYNC_ACCESSMODES:=ReadWriteMany}
+    - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
+  storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
   resources:
     requests:
-      storage: ${VOLSYNC_CAPACITY:=5Gi}
-  storageClassName: ${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}
+      storage: "${VOLSYNC_CAPACITY:=5Gi}"

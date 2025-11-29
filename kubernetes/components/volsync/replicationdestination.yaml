@@ -21,10 +21,6 @@ spec:
       sourceName: "${APP}"  # Identify which backup source to restore from
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
 
-    # TESTING: Use repositoryPVC like ReplicationSource does for backups
-    # This should enable direct filesystem access that works
-    repositoryPVC: kopia
-
     # PVC configuration
     destinationPVC: "${APP}-config"
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
