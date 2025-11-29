@@ -18,7 +18,7 @@ spec:
   kopia:
     repository: "${APP}-volsync-secret"
     sourceIdentity:
-      sourceName: "${APP}"  # Identify which backup source to restore from
+      sourceName: "${APP}-src"  # Must match ReplicationSource name (not just app name)
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
 
     # PVC configuration
