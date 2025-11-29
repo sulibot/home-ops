@@ -7,17 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: "${APP}"
     app.kubernetes.io/component: storage
-    volsync.backube/auto-restore: "true"
 spec:
-  # --- Volume Populator: Auto-restore from ReplicationDestination ---
-  # This PVC will be automatically populated with data from the latest backup
-  # when created. No manual intervention required for disaster recovery.
-  dataSourceRef:
-    kind: ReplicationDestination
-    apiGroup: volsync.backube
-    name: "${APP}-dst"
-
-  # --- Storage configuration ---
   accessModes:
     - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
   storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
