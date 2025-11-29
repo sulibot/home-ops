@@ -10,10 +10,9 @@ metadata:
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   # --- Trigger behavior ---------------------------------------------------
-  # Volume populator mode: PVC references this ReplicationDestination via dataSourceRef
-  # Restore is triggered automatically when PVC is created, no manual trigger needed
+  # Manual restore trigger - test automated PVC restoration
   trigger:
-    schedule: "0 */6 * * *"  # Sync every 6 hours to update latestImage for volume populator
+    manual: restore-once
 
   # --- Kopia restore configuration ----------------------------------------
   kopia:
@@ -22,14 +21,18 @@ spec:
       sourceName: "${APP}"  # Identify which backup source to restore from
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
 
-    # Volume populator mode: Creates volumeSnapshot, PVC uses dataSourceRef to this ReplicationDestination
-    # No destinationPVC - PVCs reference this resource instead
+    # TESTING: Use repositoryPVC like ReplicationSource does for backups
+    # This should enable direct filesystem access that works
+    repositoryPVC: kopia
+
+    # PVC configuration
+    destinationPVC: "${APP}-config"
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
     accessModes:
       - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
     capacity: "${VOLSYNC_CAPACITY:=5Gi}"
 
-    # Snapshot integration - critical for volume populator
+    # Snapshot integration
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:=csi-cephfs-config-snapclass}"
 
     # Cache configuration
