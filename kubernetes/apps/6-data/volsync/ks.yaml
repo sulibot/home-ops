@@ -24,6 +24,12 @@ spec:
     namespace: flux-system
   targetNamespace: volsync-system
   wait: true
+  # Health check: Ensure MutatingAdmissionPolicy API is available before applying resources
+  healthChecks:
+    - apiVersion: apiregistration.k8s.io/v1
+      kind: APIService
+      name: v1beta1.admissionregistration.k8s.io
+      namespace: ""
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
