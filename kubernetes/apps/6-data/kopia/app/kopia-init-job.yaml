@@ -38,16 +38,27 @@ spec:
                 exit 0
               fi
 
-              # Connect to existing repository
-              echo "Connecting to existing Kopia repository..."
-              kopia repository connect filesystem \
+              # Try to connect to existing repository, or create new one
+              echo "Attempting to connect to existing Kopia repository..."
+              if ! kopia repository connect filesystem \
                 --path=/repository \
                 --password="$KOPIA_PASSWORD" \
                 --config-file=/config/repository.config \
                 --override-hostname=volsync.volsync-system.svc.cluster.local \
-                --override-username=volsync
+                --override-username=volsync 2>&1; then
 
-              echo "Repository connected successfully"
+                echo "Repository not found, creating new repository..."
+                kopia repository create filesystem \
+                  --path=/repository \
+                  --password="$KOPIA_PASSWORD" \
+                  --config-file=/config/repository.config \
+                  --override-hostname=volsync.volsync-system.svc.cluster.local \
+                  --override-username=volsync
+
+                echo "Repository created successfully"
+              else
+                echo "Repository connected successfully"
+              fi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
