@@ -30,3 +30,7 @@ spec:
       kind: Secret
       name: sops-age
       namespace: flux-system
+    - apiVersion: v1
+      kind: Secret
+      name: csi-ceph-admin-secret
+      namespace: ceph-csi
