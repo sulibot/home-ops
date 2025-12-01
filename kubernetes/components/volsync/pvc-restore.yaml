@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+#
+# STRICT RESTORE MODE (Opt-Out)
+#
+# This file is NOT included by default in the volsync component.
+# Use this when you need to enforce that apps ONLY start if a backup exists.
+#
+# To use this for a specific app:
+#   1. Copy this file to the app directory (e.g., kubernetes/apps/7-applications/myapp/app/)
+#   2. Rename it to pvc.yaml
+#   3. Add it to the app's kustomization.yaml resources list
+#   4. This will override the default fallback PVC from the volsync component
+#
+# Behavior:
+#   - PVC creation BLOCKS until ReplicationDestination completes restore
+#   - If no backup exists, PVC stays in Pending state indefinitely
+#   - App cannot start until restore succeeds
+#   - Use for critical apps where empty data is unacceptable
+#
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "${APP}-config"
+  labels:
+    app.kubernetes.io/name: "${APP}"
+    app.kubernetes.io/component: storage
+    volsync.backube/auto-restore: "true"
+spec:
+  # --- Volume Populator: BLOCKS until restore completes ---
+  dataSourceRef:
+    kind: ReplicationDestination
+    apiGroup: volsync.backube
+    name: "${APP}-dst"
+
+  # --- Storage configuration ---
+  accessModes:
+    - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
+  storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
+  resources:
+    requests:
+      storage: "${VOLSYNC_CAPACITY:=5Gi}"
