@@ -101,3 +101,6 @@ ansible.log
 
 # Generated Talos configs
 talos/clusters/**/talconfig.rendered.yaml
+
+# Talos build output (large binary files)
+talos/_out/
