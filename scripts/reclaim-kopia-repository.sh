@@ -75,7 +75,7 @@ metadata:
   name: kopia-repository-pv
 spec:
   capacity:
-    storage: 20Gi
+    storage: 200Gi
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
@@ -117,7 +117,7 @@ spec:
   volumeName: kopia-repository-pv
   resources:
     requests:
-      storage: 20Gi
+      storage: 200Gi
 EOF
 
 echo "✓ PVC created"
