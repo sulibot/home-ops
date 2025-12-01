@@ -1,0 +1,41 @@
+# talhelper configuration file for cluster-101
+---
+clusterName: sol-101
+talosVersion: v1.7.5 # Match this with your var.talos_version
+kubernetesVersion: v1.30.2
+
+# This endpoint must match the VIP you have defined in your terragrunt variables
+endpoint: https://fd00:101::ac:6443
+
+# Define node-specific IPs. These must match the IPs in your Terraform/Terragrunt variables.
+nodes:
+  - hostname: sol101-cp01
+    ipAddress: fd00:101::11
+    controlPlane: true
+  - hostname: sol101-cp02
+    ipAddress: fd00:101::12
+    controlPlane: true
+  - hostname: sol101-cp03
+    ipAddress: fd00:101::133
+    controlPlane: true
+  - hostname: sol101-wk01
+    ipAddress: fd00:101::21
+    worker: true
+  - hostname: sol101-wk02
+    ipAddress: fd00:101::22
+    worker: true
+
+# Define the patches that will be applied to all nodes.
+# This replaces the large --config-patch block from the script.
+controlPlane:
+  patches:
+    - "@./patches/network-config.yaml"
+    - "@./patches/cluster-discovery.yaml"
+worker:
+  patches:
+    - "@./patches/network-config.yaml"
+
+# This will generate the client config (talosconfig) and secrets.
+client:
+  patches:
+    - "@./patches/secrets.yaml"

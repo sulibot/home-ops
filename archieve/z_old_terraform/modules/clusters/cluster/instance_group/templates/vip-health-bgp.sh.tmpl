@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+%{ if enable_ipv6 ~}
+VIP6="${vip_ipv6_loopback_ip}/128"
+CHECK_URL_V6="https://[${egress_ipv6_iface_ip}]:6443/readyz"
+%{ endif ~}
+%{ if enable_ipv4 ~}
+VIP4="${vip_ipv4_loopback_ip}/32"
+CHECK_URL_V4="https://${egress_ipv4_iface_ip}:6443/readyz"
+%{ endif ~}
+
+CURL="curl --fail --silent --show-error --max-time 1"
+CACERT="/etc/kubernetes/pki/ca.crt"
+INTERVAL=1        # seconds between checks
+FALL=3            # withdraw after N consecutive failures
+RISE=2            # advertise after M consecutive passes
+
+# -------------------------
+# Helpers to manage VIP(s)
+# -------------------------
+%{ if enable_ipv6 ~}
+have6(){ ip -6 addr show to "$VIP6" | grep -q inet6; }
+add6(){
+  while read -r iface; do
+    [[ -z "$iface" ]] && continue
+    ip -6 addr del "$VIP6" dev "$iface" 2>/dev/null || true
+  done < <(ip -6 addr show to "$VIP6" | awk '/inet6/ {print $NF}' | sort -u || true)
+  ip -6 addr replace "$VIP6" dev lo
+}
+del6(){
+  while read -r iface; do
+    [[ -z "$iface" ]] && continue
+    ip -6 addr del "$VIP6" dev "$iface" 2>/dev/null || true
+  done < <(ip -6 addr show to "$VIP6" | awk '/inet6/ {print $NF}' | sort -u || true)
+}
+%{ endif ~}
+
+%{ if enable_ipv4 ~}
+have4(){ ip -4 addr show to "$VIP4" | grep -q 'inet '; }
+add4(){
+  while read -r iface; do
+    [[ -z "$iface" ]] && continue
+    ip -4 addr del "$VIP4" dev "$iface" 2>/dev/null || true
+  done < <(ip -4 addr show to "$VIP4" | awk '/inet / {print $NF}' | sort -u || true)
+  ip -4 addr replace "$VIP4" dev lo
+}
+del4(){
+  while read -r iface; do
+    [[ -z "$iface" ]] && continue
+    ip -4 addr del "$VIP4" dev "$iface" 2>/dev/null || true
+  done < <(ip -4 addr show to "$VIP4" | awk '/inet / {print $NF}' | sort -u || true)
+}
+%{ endif ~}
+
+# -------------------------
+# Health check (TLS-validated)
+# -------------------------
+is_up() {
+  [[ -f "$CACERT" ]] || return 1
+%{ if enable_ipv6 ~}
+  if $CURL --cacert "$CACERT" "$CHECK_URL_V6" >/dev/null 2>&1; then return 0; fi
+%{ endif ~}
+%{ if enable_ipv4 ~}
+  if $CURL --cacert "$CACERT" "$CHECK_URL_V4" >/dev/null 2>&1; then return 0; fi
+%{ endif ~}
+  return 1
+}
+
+apply_state() {
+  local desired="$1"  # up|down
+%{ if enable_ipv6 ~}
+  if [[ "$desired" == "up" ]]; then have6 || add6; else have6 && del6; fi
+%{ endif ~}
+%{ if enable_ipv4 ~}
+  if [[ "$desired" == "up" ]]; then have4 || add4; else have4 && del4; fi
+%{ endif ~}
+}
+
+printf '[vip-health-bgp] starting: FALL=%s RISE=%s INTERVAL=%ss\n' "$FALL" "$RISE" "$INTERVAL"
+
+# Start withdrawn (delete VIPs from any iface)
+%{ if enable_ipv6 ~}del6 || true
+%{ endif ~}
+%{ if enable_ipv4 ~}del4 || true
+%{ endif ~}
+
+state="down"
+fails=0
+passes=0
+
+# Wait for CA (fail-closed); log once after 120s, keep VIPs withdrawn
+wait_max=120
+waited=0
+warned=0
+until [ -f "$CACERT" ]; do
+  if [ $waited -ge $wait_max ] && [ $warned -eq 0 ]; then
+    printf '[vip-health-bgp] WARN: waited %ss for %s; VIP(s) withdrawn and remaining DOWN until it appears\n' "$wait_max" "$CACERT"
+%{ if enable_ipv6 ~}del6 || true
+%{ endif ~}
+%{ if enable_ipv4 ~}del4 || true
+%{ endif ~}
+    warned=1
+  fi
+  sleep 1
+  waited=$((waited+1))
+done
+
+# Main loop
+while true; do
+  if is_up; then
+    passes=$((passes+1)); fails=0
+    if [[ "$state" != "up" && $passes -ge $RISE ]]; then
+      apply_state up; state="up"
+      echo "[vip-health-bgp] STATE -> UP (advertising)"
+    fi
+  else
+    fails=$((fails+1)); passes=0
+    if [[ "$state" != "down" && $fails -ge $FALL ]]; then
+      apply_state down; state="down"
+      echo "[vip-health-bgp] STATE -> DOWN (withdrawn)"
+    fi
+  fi
+  sleep "$INTERVAL"
+done
+    

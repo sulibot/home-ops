@@ -1,0 +1,455 @@
+#cloud-config
+
+# Standard logging location
+output:
+  all: '| tee -a /var/log/cloud-init-output.log'
+
+preserve_hostname: false
+hostname: ${hostname}
+fqdn: ${hostname}.sulibot.com
+manage_etc_hosts: false
+
+system_info:
+  network:
+    renderers: ['netplan']
+
+packages:
+  - irqbalance
+  - ethtool
+
+write_files:
+
+  # --- sysctls (IP Forwarding) ---
+  - path: /etc/sysctl.d/99-custom.conf
+    permissions: '0644'
+    content: |
+%{ if enable_ipv6 ~}
+      net.ipv6.conf.all.forwarding=1
+%{ endif ~}
+%{ if enable_ipv4 ~}
+      net.ipv4.ip_forward=1
+%{ endif ~}
+
+  # --- Make SSH wait for cloud-config to complete ---
+  - path: /etc/systemd/system/ssh.service.d/override.conf
+    permissions: '0644'
+    content: |
+      [Unit]
+      After=cloud-config.service
+      Wants=cloud-config.service
+
+  # --- Performance and network tuning ---
+  - path: /etc/sysctl.d/99-performance.conf
+    permissions: '0644'
+    content: |
+      # Network performance tuning
+      net.core.rmem_default = 262144
+      net.core.rmem_max = 16777216
+      net.core.wmem_default = 262144
+      net.core.wmem_max = 16777216
+      net.core.netdev_max_backlog = 5000
+      net.core.netdev_budget = 600
+      
+      # TCP tuning
+      net.ipv4.tcp_rmem = 4096 65536 16777216
+      net.ipv4.tcp_wmem = 4096 65536 16777216
+      net.ipv4.tcp_congestion_control = bbr
+      net.ipv4.tcp_slow_start_after_idle = 0
+      
+      # BGP/FRR specific
+      net.ipv4.tcp_keepalive_time = 30
+      net.ipv4.tcp_keepalive_probes = 5
+      net.ipv4.tcp_keepalive_intvl = 15
+      
+%{ if enable_ipv6 ~}
+      # IPv6 optimizations
+      net.ipv6.conf.all.use_tempaddr = 0
+      net.ipv6.conf.default.use_tempaddr = 0
+      net.ipv6.route.max_size = 16384
+%{ endif ~}
+      
+      # Virtual memory for databases/etcd
+      vm.swappiness = 10
+      vm.dirty_ratio = 15
+      vm.dirty_background_ratio = 5
+
+  # --- hosts (only write entries for enabled stacks) ---
+  - path: /etc/hosts
+    permissions: '0644'
+    content: |
+      127.0.0.1 localhost
+      ::1 localhost ip6-localhost ip6-loopback
+      ff02::1 ip6-allnodes
+      ff02::2 ip6-allrouters
+%{ if enable_ipv4 ~}
+      ${vip_ipv4_loopback_ip} ${hostname}.sulibot.com ${hostname}
+      ${mesh_ipv4_loopback_id_ip} ${hostname}-mesh.sulibot.com ${hostname}-mesh
+      ${egress_ipv4_loopback_id_ip} ${hostname}-egress.sulibot.com ${hostname}-egress
+%{ endif ~}
+%{ if enable_ipv6 ~}
+      ${vip_ipv6_loopback_ip} ${hostname}.sulibot.com ${hostname}
+      ${mesh_ipv6_loopback_id_ip} ${hostname}-mesh.sulibot.com ${hostname}-mesh
+      ${egress_ipv6_loopback_id_ip} ${hostname}-egress.sulibot.com ${hostname}-egress
+%{ endif ~}
+
+  # --- FRR config (rendered separately; leave as-is) ---
+  - path: /etc/frr/frr.conf
+    permissions: '0644'
+    content: |
+      ${indent(6, frr_conf)}
+
+  # --- FRR daemon configuration with performance options ---
+  - path: /etc/frr/daemons
+    permissions: '0644'
+    content: |
+      ${indent(6, daemons_conf)}
+
+
+  # --- CPU governor and power management ---
+  - path: /etc/systemd/system/performance-mode.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Set CPU to performance mode
+      After=multi-user.target
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/bash -c 'for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do if [ -f "$cpu" ]; then echo performance > "$cpu"; fi; done'
+      RemainAfterExit=yes
+      
+      [Install]
+      WantedBy=multi-user.target
+
+  # --- Irqbalance configuration for better interrupt handling ---
+  - path: /etc/default/irqbalance
+    permissions: '0644'
+    content: |
+      IRQBALANCE_ONESHOT=0
+      IRQBALANCE_BANNED_CPUS=""
+      IRQBALANCE_ARGS="--hintpolicy=exact"
+
+  # --- BGP monitoring script (requires 'jq') ---
+  - path: /usr/local/bin/bgp-monitor.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # BGP health monitoring
+      
+      check_bgp_sessions() {
+          local output=$(vtysh -c "show bgp summary json" 2>/dev/null)
+          if [ $? -eq 0 ]; then
+              # Find peers that are not in 'Established' state
+              echo "$output" | jq -r '.ipv4Unicast.peers // empty | to_entries[] | select(.value.state != "Established") | .key' 2>/dev/null || true
+              echo "$output" | jq -r '.ipv6Unicast.peers // empty | to_entries[] | select(.value.state != "Established") | .key' 2>/dev/null || true
+          fi
+      }
+      
+      monitor_routes() {
+%{ if enable_ipv4 ~}
+          local default_v4=$(ip route | grep "default" | wc -l)
+          if [ $default_v4 -eq 0 ]; then
+              logger -p daemon.warning "No IPv4 default route available"
+          fi
+%{ endif ~}
+%{ if enable_ipv6 ~}
+          local default_v6=$(ip -6 route | grep "default" | wc -l)
+          if [ $default_v6 -eq 0 ]; then
+              logger -p daemon.warning "No IPv6 default route available"
+          fi
+%{ endif ~}
+      }
+      
+      # Main monitoring loop
+      failed_peers=$(check_bgp_sessions)
+      if [ -n "$failed_peers" ]; then
+          logger -p daemon.error "BGP peers down: $failed_peers"
+      fi
+      
+      monitor_routes
+
+  # --- Systemd service for BGP monitoring ---
+  - path: /etc/systemd/system/bgp-monitor.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=BGP Session Monitor
+      After=frr.service
+      Requires=frr.service
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/bgp-monitor.sh
+      User=frr n
+      Group=frr
+
+  - path: /etc/systemd/system/bgp-monitor.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Run BGP monitor every 30 seconds
+      
+      [Timer]
+      OnBootSec=60
+      OnUnitActiveSec=30
+      AccuracySec=5s
+      
+      [Install]
+      WantedBy=timers.target
+
+  # --- VIP health routing script (replaces kube-vip) ---
+  - path: /usr/local/sbin/vip-health-bgp.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, vip_health_bgp_sh)}
+
+  - path: /etc/systemd/system/vip-health-bgp.service
+    permissions: '0644'
+    content: |
+      ${indent(6, vip_health_bgp_service)}
+
+  # --- BGP session verification ---
+  - path: /usr/local/bin/wait-for-bgp.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # Wait for BGP sessions to establish
+      
+      TIMEOUT=300  # 5 minutes
+      ELAPSED=0
+      
+      echo "Waiting for BGP sessions to establish..."
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+%{ if enable_ipv4 ~}
+        if vtysh -c "show bgp summary json" 2>/dev/null | jq -e '.ipv4Unicast.peers | to_entries[] | select(.value.state == "Established")' >/dev/null 2>&1; then
+          echo "IPv4 BGP sessions established"
+          exit 0
+        fi
+%{ endif ~}
+%{ if enable_ipv6 ~}
+        if vtysh -c "show bgp summary json" 2>/dev/null | jq -e '.ipv6Unicast.peers | to_entries[] | select(.value.state == "Established")' >/dev/null 2>&1; then
+          echo "IPv6 BGP sessions established"
+          exit 0
+        fi
+%{ endif ~}
+        sleep 5
+        ELAPSED=$((ELAPSED + 5))
+        echo "Still waiting... ($ELAPSED/$TIMEOUT seconds)"
+      done
+      
+      echo "WARNING: BGP sessions did not establish within $TIMEOUT seconds"
+      vtysh -c "show bgp summary"
+      exit 1
+
+  # --- Disk space monitoring ---
+  - path: /usr/local/bin/disk-monitor.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      THRESHOLD=85
+      
+      df -h | awk 'NR>1 {print $5 " " $6}' | while read usage mount; do
+        usage_num=$${usage%\%}
+        if [ "$usage_num" -gt "$THRESHOLD" ]; then
+          logger -p daemon.warning "Disk usage on $mount is at $usage"
+        fi
+      done
+
+  - path: /etc/systemd/system/disk-monitor.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Disk Usage Monitor
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/disk-monitor.sh
+
+  - path: /etc/systemd/system/disk-monitor.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Monitor disk usage
+      
+      [Timer]
+      OnBootSec=5min
+      OnUnitActiveSec=15min
+      
+      [Install]
+      WantedBy=timers.target
+
+  # --- SR-IOV verification helper ---
+  - path: /usr/local/bin/verify-sriov.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      echo "=== SR-IOV Verification ==="
+      
+      # Check module loaded
+      if lsmod | grep -q i915; then
+        echo "✓ i915 module: LOADED"
+      else
+        echo "✗ i915 module: NOT LOADED"
+        exit 1
+      fi
+      
+      # Check DKMS status
+      if dkms status | grep -q "i915-sriov.*installed"; then
+        echo "✓ DKMS status: INSTALLED"
+      else
+        echo "✗ DKMS status: NOT FOUND"
+        exit 1
+      fi
+      
+      # Check VF creation capability
+      if [ -f /sys/class/drm/card0/device/sriov_numvfs ]; then
+        echo "✓ SR-IOV capable: YES"
+        echo "  Max VFs: $(cat /sys/class/drm/card0/device/sriov_totalvfs 2>/dev/null || echo 'unknown')"
+      else
+        echo "✗ SR-IOV capable: NO"
+        exit 1
+      fi
+      
+      echo "==========================="
+      echo "SR-IOV is properly configured"
+
+  # --- MOTD with system info ---
+  - path: /etc/update-motd.d/99-custom-info
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      echo "=================================="
+      echo "Hostname: $(hostname)"
+      echo "Role: ${role}"
+      echo "Cluster: ${cluster_name}"
+      echo ""
+      echo "SR-IOV: $(lsmod | grep -q i915 && echo "✓ Loaded" || echo "✗ Not loaded")"
+      echo "BGP: $(vtysh -c 'show bgp summary' 2>/dev/null | grep -q 'Established' && echo "✓ Up" || echo "✗ Down")"
+%{ if role == "control-plane" ~}
+      echo "VIP: $(ip addr show lo | grep -q "${vip_ipv4_loopback_ip}" && echo "✓ Active" || echo "✗ Inactive")"
+%{ endif ~}
+      echo "=================================="
+
+  # --- Extra Netplan routes for Ceph and cluster networking ---
+  # eth0 = cluster network (P2P ring via EVPN, fast 25Gb)
+  # eth1 = management/egress (ROS, slower 2.5Gb)
+  - path: /etc/netplan/60-pbr-routes.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            accept-ra: false
+%{ if enable_ipv6 ~}
+            routes:
+              # Ceph public network via P2P gateway
+              - to: fc00:20::/64
+                via: ${mesh_ipv6_iface_gateway}
+                on-link: true
+                metric: 100
+              # Ceph cluster network via P2P gateway
+              - to: fc00:21::/64
+                via: ${mesh_ipv6_iface_gateway}
+                on-link: true
+                metric: 100
+%{ endif ~}
+          eth1:
+            accept-ra: true
+          lo:
+            addresses:
+%{ if enable_ipv6 ~}
+              # Egress loopback for both FRR and Cilium external BGP
+              - ${egress_ipv6_loopback_id_ip}/128
+%{ endif ~}
+
+%{ if enable_ipv6 }
+  # --- Enable IPv6 autoconfiguration for GUA while preserving static ULA ---
+  # We have static ULA addresses that must not change for etcd certs.
+  # But we also need GUA addresses from prefix delegation for internet access on eth1.
+  # Solution: Enable autoconf and accept_ra on eth1 (management/egress).
+  - path: /etc/sysctl.d/99-ipv6-ra.conf
+    permissions: '0644'
+    content: |
+      # Accept RAs on management interface (eth1) even with forwarding enabled
+      net.ipv6.conf.eth1.accept_ra = 2
+      # Enable SLAAC for GUA prefixes on management interface
+      net.ipv6.conf.eth1.autoconf = 1
+      # Disable RA on cluster interface (eth0)
+      net.ipv6.conf.eth0.accept_ra = 0
+      net.ipv6.conf.eth0.autoconf = 0
+%{ endif }
+
+runcmd:
+  # Disable DKMS service since drivers are pre-built in template
+  - systemctl disable dkms.service
+  - systemctl mask dkms.service
+  
+  # Apply systemd overrides and reload daemon
+  - mkdir -p /etc/systemd/system/ssh.service.d
+  - systemctl daemon-reload
+  
+  # Apply system configuration
+  - sysctl --system
+  - mkdir -p /etc/systemd/network/10-netplan-eth0.network.d
+  - chmod 600 /etc/netplan/60-extra.yaml
+  - chmod 600 /etc/netplan/50-cloud-init.yaml || true
+  - netplan generate
+  - netplan apply
+  
+  # Apply performance optimizations
+  - systemctl enable performance-mode.service
+  - systemctl start performance-mode.service
+  
+  # Tune network interface queues
+  - |
+    for iface in eth0 eth1; do
+      if [ -d "/sys/class/net/$iface/queues" ]; then
+        # Set multi-queue for virtio
+        ethtool -L $iface combined $(nproc) 2>/dev/null || true
+        # Enable adaptive interrupt coalescing (separate commands)
+        ethtool -C $iface adaptive-rx on 2>/dev/null || true
+        ethtool -C $iface adaptive-tx on 2>/dev/null || true
+      fi
+    done
+  
+  # Restart irqbalance with new config
+  - systemctl restart irqbalance
+  
+  # Start FRR with performance settings
+  - systemctl enable frr
+  - systemctl restart frr
+  
+  # Wait for BGP to establish
+  - sleep 15
+  - /usr/local/bin/wait-for-bgp.sh || echo "BGP verification failed - will retry via monitoring"
+  
+  # Enable monitoring services
+  - systemctl enable bgp-monitor.timer
+  - systemctl start bgp-monitor.timer
+  - systemctl enable disk-monitor.timer
+  - systemctl start disk-monitor.timer
+  - systemctl enable vip-health-bgp.service
+  - systemctl start vip-health-bgp.service
+  
+  # Generate SSH host keys and start SSH service
+  - ssh-keygen -A
+  - systemctl enable ssh
+  - systemctl start ssh
+  
+  # Check initial status and log completion
+  - sleep 10
+  - journalctl -u frr -n 50 --no-pager
+  - systemctl status bgp-monitor.timer --no-pager
+  - systemctl status ssh --no-pager
+  
+  # Clean cloud-init after successful first boot
+  - cloud-init clean --logs
+  
+  # Log completion
+  - echo "Cloud-init runcmd section completed successfully"
+  
+  # --- FINAL BLOCKING STEP FOR TERRAFORM ---
+  # Set a guest agent property to signal cloud-init is fully done, which Terraform polls for.
+  - /usr/bin/qemu-ga guest-set-status cloudinit_status=complete || logger -p daemon.warning "Failed to set QEMU GA status (is the agent running?)"

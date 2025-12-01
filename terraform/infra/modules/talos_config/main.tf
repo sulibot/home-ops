@@ -127,6 +127,16 @@ data "talos_machine_configuration" "controlplane" {
           ]
         )
       }
+    }),
+    # Separate patch for API server extraArgs (must be separate to work with Talos provider)
+    yamlencode({
+      cluster = {
+        apiServer = {
+          extraArgs = {
+            "runtime-config" = "admissionregistration.k8s.io/v1beta1=true"
+          }
+        }
+      }
     })
   ]
 }

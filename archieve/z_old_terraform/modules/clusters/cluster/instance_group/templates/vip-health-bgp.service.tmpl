@@ -1,0 +1,49 @@
+[Unit]
+Description=Health-gated VIP advertiser (FRR via connected-redistribute)
+Documentation=man:systemd.service(5)
+After=network-online.target frr.service
+Wants=network-online.target frr.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/vip-health-bgp.sh
+
+# Ensure VIPs are closed on stop (safe if not present)
+%{ if enable_ipv6 ~}
+ExecStopPost=/bin/sh -c 'ip -6 addr show dev lo to ${vip_ipv6_loopback_ip}/128 >/dev/null 2>&1 && ip -6 addr del ${vip_ipv6_loopback_ip}/128 dev lo || true'
+%{ endif ~}
+%{ if enable_ipv4 ~}
+ExecStopPost=/bin/sh -c 'ip -4 addr show dev lo to ${vip_ipv4_loopback_ip}/32  >/dev/null 2>&1 && ip -4 addr del ${vip_ipv4_loopback_ip}/32  dev lo || true'
+%{ endif ~}
+
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=30
+StartLimitBurst=10
+
+User=root
+Group=root
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW CAP_DAC_READ_SEARCH
+LockPersonality=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectHostname=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/run
+
+TimeoutStartSec=0
+TimeoutStopSec=10
+KillMode=process
+KillSignal=SIGTERM
+
+SyslogLevel=info
+SyslogIdentifier=vip-health-bgp
+
+[Install]
+WantedBy=multi-user.target

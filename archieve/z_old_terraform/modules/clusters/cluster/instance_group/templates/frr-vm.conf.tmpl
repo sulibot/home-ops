@@ -1,0 +1,112 @@
+# =============================
+# VM FRR TEMPLATE (K8s nodes) — IS-IS + BGP
+# - IS-IS: Infrastructure routing (loopbacks)
+# - FRR BGP: K8s VIP health-checked advertisement
+# - Cilium BGP: Pod CIDRs and LoadBalancer services (handled by Cilium)
+# - FRR 10.3.x+ with datacenter defaults
+# =============================
+
+frr version 10.3
+frr defaults datacenter
+hostname ${hostname}
+log syslog informational
+service integrated-vtysh-config
+!
+
+! ---------- Route Maps & Prefix Lists (BGP VIP Advertisement) ----------
+%{ if enable_ipv6 }
+ipv6 prefix-list VIP-v6 seq 10 permit ${vip_ipv6_loopback_ip}/128
+!
+route-map EXPORT-VIP-v6 permit 10
+ match ipv6 address prefix-list VIP-v6
+ set community ${vm_asn}:100
+exit
+!
+route-map EXPORT-VIP-v6 deny 90
+exit
+!
+ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
+!
+route-map IMPORT-DEFAULT-v6 permit 10
+ match ipv6 address prefix-list DEFAULT-ONLY-v6
+exit
+!
+route-map IMPORT-DEFAULT-v6 deny 90
+exit
+!
+%{ endif }
+
+! ---------- Loopback Interface (Node ID for IS-IS) ----------
+interface lo
+%{ if enable_ipv4 }
+ ip address ${egress_ipv4_loopback_id_ip}/32
+ ip router isis core
+%{ endif }
+%{ if enable_ipv6 }
+ ipv6 address ${egress_ipv6_loopback_id_ip}/128
+ ipv6 router isis core
+%{ endif }
+ isis passive
+exit
+!
+
+! ---------- Cluster Network Interface (P2P Ring via EVPN) ----------
+interface eth0
+%{ if enable_ipv4 }
+ ip router isis core
+%{ endif }
+%{ if enable_ipv6 }
+ ipv6 router isis core
+%{ endif }
+ isis circuit-type level-2-only
+ isis hello-interval 5
+ isis hello-multiplier 3
+ isis metric 10
+exit
+!
+
+! ---------- Management/Egress Interface (BGP Peering Only) ----------
+interface eth1
+ ! No routing protocols - BGP peering via loopback update-source
+exit
+!
+
+! ---------- IS-IS (core) Configuration ----------
+router isis core
+ net 49.0001.${format("%04x", cluster_id)}.${format("%04x", vm_asn)}.${format("%04x", segment_id)}.00
+ is-type level-2
+ metric-style wide
+ ! Optional tuning:
+ ! spf-interval 50 200 500
+ ! lsp-gen-interval 20
+ ! log-adjacency-changes
+exit
+!
+
+! ---------- BGP Configuration (VIP Advertisement Only) ----------
+router bgp ${vm_asn}
+ bgp router-id ${router_id}
+ no bgp default ipv4-unicast
+ bgp graceful-restart
+ timers bgp 10 30
+%{ if enable_ipv6 }
+ neighbor ${egress_ipv6_iface_gateway} remote-as ${ros_asn}
+ neighbor ${egress_ipv6_iface_gateway} timers connect 5
+ neighbor ${egress_ipv6_iface_gateway} port ${bgp_port}
+ ! Using loopback as update-source with eBGP multihop to peer with ROS vlan interface:
+ neighbor ${egress_ipv6_iface_gateway} update-source ${egress_ipv6_loopback_id_ip}
+ neighbor ${egress_ipv6_iface_gateway} ebgp-multihop 2
+ no neighbor ${egress_ipv6_iface_gateway} passive
+ !
+ address-family ipv6 unicast
+  redistribute connected route-map EXPORT-VIP-v6
+  neighbor ${egress_ipv6_iface_gateway} activate
+  neighbor ${egress_ipv6_iface_gateway} route-map IMPORT-DEFAULT-v6 in
+  neighbor ${egress_ipv6_iface_gateway} route-map EXPORT-VIP-v6 out
+  maximum-paths 8
+ exit-address-family
+%{ endif }
+exit
+!
+line vty
+!
