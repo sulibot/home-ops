@@ -19,7 +19,8 @@ spec:
       namespace: flux-system
     - name: volsync
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/6-data/kopia/app
   postBuild:
     substitute:

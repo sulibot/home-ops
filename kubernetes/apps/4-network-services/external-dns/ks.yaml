@@ -15,7 +15,8 @@ spec:
       namespace: flux-system
     - name: external-secrets
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/4-network-services/external-dns/app
   prune: true
   sourceRef:

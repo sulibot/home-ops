@@ -6,7 +6,8 @@ metadata:
   name: snapshot-controller
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/kube-system/snapshot-controller/app
   prune: true
   sourceRef:

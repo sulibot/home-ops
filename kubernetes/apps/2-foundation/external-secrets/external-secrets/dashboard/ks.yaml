@@ -13,7 +13,7 @@ spec:
   dependsOn:
     - name: grafana-instance
       namespace: flux-system
-  interval: 1h
+  interval: 15m
   path: ./kubernetes/apps/2-foundation/external-secrets/external-secrets/dashboard
   prune: true
   sourceRef:

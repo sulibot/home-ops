@@ -3,3 +3,27 @@ kind: Kustomization
 resources:
 - gotk-components.yaml
 - gotk-sync.yaml
+patches:
+  # Increase kustomize-controller concurrency for faster reconciliation
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kustomize-controller
+        namespace: flux-system
+      spec:
+        template:
+          spec:
+            containers:
+            - name: manager
+              args:
+              - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
+              - --watch-all-namespaces=true
+              - --log-level=info
+              - --log-encoding=json
+              - --enable-leader-election
+              - --concurrent=10
+              - --requeue-dependency=5s
+    target:
+      kind: Deployment
+      name: kustomize-controller

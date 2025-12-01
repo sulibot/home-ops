@@ -18,7 +18,8 @@ spec:
       namespace: flux-system
     - name: volsync
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/7-applications/sabnzbd/app
   postBuild:
     substitute:

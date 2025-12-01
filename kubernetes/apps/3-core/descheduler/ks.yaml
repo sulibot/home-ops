@@ -13,7 +13,8 @@ spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/3-core/descheduler/app
   prune: true
   sourceRef:

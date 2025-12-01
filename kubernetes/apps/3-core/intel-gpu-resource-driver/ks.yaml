@@ -18,7 +18,8 @@ spec:
       kind: HelmRelease
       name: intel-gpu-resource-driver
       namespace: kube-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/3-core/intel-gpu-resource-driver/app
   prune: true
   sourceRef:

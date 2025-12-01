@@ -13,7 +13,8 @@ spec:
   dependsOn:
     - name: ceph-csi
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/5-observability/victoria-logs/app
   prune: true
   sourceRef:

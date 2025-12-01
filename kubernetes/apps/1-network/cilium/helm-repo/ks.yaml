@@ -8,7 +8,8 @@ metadata:
   name: cilium-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/1-network/cilium/helm-repo
   prune: true
   sourceRef:

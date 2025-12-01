@@ -15,7 +15,8 @@ spec:
       namespace: flux-system
     - name: snapshot-controller
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/6-data/volsync/app
   prune: true
   sourceRef:
@@ -45,7 +46,8 @@ spec:
   dependsOn:
     - name: volsync
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/6-data/volsync/maintenance
   prune: true
   sourceRef:

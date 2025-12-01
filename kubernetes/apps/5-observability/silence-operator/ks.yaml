@@ -10,7 +10,8 @@ metadata:
     component: observability
     critical: "false"
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/5-observability/silence-operator/app
   prune: true
   sourceRef:
@@ -33,7 +34,8 @@ metadata:
 spec:
   dependsOn:
     - name: silence-operator
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/5-observability/silence-operator/silences
   prune: true
   sourceRef:

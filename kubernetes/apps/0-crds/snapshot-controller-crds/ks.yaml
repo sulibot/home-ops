@@ -9,7 +9,8 @@ metadata:
     component: crds
     critical: "true"
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/0-crds/snapshot-controller-crds
   prune: false
   sourceRef:

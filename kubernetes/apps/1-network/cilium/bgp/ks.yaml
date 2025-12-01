@@ -13,7 +13,8 @@ spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/1-network/cilium/bgp
   prune: true
   sourceRef:

@@ -31,7 +31,7 @@ spec:
       kind: ClusterSecretStore
       failed: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'False')
       current: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True')
-  interval: 1h
+  interval: 15m
   path: ./kubernetes/apps/2-foundation/external-secrets/onepassword/app
   prune: true
   sourceRef:

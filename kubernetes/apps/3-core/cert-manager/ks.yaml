@@ -15,7 +15,7 @@ spec:
       namespace: flux-system
     - name: external-secrets
       namespace: flux-system
-  interval: 1h
+  interval: 15m
   path: ./kubernetes/apps/3-core/cert-manager/app
   prune: true
   sourceRef:
@@ -46,7 +46,7 @@ spec:
   dependsOn:
     - name: cert-manager
       namespace: flux-system
-  interval: 1h
+  interval: 15m
   path: ./kubernetes/apps/3-core/cert-manager/issuers
   prune: true
   sourceRef:

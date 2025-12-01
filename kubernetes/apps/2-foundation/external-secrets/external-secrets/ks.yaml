@@ -10,7 +10,7 @@ metadata:
     component: secrets
     critical: "true"
 spec:
-  interval: 1h
+  interval: 15m
   path: ./kubernetes/apps/2-foundation/external-secrets/external-secrets/app
   prune: true
   sourceRef:

@@ -8,7 +8,8 @@ metadata:
   name: ceph-csi-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/2-foundation/ceph-csi/helm-repo
   prune: true
   sourceRef:

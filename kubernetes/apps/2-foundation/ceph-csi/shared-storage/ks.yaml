@@ -9,7 +9,8 @@ metadata:
     component: storage
     critical: "true"
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/2-foundation/ceph-csi/shared-storage/app
   prune: true
   sourceRef:

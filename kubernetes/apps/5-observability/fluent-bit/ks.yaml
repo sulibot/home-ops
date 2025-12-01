@@ -13,7 +13,8 @@ spec:
   dependsOn:
     - name: victoria-logs
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/5-observability/fluent-bit/app
   prune: true
   sourceRef:

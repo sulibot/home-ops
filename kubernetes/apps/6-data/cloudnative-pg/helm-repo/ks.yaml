@@ -6,7 +6,8 @@ metadata:
   name: cloudnative-pg-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/6-data/cloudnative-pg/helm-repo
   prune: true
   sourceRef:

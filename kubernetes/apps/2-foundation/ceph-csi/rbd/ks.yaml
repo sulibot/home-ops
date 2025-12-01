@@ -15,7 +15,8 @@ spec:
       namespace: flux-system
     - name: ceph-csi-shared-secret
       namespace: flux-system
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/2-foundation/ceph-csi/rbd/app
   prune: true
   sourceRef:

@@ -8,7 +8,8 @@ metadata:
   name: cert-manager-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/3-core/cert-manager/helm-repo
   prune: true
   sourceRef:

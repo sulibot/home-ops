@@ -11,6 +11,7 @@ metadata:
     critical: "true"
 spec:
   interval: 10m
+  retryInterval: 30s
   path: ./kubernetes/apps/0-crds/gateway-api-crds
   prune: false
   sourceRef:

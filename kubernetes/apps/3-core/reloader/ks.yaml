@@ -10,7 +10,8 @@ metadata:
     component: core-service
     critical: "true"
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/3-core/reloader/app
   prune: true
   sourceRef:

@@ -8,7 +8,8 @@ metadata:
   name: external-dns-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/4-network-services/external-dns/helm-repo
   prune: true
   sourceRef:
