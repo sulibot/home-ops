@@ -10,7 +10,6 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: csi-cephfs-backups-sc
-  volumeName: kopia-repository-pv
   resources:
     requests:
       storage: 20Gi
