@@ -5,6 +5,7 @@ metadata:
   namespace: network
   labels:
     cilium.io/gateway: "true"
+    bgp-advertise: "true"
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
 spec:
