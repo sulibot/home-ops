@@ -14,6 +14,12 @@ spec:
   # addresses:
   #   - type: IPAddress
   #     value: fd00:101:1b::11
+  infrastructure:
+    labels:
+      # Workaround for Cilium bug where Gateway LoadBalancer IPs aren't advertised
+      # https://github.com/cilium/cilium/issues/41680
+      # These labels are copied to the auto-generated LoadBalancer service
+      advertise: loadbalancer
   listeners:
     - name: sulibot-https
       hostname: sulibot.com
