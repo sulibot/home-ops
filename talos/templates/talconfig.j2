@@ -193,6 +193,8 @@ nodes:
               bind-address: "::"
               # Advertise the primary IPv6 VIP to cluster components
               advertise-address: "{{ control_plane_vip }}"
+              # Enable MutatingAdmissionPolicy feature gate (beta in v1.34+, may need explicit enable in alpha releases)
+              feature-gates: "MutatingAdmissionPolicy=true"
             admissionControl:
               # Enable MutatingAdmissionWebhook for volsync and other operators
               - name: PodSecurity
