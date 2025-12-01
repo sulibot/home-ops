@@ -3,7 +3,7 @@ include "root" {
 }
 
 dependency "talos_config" {
-  config_path = "../talos-config"
+  config_path = "../5-machine-config-generate"
 
   mock_outputs = {
     talosconfig          = "mock"

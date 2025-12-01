@@ -3,7 +3,7 @@ include "root" {
 }
 
 dependency "image" {
-  config_path = "../image"
+  config_path = "../3-boot-iso-upload"
 
   # Provide mocks so `plan` can run without first applying the image stack.
   mock_outputs = {

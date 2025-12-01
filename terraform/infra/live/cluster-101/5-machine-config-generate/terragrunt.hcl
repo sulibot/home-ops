@@ -4,7 +4,7 @@ include "root" {
 
 # Depend on the nodes module to get VM IP addresses and network configuration
 dependency "nodes" {
-  config_path = "../nodes"
+  config_path = "../talos-vms-create"
 
   mock_outputs = {
     node_ips = {
@@ -30,7 +30,7 @@ dependency "nodes" {
 }
 
 dependency "image" {
-  config_path = "../image"
+  config_path = "../3-boot-iso-upload"
 
   mock_outputs = {
     talos_image_id = "mock-schematic-id"
@@ -39,7 +39,7 @@ dependency "image" {
 }
 
 dependency "install_schematic" {
-  config_path = "../install-schematic"
+  config_path = "../2-talos-schematic-generate"
 
   mock_outputs = {
     schematic_id = "mock-install-schematic-id"
