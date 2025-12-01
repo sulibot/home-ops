@@ -26,10 +26,12 @@ metadata:
     advertise: loadbalancer
 spec:
   advertisements:
-    # Advertise ALL LoadBalancer service IPs via BGP
-    # Note: Cilium Gateway API creates services without custom labels
-    # so we advertise all LoadBalancer IPs instead of using a selector
+    # Advertise LoadBalancer service IPs that have the advertise label
+    # Gateway infrastructure.labels adds this to gateway services automatically
     - advertisementType: Service
       service:
         addresses:
           - LoadBalancerIP
+      selector:
+        matchLabels:
+          advertise: loadbalancer
