@@ -46,7 +46,7 @@ spec:
             JSONPatch{
               op: "add",
               path: "/spec/template/spec/initContainers/-",
-              value: object.spec.template.spec.initContainers[0]{
+              value: Object.spec.template.spec.initContainers{
                 name: "jitter",
                 image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
                 imagePullPolicy: "IfNotPresent",
@@ -101,7 +101,7 @@ spec:
             JSONPatch{
               op: "add",
               path: "/spec/template/spec/containers/0/volumeMounts/-",
-              value: object.spec.template.spec.containers[0].volumeMounts[0]{
+              value: Object.spec.template.spec.containers.volumeMounts{
                 name: "repository",
                 mountPath: "/repository"
               }
@@ -109,9 +109,9 @@ spec:
             JSONPatch{
               op: "add",
               path: "/spec/template/spec/volumes/-",
-              value: object.spec.template.spec.volumes[0]{
+              value: Object.spec.template.spec.volumes{
                 name: "repository",
-                persistentVolumeClaim: object.spec.template.spec.volumes[0].persistentVolumeClaim{
+                persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
                   claimName: "kopia"
                 }
               }
