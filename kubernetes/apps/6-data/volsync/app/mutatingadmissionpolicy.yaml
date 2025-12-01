@@ -38,19 +38,19 @@ spec:
       jsonPatch:
         expression: >-
           [
-            {
-              "op": "add",
-              "path": "/spec/template/spec/initContainers",
-              "value": []
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/initContainers",
+              value: []
             },
-            {
-              "op": "add",
-              "path": "/spec/template/spec/initContainers/-",
-              "value": {
-                "name": "jitter",
-                "image": "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
-                "imagePullPolicy": "IfNotPresent",
-                "command": ["sh", "-c", "sleep $(shuf -i 0-30 -n 1)"]
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/initContainers/-",
+              value: object.spec.template.spec.initContainers[0]{
+                name: "jitter",
+                image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
+                imagePullPolicy: "IfNotPresent",
+                command: ["sh", "-c", "sleep $(shuf -i 0-30 -n 1)"]
               }
             }
           ]
@@ -98,21 +98,21 @@ spec:
       jsonPatch:
         expression: >-
           [
-            {
-              "op": "add",
-              "path": "/spec/template/spec/containers/0/volumeMounts/-",
-              "value": {
-                "name": "repository",
-                "mountPath": "/repository"
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/containers/0/volumeMounts/-",
+              value: object.spec.template.spec.containers[0].volumeMounts[0]{
+                name: "repository",
+                mountPath: "/repository"
               }
             },
-            {
-              "op": "add",
-              "path": "/spec/template/spec/volumes/-",
-              "value": {
-                "name": "repository",
-                "persistentVolumeClaim": {
-                  "claimName": "kopia"
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/volumes/-",
+              value: object.spec.template.spec.volumes[0]{
+                name: "repository",
+                persistentVolumeClaim: object.spec.template.spec.volumes[0].persistentVolumeClaim{
+                  claimName: "kopia"
                 }
               }
             }
