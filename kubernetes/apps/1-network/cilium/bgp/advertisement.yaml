@@ -16,11 +16,10 @@ spec:
           standard:
             - "65101:100"  # Custom community tag (optional)
 
-    # Also advertise service LoadBalancer IPs (for future use)
+    # Advertise ALL LoadBalancer service IPs via BGP
+    # Note: Cilium Gateway API creates services without custom labels
+    # so we advertise all LoadBalancer IPs instead of using a selector
     - advertisementType: Service
       service:
         addresses:
           - LoadBalancerIP
-      selector:
-        matchLabels:
-          bgp-advertise: "true"
