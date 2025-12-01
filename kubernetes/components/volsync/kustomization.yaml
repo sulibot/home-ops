@@ -5,9 +5,8 @@ kind: Component
 resources:
   - ./externalsecret.yaml
   - ./kopia-repository-pvc.yaml
-  # Fallback PVC - Creates empty PVC if ReplicationDestination restore fails
-  # Allows apps to start with empty storage when no backup exists
-  # Apps requiring strict restore can override with pvc-restore.yaml
+  # PVC with dataSourceRef for automatic restore from backups
+  # For manual PVC creation without restore, use pvc-manual.yaml
   - ./pvc.yaml
   - ./replicationdestination.yaml
   - ./replicationsource.yaml

@@ -1,0 +1,66 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+#
+# MANUAL PVC CREATION TEMPLATE
+#
+# Use this when you need to manually create a PVC without waiting for restore.
+# This file is NOT included in the volsync component by default.
+#
+# Usage examples:
+#
+#   1. Quick one-off with heredoc (recommended):
+#      cat <<EOF | kubectl apply -f -
+#      apiVersion: v1
+#      kind: PersistentVolumeClaim
+#      metadata:
+#        name: sonarr-config
+#        namespace: default
+#      spec:
+#        accessModes: [ReadWriteMany]
+#        storageClassName: csi-cephfs-config-sc
+#        resources:
+#          requests:
+#            storage: 10Gi
+#      EOF
+#
+#   2. Using this template (copy values from app's ks.yaml):
+#      # From kubernetes/apps/7-applications/sonarr/ks.yaml:
+#      #   APP: sonarr
+#      #   VOLSYNC_CAPACITY: 10Gi
+#      #   VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
+#
+#      kubectl apply -f - <<EOF
+#      apiVersion: v1
+#      kind: PersistentVolumeClaim
+#      metadata:
+#        name: sonarr-config
+#        namespace: default
+#        labels:
+#          app.kubernetes.io/name: sonarr
+#      spec:
+#        accessModes: [ReadWriteMany]
+#        storageClassName: csi-cephfs-config-sc
+#        resources:
+#          requests:
+#            storage: 10Gi
+#      EOF
+#
+# This leverages the same configuration values as ReplicationSource/Destination.
+# Check the app's ks.yaml file under postBuild.substitute for the correct values.
+#
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "${APP}-config"
+  namespace: default
+  labels:
+    app.kubernetes.io/name: "${APP}"
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/managed-by: manual
+spec:
+  accessModes:
+    - ReadWriteMany  # Or check app's VOLSYNC_ACCESSMODES
+  storageClassName: csi-cephfs-config-sc  # Or check app's VOLSYNC_STORAGECLASS
+  resources:
+    requests:
+      storage: 5Gi  # Or check app's VOLSYNC_CAPACITY
