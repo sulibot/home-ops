@@ -4,7 +4,7 @@ include "root" {
 
 # Depend on the nodes module to get VM IP addresses and network configuration
 dependency "nodes" {
-  config_path = "../talos-vms-create"
+  config_path = "../4-talos-vms-create"
 
   mock_outputs = {
     node_ips = {
