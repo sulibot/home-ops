@@ -10,7 +10,7 @@ terraform {
     }
     flux = {
       source  = "fluxcd/flux"
-      version = "~> 1.4.0"
+      version = "~> 1.7.0"
     }
     null = {
       source  = "hashicorp/null"
