@@ -4,7 +4,7 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - ./externalsecret.yaml
-  - ./kopia-repository-pvc.yaml
+  # kopia-repository-pvc.yaml excluded - managed manually via reclaim script in kopia app
   # Fallback PVC with IfNotPresent - automatically creates empty PVC if restore fails
   # ReplicationDestination still attempts restore, but apps can start regardless
   - ./pvc.yaml
