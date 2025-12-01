@@ -7,12 +7,19 @@ metadata:
   labels:
     app.kubernetes.io/name: "${APP}"
     app.kubernetes.io/component: storage
-  annotations:
-    # Only create if PVC doesn't already exist
-    # This acts as a fallback when volume populator fails or no backup exists
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+    volsync.backube/auto-restore: "true"
 spec:
-  # --- Storage configuration (same as ReplicationDestination) ---
+  # --- Volume Populator: Auto-restore from ReplicationDestination ---
+  # This PVC will be automatically populated with data from the latest backup
+  # when created. PVC stays Pending until ReplicationDestination creates a
+  # VolumeSnapshot, then volume populator populates the PVC from that snapshot.
+  # No manual intervention required for disaster recovery.
+  dataSourceRef:
+    kind: ReplicationDestination
+    apiGroup: volsync.backube
+    name: "${APP}-dst"
+
+  # --- Storage configuration (must match ReplicationDestination) ---
   accessModes:
     - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
   storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
