@@ -134,6 +134,7 @@ data "talos_machine_configuration" "controlplane" {
         apiServer = {
           extraArgs = {
             "runtime-config" = "admissionregistration.k8s.io/v1beta1=true"
+            "feature-gates"  = "MutatingAdmissionPolicy=true"
           }
         }
       }
