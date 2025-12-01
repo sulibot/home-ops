@@ -15,7 +15,17 @@ spec:
         communities:
           standard:
             - "65101:100"  # Custom community tag (optional)
-
+---
+# BGP Advertisement - Advertise LoadBalancer Service IPs
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: service-lb-advertisement
+  namespace: kube-system
+  labels:
+    advertise: loadbalancer
+spec:
+  advertisements:
     # Advertise ALL LoadBalancer service IPs via BGP
     # Note: Cilium Gateway API creates services without custom labels
     # so we advertise all LoadBalancer IPs instead of using a selector

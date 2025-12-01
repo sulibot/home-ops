@@ -6,13 +6,17 @@ metadata:
   name: upstream-router-peer
   namespace: kube-system
 spec:
-  # Advertise IPv4 pod CIDRs only
+  # Advertise IPv4 pod CIDRs and LoadBalancer IPs
   families:
     - afi: ipv4
       safi: unicast
       advertisements:
-        matchLabels:
-          advertise: pod-cidr
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - pod-cidr
+              - loadbalancer
 
   # eBGP multihop (different AS)
   ebgpMultihop: 1
@@ -38,13 +42,17 @@ metadata:
   name: upstream-router-peer-ipv6
   namespace: kube-system
 spec:
-  # Advertise IPv6 pod CIDRs only
+  # Advertise IPv6 pod CIDRs and LoadBalancer IPs
   families:
     - afi: ipv6
       safi: unicast
       advertisements:
-        matchLabels:
-          advertise: pod-cidr
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - pod-cidr
+              - loadbalancer
 
   # eBGP multihop (different AS)
   ebgpMultihop: 1
