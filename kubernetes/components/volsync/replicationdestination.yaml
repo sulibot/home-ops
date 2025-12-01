@@ -21,7 +21,8 @@ spec:
       sourceName: "${APP}-src"  # Must match ReplicationSource name (not just app name)
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
 
-    # Volume configuration - no destinationPVC (uses volume populator instead)
+    # Volume configuration - restores to temp PVC then creates snapshot
+    copyMethod: Snapshot
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"
     accessModes:
       - "${VOLSYNC_ACCESSMODES:=ReadWriteMany}"
