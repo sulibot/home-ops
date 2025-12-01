@@ -193,3 +193,43 @@ talosctl service kubelet status
 # Get logs
 talosctl logs kubelet
 ```
+
+## Secret Management
+
+### Cluster Secrets (`secrets.sops.yaml`)
+- **Encrypted with SOPS** - Required to add new nodes to cluster
+- Contains cluster-wide secrets (bootstrap tokens, certificates, etcd keys)
+- Automatically exported and encrypted by Terraform after `terragrunt apply`
+- Decrypt for use: `sops -d talos/clusters/cluster-101/secrets.sops.yaml`
+- **Committed to git** for team access and node addition
+
+### Talosconfig (Per-User Credentials)
+- **Not tracked in git** - Each user generates their own
+- Automatically exported to `talos/clusters/cluster-101/talosconfig` by Terraform
+- Automatically merged to `~/.talos/config` during cluster bootstrap
+- Switch contexts: `talosctl config context cluster-101`
+
+###  Kubeconfig (Per-User Credentials)
+- Fetched via `talosctl kubeconfig --force` during bootstrap
+- Automatically merged to `~/.kube/config`
+- Context name: `cluster-101`
+
+### Machine Configs (`controlplane.yaml`, `worker.yaml`)
+- **Not tracked in git** - Regenerated from Terraform as needed
+- Automatically exported for troubleshooting after `terragrunt apply`
+- Available locally at `talos/clusters/cluster-101/{controlplane,worker}.yaml`
+- Blocked from git by .gitignore (contains embedded secrets)
+
+### For New Team Members
+To get access to an existing cluster:
+1. Clone the repo
+2. Ensure you have the SOPS AGE key configured (`SOPS_AGE_KEY_FILE` env var)
+3. Run: `cd terraform/infra/live/cluster-101/6-cluster-bootstrap && terragrunt apply`
+4. Configs automatically merge to `~/.talos/config` and `~/.kube/config`
+5. Use: `talosctl config context cluster-101` and `kubectl config use-context cluster-101`
+
+### Adding New Nodes to Existing Cluster
+1. Decrypt secrets: `sops -d talos/clusters/cluster-101/secrets.sops.yaml > /tmp/secrets.yaml`
+2. Use secrets to generate config for new node
+3. Apply config: `talosctl apply-config --nodes <new-node-ip> --file <config>.yaml`
+4. Clean up decrypted file: `rm /tmp/secrets.yaml`

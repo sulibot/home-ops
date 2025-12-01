@@ -25,6 +25,10 @@ creation_rules:
     encrypted_regex: '^(.*_token|.*_secret|.*_key|password)$'
     age: *age_key
 
+  # Talos cluster secrets
+  - path_regex: '^talos/clusters/.*/secrets\.sops\.yaml$'
+    age: *age_key
+
   # Kubernetes (general)
   - path_regex: '^kubernetes/sulibot-homeops/(global|clusters)/.*\.sops\.ya?ml$'
     encrypted_regex: '^(data|stringData)$'

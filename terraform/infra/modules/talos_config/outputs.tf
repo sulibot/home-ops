@@ -60,3 +60,9 @@ output "client_configuration" {
   value       = talos_machine_secrets.cluster.client_configuration
   sensitive   = true
 }
+
+output "secrets_yaml" {
+  description = "Talos secrets in YAML format (for adding new nodes)"
+  value       = yamlencode(talos_machine_secrets.cluster.machine_secrets)
+  sensitive   = true
+}

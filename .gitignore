@@ -104,3 +104,10 @@ talos/clusters/**/talconfig.rendered.yaml
 
 # Talos build output (large binary files)
 talos/_out/
+
+# Talos generated machine configs (regenerate from Terraform)
+talos/clusters/**/controlplane.yaml
+talos/clusters/**/worker.yaml
+
+# Talos client config (per-user credentials)
+talos/clusters/**/talosconfig

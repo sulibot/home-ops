@@ -56,6 +56,53 @@ terraform {
     execute      = ["bash", "-c", "cd ${get_repo_root()} && mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id} && cd ${get_terragrunt_dir()} && terragrunt output -raw talosconfig > ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/talosconfig"]
     run_on_error = false
   }
+
+  # Export and encrypt cluster secrets for node addition
+  after_hook "export_secrets" {
+    commands     = ["apply"]
+    execute      = ["bash", "-c", <<-EOT
+      set -e
+      cd ${get_repo_root()}
+      mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}
+      cd ${get_terragrunt_dir()}
+
+      # Export secrets as YAML
+      terragrunt output -raw secrets_yaml > \
+        ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/secrets.sops.yaml
+
+      # Encrypt with SOPS in place
+      sops -e -i ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/secrets.sops.yaml
+
+      echo "✓ Exported and encrypted secrets.sops.yaml"
+    EOT
+    ]
+    run_on_error = false
+  }
+
+  # Export machine configs for troubleshooting (not committed)
+  after_hook "export_machine_configs" {
+    commands     = ["apply"]
+    execute      = ["bash", "-c", <<-EOT
+      set -e
+      cd ${get_repo_root()}
+      mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}
+      cd ${get_terragrunt_dir()}
+
+      # Export controlplane config (first control plane node)
+      terragrunt output -json machine_configs | \
+        jq -r '.solcp01.machine_configuration' > \
+        ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/controlplane.yaml
+
+      # Export worker config (first worker node)
+      terragrunt output -json machine_configs | \
+        jq -r '.solwk01.machine_configuration' > \
+        ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/worker.yaml
+
+      echo "✓ Exported machine configs for troubleshooting (not committed to git)"
+    EOT
+    ]
+    run_on_error = false
+  }
 }
 
 locals {
