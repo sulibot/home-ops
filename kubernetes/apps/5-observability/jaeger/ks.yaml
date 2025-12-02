@@ -11,6 +11,8 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
+    - name: jaeger-helm-repo
+      namespace: flux-system
     - name: istio
       namespace: flux-system
   interval: 15m
