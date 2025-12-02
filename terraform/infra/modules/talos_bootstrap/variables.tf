@@ -16,10 +16,11 @@ variable "client_configuration" {
 }
 
 variable "machine_configs" {
-  description = "Machine configurations from talos_config module (complete configs with network + CDI)"
+  description = "Machine configurations from talos_config module"
   type = map(object({
     machine_type          = string
     machine_configuration = string
+    config_patch          = string
   }))
   sensitive = true
 }

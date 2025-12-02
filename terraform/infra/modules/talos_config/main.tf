@@ -46,109 +46,8 @@ resource "talos_machine_secrets" "cluster" {
   talos_version = var.talos_version
 }
 
-# Common configuration patches for all machines
-locals {
-  common_machine_config = yamlencode({
-    machine = {
-      install = {
-        disk  = var.install_disk
-        image = var.installer_image
-        wipe  = true
-      }
-      kernel = {
-        modules = [
-          { name = "zfs" }
-        ]
-      }
-      sysctls = {
-        "fs.inotify.max_user_watches"   = "1048576"
-        "fs.inotify.max_user_instances" = "8192"
-        "fs.file-max"                   = "1000000"
-        "net.core.somaxconn"            = "32768"
-        "net.ipv4.ip_forward"           = "1"
-        "net.ipv6.conf.all.forwarding"  = "1"
-      }
-      features = {
-        kubePrism = { enabled = true, port = 7445 }
-        hostDNS   = { enabled = true, forwardKubeDNSToHost = true }
-      }
-      kubelet = {
-        nodeIP = {
-          validSubnets = ["fd00:${var.cluster_id}::/64"] # Force IPv6 node IPs
-        }
-        clusterDNS = [
-          "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
-          "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
-        ]
-      }
-      # CDI (Container Device Interface) configuration for GPU passthrough
-      # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
-      # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
-      files = [
-        {
-          content = <<-EOT
-            [plugins]
-              [plugins."io.containerd.grpc.v1.cri"]
-                device_ownership_from_security_context = true
-                [plugins."io.containerd.grpc.v1.cri".cdi]
-                  enabled = true
-                  spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
-          EOT
-          path = "/etc/cri/conf.d/20-cdi.part"
-          op   = "create"
-        }
-      ]
-    }
-  })
-
-  controlplane_cluster_config = yamlencode({
-    cluster = {
-      allowSchedulingOnControlPlanes = false
-      network = {
-        cni            = { name = "none" } # Cilium installed via inline manifests
-        podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]
-        serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4]
-      }
-      proxy = {
-        disabled = true # Cilium kube-proxy replacement
-      }
-      apiServer = {
-        certSANs = concat(
-          [var.vip_ipv6, var.vip_ipv4],
-          [for node in local.control_plane_nodes : node.public_ipv6],
-          [for node in local.control_plane_nodes : node.public_ipv4]
-        )
-        extraArgs = {
-          "runtime-config" = "admissionregistration.k8s.io/v1beta1=true"
-          "feature-gates"  = "MutatingAdmissionPolicy=true"
-        }
-      }
-      etcd = {
-        advertisedSubnets = ["fd00:${var.cluster_id}::/64"] # Force etcd to use IPv6
-      }
-      # Install Gateway API CRDs and Cilium CNI via inline manifests
-      inlineManifests = concat(
-        local.gateway_api_crds != "" ? [
-          {
-            name     = "gateway-api-crds"
-            contents = local.gateway_api_crds
-          }
-        ] : [],
-        [
-          {
-            name     = "cilium"
-            contents = data.helm_template.cilium.manifest
-          }
-        ]
-      )
-    }
-  })
-}
-
-# Generate per-node control plane configurations
+# Generate control plane machine configuration
 data "talos_machine_configuration" "controlplane" {
-  for_each = local.control_plane_nodes
-
   cluster_name     = var.cluster_name
   cluster_endpoint = var.cluster_endpoint
   machine_type     = "controlplane"
@@ -161,70 +60,90 @@ data "talos_machine_configuration" "controlplane" {
   examples = false
 
   config_patches = [
-    local.common_machine_config,
-    local.controlplane_cluster_config,
     yamlencode({
-      machine = {
-        nodeLabels = {
-          "topology.kubernetes.io/region" = "home-lab"
-          "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+        machine = {
+          install = {
+            disk  = var.install_disk
+            image = var.installer_image
+            wipe  = true
+          }
+        kernel = {
+          modules = [
+            { name = "zfs" }
+          ]
         }
+        sysctls = {
+          "fs.inotify.max_user_watches"   = "1048576"
+          "fs.inotify.max_user_instances" = "8192"
+          "fs.file-max"                   = "1000000"
+          "net.core.somaxconn"            = "32768"
+          "net.ipv4.ip_forward"           = "1"
+          "net.ipv6.conf.all.forwarding"  = "1"
+        }
+        features = {
+          kubePrism = { enabled = true, port = 7445 }
+          hostDNS   = { enabled = true } # Required for Talos Helm controller
+        }
+        kubelet = {
+          nodeIP = {
+            validSubnets = ["fd00:${var.cluster_id}::/64"] # Force IPv6 node IPs
+          }
+        }
+      }
+      cluster = {
+        allowSchedulingOnControlPlanes = false
         network = {
-          hostname = each.value.hostname
-          nameservers = var.dns_servers
-          interfaces = [
-            # Public network (ens18)
+          cni = { name = "none" } # Cilium installed via inline manifests
+          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]
+          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4]
+        }
+        proxy = {
+          disabled = true # Cilium kube-proxy replacement
+        }
+        apiServer = {
+          certSANs = concat(
+            [var.vip_ipv6, var.vip_ipv4],
+            [for node in local.control_plane_nodes : node.public_ipv6],
+            [for node in local.control_plane_nodes : node.public_ipv4]
+          )
+        }
+        etcd = {
+          advertisedSubnets = ["fd00:${var.cluster_id}::/64"] # Force etcd to use IPv6
+        }
+        # Install Gateway API CRDs and Cilium CNI via inline manifests
+        # Gateway API CRDs must be installed first (if enabled in Cilium config)
+        inlineManifests = concat(
+          local.gateway_api_crds != "" ? [
             {
-              interface = "ens18"
-              mtu       = 1500
-              addresses = [
-                "${each.value.public_ipv6}/64",
-                "${each.value.public_ipv4}/24"
-              ]
-              routes = [
-                {
-                  network = "::/0"
-                  gateway = "fd00:${var.cluster_id}::fffe"
-                },
-                {
-                  network = "0.0.0.0/0"
-                  gateway = "10.0.${var.cluster_id}.254"
-                }
-              ]
-              vip = {
-                ip = var.vip_ipv6
-              }
-            },
-            # Mesh network (ens19)
+              name     = "gateway-api-crds"
+              contents = local.gateway_api_crds
+            }
+          ] : [],
+          [
             {
-              interface = "ens19"
-              mtu       = 8930
-              addresses = [
-                "${each.value.mesh_ipv6}/64",
-                "${each.value.mesh_ipv4}/24"
-              ]
-              routes = [
-                {
-                  network = "fc00::/8"
-                  gateway = "fc00:${var.cluster_id}::fffe"
-                },
-                {
-                  network = "10.10.0.0/16"
-                  gateway = "10.10.${var.cluster_id}.254"
-                }
-              ]
+              name     = "cilium"
+              contents = data.helm_template.cilium.manifest
             }
           ]
+        )
+      }
+    }),
+    # Separate patch for API server extraArgs (must be separate to work with Talos provider)
+    yamlencode({
+      cluster = {
+        apiServer = {
+          extraArgs = {
+            "runtime-config" = "admissionregistration.k8s.io/v1beta1=true"
+            "feature-gates"  = "MutatingAdmissionPolicy=true"
+          }
         }
       }
     })
   ]
 }
 
-# Generate per-node worker configurations
+# Generate worker machine configuration
 data "talos_machine_configuration" "worker" {
-  for_each = local.worker_nodes
-
   cluster_name     = var.cluster_name
   cluster_endpoint = var.cluster_endpoint
   machine_type     = "worker"
@@ -237,55 +156,37 @@ data "talos_machine_configuration" "worker" {
   examples = false
 
   config_patches = [
-    local.common_machine_config,
     yamlencode({
-      machine = {
-        nodeLabels = {
-          "topology.kubernetes.io/region" = "home-lab"
-          "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+        machine = {
+          install = {
+            disk  = var.install_disk
+            image = var.installer_image
+            wipe  = true
+          }
+        kernel = {
+          modules = [
+            { name = "zfs" }
+          ]
         }
-        network = {
-          hostname = each.value.hostname
-          nameservers = var.dns_servers
-          interfaces = [
-            # Public network (ens18)
-            {
-              interface = "ens18"
-              mtu       = 1500
-              addresses = [
-                "${each.value.public_ipv6}/64",
-                "${each.value.public_ipv4}/24"
-              ]
-              routes = [
-                {
-                  network = "::/0"
-                  gateway = "fd00:${var.cluster_id}::fffe"
-                },
-                {
-                  network = "0.0.0.0/0"
-                  gateway = "10.0.${var.cluster_id}.254"
-                }
-              ]
-            },
-            # Mesh network (ens19)
-            {
-              interface = "ens19"
-              mtu       = 8930
-              addresses = [
-                "${each.value.mesh_ipv6}/64",
-                "${each.value.mesh_ipv4}/24"
-              ]
-              routes = [
-                {
-                  network = "fc00::/8"
-                  gateway = "fc00:${var.cluster_id}::fffe"
-                },
-                {
-                  network = "10.10.0.0/16"
-                  gateway = "10.10.${var.cluster_id}.254"
-                }
-              ]
-            }
+        sysctls = {
+          "fs.inotify.max_user_watches"   = "1048576"
+          "fs.inotify.max_user_instances" = "8192"
+          "fs.file-max"                   = "1000000"
+          "net.core.somaxconn"            = "32768"
+          "net.ipv4.ip_forward"           = "1"
+          "net.ipv6.conf.all.forwarding"  = "1"
+        }
+        features = {
+          kubePrism = { enabled = true, port = 7445 }
+          hostDNS   = { enabled = true } # Required for Talos Helm controller
+        }
+        kubelet = {
+          nodeIP = {
+            validSubnets = ["fd00:${var.cluster_id}::/64"] # Force IPv6 node IPs
+          }
+          clusterDNS = [
+            "fd00:${var.cluster_id}:96::a",   # IPv6 DNS service IP (10th IP in service CIDR)
+            "10.${var.cluster_id}.96.10"       # IPv4 DNS service IP (10th IP in service CIDR)
           ]
         }
       }
@@ -293,22 +194,91 @@ data "talos_machine_configuration" "worker" {
   ]
 }
 
-# Combine all per-node configurations for output
+# Generate per-node configurations with network settings
 locals {
-  machine_configs = merge(
-    {
-      for node_name, config in data.talos_machine_configuration.controlplane : node_name => {
-        machine_type          = "controlplane"
-        machine_configuration = config.machine_configuration
-      }
-    },
-    {
-      for node_name, config in data.talos_machine_configuration.worker : node_name => {
-        machine_type          = "worker"
-        machine_configuration = config.machine_configuration
-      }
+  machine_configs = {
+    for node_name, node in local.all_nodes : node_name => {
+      machine_type = node.machine_type
+      machine_configuration = tostring(
+        node.machine_type == "controlplane" ?
+        data.talos_machine_configuration.controlplane.machine_configuration :
+        data.talos_machine_configuration.worker.machine_configuration
+      )
+      # Per-node network patch
+      config_patch = yamlencode({
+        machine = {
+          nodeLabels = {
+            "topology.kubernetes.io/region" = "home-lab"
+            "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+          }
+          files = [
+            # CDI (Container Device Interface) configuration for GPU passthrough
+            # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
+            # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
+            {
+              content = <<-EOT
+                [plugins]
+                  [plugins."io.containerd.grpc.v1.cri"]
+                    device_ownership_from_security_context = true
+                    [plugins."io.containerd.grpc.v1.cri".cdi]
+                      enabled = true
+                      spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+              EOT
+              path = "/etc/cri/conf.d/20-cdi.part"
+              op   = "create"
+            }
+          ]
+          network = {
+            hostname = node.hostname
+            interfaces = [
+              # Public network (ens18)
+              {
+                interface = "ens18"
+                mtu       = 1500
+                addresses = [
+                  "${node.public_ipv6}/64",
+                  "${node.public_ipv4}/24"
+                ]
+                routes = [
+                  {
+                    network = "::/0"
+                    gateway = "fd00:${var.cluster_id}::fffe"
+                  },
+                  {
+                    network = "0.0.0.0/0"
+                    gateway = "10.0.${var.cluster_id}.254"
+                  }
+                ]
+                vip = node.machine_type == "controlplane" ? {
+                  ip = var.vip_ipv6
+                } : null
+              },
+              # Mesh network (ens19)
+              {
+                interface = "ens19"
+                mtu       = 8930
+                addresses = [
+                  "${node.mesh_ipv6}/64",
+                  "${node.mesh_ipv4}/24"
+                ]
+                routes = [
+                  {
+                    network = "fc00::/8"
+                    gateway = "fc00:${var.cluster_id}::fffe"
+                  },
+                  {
+                    network = "10.10.0.0/16"
+                    gateway = "10.10.${var.cluster_id}.254"
+                  }
+                ]
+              }
+            ]
+            nameservers = var.dns_servers
+          }
+        }
+      })
     }
-  )
+  }
 }
 
 # Generate client configuration (talosconfig)
