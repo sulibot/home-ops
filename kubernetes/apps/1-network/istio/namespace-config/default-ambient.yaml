@@ -1,0 +1,14 @@
+---
+# Enable Istio Ambient Mesh for default namespace (Wave 3)
+# This provides L4 mTLS for all 24 applications via ztunnel
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    # Enable ambient mesh mode
+    istio.io/dataplane-mode: ambient
+    # Existing labels preserved
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
