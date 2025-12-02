@@ -164,6 +164,33 @@ locals {
   )
 }
 
+# Create PCI hardware mapping for Intel GPU passthrough
+resource "proxmox_virtual_environment_hardware_mapping_pci" "intel_gpu" {
+  name    = "intel-gpu-cluster-${var.cluster_id}"
+  comment = "Intel integrated GPU mapping for cluster ${var.cluster_id}"
+
+  map = [
+    {
+      comment = "Intel UHD Graphics 730 on pve01"
+      id      = "8086:4680"
+      node    = "pve01"
+      path    = "0000:00:02.0"
+    },
+    {
+      comment = "Intel UHD Graphics 730 on pve02"
+      id      = "8086:4680"
+      node    = "pve02"
+      path    = "0000:00:02.0"
+    },
+    {
+      comment = "Intel UHD Graphics 630 on pve03"
+      id      = "8086:9bc5"
+      node    = "pve03"
+      path    = "0000:00:02.0"
+    },
+  ]
+}
+
 resource "proxmox_virtual_environment_vm" "nodes" {
   for_each = local.nodes
 
@@ -272,12 +299,14 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   }
 
   # GPU Passthrough (if configured for this node)
-  dynamic "pci_device" {
+  dynamic "hostpci" {
     for_each = each.value.gpu_passthrough != null ? [each.value.gpu_passthrough] : []
     content {
-      device_id   = pci_device.value.pci_address
-      pci_express = pci_device.value.pcie
-      rombar      = pci_device.value.rombar
+      device  = "hostpci0"
+      mapping = proxmox_virtual_environment_hardware_mapping_pci.intel_gpu.name
+      pcie    = hostpci.value.pcie
+      rombar  = hostpci.value.rombar
+      xvga    = hostpci.value.x_vga
     }
   }
 
