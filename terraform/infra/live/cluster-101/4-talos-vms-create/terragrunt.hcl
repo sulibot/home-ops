@@ -95,9 +95,12 @@ data "sops_file" "proxmox" {
 }
 
 provider "proxmox" {
-  endpoint  = data.sops_file.proxmox.data["pve_endpoint"]
-  api_token = "$${data.sops_file.proxmox.data["pve_api_token_id"]}=$${data.sops_file.proxmox.data["pve_api_token_secret"]}"
-  insecure  = true
+  endpoint = data.sops_file.proxmox.data["pve_endpoint"]
+  # Use root credentials instead of API token for hardware mapping support
+  # Hardware mappings require root PAM authentication due to IOMMU interactions
+  username = "root@pam"
+  password = data.sops_file.proxmox.data["pve_password"]
+  insecure = true
 
   ssh {
     agent       = false
