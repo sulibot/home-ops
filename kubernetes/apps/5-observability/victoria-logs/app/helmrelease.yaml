@@ -10,6 +10,14 @@ spec:
     name: victoria-logs
   interval: 1h
   timeout: 10m  # Give more time for chart installation during bootstrap
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
   values:
     fullnameOverride: victoria-logs
     server:
