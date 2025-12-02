@@ -1,0 +1,87 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jaeger
+  namespace: observability
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: jaeger
+      version: 3.3.x
+      sourceRef:
+        kind: HelmRepository
+        name: jaegertracing
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # Deploy Jaeger all-in-one for simplicity (single pod)
+    allInOne:
+      enabled: true
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
+
+      # Storage configuration (in-memory initially)
+      # Can be migrated to persistent storage later
+      args:
+        - --memory.max-traces=10000
+        - --query.base-path=/
+        - --collector.zipkin.host-port=:9411
+
+      # Service configuration
+      service:
+        type: ClusterIP
+        ports:
+          # Jaeger UI
+          - name: http-query
+            port: 16686
+            protocol: TCP
+            targetPort: 16686
+          # gRPC collector
+          - name: grpc-collector
+            port: 14250
+            protocol: TCP
+            targetPort: 14250
+          # Zipkin collector (for Istio)
+          - name: zipkin
+            port: 9411
+            protocol: TCP
+            targetPort: 9411
+
+    # Additional service for collector (referenced by Istio)
+    collector:
+      enabled: false  # all-in-one includes collector
+
+    # Additional service for query (UI)
+    query:
+      enabled: false  # all-in-one includes query
+
+    # Agent is not needed (all-in-one includes agent)
+    agent:
+      enabled: false
+
+    # Storage options (in-memory for now)
+    storage:
+      type: memory
+
+    # Disable other components (all-in-one is sufficient)
+    ingester:
+      enabled: false
+    esIndexCleaner:
+      enabled: false
+    esRollover:
+      enabled: false
