@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# DR Script 2: Reclaim Kopia Repository
+#
+# Purpose: Reconnect to existing Kopia repository CephFS subvolume after cluster rebuild
+# This reads the subvolume ID saved in Git and creates PV/PVC pointing to existing data
+#
+# Prerequisites:
+#   - Run dr-1-check-readiness.sh first
+#   - All infrastructure components are Ready
+#   - CephFS CSI driver is running
+#
+# What it does:
+#   1. Reads subvolume ID from kopia-repository-subvolume-secret.yaml in Git
+#   2. Creates PersistentVolume pointing to existing CephFS subvolume
+#   3. Creates PersistentVolumeClaim bound to that PV
+#   4. Waits for PVC to become Bound
+#
+# Result: kopia PVC (200Gi) in default namespace, containing all existing backups
+#
+# Usage: ./scripts/dr-2-reclaim-kopia-repository.sh
 
-# Script to reclaim Kopia repository PV after cluster rebuild
-# This reads the subvolume ID from the secret stored in Git and creates the PV/PVC
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SECRET_FILE="${REPO_ROOT}/kubernetes/apps/6-data/kopia/app/kopia-repository-subvolume-secret.yaml"
 
-echo "=== Kopia Repository PV Reclaim Tool ==="
+echo "=========================================="
+echo "DR Script 2: Reclaim Kopia Repository"
+echo "=========================================="
 echo ""
 
 # Check if secret file exists
@@ -128,14 +147,14 @@ echo "Waiting for PVC to become Bound..."
 kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/kopia -n default --timeout=30s
 
 echo ""
-echo "=== Success! ==="
+echo "=========================================="
+echo "✅ SUCCESS: Kopia Repository Reclaimed"
+echo "=========================================="
 echo ""
-echo "Kopia repository PV/PVC reclaimed successfully."
+echo "PVC Status:"
+kubectl get pvc kopia -n default
 echo ""
-echo "Next steps:"
-echo "  1. Let Flux deploy the Kopia application"
-echo "  2. Verify Kopia connects to repository:"
-echo "       kubectl logs -n default -l app.kubernetes.io/name=kopia"
-echo "  3. Check Volsync restores start working:"
-echo "       kubectl get replicationdestination -n default -w"
+echo "Next step:"
+echo "  Wait 1-2 minutes for apps to reconcile, then run:"
+echo "  ./scripts/dr-3-trigger-restores.sh"
 echo ""
