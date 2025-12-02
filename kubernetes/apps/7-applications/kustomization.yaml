@@ -33,5 +33,6 @@ resources:
   - ./thelounge/ks.yaml
 #  - ./tqm/ks.yaml  # Disabled: duplicate 1Password item 'tqm' - needs cleanup in 1Password
   - ./tuppr/ks.yaml
+  - ./volsync-repository-pvc/ks.yaml
   #- ./zigbee/ks.yaml
   #- ./zwave/ks.yaml
