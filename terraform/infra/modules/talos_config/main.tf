@@ -211,7 +211,23 @@ locals {
             "topology.kubernetes.io/region" = "home-lab"
             "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
           }
-          files = []
+          files = [
+            # CDI (Container Device Interface) configuration for GPU passthrough
+            # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
+            # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
+            {
+              content = <<-EOT
+                [plugins]
+                  [plugins."io.containerd.grpc.v1.cri"]
+                    device_ownership_from_security_context = true
+                    [plugins."io.containerd.grpc.v1.cri".cdi]
+                      enabled = true
+                      spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+              EOT
+              path = "/etc/cri/conf.d/20-cdi.part"
+              op   = "create"
+            }
+          ]
           network = {
             hostname = node.hostname
             interfaces = [

@@ -9,10 +9,8 @@ spec:
     kind: OCIRepository
     name: intel-gpu-resource-driver
   interval: 1h
-  # Suspended: Pods crash-looping with "Permission check failed" and "No supported devices detected"
-  # Root cause: Chart doesn't mount /dev hostPath, so container can't access /dev/dri/* GPU devices
-  # TODO: Add proper /dev mount or switch to CDI-based GPU access
-  suspend: true
+  # CDI configuration added to Talos machine config (terraform/infra/modules/talos_config/main.tf)
+  # Enables containerd CDI support for GPU passthrough via /var/cdi/static and /var/cdi/dynamic
   values:
     cdi:
       staticPath: /var/cdi/static
