@@ -1,6 +1,7 @@
 #---
-# LoadBalancer IP Pools for cluster-101
-# IPs from these pools will be assigned to LoadBalancer services
+# LoadBalancer IP Pool for cluster-101
+# Dual-stack pool with both IPv4 and IPv6 CIDRs
+# IPs from this pool will be assigned to LoadBalancer services
 # and advertised via BGP to the upstream router
 #
 # IP Allocation Strategy for cluster-101:
@@ -10,38 +11,19 @@
 #   Reserved/Future: 10.0.101.128-254
 
 ---
-# IPv4 pool for general LoadBalancer services
+# Dual-stack pool for general LoadBalancer services
+# Contains both IPv4 and IPv6 blocks for dual-stack support
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
 metadata:
-  name: cluster-101-pool-ipv4
+  name: cluster-101-pool
   namespace: kube-system
 spec:
   blocks:
+    # IPv4 blocks
     - cidr: 10.0.101.64/26  # 10.0.101.64-127 (64 IPs)
     - cidr: 10.101.27.0/24  # 10.101.27.1-254 (Your existing gateway IPs)
-
-  # Optional: Reserve specific IPs for known services
-  # Uncomment to prevent auto-assignment to these IPs
-  # disabled:
-  #   - cidr: 10.0.101.80/32   # Reserved for ingress
-  #   - cidr: 10.0.101.81/32   # Reserved for gateway
-
-  # Optional: Only allow services with specific label to use this pool
-  # serviceSelector:
-  #   matchLabels:
-  #     lb-pool: default
-
----
-# IPv6 pool for general LoadBalancer services
-# Using separate /120 subnet to avoid conflicts with node IPs
-apiVersion: cilium.io/v2alpha1
-kind: CiliumLoadBalancerIPPool
-metadata:
-  name: cluster-101-pool-ipv6
-  namespace: kube-system
-spec:
-  blocks:
+    # IPv6 blocks
     # Use fd00:101:40::/120 to avoid node IPs (fd00:101::1-3f)
     - cidr: fd00:101:40::/120  # fd00:101:40::0-ff (256 IPs)
     # Gateway API subnet (your existing gateway IPs)
