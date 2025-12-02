@@ -58,6 +58,8 @@ spec:
       # Cilium CNI compatibility
       proxy:
         privileged: true
+      # Ambient mesh CA configuration
+      pilotCertProvider: istiod
 
     # Service configuration
     service:
