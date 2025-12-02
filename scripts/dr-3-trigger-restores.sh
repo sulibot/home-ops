@@ -31,6 +31,9 @@
 
 set -euo pipefail
 
+# Ensure output is flushed immediately
+export PYTHONUNBUFFERED=1
+
 echo "=========================================="
 echo "DR Script 3: Trigger All Restores"
 echo "=========================================="
@@ -75,8 +78,10 @@ RESTORE_COUNT=0
 for rd in $(kubectl get replicationdestination -n default -o name); do
   app=$(echo "$rd" | sed 's|.*/||;s/-dst$//')
   echo "  Triggering restore: $app"
-  kubectl patch "$rd" -n default --type=merge -p "{\"spec\":{\"trigger\":{\"manual\":\"restore-${TIMESTAMP}\"}}}" &>/dev/null
-  ((RESTORE_COUNT++))
+  if ! timeout 10 kubectl patch "$rd" -n default --type=merge -p "{\"spec\":{\"trigger\":{\"manual\":\"restore-${TIMESTAMP}\"}}}" &>/dev/null; then
+    echo "    ⚠️  Failed to patch $app (continuing...)"
+  fi
+  RESTORE_COUNT=$((RESTORE_COUNT + 1))
 done
 
 echo ""
