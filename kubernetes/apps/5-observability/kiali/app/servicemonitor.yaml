@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kiali
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: kiali
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kiali
+  endpoints:
+    - port: http-metrics
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s

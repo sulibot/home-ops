@@ -1,0 +1,114 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kiali-server
+  namespace: observability
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kiali-server
+      version: 2.3.x
+      sourceRef:
+        kind: HelmRepository
+        name: kiali
+        namespace: flux-system
+      interval: 12h
+  dependsOn:
+    - name: jaeger
+      namespace: observability
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # Deployment configuration
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 512Mi
+
+    # Authentication (anonymous for internal network)
+    auth:
+      strategy: anonymous
+
+    # External services configuration
+    external_services:
+      # Prometheus integration
+      prometheus:
+        url: http://prometheus-operated.observability.svc.cluster.local:9090
+
+      # Jaeger integration
+      tracing:
+        enabled: true
+        in_cluster_url: http://jaeger-query.observability.svc.cluster.local:16686
+        use_grpc: false
+        url: https://jaeger.sulibot.com
+
+      # Grafana integration
+      grafana:
+        enabled: true
+        in_cluster_url: http://grafana-service.observability.svc.cluster.local:3000
+        url: https://grafana.sulibot.com
+        auth:
+          type: none
+
+      # Istio configuration
+      istio:
+        root_namespace: istio-system
+        config_map_name: istio
+        istio_sidecar_injector_config_map_name: istio-sidecar-injector
+        istiod_deployment_name: istiod
+        istio_identity_domain: svc.cluster.local
+        component_status:
+          enabled: true
+          components:
+            - app_label: istiod
+              is_core: true
+            - app_label: ztunnel
+              is_core: true
+              namespace: istio-system
+
+    # Server configuration
+    server:
+      web_root: /
+      web_fqdn: kiali.sulibot.com
+      web_schema: https
+
+    # Kubernetes configuration
+    kubernetes_config:
+      cluster_name: cluster-101
+
+    # Health configuration
+    health_config:
+      rate:
+        - namespace: ".*"
+          kind: ".*"
+          name: ".*"
+          tolerance:
+            - code: "^5\\d\\d$"
+              degraded: 5
+              failure: 10
+
+    # Kiali features
+    kiali_feature_flags:
+      ui_defaults:
+        metrics_per_refresh: "1m"
+        refresh_interval: "60s"
+      istio_injection_action: true
+      clustering:
+        enabled: false
+
+    # Prometheus scraping
+    prometheus:
+      enabled: true
