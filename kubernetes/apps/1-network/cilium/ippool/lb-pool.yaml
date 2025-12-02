@@ -24,10 +24,10 @@ spec:
     - cidr: 10.0.101.64/26  # 10.0.101.64-127 (64 IPs)
     - cidr: 10.101.27.0/24  # 10.101.27.0-254 (Gateway and LoadBalancer IPs)
     # IPv6 blocks
-    # Use fd00:101:40::/120 to avoid node IPs (fd00:101::1-3f)
-    - cidr: fd00:101:40::/120  # fd00:101:40::0-ff (256 IPs)
-    # Gateway API subnet (your existing gateway IPs)
-    - cidr: fd00:101:1b::/120  # fd00:101:1b::0-ff (256 IPs)
+    # Expanded to /112 to allow suffix matching with IPv4 (e.g., .120 → ::120)
+    - cidr: fd00:101:40::/112  # fd00:101:40::0-ffff (65536 IPs)
+    # Gateway API subnet (expanded to /112 for matching suffixes)
+    - cidr: fd00:101:1b::/112  # fd00:101:1b::0-ffff (65536 IPs)
 
 ---
 # Optional: Dedicated pool for ingress controllers

@@ -50,7 +50,7 @@ spec:
         type: LoadBalancer
         annotations:
           external-dns.alpha.kubernetes.io/hostname: smtp-relay.sulibot.com
-          lbipam.cilium.io/ips: fd00:101:1b::7a,10.101.27.122
+          lbipam.cilium.io/ips: fd00:101:1b::122,10.101.27.122
         ipFamilyPolicy: PreferDualStack
         ipFamilies: [IPv6, IPv4]
         externalTrafficPolicy: Local

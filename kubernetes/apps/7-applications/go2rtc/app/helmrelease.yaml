@@ -55,7 +55,7 @@ spec:
       streams:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: fd00:101:1b::7c,10.101.27.124
+          lbipam.cilium.io/ips: fd00:101:1b::124,10.101.27.124
         ipFamilyPolicy: PreferDualStack
         ipFamilies: [IPv6, IPv4]
         externalTrafficPolicy: Local
@@ -93,7 +93,7 @@ spec:
             webrtc:
               listen: :8555
               candidates:
-                - "[fd00:101:1b::7c]:8555"
+                - "[fd00:101:1b::124]:8555"
                 - "10.101.27.124:8555"
                 - stun:8555
               ice_servers:
