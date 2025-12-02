@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrelease-base.yaml
+  - helmrelease-cni.yaml
   - helmrelease-istiod.yaml
   - helmrelease-ztunnel.yaml
   - servicemonitor.yaml

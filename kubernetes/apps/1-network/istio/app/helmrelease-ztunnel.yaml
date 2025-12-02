@@ -17,6 +17,7 @@ spec:
         namespace: flux-system
       interval: 12h
   dependsOn:
+    - name: istio-cni
     - name: istiod
   install:
     remediation:

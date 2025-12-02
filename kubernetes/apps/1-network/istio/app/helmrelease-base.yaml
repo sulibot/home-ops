@@ -27,3 +27,5 @@ spec:
   values:
     # Istio base contains CRDs and cluster-wide resources
     defaultRevision: default
+    # Validate webhook disabled (conflicts with CNI)
+    validateWebhook: false
