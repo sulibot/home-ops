@@ -10,10 +10,11 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-production
 spec:
   gatewayClassName: cilium
-  # Removed static address to allow dual-stack allocation
-  # addresses:
-  #   - type: IPAddress
-  #     value: fd00:101:1b::11
+  addresses:
+    - type: IPAddress
+      value: 10.0.101.11
+    - type: IPAddress
+      value: fd00:101:1b::11
   infrastructure:
     labels:
       # Workaround for Cilium bug where Gateway LoadBalancer IPs aren't advertised

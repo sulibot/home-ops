@@ -12,6 +12,8 @@ spec:
   gatewayClassName: cilium
   addresses:
     - type: IPAddress
+      value: 10.0.101.10
+    - type: IPAddress
       value: fd00:101:1b::10
   infrastructure:
     labels:
