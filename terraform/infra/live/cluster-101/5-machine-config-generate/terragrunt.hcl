@@ -91,7 +91,7 @@ terraform {
       # Export all per-node configs
       for node in solcp01 solcp02 solcp03 solwk01 solwk02 solwk03; do
         terragrunt output -json machine_configs | \
-          jq -r ".\$node.machine_configuration" > \
+          jq -r ".[\"\$node\"].machine_configuration" > \
           ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/\$node.yaml
       done
 
