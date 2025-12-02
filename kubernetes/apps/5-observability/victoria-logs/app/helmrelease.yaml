@@ -11,8 +11,8 @@ spec:
   interval: 1h
   values:
     fullnameOverride: victoria-logs
-    retentionPeriod: 14d
     server:
+      retentionPeriod: 14d
       env:
         - name: VM_httpListenAddr
           value: "[::]"
