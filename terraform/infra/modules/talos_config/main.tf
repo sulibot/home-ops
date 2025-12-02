@@ -217,14 +217,11 @@ locals {
             # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
             {
               content = <<-EOT
-                [plugins]
-                  [plugins."io.containerd.grpc.v1.cri"]
-                    device_ownership_from_security_context = true
-                    [plugins."io.containerd.grpc.v1.cri".cdi]
-                      enabled = true
-                      spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+                # Set cdi dirs to /var/ because default locations are not writeable in talos
+                [plugins."io.containerd.cri.v1.runtime"]
+                  cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
               EOT
-              path = "/etc/cri/conf.d/20-cdi.part"
+              path = "/etc/cri/conf.d/20-customization.part"
               op   = "create"
             }
           ]
