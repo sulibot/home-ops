@@ -1,0 +1,108 @@
+version: v1alpha1
+debug: false
+persist: true
+machine:
+    type: worker
+    token: ixgpvl.e4juq74aqwp4tuo1
+    ca:
+        crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJQakNCOGFBREFnRUNBaEFRMS9VVkpJbzJMakhJVG1EU0VmNStNQVVHQXl0bGNEQVFNUTR3REFZRFZRUUsKRXdWMFlXeHZjekFlRncweU5URXlNREl4TVRJeU16aGFGdzB6TlRFeE16QXhNVEl5TXpoYU1CQXhEakFNQmdOVgpCQW9UQlhSaGJHOXpNQ293QlFZREsyVndBeUVBZzRTaERWVllDMlJRa3dMa0VaZ08zTFFWeTh0L3BZM0JwMk9CCm4vNHVNd1dqWVRCZk1BNEdBMVVkRHdFQi93UUVBd0lDaERBZEJnTlZIU1VFRmpBVUJnZ3JCZ0VGQlFjREFRWUkKS3dZQkJRVUhBd0l3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVS0Fwbmo4U0FOKytVM1EreApQYlhKd3NPRDFqZ3dCUVlESzJWd0EwRUFOS01aRHlrYXQrYzV1Zi8zTVhxSHd6a2Y0Rnc0MmhyWmFIWTh4NEc3CjhRUmRxeUdMOFovK0lZZDhXTHJzQ0d4OFFkTkdPSjc5TEJtSkZxU2dHMGNlQ0E9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+        key: ""
+    certSANs: []
+    kubelet:
+        image: ghcr.io/siderolabs/kubelet:v1.35.0-alpha.3
+        clusterDNS:
+            - fd00:101:96::a
+            - 10.101.96.10
+        defaultRuntimeSeccompProfileEnabled: true
+        nodeIP:
+            validSubnets:
+                - fd00:101::/64
+        disableManifestsDirectory: true
+    network:
+        hostname: solwk01
+        interfaces:
+            - interface: ens18
+              addresses:
+                - fd00:101::21/64
+                - 10.0.101.21/24
+              routes:
+                - network: ::/0
+                  gateway: fd00:101::fffe
+                - network: 0.0.0.0/0
+                  gateway: 10.0.101.254
+              mtu: 1500
+            - interface: ens19
+              addresses:
+                - fc00:101::21/64
+                - 10.10.101.21/24
+              routes:
+                - network: fc00::/8
+                  gateway: fc00:101::fffe
+                - network: 10.10.0.0/16
+                  gateway: 10.10.101.254
+              mtu: 8930
+        nameservers:
+            - fd00:101::fffe
+            - 10.0.101.254
+    install:
+        disk: /dev/sda
+        image: factory.talos.dev/installer/3c36027f56e4534fc6b9e6c618c5b4e79b5a6c0214279aba5daf9695661e311a:v1.12.0-beta.0
+        wipe: true
+    files:
+        - content: |
+            [plugins]
+              [plugins."io.containerd.grpc.v1.cri"]
+                device_ownership_from_security_context = true
+                [plugins."io.containerd.grpc.v1.cri".cdi]
+                  enabled = true
+                  spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+          permissions: 0o0
+          path: /etc/cri/conf.d/20-cdi.part
+          op: create
+    sysctls:
+        fs.file-max: "1000000"
+        fs.inotify.max_user_instances: "8192"
+        fs.inotify.max_user_watches: "1048576"
+        net.core.somaxconn: "32768"
+        net.ipv4.ip_forward: "1"
+        net.ipv6.conf.all.forwarding: "1"
+    features:
+        rbac: true
+        stableHostname: true
+        apidCheckExtKeyUsage: true
+        diskQuotaSupport: true
+        kubePrism:
+            enabled: true
+            port: 7445
+        hostDNS:
+            enabled: true
+            forwardKubeDNSToHost: true
+    kernel:
+        modules:
+            - name: zfs
+    nodeLabels:
+        topology.kubernetes.io/region: home-lab
+        topology.kubernetes.io/zone: cluster-101
+cluster:
+    id: Rpn48AApN276u7VunkW_bX-izK6DpXIcyHc78RS5OKw=
+    secret: 3dGjxusLuQFXnwvEHYQk4fzpkskexui3FA/9hwhyVgw=
+    controlPlane:
+        endpoint: https://[fd00:101::10]:6443
+    clusterName: sol
+    network:
+        dnsDomain: cluster.local
+        podSubnets:
+            - 10.244.0.0/16
+        serviceSubnets:
+            - 10.96.0.0/12
+    token: uhyog5.iv6tp9dhwg4ogc4v
+    ca:
+        crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJpVENDQVMrZ0F3SUJBZ0lRUU9DU2hTS0JKTFJ3ZU1VWHduMm9LREFLQmdncWhrak9QUVFEQWpBVk1STXcKRVFZRFZRUUtFd3ByZFdKbGNtNWxkR1Z6TUI0WERUSTFNVEl3TWpFeE1qSXpPRm9YRFRNMU1URXpNREV4TWpJegpPRm93RlRFVE1CRUdBMVVFQ2hNS2EzVmlaWEp1WlhSbGN6QlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VICkEwSUFCS1h0SmlEUUUxeVBGTHdnb2ptS1AxRTI1dlltMHp0aDdwUGEvSkxsTkRXbGovSC96aVZqaVRxemdqUEEKTkVVRzVUZ3RXVERyQ1JKc0tsTUJVM0xRVWN1allUQmZNQTRHQTFVZER3RUIvd1FFQXdJQ2hEQWRCZ05WSFNVRQpGakFVQmdnckJnRUZCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZEJnTlZIUTRFCkZnUVVzMkhCUEhnN3FzT2NqbThReFJUOEJJVEw2TWd3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQU05NkdjQ1gKWks0UTVwYndYSitqMHRNSTNTZEhxSTh5bjU0Mnk0MDVDd085QWlBVFVQRjVTazc3Rk01NGhqaHVrS0FHT2dXVgpxUU1ZanFJS3FmN1loWFBKZVE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+        key: ""
+    discovery:
+        enabled: true
+        registries:
+            kubernetes:
+                disabled: true
+            service: {}
+
