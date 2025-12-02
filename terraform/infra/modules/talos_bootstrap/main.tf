@@ -5,16 +5,14 @@ locals {
 }
 
 # Apply machine configurations to all nodes
+# Machine configs are now complete (include network, CDI, and all settings)
+# No config_patches needed - everything is in the base machine_configuration
 resource "talos_machine_configuration_apply" "nodes" {
   for_each = toset(var.all_node_names)
 
   client_configuration        = var.client_configuration
   machine_configuration_input = replace(var.machine_configs[each.key].machine_configuration, "$$", "$")
   node                        = each.key
-
-  config_patches = [
-    replace(var.machine_configs[each.key].config_patch, "$$", "$")
-  ]
 
   # Apply configs via IPv4 since nodes are in maintenance mode and IPv6 is not yet configured
   endpoint = var.all_node_ips[each.key].ipv4
