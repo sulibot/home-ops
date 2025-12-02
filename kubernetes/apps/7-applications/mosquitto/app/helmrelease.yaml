@@ -49,7 +49,7 @@ spec:
           external-dns.alpha.kubernetes.io/hostname: mosquitto.sulibot.com
           gatus.home-operations.com/endpoint: |-
             group: services
-          lbipam.cilium.io/ips: fd00:101::1b:129,10.101.27.129
+          lbipam.cilium.io/ips: fd00:101:1b::129,10.101.27.129
         ipFamilyPolicy: PreferDualStack
         ipFamilies: [IPv6, IPv4]
         externalTrafficPolicy: Local
