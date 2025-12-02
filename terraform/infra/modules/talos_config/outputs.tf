@@ -5,12 +5,11 @@ output "talosconfig" {
 }
 
 output "machine_configs" {
-  description = "Generated machine configurations for all nodes"
+  description = "Generated machine configurations for all nodes (complete configs with network + CDI)"
   value = {
     for node_name, config in local.machine_configs : node_name => {
       machine_type          = config.machine_type
       machine_configuration = replace(config.machine_configuration, "$", "$$")
-      config_patch          = replace(config.config_patch, "$", "$$")
     }
   }
   sensitive = true

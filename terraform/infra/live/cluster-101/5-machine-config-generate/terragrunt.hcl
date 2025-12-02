@@ -79,7 +79,7 @@ terraform {
     run_on_error = false
   }
 
-  # Export machine configs for troubleshooting (not committed)
+  # Export per-node machine configs
   after_hook "export_machine_configs" {
     commands     = ["apply"]
     execute      = ["bash", "-c", <<-EOT
@@ -88,17 +88,14 @@ terraform {
       mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}
       cd ${get_terragrunt_dir()}
 
-      # Export controlplane config (first control plane node)
-      terragrunt output -json machine_configs | \
-        jq -r '.solcp01.machine_configuration' > \
-        ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/controlplane.yaml
+      # Export all per-node configs
+      for node in solcp01 solcp02 solcp03 solwk01 solwk02 solwk03; do
+        terragrunt output -json machine_configs | \
+          jq -r ".\$node.machine_configuration" > \
+          ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/\$node.yaml
+      done
 
-      # Export worker config (first worker node)
-      terragrunt output -json machine_configs | \
-        jq -r '.solwk01.machine_configuration' > \
-        ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/worker.yaml
-
-      echo "✓ Exported machine configs for troubleshooting (not committed to git)"
+      echo "✓ Exported per-node machine configs (solcp01-03, solwk01-03)"
     EOT
     ]
     run_on_error = false
