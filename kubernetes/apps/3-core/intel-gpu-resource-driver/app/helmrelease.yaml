@@ -9,6 +9,10 @@ spec:
     kind: OCIRepository
     name: intel-gpu-resource-driver
   interval: 1h
+  # Suspended: Pods crash-looping with "Permission check failed" and "No supported devices detected"
+  # Root cause: Chart doesn't mount /dev hostPath, so container can't access /dev/dri/* GPU devices
+  # TODO: Add proper /dev mount or switch to CDI-based GPU access
+  suspend: true
   values:
     cdi:
       staticPath: /var/cdi/static

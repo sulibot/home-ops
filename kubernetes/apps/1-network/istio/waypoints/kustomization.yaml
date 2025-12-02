@@ -1,6 +1,8 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources:
-  - observability-waypoint.yaml
-  # - default-waypoint.yaml  # Disabled: waypoint failing startup probe, not needed for L4 mTLS
+resources: []
+  # Waypoints disabled: failing startup probe (connection refused on port 15021)
+  # L4 mTLS is provided by ztunnel DaemonSet, waypoints are optional L7 features
+  # - observability-waypoint.yaml
+  # - default-waypoint.yaml
