@@ -252,7 +252,7 @@ Dual-stack cluster requires **both** IPv4 and IPv6 addresses in `lbipam.cilium.i
 Updated annotations to include both:
 ```yaml
 annotations:
-  lbipam.cilium.io/ips: fd00:101::1b:122,10.101.27.122  # IPv6,IPv4
+  lbipam.cilium.io/ips: fd00:101:1b::122,10.101.27.122  # IPv6,IPv4
 ```
 
 ### Long-Term Fix
@@ -279,7 +279,7 @@ for svc in $(kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type=="
 
   if ! echo "$IPS" | grep -q ","; then
     echo "❌ $svc: Only one IP specified: $IPS"
-    echo "   Should have: IPv6,IPv4 (e.g., fd00:101::1b:120,10.101.27.120)"
+    echo "   Should have: IPv6,IPv4 (e.g., fd00:101:1b::120,10.101.27.120)"
     ((ISSUES++))
   else
     echo "✅ $svc: $IPS"
@@ -303,7 +303,7 @@ service:
     type: LoadBalancer
     annotations:
       external-dns.alpha.kubernetes.io/hostname: myapp.sulibot.com
-      lbipam.cilium.io/ips: fd00:101::1b:XXX,10.101.27.XXX  # BOTH required!
+      lbipam.cilium.io/ips: fd00:101:1b::XXX,10.101.27.XXX  # BOTH required!
     externalTrafficPolicy: Local
     ports:
       http:
@@ -311,7 +311,7 @@ service:
 ```
 
 **IP allocation scheme:**
-- IPv6: `fd00:101::1b:XXX` (where XXX = 100-255)
+- IPv6: `fd00:101:1b::XXX` (where XXX = 100-255)
 - IPv4: `10.101.27.XXX` (where XXX matches IPv6)
 - Keep last octet consistent for easy mapping
 
@@ -429,8 +429,8 @@ Kubernetes LoadBalancer `.status.loadBalancer.ingress[]` only reports **one IP**
 Manually add AAAA records to RouterOS for LoadBalancer services:
 ```bash
 ssh admin@router.sulibot.com
-/ip dns static add name=smtp-relay.sulibot.com type=AAAA address=fd00:101::1b:122
-/ip dns static add name=mosquitto.sulibot.com type=AAAA address=fd00:101::1b:129
+/ip dns static add name=smtp-relay.sulibot.com type=AAAA address=fd00:101:1b::122
+/ip dns static add name=mosquitto.sulibot.com type=AAAA address=fd00:101:1b::129
 ```
 
 **Option 2: External-DNS Annotation Support (Better)**
@@ -577,8 +577,8 @@ nslookup plex.sulibot.com router.sulibot.com  # Should have both A and AAAA
 ```bash
 # Add missing AAAA records for LoadBalancer services
 ssh admin@router.sulibot.com <<'EOF'
-/ip dns static add name=smtp-relay.sulibot.com type=AAAA address=fd00:101::1b:122
-/ip dns static add name=mosquitto.sulibot.com type=AAAA address=fd00:101::1b:129
+/ip dns static add name=smtp-relay.sulibot.com type=AAAA address=fd00:101:1b::122
+/ip dns static add name=mosquitto.sulibot.com type=AAAA address=fd00:101:1b::129
 EOF
 ```
 
