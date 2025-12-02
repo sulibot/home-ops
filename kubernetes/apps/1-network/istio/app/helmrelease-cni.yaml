@@ -34,9 +34,11 @@ spec:
       # CNI plugin configuration
       cniBinDir: /opt/cni/bin
       cniConfDir: /etc/cni/net.d
-      cniConfFileName: "istio-cni.conf"
 
-      # Chained CNI configuration (works with Cilium)
+      # Use Cilium's CNI config (chain into existing setup)
+      cniConfFileName: "05-cilium.conflist"
+
+      # Chained CNI configuration (append to Cilium)
       chained: true
 
       # Resource allocation
@@ -46,6 +48,12 @@ spec:
           memory: 100Mi
         limits:
           memory: 200Mi
+
+      # Repair controller to fix pods in bad state
+      repair:
+        enabled: true
+        hub: docker.io/istio
+        tag: 1.24.1
 
     # Ambient mesh specific settings
     ambient:
