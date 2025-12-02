@@ -21,7 +21,7 @@ spec:
               tag: 1.42.2.10156@sha256:9ad8a3506e1d8ebda873a668603c1a2c10e6887969564561be669efd65ae8871
             env:
               TZ: America/Los_Angeles
-              PLEX_ADVERTISE_URL: http://10.101.27.120:32400,http://[fd00:101:1b::120]:32400,https://plex.sulibot.com:443
+              PLEX_ADVERTISE_URL: http://10.101.27.120:32400,http://[fd00:101:1b::78]:32400,https://plex.sulibot.com:443
               PLEX_NO_AUTH_NETWORKS: 10.0.30.0/24,fd00:30::/64
               PLEX_CLAIM:
                 valueFrom:
@@ -71,7 +71,7 @@ spec:
       app:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: fd00:101:1b::120,10.101.27.120
+          lbipam.cilium.io/ips: fd00:101:1b::78,10.101.27.120
         ipFamilyPolicy: PreferDualStack
         ipFamilies:
           - IPv6
