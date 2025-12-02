@@ -111,8 +111,19 @@ spec:
               path: "/spec/template/spec/volumes/-",
               value: Object.spec.template.spec.volumes{
                 name: "repository",
-                persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
-                  claimName: "kopia"
+                csi: Object.spec.template.spec.volumes.csi{
+                  driver: "cephfs.csi.ceph.com",
+                  volumeHandle: "0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e",
+                  readOnly: false,
+                  nodeStageSecretRef: Object.spec.template.spec.volumes.csi.nodeStageSecretRef{
+                    name: "csi-ceph-admin-secret",
+                    namespace: "ceph-csi"
+                  },
+                  volumeAttributes: {
+                    "clusterID": "407036f5-1f73-44ff-ba81-1f219b7a8a64",
+                    "fsName": "backups",
+                    "storage.kubernetes.io/csiProvisionerIdentity": "cephfs.csi.ceph.com"
+                  }
                 }
               }
             }
