@@ -142,6 +142,11 @@ resource "proxmox_virtual_environment_file" "uploaded" {
     path      = local.image_url
     file_name = local.image_name
   }
+
+  # Protect ISO from accidental destruction during rebuilds
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 output "talos_image_id" {

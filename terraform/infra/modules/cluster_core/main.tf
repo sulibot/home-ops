@@ -164,32 +164,12 @@ locals {
   )
 }
 
-# Create PCI hardware mapping for Intel GPU passthrough
-resource "proxmox_virtual_environment_hardware_mapping_pci" "intel_gpu" {
-  name    = "intel-gpu-cluster-${var.cluster_id}"
-  comment = "Intel integrated GPU mapping for cluster ${var.cluster_id}"
-
-  map = [
-    {
-      comment = "Intel UHD Graphics 730 on pve01"
-      id      = "8086:4680"
-      node    = "pve01"
-      path    = "0000:00:02.0"
-    },
-    {
-      comment = "Intel UHD Graphics 730 on pve02"
-      id      = "8086:4680"
-      node    = "pve02"
-      path    = "0000:00:02.0"
-    },
-    {
-      comment = "Intel UHD Graphics 630 on pve03"
-      id      = "8086:9bc5"
-      node    = "pve03"
-      path    = "0000:00:02.0"
-    },
-  ]
-}
+# Hardware mapping approach DISABLED due to bpg/proxmox provider bug
+# The provider v0.86.0 removes the iommugroup parameter when creating/updating hardware mappings
+# See: https://github.com/bpg/terraform-provider-proxmox/issues/886
+#
+# Instead, we use direct PCI ID passthrough via the hostpci.id parameter in the VM resource
+# This requires root PAM credentials (already configured) and bypasses hardware mappings entirely
 
 resource "proxmox_virtual_environment_vm" "nodes" {
   for_each = local.nodes
@@ -299,14 +279,17 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   }
 
   # GPU Passthrough (if configured for this node)
+  # Using direct PCI ID instead of hardware mapping due to bpg/proxmox provider bug
+  # with iommugroup parameter. This requires root PAM credentials (already configured).
   dynamic "hostpci" {
     for_each = each.value.gpu_passthrough != null ? [each.value.gpu_passthrough] : []
     content {
-      device  = "hostpci0"
-      mapping = proxmox_virtual_environment_hardware_mapping_pci.intel_gpu.name
-      pcie    = hostpci.value.pcie
-      rombar  = hostpci.value.rombar
-      xvga    = hostpci.value.x_vga
+      device = "hostpci0"
+      # Use raw PCI ID instead of mapping (requires root@pam credentials)
+      id     = hostpci.value.pci_address
+      pcie   = hostpci.value.pcie
+      rombar = hostpci.value.rombar
+      xvga   = hostpci.value.x_vga
     }
   }
 
