@@ -11,6 +11,8 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
+    - name: kiali-helm-repo
+      namespace: flux-system
     - name: jaeger
       namespace: flux-system
     - name: istio

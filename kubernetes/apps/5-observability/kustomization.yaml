@@ -10,6 +10,7 @@ resources:
   - ./jaeger/helm-repo/ks.yaml
   - ./jaeger/ks.yaml
   - ./keda/ks.yaml
+  - ./kiali/helm-repo/ks.yaml
   - ./kiali/ks.yaml
   - ./kromgo/ks.yaml
   - ./kube-prometheus-stack/ks.yaml
