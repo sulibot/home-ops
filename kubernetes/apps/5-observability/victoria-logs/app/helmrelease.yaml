@@ -9,6 +9,7 @@ spec:
     kind: OCIRepository
     name: victoria-logs
   interval: 1h
+  timeout: 10m  # Give more time for chart installation during bootstrap
   values:
     fullnameOverride: victoria-logs
     server:
