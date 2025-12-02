@@ -12,3 +12,6 @@ spec:
   # This PVC references the same underlying PV as volsync-system/kopia
   # using the kopia-repository-pv PersistentVolume with volumeName
   volumeName: kopia-repository-pv
+  resources:
+    requests:
+      storage: 20Gi  # Must match PV capacity
