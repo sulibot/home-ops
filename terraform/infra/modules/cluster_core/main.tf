@@ -67,6 +67,13 @@ variable "nodes" {
     vlan_mesh   = optional(number)
     public_mtu  = optional(number)
     mesh_mtu    = optional(number)
+    # GPU passthrough configuration
+    gpu_passthrough = optional(object({
+      pci_address = string           # PCI address of GPU (e.g., "0000:00:02.0")
+      pcie        = optional(bool, true)  # Use PCIe passthrough
+      rombar      = optional(bool, true)  # Enable ROM BAR
+      x_vga       = optional(bool, false) # Primary VGA (usually false for secondary GPU)
+    }))
   }))
 }
 
@@ -262,6 +269,17 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     # Enable QEMU Guest Agent for better VM management and monitoring
     enabled = true
     trim    = true
+  }
+
+  # GPU Passthrough (if configured for this node)
+  dynamic "hostpci" {
+    for_each = each.value.gpu_passthrough != null ? [each.value.gpu_passthrough] : []
+    content {
+      device  = hostpci.value.pci_address
+      pcie    = hostpci.value.pcie
+      rombar  = hostpci.value.rombar
+      xvga    = hostpci.value.x_vga
+    }
   }
 
   # Boot from disk first (Talos is installed), then CD-ROM
