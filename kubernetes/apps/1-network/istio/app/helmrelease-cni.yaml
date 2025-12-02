@@ -35,11 +35,12 @@ spec:
       cniBinDir: /opt/cni/bin
       cniConfDir: /etc/cni/net.d
 
-      # Use Cilium's CNI config (chain into existing setup)
-      cniConfFileName: "05-cilium.conflist"
+      # Create separate CNI config for ambient mode
+      # Higher number (10) ensures it runs after Cilium (05)
+      cniConfFileName: "10-istio-ambient-cni.conflist"
 
-      # Chained CNI configuration (append to Cilium)
-      chained: true
+      # Not chained - standalone config for ambient features
+      chained: false
 
       # Resource allocation
       resources:
