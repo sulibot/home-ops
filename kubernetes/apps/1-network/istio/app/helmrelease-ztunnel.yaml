@@ -61,8 +61,6 @@ spec:
     env:
       # Enable detailed logging initially
       RUST_LOG: "info"
-      # Integration with Cilium CNI
-      ISTIO_META_CLUSTER_ID: "cluster-101"
 
     # ServiceMonitor for Prometheus
     serviceMonitor:
