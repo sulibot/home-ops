@@ -1,0 +1,14 @@
+---
+# Enable Istio Ambient Mesh for observability namespace
+# This provides L4 mTLS for all pods via ztunnel (no pod restarts)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    # Enable ambient mesh mode
+    istio.io/dataplane-mode: ambient
+    # Existing labels preserved
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

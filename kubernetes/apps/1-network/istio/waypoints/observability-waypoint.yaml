@@ -1,0 +1,18 @@
+---
+# Waypoint Proxy for Observability Namespace
+# Provides L7 features: HTTP metrics, tracing, traffic management
+# Generated equivalent of: istioctl waypoint apply -n observability --wait
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: observability-waypoint
+  namespace: observability
+  labels:
+    istio.io/waypoint-for: service
+spec:
+  gatewayClassName: istio-waypoint
+  listeners:
+    - name: mesh
+      port: 15008
+      protocol: HBONE

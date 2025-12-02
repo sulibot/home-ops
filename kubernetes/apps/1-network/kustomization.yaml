@@ -12,3 +12,5 @@ resources:
   - ./istio/helm-repo/ks.yaml
   - ./istio/ks.yaml
   - ./istio/policies/ks.yaml
+  - ./istio/namespace-config/ks.yaml
+  - ./istio/waypoints/ks.yaml
