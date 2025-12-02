@@ -45,30 +45,11 @@ ipv6NativeRoutingCIDR: fd00:101:1::/60
 bpf:
   masquerade: false
 
-# Disable masquerading for traffic within these CIDRs
-# This allows native routing within your cluster/network
-# Traffic to the internet will still be masqueraded
+# Masquerading configuration
+# Using iptables masquerading (not BPF) for Istio Ambient compatibility
+# Cilium will use default iptables-based masquerading for traffic leaving the cluster
 ipMasqAgent:
-  enabled: true
-  config:
-    nonMasqueradeCIDRs:
-      # Cluster pod CIDRs - use native routing
-      - 10.101.0.0/16
-      - fd00:101:1::/60
-      # Node networks - use native routing
-      - 10.0.101.0/24
-      - fd00:101::/64
-      - 10.10.101.0/24
-      - fc00:101::/64
-      # RFC1918 private networks - typically don't masquerade
-      - 10.0.0.0/8
-      - 172.16.0.0/12
-      - 192.168.0.0/16
-      # IPv6 ULA - typically don't masquerade
-      - fc00::/7
-      # Link-local
-      - 169.254.0.0/16
-      - fe80::/10
+  enabled: false  # BPF ip-masq-agent requires bpf.masquerade=true
 
 # BGP Control Plane for VIP and LoadBalancer advertisement
 bgpControlPlane:
