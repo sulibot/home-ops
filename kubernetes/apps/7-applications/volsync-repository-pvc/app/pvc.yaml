@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kopia
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-backups-sc
+  # This PVC references the same underlying PV as volsync-system/kopia
+  # using the kopia-repository-pv PersistentVolume with volumeName
+  volumeName: kopia-repository-pv
