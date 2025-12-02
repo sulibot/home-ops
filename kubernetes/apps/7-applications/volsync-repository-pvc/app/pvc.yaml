@@ -1,4 +1,28 @@
 ---
+# Create a static PV for the default namespace that references the same CephFS volume
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolume.json
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kopia-repository-pv-default
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: csi-cephfs-backups-sc
+  csi:
+    driver: cephfs.csi.ceph.com
+    nodeStageSecretRef:
+      name: csi-ceph-admin-secret
+      namespace: ceph-csi
+    volumeAttributes:
+      clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+      fsName: backups
+      storage.kubernetes.io/csiProvisionerIdentity: cephfs.csi.ceph.com
+    volumeHandle: 0001-0024-407036f5-1f73-44ff-ba81-1f219b7a8a64-000000000000000b-841e604c-1dd5-4a09-8763-84e672d78c4e
+---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -9,9 +33,8 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: csi-cephfs-backups-sc
-  # This PVC references the same underlying PV as volsync-system/kopia
-  # using the kopia-repository-pv PersistentVolume with volumeName
-  volumeName: kopia-repository-pv
+  # This PVC binds to the PV above which uses the same CephFS volume as volsync-system/kopia
+  volumeName: kopia-repository-pv-default
   resources:
     requests:
-      storage: 20Gi  # Must match PV capacity
+      storage: 200Gi  # Must match PV capacity
