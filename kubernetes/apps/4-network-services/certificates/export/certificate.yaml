@@ -7,7 +7,7 @@ metadata:
 spec:
   secretName: sulibot-com-tls
   issuerRef:
-    name: letsencrypt-staging  # Using staging during cluster rebuild testing
+    name: letsencrypt-production
     kind: ClusterIssuer
   commonName: sulibot.com
   dnsNames:
