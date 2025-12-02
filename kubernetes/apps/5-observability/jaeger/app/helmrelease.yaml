@@ -78,6 +78,10 @@ spec:
     storage:
       type: memory
 
+    # Explicitly disable Cassandra
+    cassandra:
+      enabled: false
+
     # Disable other components (all-in-one is sufficient)
     ingester:
       enabled: false

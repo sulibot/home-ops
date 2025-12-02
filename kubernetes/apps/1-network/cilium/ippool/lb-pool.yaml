@@ -21,6 +21,7 @@ metadata:
 spec:
   blocks:
     # IPv4 blocks
+    - cidr: 10.0.101.10/32  # Gateway internal IPv4
     - cidr: 10.0.101.64/26  # 10.0.101.64-127 (64 IPs)
     - cidr: 10.101.27.0/24  # 10.101.27.1-254 (Your existing gateway IPs)
     # IPv6 blocks
