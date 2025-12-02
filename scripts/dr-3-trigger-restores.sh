@@ -43,13 +43,13 @@ echo ""
 echo "✓ Checking prerequisites..."
 
 # Check Kopia PVC exists and is Bound
-if ! kubectl get pvc kopia -n default &>/dev/null; then
+if ! kubectl get pvc kopia -n volsync-system &>/dev/null; then
     echo "❌ ERROR: Kopia PVC not found"
     echo "   Run: ./scripts/dr-2-reclaim-kopia-repository.sh"
     exit 1
 fi
 
-PVC_STATUS=$(kubectl get pvc kopia -n default -o jsonpath='{.status.phase}')
+PVC_STATUS=$(kubectl get pvc kopia -n volsync-system -o jsonpath='{.status.phase}')
 if [ "$PVC_STATUS" != "Bound" ]; then
     echo "❌ ERROR: Kopia PVC is not Bound (status: $PVC_STATUS)"
     exit 1

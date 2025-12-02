@@ -51,7 +51,7 @@ Next step:
 3. Creates PersistentVolumeClaim bound to that PV
 4. Waits for PVC to become Bound
 
-**Result:** `kopia` PVC (200Gi) in `default` namespace with all existing backups intact
+**Result:** `kopia` PVC (200Gi) in `volsync-system` namespace with all existing backups intact
 
 **Usage:**
 ```bash
@@ -306,7 +306,7 @@ kubectl get pods -n ceph-csi
 
 **Check Kopia repository connection:**
 ```bash
-kubectl logs -n default -l app.kubernetes.io/name=kopia
+kubectl logs -n volsync-system -l app.kubernetes.io/name=kopia
 ```
 
 **Check backups exist:**

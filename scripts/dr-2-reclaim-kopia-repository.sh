@@ -128,7 +128,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: kopia
-  namespace: default
+  namespace: volsync-system
 spec:
   accessModes:
     - ReadWriteMany
@@ -144,7 +144,7 @@ echo ""
 
 # Wait for PVC to be Bound
 echo "Waiting for PVC to become Bound..."
-kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/kopia -n default --timeout=30s
+kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/kopia -n volsync-system --timeout=30s
 
 echo ""
 echo "=========================================="
@@ -152,7 +152,7 @@ echo "✅ SUCCESS: Kopia Repository Reclaimed"
 echo "=========================================="
 echo ""
 echo "PVC Status:"
-kubectl get pvc kopia -n default
+kubectl get pvc kopia -n volsync-system
 echo ""
 echo "Next step:"
 echo "  Wait 1-2 minutes for apps to reconcile, then run:"
