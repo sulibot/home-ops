@@ -12,6 +12,12 @@ k8sServicePort: 7445
 # Replace kube-proxy with Cilium
 kubeProxyReplacement: true
 
+# Socket-based load balancing - restrict to host namespace only
+# Required for Istio Ambient mesh compatibility
+# This prevents interference with Istio's traffic redirection
+socketLB:
+  hostNamespaceOnly: true
+
 # Enable dual-stack
 ipv4:
   enabled: true
@@ -32,10 +38,12 @@ endpointRoutes:
 ipv4NativeRoutingCIDR: 10.101.0.0/16
 ipv6NativeRoutingCIDR: fd00:101:1::/60
 
-# Enable BPF masquerading (iptables-free NAT)
-# Only masquerade traffic going outside the cluster network
+# BPF masquerading - DISABLED for Istio Ambient compatibility
+# Istio ambient uses link-local IPs (169.254.7.127) for health checks
+# which are incompatible with BPF masquerading
+# Keep using iptables masquerading for now
 bpf:
-  masquerade: true
+  masquerade: false
 
 # Disable masquerading for traffic within these CIDRs
 # This allows native routing within your cluster/network
@@ -107,6 +115,8 @@ hubble:
 # Install CNI plugin
 cni:
   install: true
+  # Allow Istio CNI to coexist (required for Istio Ambient mesh)
+  exclusive: false
 
 # Talos-specific settings
 cgroup:
