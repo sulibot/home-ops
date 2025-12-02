@@ -96,7 +96,9 @@ data "sops_file" "proxmox" {
 
 provider "proxmox" {
   endpoint  = data.sops_file.proxmox.data["pve_endpoint"]
-  api_token = "$${data.sops_file.proxmox.data["pve_api_token_id"]}=$${data.sops_file.proxmox.data["pve_api_token_secret"]}"
+  # Use root credentials for GPU passthrough (hostpci with id parameter requires root)
+  username  = data.sops_file.proxmox.data["pve_username"]
+  password  = data.sops_file.proxmox.data["pve_password"]
   insecure  = true
 
   ssh {
