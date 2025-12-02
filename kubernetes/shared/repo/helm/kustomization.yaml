@@ -11,5 +11,6 @@ resources:
   - cnpg-helmrepository.yaml
   - akeyless-helmrepository.yaml
   - bjw-s-repo.yaml
+  - istio-helmrepository.yaml
   # Add other Helm repositories here
 

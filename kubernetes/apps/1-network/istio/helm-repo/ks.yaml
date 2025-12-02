@@ -1,0 +1,20 @@
+---
+# Flux Kustomization for Istio HelmRepository
+# Created in flux-system namespace to be referenced by Istio HelmReleases
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: istio-helm-repo
+  namespace: flux-system
+spec:
+  interval: 15m
+  retryInterval: 30s
+  path: ./kubernetes/apps/1-network/istio/helm-repo
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: flux-system
+  wait: false

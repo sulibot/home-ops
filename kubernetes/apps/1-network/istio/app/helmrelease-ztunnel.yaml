@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ztunnel
+  namespace: istio-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: ztunnel
+      version: 1.24.1
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+      interval: 12h
+  dependsOn:
+    - name: istiod
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # ztunnel runs as DaemonSet on all nodes
+    # Provides transparent L4 proxy for ambient mesh
+
+    # Resource allocation per node
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+
+    # Security context (needs privileged for node-level networking)
+    securityContext:
+      privileged: true
+      capabilities:
+        add:
+          - NET_ADMIN
+          - SYS_ADMIN
+
+    # Node selector (run on all nodes)
+    nodeSelector: {}
+
+    # Tolerations for control plane nodes
+    tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+
+    # ztunnel configuration
+    env:
+      # Enable detailed logging initially
+      RUST_LOG: "info"
+      # Integration with Cilium CNI
+      ISTIO_META_CLUSTER_ID: "cluster-101"
+
+    # ServiceMonitor for Prometheus
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s

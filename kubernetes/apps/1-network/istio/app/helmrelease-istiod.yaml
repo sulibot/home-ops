@@ -1,0 +1,69 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istiod
+  namespace: istio-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: istiod
+      version: 1.24.1
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+      interval: 12h
+  dependsOn:
+    - name: istio-base
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # Enable ambient mesh mode
+    pilot:
+      env:
+        PILOT_ENABLE_AMBIENT: "true"
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          memory: 2Gi
+
+    # Mesh configuration
+    meshConfig:
+      # Enable distributed tracing
+      enableTracing: true
+      defaultConfig:
+        tracing:
+          sampling: 100.0  # 100% sampling initially (reduce after testing)
+          zipkin:
+            address: jaeger-collector.observability.svc.cluster.local:9411
+        proxyMetadata:
+          ISTIO_META_DNS_CAPTURE: "true"
+          ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+    # Global settings
+    global:
+      istioNamespace: istio-system
+      logAsJson: true
+      # Cilium CNI compatibility
+      proxy:
+        privileged: true
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      ports:
+        - name: http-monitoring
+          port: 15014
+          protocol: TCP
+          targetPort: 15014
