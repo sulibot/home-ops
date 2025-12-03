@@ -18,21 +18,21 @@ spec:
               repository: ghcr.io/home-operations/nzbget
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
-#              NZBGET__PORT: &port 80
+              NZBGET__PORT: &port 80
               TZ: America/Los_Angeles
-#            probes:
-#              liveness: &probes
-#                enabled: true
-#                custom: true
-#                spec:
-#                  httpGet:
-#                    path: /jsonrpc/status
-#                    port: *port
-#                  initialDelaySeconds: 0
-#                  periodSeconds: 10
-#                  timeoutSeconds: 1
-#                  failureThreshold: 3
-#              readiness: *probes
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /jsonrpc/status
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -81,6 +81,10 @@ spec:
     persistence:
       config:
         existingClaim: "{{ .Release.Name }}-config"
+      downloads:
+        type: emptyDir
+        globalMounts:
+          - path: /downloads
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
