@@ -30,15 +30,19 @@ spec:
         storageClassName: csi-cephfs-config-sc
         size: 20Gi
       readinessProbe:
-        tcpSocket:
+        httpGet:
+          path: /health
           port: http
-        initialDelaySeconds: 5
-        periodSeconds: 5
+          host: "::"  # Use IPv6 wildcard to match VM_httpListenAddr setting
+        initialDelaySeconds: 10
+        periodSeconds: 10
         timeoutSeconds: 5
-        failureThreshold: 3
+        failureThreshold: 6
       livenessProbe:
-        tcpSocket:
+        httpGet:
+          path: /health
           port: http
+          host: "::"  # Use IPv6 wildcard to match VM_httpListenAddr setting
         initialDelaySeconds: 30
         periodSeconds: 30
         timeoutSeconds: 5
