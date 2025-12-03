@@ -10,8 +10,10 @@ metadata:
     component: application
     critical: "false"
 spec:
-  components:
-    - ../../../../components/volsync
+  # Temporarily disable volsync until app creates initial config
+  # (app never ran before due to YAML error, so no backup exists)
+  # components:
+  #   - ../../../../components/volsync
 
   dependsOn:
     - name: external-secrets
