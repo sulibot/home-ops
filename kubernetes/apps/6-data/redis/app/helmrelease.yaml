@@ -450,9 +450,9 @@ spec:
       priorityClassName: ""
       readinessProbe:
         enabled: true
-        failureThreshold: 5
-        initialDelaySeconds: 20
-        periodSeconds: 5
+        failureThreshold: 10  # More retries for master sync
+        initialDelaySeconds: 60  # Give time for initial master sync
+        periodSeconds: 10  # Check less frequently
         successThreshold: 1
         timeoutSeconds: 5  # Increased from 1s for IPv6 network
       replicaCount: 3
