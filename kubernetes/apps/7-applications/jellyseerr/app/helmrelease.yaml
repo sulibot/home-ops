@@ -23,6 +23,7 @@ spec:
               TZ: America/Los_Angeles
               LOG_LEVEL: "info"
               PORT: &port 80
+              JELLYSEERR_EXTERNAL_URL: https://jellyseerr.sulibot.com
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
