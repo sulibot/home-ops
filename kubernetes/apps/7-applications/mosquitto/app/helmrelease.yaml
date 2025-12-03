@@ -53,6 +53,8 @@ spec:
         ipFamilyPolicy: PreferDualStack
         ipFamilies: [IPv6, IPv4]
         externalTrafficPolicy: Local
+        labels:
+          advertise: loadbalancer
         ports:
           mqtt:
             port: 1883

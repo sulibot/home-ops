@@ -85,7 +85,7 @@ spec:
           - IPv6
           - IPv4
         labels:
-          bgp-advertise: "true"
+          advertise: loadbalancer
         ports:
           http:
             port: *port
