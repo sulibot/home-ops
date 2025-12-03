@@ -40,6 +40,10 @@ spec:
     service:
       app:
         controller: sabnzbd
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         ports:
           http:
             port: 80

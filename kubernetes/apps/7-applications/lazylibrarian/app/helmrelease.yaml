@@ -58,9 +58,13 @@ spec:
     service:
       app:
         controller: lazylibrarian
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         ports:
           http:
-            port: *port
+            port: 5299
     route:
       app:
         hostnames:
