@@ -42,7 +42,7 @@ spec:
               requests:
                 cpu: 100m
               limits:
-                memory: 8Gi
+                memory: 2Gi
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -85,7 +85,7 @@ spec:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /data/Downloads/nzbget
-            subPath: data/Downloads/nzbget
+          - path: /data
+            subPath: data
       tmp:
         type: emptyDir
