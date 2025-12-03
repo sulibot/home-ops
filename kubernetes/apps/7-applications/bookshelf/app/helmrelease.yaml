@@ -48,9 +48,11 @@ spec:
                   failureThreshold: 3
               readiness: *probes
             securityContext:
-              allowPrivilegeEscalation: false
+              allowPrivilegeEscalation: true
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities:
+                drop: ["ALL"]
+                add: ["SETGID", "SETUID"]
             resources:
               requests:
                 cpu: 100m
