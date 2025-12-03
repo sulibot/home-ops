@@ -82,5 +82,9 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+      run:
+        type: emptyDir
+        globalMounts:
+          - path: /run
       tmp:
         type: emptyDir
