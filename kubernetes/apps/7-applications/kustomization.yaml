@@ -13,12 +13,12 @@ resources:
   - ./go2rtc/ks.yaml
   - ./home-assistant/ks.yaml
   - ./immich/ks.yaml
-  - ./jellyseerr/ks.yaml
+#  - ./jellyseerr/ks.yaml  # Replaced by seerr
   - ./lidarr/ks.yaml
   - ./mosquitto/ks.yaml
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
-  - ./overseerr/ks.yaml
+#  - ./overseerr/ks.yaml  # Replaced by seerr
   - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml
