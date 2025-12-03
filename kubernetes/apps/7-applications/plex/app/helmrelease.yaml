@@ -55,8 +55,8 @@ spec:
                 - name: gpu
               requests:
                 cpu: 100m
-              limits:
-                memory: 4Gi # Reduced from 6Gi due to worker node capacity
+#              limits:
+#                memory: 4Gi # Reduced from 6Gi due to worker node capacity
     defaultPodOptions:
       resourceClaims:
         - name: gpu

@@ -75,8 +75,8 @@ spec:
               requests:
                 cpu: 10m
                 memory: 128Mi
-              limits:
-                memory: 1Gi
+#              limits:
+#                memory: 1Gi
     defaultPodOptions:
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
