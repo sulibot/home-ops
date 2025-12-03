@@ -25,33 +25,12 @@ spec:
               PGID: "1000"
               DOCKER_MODS: "linuxserver/mods:universal-calibre|linuxserver/mods:lazylibrarian-ffmpeg"
             probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
               startup:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - nc -z localhost 5299
-                  initialDelaySeconds: 0
-                  periodSeconds: 10
-                  timeoutSeconds: 1
-                  failureThreshold: 60  # Allow 10 minutes for DOCKER_MODS download
-              liveness: &probes
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - nc -z localhost 5299
-                  initialDelaySeconds: 0
-                  periodSeconds: 10
-                  timeoutSeconds: 1
-                  failureThreshold: 3
-              readiness: *probes
+                enabled: false
             securityContext:
               allowPrivilegeEscalation: true
               readOnlyRootFilesystem: false
