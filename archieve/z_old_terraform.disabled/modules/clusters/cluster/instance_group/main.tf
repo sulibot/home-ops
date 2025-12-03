@@ -6,7 +6,7 @@ terraform {
     }
     routeros = {
       source  = "terraform-routeros/routeros"
-      version = "~> 1.86.3"
+      version = "~> 1.97.0"
     }
   }
 }
