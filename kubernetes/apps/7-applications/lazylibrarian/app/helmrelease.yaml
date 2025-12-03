@@ -29,8 +29,11 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: &port 5299
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - nc -z localhost 5299
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -39,8 +42,11 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: *port
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - nc -z localhost 5299
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
