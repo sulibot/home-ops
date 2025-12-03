@@ -6,6 +6,7 @@ resources:
   - ./actions-runner-controller/ks.yaml
   - ./atuin/ks.yaml
   - ./autobrr/ks.yaml
+  - ./bookshelf/ks.yaml
 #  - ./cross-seed/ks.yaml  # Disabled: qBittorrent authentication failing (401)
   - ./emby/ks.yaml
   - ./filebrowser/ks.yaml
@@ -14,6 +15,7 @@ resources:
   - ./home-assistant/ks.yaml
   - ./immich/ks.yaml
 #  - ./jellyseerr/ks.yaml  # Replaced by seerr
+  - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
   - ./mosquitto/ks.yaml
   - ./notifier/ks.yaml
