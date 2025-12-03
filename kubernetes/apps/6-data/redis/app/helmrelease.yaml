@@ -113,8 +113,12 @@ spec:
       extraEnvVarsSecret: ""
       extraFlags: []
       extraPodSpec: {}
-      extraVolumeMounts: []
-      extraVolumes: []
+      extraVolumeMounts:
+        - name: redis-tmp
+          mountPath: /opt/bitnami/redis/tmp
+      extraVolumes:
+        - name: redis-tmp
+          emptyDir: {}
       hostAliases: []
       initContainers: []
       kind: StatefulSet
@@ -392,8 +396,12 @@ spec:
       extraEnvVarsSecret: ""
       extraFlags: []
       extraPodSpec: {}
-      extraVolumeMounts: []
-      extraVolumes: []
+      extraVolumeMounts:
+        - name: redis-tmp
+          mountPath: /opt/bitnami/redis/tmp
+      extraVolumes:
+        - name: redis-tmp
+          emptyDir: {}
       hostAliases: []
       initContainers: []
       kind: StatefulSet
