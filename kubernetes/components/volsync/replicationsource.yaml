@@ -12,7 +12,8 @@ metadata:
 spec:
   # --- Source PVC configuration -------------------------------------------
   # This identifies the PVC being backed up.
-  sourcePVC: "${APP}-config"
+  # Override with VOLSYNC_SOURCE_PVC if the PVC name doesn't follow the ${APP}-config pattern
+  sourcePVC: "${VOLSYNC_SOURCE_PVC:=${APP}-config}"
 
   # --- Backup scheduling --------------------------------------------------
   trigger:
@@ -21,7 +22,12 @@ spec:
   # --- Kopia backup configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
-    repositoryPVC: "kopia"  # PVC created by volsync component in each namespace
+    # Cross-namespace repository access:
+    # The "kopia" PVC must exist in the SAME namespace as this ReplicationSource.
+    # All namespaces share the same CephFS repository by binding PVCs to static PVs
+    # that reference the same volumeHandle (created in volsync-system namespace).
+    # See: kubernetes/apps/7-applications/volsync-repository-pvc/app/pvc.yaml
+    repositoryPVC: "kopia"
 
     # Access and storage configuration
     storageClassName: "${VOLSYNC_STORAGECLASS:=csi-cephfs-config-sc}"

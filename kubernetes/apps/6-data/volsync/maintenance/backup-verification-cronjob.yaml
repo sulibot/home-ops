@@ -1,0 +1,170 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: volsync-backup-verifier
+  namespace: volsync-system
+spec:
+  schedule: "0 6 * * *"  # Daily at 6 AM
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400  # Keep for 24 hours
+      template:
+        metadata:
+          labels:
+            app: volsync-backup-verifier
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: volsync-backup-verifier
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: verifier
+              image: ghcr.io/home-operations/kopia:0.21.1@sha256:f666b5f2c1ea4649cd2bd703507d4b81c2b515782e8476ba4a145b091a704a53
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: KOPIA_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: kopia-secret
+                      key: KOPIA_PASSWORD
+                - name: KOPIA_CHECK_FOR_UPDATES
+                  value: "false"
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  echo "🔍 Volsync Backup Verification Report"
+                  echo "======================================"
+                  echo "Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                  echo ""
+
+                  # Connect to repository
+                  echo "📦 Connecting to Kopia repository..."
+                  kopia repository connect filesystem \
+                    --path=/repository/repository \
+                    --password="$KOPIA_PASSWORD" \
+                    --config-file=/tmp/kopia-verify.config \
+                    --override-hostname=volsync.volsync-system.svc.cluster.local \
+                    --override-username=volsync \
+                    --readonly
+
+                  echo "✅ Connected to repository"
+                  echo ""
+
+                  # Repository status
+                  echo "📊 Repository Status:"
+                  kopia repository status --config-file=/tmp/kopia-verify.config | grep -E "(Storage capacity|Storage available|Format version|Hash|Encryption)"
+                  echo ""
+
+                  # Get snapshot statistics
+                  echo "📸 Snapshot Statistics:"
+                  TOTAL_SNAPSHOTS=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep -c "^" || echo "0")
+                  echo "   Total snapshots: $TOTAL_SNAPSHOTS"
+
+                  # Count snapshots by date
+                  SNAPSHOTS_TODAY=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "$(date -u +%Y-%m-%d)" | wc -l || echo "0")
+                  SNAPSHOTS_YESTERDAY=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "$(date -u -d '1 day ago' +%Y-%m-%d)" | wc -l || echo "0")
+
+                  echo "   Snapshots today: $SNAPSHOTS_TODAY"
+                  echo "   Snapshots yesterday: $SNAPSHOTS_YESTERDAY"
+                  echo ""
+
+                  # List all sources (unique host@user:/path combinations)
+                  echo "🗂️  Backup Sources:"
+                  kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | \
+                    awk '{print $1}' | sort -u | while read -r source; do
+                      if [ -n "$source" ] && [ "$source" != "volsync.volsync-system.svc.cluster.local@volsync" ]; then
+                        LATEST=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "^$source" | tail -1 | awk '{print $4, $5}')
+                        COUNT=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep -c "^$source" || echo "0")
+                        echo "   - $source"
+                        echo "     Latest: $LATEST"
+                        echo "     Count: $COUNT snapshots"
+                      fi
+                    done
+                  echo ""
+
+                  # Perform blob verification on a sample of recent snapshots
+                  echo "🔬 Verifying Snapshot Integrity (sampling recent backups)..."
+                  VERIFICATION_ERRORS=0
+
+                  # Get list of unique sources
+                  SOURCES=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | awk '{print $1}' | sort -u)
+
+                  for source in $SOURCES; do
+                    if [ -z "$source" ] || [ "$source" = "volsync.volsync-system.svc.cluster.local@volsync" ]; then
+                      continue
+                    fi
+
+                    # Get the latest snapshot ID for this source
+                    LATEST_SNAPSHOT=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "^$source" | tail -1 | awk '{print $2}')
+
+                    if [ -n "$LATEST_SNAPSHOT" ]; then
+                      echo "   Verifying: $source (snapshot: $LATEST_SNAPSHOT)"
+
+                      # Verify the snapshot (quick check)
+                      if kopia snapshot verify --config-file=/tmp/kopia-verify.config "$LATEST_SNAPSHOT" --verify-files-percent=1 2>&1; then
+                        echo "      ✅ Verification passed"
+                      else
+                        echo "      ❌ Verification FAILED"
+                        VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
+                      fi
+                    fi
+                  done
+
+                  echo ""
+                  echo "================================"
+                  echo "Verification Summary:"
+                  echo "  Total snapshots: $TOTAL_SNAPSHOTS"
+                  echo "  Verification errors: $VERIFICATION_ERRORS"
+
+                  if [ "$VERIFICATION_ERRORS" -gt 0 ]; then
+                    echo ""
+                    echo "❌ VERIFICATION FAILED - Some snapshots have integrity issues"
+                    exit 1
+                  else
+                    echo ""
+                    echo "✅ All verified snapshots are healthy"
+                    exit 0
+                  fi
+              volumeMounts:
+                - name: repository
+                  mountPath: /repository
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 512Mi
+          volumes:
+            - name: repository
+              persistentVolumeClaim:
+                claimName: kopia
+            - name: tmp
+              emptyDir: {}
+---
+# ServiceAccount with read-only access to repository
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: volsync-backup-verifier
+  namespace: volsync-system

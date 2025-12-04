@@ -1,0 +1,150 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: volsync-alerts
+  namespace: observability
+spec:
+  groups:
+    - name: volsync.rules
+      interval: 5m
+      rules:
+        # Alert on stuck restore operations
+        - alert: VolsyncRestoreStuck
+          expr: |
+            count by (namespace, name) (
+              kube_customresource_volsync_replicationdestination_info{trigger_manual="restore-once"}
+              * on(namespace, name) group_left()
+              (
+                kube_customresource_volsync_replicationdestination_status_condition{type="Synchronizing", status="true"}
+                and
+                time() - kube_customresource_volsync_replicationdestination_status_condition_last_transition_time{type="Synchronizing"} > 3600
+              )
+            ) > 0
+          for: 15m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Volsync restore operation stuck for {{ $labels.name }} in {{ $labels.namespace }}"
+            description: |
+              ReplicationDestination {{ $labels.namespace }}/{{ $labels.name }} has been in Synchronizing state for more than 1 hour.
+
+              This typically indicates:
+              - Mover job is hung or failed silently
+              - Network connectivity issues with Kopia repository
+              - Permission issues with target PVC
+
+              Investigate with:
+              kubectl get replicationdestination -n {{ $labels.namespace }} {{ $labels.name }}
+              kubectl logs -n {{ $labels.namespace }} -l volsync.backube/replication-destination={{ $labels.name }}
+            runbook_url: "https://github.com/backube/volsync/blob/main/docs/usage/index.rst#troubleshooting"
+
+        # Alert on failed backup operations
+        - alert: VolsyncBackupFailed
+          expr: |
+            count by (namespace, name) (
+              kube_customresource_volsync_replicationsource_status_condition{type="Synchronizing", status="false", reason!="WaitingForSchedule"}
+              and
+              kube_customresource_volsync_replicationsource_status_last_mover_result{result!="Successful"}
+            ) > 0
+          for: 30m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Volsync backup failed for {{ $labels.name }} in {{ $labels.namespace }}"
+            description: |
+              ReplicationSource {{ $labels.namespace }}/{{ $labels.name }} backup operation failed.
+
+              Check the mover job logs:
+              kubectl logs -n {{ $labels.namespace }} -l volsync.backube/replication-source={{ $labels.name }} --tail=100
+            runbook_url: "https://github.com/backube/volsync/blob/main/docs/usage/index.rst#troubleshooting"
+
+        # Alert if no successful backup in 25 hours (allowing 1-hour schedule + buffer)
+        - alert: VolsyncBackupStale
+          expr: |
+            (time() - kube_customresource_volsync_replicationsource_status_last_sync_time) > 90000
+          for: 1h
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Volsync backup stale for {{ $labels.name }} in {{ $labels.namespace }}"
+            description: |
+              ReplicationSource {{ $labels.namespace }}/{{ $labels.name }} has not completed a successful backup in over 25 hours.
+
+              Last successful backup: {{ $value | humanizeDuration }} ago
+
+              Check if:
+              - The application is running
+              - The source PVC exists
+              - The Kopia repository is accessible
+
+              kubectl get replicationsource -n {{ $labels.namespace }} {{ $labels.name }} -o yaml
+            runbook_url: "https://github.com/backube/volsync/blob/main/docs/usage/index.rst#troubleshooting"
+
+        # Alert if Kopia server is down
+        - alert: KopiaServerDown
+          expr: |
+            up{job="kopia"} == 0
+            or
+            absent(up{job="kopia"})
+          for: 5m
+          labels:
+            severity: critical
+            component: backup
+          annotations:
+            summary: "Kopia backup server is down"
+            description: |
+              The Kopia server in volsync-system namespace is not responding.
+
+              All backup and restore operations will fail until the server is restored.
+
+              Check pod status:
+              kubectl get pods -n volsync-system -l app.kubernetes.io/name=kopia
+
+              Check logs:
+              kubectl logs -n volsync-system -l app.kubernetes.io/name=kopia --tail=100
+            runbook_url: "https://kopia.io/docs/"
+
+        # Alert on backup job failures (using Job metrics)
+        - alert: VolsyncMoverJobFailed
+          expr: |
+            kube_job_status_failed{job_name=~"volsync-.*"} > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Volsync mover job {{ $labels.job_name }} failed in {{ $labels.namespace }}"
+            description: |
+              A Volsync mover job has failed in {{ $labels.namespace }}.
+
+              Job: {{ $labels.job_name }}
+
+              Check logs:
+              kubectl logs -n {{ $labels.namespace }} job/{{ $labels.job_name }} --tail=100
+            runbook_url: "https://github.com/backube/volsync/blob/main/docs/usage/index.rst#troubleshooting"
+
+        # Alert if stuck restore detector CronJob is failing
+        - alert: VolsyncStuckDetectorFailing
+          expr: |
+            rate(kube_job_status_failed{job_name=~"volsync-stuck-restore-detector-.*"}[1h]) > 0
+          for: 15m
+          labels:
+            severity: info
+            component: backup
+          annotations:
+            summary: "Volsync stuck restore detector is failing"
+            description: |
+              The automated stuck restore detection CronJob is experiencing failures.
+
+              This may indicate issues with:
+              - RBAC permissions
+              - API server connectivity
+              - Script errors
+
+              Check logs:
+              kubectl logs -n volsync-system -l app=volsync-stuck-restore-detector --tail=100

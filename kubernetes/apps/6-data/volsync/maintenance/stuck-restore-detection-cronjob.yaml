@@ -1,0 +1,162 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: volsync-stuck-restore-detector
+  namespace: volsync-system
+spec:
+  schedule: "*/15 * * * *"  # Every 15 minutes
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+      template:
+        metadata:
+          labels:
+            app: volsync-stuck-restore-detector
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: volsync-stuck-restore-detector
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534  # nobody
+            runAsGroup: 65534
+            fsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: detector
+              image: bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: STUCK_THRESHOLD_MINUTES
+                  value: "60"  # Consider stuck after 60 minutes
+                - name: DRY_RUN
+                  value: "true"  # Only detect, don't auto-fix by default
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  # Configuration
+                  STUCK_THRESHOLD_MINUTES="${STUCK_THRESHOLD_MINUTES:-60}"
+                  DRY_RUN="${DRY_RUN:-true}"
+
+                  echo "🔍 Scanning for stuck ReplicationDestination resources..."
+                  echo "   Threshold: ${STUCK_THRESHOLD_MINUTES} minutes"
+                  echo "   Mode: $([ "$DRY_RUN" = "true" ] && echo "Detection Only" || echo "Auto-Fix")"
+                  echo ""
+
+                  # Get current time in seconds since epoch
+                  CURRENT_TIME=$(date +%s)
+                  STUCK_COUNT=0
+
+                  # Find all ReplicationDestinations with manual trigger and actively synchronizing
+                  kubectl get replicationdestination -A -o json | jq -r '.items[] |
+                    select(.spec.trigger.manual == "restore-once") |
+                    select(.status.conditions[]? | select(.type == "Synchronizing" and .status == "True")) |
+                    "\(.metadata.namespace)|\(.metadata.name)|\(.status.conditions[] | select(.type == "Synchronizing") | .lastTransitionTime)"
+                  ' | while IFS='|' read -r namespace name transition_time; do
+
+                    # Convert transition time to seconds since epoch
+                    TRANSITION_SECONDS=$(date -d "$transition_time" +%s 2>/dev/null || echo 0)
+
+                    if [ "$TRANSITION_SECONDS" -eq 0 ]; then
+                      echo "⚠️  Could not parse timestamp for ${namespace}/${name}"
+                      continue
+                    fi
+
+                    # Calculate how long it's been stuck (in minutes)
+                    STUCK_DURATION_SECONDS=$((CURRENT_TIME - TRANSITION_SECONDS))
+                    STUCK_DURATION_MINUTES=$((STUCK_DURATION_SECONDS / 60))
+
+                    if [ "$STUCK_DURATION_MINUTES" -gt "$STUCK_THRESHOLD_MINUTES" ]; then
+                      STUCK_COUNT=$((STUCK_COUNT + 1))
+
+                      echo "🚨 STUCK: ${namespace}/${name}"
+                      echo "   Duration: ${STUCK_DURATION_MINUTES} minutes"
+                      echo "   Started: ${transition_time}"
+
+                      # Get mover job status
+                      MOVER_JOBS=$(kubectl get jobs -n "$namespace" -l "volsync.backube/replication-destination=${name}" --sort-by=.metadata.creationTimestamp -o name | tail -1)
+                      if [ -n "$MOVER_JOBS" ]; then
+                        echo "   Latest Job: $(basename $MOVER_JOBS)"
+                      fi
+
+                      if [ "$DRY_RUN" = "false" ]; then
+                        echo "   🔄 AUTO-FIX: Deleting stuck mover jobs and resetting trigger..."
+
+                        # Delete stuck mover jobs
+                        kubectl delete jobs -n "$namespace" -l "volsync.backube/replication-destination=${name}" --ignore-not-found=true
+
+                        # Reset the trigger to force a new restore
+                        kubectl patch replicationdestination -n "$namespace" "$name" --type=json \
+                          -p '[{"op":"replace","path":"/spec/trigger/manual","value":"restore-again"}]'
+
+                        echo "   ✅ Fixed: ${namespace}/${name}"
+                      else
+                        echo "   💡 Action: Set DRY_RUN=false to auto-fix"
+                      fi
+
+                      echo "───────────────────────────────────────────"
+                    fi
+                  done
+
+                  echo ""
+                  if [ "$STUCK_COUNT" -eq 0 ]; then
+                    echo "✅ No stuck restores detected"
+                  else
+                    echo "⚠️  Found ${STUCK_COUNT} stuck restore(s)"
+                  fi
+
+                  # Exit with non-zero if stuck restores were found (for alerting)
+                  exit $STUCK_COUNT
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi
+---
+# ServiceAccount with permissions to read ReplicationDestinations and manage Jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: volsync-stuck-restore-detector
+  namespace: volsync-system
+---
+# ClusterRole for reading ReplicationDestinations across all namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: volsync-stuck-restore-detector
+rules:
+  - apiGroups: ["volsync.backube"]
+    resources: ["replicationdestinations"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: volsync-stuck-restore-detector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: volsync-stuck-restore-detector
+subjects:
+  - kind: ServiceAccount
+    name: volsync-stuck-restore-detector
+    namespace: volsync-system

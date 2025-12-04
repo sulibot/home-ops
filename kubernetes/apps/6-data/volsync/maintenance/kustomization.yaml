@@ -6,3 +6,6 @@ resources:
   - ./externalsecret.yaml
   - ./kopiamaintenance.yaml
   - ./mutatingadmissionpolicy.yaml
+  - ./stuck-restore-detection-cronjob.yaml
+  - ./backup-verification-cronjob.yaml
+  - ./prometheusrule.yaml
