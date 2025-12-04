@@ -294,6 +294,9 @@ locals {
         configFiles = [
           {
             content = yamlencode({
+              bfd = {
+                profiles = {}
+              }
               bgp = {
                 cilium = {
                   local_asn  = "65${var.cluster_id}"
