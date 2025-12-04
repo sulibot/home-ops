@@ -287,6 +287,10 @@ locals {
         apiVersion = "v1alpha1"
         kind       = "ExtensionServiceConfig"
         name       = "ext-frr"
+        environment = [
+          "NODE_IP=fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}",
+          "ASN_LOCAL=65${var.cluster_id}"
+        ]
         configFiles = [
           {
             content = yamlencode({
