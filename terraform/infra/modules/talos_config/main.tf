@@ -294,7 +294,13 @@ locals {
         configFiles = [
           {
             content = <<-EOT
-              bfd: {}
+              bfd:
+                profiles:
+                  normal:
+                    detect_multiplier: 3
+                    receive_interval: 300
+                    transmit_interval: 300
+                    echo_mode: false
 
               bgp:
                 cilium:
@@ -321,14 +327,16 @@ locals {
                       description: "RouterOS IPv4 Interface"
                       update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                       bfd:
-                        enabled: false
+                        enabled: true
+                        profile: normal
                     - address: fd00:101::fffe
                       remote_asn: 65000
                       description: "RouterOS IPv6 Interface"
                       address_family: ipv6
                       update_source: fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
                       bfd:
-                        enabled: false
+                        enabled: true
+                        profile: normal
 
               network:
                 interface_mtu: 1500
