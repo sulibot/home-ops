@@ -322,6 +322,9 @@ locals {
                       remote_asn    = 65000
                       description   = "RouterOS IPv4"
                       update_source = "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}"
+                      bfd = {
+                        enabled = false
+                      }
                     },
                     {
                       address        = "fd00:${var.cluster_id}::fffe"
@@ -329,6 +332,9 @@ locals {
                       description    = "RouterOS IPv6"
                       address_family = "ipv6"
                       update_source  = "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
+                      bfd = {
+                        enabled = false
+                      }
                     }
                   ]
                 }
