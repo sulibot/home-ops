@@ -65,7 +65,7 @@ data "talos_machine_configuration" "controlplane" {
           install = {
             disk  = var.install_disk
             image = var.installer_image
-            wipe  = false
+            wipe  = true  # Wipe disk to clear old data during rebuild
           }
         kernel = {
           modules = [
@@ -161,7 +161,7 @@ data "talos_machine_configuration" "worker" {
           install = {
             disk  = var.install_disk
             image = var.installer_image
-            wipe  = false
+            wipe  = true  # Wipe disk to clear old data during rebuild
           }
         kernel = {
           modules = [
@@ -204,13 +204,14 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch
-      config_patch = yamlencode({
-        machine = {
-          nodeLabels = {
-            "topology.kubernetes.io/region" = "home-lab"
-            "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-          }
+      # Per-node network patch and FRR ExtensionServiceConfig
+      config_patch = join("\n---\n", [
+        yamlencode({
+          machine = {
+            nodeLabels = {
+              "topology.kubernetes.io/region" = "home-lab"
+              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+            }
           files = [
             # CDI (Container Device Interface) configuration for GPU passthrough
             # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
@@ -222,76 +223,6 @@ locals {
                   cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
               EOT
               path = "/etc/cri/conf.d/20-customization.part"
-              op   = "create"
-            },
-            # FRR BGP configuration for ROS ↔ FRR ↔ Cilium architecture
-            {
-              content = <<-EOT
-                bgp:
-                  cilium:
-                    local_asn: 65${var.cluster_id}
-                    remote_asn: 4200000${var.cluster_id}
-                    namespace: cilium
-                    peering:
-                      ipv4:
-                        local: 192.168.250.254
-                        remote: 192.168.250.255
-                        prefix: 31
-                      ipv6:
-                        local: "fdae:6bef:5e65::1"
-                        remote: "fdae:6bef:5e65::2"
-                        prefix: 126
-
-                  upstream:
-                    local_asn: 65${var.cluster_id}
-                    router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-                    router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-
-                    peers:
-                      # RouterOS IPv4
-                      - address: 10.0.${var.cluster_id}.254
-                        remote_asn: 65000
-                        description: "RouterOS IPv4"
-                        update_source: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-
-                      # RouterOS IPv6
-                      - address: "fd00:${var.cluster_id}::fffe"
-                        remote_asn: 65000
-                        description: "RouterOS IPv6"
-                        address_family: ipv6
-                        update_source: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-
-                # Advertise connected routes (dummy0 loopback IPs)
-                network:
-                  advertise_connected: true
-                  interface_mtu: 1500
-                  veth_names:
-                    frr_side: veth-frr
-                    cilium_side: veth-cilium
-              EOT
-              path = "/usr/local/etc/frr/config.yaml"
-              op   = "create"
-            },
-            # FRR daemons configuration
-            {
-              content = <<-EOT
-                zebra=true
-                zebra_options="-n -A 127.0.0.1"
-                bgpd=true
-                bgpd_options="-A 127.0.0.1"
-                staticd=true
-                staticd_options="-A 127.0.0.1"
-              EOT
-              path = "/usr/local/etc/frr/daemons"
-              op   = "create"
-            },
-            # FRR vtysh configuration
-            {
-              content = <<-EOT
-                service integrated-vtysh-config
-                hostname ${node.hostname}
-              EOT
-              path = "/usr/local/etc/frr/vtysh.conf"
               op   = "create"
             }
           ]
@@ -351,7 +282,82 @@ locals {
             nameservers = var.dns_servers
           }
         }
+      }),
+      yamlencode({
+        apiVersion = "v1alpha1"
+        kind       = "ExtensionServiceConfig"
+        name       = "ext-frr"
+        configFiles = [
+          {
+            content = yamlencode({
+              bgp = {
+                cilium = {
+                  local_asn  = "65${var.cluster_id}"
+                  remote_asn = "4200000${var.cluster_id}"
+                  namespace  = "cilium"
+                  peering = {
+                    ipv4 = {
+                      local  = "192.168.250.254"
+                      remote = "192.168.250.255"
+                      prefix = 31
+                    }
+                    ipv6 = {
+                      local  = "fdae:6bef:5e65::1"
+                      remote = "fdae:6bef:5e65::2"
+                      prefix = 126
+                    }
+                  }
+                }
+                upstream = {
+                  local_asn    = "65${var.cluster_id}"
+                  router_id    = "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}"
+                  router_id_v6 = "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
+                  peers = [
+                    {
+                      address       = "10.0.${var.cluster_id}.254"
+                      remote_asn    = 65000
+                      description   = "RouterOS IPv4"
+                      update_source = "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}"
+                    },
+                    {
+                      address        = "fd00:${var.cluster_id}::fffe"
+                      remote_asn     = 65000
+                      description    = "RouterOS IPv6"
+                      address_family = "ipv6"
+                      update_source  = "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
+                    }
+                  ]
+                }
+                network = {
+                  advertise_connected = true
+                  interface_mtu       = 1500
+                  veth_names = {
+                    frr_side    = "veth-frr"
+                    cilium_side = "veth-cilium"
+                  }
+                }
+              }
+            })
+            mountPath = "/usr/local/etc/frr/config.yaml"
+          },
+          {
+            content = <<-EOT
+              zebra=true
+              zebra_options="-n -A 127.0.0.1"
+              bgpd=true
+              bgpd_options="-A 127.0.0.1"
+              staticd=true
+              staticd_options="-A 127.0.0.1"
+            EOT
+            mountPath = "/usr/local/etc/frr/daemons"
+          },
+          {
+            content   = "service integrated-vtysh-config\nhostname ${node.hostname}\n"
+            mountPath = "/usr/local/etc/frr/vtysh.conf"
+          }
+        ]
       })
+    ])
     }
   }
 }
