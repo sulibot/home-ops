@@ -44,6 +44,9 @@ ipv6NativeRoutingCIDR: fd00:101:1::/60
 # Keep using iptables masquerading for now
 bpf:
   masquerade: false
+  # Enable external ClusterIP access to handle LoadBalancer IPs in DSR mode
+  # This prevents routing loops when external traffic arrives at LoadBalancer IPs
+  lbExternalClusterIP: true
 
 # Masquerading configuration
 # Using iptables masquerading (not BPF) for Istio Ambient compatibility
