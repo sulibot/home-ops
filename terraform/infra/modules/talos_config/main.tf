@@ -293,61 +293,47 @@ locals {
         ]
         configFiles = [
           {
-            content = yamlencode({
-              bgp = {
-                cilium = {
-                  local_asn  = "65${var.cluster_id}"
-                  remote_asn = "4200000${var.cluster_id}"
-                  namespace  = "cilium"
-                  peering = {
-                    ipv4 = {
-                      local  = "192.168.250.254"
-                      remote = "192.168.250.255"
-                      prefix = 31
-                    }
-                    ipv6 = {
-                      local  = "fdae:6bef:5e65::1"
-                      remote = "fdae:6bef:5e65::2"
-                      prefix = 126
-                    }
-                  }
-                }
-                upstream = {
-                  local_asn    = "65${var.cluster_id}"
-                  router_id    = "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}"
-                  router_id_v6 = "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-                  peers = [
-                    {
-                      address       = "10.0.${var.cluster_id}.254"
-                      remote_asn    = 65000
-                      description   = "RouterOS IPv4"
-                      update_source = "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}"
-                      bfd = {
-                        enabled = false
-                      }
-                    },
-                    {
-                      address        = "fd00:${var.cluster_id}::fffe"
-                      remote_asn     = 65000
-                      description    = "RouterOS IPv6"
-                      address_family = "ipv6"
-                      update_source  = "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-                      bfd = {
-                        enabled = false
-                      }
-                    }
-                  ]
-                }
-                network = {
-                  advertise_connected = true
-                  interface_mtu       = 1500
-                  veth_names = {
-                    frr_side    = "veth-frr"
-                    cilium_side = "veth-cilium"
-                  }
-                }
-              }
-            })
+            content = <<-EOT
+              bgp:
+                cilium:
+                  local_asn: 65${var.cluster_id}
+                  remote_asn: 4200000${var.cluster_id}
+                  namespace: cilium
+                  peering:
+                    ipv4:
+                      local: 192.168.250.254
+                      remote: 192.168.250.255
+                      prefix: 31
+                    ipv6:
+                      local: "fdae:6bef:5e65::1"
+                      remote: "fdae:6bef:5e65::2"
+                      prefix: 126
+
+                upstream:
+                  local_asn: 65${var.cluster_id}
+                  router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
+                  router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
+                  peers:
+                    - address: 10.0.${var.cluster_id}.254
+                      remote_asn: 65000
+                      description: "RouterOS IPv4"
+                      update_source: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
+                      bfd:
+                        enabled: false
+                    - address: fd00:${var.cluster_id}::fffe
+                      remote_asn: 65000
+                      description: "RouterOS IPv6"
+                      address_family: ipv6
+                      update_source: fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
+                      bfd:
+                        enabled: false
+
+              network:
+                interface_mtu: 1500
+                veth_names:
+                  frr_side: veth-frr
+                  cilium_side: veth-cilium
+            EOT
             mountPath = "/usr/local/etc/frr/config.yaml"
           },
           {
