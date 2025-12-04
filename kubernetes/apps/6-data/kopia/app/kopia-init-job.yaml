@@ -41,7 +41,7 @@ spec:
               # Try to connect to existing repository, or create new one
               echo "Attempting to connect to existing Kopia repository..."
               if ! kopia repository connect filesystem \
-                --path=/repository \
+                --path=/repository/repository \
                 --password="$KOPIA_PASSWORD" \
                 --config-file=/config/repository.config \
                 --override-hostname=volsync.volsync-system.svc.cluster.local \
@@ -49,7 +49,7 @@ spec:
 
                 echo "Repository not found, creating new repository..."
                 kopia repository create filesystem \
-                  --path=/repository \
+                  --path=/repository/repository \
                   --password="$KOPIA_PASSWORD" \
                   --config-file=/config/repository.config \
                   --override-hostname=volsync.volsync-system.svc.cluster.local \
