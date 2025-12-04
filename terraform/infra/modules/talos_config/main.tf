@@ -268,6 +268,14 @@ locals {
                     gateway = "10.10.${var.cluster_id}.254"
                   }
                 ]
+              },
+              # Loopback interface for FRR BGP peering
+              {
+                interface = "dummy0"
+                addresses = [
+                  "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
+                  "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
+                ]
               }
             ]
             nameservers = var.dns_servers
