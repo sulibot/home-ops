@@ -294,6 +294,8 @@ locals {
         configFiles = [
           {
             content = <<-EOT
+              bfd: {}
+
               bgp:
                 cilium:
                   local_asn: 65${var.cluster_id}
