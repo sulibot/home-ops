@@ -316,17 +316,17 @@ locals {
                   router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                   router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
                   peers:
-                    - address: 10.255.255.254
+                    - address: 10.0.101.254
                       remote_asn: 65000
-                      description: "RouterOS IPv4 Loopback"
-                      update_source: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
+                      description: "RouterOS IPv4 Interface"
+                      update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                       bfd:
                         enabled: false
-                    - address: fd00:255::fffe
+                    - address: fd00:101::fffe
                       remote_asn: 65000
-                      description: "RouterOS IPv6 Loopback"
+                      description: "RouterOS IPv6 Interface"
                       address_family: ipv6
-                      update_source: fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
+                      update_source: fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
                       bfd:
                         enabled: false
 
