@@ -32,13 +32,3 @@ spec:
           peerASN: 65101  # FRR's ASN
           peerConfigRef:
             name: upstream-router-peer-ipv6
-      # Advertise LoadBalancer IPs and Pod CIDRs
-      advertisements:
-        - advertisementType: CiliumBGPAdvertisement
-          selector:
-            matchLabels:
-              advertise: loadbalancer
-        - advertisementType: CiliumBGPAdvertisement
-          selector:
-            matchLabels:
-              advertise: pod-cidr

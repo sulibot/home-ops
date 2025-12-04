@@ -9,9 +9,13 @@ dependency "talos_config" {
     talosconfig          = "mock"
     client_configuration = {}
     machine_configs      = {}
-    control_plane_ips    = {}
-    all_node_names       = []
-    all_node_ips         = {}
+    control_plane_ips    = {
+      "solcp01" = { ipv6 = "fd00:101::11", ipv4 = "10.0.101.11" }
+    }
+    all_node_names       = ["solcp01"]
+    all_node_ips         = {
+      "solcp01" = { ipv6 = "fd00:101::11", ipv4 = "10.0.101.11" }
+    }
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }

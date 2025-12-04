@@ -322,14 +322,16 @@ locals {
                   router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                   router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
                   peers:
-                    - address: 10.0.101.254
+                    - address: 10.0.${var.cluster_id}.254
                       remote_asn: 65000
                       description: "RouterOS IPv4 Interface"
                       update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                       bfd:
                         enabled: true
                         profile: normal
-                    - address: fd00:101::fffe
+                      advertise_networks:
+                        - 10.${var.cluster_id}.0.0/16
+                    - address: fd00:${var.cluster_id}::fffe
                       remote_asn: 65000
                       description: "RouterOS IPv6 Interface"
                       address_family: ipv6
@@ -337,6 +339,8 @@ locals {
                       bfd:
                         enabled: true
                         profile: normal
+                      advertise_networks:
+                        - fd00:${var.cluster_id}::/60
 
               network:
                 interface_mtu: 1500
