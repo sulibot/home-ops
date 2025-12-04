@@ -65,7 +65,7 @@ data "talos_machine_configuration" "controlplane" {
           install = {
             disk  = var.install_disk
             image = var.installer_image
-            wipe  = true  # Wipe disk to clear old data during rebuild
+            wipe  = false
           }
         kernel = {
           modules = [
@@ -161,7 +161,7 @@ data "talos_machine_configuration" "worker" {
           install = {
             disk  = var.install_disk
             image = var.installer_image
-            wipe  = true  # Wipe disk to clear old data during rebuild
+            wipe  = false
           }
         kernel = {
           modules = [
