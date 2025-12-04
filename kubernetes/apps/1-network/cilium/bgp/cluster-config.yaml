@@ -13,7 +13,6 @@ apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
   name: cluster-101-bgp
-  namespace: kube-system
 spec:
   nodeSelector:
     matchLabels:
