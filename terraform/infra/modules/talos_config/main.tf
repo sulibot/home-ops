@@ -245,6 +245,16 @@ locals {
                     {
                       network = "0.0.0.0/0"
                       gateway = "10.0.${var.cluster_id}.254"
+                    },
+                    # Null routes for BGP advertisement - FRR requires these routes to exist in kernel
+                    # These aggregate ranges cover all Kubernetes pod/service/LoadBalancer IPs
+                    {
+                      network = "10.${var.cluster_id}.0.0/16"
+                      gateway = "0.0.0.0" # null route
+                    },
+                    {
+                      network = "fd00:${var.cluster_id}::/60"
+                      gateway = "::" # null route
                     }
                   ]
                   vip = node.machine_type == "controlplane" ? {
