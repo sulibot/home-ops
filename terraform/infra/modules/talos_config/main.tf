@@ -276,8 +276,23 @@ locals {
                   addresses = [
                     "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
                     "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32",
-                    # Add aggregate ranges to dummy0 to make them "connected" routes
-                    # FRR's "redistribute connected" will pick these up and BGP will advertise them
+                    # HACK: Add aggregate ranges to dummy0 to make them "connected" routes
+                    # This is a workaround for FRR's VRF route leaking limitation without MPLS.
+                    #
+                    # Problem: Cilium advertises LoadBalancer IPs to FRR in the 'cilium' VRF,
+                    # but FRR cannot leak routes between VRFs without MPLS kernel support.
+                    # Talos doesn't include MPLS modules, so "import vrf cilium" doesn't work.
+                    #
+                    # Workaround: By assigning /16 and /60 addresses to dummy0, the kernel
+                    # creates connected routes for these aggregates. FRR's existing
+                    # "redistribute connected route-map loopbacks" picks them up and
+                    # advertises them via BGP to upstream routers.
+                    #
+                    # TODO: Fork frr-talos-extension to add table-based route leaking:
+                    #   - Add config option: bgp.cilium.vrf_table_id
+                    #   - Replace "import vrf cilium" with "redistribute table <id>"
+                    #   - This would eliminate the need for this hack
+                    #   - See: https://docs.frrouting.org/en/latest/bgp.html#clicmd-redistribute-table-tableno
                     "10.${var.cluster_id}.0.1/16",
                     "fd00:${var.cluster_id}::1/60"
                   ]
