@@ -21,13 +21,9 @@ metadata:
 spec:
   blocks:
     # IPv4 blocks
-    - cidr: 10.0.101.64/26  # 10.0.101.64-127 (64 IPs)
-    - cidr: 10.101.27.0/24  # 10.101.27.0-254 (Gateway and LoadBalancer IPs)
+    - cidr: 10.101.27.0/24  # 10.101.27.0-254 (Unified LoadBalancer pool)
     # IPv6 blocks
-    # Expanded to /112 to allow suffix matching with IPv4 (e.g., .120 → ::120)
-    - cidr: fd00:101:40::/112  # fd00:101:40::0-ffff (65536 IPs)
-    # Gateway API subnet (expanded to /112 for matching suffixes)
-    - cidr: fd00:101:1b::/112  # fd00:101:1b::0-ffff (65536 IPs)
+    - cidr: fd00:101:1b::/112  # fd00:101:1b::0-ffff (Unified LoadBalancer pool, "1b" looks like "lb")
 
 ---
 # Optional: Dedicated pool for ingress controllers

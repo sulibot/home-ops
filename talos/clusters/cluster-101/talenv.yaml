@@ -85,8 +85,8 @@ nodes:
     publicIPv4: 10.0.101.23
     publicIPv6: fd00:101::23
     publicMTU: 1500
-pods_ipv4: 10.101.0.0/16
-pods_ipv6: fd00:101:1::/60
+pods_ipv4: 10.101.0.0/17
+pods_ipv6: fd00:101:10::/60
 public_gateway_ipv4: 10.0.101.254
 public_gateway_ipv6: null
 services_ipv4: 10.101.96.0/20

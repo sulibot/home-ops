@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/jsenecal/frr-talos-extension:latest",
+    "ghcr.io/jsenecal/frr-talos-extension:latest",  # Use upstream FRR extension
   ]
 
   # Registry to push the custom installer image

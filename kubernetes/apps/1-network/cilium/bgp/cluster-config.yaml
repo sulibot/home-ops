@@ -23,12 +23,12 @@ spec:
       localASN: 4200000101  # Internal ASN for Cilium
       peers:
         - name: frr-container-ipv4
-          peerAddress: 192.168.250.254  # FRR veth interface IPv4
+          peerAddress: 192.168.250.254  # FRR veth IP
           peerASN: 65101  # FRR's ASN
           peerConfigRef:
             name: upstream-router-peer
         - name: frr-container-ipv6
-          peerAddress: "fdae:6bef:5e65::1"  # FRR veth interface IPv6
+          peerAddress: "fdae:6bef:5e65::1"  # FRR veth IPv6
           peerASN: 65101  # FRR's ASN
           peerConfigRef:
             name: upstream-router-peer-ipv6

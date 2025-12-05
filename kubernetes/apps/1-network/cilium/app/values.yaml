@@ -31,12 +31,13 @@ ipam:
 # Native routing (no encapsulation for better performance)
 routingMode: native
 autoDirectNodeRoutes: true
+directRoutingSkipUnreachable: true  # Skip routes that require a gateway
 endpointRoutes:
   enabled: true
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.0.0/16
-ipv6NativeRoutingCIDR: fd00:101:1::/60
+ipv4NativeRoutingCIDR: 10.101.0.0/17
+ipv6NativeRoutingCIDR: fd00:101:10::/60
 
 # BPF masquerading - DISABLED for Istio Ambient compatibility
 # Istio ambient uses link-local IPs (169.254.7.127) for health checks

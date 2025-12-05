@@ -321,25 +321,16 @@ locals {
                   local_asn: 65${var.cluster_id}
                   router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                   router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-                  networks:
-                    ipv4:
-                      - 10.${var.cluster_id}.0.0/16
-                    ipv6:
-                      - fd00:${var.cluster_id}::/60
                   peers:
                     - address: 10.0.${var.cluster_id}.254
                       remote_asn: 65000
                       description: "RouterOS IPv4 Interface"
                       update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-                      advertise_networks:
-                        - 10.${var.cluster_id}.0.0/16
                     - address: fd00:${var.cluster_id}::fffe
                       remote_asn: 65000
                       description: "RouterOS IPv6 Interface"
                       address_family: ipv6
                       update_source: fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
-                      advertise_networks:
-                        - fd00:${var.cluster_id}::/60
 
               network:
                 interface_mtu: 1500

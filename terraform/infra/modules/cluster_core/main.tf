@@ -129,12 +129,12 @@ locals {
   # ===================================================================
   k8s_cidrs = {
     "101" = {
-      pods_ipv4          = "10.101.0.0/16"
-      pods_ipv6          = "fd00:101:1::/60"
+      pods_ipv4          = "10.101.0.0/17"
+      pods_ipv6          = "fd00:101:10::/60"
       services_ipv4      = "10.101.96.0/20"
       services_ipv6      = "fd00:101:96::/108"
       loadbalancers_ipv4 = "10.101.27.0/24"
-      loadbalancers_ipv6 = "fd00:101:1b::/120"
+      loadbalancers_ipv6 = "fd00:101:1b::/112"
     },
     "102" = {
       pods_ipv4          = "10.102.0.0/16"
