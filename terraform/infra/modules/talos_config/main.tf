@@ -245,16 +245,6 @@ locals {
                     {
                       network = "0.0.0.0/0"
                       gateway = "10.0.${var.cluster_id}.254"
-                    },
-                    # Null routes for BGP advertisement - FRR requires these routes to exist in kernel
-                    # These aggregate ranges cover all Kubernetes pod/service/LoadBalancer IPs
-                    {
-                      network = "10.${var.cluster_id}.0.0/16"
-                      gateway = "0.0.0.0" # null route
-                    },
-                    {
-                      network = "fd00:${var.cluster_id}::/60"
-                      gateway = "::" # null route
                     }
                   ]
                   vip = node.machine_type == "controlplane" ? {
@@ -280,12 +270,16 @@ locals {
                     }
                   ]
                 },
-                # Loopback interface for FRR BGP peering
+                # Loopback interface for FRR BGP peering and LoadBalancer announcements
                 {
                   interface = "dummy0"
                   addresses = [
                     "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
-                    "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
+                    "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32",
+                    # Add aggregate ranges to dummy0 to make them "connected" routes
+                    # FRR's "redistribute connected" will pick these up and BGP will advertise them
+                    "10.${var.cluster_id}.0.1/16",
+                    "fd00:${var.cluster_id}::1/60"
                   ]
                 }
               ]
