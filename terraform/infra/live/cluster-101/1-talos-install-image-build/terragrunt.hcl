@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/jsenecal/frr-talos-extension:latest",  # Use upstream FRR extension
+    "ghcr.io/sulibot/frr-talos-extension:latest",  # Use fork with allowas-in and enhanced monitoring
   ]
 
   # Registry to push the custom installer image
