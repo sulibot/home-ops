@@ -97,14 +97,14 @@ terraform {
       mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}
       cd ${get_terragrunt_dir()}
 
-      # Export controlplane config (first control plane node)
+      # Export controlplane config (machine_configuration + config_patch merged)
       terragrunt output -json machine_configs | \
-        jq -r '.solcp01.machine_configuration' > \
+        jq -r '.solcp01 | .machine_configuration + "\n---\n" + .config_patch' > \
         ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/controlplane.yaml
 
-      # Export worker config (first worker node)
+      # Export worker config (machine_configuration + config_patch merged)
       terragrunt output -json machine_configs | \
-        jq -r '.solwk01.machine_configuration' > \
+        jq -r '.solwk01 | .machine_configuration + "\n---\n" + .config_patch' > \
         ${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/worker.yaml
 
       echo "✓ Exported machine configs for troubleshooting (not committed to git)"

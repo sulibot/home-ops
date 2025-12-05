@@ -27,14 +27,14 @@ locals {
 
 # Template Cilium Helm chart with values from Flux config
 data "helm_template" "cilium" {
-  name              = "cilium"
-  repository        = "https://helm.cilium.io/"
-  chart             = "cilium"
-  version           = "1.18.4"
-  namespace         = "kube-system"
-  kube_version      = var.kubernetes_version
-  skip_crds         = false
-  include_crds      = true
+  name         = "cilium"
+  repository   = "https://helm.cilium.io/"
+  chart        = "cilium"
+  version      = "1.18.4"
+  namespace    = "kube-system"
+  kube_version = var.kubernetes_version
+  skip_crds    = false
+  include_crds = true
 
   values = [
     local.cilium_values_yaml
@@ -61,12 +61,12 @@ data "talos_machine_configuration" "controlplane" {
 
   config_patches = [
     yamlencode({
-        machine = {
-          install = {
-            disk  = var.install_disk
-            image = var.installer_image
-            wipe  = false
-          }
+      machine = {
+        install = {
+          disk  = var.install_disk
+          image = var.installer_image
+          wipe  = false
+        }
         kernel = {
           modules = [
             { name = "zfs" }
@@ -93,7 +93,7 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         allowSchedulingOnControlPlanes = false
         network = {
-          cni = { name = "none" } # Cilium installed via inline manifests
+          cni            = { name = "none" } # Cilium installed via inline manifests
           podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]
           serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4]
         }
@@ -157,12 +157,12 @@ data "talos_machine_configuration" "worker" {
 
   config_patches = [
     yamlencode({
-        machine = {
-          install = {
-            disk  = var.install_disk
-            image = var.installer_image
-            wipe  = false
-          }
+      machine = {
+        install = {
+          disk  = var.install_disk
+          image = var.installer_image
+          wipe  = false
+        }
         kernel = {
           modules = [
             { name = "zfs" }
@@ -185,8 +185,8 @@ data "talos_machine_configuration" "worker" {
             validSubnets = ["fd00:${var.cluster_id}::/64"] # Force IPv6 node IPs
           }
           clusterDNS = [
-            "fd00:${var.cluster_id}:96::a",   # IPv6 DNS service IP (10th IP in service CIDR)
-            "10.${var.cluster_id}.96.10"       # IPv4 DNS service IP (10th IP in service CIDR)
+            "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
+            "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
         }
       }
@@ -212,88 +212,88 @@ locals {
               "topology.kubernetes.io/region" = "home-lab"
               "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
             }
-          files = [
-            # CDI (Container Device Interface) configuration for GPU passthrough
-            # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
-            # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
-            {
-              content = <<-EOT
-                # Set cdi dirs to /var/ because default locations are not writeable in talos
-                [plugins."io.containerd.cri.v1.runtime"]
-                  cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
-              EOT
-              path = "/etc/cri/conf.d/20-customization.part"
-              op   = "create"
-            }
-          ]
-          network = {
-            hostname = node.hostname
-            interfaces = [
-              # Public network (ens18)
+            files = [
+              # CDI (Container Device Interface) configuration for GPU passthrough
+              # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
+              # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
               {
-                interface = "ens18"
-                mtu       = 1500
-                addresses = [
-                  "${node.public_ipv6}/64",
-                  "${node.public_ipv4}/24"
-                ]
-                routes = [
-                  {
-                    network = "::/0"
-                    gateway = "fd00:${var.cluster_id}::fffe"
-                  },
-                  {
-                    network = "0.0.0.0/0"
-                    gateway = "10.0.${var.cluster_id}.254"
-                  }
-                ]
-                vip = node.machine_type == "controlplane" ? {
-                  ip = var.vip_ipv6
-                } : null
-              },
-              # Mesh network (ens19)
-              {
-                interface = "ens19"
-                mtu       = 8930
-                addresses = [
-                  "${node.mesh_ipv6}/64",
-                  "${node.mesh_ipv4}/24"
-                ]
-                routes = [
-                  {
-                    network = "fc00::/8"
-                    gateway = "fc00:${var.cluster_id}::fffe"
-                  },
-                  {
-                    network = "10.10.0.0/16"
-                    gateway = "10.10.${var.cluster_id}.254"
-                  }
-                ]
-              },
-              # Loopback interface for FRR BGP peering
-              {
-                interface = "dummy0"
-                addresses = [
-                  "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
-                  "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
-                ]
+                content = <<-EOT
+                  # Set cdi dirs to /var/ because default locations are not writeable in talos
+                  [plugins."io.containerd.cri.v1.runtime"]
+                    cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+                EOT
+                path    = "/etc/cri/conf.d/20-customization.part"
+                op      = "create"
               }
             ]
-            nameservers = var.dns_servers
+            network = {
+              hostname = node.hostname
+              interfaces = [
+                # Public network (ens18)
+                {
+                  interface = "ens18"
+                  mtu       = 1500
+                  addresses = [
+                    "${node.public_ipv6}/64",
+                    "${node.public_ipv4}/24"
+                  ]
+                  routes = [
+                    {
+                      network = "::/0"
+                      gateway = "fd00:${var.cluster_id}::fffe"
+                    },
+                    {
+                      network = "0.0.0.0/0"
+                      gateway = "10.0.${var.cluster_id}.254"
+                    }
+                  ]
+                  vip = node.machine_type == "controlplane" ? {
+                    ip = var.vip_ipv6
+                  } : null
+                },
+                # Mesh network (ens19)
+                {
+                  interface = "ens19"
+                  mtu       = 8930
+                  addresses = [
+                    "${node.mesh_ipv6}/64",
+                    "${node.mesh_ipv4}/24"
+                  ]
+                  routes = [
+                    {
+                      network = "fc00::/8"
+                      gateway = "fc00:${var.cluster_id}::fffe"
+                    },
+                    {
+                      network = "10.10.0.0/16"
+                      gateway = "10.10.${var.cluster_id}.254"
+                    }
+                  ]
+                },
+                # Loopback interface for FRR BGP peering
+                {
+                  interface = "dummy0"
+                  addresses = [
+                    "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
+                    "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
+                  ]
+                }
+              ]
+              nameservers = var.dns_servers
+            }
           }
-        }
-      }),
-      yamlencode({
-        apiVersion = "v1alpha1"
-        kind       = "ExtensionServiceConfig"
-        name       = "frr"
-        environment = [
-          "NODE_IP=fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}",
-          "ASN_LOCAL=65${var.cluster_id}"
-        ]
-        configFiles = [
-          {
-            content = <<-EOT
+        }),
+        yamlencode({
+          apiVersion = "v1alpha1"
+          kind       = "ExtensionServiceConfig"
+          name       = "frr"
+          environment = [
+            "NODE_IP=fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}",
+            "ASN_LOCAL=65${var.cluster_id}"
+          ]
+          configFiles = [
+            {
+              content   = <<-EOT
               bfd:
                 profiles:
                   normal:
@@ -321,14 +321,16 @@ locals {
                   local_asn: 65${var.cluster_id}
                   router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
                   router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
+                  networks:
+                    ipv4:
+                      - 10.${var.cluster_id}.0.0/16
+                    ipv6:
+                      - fd00:${var.cluster_id}::/60
                   peers:
                     - address: 10.0.${var.cluster_id}.254
                       remote_asn: 65000
                       description: "RouterOS IPv4 Interface"
                       update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-                      bfd:
-                        enabled: true
-                        profile: normal
                       advertise_networks:
                         - 10.${var.cluster_id}.0.0/16
                     - address: fd00:${var.cluster_id}::fffe
@@ -336,9 +338,6 @@ locals {
                       description: "RouterOS IPv6 Interface"
                       address_family: ipv6
                       update_source: fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
-                      bfd:
-                        enabled: true
-                        profile: normal
                       advertise_networks:
                         - fd00:${var.cluster_id}::/60
 
@@ -348,10 +347,10 @@ locals {
                   frr_side: veth-frr
                   cilium_side: veth-cilium
             EOT
-            mountPath = "/usr/local/etc/frr/config.yaml"
-          },
-          {
-            content = <<-EOT
+              mountPath = "/usr/local/etc/frr/config.yaml"
+            },
+            {
+              content   = <<-EOT
               zebra=true
               zebra_options="-n -A 127.0.0.1"
               bgpd=true
@@ -359,15 +358,15 @@ locals {
               staticd=true
               staticd_options="-A 127.0.0.1"
             EOT
-            mountPath = "/usr/local/etc/frr/daemons"
-          },
-          {
-            content   = "service integrated-vtysh-config\nhostname ${node.hostname}\n"
-            mountPath = "/usr/local/etc/frr/vtysh.conf"
-          }
-        ]
-      })
-    ])
+              mountPath = "/usr/local/etc/frr/daemons"
+            },
+            {
+              content   = "service integrated-vtysh-config\nhostname ${node.hostname}\n"
+              mountPath = "/usr/local/etc/frr/vtysh.conf"
+            }
+          ]
+        })
+      ])
     }
   }
 }
