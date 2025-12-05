@@ -309,12 +309,12 @@ locals {
                   namespace: cilium
                   peering:
                     ipv4:
-                      local: 192.168.250.255
-                      remote: 192.168.250.254
+                      local: 192.168.250.254
+                      remote: 192.168.250.255
                       prefix: 31
                     ipv6:
-                      local: "fdae:6bef:5e65::2"
-                      remote: "fdae:6bef:5e65::1"
+                      local: "fdae:6bef:5e65::1"
+                      remote: "fdae:6bef:5e65::2"
                       prefix: 126
 
                 upstream:
