@@ -34,6 +34,6 @@ locals {
 
   # Custom third-party extensions
   install_custom_extensions = [
-    "ghcr.io/jsenecal/frr-talos-extension:latest",
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.3",
   ]
 }
