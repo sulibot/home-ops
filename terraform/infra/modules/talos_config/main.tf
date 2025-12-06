@@ -309,12 +309,12 @@ locals {
                   namespace: cilium
                   peering:
                     ipv4:
-                      local: 192.168.250.254
-                      remote: 192.168.250.255
+                      local: 192.168.250.255  # FRR's IP on veth-frr (host netns)
+                      remote: 192.168.250.254 # Cilium's IP on veth (host netns) - used as BGP neighbor
                       prefix: 31
                     ipv6:
-                      local: "fdae:6bef:5e65::1"
-                      remote: "fdae:6bef:5e65::2"
+                      local: "fdae:6bef:5e65::2"  # FRR's IPv6 on veth-frr
+                      remote: "fdae:6bef:5e65::1" # Cilium's IPv6 on veth - used as BGP neighbor
                       prefix: 126
 
                 upstream:
