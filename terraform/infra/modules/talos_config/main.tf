@@ -165,8 +165,7 @@ data "talos_machine_configuration" "worker" {
         }
         kernel = {
           modules = [
-            { name = "zfs" },
-            { name = "i915" }  # Intel GPU driver for CDI
+            { name = "zfs" }
           ]
         }
         files = [
