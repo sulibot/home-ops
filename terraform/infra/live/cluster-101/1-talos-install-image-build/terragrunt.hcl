@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.13",  # No cilium netns - both veth ends in host netns
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.15",  # FRR redistributes kernel routes from Cilium
   ]
 
   # Registry to push the custom installer image
