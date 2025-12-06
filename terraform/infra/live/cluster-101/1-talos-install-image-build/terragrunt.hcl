@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.8",  # Use fork with VPN-based route leaking
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.9",  # VPN-based route leaking with cross-VRF static routes
   ]
 
   # Registry to push the custom installer image
