@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:latest",  # Use fork with allowas-in and enhanced monitoring
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.4",  # Use fork with correct BGP neighbor config
   ]
 
   # Registry to push the custom installer image
