@@ -165,9 +165,17 @@ data "talos_machine_configuration" "worker" {
         }
         kernel = {
           modules = [
-            { name = "zfs" }
+            { name = "zfs" },
+            { name = "i915" }  # Intel GPU driver for CDI
           ]
         }
+        files = [
+          {
+            content = "[plugins.\"io.containerd.cri.v1.runtime\"]\n  cdi_spec_dirs = [\"/var/cdi/static\", \"/var/cdi/dynamic\"]\n"
+            op      = "create"
+            path    = "/etc/cri/conf.d/20-customization.part"
+          }
+        ]
         sysctls = {
           "fs.inotify.max_user_watches"   = "1048576"
           "fs.inotify.max_user_instances" = "8192"
@@ -188,6 +196,9 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
+          extraArgs = {
+            "feature-gates" = "DevicePluginCDIDevices=true"
+          }
         }
       }
     })
