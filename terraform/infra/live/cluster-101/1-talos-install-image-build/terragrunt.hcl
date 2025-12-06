@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.12",  # Single VRF + correct BGP neighbor (local IP)
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.13",  # No cilium netns - both veth ends in host netns
   ]
 
   # Registry to push the custom installer image
