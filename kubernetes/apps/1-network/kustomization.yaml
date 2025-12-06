@@ -6,7 +6,6 @@ resources:
   - ./cilium/helm-repo/ks.yaml
   - ./cilium/ks.yaml
   - ./cilium/ippool/ks.yaml
-  - ./cilium/bgp/ks.yaml
   - ./cilium/gateway/ks.yaml
   - ./multus/ks.yaml
   - ./istio/helm-repo/ks.yaml
