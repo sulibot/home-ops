@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.11",  # Single VRF: Cilium+RouterOS in default VRF (no import needed)
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.12",  # Single VRF + correct BGP neighbor (local IP)
   ]
 
   # Registry to push the custom installer image
