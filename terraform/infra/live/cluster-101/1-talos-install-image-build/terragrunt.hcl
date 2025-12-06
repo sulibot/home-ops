@@ -19,7 +19,7 @@ inputs = {
 
   # Custom extensions to include in the installer
   custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.5",  # Use fork with VRF import next-hop rewrite fix
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.6",  # Use fork with VRF import table-map fix
   ]
 
   # Registry to push the custom installer image
