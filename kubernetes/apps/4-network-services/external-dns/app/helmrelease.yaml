@@ -63,7 +63,7 @@ spec:
         image:
           pullPolicy: IfNotPresent
           repository: ghcr.io/mirceanton/external-dns-provider-mikrotik
-          tag: v1.2.2@sha256:3afe75cbbf5ed66a8f99686a9eba32bf8cef60344f27d0872538f82b210c1aab
+          tag: v1.5.1@sha256:99db3196270ff553a5494427a10ed2e210a87c4b27a6146c982759b6e3752b8a
         livenessProbe:
           httpGet:
             path: /healthz
