@@ -165,17 +165,9 @@ data "talos_machine_configuration" "worker" {
         }
         kernel = {
           modules = [
-            { name = "zfs" },
-            { name = "i915" }  # Intel GPU driver
+            { name = "zfs" }
           ]
         }
-        files = [
-          {
-            content = "# Set CDI dirs to /var/cdi because default locations are not writeable in Talos\n[plugins.\"io.containerd.cri.v1.runtime\"]\n  cdi_spec_dirs = [\"/var/cdi/static\", \"/var/cdi/dynamic\"]\n"
-            op      = "create"
-            path    = "/etc/cri/conf.d/20-cdi.part"
-          }
-        ]
         sysctls = {
           "fs.inotify.max_user_watches"   = "1048576"
           "fs.inotify.max_user_instances" = "8192"
@@ -196,11 +188,6 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
-          extraConfig = {
-            featureGates = {
-              DevicePluginCDIDevices = true
-            }
-          }
         }
       }
     })
@@ -225,20 +212,6 @@ locals {
               "topology.kubernetes.io/region" = "home-lab"
               "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
             }
-            files = [
-              # CDI (Container Device Interface) configuration for GPU passthrough
-              # Required for intel-gpu-resource-driver to access Intel GPUs via CDI
-              # Reference: https://broersma.dev/talos-linux-and-dynamic-resource-allocation-beta/
-              {
-                content = <<-EOT
-                  # Set cdi dirs to /var/ because default locations are not writeable in talos
-                  [plugins."io.containerd.cri.v1.runtime"]
-                    cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
-                EOT
-                path    = "/etc/cri/conf.d/20-customization.part"
-                op      = "create"
-              }
-            ]
             network = {
               hostname = node.hostname
               interfaces = [
