@@ -32,8 +32,10 @@ ipam:
 routingMode: native
 autoDirectNodeRoutes: true
 directRoutingSkipUnreachable: true  # Skip routes that require a gateway
+# Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
+# This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
 endpointRoutes:
-  enabled: true
+  enabled: false
 
 # Pod CIDRs for cluster-101
 ipv4NativeRoutingCIDR: 10.101.0.0/17
