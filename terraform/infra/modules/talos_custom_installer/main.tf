@@ -20,6 +20,12 @@ variable "talos_version" {
   description = "Talos version (e.g., v1.11.5)"
 }
 
+variable "official_extensions" {
+  type        = list(string)
+  description = "List of official system extensions (siderolabs/*)"
+  default     = []
+}
+
 variable "custom_extensions" {
   type        = list(string)
   description = "List of custom system extension images"
@@ -34,9 +40,9 @@ variable "output_registry" {
 locals {
   installer_tag = "${var.output_registry}:${var.talos_version}"
 
-  # Build the docker run command with all extension flags
+  # Build the docker run command with all extension flags (all are image refs)
   extension_flags = join(" ", [
-    for ext in var.custom_extensions :
+    for ext in concat(var.official_extensions, var.custom_extensions) :
     "--system-extension-image ${ext}"
   ])
 }
@@ -44,9 +50,10 @@ locals {
 # Build custom installer image using Talos imager
 resource "null_resource" "build_installer" {
   triggers = {
-    talos_version = var.talos_version
-    extensions    = join(",", var.custom_extensions)
-    registry      = var.output_registry
+    talos_version        = var.talos_version
+    official_extensions  = join(",", var.official_extensions)
+    custom_extensions    = join(",", var.custom_extensions)
+    registry             = var.output_registry
   }
 
   provisioner "local-exec" {
