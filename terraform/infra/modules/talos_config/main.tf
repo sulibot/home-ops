@@ -193,16 +193,6 @@ data "talos_machine_configuration" "worker" {
             "feature-gates" = "DevicePluginCDIDevices=true"
           }
         }
-        files = [
-          {
-            op      = "create"
-            path    = "/etc/cri/conf.d/20-cdi.toml"
-            content = <<EOF
-[plugins."io.containerd.grpc.v1.cri".containerd]
-  cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
-EOF
-          }
-        ]
       }
     })
   ]
