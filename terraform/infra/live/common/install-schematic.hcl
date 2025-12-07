@@ -28,16 +28,10 @@ locals {
     "talos.auditd.disabled=1",  # Less security, faster performance
   ]
 
-  # Full install extensions (individual images, not bundle)
-  # v1.12.0-beta.1 imager doesn't support beta.0 bundle format with descriptions.yaml
+  # Full install extensions - use bundle since individual extensions aren't published for beta.1
+  # Will use extensions_version (beta.0) to avoid descriptions.yaml incompatibility
   install_system_extensions = [
-    "ghcr.io/siderolabs/i915:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/intel-ucode:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/qemu-guest-agent:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/util-linux-tools:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/zfs:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/nfsd:${local.versions.talos_version}",
-    "ghcr.io/siderolabs/nfsrahead:${local.versions.talos_version}",
+    "ghcr.io/siderolabs/extensions:${local.extensions_version}",
   ]
 
   # Custom third-party extensions
