@@ -1,0 +1,26 @@
+# This file declaratively defines the PersistentVolume for the Kopia repository.
+# It points to the existing CephFS subvolume, allowing for automatic
+# recovery during a cluster rebuild.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kopia-repository-pv
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 200Gi # This should match the PVC request
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: csi-cephfs-backups-sc
+  csi:
+    driver: cephfs.csi.ceph.com
+    nodeStageSecretRef:
+      name: csi-cephfs-secret
+      namespace: ceph-csi
+    # This volume handle is a unique name, but the rootPath is what matters
+    volumeHandle: kopia-repository-pv-handle
+    volumeAttributes:
+      "clusterID": "407036f5-1f73-44ff-ba81-1f219b7a8a64"
+      "fsName": "backups"
+      "staticVolume": "true"
+      "rootPath": "/volumes/csi/backup-csi-vol-841e604c-1dd5-4a09-8763-84e672d78c4e/379629f2-f4b6-47f2-b9fd-be507bebab2b"
