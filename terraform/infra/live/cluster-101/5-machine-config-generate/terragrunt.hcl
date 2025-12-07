@@ -126,7 +126,7 @@ locals {
 
 inputs = {
   # Cilium values file path
-  cilium_values_path = "${get_repo_root()}/kubernetes/apps/1-network/cilium/app/values.yaml"
+  cilium_values_path = "${get_repo_root()}/kubernetes/apps/networking/cilium/app/values.yaml"
 
   # Cluster identity
   cluster_name = local.cluster_config.cluster_name
