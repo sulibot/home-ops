@@ -8,21 +8,21 @@ locals {
   talos_architecture = "amd64"
 
   # System extensions version (can lag Talos releases).
-  # v1.12.0-beta.1 bundle fails with imager due to descriptions.yaml; use the prior bundle tag.
-  extension_version = "v1.12.0-beta.0"
+  # Align extensions with Talos v1.12.0-beta.1 (using per-extension images pinned from the bundle).
+  extension_version = "v1.12.0-beta.1"
 
   # Kubernetes version (managed by Talos)
   kubernetes_version = "1.35.0-alpha.3"  # MutatingAdmissionPolicy is beta (enabled by default)
 
   # Terraform provider versions
   provider_versions = {
-    talos      = "~> 0.7.0"
+    talos      = "~> 0.9.0"
     proxmox    = "~> 0.86.0"
-    sops       = "~> 1.2.1"
-    helm       = "~> 2.16.0"
-    kubernetes = "~> 2.35.0"
+    sops       = "~> 1.3.0"
+    helm       = "~> 3.1.1"
+    kubernetes = "~> 3.0.0"
     kubectl    = "~> 1.14.0"
-    time       = "~> 0.12.0"
+    time       = "~> 0.13.1"
   }
 
   # Application versions

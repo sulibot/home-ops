@@ -4,8 +4,8 @@ terraform {
 
   required_providers {
     external = { source = "hashicorp/external", version = "~> 2.2" }
-    proxmox  = { source = "bpg/proxmox", version = "~> 0.86.0" }
-    sops     = { source = "carlpett/sops", version = "~> 1.2.1" }
+    proxmox  = { source = "bpg/proxmox", version = "~> 0.89.0" }
+    sops     = { source = "carlpett/sops", version = "~> 1.3.0" }
   }
 }
 
@@ -165,7 +165,7 @@ locals {
 }
 
 # Hardware mapping approach DISABLED due to bpg/proxmox provider bug
-# The provider v0.86.0 removes the iommugroup parameter when creating/updating hardware mappings
+# The provider v0.89.0 removes the iommugroup parameter when creating/updating hardware mappings
 # See: https://github.com/bpg/terraform-provider-proxmox/issues/886
 #
 # Instead, we use direct PCI ID passthrough via the hostpci.id parameter in the VM resource

@@ -121,4 +121,4 @@ solwk03_mesh_ipv4: 10.10.101.23
 solwk03_mesh_ipv6: fc00:101::23
 solwk03_public_ipv4: 10.0.101.23
 solwk03_public_ipv6: fd00:101::23
-talosVersion: v1.12.0-beta.0
+talosVersion: v1.12.0-beta.1

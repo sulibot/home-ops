@@ -110,15 +110,15 @@ locals {
 
   # Terraform provider versions
   provider_versions = {
-    talos      = "~> 0.7.0"
-    proxmox    = "~> 0.86.0"
-    helm       = "~> 2.16.0"
-    kubernetes = "~> 2.35.0"
+    talos      = "~> 0.9.0"
+    proxmox    = "~> 0.89.0"
+    helm       = "~> 3.1.1"
+    kubernetes = "~> 3.0.0"
     kubectl    = "~> 1.14.0"
   }
 
   # Application versions
-  cilium_version = "1.16.5"
+  cilium_version = "1.18.4"
   flux_version   = "latest"
 }
 ```
