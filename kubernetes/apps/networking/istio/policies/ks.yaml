@@ -1,0 +1,27 @@
+---
+# Flux Kustomization for Istio Security Policies
+# Must deploy after istiod is running
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: istio-policies
+  namespace: flux-system
+  labels:
+    layer: "networking"
+    component: service-mesh-policies
+spec:
+  dependsOn:
+    - name: istio
+      namespace: flux-system
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/apps/networking/istio/policies
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: istio-system
+  wait: true
+  timeout: 5m

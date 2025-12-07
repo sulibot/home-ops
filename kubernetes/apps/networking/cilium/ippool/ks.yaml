@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cilium-ippool
+  namespace: flux-system
+  labels:
+    layer: "networking"
+    component: cni
+    critical: "true"
+spec:
+  dependsOn:
+    - name: cilium
+      namespace: flux-system
+  interval: 15m
+  retryInterval: 30s
+  path: ./kubernetes/apps/networking/cilium/ippool
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  timeout: 5m

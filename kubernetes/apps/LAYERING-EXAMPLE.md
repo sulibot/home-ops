@@ -19,7 +19,7 @@ spec:
       namespace: flux-system
 ```
 
-### After (With Layers):
+### After (With Domain Labels):
 ```yaml
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -27,7 +27,7 @@ metadata:
   name: cilium
   namespace: flux-system
   labels:
-    layer: "1-network"    # Layer number with category
+    layer: "networking"    # domain label
     component: cni         # Component type
     critical: "true"       # Mark as critical path
 spec:
@@ -36,118 +36,35 @@ spec:
       namespace: flux-system
 ```
 
-## Layer Label Reference
+## Domain Label Reference
 
-### Layer 0: CRDs
-```yaml
-labels:
-  layer: "0-crds"
-  component: crds
-  critical: "true"
-```
+Use domain labels instead of numbered layers:
 
-Examples:
-- `gateway-api-crds`
-- `snapshot-controller-crds`
-
-### Layer 1: Network
-```yaml
-labels:
-  layer: "1-network"
-  component: cni
-  critical: "true"
-```
+- `layer: "crds"`                (CRDs)
+- `layer: "networking"`          (CNI/mesh/gateway)
+- `layer: "foundation"`          (secrets/storage base)
+- `layer: "core"`                (DNS/cert-manager/etc.)
+- `layer: "network-services"`    (external-dns/tunnels/gateway services)
+- `layer: "observability"`       (prom/loki/grafana/etc.)
+- `layer: "data"`                (databases/backup/cache)
+- `layer: "applications"`        (user apps)
 
 Examples:
-- `cilium`
-- `multus`
-
-### Layer 2: Storage & Security
-```yaml
-labels:
-  layer: "2-foundation"
-  component: storage  # or 'secrets'
-  critical: "true"
-```
-
-Examples:
-- `external-secrets` (component: secrets)
-- `onepassword` (component: secrets)
-- `ceph-csi-cephfs` (component: storage)
-- `ceph-csi-rbd` (component: storage)
-- `snapshot-controller` (component: storage)
-
-### Layer 3: Core Services
-```yaml
-labels:
-  layer: "3-core"
-  component: platform
-  critical: "true"
-```
-
-Examples:
-- `cert-manager`
-- `reloader`
-- `metrics-server`
-- `coredns`
-
-### Layer 4: Network Services
-```yaml
-labels:
-  layer: "4-network-services"
-  component: ingress  # or 'dns', 'gateway'
-```
-
-Examples:
-- `cilium-gateway` (component: gateway)
-- `cilium-bgp` (component: routing)
-- `external-dns` (component: dns)
-- `certificates` (component: tls)
-
-### Layer 5: Observability
-```yaml
-labels:
-  layer: "5-observability"
-  component: monitoring  # or 'logging', 'alerting'
-```
-
-Examples:
-- `kube-prometheus-stack` (component: monitoring)
-- `victoria-logs` (component: logging)
-- `fluent-bit` (component: logging)
-- `grafana` (component: monitoring)
-- `gatus` (component: monitoring)
-
-### Layer 6: Data Services
-```yaml
-labels:
-  layer: "6-data"
-  component: database  # or 'backup', 'cache'
-```
-
-Examples:
-- `cloudnative-pg` (component: database)
-- `volsync` (component: backup)
-- `redis` (component: cache)
-
-### Layer 7: Applications
-```yaml
-labels:
-  layer: "7-apps"
-  component: media  # or 'automation', 'security', etc.
-```
-
-Examples:
-- `plex` (component: media)
-- `sonarr` (component: media)
-- `home-assistant` (component: automation)
+- `gateway-api-crds` → layer: "crds"
+- `cilium` → layer: "networking"
+- `external-secrets` → layer: "foundation"
+- `cert-manager` → layer: "core"
+- `external-dns` → layer: "network-services"
+- `kube-prometheus-stack` → layer: "observability"
+- `cloudnative-pg` → layer: "data"
+- `plex` → layer: "applications"
 
 ## Benefits of Layering
 
 ### 1. Selective Reconciliation
 ```bash
-# Reconcile all network layer apps
-flux reconcile ks --with-source -l layer=1-network
+# Reconcile all networking domain apps
+flux reconcile ks --with-source -l layer=networking
 
 # Reconcile only critical infrastructure
 flux reconcile ks --with-source -l critical=true
@@ -166,16 +83,16 @@ gotk_kustomize_status_condition{type="Ready",status="False",critical="true"}
 ```
 
 ### 3. Troubleshooting
-When cluster recovery is needed, reconcile in layer order:
+When cluster recovery is needed, reconcile in domain order:
 ```bash
 # Step 1: CRDs
-flux reconcile ks --with-source -l layer=0-crds
+flux reconcile ks --with-source -l layer=crds
 
 # Step 2: Network
-flux reconcile ks --with-source -l layer=1-network
+flux reconcile ks --with-source -l layer=networking
 
 # Step 3: Foundation (Storage & Security)
-flux reconcile ks --with-source -l layer=2-foundation
+flux reconcile ks --with-source -l layer=foundation
 
 # ... and so on
 ```
@@ -204,17 +121,17 @@ If you prefer directory structure over labels, you could reorganize:
 
 ```
 kubernetes/apps/
-├── 0-crds/
+├── crds/
 │   ├── gateway-api-crds/
 │   └── snapshot-controller-crds/
-├── 1-network/
+├── networking/
 │   ├── cilium/
 │   └── multus/
-├── 2-foundation/
+├── foundation/
 │   ├── external-secrets/
 │   ├── ceph-csi/
 │   └── snapshot-controller/
-├── 3-core/
+├── core/
 │   ├── cert-manager/
 │   └── reloader/
 ...

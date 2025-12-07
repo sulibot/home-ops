@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: victoria-logs
+  namespace: flux-system
+  labels:
+    layer: "observability"
+    component: observability
+    critical: "false"
+spec:
+  # Volsync disabled for Victoria Logs - log data doesn't need backing up
+  # components:
+  #   - ../../../../components/volsync
+  dependsOn:
+    - name: ceph-csi
+      namespace: flux-system
+    # - name: volsync
+    #   namespace: flux-system
+    # - name: volsync-repository-pvc-observability
+    #   namespace: flux-system
+  interval: 15m
+  retryInterval: 30s
+  path: ./kubernetes/apps/observability-stack/victoria-logs/app
+  # postBuild:
+  #   substitute:
+  #     APP: victoria-logs
+  #     VOLSYNC_SOURCE_PVC: server-volume-victoria-logs-server-0
+  #     VOLSYNC_CAPACITY: 20Gi
+  #     VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
+  #     VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
+  #     VOLSYNC_CACHE_STORAGECLASS: csi-cephfs-config-sc
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: observability
+  wait: false

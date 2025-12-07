@@ -3,29 +3,29 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Layer 0: CRDs (install first)
-  - ./0-crds
+  # CRDs (install first)
+  - ./crds
 
-  # Layer 1: Network (CNI)
-  - ./1-network
+  # Network (CNI)
+  - ./networking
 
-  # Layer 2: Foundation (secrets, storage)
-  - ./2-foundation
+  # Foundation (secrets, storage)
+  - ./foundation
 
-  # Layer 3: Core Services
-  - ./3-core
+  # Core Services
+  - ./core
 
-  # Layer 4: Network Services
-  - ./4-network-services
+  # Network Services
+  - ./network-services
 
-  # Layer 5: Observability
-  - ./5-observability
+  # Observability
+  - ./observability-stack
 
-  # Layer 6: Data (databases, backup)
-  - ./6-data
+  # Data (databases, backup)
+  - ./data
 
-  # Layer 7: Applications
-  - ./7-applications
+  # Applications
+  - ./applications
 
   # Legacy directories (to be migrated or removed)
   - ./security

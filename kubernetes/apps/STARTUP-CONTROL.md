@@ -64,37 +64,9 @@ spec:
     # No external-secrets - app manages its own secrets after creation
 ```
 
-### 3. Layer Dependencies with Tolerances
+### 3. Bundle by domain, not numbered layers
 
-Use `retryInterval` and increased `timeout` for layers that can tolerate delays:
-
-```yaml
-# Layer 0-1: Critical Infrastructure (strict)
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: cilium
-spec:
-  interval: 30m
-  retryInterval: 2m
-  timeout: 10m
-  wait: true
-
----
-# Layer 4-7: Applications (lenient)
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: plex
-spec:
-  interval: 1h           # ← Less frequent checks
-  retryInterval: 5m      # ← Wait longer between retries
-  timeout: 15m           # ← More time to succeed
-  wait: false            # ← Don't block on health
-  dependsOn:
-    - name: cilium-gateway
-```
+Group Kustomizations by domain (foundation, networking, storage, observability, apps) and set minimal `dependsOn` only where there is a real runtime need (e.g., cert-manager/external-secrets/storage/CNI CRDs). Avoid serializing everything behind numbered layers.
 
 ### 4. Progressive Dependencies
 
@@ -127,17 +99,17 @@ spec:
 
 ### 5. Use Suspend for Maintenance
 
-During infrastructure work, suspend non-critical apps:
+During infrastructure work, suspend non-critical apps (using your new labels, e.g., `layer=applications`):
 
 ```bash
 # Before working on Cilium
-flux suspend kustomization -l layer=7-apps
+flux suspend kustomization -l layer=applications
 
 # Work on Cilium...
 kubectl rollout restart -n kube-system daemonset/cilium
 
 # Resume apps
-flux resume kustomization -l layer=7-apps
+flux resume kustomization -l layer=applications
 ```
 
 ## Recommended Dependency Tree
@@ -311,7 +283,7 @@ When Cilium has issues:
 flux get kustomizations | grep -v "True"
 
 # 2. Suspend non-critical apps
-flux suspend ks -l layer=7-apps
+flux suspend ks -l layer=applications
 
 # 3. Fix Cilium
 kubectl rollout restart -n kube-system daemonset/cilium
@@ -320,9 +292,9 @@ kubectl rollout restart -n kube-system daemonset/cilium
 flux reconcile ks cilium --with-source
 
 # 5. Resume layer by layer
-flux resume ks -l layer=4-network-services
-flux resume ks -l layer=5-observability
-flux resume ks -l layer=7-apps
+flux resume ks -l layer=network-services
+flux resume ks -l layer=observability-stack
+flux resume ks -l layer=applications
 ```
 
 ## Implementation Checklist

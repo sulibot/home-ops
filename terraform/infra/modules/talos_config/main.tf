@@ -21,7 +21,7 @@ locals {
   cilium_values_yaml = var.cilium_values_path != "" ? file(var.cilium_values_path) : ""
 
   # Read Gateway API CRDs (required before Cilium if gatewayAPI.enabled: true)
-  gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/0-crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml" : ""
+  gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml" : ""
   gateway_api_crds      = var.cilium_values_path != "" && fileexists(local.gateway_api_crds_path) ? file(local.gateway_api_crds_path) : ""
 }
 
@@ -165,7 +165,8 @@ data "talos_machine_configuration" "worker" {
         }
         kernel = {
           modules = [
-            { name = "zfs" }
+            { name = "zfs" },
+            { name = "i915" } # load Intel GPU driver when present
           ]
         }
         sysctls = {
@@ -188,7 +189,20 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
+          extraArgs = {
+            "feature-gates" = "DevicePluginCDIDevices=true"
+          }
         }
+        files = [
+          {
+            op      = "create"
+            path    = "/etc/cri/conf.d/20-cdi.toml"
+            content = <<EOF
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
+EOF
+          }
+        ]
       }
     })
   ]

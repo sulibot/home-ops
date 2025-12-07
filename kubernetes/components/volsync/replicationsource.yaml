@@ -26,7 +26,7 @@ spec:
     # The "kopia" PVC must exist in the SAME namespace as this ReplicationSource.
     # All namespaces share the same CephFS repository by binding PVCs to static PVs
     # that reference the same volumeHandle (created in volsync-system namespace).
-    # See: kubernetes/apps/7-applications/volsync-repository-pvc/app/pvc.yaml
+    # See: kubernetes/apps/applications/volsync-repository-pvc/app/pvc.yaml
     repositoryPVC: "kopia"
 
     # Access and storage configuration
