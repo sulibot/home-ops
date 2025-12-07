@@ -2972,11 +2972,13 @@ spec:
       labels:
         app: helm-controller
         app.kubernetes.io/component: helm-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller.flux-system.svc.cluster.local./
+        - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
         - --watch-all-namespaces=true
         - --log-level=info
         - --log-encoding=json
@@ -4446,11 +4448,13 @@ spec:
       labels:
         app: kustomize-controller
         app.kubernetes.io/component: kustomize-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller.flux-system.svc.cluster.local./
+        - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
         - --watch-all-namespaces=true
         - --log-level=info
         - --log-encoding=json
@@ -5871,7 +5875,9 @@ spec:
       labels:
         app: notification-controller
         app.kubernetes.io/component: notification-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
@@ -10106,11 +10112,13 @@ spec:
       labels:
         app: source-controller
         app.kubernetes.io/component: source-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller.flux-system.svc.cluster.local./
+        - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
         - --watch-all-namespaces=true
         - --log-level=info
         - --log-encoding=json
@@ -11050,11 +11058,13 @@ spec:
       labels:
         app: image-automation-controller
         app.kubernetes.io/component: image-automation-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller.flux-system.svc.cluster.local./
+        - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
         - --watch-all-namespaces=true
         - --log-level=info
         - --log-encoding=json
@@ -12355,11 +12365,13 @@ spec:
       labels:
         app: image-reflector-controller
         app.kubernetes.io/component: image-reflector-controller
+        app.kubernetes.io/instance: flux-system
         app.kubernetes.io/part-of: flux
+        app.kubernetes.io/version: v2.7.3
     spec:
       containers:
       - args:
-        - --events-addr=http://notification-controller.flux-system.svc.cluster.local./
+        - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
         - --watch-all-namespaces=true
         - --log-level=info
         - --log-encoding=json
