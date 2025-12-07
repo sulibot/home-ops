@@ -1,0 +1,33 @@
+---
+# Cilium BGP Cluster Configuration
+# This configures BGP peering for advertising pod CIDRs to upstream router
+#
+# AS Numbering Scheme:
+#   AS 65000 - Mikrotik Router (backbone)
+#   AS 65100 - Proxmox infrastructure
+#   AS 65<cluster_id> - Kubernetes clusters (e.g., cluster-101 = AS 65101, cluster-102 = AS 65102)
+#
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cluster-101-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      # Apply to all nodes in the cluster
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: cluster-101-instance
+      localASN: 65101  # cluster-101 uses AS 65<cluster_id>
+      peers:
+        - name: upstream-router
+          peerAddress: 10.0.101.254  # Upstream router IPv4 address
+          peerASN: 65000  # Router's AS number (matches your Mikrotik config)
+          peerConfigRef:
+            name: upstream-router-peer
+        - name: upstream-router-ipv6
+          peerAddress: fd00:101::fffe  # Upstream router IPv6 address
+          peerASN: 65000  # Router's AS number (matches your Mikrotik config)
+          peerConfigRef:
+            name: upstream-router-peer-ipv6

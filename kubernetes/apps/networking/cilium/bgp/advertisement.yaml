@@ -1,0 +1,37 @@
+---
+# BGP Advertisement - Advertise pod CIDRs
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: pod-cidr-advertisement
+  namespace: kube-system
+  labels:
+    advertise: pod-cidr
+spec:
+  advertisements:
+    # Advertise pod CIDRs allocated to each node
+    - advertisementType: PodCIDR
+      attributes:
+        communities:
+          standard:
+            - "65101:100"  # Custom community tag (optional)
+---
+# BGP Advertisement - Advertise LoadBalancer Service IPs
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: service-lb-advertisement
+  namespace: kube-system
+  labels:
+    advertise: loadbalancer
+spec:
+  advertisements:
+    # Advertise LoadBalancer service IPs that have the advertise label
+    # Gateway infrastructure.labels adds this to gateway services automatically
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchLabels:
+          advertise: loadbalancer
