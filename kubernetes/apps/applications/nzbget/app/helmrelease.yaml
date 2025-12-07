@@ -83,6 +83,7 @@ spec:
 
     persistence:
       config:
+        enabled: true
         existingClaim: "{{ .Release.Name }}-config"
       downloads:
         type: emptyDir

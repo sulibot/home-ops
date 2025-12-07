@@ -1,0 +1,33 @@
+# In order for this to work, you must find the "rootPath" of the existing
+# CephFS subvolume that holds your Kopia data and replace the placeholder below.
+# You may be able to find this by inspecting your Ceph cluster's subvolumes
+# in the "backups" filesystem.
+#
+# Example command on a Ceph node:
+#   ceph fs subvolume ls backups csi
+#
+# The output should give you a list of volumes. Once you identify the correct one,
+# you can get its path:
+#   ceph fs subvolume getpath backups <volume_name> csi
+#
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kopia-repository-pv
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 20Gi
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: csi-cephfs-backups-sc
+  csi:
+    driver: cephfs.csi.ceph.com
+    # This handle is a unique name for this PV definition.
+    volumeHandle: kopia-repository-pv-handle
+    volumeAttributes:
+      "clusterID": "407036f5-1f73-44ff-ba81-1f219b7a8a64"
+      "fsName": "backups"
+      "staticVolume": "true"
+      # This is the crucial part. Replace this placeholder.
+      "rootPath": "<REPLACE_WITH_ROOT_PATH_OF_EXISTING_KOPIA_SUBVOLUME>"
