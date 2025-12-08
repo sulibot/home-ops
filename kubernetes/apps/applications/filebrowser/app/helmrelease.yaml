@@ -36,9 +36,9 @@ spec:
                 value: "911"
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
+        runAsNonRoot: false  # allow s6-init to drop privileges to PUID/PGID
+        runAsUser: 0
+        runAsGroup: 0
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
     service:
@@ -82,4 +82,3 @@ spec:
         medium: Memory
         globalMounts:
           - path: /tmp
-
