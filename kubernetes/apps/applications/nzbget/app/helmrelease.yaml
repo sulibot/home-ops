@@ -26,11 +26,10 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  exec:
-                    command:
-                      - sh
-                      - -c
-                      - nc -z localhost 6789
+                  httpGet:
+                    path: /
+                    port: 6789
+                    scheme: HTTP
                   initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 5
@@ -40,11 +39,10 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  exec:
-                    command:
-                      - sh
-                      - -c
-                      - nc -z localhost 6789
+                  httpGet:
+                    path: /
+                    port: 6789
+                    scheme: HTTP
                   initialDelaySeconds: 15
                   periodSeconds: 5
                   timeoutSeconds: 5
