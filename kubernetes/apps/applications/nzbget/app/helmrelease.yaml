@@ -1,5 +1,4 @@
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# yaml-language-server: $schema=raw.githubusercontent.com
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -20,6 +19,9 @@ spec:
             env:
               NZBGET__PORT: &port 80
               TZ: America/Los_Angeles
+              # If necessary, explicitly set the bind address to all interfaces (IPv4 and IPv6)
+              # This specific key might vary depending on the image maintainer's implementation
+              NZBGET__HOST: "::" 
             probes:
               liveness: &probes
                 enabled: true
@@ -28,9 +30,9 @@ spec:
                   httpGet:
                     path: /jsonrpc/status
                     port: *port
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 30 # Increased delay to allow app startup
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 5 # Slightly safer timeout
                   failureThreshold: 3
               readiness: *probes
             securityContext:
@@ -40,8 +42,8 @@ spec:
             resources:
               requests:
                 cpu: 100m
-              limits:
-                memory: 8Gi
+#              limits:
+#                memory: 8Gi
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -62,6 +64,12 @@ spec:
         ports:
           http:
             port: *port
+        # Explicitly configure the K8s Service object for dual-stack operation
+        kubernetes:
+          ipFamilyPolicy: PreferDualStack
+          ipFamilies:
+            - IPv6
+            - IPv4
 
     route:
       app:
