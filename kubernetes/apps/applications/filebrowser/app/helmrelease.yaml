@@ -27,14 +27,16 @@ spec:
               digest: "sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e"
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false  # allow DB + cache writes
+              readOnlyRootFilesystem: false  # must be writable for DB/cache
             env:
               - name: TZ
                 value: America/Los_Angeles
-              # Quantum docs: point to YAML config file
-              # FILEBROWSER_CONFIG is interpreted relative to /home/filebrowser
-              - name: FILEBROWSER_CONFIG
-                value: "data/config.yaml"
+              # Tell Quantum to store the DB in /config/database.db (PVC-backed)
+              - name: FILEBROWSER_DATABASE
+                value: "/config/database.db"
+              # If later you create a config.yaml in /config and want to use it:
+              # - name: FILEBROWSER_CONFIG
+              #   value: "/config/config.yaml"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -72,14 +74,14 @@ spec:
                 port: 80
 
     persistence:
-      # Holds data/config.yaml and database.db
+      # PVC that will hold database.db (and optionally config.yaml later)
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
-          - path: /home/filebrowser/data
+          - path: /config
 
-      # Your CephFS content (configure sources in config.yaml to point at /data)
+      # Your CephFS content
       content:
         enabled: true
         type: persistentVolumeClaim
