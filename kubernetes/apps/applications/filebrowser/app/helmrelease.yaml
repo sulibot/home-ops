@@ -22,10 +22,10 @@ spec:
         containers:
           app:
             image:
-              # Correct image name:
-              repository: gtstef/filebrowser            # or "docker.io/gtstef/filebrowser"
-              tag: 1.2.0-experimental-sql-indexing      # you can also add a digest if you like
-              # digest: sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e
+              # Correct repo + tag + pinned digest
+              repository: docker.io/gtstef/filebrowser
+              tag: 1.2.0-experimental-sql-indexing
+              digest: "sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e"
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -41,7 +41,7 @@ spec:
               - name: FB_PORT
                 value: "8080"
               - name: FB_NOAUTH
-                value: "true"
+                value: "true"        # disable auth, credentials via secret
               - name: FB_LOG
                 value: stdout
               - name: FB_UID
@@ -51,6 +51,7 @@ spec:
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
+
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
@@ -58,6 +59,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+
     service:
       app:
         controller: filebrowser
@@ -69,6 +71,7 @@ spec:
           http:
             port: 80
             targetPort: 8080
+
     route:
       app:
         hostnames:
@@ -80,6 +83,7 @@ spec:
           - backendRefs:
               - name: filebrowser
                 port: 80
+
     persistence:
       config:
         enabled: true

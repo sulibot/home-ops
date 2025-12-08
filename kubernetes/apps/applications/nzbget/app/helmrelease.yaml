@@ -26,8 +26,11 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: 6789
+                  exec:
+                    command:
+                      - sh
+                      - -c
+                      - nc -z localhost 6789
                   initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 5
@@ -37,8 +40,11 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: 6789
+                  exec:
+                    command:
+                      - sh
+                      - -c
+                      - nc -z localhost 6789
                   initialDelaySeconds: 15
                   periodSeconds: 5
                   timeoutSeconds: 5
