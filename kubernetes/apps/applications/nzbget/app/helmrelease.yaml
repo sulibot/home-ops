@@ -19,6 +19,7 @@ spec:
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
               NZBGET__PORT: &port 80
+              NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             probes:
               liveness: &probes
@@ -26,6 +27,7 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
+                    host: 127.0.0.1
                     port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 10
