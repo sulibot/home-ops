@@ -19,7 +19,7 @@ spec:
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
               NZBGET__PORT: "6789"
-              NZBGET__CONTROLIP: "::"
+              NZBGET__CONTROLIP: "0.0.0.0"
               TZ: America/Los_Angeles
             probes:
               liveness: &probes
