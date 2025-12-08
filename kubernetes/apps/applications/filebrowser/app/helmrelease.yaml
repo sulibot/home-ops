@@ -22,8 +22,8 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/filebrowser/filebrowser
-              tag: "v2.30.0"
+              repository: docker.io/gtstef/filebrowser
+              tag: 1.2.0-experimental-sql-indexing-slim@sha256:b2d6defb13a8e625a88a8f0b03973ba2dc136d90d9dc09902d776a6f9f6e1732
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
