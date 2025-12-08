@@ -26,6 +26,7 @@ spec:
               repository: docker.io/gtstef/filebrowser
               tag: 1.2.0-experimental-sql-indexing
               digest: "sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e"
+            workingDir: /config
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -107,3 +108,9 @@ spec:
         medium: Memory
         globalMounts:
           - path: /tmp
+
+      fb-cache:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /home/filebrowser/tmp
