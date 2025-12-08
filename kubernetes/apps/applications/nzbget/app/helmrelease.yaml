@@ -21,7 +21,8 @@ spec:
               TZ: America/Los_Angeles
               # If necessary, explicitly set the bind address to all interfaces (IPv4 and IPv6)
               # This specific key might vary depending on the image maintainer's implementation
-              NZBGET__HOST: "::" 
+              NZBGET__HOST: "::"
+              NZBGET__CONTROLIP: "::" 
             probes:
               liveness: &probes
                 enabled: true
