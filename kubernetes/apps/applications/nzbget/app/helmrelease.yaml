@@ -27,7 +27,6 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    host: 127.0.0.1
                     port: 6789
                   initialDelaySeconds: 10
                   periodSeconds: 10
@@ -39,7 +38,6 @@ spec:
                 custom: true
                 spec:
                   tcpSocket:
-                    host: 127.0.0.1
                     port: 6789
                   initialDelaySeconds: 10
                   periodSeconds: 5
