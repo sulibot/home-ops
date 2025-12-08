@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: ghcr.io/filebrowser/filebrowser
-              tag: "2.30.0"
+              tag: "v2.30.0"
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true

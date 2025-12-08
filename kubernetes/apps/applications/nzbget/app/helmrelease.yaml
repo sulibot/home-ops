@@ -18,7 +18,6 @@ spec:
               repository: ghcr.io/home-operations/nzbget
               tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
-              NZBGET__PORT: &port 80
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             probes:
@@ -28,8 +27,8 @@ spec:
                 spec:
                   tcpSocket:
                     host: 127.0.0.1
-                    port: *port
-                  initialDelaySeconds: 5
+                    port: 6789
+                  initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 5
                   failureThreshold: 3
@@ -40,10 +39,10 @@ spec:
                 spec:
                   tcpSocket:
                     host: 127.0.0.1
-                    port: *port
-                  initialDelaySeconds: 5
+                    port: 6789
+                  initialDelaySeconds: 10
                   periodSeconds: 5
-                  failureThreshold: 30
+                  failureThreshold: 60
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
@@ -84,7 +83,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: 6789
     route:
       app:
         hostnames:
