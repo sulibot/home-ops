@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: docker.io/gtstef/filebrowser
-              tag: 1.2.0-experimental-sql-indexing@sha256:sha256:db12a87bdfc61669f6acbd82338cecdb9e724e9c3bb24f2d18af05c8e1f61d23
+              tag: 1.2.0-experimental-sql-indexing@sha256:db12a87bdfc61669f6acbd82338cecdb9e724e9c3bb24f2d18af05c8e1f61d23
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true

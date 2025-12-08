@@ -16,10 +16,10 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/nzbget
-              tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
+              tag: "25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1"
             env:
               NZBGET__PORT: "6789"
-              NZBGET__CONTROLIP: "0.0.0.0"
+              NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             probes:
               liveness: &probes
@@ -39,8 +39,9 @@ spec:
                 spec:
                   tcpSocket:
                     port: 6789
-                  initialDelaySeconds: 10
+                  initialDelaySeconds: 15
                   periodSeconds: 5
+                  timeoutSeconds: 5
                   failureThreshold: 60
             securityContext:
               allowPrivilegeEscalation: false
@@ -52,6 +53,7 @@ spec:
                 cpu: 100m
               limits:
                 memory: 2Gi
+
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
@@ -76,6 +78,8 @@ spec:
 
     service:
       app:
+        enabled: true
+        controller: nzbget
         ipFamilyPolicy: PreferDualStack
         ipFamilies:
           - IPv6
@@ -84,8 +88,11 @@ spec:
           http:
             port: 80
             targetPort: 6789
+
     route:
       app:
+        enabled: true
+        controller: nzbget
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
