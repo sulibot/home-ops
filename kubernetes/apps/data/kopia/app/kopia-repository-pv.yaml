@@ -15,7 +15,7 @@ spec:
   csi:
     driver: cephfs.csi.ceph.com
     nodeStageSecretRef:
-      name: csi-cephfs-secret
+      name: csi-ceph-admin-secret
       namespace: ceph-csi
     # This volume handle is a unique name, but the rootPath is what matters
     volumeHandle: kopia-repository-pv-handle
