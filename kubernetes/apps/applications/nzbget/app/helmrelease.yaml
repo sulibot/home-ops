@@ -92,7 +92,6 @@ spec:
     route:
       app:
         enabled: true
-        controller: nzbget
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
