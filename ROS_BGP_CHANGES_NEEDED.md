@@ -19,7 +19,7 @@ A single BGP connection is configured on ROS to accept connections from both FRR
 
 This connection accepts BGP sessions from both:
 - **FRR**: Advertises the Kubernetes VIP (fd00:255:101::ac/128)
-- **Cilium BGP**: Advertises LoadBalancer service IPs (fd00:101::cafe:0/112 IPv6 and 10.96.192.0/22 IPv4)
+- **Cilium BGP**: Advertises LoadBalancer service IPs (fd00:101:1b::/112 IPv6 and 10.101.27.0/24 IPv4)
 
 ```
 /routing/bgp/connection/add \
@@ -79,8 +79,8 @@ Expected BGP sessions:
 - All from `fd00:255:101::11-13, 21-23`
 - Routes learned:
   - `fd00:255:101::ac/128` (K8s VIP, advertised by healthy control plane node)
-  - `fd00:101::cafe:0/112` (LoadBalancer IPv6 pool, advertised by Cilium)
-  - `10.96.192.0/22` (LoadBalancer IPv4 pool, advertised by Cilium)
+  - `fd00:101:1b::/112` (LoadBalancer IPv6 pool, advertised by Cilium)
+  - `10.101.27.0/24` (LoadBalancer IPv4 pool, advertised by Cilium)
 
 ## Configuration Persistence
 

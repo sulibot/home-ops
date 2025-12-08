@@ -21,6 +21,7 @@ spec:
       # https://github.com/cilium/cilium/issues/41680
       # These labels are copied to the auto-generated LoadBalancer service
       advertise: loadbalancer
+      bgp-advertise: "true"
   listeners:
     - name: sulibot-https
       hostname: sulibot.com
@@ -74,7 +75,6 @@ spec:
 #                port: 443
 #      ipAddresses:
 #        - 10.10.0.140  # Same IP as HTTPS listener for consistency
-
 
 
 

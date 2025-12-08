@@ -26,12 +26,12 @@ metadata:
     advertise: loadbalancer
 spec:
   advertisements:
-    # Advertise LoadBalancer service IPs that have the advertise label
-    # Gateway infrastructure.labels adds this to gateway services automatically
+    # Advertise LoadBalancer service IPs labeled for BGP advertisement
+    # Gateway serviceLabels set bgp-advertise: "true" automatically
     - advertisementType: Service
       service:
         addresses:
           - LoadBalancerIP
       selector:
         matchLabels:
-          advertise: loadbalancer
+          bgp-advertise: "true"

@@ -33,9 +33,6 @@ locals {
     "ghcr.io/siderolabs/intel-ucode:20251111@sha256:c6ed9685f0ad85b3ec98f4129ea1b75342719b94e02bbd945929eba9436a47c5",
     "ghcr.io/siderolabs/qemu-guest-agent:10.1.2@sha256:b08ff5670b5062e403a2a9ae2ab52b0429bba0075022fbe46837b4b509cf5724",
     "ghcr.io/siderolabs/util-linux-tools:2.41.2@sha256:dc9f935ea8756dba5b8b87cd92bb8950af8e201645811ec0c9ac78703336677a",
-    "ghcr.io/siderolabs/zfs:2.4.0-rc2-v1.12.0-beta.1@sha256:27f12d0793909403644b8d29ee9ff65ff380700950679a223313076c2004f5ea",
-    "ghcr.io/siderolabs/nfsd:v1.12.0-beta.1@sha256:37fe96b5428964e2ac7e9bda2aad74aca365acaab8b3c48222a6df86fe880a68",
-    "ghcr.io/siderolabs/nfsrahead:2.8.3@sha256:6f9aa54d9785f8b93255242d1bebb3ac7802540bcca806febc27760797177670",
   ]
 
   # Custom third-party extensions
