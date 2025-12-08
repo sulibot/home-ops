@@ -124,44 +124,17 @@ locals {
 
   hypervisors = length(var.proxmox.nodes) > 0 ? var.proxmox.nodes : [var.proxmox.node_primary]
 
-  # ===================================================================
-  # Kubernetes Network CIDRs
-  # ===================================================================
-  k8s_cidrs = {
-    "101" = {
-      pods_ipv4          = "10.101.0.0/17"
-      pods_ipv6          = "fd00:101:10::/60"
-      services_ipv4      = "10.101.96.0/20"
-      services_ipv6      = "fd00:101:96::/108"
-      loadbalancers_ipv4 = "10.101.27.0/24"
-      loadbalancers_ipv6 = "fd00:101:1b::/112"
-    },
-    "102" = {
-      pods_ipv4          = "10.102.0.0/16"
-      pods_ipv6          = "fd00:102:1::/60"
-      services_ipv4      = "10.102.96.0/20"
-      services_ipv6      = "fd00:102:96::/108"
-      loadbalancers_ipv4 = "10.102.27.0/24"
-      loadbalancers_ipv6 = "fd00:102:1b::/120"
-    },
-    "103" = {
-      pods_ipv4          = "10.103.0.0/16"
-      pods_ipv6          = "fd00:103:1::/60"
-      services_ipv4      = "10.103.96.0/20"
-      services_ipv6      = "fd00:103:96::/108"
-      loadbalancers_ipv4 = "10.103.27.0/24"
-      loadbalancers_ipv6 = "fd00:103:1b::/120"
-    }
+  # Kubernetes Network CIDRs (derived from cluster_id)
+  k8s_network_config = {
+    pods_ipv4          = format("10.%d.240.0/20", var.cluster_id)
+    pods_ipv6          = format("fd00:%d:240::/60", var.cluster_id)
+    services_ipv4      = format("10.%d.96.0/24", var.cluster_id)
+    services_ipv6      = format("fd00:%d:96::/112", var.cluster_id)
+    loadbalancers_ipv4 = format("10.%d.27.0/24", var.cluster_id)
+    loadbalancers_ipv6 = format("fd00:%d:1b::/120", var.cluster_id)
+    talosVersion      = var.talos_version
+    kubernetesVersion = var.kubernetes_version
   }
-
-  # Selects the appropriate network configuration based on the var.cluster_id
-  k8s_network_config = merge(
-    lookup(local.k8s_cidrs, tostring(var.cluster_id), {}),
-    {
-      talosVersion      = var.talos_version
-      kubernetesVersion = var.kubernetes_version
-    }
-  )
 }
 
 # Hardware mapping approach DISABLED due to bpg/proxmox provider bug

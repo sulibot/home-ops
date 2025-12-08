@@ -30,8 +30,8 @@ endpointRoutes:
   enabled: true
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.0.0/16
-ipv6NativeRoutingCIDR: fd00:101:1::/60
+ipv4NativeRoutingCIDR: 10.101.240.0/20
+ipv6NativeRoutingCIDR: fd00:101:240::/60
 
 # Enable BPF masquerading (iptables-free NAT)
 bpf:

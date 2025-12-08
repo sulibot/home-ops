@@ -38,8 +38,8 @@ endpointRoutes:
   enabled: false
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.0.0/17
-ipv6NativeRoutingCIDR: fd00:101:10::/60
+ipv4NativeRoutingCIDR: 10.101.240.0/20
+ipv6NativeRoutingCIDR: fd00:101:240::/60
 
 # BPF masquerading - DISABLED for Istio Ambient compatibility
 # Istio ambient uses link-local IPs (169.254.7.127) for health checks
