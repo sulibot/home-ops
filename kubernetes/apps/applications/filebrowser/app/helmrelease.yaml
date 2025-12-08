@@ -31,9 +31,14 @@ spec:
             env:
               - name: TZ
                 value: America/Los_Angeles
-              # Tell Quantum to store the DB in /config/database.db (PVC-backed)
+              - name: FILEBROWSER_ADDRESS
+                value: "::"  # listen on IPv4/IPv6
+              - name: FILEBROWSER_PORT
+                value: "8080"
+              - name: FILEBROWSER_ROOT
+                value: /data
               - name: FILEBROWSER_DATABASE
-                value: "/config/database.db"
+                value: /config/database.db
               # If later you create a config.yaml in /config and want to use it:
               # - name: FILEBROWSER_CONFIG
               #   value: "/config/config.yaml"
