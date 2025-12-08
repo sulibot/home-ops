@@ -32,6 +32,3 @@ spec:
       service:
         addresses:
           - LoadBalancerIP
-      selector:
-        matchLabels:
-          bgp-advertise: "true"
