@@ -22,33 +22,19 @@ spec:
         containers:
           app:
             image:
-              # Correct repo + tag + pinned digest
               repository: docker.io/gtstef/filebrowser
               tag: 1.2.0-experimental-sql-indexing
               digest: "sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e"
-            workingDir: /config
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
+              readOnlyRootFilesystem: false  # allow DB + cache writes
             env:
               - name: TZ
                 value: America/Los_Angeles
-              - name: FB_ROOT
-                value: /data
-              - name: FB_DATABASE
-                value: /config/filebrowser.db
-              - name: FB_ADDRESS
-                value: "::"          # bind v4/v6
-              - name: FB_PORT
-                value: "8080"
-              - name: FB_NOAUTH
-                value: "true"        # disable auth, credentials via secret
-              - name: FB_LOG
-                value: stdout
-              - name: FB_UID
-                value: "1000"
-              - name: FB_GID
-                value: "1000"
+              # Quantum docs: point to YAML config file
+              # FILEBROWSER_CONFIG is interpreted relative to /home/filebrowser
+              - name: FILEBROWSER_CONFIG
+                value: "data/config.yaml"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -86,11 +72,14 @@ spec:
                 port: 80
 
     persistence:
+      # Holds data/config.yaml and database.db
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
-          - path: /config
+          - path: /home/filebrowser/data
+
+      # Your CephFS content (configure sources in config.yaml to point at /data)
       content:
         enabled: true
         type: persistentVolumeClaim
@@ -98,19 +87,15 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+
       run:
         type: emptyDir
         medium: Memory
         globalMounts:
           - path: /run
+
       tmp:
         type: emptyDir
         medium: Memory
         globalMounts:
           - path: /tmp
-
-      fb-cache:
-        type: emptyDir
-        medium: Memory
-        globalMounts:
-          - path: /home/filebrowser/tmp
