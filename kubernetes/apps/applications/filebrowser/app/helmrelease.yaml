@@ -22,8 +22,8 @@ spec:
         containers:
           app:
             image:
-              repository: docker.io/gtstef/filebrowser
-              tag: 1.2.0-experimental-sql-indexing@db12a87bdfc61669f6acbd82338cecdb9e724e9c3bb24f2d18af05c8e1f61d23
+              repository: docker.io/docker pull gtstef/filebrowser
+              tag: 1.2.0-experimental-sql-indexing
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
