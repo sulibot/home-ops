@@ -22,8 +22,10 @@ spec:
         containers:
           app:
             image:
-              repository: docker.io/docker pull gtstef/filebrowser
-              tag: 1.2.0-experimental-sql-indexing
+              # Correct image name:
+              repository: gtstef/filebrowser            # or "docker.io/gtstef/filebrowser"
+              tag: 1.2.0-experimental-sql-indexing      # you can also add a digest if you like
+              # digest: sha256:9042507f491b80c56f8525262ac5405c64ce6ddbe3d9ea07e48e3d917ea5159e
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -39,7 +41,7 @@ spec:
               - name: FB_PORT
                 value: "8080"
               - name: FB_NOAUTH
-                value: "true"        # disable auth, credentials available via secret
+                value: "true"
               - name: FB_LOG
                 value: stdout
               - name: FB_UID
