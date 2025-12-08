@@ -22,28 +22,47 @@ spec:
         containers:
           app:
             image:
-              repository: filebrowser/filebrowser
-              tag: s6
+              repository: ghcr.io/filebrowser/filebrowser
+              tag: "2.30.0"
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
             env:
               - name: TZ
                 value: America/Los_Angeles
-              - name: PUID
-                value: "911"
-              - name: PGID
-                value: "911"
+              - name: FB_ROOT
+                value: /data
+              - name: FB_DATABASE
+                value: /config/filebrowser.db
+              - name: FB_ADDRESS
+                value: "::"          # bind v4/v6
+              - name: FB_PORT
+                value: "8080"
+              - name: FB_NOAUTH
+                value: "true"        # disable auth, credentials available via secret
+              - name: FB_LOG
+                value: stdout
+              - name: FB_UID
+                value: "1000"
+              - name: FB_GID
+                value: "1000"
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: false  # allow s6-init to drop privileges to PUID/PGID
-        runAsUser: 0
-        runAsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
         controller: filebrowser
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         ports:
           http:
             port: 80
