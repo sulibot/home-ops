@@ -16,82 +16,52 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/nzbget
-              tag: "25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1"
+              tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
             env:
-              NZBGET__PORT: 6789
-              NZBGET__CONTROLIP: 0.0.0.0
-              TZ: America/Los_Angeles
+              NZBGET__PORT: &port 80
+              TZ: America/New_York
             probes:
               liveness: &probes
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /
-                    port: 6789
-                    scheme: HTTP
-                  initialDelaySeconds: 10
+                    path: /jsonrpc/status
+                    port: *port
+                  initialDelaySeconds: 0
                   periodSeconds: 10
-                  timeoutSeconds: 5
+                  timeoutSeconds: 1
                   failureThreshold: 3
               readiness: *probes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  httpGet:
-                    path: /
-                    port: 6789
-                    scheme: HTTP
-                  initialDelaySeconds: 15
-                  periodSeconds: 5
-                  timeoutSeconds: 5
-                  failureThreshold: 60
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-              capabilities:
-                drop: ["ALL"]
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
             resources:
               requests:
                 cpu: 100m
               limits:
-                memory: 2Gi
-
+                memory: 8Gi
     defaultPodOptions:
 #      annotations:
 #        k8s.v1.cni.cncf.io/networks: |-
 #          [{
 #            "name": "vpn",
 #            "namespace": "kube-system",
-#            "ips": ["fd00:90::11/64"],
+#            "ips": ["192.168.90.11/24"],
 #            "mac": "a6:3e:4f:09:e4:9c"
 #          }]
-      dnsConfig:
-        options:
-          - name: single-request
-          - name: single-request-reopen
-          - name: ndots
-            value: "1"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-
     service:
       app:
-        enabled: true
-        controller: nzbget
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-          - IPv6
-          - IPv4
         ports:
           http:
-            port: 80
-            targetPort: 6789
+            port: *port
 
     route:
       app:
