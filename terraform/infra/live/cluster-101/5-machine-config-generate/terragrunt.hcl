@@ -47,14 +47,16 @@ dependency "install_schematic" {
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
-dependency "custom_installer" {
-  config_path = "../1-talos-install-image-build"
-
-  mock_outputs = {
-    installer_image = "ghcr.io/sulibot/sol-talos-installer-frr:v1.12.0-beta.0"
-  }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
-}
+# COMMENTED OUT: Custom installer with FRR extension (replaced by factory-based BIRD2)
+# To rollback to FRR custom installer, uncomment this block and update installer_image input
+# dependency "custom_installer" {
+#   config_path = "../1-talos-install-image-build"
+#
+#   mock_outputs = {
+#     installer_image = "ghcr.io/sulibot/sol-talos-installer-frr:v1.12.0-beta.0"
+#   }
+#   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
+# }
 
 terraform {
   source = "../../../modules/talos_config"
@@ -149,7 +151,8 @@ inputs = {
   pod_cidr_ipv4     = dependency.nodes.outputs.k8s_network_config.pods_ipv4
   service_cidr_ipv6 = dependency.nodes.outputs.k8s_network_config.services_ipv6
   service_cidr_ipv4 = dependency.nodes.outputs.k8s_network_config.services_ipv4
-  installer_image   = dependency.custom_installer.outputs.installer_image
+  # Use standard Talos installer (extensions loaded separately from system_extensions)
+  installer_image   = "ghcr.io/siderolabs/installer:${local.versions.talos_version}"
 
   dns_servers = [
     "fd00:${local.cluster_config.cluster_id}::fffe",  # IPv6 DNS

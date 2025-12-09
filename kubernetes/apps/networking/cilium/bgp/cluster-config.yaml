@@ -1,33 +1,164 @@
 ---
-# Cilium BGP Cluster Configuration
-# This configures BGP peering for advertising pod CIDRs to upstream router
+# Cilium BGP Cluster Configuration - BIRD2 Integration
+# Each node peers with its local BIRD2 instance on localhost
 #
-# AS Numbering Scheme:
-#   AS 65000 - Mikrotik Router (backbone)
-#   AS 65100 - Proxmox infrastructure
-#   AS 65<cluster_id> - Kubernetes clusters (e.g., cluster-101 = AS 65101, cluster-102 = AS 65102)
+# New AS Numbering Scheme (per-node ASNs):
+#   AS 65000       - RouterOS (backbone)
+#   AS 421010011   - BIRD2 on solcp01 (4210000 + 101*100 + 11)
+#   AS 421010012   - BIRD2 on solcp02
+#   AS 421010013   - BIRD2 on solcp03
+#   AS 421010021   - BIRD2 on solwk01
+#   AS 421010022   - BIRD2 on solwk02
+#   AS 421010023   - BIRD2 on solwk03
+#   AS 422010011   - Cilium on solcp01 (4220000 + 101*100 + 11)
+#   AS 422010012   - Cilium on solcp02
+#   AS 422010013   - Cilium on solcp03
+#   AS 422010021   - Cilium on solwk01
+#   AS 422010022   - Cilium on solwk02
+#   AS 422010023   - Cilium on solwk03
+#
+# BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS 421...) ←eBGP→ Cilium (AS 422...)
 #
 apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
-  name: cluster-101-bgp
+  name: solcp01-bgp
   namespace: kube-system
 spec:
   nodeSelector:
     matchLabels:
-      # Apply to all nodes in the cluster
-      kubernetes.io/os: linux
+      kubernetes.io/hostname: solcp01
   bgpInstances:
-    - name: cluster-101-instance
-      localASN: 65101  # cluster-101 uses AS 65<cluster_id>
+    - name: bird2-localhost
+      localASN: 422010011  # Cilium ASN for solcp01
       peers:
-        - name: upstream-router
-          peerAddress: 10.0.101.254  # Upstream router IPv4 address
-          peerASN: 65000  # Router's AS number (matches your Mikrotik config)
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010011  # BIRD2 ASN for solcp01
           peerConfigRef:
-            name: upstream-router-peer
-        - name: upstream-router-ipv6
-          peerAddress: fd00:101::fffe  # Upstream router IPv6 address
-          peerASN: 65000  # Router's AS number (matches your Mikrotik config)
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010011  # BIRD2 ASN for solcp01
           peerConfigRef:
-            name: upstream-router-peer-ipv6
+            name: bird2-peer-ipv6
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: solcp02-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: solcp02
+  bgpInstances:
+    - name: bird2-localhost
+      localASN: 422010012  # Cilium ASN for solcp02
+      peers:
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010012  # BIRD2 ASN for solcp02
+          peerConfigRef:
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010012  # BIRD2 ASN for solcp02
+          peerConfigRef:
+            name: bird2-peer-ipv6
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: solcp03-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: solcp03
+  bgpInstances:
+    - name: bird2-localhost
+      localASN: 422010013  # Cilium ASN for solcp03
+      peers:
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010013  # BIRD2 ASN for solcp03
+          peerConfigRef:
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010013  # BIRD2 ASN for solcp03
+          peerConfigRef:
+            name: bird2-peer-ipv6
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: solwk01-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: solwk01
+  bgpInstances:
+    - name: bird2-localhost
+      localASN: 422010021  # Cilium ASN for solwk01
+      peers:
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010021  # BIRD2 ASN for solwk01
+          peerConfigRef:
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010021  # BIRD2 ASN for solwk01
+          peerConfigRef:
+            name: bird2-peer-ipv6
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: solwk02-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: solwk02
+  bgpInstances:
+    - name: bird2-localhost
+      localASN: 422010022  # Cilium ASN for solwk02
+      peers:
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010022  # BIRD2 ASN for solwk02
+          peerConfigRef:
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010022  # BIRD2 ASN for solwk02
+          peerConfigRef:
+            name: bird2-peer-ipv6
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: solwk03-bgp
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: solwk03
+  bgpInstances:
+    - name: bird2-localhost
+      localASN: 422010023  # Cilium ASN for solwk03
+      peers:
+        - name: bird2-ipv4
+          peerAddress: 127.0.0.1
+          peerASN: 421010023  # BIRD2 ASN for solwk03
+          peerConfigRef:
+            name: bird2-peer-ipv4
+        - name: bird2-ipv6
+          peerAddress: ::1
+          peerASN: 421010023  # BIRD2 ASN for solwk03
+          peerConfigRef:
+            name: bird2-peer-ipv6

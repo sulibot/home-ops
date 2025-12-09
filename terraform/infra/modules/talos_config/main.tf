@@ -215,13 +215,15 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch and FRR ExtensionServiceConfig
+      # Per-node network patch and BIRD2 ExtensionServiceConfig
       config_patch = join("\n---\n", [
         yamlencode({
           machine = {
             nodeLabels = {
               "topology.kubernetes.io/region" = "home-lab"
               "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+              "bgp.bird.asn"                  = tostring(4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3]))
+              "bgp.cilium.asn"                = tostring(4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3]))
             }
             network = {
               hostname = node.hostname
@@ -283,74 +285,135 @@ locals {
         yamlencode({
           apiVersion = "v1alpha1"
           kind       = "ExtensionServiceConfig"
-          name       = "frr"
-          environment = [
-            "NODE_IP=fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}",
-            "ASN_LOCAL=65${var.cluster_id}"
-          ]
+          name       = "bird2"
           configFiles = [
             {
-              content   = <<-EOT
-              bfd:
-                profiles:
-                  normal:
-                    detect_multiplier: 3
-                    receive_interval: 300
-                    transmit_interval: 300
-                    echo_mode: false
+              content   = <<-BIRD_CONF
+              # BIRD2 Configuration for ${node.hostname}
+              # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})
 
-              bgp:
-                cilium:
-                  local_asn: 65${var.cluster_id}
-                  remote_asn: 4200000${var.cluster_id}
-                  namespace: cilium
-                  peering:
-                    ipv4:
-                      local: 192.168.250.255  # veth-cilium IP (in cilium netns)
-                      remote: 192.168.250.254 # veth-frr IP (host netns) - Cilium peers with this
-                      prefix: 31
-                    ipv6:
-                      local: "fdae:6bef:5e65::2"  # veth-cilium IPv6 (in cilium netns)
-                      remote: "fdae:6bef:5e65::1" # veth-frr IPv6 (host netns) - Cilium peers with this
-                      prefix: 126
+              log stderr all;
+              log "/var/log/bird.log" { debug, trace, info, remote, warning, error, auth, fatal, bug };
 
-                upstream:
-                  local_asn: 65${var.cluster_id}
-                  router_id: 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-                  router_id_v6: "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}"
-                  peers:
-                    - address: 10.0.${var.cluster_id}.254
-                      remote_asn: 65000
-                      description: "RouterOS IPv4 Interface"
-                      update_source: 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]}
-                    - address: fd00:${var.cluster_id}::fffe
-                      remote_asn: 65000
-                      description: "RouterOS IPv6 Interface"
-                      address_family: ipv6
-                      update_source: fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]}
+              # Router ID from dummy0 IPv4
+              router id 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
 
-              network:
-                interface_mtu: 1500
-                veth_names:
-                  frr_side: veth-frr
-                  cilium_side: veth-cilium
-            EOT
-              mountPath = "/usr/local/etc/frr/config.yaml"
-            },
-            {
-              content   = <<-EOT
-              zebra=true
-              zebra_options="-n -A 127.0.0.1"
-              bgpd=true
-              bgpd_options="-A 127.0.0.1"
-              staticd=true
-              staticd_options="-A 127.0.0.1"
-            EOT
-              mountPath = "/usr/local/etc/frr/daemons"
-            },
-            {
-              content   = "service integrated-vtysh-config\nhostname ${node.hostname}\n"
-              mountPath = "/usr/local/etc/frr/vtysh.conf"
+              protocol device {
+                  scan time 10;
+              }
+
+              protocol direct {
+                  ipv4;
+                  ipv6;
+                  interface "dummy0";
+              }
+
+              protocol kernel kernel_v4 {
+                  ipv4 {
+                      import all;
+                      export none;
+                  };
+                  learn;
+              }
+
+              protocol kernel kernel_v6 {
+                  ipv6 {
+                      import all;
+                      export none;
+                  };
+                  learn;
+              }
+
+              filter export_to_router {
+                  if net ~ [10.255.${var.cluster_id}.0/24{32,32}] then accept;
+                  if net ~ [fd00:255:${var.cluster_id}::/64{128,128}] then accept;
+                  if net ~ [10.${var.cluster_id}.240.0/20{20,32}] then accept;
+                  if net ~ [fd00:${var.cluster_id}:240::/60{60,128}] then accept;
+                  if net ~ [10.${var.cluster_id}.27.0/24{32,32}] then accept;
+                  if net ~ [fd00:${var.cluster_id}:1b::/120{128,128}] then accept;
+                  reject;
+              }
+
+              filter import_from_router {
+                  if net ~ [0.0.0.0/0] then accept;
+                  if net ~ [::/0] then accept;
+                  if net ~ [10.0.0.0/16{16,32}] then accept;
+                  if net ~ [fd00::/16{16,128}] then accept;
+                  reject;
+              }
+
+              filter export_to_cilium {
+                  if source ~ [RTS_DEVICE, RTS_STATIC] then accept;
+                  if source = RTS_BGP && proto = "upstream_router_v4" then accept;
+                  if source = RTS_BGP && proto = "upstream_router_v6" then accept;
+                  reject;
+              }
+
+              filter import_from_cilium {
+                  accept;
+              }
+
+              protocol bgp upstream_router_v4 {
+                  description "RouterOS IPv4 (AS 65000)";
+                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor 10.0.${var.cluster_id}.254 as 65000;
+                  source address 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
+                  multihop;
+                  ipv4 {
+                      import filter import_from_router;
+                      export filter export_to_router;
+                  };
+                  hold time 90;
+                  keepalive time 30;
+                  graceful restart on;
+              }
+
+              protocol bgp upstream_router_v6 {
+                  description "RouterOS IPv6 (AS 65000)";
+                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor fd00:${var.cluster_id}::fffe as 65000;
+                  source address fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
+                  multihop;
+                  ipv6 {
+                      import filter import_from_router;
+                      export filter export_to_router;
+                  };
+                  hold time 90;
+                  keepalive time 30;
+                  graceful restart on;
+              }
+
+              protocol bgp cilium_v4 {
+                  description "Cilium BGP IPv4 (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})";
+                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor 127.0.0.1 as ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  passive on;
+                  multihop 2;
+                  ipv4 {
+                      import filter import_from_cilium;
+                      export filter export_to_cilium;
+                  };
+                  hold time 90;
+                  keepalive time 30;
+                  graceful restart on;
+              }
+
+              protocol bgp cilium_v6 {
+                  description "Cilium BGP IPv6 (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})";
+                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor ::1 as ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  passive on;
+                  multihop 2;
+                  ipv6 {
+                      import filter import_from_cilium;
+                      export filter export_to_cilium;
+                  };
+                  hold time 90;
+                  keepalive time 30;
+                  graceful restart on;
+              }
+            BIRD_CONF
+              mountPath = "/usr/local/etc/bird.conf"
             }
           ]
         })

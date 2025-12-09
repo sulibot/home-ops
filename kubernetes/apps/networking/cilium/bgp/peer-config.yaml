@@ -1,9 +1,10 @@
 ---
-# BGP Peer Configuration for upstream router (IPv4 only)
+# BGP Peer Configuration for BIRD2 on localhost (IPv4)
+# Cilium peers with local BIRD2 instance instead of directly with RouterOS
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: upstream-router-peer
+  name: bird2-peer-ipv4
   namespace: kube-system
 spec:
   # Advertise IPv4 pod CIDRs and LoadBalancer IPs
@@ -18,8 +19,8 @@ spec:
               - pod-cidr
               - loadbalancer
 
-  # eBGP multihop (different AS)
-  ebgpMultihop: 1
+  # eBGP multihop (required for localhost peering)
+  ebgpMultihop: 2
 
   # Transport configuration
   transport:
@@ -35,11 +36,12 @@ spec:
     enabled: true
     restartTimeSeconds: 120
 ---
-# BGP Peer Configuration for upstream router (IPv6 only)
+# BGP Peer Configuration for BIRD2 on localhost (IPv6)
+# Cilium peers with local BIRD2 instance instead of directly with RouterOS
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: upstream-router-peer-ipv6
+  name: bird2-peer-ipv6
   namespace: kube-system
 spec:
   # Advertise IPv6 pod CIDRs and LoadBalancer IPs
@@ -54,8 +56,8 @@ spec:
               - pod-cidr
               - loadbalancer
 
-  # eBGP multihop (different AS)
-  ebgpMultihop: 1
+  # eBGP multihop (required for localhost peering)
+  ebgpMultihop: 2
 
   # Transport configuration
   transport:
