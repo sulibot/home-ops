@@ -3,16 +3,16 @@
 
 locals {
   # Talos versions
-  talos_version      = "v1.12.0-beta.1"  # Supports K8s v1.35.0-alpha.3
+  talos_version      = "v1.11.5"  # Stable release
   talos_platform     = "nocloud"
   talos_architecture = "amd64"
 
   # System extensions version (can lag Talos releases).
-  # Align extensions with Talos v1.12.0-beta.1 (using per-extension images pinned from the bundle).
-  extension_version = "v1.12.0-beta.1"
+  # Align extensions with Talos v1.11.5
+  extension_version = "v1.11.5"
 
   # Kubernetes version (managed by Talos)
-  kubernetes_version = "1.35.0-alpha.3"  # MutatingAdmissionPolicy is beta (enabled by default)
+  kubernetes_version = "1.32.1"  # Latest stable K8s for Talos v1.11.5
 
   # Terraform provider versions
   provider_versions = {
