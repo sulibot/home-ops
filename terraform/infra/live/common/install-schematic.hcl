@@ -25,15 +25,14 @@ locals {
     "talos.auditd.disabled=1",  # Less security, faster performance
   ]
 
-  # Full install extensions for Talos v1.11.5
-  # For simplicity, use individual extensions tagged for v1.11
+  # Install extensions for Talos v1.11.5
+  # Only include essential extensions needed for the cluster
   install_system_extensions = [
     "siderolabs/i915-ucode",
-    "siderolabs/intel-ucode",
     "siderolabs/qemu-guest-agent",
+    "siderolabs/bird2",
     "siderolabs/crun",
     "siderolabs/ctr",
-    "siderolabs/bird2",
   ]
 
   # Custom third-party extensions
