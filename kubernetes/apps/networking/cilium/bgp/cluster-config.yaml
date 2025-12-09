@@ -2,22 +2,22 @@
 # Cilium BGP Cluster Configuration - BIRD2 Integration
 # Each node peers with its local BIRD2 instance on localhost
 #
-# New AS Numbering Scheme (per-node ASNs):
-#   AS 65000       - RouterOS (backbone)
-#   AS 421010011   - BIRD2 on solcp01 (4210000 + 101*100 + 11)
-#   AS 421010012   - BIRD2 on solcp02
-#   AS 421010013   - BIRD2 on solcp03
-#   AS 421010021   - BIRD2 on solwk01
-#   AS 421010022   - BIRD2 on solwk02
-#   AS 421010023   - BIRD2 on solwk03
-#   AS 422010011   - Cilium on solcp01 (4220000 + 101*100 + 11)
-#   AS 422010012   - Cilium on solcp02
-#   AS 422010013   - Cilium on solcp03
-#   AS 422010021   - Cilium on solwk01
-#   AS 422010022   - Cilium on solwk02
-#   AS 422010023   - Cilium on solwk03
+# New AS Numbering Scheme (per-node 32-bit private ASNs):
+#   AS 65000        - RouterOS (backbone)
+#   AS 4210101011   - BIRD2 on solcp01 (4210000000 + 101*1000 + 11)
+#   AS 4210101012   - BIRD2 on solcp02
+#   AS 4210101013   - BIRD2 on solcp03
+#   AS 4210101021   - BIRD2 on solwk01
+#   AS 4210101022   - BIRD2 on solwk02
+#   AS 4210101023   - BIRD2 on solwk03
+#   AS 4220101011   - Cilium on solcp01 (4220000000 + 101*1000 + 11)
+#   AS 4220101012   - Cilium on solcp02
+#   AS 4220101013   - Cilium on solcp03
+#   AS 4220101021   - Cilium on solwk01
+#   AS 4220101022   - Cilium on solwk02
+#   AS 4220101023   - Cilium on solwk03
 #
-# BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS 421...) ←eBGP→ Cilium (AS 422...)
+# BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS 4210...) ←eBGP→ Cilium (AS 4220...)
 #
 apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
@@ -30,16 +30,16 @@ spec:
       kubernetes.io/hostname: solcp01
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010011  # Cilium ASN for solcp01
+      localASN: 4220101011  # Cilium ASN for solcp01
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010011  # BIRD2 ASN for solcp01
+          peerASN: 4210101011  # BIRD2 ASN for solcp01
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010011  # BIRD2 ASN for solcp01
+          peerASN: 4210101011  # BIRD2 ASN for solcp01
           peerConfigRef:
             name: bird2-peer-ipv6
 ---
@@ -54,16 +54,16 @@ spec:
       kubernetes.io/hostname: solcp02
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010012  # Cilium ASN for solcp02
+      localASN: 4220101012  # Cilium ASN for solcp02
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010012  # BIRD2 ASN for solcp02
+          peerASN: 4210101012  # BIRD2 ASN for solcp02
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010012  # BIRD2 ASN for solcp02
+          peerASN: 4210101012  # BIRD2 ASN for solcp02
           peerConfigRef:
             name: bird2-peer-ipv6
 ---
@@ -78,16 +78,16 @@ spec:
       kubernetes.io/hostname: solcp03
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010013  # Cilium ASN for solcp03
+      localASN: 4220101013  # Cilium ASN for solcp03
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010013  # BIRD2 ASN for solcp03
+          peerASN: 4210101013  # BIRD2 ASN for solcp03
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010013  # BIRD2 ASN for solcp03
+          peerASN: 4210101013  # BIRD2 ASN for solcp03
           peerConfigRef:
             name: bird2-peer-ipv6
 ---
@@ -102,16 +102,16 @@ spec:
       kubernetes.io/hostname: solwk01
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010021  # Cilium ASN for solwk01
+      localASN: 4220101021  # Cilium ASN for solwk01
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010021  # BIRD2 ASN for solwk01
+          peerASN: 4210101021  # BIRD2 ASN for solwk01
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010021  # BIRD2 ASN for solwk01
+          peerASN: 4210101021  # BIRD2 ASN for solwk01
           peerConfigRef:
             name: bird2-peer-ipv6
 ---
@@ -126,16 +126,16 @@ spec:
       kubernetes.io/hostname: solwk02
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010022  # Cilium ASN for solwk02
+      localASN: 4220101022  # Cilium ASN for solwk02
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010022  # BIRD2 ASN for solwk02
+          peerASN: 4210101022  # BIRD2 ASN for solwk02
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010022  # BIRD2 ASN for solwk02
+          peerASN: 4210101022  # BIRD2 ASN for solwk02
           peerConfigRef:
             name: bird2-peer-ipv6
 ---
@@ -150,15 +150,15 @@ spec:
       kubernetes.io/hostname: solwk03
   bgpInstances:
     - name: bird2-localhost
-      localASN: 422010023  # Cilium ASN for solwk03
+      localASN: 4220101023  # Cilium ASN for solwk03
       peers:
         - name: bird2-ipv4
           peerAddress: 127.0.0.1
-          peerASN: 421010023  # BIRD2 ASN for solwk03
+          peerASN: 4210101023  # BIRD2 ASN for solwk03
           peerConfigRef:
             name: bird2-peer-ipv4
         - name: bird2-ipv6
           peerAddress: ::1
-          peerASN: 421010023  # BIRD2 ASN for solwk03
+          peerASN: 4210101023  # BIRD2 ASN for solwk03
           peerConfigRef:
             name: bird2-peer-ipv6

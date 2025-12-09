@@ -222,8 +222,8 @@ locals {
             nodeLabels = {
               "topology.kubernetes.io/region" = "home-lab"
               "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-              "bgp.bird.asn"                  = tostring(4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3]))
-              "bgp.cilium.asn"                = tostring(4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3]))
+              "bgp.bird.asn"                  = tostring(4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3]))
+              "bgp.cilium.asn"                = tostring(4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3]))
             }
             network = {
               hostname = node.hostname
@@ -290,7 +290,7 @@ locals {
             {
               content   = <<-BIRD_CONF
               # BIRD2 Configuration for ${node.hostname}
-              # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})
+              # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})
 
               log stderr all;
               log "/var/log/bird.log" { debug, trace, info, remote, warning, error, auth, fatal, bug };
@@ -355,7 +355,7 @@ locals {
 
               protocol bgp upstream_router_v4 {
                   description "RouterOS IPv4 (AS 65000)";
-                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
                   neighbor 10.0.${var.cluster_id}.254 as 65000;
                   source address 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
                   multihop;
@@ -370,7 +370,7 @@ locals {
 
               protocol bgp upstream_router_v6 {
                   description "RouterOS IPv6 (AS 65000)";
-                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
                   neighbor fd00:${var.cluster_id}::fffe as 65000;
                   source address fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
                   multihop;
@@ -384,9 +384,9 @@ locals {
               }
 
               protocol bgp cilium_v4 {
-                  description "Cilium BGP IPv4 (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})";
-                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
-                  neighbor 127.0.0.1 as ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  description "Cilium BGP IPv4 (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})";
+                  local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor 127.0.0.1 as ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
                   passive on;
                   multihop 2;
                   ipv4 {
@@ -399,9 +399,9 @@ locals {
               }
 
               protocol bgp cilium_v6 {
-                  description "Cilium BGP IPv6 (AS ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])})";
-                  local as ${4210000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
-                  neighbor ::1 as ${4220000 + (var.cluster_id * 100) + tonumber(split(".", node.public_ipv4)[3])};
+                  description "Cilium BGP IPv6 (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})";
+                  local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
+                  neighbor ::1 as ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
                   passive on;
                   multihop 2;
                   ipv6 {
