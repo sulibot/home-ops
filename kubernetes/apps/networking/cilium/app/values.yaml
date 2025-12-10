@@ -29,11 +29,14 @@ ipam:
   mode: kubernetes
 
 # Native routing (no encapsulation for better performance)
+# Setting routingMode to "native" should disable tunneling, but we explicitly
+# set tunnel: disabled for compatibility with Cilium 1.18.x Helm chart behavior
 routingMode: native
+tunnel: disabled
 autoDirectNodeRoutes: true
-directRoutingSkipUnreachable: true  # Skip routes that require a gateway
+directRoutingSkipUnreachable: true
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
-# This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
+# This allows BIRD2 to redistribute these /24 routes via BGP instead of individual pod IPs
 endpointRoutes:
   enabled: false
 
@@ -41,21 +44,25 @@ endpointRoutes:
 ipv4NativeRoutingCIDR: 10.101.240.0/20
 ipv6NativeRoutingCIDR: fd00:101:240::/60
 
-# BPF masquerading - DISABLED for Istio Ambient compatibility
-# Istio ambient uses link-local IPs (169.254.7.127) for health checks
-# which are incompatible with BPF masquerading
-# Keep using iptables masquerading for now
+# BPF configuration optimized for Talos + Istio Ambient
+# forwardKubeDNSToHost is disabled in Talos machine config to prevent conflicts
 bpf:
-  masquerade: false
-  # Enable external ClusterIP access to handle LoadBalancer IPs in DSR mode
-  # This prevents routing loops when external traffic arrives at LoadBalancer IPs
+  masquerade: true
+  # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
+  lbMode: snat
+  lbModeAnnotation: true
+  # Enable external ClusterIP access to handle LoadBalancer IPs
   lbExternalClusterIP: true
+  # Map tuning for performance
+  mapDynamicSizeRatio: 0.005
+  preallocateMaps: true
+  # BPF host routing (NOT legacy) for native routing performance
+  # Setting to false enables eBPF-based routing for better performance
+  hostLegacyRouting: false
 
-# Masquerading configuration
-# Using iptables masquerading (not BPF) for Istio Ambient compatibility
-# Cilium will use default iptables-based masquerading for traffic leaving the cluster
+# Disable ip-masq-agent - using eBPF masquerading instead
 ipMasqAgent:
-  enabled: false  # BPF ip-masq-agent requires bpf.masquerade=true
+  enabled: false
 
 # BGP Control Plane for VIP and LoadBalancer advertisement
 bgpControlPlane:
@@ -77,7 +84,7 @@ ingressController:
 # Note: These must NOT overlap with node IPs (10.0.101.0/24, fd00:101::/64)
 loadBalancer:
   algorithm: maglev
-  mode: dsr
+  # Mode is controlled by bpf.lbMode (snat) with per-service annotation override
 
 # Operator settings
 operator:
@@ -131,9 +138,18 @@ securityContext:
       - SYS_ADMIN
       - SYS_RESOURCE
 
-# Gateway API
+# Envoy configuration - embedded in Cilium agent (not standalone DaemonSet)
+# Setting enabled: false uses embedded Envoy within the Cilium agent pod
+# This provides simpler deployment but Cilium restarts will affect proxied traffic
+envoy:
+  enabled: false
+
+# Gateway API configuration
 gatewayAPI:
   enabled: true
+  # Host network mode for Gateway (recommended for BGP-advertised LB IPs)
+  hostNetwork:
+    enabled: true
   enableProxyProtocol: false
   enableAppProtocol: false
   enableAlpn: true
@@ -148,8 +164,6 @@ gatewayClass:
     create: true
     name: cilium-secrets
     sync: true
-  hostNetwork:
-    enabled: false
 
 # Metrics
 metrics:

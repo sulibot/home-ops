@@ -20,7 +20,7 @@ releases:
     chart: cilium/cilium
     version: 1.18.4
     values:
-      - values/cilium.yaml
+      - ../apps/networking/cilium/app/values.yaml
     wait: true
     timeout: 300
     hooks:

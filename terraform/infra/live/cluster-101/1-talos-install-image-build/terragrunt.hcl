@@ -1,4 +1,4 @@
-# Custom Talos installer with FRR extension
+# Custom Talos installer with BIRD2 extension
 
 include "root" {
   path = find_in_parent_folders("root.hcl")
@@ -22,11 +22,9 @@ inputs = {
   official_extensions = local.install_schematic.install_system_extensions
 
   # Custom extensions to include in the installer
-  custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.15",  # FRR redistributes kernel routes from Cilium
-  ]
+  custom_extensions = local.install_schematic.install_custom_extensions
 
   # Registry to push the custom installer image
   # Using GitHub Container Registry (ghcr.io)
-  output_registry = "ghcr.io/sulibot/${local.cluster_config.cluster_name}-talos-installer-frr"
+  output_registry = "ghcr.io/sulibot/${local.cluster_config.cluster_name}-talos-installer-bird2"
 }

@@ -68,9 +68,7 @@ data "talos_machine_configuration" "controlplane" {
           wipe  = false
         }
         kernel = {
-          modules = [
-            { name = "zfs" }
-          ]
+          modules = []
         }
         sysctls = {
           "fs.inotify.max_user_watches"   = "1048576"
@@ -82,11 +80,17 @@ data "talos_machine_configuration" "controlplane" {
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
-          hostDNS   = { enabled = true } # Required for Talos Helm controller
+          hostDNS = {
+            enabled              = true # Required for Talos Helm controller
+            forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
+          }
         }
         kubelet = {
           nodeIP = {
-            validSubnets = ["fd00:255:${var.cluster_id}::/64"] # Force IPv6 loopback IPs
+            validSubnets = [
+              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (preferred)
+              "10.255.${var.cluster_id}.0/24"     # IPv4 loopback (for dual-stack endpoints)
+            ]
           }
         }
       }
@@ -94,8 +98,8 @@ data "talos_machine_configuration" "controlplane" {
         allowSchedulingOnControlPlanes = false
         network = {
           cni            = { name = "none" } # Cilium installed via inline manifests
-          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]
-          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4]
+          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]     # IPv6 preferred
+          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
         }
         proxy = {
           disabled = true # Cilium kube-proxy replacement
@@ -108,7 +112,7 @@ data "talos_machine_configuration" "controlplane" {
           )
         }
         etcd = {
-          advertisedSubnets = ["fd00:${var.cluster_id}::/64"] # Force etcd to use IPv6
+          advertisedSubnets = ["fd00:255:${var.cluster_id}::/64"] # Force etcd to use loopback IPs
         }
         # Install Gateway API CRDs and Cilium CNI via inline manifests
         # Gateway API CRDs must be installed first (if enabled in Cilium config)
@@ -133,8 +137,9 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         apiServer = {
           extraArgs = {
-            "runtime-config" = "admissionregistration.k8s.io/v1beta1=true"
-            "feature-gates"  = "MutatingAdmissionPolicy=true"
+            "runtime-config"                = "admissionregistration.k8s.io/v1beta1=true"
+            "feature-gates"                 = "MutatingAdmissionPolicy=true"
+            "service-cluster-ip-range"      = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # Explicit dual-stack
           }
         }
       }
@@ -165,7 +170,6 @@ data "talos_machine_configuration" "worker" {
         }
         kernel = {
           modules = [
-            { name = "zfs" },
             { name = "i915" } # load Intel GPU driver when present
           ]
         }
@@ -179,11 +183,17 @@ data "talos_machine_configuration" "worker" {
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
-          hostDNS   = { enabled = true } # Required for Talos Helm controller
+          hostDNS = {
+            enabled              = true # Required for Talos Helm controller
+            forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
+          }
         }
         kubelet = {
           nodeIP = {
-            validSubnets = ["fd00:255:${var.cluster_id}::/64"] # Force IPv6 loopback IPs
+            validSubnets = [
+              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (preferred)
+              "10.255.${var.cluster_id}.0/24"     # IPv4 loopback (for dual-stack endpoints)
+            ]
           }
           clusterDNS = [
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
@@ -293,7 +303,6 @@ locals {
               # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})
 
               log stderr all;
-              log "/var/log/bird.log" { debug, trace, info, remote, warning, error, auth, fatal, bug };
 
               # Router ID from dummy0 IPv4
               router id 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
@@ -335,11 +344,7 @@ locals {
               }
 
               filter import_from_router {
-                  if net ~ [0.0.0.0/0] then accept;
-                  if net ~ [::/0] then accept;
-                  if net ~ [10.0.0.0/16{16,32}] then accept;
-                  if net ~ [fd00::/16{16,128}] then accept;
-                  reject;
+                  accept;  # Trust RouterOS - accept all routes from our upstream router
               }
 
               filter export_to_cilium {

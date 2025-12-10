@@ -40,11 +40,20 @@ variable "output_registry" {
 locals {
   installer_tag = "${var.output_registry}:${var.talos_version}"
 
-  # Build the docker run command with all extension flags (all are image refs)
+  # Only add custom extension flags (official extensions come from factory base installer)
   extension_flags = join(" ", [
-    for ext in concat(var.official_extensions, var.custom_extensions) :
+    for ext in var.custom_extensions :
     "--system-extension-image ${ext}"
   ])
+
+  # Generate factory schematic for official extensions
+  factory_schematic_request = jsonencode({
+    customization = {
+      systemExtensions = {
+        officialExtensions = var.official_extensions
+      }
+    }
+  })
 }
 
 # Build custom installer image using Talos imager
@@ -64,9 +73,19 @@ resource "null_resource" "build_installer" {
       TEMP_DIR=$(mktemp -d)
       trap "rm -rf $TEMP_DIR" EXIT
 
-      echo "Building custom Talos installer ${var.talos_version} with extensions..."
+      echo "Getting factory schematic ID for official extensions..."
 
-      # Run imager to build custom installer
+      # Get factory schematic ID for official extensions
+      SCHEMATIC_ID=$(curl -s "https://factory.talos.dev/schematics" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d '${local.factory_schematic_request}' | \
+        jq -r '.id')
+
+      echo "Factory schematic ID: $SCHEMATIC_ID"
+      echo "Building custom installer ${var.talos_version} with BIRD2 extension..."
+
+      # Use factory installer with official extensions as base, add only custom extensions
       docker run --rm \
         -v "$TEMP_DIR:/out" \
         -v /var/run/docker.sock:/var/run/docker.sock \
@@ -74,7 +93,7 @@ resource "null_resource" "build_installer" {
         installer \
         --arch amd64 \
         --platform metal \
-        --base-installer-image ghcr.io/siderolabs/installer:${var.talos_version} \
+        --base-installer-image factory.talos.dev/installer/$SCHEMATIC_ID:${var.talos_version} \
         ${local.extension_flags}
 
       # Load the built image and get the image reference

@@ -26,19 +26,17 @@ locals {
   ]
 
   # Install extensions for Talos v1.11.5
-  # Only include essential extensions needed for the cluster
+  # Official Siderolabs extensions resolved via factory.talos.dev
   install_system_extensions = [
     "siderolabs/i915-ucode",
     "siderolabs/qemu-guest-agent",
-    "siderolabs/bird2",
     "siderolabs/crun",
     "siderolabs/ctr",
   ]
 
-  # Custom third-party extensions
-  # COMMENTED OUT: FRR extension (replaced by BIRD2)
-  # To rollback to FRR, uncomment the line below and remove BIRD2 from install_system_extensions
+  # BIRD2 exists but is not registered as official extension for v1.11.5
+  # Must be added as custom extension to installer via imager
   install_custom_extensions = [
-    # "ghcr.io/sulibot/frr-talos-extension:v1.0.15",
+    "ghcr.io/siderolabs/bird2:2.17.1",
   ]
 }
