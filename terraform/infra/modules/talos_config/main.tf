@@ -247,6 +247,15 @@ locals {
                     "${node.public_ipv4}/24"
                   ]
                   routes = [
+                    # On-link route for RouterOS BGP peer (prevents BIRD2 recursive route warning)
+                    {
+                      network = "fd00:${var.cluster_id}::fffe/128"
+                      # No gateway = on-link, directly connected
+                    },
+                    {
+                      network = "10.0.${var.cluster_id}.254/32"
+                      # No gateway = on-link, directly connected
+                    },
                     {
                       network = "::/0"
                       gateway = "fd00:${var.cluster_id}::fffe"
@@ -279,9 +288,9 @@ locals {
                     }
                   ]
                 },
-                # Loopback interface for FRR BGP peering
+                # Loopback interface for BIRD2 BGP peering
                 {
-                  interface = "dummy0"
+                  interface = "lo"
                   addresses = [
                     "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
                     "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
@@ -304,7 +313,7 @@ locals {
 
               log stderr all;
 
-              # Router ID from dummy0 IPv4
+              # Router ID from loopback IPv4
               router id 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
 
               protocol device {
@@ -314,13 +323,13 @@ locals {
               protocol direct {
                   ipv4;
                   ipv6;
-                  interface "dummy0";
+                  interface "lo";
               }
 
               protocol kernel kernel_v4 {
                   ipv4 {
                       import all;
-                      export none;
+                      export all;  # Allow BIRD2 to install routes from BGP into kernel
                   };
                   learn;
               }
@@ -328,23 +337,33 @@ locals {
               protocol kernel kernel_v6 {
                   ipv6 {
                       import all;
-                      export none;
+                      export all;  # Allow BIRD2 to install routes from BGP into kernel
                   };
                   learn;
               }
 
-              filter export_to_router {
-                  if net ~ [10.255.${var.cluster_id}.0/24{32,32}] then accept;
-                  if net ~ [fd00:255:${var.cluster_id}::/64{128,128}] then accept;
-                  if net ~ [10.${var.cluster_id}.240.0/20{20,32}] then accept;
-                  if net ~ [fd00:${var.cluster_id}:240::/60{60,128}] then accept;
-                  if net ~ [10.${var.cluster_id}.27.0/24{32,32}] then accept;
-                  if net ~ [fd00:${var.cluster_id}:1b::/120{128,128}] then accept;
-                  reject;
+              filter export_to_router_v4 {
+                  # Export local routes: loopbacks (RTS_DEVICE) and pod CIDRs (RTS_INHERIT from kernel)
+                  # Rewrite next-hop to underlay IP for reachability
+                  if source ~ [RTS_DEVICE, RTS_INHERIT, RTS_STATIC] then {
+                      bgp_next_hop = 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
+                      accept;
+                  }
+                  reject;  # Don't bounce BGP-learned routes back
+              }
+
+              filter export_to_router_v6 {
+                  # Export local routes: loopbacks (RTS_DEVICE) and pod CIDRs (RTS_INHERIT from kernel)
+                  # Rewrite next-hop to underlay IP (fd00:101::X) for reachability
+                  if source ~ [RTS_DEVICE, RTS_INHERIT, RTS_STATIC] then {
+                      bgp_next_hop = fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
+                      accept;
+                  }
+                  reject;  # Don't bounce BGP-learned routes back
               }
 
               filter import_from_router {
-                  accept;  # Trust RouterOS - accept all routes from our upstream router
+                  accept;  # Trust RouterOS - accept all routes from upstream router
               }
 
               filter export_to_cilium {
@@ -365,11 +384,11 @@ locals {
                   source address 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
                   multihop;
                   ipv4 {
-                      import filter import_from_router;
-                      export filter export_to_router;
+                      import all;
+                      export filter export_to_router_v4;
                   };
-                  hold time 90;
-                  keepalive time 30;
+                  hold time 30;
+                  keepalive time 10;
                   graceful restart on;
               }
 
@@ -380,11 +399,11 @@ locals {
                   source address fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
                   multihop;
                   ipv6 {
-                      import filter import_from_router;
-                      export filter export_to_router;
+                      import all;
+                      export filter export_to_router_v6;
                   };
-                  hold time 90;
-                  keepalive time 30;
+                  hold time 30;
+                  keepalive time 10;
                   graceful restart on;
               }
 
