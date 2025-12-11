@@ -81,15 +81,15 @@ data "talos_machine_configuration" "controlplane" {
         features = {
           kubePrism = { enabled = true, port = 7445 }
           hostDNS = {
-            enabled              = true # Required for Talos Helm controller
+            enabled              = true  # Required for Talos Helm controller
             forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
           }
         }
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (preferred)
-              "10.255.${var.cluster_id}.0/24"     # IPv4 loopback (for dual-stack endpoints)
+              "fd00:255:${var.cluster_id}::/64", # IPv6 loopback (preferred)
+              "10.255.${var.cluster_id}.0/24"    # IPv4 loopback (for dual-stack endpoints)
             ]
           }
         }
@@ -97,8 +97,8 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         allowSchedulingOnControlPlanes = false
         network = {
-          cni            = { name = "none" } # Cilium installed via inline manifests
-          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]     # IPv6 preferred
+          cni            = { name = "none" }                              # Cilium installed via inline manifests
+          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
           serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
         }
         proxy = {
@@ -137,9 +137,9 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         apiServer = {
           extraArgs = {
-            "runtime-config"                = "admissionregistration.k8s.io/v1beta1=true"
-            "feature-gates"                 = "MutatingAdmissionPolicy=true"
-            "service-cluster-ip-range"      = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # Explicit dual-stack
+            "runtime-config"           = "admissionregistration.k8s.io/v1beta1=true"
+            "feature-gates"            = "MutatingAdmissionPolicy=true"
+            "service-cluster-ip-range" = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # Explicit dual-stack
           }
         }
       }
@@ -184,15 +184,15 @@ data "talos_machine_configuration" "worker" {
         features = {
           kubePrism = { enabled = true, port = 7445 }
           hostDNS = {
-            enabled              = true # Required for Talos Helm controller
+            enabled              = true  # Required for Talos Helm controller
             forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
           }
         }
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (preferred)
-              "10.255.${var.cluster_id}.0/24"     # IPv4 loopback (for dual-stack endpoints)
+              "fd00:255:${var.cluster_id}::/64", # IPv6 loopback (preferred)
+              "10.255.${var.cluster_id}.0/24"    # IPv4 loopback (for dual-stack endpoints)
             ]
           }
           clusterDNS = [
@@ -286,13 +286,12 @@ locals {
             }
           }
         }),
-        yamlencode({
-          apiVersion = "v1alpha1"
-          kind       = "ExtensionServiceConfig"
-          name       = "bird2"
-          configFiles = [
-            {
-              content   = <<-BIRD_CONF
+        <<-EXTENSION_CONFIG
+        apiVersion: v1alpha1
+        kind: ExtensionServiceConfig
+        name: bird2
+        configFiles:
+          - content: |
               # BIRD2 Configuration for ${node.hostname}
               # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})
 
@@ -401,11 +400,8 @@ locals {
                   keepalive time 30;
                   graceful restart on;
               }
-            BIRD_CONF
-              mountPath = "/usr/local/etc/bird.conf"
-            }
-          ]
-        })
+            mountPath: /usr/local/etc/bird.conf
+        EXTENSION_CONFIG
       ])
     }
   }
