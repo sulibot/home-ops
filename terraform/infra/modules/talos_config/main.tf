@@ -225,72 +225,53 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch and BIRD2 ExtensionServiceConfig
-      config_patch = join("\n---\n", [
-        yamlencode({
-          machine = {
-            nodeLabels = {
-              "topology.kubernetes.io/region" = "home-lab"
-              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-              "bgp.bird.asn"                  = tostring(4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3]))
-              "bgp.cilium.asn"                = tostring(4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3]))
-            }
-            network = {
-              hostname = node.hostname
-              interfaces = [
-                # Public network (ens18) - link-local only for BGP peering
-                {
-                  interface = "ens18"
-                  mtu       = 1500
-                  # Underlay addresses COMMENTED for rollback - link-local migration
-                  # addresses = [
-                  #   "${node.public_ipv6}/64",
-                  #   "${node.public_ipv4}/24"
-                  # ]
-                  # Link-local fe80::/64 is automatic, no config needed
-                  # Default routes will come from BGP
-                  routes = []
-                  vip = node.machine_type == "controlplane" ? {
-                    ip = var.vip_ipv6
-                  } : null
-                },
-                # REMOVED - mesh network no longer needed for link-local migration
-                # {
-                #   interface = "ens19"
-                #   mtu       = 8930
-                #   addresses = [
-                #     "${node.mesh_ipv6}/64",
-                #     "${node.mesh_ipv4}/24"
-                #   ]
-                #   routes = [
-                #     {
-                #       network = "fc00::/8"
-                #       gateway = "fc00:${var.cluster_id}::fffe"
-                #     },
-                #     {
-                #       network = "10.10.0.0/16"
-                #       gateway = "10.10.${var.cluster_id}.254"
-                #     }
-                #   ]
-                # },
-                # Loopback interface for BIRD2 BGP peering
-                {
-                  interface = "lo"
-                  addresses = [
-                    "fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128",
-                    "10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32"
-                  ]
-                }
-              ]
-              nameservers = var.dns_servers
-            }
-          }
-        }),
-        <<-EXTENSION_CONFIG
-        apiVersion: v1alpha1
-        kind: ExtensionServiceConfig
-        name: bird2
-        configFiles:
+      # Per-node network patch with embedded BIRD2 ExtensionServiceConfig
+      config_patch = <<-CONFIG_PATCH
+        machine:
+          nodeLabels:
+            topology.kubernetes.io/region: home-lab
+            topology.kubernetes.io/zone: cluster-${var.cluster_id}
+            bgp.bird.asn: "${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}"
+            bgp.cilium.asn: "${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}"
+          network:
+            hostname: ${node.hostname}
+            interfaces:
+              - interface: ens18
+                mtu: 1500
+                addresses:
+                  - ${node.public_ipv6}/64
+                  - ${node.public_ipv4}/24
+                # Link-local fe80::/64 is automatic for BGP peering
+                routes:
+                  - network: 0.0.0.0/0
+                    gateway: 10.0.101.254
+                  - network: ::/0
+                    gateway: fd00:101::fffe
+                ${node.machine_type == "controlplane" ? "vip:\n                  ip: ${var.vip_ipv6}" : ""}
+              # REMOVED - mesh network no longer needed for link-local migration
+              # - interface: ens19
+              #   mtu: 8930
+              #   addresses:
+              #     - ${node.mesh_ipv6}/64
+              #     - ${node.mesh_ipv4}/24
+              #   routes:
+              #     - network: fc00::/8
+              #       gateway: fc00:${var.cluster_id}::fffe
+              #     - network: 10.10.0.0/16
+              #       gateway: 10.10.${var.cluster_id}.254
+              # Loopback interface for BIRD2 BGP peering
+              - interface: lo
+                addresses:
+                  - fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128
+                  - 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32
+            nameservers:
+%{for dns in var.dns_servers~}
+              - ${dns}
+%{endfor~}
+        - apiVersion: v1alpha1
+          kind: ExtensionServiceConfig
+          name: bird2
+          configFiles:
           - content: |
               # BIRD2 Configuration for ${node.hostname}
               # BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}) ←eBGP→ Cilium (AS ${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])})
@@ -401,8 +382,7 @@ locals {
                   graceful restart on;
               }
             mountPath: /usr/local/etc/bird.conf
-        EXTENSION_CONFIG
-      ])
+      CONFIG_PATCH
     }
   }
 }
