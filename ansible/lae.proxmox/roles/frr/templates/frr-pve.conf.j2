@@ -52,7 +52,7 @@ ip prefix-list PVE_CONNECTED_V4 permit 10.255.0.0/16 le 32
 
 route-map EXPORT_V4_CONNECTED permit 10
   match ip address prefix-list PVE_CONNECTED_V4
-  set ip next-hop 10.255.0.{{ PVE_ID }}
+  set ip next-hop 10.0.10.{{ PVE_ID }}
 exit
 
 ! ---------- BGP Underlay (iBGP within PVE AS {{ PVE_ASN }}) ----------
