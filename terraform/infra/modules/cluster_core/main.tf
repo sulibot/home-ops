@@ -201,12 +201,13 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     mtu     = try(each.value.public_mtu, var.network.public_mtu)
   }
 
+  # REMOVED - mesh network no longer needed for link-local migration
   # net1 (ens19): Mesh network - used for internal cluster communication
-  network_device {
-    bridge  = coalesce(try(each.value.bridge_mesh, null), var.network.bridge_mesh)
-    vlan_id = coalesce(try(each.value.vlan_mesh, null), var.network.vlan_mesh)
-    mtu     = try(each.value.mesh_mtu, var.network.mesh_mtu)
-  }
+  # network_device {
+  #   bridge  = coalesce(try(each.value.bridge_mesh, null), var.network.bridge_mesh)
+  #   vlan_id = coalesce(try(each.value.vlan_mesh, null), var.network.vlan_mesh)
+  #   mtu     = try(each.value.mesh_mtu, var.network.mesh_mtu)
+  # }
 
 
   # Use Cloud-Init to inject a static IP into the Talos installer environment.

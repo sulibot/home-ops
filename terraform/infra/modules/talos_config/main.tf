@@ -238,56 +238,41 @@ locals {
             network = {
               hostname = node.hostname
               interfaces = [
-                # Public network (ens18)
+                # Public network (ens18) - link-local only for BGP peering
                 {
                   interface = "ens18"
                   mtu       = 1500
-                  addresses = [
-                    "${node.public_ipv6}/64",
-                    "${node.public_ipv4}/24"
-                  ]
-                  routes = [
-                    # On-link route for RouterOS BGP peer (prevents BIRD2 recursive route warning)
-                    {
-                      network = "fd00:${var.cluster_id}::fffe/128"
-                      # No gateway = on-link, directly connected
-                    },
-                    {
-                      network = "10.0.${var.cluster_id}.254/32"
-                      # No gateway = on-link, directly connected
-                    },
-                    {
-                      network = "::/0"
-                      gateway = "fd00:${var.cluster_id}::fffe"
-                    },
-                    {
-                      network = "0.0.0.0/0"
-                      gateway = "10.0.${var.cluster_id}.254"
-                    }
-                  ]
+                  # Underlay addresses COMMENTED for rollback - link-local migration
+                  # addresses = [
+                  #   "${node.public_ipv6}/64",
+                  #   "${node.public_ipv4}/24"
+                  # ]
+                  # Link-local fe80::/64 is automatic, no config needed
+                  # Default routes will come from BGP
+                  routes = []
                   vip = node.machine_type == "controlplane" ? {
                     ip = var.vip_ipv6
                   } : null
                 },
-                # Mesh network (ens19)
-                {
-                  interface = "ens19"
-                  mtu       = 8930
-                  addresses = [
-                    "${node.mesh_ipv6}/64",
-                    "${node.mesh_ipv4}/24"
-                  ]
-                  routes = [
-                    {
-                      network = "fc00::/8"
-                      gateway = "fc00:${var.cluster_id}::fffe"
-                    },
-                    {
-                      network = "10.10.0.0/16"
-                      gateway = "10.10.${var.cluster_id}.254"
-                    }
-                  ]
-                },
+                # REMOVED - mesh network no longer needed for link-local migration
+                # {
+                #   interface = "ens19"
+                #   mtu       = 8930
+                #   addresses = [
+                #     "${node.mesh_ipv6}/64",
+                #     "${node.mesh_ipv4}/24"
+                #   ]
+                #   routes = [
+                #     {
+                #       network = "fc00::/8"
+                #       gateway = "fc00:${var.cluster_id}::fffe"
+                #     },
+                #     {
+                #       network = "10.10.0.0/16"
+                #       gateway = "10.10.${var.cluster_id}.254"
+                #     }
+                #   ]
+                # },
                 # Loopback interface for BIRD2 BGP peering
                 {
                   interface = "lo"
@@ -342,34 +327,21 @@ locals {
                   learn;
               }
 
-              filter export_to_router_v4 {
-                  # Export local routes: loopbacks (RTS_DEVICE) and pod CIDRs (RTS_INHERIT from kernel)
-                  # Rewrite next-hop to underlay IP for reachability
-                  if source ~ [RTS_DEVICE, RTS_INHERIT, RTS_STATIC] then {
-                      bgp_next_hop = 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
-                      accept;
-                  }
-                  reject;  # Don't bounce BGP-learned routes back
+              filter export_to_pve {
+                  # Export loopbacks and pod CIDRs (Cilium-learned routes)
+                  # No next-hop rewriting needed - PVE will use link-local
+                  if source ~ [RTS_DEVICE, RTS_INHERIT, RTS_STATIC] then accept;
+                  reject;
               }
 
-              filter export_to_router_v6 {
-                  # Export local routes: loopbacks (RTS_DEVICE) and pod CIDRs (RTS_INHERIT from kernel)
-                  # Rewrite next-hop to underlay IP (fd00:101::X) for reachability
-                  if source ~ [RTS_DEVICE, RTS_INHERIT, RTS_STATIC] then {
-                      bgp_next_hop = fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
-                      accept;
-                  }
-                  reject;  # Don't bounce BGP-learned routes back
-              }
-
-              filter import_from_router {
-                  accept;  # Trust RouterOS - accept all routes from upstream router
+              filter import_from_pve {
+                  # Accept default route and any other routes from PVE
+                  accept;
               }
 
               filter export_to_cilium {
                   if source ~ [RTS_DEVICE, RTS_STATIC] then accept;
-                  if source = RTS_BGP && proto = "upstream_router_v4" then accept;
-                  if source = RTS_BGP && proto = "upstream_router_v6" then accept;
+                  if source = RTS_BGP && proto = "pve_upstream" then accept;
                   reject;
               }
 
@@ -377,33 +349,26 @@ locals {
                   accept;
               }
 
-              protocol bgp upstream_router_v4 {
-                  description "RouterOS IPv4 (AS 65000)";
+              protocol bgp pve_upstream {
+                  description "PVE FRR link-local (AS 4200001000)";
                   local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
-                  neighbor 10.0.${var.cluster_id}.254 as 65000;
-                  source address 10.0.${var.cluster_id}.${split(".", node.public_ipv4)[3]};
-                  multihop;
-                  ipv4 {
-                      import all;
-                      export filter export_to_router_v4;
-                  };
-                  hold time 30;
-                  keepalive time 10;
-                  graceful restart on;
-              }
+                  neighbor fe80::%ens18 as 4200001000;
+                  interface "ens18";
+                  multihop 2;
 
-              protocol bgp upstream_router_v6 {
-                  description "RouterOS IPv6 (AS 65000)";
-                  local as ${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])};
-                  neighbor fd00:${var.cluster_id}::fffe as 65000;
-                  source address fd00:${var.cluster_id}::${split(".", node.public_ipv4)[3]};
-                  multihop;
-                  ipv6 {
-                      import all;
-                      export filter export_to_router_v6;
+                  ipv4 {
+                      import filter import_from_pve;
+                      export filter export_to_pve;
+                      extended next hop on;  # Enable MP-BGP
                   };
-                  hold time 30;
-                  keepalive time 10;
+
+                  ipv6 {
+                      import filter import_from_pve;
+                      export filter export_to_pve;
+                  };
+
+                  hold time 90;
+                  keepalive time 30;
                   graceful restart on;
               }
 

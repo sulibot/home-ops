@@ -54,6 +54,37 @@ route-map EXPORT_V4_CONNECTED permit 10
   match ip address prefix-list PVE_CONNECTED_V4
 exit
 
+! Accept Talos pod CIDRs and loopbacks
+ip prefix-list TALOS_POD_CIDRS permit 10.101.0.0/16 le 32
+ip prefix-list TALOS_LOOPBACKS permit 10.255.101.0/24 le 32
+
+ipv6 prefix-list TALOS_POD_CIDRS_V6 permit fd00:101::/60 le 128
+ipv6 prefix-list TALOS_LOOPBACKS_V6 permit fd00:255:101::/120 le 128
+
+route-map IMPORT_TALOS permit 10
+  match ip address prefix-list TALOS_POD_CIDRS
+exit
+route-map IMPORT_TALOS permit 20
+  match ip address prefix-list TALOS_LOOPBACKS
+exit
+route-map IMPORT_TALOS permit 30
+  match ipv6 address prefix-list TALOS_POD_CIDRS_V6
+exit
+route-map IMPORT_TALOS permit 40
+  match ipv6 address prefix-list TALOS_LOOPBACKS_V6
+exit
+
+! Export default route to Talos
+ip prefix-list DEFAULT_V4 permit 0.0.0.0/0
+ipv6 prefix-list DEFAULT_V6 permit ::/0
+
+route-map EXPORT_TO_TALOS permit 10
+  match ip address prefix-list DEFAULT_V4
+exit
+route-map EXPORT_TO_TALOS permit 20
+  match ipv6 address prefix-list DEFAULT_V6
+exit
+
 ! ---------- BGP Underlay (iBGP within PVE AS {{ PVE_ASN }}) ----------
 
 router bgp {{ PVE_ASN }}
@@ -66,6 +97,15 @@ router bgp {{ PVE_ASN }}
   neighbor {{ link.iface }} interface remote-as {{ PVE_ASN }}
   neighbor {{ link.iface }} description "iBGP mesh link on {{ link.iface }}"
 {% endfor %}
+
+  ! Dynamic BGP neighbors for Talos cluster-101 VMs (link-local on vmbr0.101)
+  neighbor TALOS_CLUSTER_101 peer-group
+  neighbor TALOS_CLUSTER_101 remote-as 4210101000-4210101999
+  neighbor TALOS_CLUSTER_101 capability extended-nexthop
+  neighbor TALOS_CLUSTER_101 description "Talos cluster-101 link-local peering"
+  neighbor TALOS_CLUSTER_101 ebgp-multihop 2
+
+  bgp listen range fe80::/10 peer-group TALOS_CLUSTER_101
 
   ! Edge eBGP to MikroTik - separate IPv4 and IPv6 sessions
   ! IPv6 session for IPv6 routes
@@ -85,6 +125,12 @@ router bgp {{ PVE_ASN }}
     neighbor {{ EDGE_V6_PEER }} activate
     neighbor {{ EDGE_V6_PEER }} route-map EXPORT_V6_CONNECTED out
     neighbor {{ EDGE_V6_PEER }} next-hop-self
+
+    ! Talos cluster-101 peering
+    neighbor TALOS_CLUSTER_101 activate
+    neighbor TALOS_CLUSTER_101 route-map IMPORT_TALOS in
+    neighbor TALOS_CLUSTER_101 route-map EXPORT_TO_TALOS out
+
     maximum-paths 4
     maximum-paths ibgp 4
   exit-address-family
@@ -94,6 +140,12 @@ router bgp {{ PVE_ASN }}
     neighbor 10.255.255.254 activate
     neighbor 10.255.255.254 route-map EXPORT_V4_CONNECTED out
     neighbor 10.255.255.254 next-hop-self
+
+    ! Talos cluster-101 peering (MP-BGP over IPv6)
+    neighbor TALOS_CLUSTER_101 activate
+    neighbor TALOS_CLUSTER_101 route-map IMPORT_TALOS in
+    neighbor TALOS_CLUSTER_101 route-map EXPORT_TO_TALOS out
+
     maximum-paths 4
     maximum-paths ibgp 4
   exit-address-family
