@@ -155,8 +155,8 @@ inputs = {
   installer_image   = dependency.custom_installer.outputs.installer_image
 
   dns_servers = [
-    "fd00:${local.cluster_config.cluster_id}::fffe",  # IPv6 DNS
-    "10.0.${local.cluster_config.cluster_id}.254",    # IPv4 DNS
+    "fd00:${local.cluster_config.cluster_id}::fffd",  # IPv6 DNS
+    "10.0.${local.cluster_config.cluster_id}.253",    # IPv4 DNS
   ]
 
   # Schematic configuration for Talos image customization (from install schematic)
