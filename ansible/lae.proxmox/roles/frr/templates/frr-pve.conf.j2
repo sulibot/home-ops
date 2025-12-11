@@ -83,6 +83,7 @@ router bgp {{ PVE_ASN }}
   address-family ipv6 unicast
     redistribute connected route-map EXPORT_V6_CONNECTED
     neighbor {{ EDGE_V6_PEER }} activate
+    neighbor {{ EDGE_V6_PEER }} route-map EXPORT_V6_CONNECTED out
     neighbor {{ EDGE_V6_PEER }} next-hop-self
     maximum-paths 4
     maximum-paths ibgp 4
@@ -91,6 +92,7 @@ router bgp {{ PVE_ASN }}
   address-family ipv4 unicast
     redistribute connected route-map EXPORT_V4_CONNECTED
     neighbor 10.255.255.254 activate
+    neighbor 10.255.255.254 route-map EXPORT_V4_CONNECTED out
     neighbor 10.255.255.254 next-hop-self
     maximum-paths 4
     maximum-paths ibgp 4
