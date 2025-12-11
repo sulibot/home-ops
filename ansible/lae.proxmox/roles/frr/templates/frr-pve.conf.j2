@@ -24,7 +24,7 @@
 !     * Infra loopbacks: fd00:255::N/128
 !     * Tenant anycast gateways: fd00:<vlan>::fffe/128
 !     * Ceph loopbacks: fc00:20::N/128 and fc00:21::N/128
-! - Edge eBGP to MikroTik (single IPv6 session, dual AFI) in AS {{ EDGE_ASN }}
+! - Edge eBGP to MikroTik (separate IPv4 and IPv6 sessions) in AS {{ EDGE_ASN }}
 !
 ! NOTE: Linux must have a route to {{ EDGE_V6_PEER }} (e.g. fd00:255::/64
 !       on the RouterOS-facing interface or a static /128 route), otherwise
@@ -67,14 +67,18 @@ router bgp {{ PVE_ASN }}
   neighbor {{ link.iface }} description "iBGP mesh link on {{ link.iface }}"
 {% endfor %}
 
-  ! Edge eBGP to MikroTik over single IPv6 session (dual AFI)
+  ! Edge eBGP to MikroTik - separate IPv4 and IPv6 sessions
+  ! IPv6 session for IPv6 routes
   neighbor {{ EDGE_V6_PEER }} remote-as {{ EDGE_ASN }}
-  neighbor {{ EDGE_V6_PEER }} description "MikroTik edge (IPv4+IPv6 over IPv6 transport)"
+  neighbor {{ EDGE_V6_PEER }} description "MikroTik edge (IPv6 only)"
   neighbor {{ EDGE_V6_PEER }} update-source fd00:255::{{ PVE_ID }}
-  ! Loopback-sourced eBGP, not directly connected: require multihop
   neighbor {{ EDGE_V6_PEER }} ebgp-multihop 5
-  ! Enable extended next-hop for IPv4 over IPv6 BGP session
-  neighbor {{ EDGE_V6_PEER }} capability extended-nexthop
+
+  ! IPv4 session for IPv4 routes
+  neighbor 10.255.255.254 remote-as {{ EDGE_ASN }}
+  neighbor 10.255.255.254 description "MikroTik edge (IPv4 only)"
+  neighbor 10.255.255.254 update-source 10.255.0.{{ PVE_ID }}
+  neighbor 10.255.255.254 ebgp-multihop 5
 
   address-family ipv6 unicast
     redistribute connected route-map EXPORT_V6_CONNECTED
@@ -86,8 +90,8 @@ router bgp {{ PVE_ASN }}
 
   address-family ipv4 unicast
     redistribute connected route-map EXPORT_V4_CONNECTED
-    neighbor {{ EDGE_V6_PEER }} activate
-    neighbor {{ EDGE_V6_PEER }} next-hop-self
+    neighbor 10.255.255.254 activate
+    neighbor 10.255.255.254 next-hop-self
     maximum-paths 4
     maximum-paths ibgp 4
   exit-address-family
