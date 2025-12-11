@@ -1,0 +1,95 @@
+{# ---------- Host-scoped helpers ---------- #}
+{% set HAS_MESH   = inventory_hostname in ['pve01','pve02','pve03'] %}
+{% set PVE_ID     = inventory_hostname | regex_replace('^pve0?', '') | int %}
+
+{# ASNs:
+   - Edge (MikroTik):      4200000000   # RouterOS
+   - PVE underlay iBGP:    4200001000
+   - K8s clusters (Talos/Cilium, not used directly here):
+       * cluster-101:      4220101000
+       * cluster-102:      4220102000
+       * cluster-103:      4220103000
+#}
+{% set PVE_ASN    = PVE_ASN    | default(4200001000) %}
+{% set EDGE_ASN   = EDGE_ASN   | default(4200000000) %}
+{# Edge peer over IPv6 transport: RouterOS fd00:255::fffe #}
+{% set EDGE_V6_PEER = EDGE_V6_PEER | default('fd00:255::fffe') %}
+
+! ======================================================================
+! frr-pve.conf.local.j2
+!
+! Local FRR config for Proxmox PVE nodes:
+! - iBGP underlay over 25G mesh interfaces (MTU 9000, IPv6-only)
+! - Redistribute:
+!     * Infra loopbacks: fd00:255::N/128
+!     * Tenant anycast gateways: fd00:<vlan>::fffe/128
+!     * Ceph loopbacks: fc00:20::N/128 and fc00:21::N/128
+! - Edge eBGP to MikroTik (single IPv6 session, dual AFI) in AS {{ EDGE_ASN }}
+!
+! NOTE: Linux must have a route to {{ EDGE_V6_PEER }} (e.g. fd00:255::/64
+!       on the RouterOS-facing interface or a static /128 route), otherwise
+!       the BGP session cannot establish.
+! ======================================================================
+
+{% if HAS_MESH %}
+
+! ---------- Prefix-lists for connected exports ----------
+
+ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:255::/48 le 128
+ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:20::/64  le 128
+ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:21::/64  le 128
+{% for vlan_id in TENANT_VLANS | sort %}
+ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:{{ vlan_id }}::/64 le 128
+{% endfor %}
+ipv6 prefix-list PVE_CONNECTED_V6 deny   ::/0 le 128
+
+route-map EXPORT_V6_CONNECTED permit 10
+  match ipv6 address prefix-list PVE_CONNECTED_V6
+exit
+
+! Export 10.255.0.N/32 (dummy_underlay v4 loopback) to BGP
+ip prefix-list PVE_CONNECTED_V4 permit 10.255.0.0/16 le 32
+
+route-map EXPORT_V4_CONNECTED permit 10
+  match ip address prefix-list PVE_CONNECTED_V4
+  set ip next-hop 10.255.0.{{ PVE_ID }}
+exit
+
+! ---------- BGP Underlay (iBGP within PVE AS {{ PVE_ASN }}) ----------
+
+router bgp {{ PVE_ASN }}
+  bgp router-id 10.0.10.{{ PVE_ID }}
+  no bgp default ipv4-unicast
+  timers bgp 10 30
+
+  ! iBGP neighbors over mesh links (IPv6 LL on each interface)
+{% for link in mesh_links[inventory_hostname] %}
+  neighbor {{ link.iface }} interface remote-as {{ PVE_ASN }}
+  neighbor {{ link.iface }} description "iBGP mesh link on {{ link.iface }}"
+{% endfor %}
+
+  ! Edge eBGP to MikroTik over single IPv6 session (dual AFI)
+  neighbor {{ EDGE_V6_PEER }} remote-as {{ EDGE_ASN }}
+  neighbor {{ EDGE_V6_PEER }} description "MikroTik edge (IPv4+IPv6 over IPv6 transport)"
+  neighbor {{ EDGE_V6_PEER }} update-source fd00:255::{{ PVE_ID }}
+  ! Loopback-sourced eBGP, not directly connected: require multihop
+  neighbor {{ EDGE_V6_PEER }} ebgp-multihop 5
+
+  address-family ipv6 unicast
+    redistribute connected route-map EXPORT_V6_CONNECTED
+    neighbor {{ EDGE_V6_PEER }} activate
+    neighbor {{ EDGE_V6_PEER }} next-hop-self
+    maximum-paths 4
+    maximum-paths ibgp 4
+  exit-address-family
+
+  address-family ipv4 unicast
+    redistribute connected route-map EXPORT_V4_CONNECTED
+    neighbor {{ EDGE_V6_PEER }} activate
+    maximum-paths 4
+    maximum-paths ibgp 4
+  exit-address-family
+
+exit
+
+{% endif %}
