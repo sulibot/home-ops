@@ -29,11 +29,10 @@ ipam:
   mode: kubernetes
 
 # Native routing (no encapsulation for better performance)
-# Setting routingMode to "native" should disable tunneling, but we explicitly
-# set tunnel: disabled for compatibility with Cilium 1.18.x Helm chart behavior
+# routingMode: native should disable tunneling automatically in 1.18.x
 routingMode: native
-tunnel: disabled
-autoDirectNodeRoutes: true
+# Disable autoDirectNodeRoutes - BIRD2 will install routes instead
+autoDirectNodeRoutes: false
 directRoutingSkipUnreachable: true
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
 # This allows BIRD2 to redistribute these /24 routes via BGP instead of individual pod IPs
@@ -56,8 +55,7 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # BPF host routing (NOT legacy) for native routing performance
-  # Setting to false enables eBPF-based routing for better performance
+  # BPF host routing (NOT legacy) - enables eBPF routing for autoDirectNodeRoutes
   hostLegacyRouting: false
 
 # Disable ip-masq-agent - using eBPF masquerading instead

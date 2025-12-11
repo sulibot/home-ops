@@ -9,8 +9,8 @@
 
 - name: Deploy FRR configuration - frr.conf
   ansible.builtin.template:
-    src: frr-pve.conf.local.j2
-    dest: /etc/frr/frr.conf.local
+    src: frr-pve.conf.j2
+    dest: /etc/frr/frr.conf
     mode: '0644'
   notify: restart frr
 

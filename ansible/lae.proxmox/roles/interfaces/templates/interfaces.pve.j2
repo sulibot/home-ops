@@ -1,33 +1,45 @@
-{% set node_id = (inventory_hostname[-2:] | regex_replace('^0*', '') | int) %}
-{% set public = (public_interfaces[inventory_hostname] | default({})) %}
+{% set node_id  = (inventory_hostname[-2:] | regex_replace('^0*', '') | int) %}
+{% set public   = (public_interfaces[inventory_hostname] | default({})) %}
 {% set HAS_MESH = inventory_hostname in ['pve01','pve02','pve03'] %}
+
 # ============================================================
 # Proxmox VE Network Configuration — {{ inventory_hostname }}
-# VLAN-aware bridge: vmbr0 (egress/infra)
-# Underlay: L3 ring links @ MTU 9000 (IPv6-only / link-local)
-# EVPN transport: use loopback (fd00:255::{{ node_id }}) via SDN settings
+#
+# - vmbr0: VLAN-aware bridge (egress/infra, MTU 1500)
+# - bond0: uplink bond for vmbr0
+# - mesh links: 25G ring, MTU 9000, IPv6-only (link-local)
+# - dummy_underlay: Ceph public/cluster IPv6 + IPv4 loopback
+# - lo:
+#     * infra loopback for BGP router-id: fd00:255::{{ node_id }}/128
+#     * tenant anycast gateways: fd00:<vlan>::fffe/128
 # ============================================================
 
 auto lo
 iface lo inet loopback
 
-iface lo inet6 loopback
+# Host infra loopback (BGP router-id, infra identity) + tenant anycast gateways
+iface lo inet6 static
+    address fd00:255::{{ node_id }}/128
+{% for vlan_id in TENANT_VLANS | sort %}
+    address fd00:{{ vlan_id }}::fffe/128
+{% endfor %}
 
 # ------------------------------------------------------------
 # Bond (bond0) + slaves (egress / management uplink)
 # ------------------------------------------------------------
+
 {% for slave in public.slaves %}
 auto {{ slave }}
 iface {{ slave }} inet manual
-
 {% endfor %}
+
 auto bond0
 iface bond0 inet manual
-    bond-mode             {{ public.mode }}
-    bond-miimon           100
-    bond-slaves           {{ public.slaves | join(' ') }}
+    bond-mode {{ public.mode }}
+    bond-miimon 100
+    bond-slaves {{ public.slaves | join(' ') }}
 {% if public.primary is defined %}
-    bond-primary          {{ public.primary }}
+    bond-primary {{ public.primary }}
 {% endif %}
 {% if public.xmit_hash_policy is defined %}
     bond-xmit-hash-policy {{ public.xmit_hash_policy }}
@@ -36,15 +48,16 @@ iface bond0 inet manual
 # ------------------------------------------------------------
 # vmbr0 — VLAN-aware egress/infra bridge (MTU 1500)
 # ------------------------------------------------------------
+
 auto vmbr0
 iface vmbr0 inet manual
-    bridge-ports  bond0
-    bridge-stp    off
-    bridge-fd     0
+    bridge-ports bond0
+    bridge-stp off
+    bridge-fd 0
     bridge-vlan-aware yes
-    bridge-pvid   10
-    bridge-vids   10 100-103 200
-    mtu           1500
+    bridge-pvid 10
+    bridge-vids 10 100-103 200
+    mtu 1500
 
 # VLAN 10 — management/API (native)
 auto vmbr0.10
@@ -52,14 +65,17 @@ iface vmbr0.10 inet static
     address 10.0.10.{{ node_id }}/24
     gateway 10.0.10.254
     vlan-raw-device vmbr0
+
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
     vlan-raw-device vmbr0
     # Accept RAs even with forwarding and accept default from RA
-    post-up  sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
-    post-up  sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
+    post-up   sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
+    post-up   sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
+    pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
+    pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
 
-# ---- tenant anycast gateways on vmbr0.V ----
+# ---- tenant VLANs on vmbr0.V (VM networks, gateways via ANYCAST on lo) ----
 {% for vlan_id in TENANT_VLANS | sort %}
 auto vmbr0.{{ vlan_id }}
 iface vmbr0.{{ vlan_id }} inet manual
@@ -69,10 +85,9 @@ iface vmbr0.{{ vlan_id }} inet manual
 iface vmbr0.{{ vlan_id }} inet6 manual
     vlan-raw-device vmbr0
     mtu 1500
-
 {% endfor %}
 
-# VLAN 200 — routed subnet with host IP (tagged)
+# VLAN 200 — Ceph client / storage LAN (tagged)
 auto vmbr0.200
 iface vmbr0.200 inet static
     address 10.0.200.{{ node_id }}/24
@@ -80,76 +95,31 @@ iface vmbr0.200 inet static
     mtu 1500
 
 # ------------------------------------------------------------
-# Underlay ring links @ MTU 9000 — IPv6-only (link-local)
-# No IPv4 addressing on these interfaces.
-# Static routes for Ceph networks (fc00:20 & fc00:21) added
-# as workaround for FRR nexthop tracking bug with OpenFabric.
+# Underlay ring links @ MTU 9000 — IPv6-only
+#
+# These are 25Gb point-to-point links between PVE nodes.
+# We rely on IPv6 link-local for BGP neighbors (neighbor <iface> interface).
 # ------------------------------------------------------------
+
 {% if HAS_MESH %}
 {% for link in mesh_links[inventory_hostname] %}
 auto {{ link.iface }}
 iface {{ link.iface }} inet manual
     mtu 9000
+
 iface {{ link.iface }} inet6 manual
     mtu 9000
-    # no GUA/ULA — rely on fe80:: for IS-IS OpenFabric adjacencies
-{% if inventory_hostname == 'pve01' %}
-{% if link.iface == 'enp1s0f0np0' %}
-    # Static routes to pve03 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::3/128 via fe80::ba59:9fff:fe26:f7bc dev $IFACE || true
-    post-up ip -6 route add fc00:21::3/128 via fe80::ba59:9fff:fe26:f7bc dev $IFACE || true
-    pre-down ip -6 route del fc00:20::3/128 via fe80::ba59:9fff:fe26:f7bc dev $IFACE || true
-    pre-down ip -6 route del fc00:21::3/128 via fe80::ba59:9fff:fe26:f7bc dev $IFACE || true
-{% elif link.iface == 'enp1s0f1np1' %}
-    # Static routes to pve02 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::2/128 via fe80::ba59:9fff:fe27:1188 dev $IFACE || true
-    post-up ip -6 route add fc00:21::2/128 via fe80::ba59:9fff:fe27:1188 dev $IFACE || true
-    pre-down ip -6 route del fc00:20::2/128 via fe80::ba59:9fff:fe27:1188 dev $IFACE || true
-    pre-down ip -6 route del fc00:21::2/128 via fe80::ba59:9fff:fe27:1188 dev $IFACE || true
-{% endif %}
-{% elif inventory_hostname == 'pve02' %}
-{% if link.iface == 'enp1s0f0np0' %}
-    # Static routes to pve01 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::1/128 via fe80::ba59:9fff:fe2a:54f1 dev $IFACE || true
-    post-up ip -6 route add fc00:21::1/128 via fe80::ba59:9fff:fe2a:54f1 dev $IFACE || true
-    pre-down ip -6 route del fc00:20::1/128 via fe80::ba59:9fff:fe2a:54f1 dev $IFACE || true
-    pre-down ip -6 route del fc00:21::1/128 via fe80::ba59:9fff:fe2a:54f1 dev $IFACE || true
-{% elif link.iface == 'enp1s0f1np1' %}
-    # Static routes to pve03 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::3/128 via fe80::ba59:9fff:fe26:f7bd dev $IFACE || true
-    post-up ip -6 route add fc00:21::3/128 via fe80::ba59:9fff:fe26:f7bd dev $IFACE || true
-    pre-down ip -6 route del fc00:20::3/128 via fe80::ba59:9fff:fe26:f7bd dev $IFACE || true
-    pre-down ip -6 route del fc00:21::3/128 via fe80::ba59:9fff:fe26:f7bd dev $IFACE || true
-{% endif %}
-{% elif inventory_hostname == 'pve03' %}
-{% if link.iface == 'enp1s0f0np0' %}
-    # Static routes to pve01 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::1/128 via fe80::ba59:9fff:fe2a:54f0 dev $IFACE || true
-    post-up ip -6 route add fc00:21::1/128 via fe80::ba59:9fff:fe2a:54f0 dev $IFACE || true
-    pre-down ip -6 route del fc00:20::1/128 via fe80::ba59:9fff:fe2a:54f0 dev $IFACE || true
-    pre-down ip -6 route del fc00:21::1/128 via fe80::ba59:9fff:fe2a:54f0 dev $IFACE || true
-{% elif link.iface == 'enp1s0f1np1' %}
-    # Static routes to pve02 Ceph public & cluster networks
-    post-up ip -6 route add fc00:20::2/128 via fe80::ba59:9fff:fe27:1189 dev $IFACE || true
-    post-up ip -6 route add fc00:21::2/128 via fe80::ba59:9fff:fe27:1189 dev $IFACE || true
-    pre-down ip -6 route del fc00:20::2/128 via fe80::ba59:9fff:fe27:1189 dev $IFACE || true
-    pre-down ip -6 route del fc00:21::2/128 via fe80::ba59:9fff:fe27:1189 dev $IFACE || true
-{% endif %}
-{% endif %}
+    # No ULA/GUA here; IPv6 link-local only (fe80::/64) for BGP peering.
 {% endfor %}
 {% endif %}
 
 # ------------------------------------------------------------
-# Include drop-ins
+# dummy_underlay — Ceph public & cluster IPs + IPv4 loopback
+#
+# These addresses are redistributed into BGP so Ceph traffic
+# follows the routed underlay.
 # ------------------------------------------------------------
-source /etc/network/interfaces.d/*
 
-# ------------------------------------------------------------
-# OpenFabric underlay loopback - base definition for PVE parser
-# (SDN adds additional config in /etc/network/interfaces.d/sdn)
-# This declaration ensures PVE's interface parser can read the
-# loopback IP for BGP router-id calculation.
-# ------------------------------------------------------------
 {% if HAS_MESH %}
 auto dummy_underlay
 iface dummy_underlay inet static
@@ -158,8 +128,13 @@ iface dummy_underlay inet static
     mtu 9000
 
 iface dummy_underlay inet6 static
-    address fd00:255::{{ node_id }}/128
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
     mtu 9000
 {% endif %}
+
+# ------------------------------------------------------------
+# Include drop-ins (Proxmox SDN, manual tweaks, etc.)
+# ------------------------------------------------------------
+
+source /etc/network/interfaces.d/*
