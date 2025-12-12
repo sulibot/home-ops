@@ -11,10 +11,16 @@ locals {
     name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
   }
 
-  # Combine all nodes with metadata
+  # Combine all nodes with metadata and extract node suffix from IPv6
   all_nodes = merge(
-    { for k, v in local.control_plane_nodes : k => merge(v, { machine_type = "controlplane" }) },
-    { for k, v in local.worker_nodes : k => merge(v, { machine_type = "worker" }) }
+    { for k, v in local.control_plane_nodes : k => merge(v, {
+      machine_type = "controlplane"
+      node_suffix  = tonumber(split("::", v.public_ipv6)[1])
+    }) },
+    { for k, v in local.worker_nodes : k => merge(v, {
+      machine_type = "worker"
+      node_suffix  = tonumber(split("::", v.public_ipv6)[1])
+    }) }
   )
 
   # Read Cilium values from Flux config for inline manifests
@@ -231,8 +237,8 @@ locals {
           nodeLabels:
             topology.kubernetes.io/region: home-lab
             topology.kubernetes.io/zone: cluster-${var.cluster_id}
-            bgp.bird.asn: "${4210000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}"
-            bgp.cilium.asn: "${4220000000 + (var.cluster_id * 1000) + tonumber(split(".", node.public_ipv4)[3])}"
+            bgp.bird.asn: "${4210000000 + (var.cluster_id * 1000) + node.node_suffix}"
+            bgp.cilium.asn: "${4220000000 + (var.cluster_id * 1000) + node.node_suffix}"
           network:
             hostname: ${node.hostname}
             interfaces:
@@ -250,8 +256,8 @@ locals {
                 ${node.machine_type == "controlplane" ? "vip:\n                  ip: ${var.vip_ipv6}" : ""}
               - interface: lo
                 addresses:
-                  - fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128
-                  - 10.255.${var.cluster_id}.${split(".", node.public_ipv4)[3]}/32
+                  - fd00:255:${var.cluster_id}::${node.node_suffix}/128
+                  - 10.255.${var.cluster_id}.${node.node_suffix}/32
             nameservers:
 %{for dns in var.dns_servers~}
               - ${dns}
