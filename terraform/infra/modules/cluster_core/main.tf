@@ -116,8 +116,9 @@ locals {
   # Generate full node configuration, including calculated IP addresses
   nodes = { for idx, node in var.nodes : node.name => merge(node, {
     index       = idx
-    mesh_ipv6   = format("%s%d", var.ip_config.mesh.ipv6_prefix, node.ip_suffix)
-    mesh_ipv4   = format("%s%d", var.ip_config.mesh.ipv4_prefix, node.ip_suffix)
+    # REMOVED - mesh network no longer needed for link-local migration
+    # mesh_ipv6   = format("%s%d", var.ip_config.mesh.ipv6_prefix, node.ip_suffix)
+    # mesh_ipv4   = format("%s%d", var.ip_config.mesh.ipv4_prefix, node.ip_suffix)
     public_ipv6 = format("%s%d", var.ip_config.public.ipv6_prefix, node.ip_suffix)
     public_ipv4 = format("%s%d", var.ip_config.public.ipv4_prefix, node.ip_suffix)
   }) }
@@ -229,17 +230,18 @@ resource "proxmox_virtual_environment_vm" "nodes" {
       }
     }
 
+    # REMOVED - mesh network no longer needed for link-local migration
     # Mesh network (net1)
-    ip_config {
-      ipv4 {
-        address = "${each.value.mesh_ipv4}/24"
-        gateway = try(var.ip_config.mesh.ipv4_gateway, null)
-      }
-      ipv6 {
-        address = "${each.value.mesh_ipv6}/64"
-        gateway = try(var.ip_config.mesh.ipv6_gateway, null)
-      }
-    }
+    # ip_config {
+    #   ipv4 {
+    #     address = "${each.value.mesh_ipv4}/24"
+    #     gateway = try(var.ip_config.mesh.ipv4_gateway, null)
+    #   }
+    #   ipv6 {
+    #     address = "${each.value.mesh_ipv6}/64"
+    #     gateway = try(var.ip_config.mesh.ipv6_gateway, null)
+    #   }
+    # }
 
     dns {
       servers = var.ip_config.dns_servers
