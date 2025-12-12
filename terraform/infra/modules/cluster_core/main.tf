@@ -277,8 +277,9 @@ output "node_ips" {
   description = "Map of node names to their configured IP addresses"
   value = {
     for name, node in local.nodes : name => {
-      mesh_ipv4   = node.mesh_ipv4
-      mesh_ipv6   = node.mesh_ipv6
+      # REMOVED - mesh network no longer needed for link-local migration
+      # mesh_ipv4   = node.mesh_ipv4
+      # mesh_ipv6   = node.mesh_ipv6
       public_ipv4 = node.public_ipv4
       public_ipv6 = node.public_ipv6
     }
@@ -295,15 +296,18 @@ output "talhelper_env" {
   value = { for n in local.nodes : n.name => {
     # Use the public network IP for Talos API and bootstrap access
     ipAddress    = n.public_ipv4
-    meshIPv4     = n.mesh_ipv4
-    meshIPv6     = n.mesh_ipv6
+    # REMOVED - mesh network no longer needed for link-local migration
+    # meshIPv4     = n.mesh_ipv4
+    # meshIPv6     = n.mesh_ipv6
     hostname     = n.name
     publicIPv4   = n.public_ipv4
     publicIPv6   = n.public_ipv6
-    meshGatewayIPv4 = try(var.ip_config.mesh.ipv4_gateway, null)
-    meshGatewayIPv6 = try(var.ip_config.mesh.ipv6_gateway, null)
+    # REMOVED - mesh network no longer needed for link-local migration
+    # meshGatewayIPv4 = try(var.ip_config.mesh.ipv4_gateway, null)
+    # meshGatewayIPv6 = try(var.ip_config.mesh.ipv6_gateway, null)
     publicGatewayIPv4 = try(var.ip_config.public.ipv4_gateway, null)
-    meshMTU      = coalesce(try(n.mesh_mtu, null), var.network.mesh_mtu)
+    # REMOVED - mesh network no longer needed for link-local migration
+    # meshMTU      = coalesce(try(n.mesh_mtu, null), var.network.mesh_mtu)
     publicMTU    = coalesce(try(n.public_mtu, null), var.network.public_mtu)
     endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.0.${cluster_id}.10)
     # Determine the node role based on its name prefix
@@ -336,8 +340,9 @@ output "talenv_yaml" {
       services_ipv6 = local.k8s_network_config.services_ipv6
 
       # Gateway addresses
-      mesh_gateway_ipv4   = var.ip_config.mesh.ipv4_gateway
-      mesh_gateway_ipv6   = var.ip_config.mesh.ipv6_gateway
+      # REMOVED - mesh network no longer needed for link-local migration
+      # mesh_gateway_ipv4   = var.ip_config.mesh.ipv4_gateway
+      # mesh_gateway_ipv6   = var.ip_config.mesh.ipv6_gateway
       public_gateway_ipv4 = var.ip_config.public.ipv4_gateway
       public_gateway_ipv6 = var.ip_config.public.ipv6_gateway
 
@@ -350,15 +355,18 @@ output "talenv_yaml" {
         hostname         = n.name
         ipAddress        = n.public_ipv4
         controlPlane     = n.control_plane
-        meshIPv4         = n.mesh_ipv4
-        meshIPv6         = n.mesh_ipv6
+        # REMOVED - mesh network no longer needed for link-local migration
+        # meshIPv4         = n.mesh_ipv4
+        # meshIPv6         = n.mesh_ipv6
         publicIPv4       = n.public_ipv4
         publicIPv6       = n.public_ipv6
-        meshGatewayIPv4  = var.ip_config.mesh.ipv4_gateway
-        meshGatewayIPv6  = var.ip_config.mesh.ipv6_gateway
+        # REMOVED - mesh network no longer needed for link-local migration
+        # meshGatewayIPv4  = var.ip_config.mesh.ipv4_gateway
+        # meshGatewayIPv6  = var.ip_config.mesh.ipv6_gateway
         publicGatewayIPv4 = var.ip_config.public.ipv4_gateway
         publicGatewayIPv6 = var.ip_config.public.ipv6_gateway
-        meshMTU          = 8930
+        # REMOVED - mesh network no longer needed for link-local migration
+        # meshMTU          = 8930
         publicMTU        = 1500
       }]
     },
@@ -366,8 +374,9 @@ output "talenv_yaml" {
     # Use public IPs for bootstrap access (egress network is accessible)
     merge([for n in local.nodes : {
       "${replace(n.name, "-", "_")}_ipAddress"      = n.public_ipv4
-      "${replace(n.name, "-", "_")}_mesh_ipv4"      = n.mesh_ipv4
-      "${replace(n.name, "-", "_")}_mesh_ipv6"      = n.mesh_ipv6
+      # REMOVED - mesh network no longer needed for link-local migration
+      # "${replace(n.name, "-", "_")}_mesh_ipv4"      = n.mesh_ipv4
+      # "${replace(n.name, "-", "_")}_mesh_ipv6"      = n.mesh_ipv6
       "${replace(n.name, "-", "_")}_public_ipv4"    = n.public_ipv4
       "${replace(n.name, "-", "_")}_public_ipv6"    = n.public_ipv6
     }]...)
