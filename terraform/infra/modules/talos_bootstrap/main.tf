@@ -16,8 +16,8 @@ resource "talos_machine_configuration_apply" "nodes" {
     replace(var.machine_configs[each.key].config_patch, "$$", "$")
   ]
 
-  # Apply configs via IPv4 since nodes are in maintenance mode and IPv6 is not yet configured
-  endpoint = var.all_node_ips[each.key].ipv4
+  # Apply configs via IPv6 (cloud-init configures IPv6 on boot)
+  endpoint = var.all_node_ips[each.key].ipv6
 }
 
 # Bootstrap the cluster on the first control plane node
