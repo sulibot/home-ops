@@ -248,18 +248,6 @@ locals {
                   - network: ::/0
                     gateway: fd00:101::fffe
                 ${node.machine_type == "controlplane" ? "vip:\n                  ip: ${var.vip_ipv6}" : ""}
-              # REMOVED - mesh network no longer needed for link-local migration
-              # - interface: ens19
-              #   mtu: 8930
-              #   addresses:
-              #     - ${node.mesh_ipv6}/64
-              #     - ${node.mesh_ipv4}/24
-              #   routes:
-              #     - network: fc00::/8
-              #       gateway: fc00:${var.cluster_id}::fffe
-              #     - network: 10.10.0.0/16
-              #       gateway: 10.10.${var.cluster_id}.254
-              # Loopback interface for BIRD2 BGP peering
               - interface: lo
                 addresses:
                   - fd00:255:${var.cluster_id}::${split(".", node.public_ipv4)[3]}/128
