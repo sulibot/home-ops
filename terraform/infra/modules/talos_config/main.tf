@@ -11,15 +11,15 @@ locals {
     name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
   }
 
-  # Combine all nodes with metadata and extract node suffix from IPv6
+  # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
       machine_type = "controlplane"
-      node_suffix  = tonumber(split("::", v.public_ipv6)[1])
+      node_suffix  = v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
-      node_suffix  = tonumber(split("::", v.public_ipv6)[1])
+      node_suffix  = v.ip_suffix
     }) }
   )
 

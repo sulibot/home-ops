@@ -282,6 +282,7 @@ output "node_ips" {
       # mesh_ipv6   = node.mesh_ipv6
       public_ipv4 = node.public_ipv4
       public_ipv6 = node.public_ipv6
+      ip_suffix   = node.ip_suffix
     }
   }
 }

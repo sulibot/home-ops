@@ -44,6 +44,7 @@ variable "all_node_ips" {
   type = map(object({
     public_ipv4 = string
     public_ipv6 = string
+    ip_suffix   = number
     # REMOVED - mesh network no longer needed for link-local migration
     # mesh_ipv4   = string
     # mesh_ipv6   = string
