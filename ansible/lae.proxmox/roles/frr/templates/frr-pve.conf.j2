@@ -98,14 +98,14 @@ router bgp {{ PVE_ASN }}
   neighbor {{ link.iface }} description "iBGP mesh link on {{ link.iface }}"
 {% endfor %}
 
-  ! Dynamic BGP neighbors for Talos cluster-101 VMs (link-local on vmbr0.101)
-  neighbor TALOS_CLUSTER_101 peer-group
-  neighbor TALOS_CLUSTER_101 remote-as 4210101000-4210101999
-  neighbor TALOS_CLUSTER_101 capability extended-nexthop
-  neighbor TALOS_CLUSTER_101 description "Talos cluster-101 link-local peering"
-  neighbor TALOS_CLUSTER_101 ebgp-multihop 2
-
-  bgp listen range fe80::/10 peer-group TALOS_CLUSTER_101
+  ! Explicit BGP neighbors for Talos cluster-101 VMs (unnumbered/link-local)
+{% for node_name, node in talos_cluster_101_nodes.items() %}
+  neighbor {{ node.link_local }} remote-as {{ node.asn }}
+  neighbor {{ node.link_local }} interface vmbr0.101
+  neighbor {{ node.link_local }} description "{{ node.description }}"
+  neighbor {{ node.link_local }} capability extended-nexthop
+  neighbor {{ node.link_local }} timers 10 30
+{% endfor %}
 
   ! Edge eBGP to MikroTik - separate IPv4 and IPv6 sessions
   ! IPv6 session for IPv6 routes
@@ -126,10 +126,17 @@ router bgp {{ PVE_ASN }}
     neighbor {{ EDGE_V6_PEER }} route-map EXPORT_V6_CONNECTED out
     neighbor {{ EDGE_V6_PEER }} next-hop-self
 
+    ! iBGP mesh neighbors
+{% for link in mesh_links[inventory_hostname] %}
+    neighbor {{ link.iface }} activate
+{% endfor %}
+
     ! Talos cluster-101 peering
-    neighbor TALOS_CLUSTER_101 activate
-    neighbor TALOS_CLUSTER_101 route-map IMPORT_TALOS in
-    neighbor TALOS_CLUSTER_101 route-map EXPORT_TO_TALOS out
+{% for node_name, node in talos_cluster_101_nodes.items() %}
+    neighbor {{ node.link_local }} activate
+    neighbor {{ node.link_local }} route-map IMPORT_TALOS in
+    neighbor {{ node.link_local }} route-map EXPORT_TO_TALOS out
+{% endfor %}
 
     maximum-paths 4
     maximum-paths ibgp 4
@@ -142,9 +149,11 @@ router bgp {{ PVE_ASN }}
     neighbor 10.255.255.254 next-hop-self
 
     ! Talos cluster-101 peering (MP-BGP over IPv6)
-    neighbor TALOS_CLUSTER_101 activate
-    neighbor TALOS_CLUSTER_101 route-map IMPORT_TALOS in
-    neighbor TALOS_CLUSTER_101 route-map EXPORT_TO_TALOS out
+{% for node_name, node in talos_cluster_101_nodes.items() %}
+    neighbor {{ node.link_local }} activate
+    neighbor {{ node.link_local }} route-map IMPORT_TALOS in
+    neighbor {{ node.link_local }} route-map EXPORT_TO_TALOS out
+{% endfor %}
 
     maximum-paths 4
     maximum-paths ibgp 4
