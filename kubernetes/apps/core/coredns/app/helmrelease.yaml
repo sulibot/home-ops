@@ -40,7 +40,7 @@ spec:
           - name: autopath
             parameters: "@kubernetes"
           - name: forward
-            parameters: . fd00:101::fffe 10.0.101.254
+            parameters: . fd00:101::fffd 10.0.101.254
             configBlock: |-
               policy sequential
           - name: cache

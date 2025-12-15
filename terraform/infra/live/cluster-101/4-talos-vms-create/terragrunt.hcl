@@ -133,7 +133,7 @@ inputs = merge(
       public = {
         ipv6_prefix  = "fd00:${local.cluster_config.cluster_id}::"
         ipv4_prefix  = "10.0.${local.cluster_config.cluster_id}."
-        #ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::fffe"
+        # IPv6 gateway removed - VMs get default route via BGP default-originate from PVE
         ipv4_gateway = "10.0.${local.cluster_config.cluster_id}.254"
       }
       dns_servers = [

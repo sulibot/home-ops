@@ -17,12 +17,12 @@
 auto lo
 iface lo inet loopback
 
-# Host infra loopback (BGP router-id, infra identity) + tenant anycast gateways
+# Host infra loopback (BGP router-id, infra identity)
+iface lo inet static
+    address 10.255.0.{{ node_id }}/32
+
 iface lo inet6 static
     address fd00:255::{{ node_id }}/128
-{% for vlan_id in TENANT_VLANS | sort %}
-    address fd00:{{ vlan_id }}::fffe/128
-{% endfor %}
 
 # ------------------------------------------------------------
 # Bond (bond0) + slaves (egress / management uplink)
@@ -82,9 +82,14 @@ iface vmbr0.{{ vlan_id }} inet manual
     vlan-raw-device vmbr0
     mtu 1500
 
-iface vmbr0.{{ vlan_id }} inet6 manual
+iface vmbr0.{{ vlan_id }} inet6 static
+    address fe80::255:{{ node_id }}/64
     vlan-raw-device vmbr0
     mtu 1500
+    post-up sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/proxy_ndp'
+    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
+    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
+    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/autoconf'
 {% endfor %}
 
 # VLAN 200 — Ceph client / storage LAN (tagged)
@@ -121,15 +126,16 @@ iface {{ link.iface }} inet6 manual
 # ------------------------------------------------------------
 
 {% if HAS_MESH %}
-auto dummy_underlay
-iface dummy_underlay inet static
-    address 10.255.0.{{ node_id }}/32
-    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
-    mtu 9000
+#auto dummy_underlay
+#iface dummy_underlay inet static
+#    address 10.255.0.{{ node_id }}/32
+#    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
+#    mtu 9000
 
 iface dummy_underlay inet6 static
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
+    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
     mtu 9000
 {% endif %}
 

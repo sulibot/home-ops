@@ -55,7 +55,7 @@ EDGE_ASN: 4200000000
 TENANT_VLANS: [100, 101, 102, 103]
 
 EDGE_V4_LO: 10.255.255.254
-EDGE_V6_LO: fd00:255::fffe
+EDGE_V6_LO: fd00:255::ffff
 PVE_ID: "{{ inventory_hostname[-2:] | regex_replace('^0*','') | int }}"
 enable_mesh_ebgp: true
 
@@ -70,4 +70,44 @@ PVE_LOOPBACKS_V6:
   - fd00:255::2
   - fd00:255::3
   - fd00:255::4
+
+# Talos cluster-101 node definitions for PVE BGP peering
+# ASN pattern: 42101010<suffix> (4-byte ASNs)
+talos_cluster_101_nodes:
+  solcp01:
+    asn: 4210101011
+    suffix: 11
+    link_local: "fe80::101:11"
+    ipv6: "fd00:101::11"
+    description: "Talos cluster-101 CP-01"
+  solcp02:
+    asn: 4210101012
+    suffix: 12
+    link_local: "fe80::101:12"
+    ipv6: "fd00:101::12"
+    description: "Talos cluster-101 CP-02"
+  solcp03:
+    asn: 4210101013
+    suffix: 13
+    link_local: "fe80::101:13"
+    ipv6: "fd00:101::13"
+    description: "Talos cluster-101 CP-03"
+  solwk01:
+    asn: 4210101021
+    suffix: 21
+    link_local: "fe80::101:21"
+    ipv6: "fd00:101::21"
+    description: "Talos cluster-101 WK-01"
+  solwk02:
+    asn: 4210101022
+    suffix: 22
+    link_local: "fe80::101:22"
+    ipv6: "fd00:101::22"
+    description: "Talos cluster-101 WK-02"
+  solwk03:
+    asn: 4210101023
+    suffix: 23
+    link_local: "fe80::101:23"
+    ipv6: "fd00:101::23"
+    description: "Talos cluster-101 WK-03"
 
