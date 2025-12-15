@@ -29,6 +29,10 @@ locals {
   # Read Gateway API CRDs (required before Cilium if gatewayAPI.enabled: true)
   gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml" : ""
   gateway_api_crds      = var.cilium_values_path != "" && fileexists(local.gateway_api_crds_path) ? file(local.gateway_api_crds_path) : ""
+
+  # Path to FRR config template (native frr.conf format)
+  # Template must be in module directory for Terraform to find it
+  frr_template_path = "${path.module}/frr.conf.j2"
 }
 
 # Template Cilium Helm chart with values from Flux config
@@ -76,6 +80,11 @@ data "talos_machine_configuration" "controlplane" {
         kernel = {
           modules = []
         }
+        time = {
+          servers = [
+            "fd00:${var.cluster_id}::fffd"  # DNS/NTP server on VLAN gateway
+          ]
+        }
         sysctls = {
           "fs.inotify.max_user_watches"   = "1048576"
           "fs.inotify.max_user_instances" = "8192"
@@ -83,6 +92,11 @@ data "talos_machine_configuration" "controlplane" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
+          # Accept IPv6 RAs even with forwarding enabled (for SLAAC with PD)
+          "net.ipv6.conf.all.accept_ra"   = "2"
+          "net.ipv6.conf.default.accept_ra" = "2"
+          # Disable sending RAs (nodes should not advertise themselves as routers)
+          "net.ipv6.conf.all.accept_ra_rtr_pref" = "0"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -186,6 +200,11 @@ data "talos_machine_configuration" "worker" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
+          # Accept IPv6 RAs even with forwarding enabled (for SLAAC with PD)
+          "net.ipv6.conf.all.accept_ra"   = "2"
+          "net.ipv6.conf.default.accept_ra" = "2"
+          # Disable sending RAs (nodes should not advertise themselves as routers)
+          "net.ipv6.conf.all.accept_ra_rtr_pref" = "0"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -223,6 +242,33 @@ EOF
 
 # Generate per-node configurations with network settings
 locals {
+  # Render FRR config per node using native frr.conf template
+  frr_configs = {
+    for node_name, node in local.all_nodes : node_name => templatefile(local.frr_template_path, {
+      # Node identity
+      hostname   = node.hostname
+      router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
+
+      # BGP ASN configuration (4-byte ASN pattern: 4210<cluster_id>0<suffix>)
+      # Example: cluster 101, node 11 -> 4210101011
+      # Formula: 4210000000 + (cluster_id * 1000) + (node_suffix)
+      # Supports cluster IDs 000-999 and node suffixes 00-99
+      local_asn  = 4210000000 + var.cluster_id * 1000 + node.node_suffix
+      remote_asn = var.bgp_remote_asn
+
+      # Network configuration
+      interface        = var.bgp_interface
+      cluster_id       = var.cluster_id
+      node_suffix      = node.node_suffix
+      loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"
+      loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"
+
+      # Feature flags
+      enable_bfd               = var.bgp_enable_bfd
+      advertise_loopbacks      = var.bgp_advertise_loopbacks
+    })
+  }
+
   machine_configs = {
     for node_name, node in local.all_nodes : node_name => {
       machine_type = node.machine_type
@@ -231,38 +277,63 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch with embedded BIRD2 ExtensionServiceConfig
-      config_patch = <<-CONFIG_PATCH
-        machine:
-          nodeLabels:
-            topology.kubernetes.io/region: home-lab
-            topology.kubernetes.io/zone: cluster-${var.cluster_id}
-            bgp.bird.asn: "${4210000000 + (var.cluster_id * 1000) + node.node_suffix}"
-            bgp.cilium.asn: "${4220000000 + (var.cluster_id * 1000) + node.node_suffix}"
-          network:
-            hostname: ${node.hostname}
-            interfaces:
-              - interface: ens18
-                mtu: 1500
-                addresses:
-                  - ${node.public_ipv6}/64
-                  - ${node.public_ipv4}/24
-                # Link-local fe80::/64 is automatic for BGP peering
-                routes:
-                  - network: 0.0.0.0/0
-                    gateway: 10.0.101.254
-                  - network: ::/0
-                    gateway: fd00:101::fffe
-                ${node.machine_type == "controlplane" ? "vip:\n                  ip: ${var.vip_ipv6}" : ""}
-              - interface: lo
-                addresses:
-                  - fd00:255:${var.cluster_id}::${node.node_suffix}/128
-                  - 10.255.${var.cluster_id}.${node.node_suffix}/32
-            nameservers:
-%{for dns in var.dns_servers~}
-              - ${dns}
-%{endfor~}
-      CONFIG_PATCH
+      # Per-node network patch and FRR ExtensionServiceConfig
+      config_patch = join("\n---\n", [
+        yamlencode({
+          machine = {
+            nodeLabels = {
+              "topology.kubernetes.io/region" = var.region
+              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+              # 4-byte ASN pattern: 4210<cluster_id>0<suffix>
+              # Formula: 4210000000 + (cluster_id * 1000) + node_suffix
+              "bgp.frr.asn"                   = tostring(4210000000 + var.cluster_id * 1000 + node.node_suffix)
+              # Cilium ASN: 4220<cluster_id>0<suffix>
+              "bgp.cilium.asn"                = tostring(4220000000 + var.cluster_id * 1000 + node.node_suffix)
+            }
+            network = {
+              hostname = node.hostname
+              interfaces = concat([
+                {
+                  interface = "ens18"
+                  mtu       = 1500
+                  addresses = [
+                    "${node.public_ipv6}/64",
+                    "${node.public_ipv4}/24",
+                    "fe80::${var.cluster_id}:${node.node_suffix}/64"
+                  ]
+                  routes = [
+                    # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+                    {
+                      network = "0.0.0.0/0"
+                      gateway = "10.0.${var.cluster_id}.254"
+                      metric  = 1024
+                    }
+                    # IPv6: default route learned via RA (PD), no static route needed
+                    # The RA default route (metric 256) handles both internet and fd00::/8
+                  ]
+                  vip = node.machine_type == "controlplane" ? {
+                    ip = var.vip_ipv6
+                  } : null
+                },
+                {
+                  interface = "lo"
+                  addresses = [
+                    "fd00:255:${var.cluster_id}::${node.node_suffix}/128",
+                    "10.255.${var.cluster_id}.${node.node_suffix}/32"
+                  ]
+                }
+              ], [])
+              nameservers = var.dns_servers
+            }
+          }
+        }),
+        # ExtensionServiceConfig as raw YAML to avoid JSON-quoted strings from yamlencode
+        templatefile("${path.module}/extension-service-config.yaml.tpl", {
+          frr_conf_content = local.frr_configs[node_name]
+          hostname         = node.hostname
+          enable_bfd       = var.bgp_enable_bfd
+        })
+      ])
     }
   }
 }
