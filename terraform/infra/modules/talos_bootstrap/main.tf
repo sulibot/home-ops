@@ -1,7 +1,7 @@
 # Get first control plane node for bootstrap
 locals {
-  first_cp_name = sort(keys(var.control_plane_nodes))[0]
-  first_cp_node = var.control_plane_nodes[local.first_cp_name]
+  first_cp_name = length(var.control_plane_nodes) > 0 ? sort(keys(var.control_plane_nodes))[0] : ""
+  first_cp_node = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
 }
 
 # Apply machine configurations to all nodes
@@ -16,15 +16,15 @@ resource "talos_machine_configuration_apply" "nodes" {
     replace(var.machine_configs[each.key].config_patch, "$$", "$")
   ]
 
-  # Apply configs via IPv6 (cloud-init configures IPv6 on boot)
-  endpoint = var.all_node_ips[each.key].ipv6
+  # Apply configs via IPv4 (IPv6 routing not ready until BGP establishes)
+  endpoint = var.all_node_ips[each.key].ipv4
 }
 
 # Bootstrap the cluster on the first control plane node
 resource "talos_machine_bootstrap" "cluster" {
   client_configuration = var.client_configuration
-  node                 = local.first_cp_node.ipv6
-  endpoint             = local.first_cp_node.ipv6
+  node                 = local.first_cp_node.ipv4
+  endpoint             = local.first_cp_node.ipv4
 
   depends_on = [talos_machine_configuration_apply.nodes]
 }
@@ -41,7 +41,7 @@ resource "null_resource" "wait_for_etcd" {
 
       # Generate kubeconfig to temp file
       KUBECONFIG_FILE=$(mktemp)
-      talosctl -n ${local.first_cp_node.ipv6} kubeconfig "$KUBECONFIG_FILE" 2>/dev/null || true
+      talosctl -n ${local.first_cp_node.ipv4} kubeconfig "$KUBECONFIG_FILE" 2>/dev/null || true
 
       RETRIES=30  # 30 retries * 10 seconds = 5 minutes max
       ATTEMPT=0
