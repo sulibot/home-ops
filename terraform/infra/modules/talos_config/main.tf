@@ -312,7 +312,7 @@ locals {
                     # PD default route (metric 256) wins when available
                     # This static route (metric 1024) provides failover for internal access
                     {
-                      network = "fd00::/8"
+                      network = "fc00::/7"
                       gateway = "fd00:${var.cluster_id}::ffff"
                       metric  = 1024
                     }
