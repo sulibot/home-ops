@@ -110,4 +110,16 @@ talos_cluster_101_nodes:
     link_local: "fe80::101:23"
     ipv6: "fd00:101::23"
     description: "Talos cluster-101 WK-03"
+  debian-test-1:
+    asn: 4210101006
+    suffix: 6
+    link_local: "fe80::101:6"
+    ipv6: "fd00:101::6"
+    description: "Debian test VM 1 for BGP validation"
+  debian-test-2:
+    asn: 4210101007
+    suffix: 7
+    link_local: "fe80::101:7"
+    ipv6: "fd00:101::7"
+    description: "Debian test VM 2 for BGP validation"
 
