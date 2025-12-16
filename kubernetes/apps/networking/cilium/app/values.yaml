@@ -33,7 +33,7 @@ ipam:
 routingMode: native
 # Disable autoDirectNodeRoutes - BIRD2 will install routes instead
 autoDirectNodeRoutes: false
-directRoutingSkipUnreachable: true
+directRoutingSkipUnreachable: false
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
 # This allows BIRD2 to redistribute these /24 routes via BGP instead of individual pod IPs
 endpointRoutes:
