@@ -82,7 +82,7 @@ data "talos_machine_configuration" "controlplane" {
         }
         time = {
           servers = [
-            "fd00:${var.cluster_id}::fffd"  # DNS/NTP server on VLAN gateway
+            "fd00:${var.cluster_id}::ffff"  # DNS/NTP server on VLAN gateway (RouterOS)
           ]
         }
         sysctls = {

@@ -137,8 +137,8 @@ inputs = merge(
         ipv4_gateway = "10.0.${local.cluster_config.cluster_id}.254"
       }
       dns_servers = [
-        "fd00:${local.cluster_config.cluster_id}::fffd",
-        "10.0.${local.cluster_config.cluster_id}.253",
+        "fd00:${local.cluster_config.cluster_id}::ffff",
+        "10.0.${local.cluster_config.cluster_id}.254",
       ]
     }
 
