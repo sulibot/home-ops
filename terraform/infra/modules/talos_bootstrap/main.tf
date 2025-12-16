@@ -16,15 +16,15 @@ resource "talos_machine_configuration_apply" "nodes" {
     replace(var.machine_configs[each.key].config_patch, "$$", "$")
   ]
 
-  # Apply configs via IPv4 (IPv6 routing not ready until BGP establishes)
-  endpoint = var.all_node_ips[each.key].ipv4
+  # Apply configs via IPv6 (static fc00::/7 route provides connectivity)
+  endpoint = var.all_node_ips[each.key].ipv6
 }
 
 # Bootstrap the cluster on the first control plane node
 resource "talos_machine_bootstrap" "cluster" {
   client_configuration = var.client_configuration
-  node                 = local.first_cp_node.ipv4
-  endpoint             = local.first_cp_node.ipv4
+  node                 = local.first_cp_node.ipv6
+  endpoint             = local.first_cp_node.ipv6
 
   depends_on = [talos_machine_configuration_apply.nodes]
 }
@@ -41,7 +41,7 @@ resource "null_resource" "wait_for_etcd" {
 
       # Generate kubeconfig to temp file
       KUBECONFIG_FILE=$(mktemp)
-      talosctl -n ${local.first_cp_node.ipv4} kubeconfig "$KUBECONFIG_FILE" 2>/dev/null || true
+      talosctl -n ${local.first_cp_node.ipv6} kubeconfig "$KUBECONFIG_FILE" 2>/dev/null || true
 
       RETRIES=30  # 30 retries * 10 seconds = 5 minutes max
       ATTEMPT=0
