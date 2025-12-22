@@ -4,6 +4,11 @@ variable "cilium_values_path" {
   default     = ""
 }
 
+variable "cilium_version" {
+  description = "Cilium CNI version to install"
+  type        = string
+}
+
 variable "cluster_name" {
   description = "Name of the Talos cluster"
   type        = string
@@ -51,6 +56,18 @@ variable "all_node_ips" {
   }))
 }
 
+variable "gua_prefix" {
+  description = "IPv6 GUA (Global Unicast Address) prefix for internet connectivity (e.g., 2600:1700:ab1a:500e::). If not provided, only ULA will be configured."
+  type        = string
+  default     = ""
+}
+
+variable "gua_gateway" {
+  description = "IPv6 GUA gateway address for internet access (e.g., 2600:1700:ab1a:500e::ffff). If not provided, ULA gateway will be used."
+  type        = string
+  default     = ""
+}
+
 variable "pod_cidr_ipv6" {
   description = "IPv6 CIDR for pod network"
   type        = string
@@ -73,6 +90,11 @@ variable "service_cidr_ipv4" {
 
 variable "dns_servers" {
   description = "DNS servers for cluster nodes"
+  type        = list(string)
+}
+
+variable "ntp_servers" {
+  description = "NTP servers for time synchronization"
   type        = list(string)
 }
 
@@ -103,4 +125,43 @@ variable "region" {
   description = "Region identifier (injected by root terragrunt)"
   type        = string
   default     = "home-lab"
+}
+
+# BGP Configuration Variables
+variable "bgp_asn_base" {
+  description = "Base ASN for node BGP routing. Final ASN = base + (cluster_id * 1000) + node_suffix"
+  type        = number
+  # Default removed - should be provided by terragrunt from centralized config
+  validation {
+    condition     = var.bgp_asn_base >= 64512 && var.bgp_asn_base <= 4294967295
+    error_message = "BGP ASN must be a valid private (64512-65535 or 4200000000-4294967295) or public ASN."
+  }
+}
+
+variable "bgp_remote_asn" {
+  description = "Upstream router BGP ASN (e.g., PVE FRR) - 4-byte ASN"
+  type        = number
+  # Default removed - should be provided by terragrunt from centralized config
+  validation {
+    condition     = var.bgp_remote_asn >= 1 && var.bgp_remote_asn <= 4294967295
+    error_message = "BGP remote ASN must be between 1 and 4294967295."
+  }
+}
+
+variable "bgp_interface" {
+  description = "Network interface for BGP peering with upstream router"
+  type        = string
+  default     = "ens18"
+}
+
+variable "bgp_enable_bfd" {
+  description = "Enable BFD (Bidirectional Forwarding Detection) for fast BGP failover"
+  type        = bool
+  default     = false
+}
+
+variable "bgp_advertise_loopbacks" {
+  description = "Advertise node loopback addresses via BGP"
+  type        = bool
+  default     = false
 }

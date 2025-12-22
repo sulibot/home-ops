@@ -40,7 +40,7 @@ data "helm_template" "cilium" {
   name         = "cilium"
   repository   = "https://helm.cilium.io/"
   chart        = "cilium"
-  version      = "1.18.4"
+  version      = var.cilium_version
   namespace    = "kube-system"
   kube_version = var.kubernetes_version
   skip_crds    = false
@@ -81,9 +81,7 @@ data "talos_machine_configuration" "controlplane" {
           modules = []
         }
         time = {
-          servers = [
-            "fd00:${var.cluster_id}::ffff"  # DNS/NTP server on VLAN gateway (RouterOS)
-          ]
+          servers = var.ntp_servers
         }
         sysctls = {
           "fs.inotify.max_user_watches"   = "1048576"
@@ -92,11 +90,9 @@ data "talos_machine_configuration" "controlplane" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Accept IPv6 RAs even with forwarding enabled (for SLAAC with PD)
-          "net.ipv6.conf.all.accept_ra"   = "2"
-          "net.ipv6.conf.default.accept_ra" = "2"
-          # Disable sending RAs (nodes should not advertise themselves as routers)
-          "net.ipv6.conf.all.accept_ra_rtr_pref" = "0"
+          # Disable RA completely - all IPv6 addresses are statically configured
+          "net.ipv6.conf.all.accept_ra"     = "0"
+          "net.ipv6.conf.default.accept_ra" = "0"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -200,11 +196,9 @@ data "talos_machine_configuration" "worker" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Accept IPv6 RAs even with forwarding enabled (for SLAAC with PD)
-          "net.ipv6.conf.all.accept_ra"   = "2"
-          "net.ipv6.conf.default.accept_ra" = "2"
-          # Disable sending RAs (nodes should not advertise themselves as routers)
-          "net.ipv6.conf.all.accept_ra_rtr_pref" = "0"
+          # Disable RA completely - all IPv6 addresses are statically configured
+          "net.ipv6.conf.all.accept_ra"     = "0"
+          "net.ipv6.conf.default.accept_ra" = "0"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -249,11 +243,11 @@ locals {
       hostname   = node.hostname
       router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
 
-      # BGP ASN configuration (4-byte ASN pattern: 4210<cluster_id>0<suffix>)
-      # Example: cluster 101, node 11 -> 4210101011
-      # Formula: 4210000000 + (cluster_id * 1000) + (node_suffix)
+      # BGP ASN configuration (4-byte ASN pattern: base + cluster_id * 1000 + suffix)
+      # Example: base=4210000000, cluster 101, node 11 -> 4210101011
+      # Formula: bgp_asn_base + (cluster_id * 1000) + (node_suffix)
       # Supports cluster IDs 000-999 and node suffixes 00-99
-      local_asn  = 4210000000 + var.cluster_id * 1000 + node.node_suffix
+      local_asn  = var.bgp_asn_base + var.cluster_id * 1000 + node.node_suffix
       remote_asn = var.bgp_remote_asn
 
       # Network configuration
@@ -296,11 +290,14 @@ locals {
                 {
                   interface = "ens18"
                   mtu       = 1500
-                  addresses = [
-                    "${node.public_ipv6}/64",
-                    "${node.public_ipv4}/24",
-                    "fe80::${var.cluster_id}:${node.node_suffix}/64"
-                  ]
+                  addresses = concat(
+                    [
+                      "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
+                      "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
+                      "fe80::${var.cluster_id}:${node.node_suffix}/64"  # Link-local
+                    ],
+                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
+                  )
                   routes = [
                     # IPv4: static route (no RA for IPv4) - will be overridden by BGP
                     {
@@ -308,13 +305,11 @@ locals {
                       gateway = "10.0.${var.cluster_id}.254"
                       metric  = 1024
                     },
-                    # IPv6: backup route for internal ULA networks in case PD fails
-                    # PD default route (metric 256) wins when available
-                    # This static route (metric 1024) provides failover for internal access
+                    # IPv6: default route - LLA gateway for all IPv6 routing (BGP unnumbered)
                     {
-                      network = "fc00::/7"
-                      gateway = "fd00:${var.cluster_id}::ffff"
-                      metric  = 1024
+                      network = "::/0"
+                      gateway = "fe80::ffff"  # Link-local anycast gateway
+                      metric  = 1024          # High metric ensures BGP routes (metric 0) are preferred
                     }
                   ]
                   vip = node.machine_type == "controlplane" ? {

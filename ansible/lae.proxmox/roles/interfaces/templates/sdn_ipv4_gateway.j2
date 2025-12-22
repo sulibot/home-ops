@@ -1,0 +1,18 @@
+#!/bin/bash
+# Configure IPv4 gateway addresses on VNet interfaces
+# This is needed because Proxmox SDN (as of 9.x) doesn't automatically
+# configure IPv4 gateway addresses from subnet definitions
+
+set -e
+
+{% for vlan_id in TENANT_VLANS | sort %}
+# VNet {{ vlan_id }}
+if ip link show vnet{{ vlan_id }} &>/dev/null; then
+    if ! ip addr show vnet{{ vlan_id }} | grep -q "inet 10.0.{{ vlan_id }}.254/24"; then
+        ip addr add 10.0.{{ vlan_id }}.254/24 dev vnet{{ vlan_id }}
+        echo "Added IPv4 gateway 10.0.{{ vlan_id }}.254/24 to vnet{{ vlan_id }}"
+    else
+        echo "IPv4 gateway 10.0.{{ vlan_id }}.254/24 already present on vnet{{ vlan_id }}"
+    fi
+fi
+{% endfor %}

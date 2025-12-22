@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# Configure xvrf cross-connect for VRF to global routing table connectivity
+# Each PVE gets its own unique /127 to avoid conflicts:
+#   pve01: fd00:255:254:1::1/127 (global) <-> fd00:255:254:1::0/127 (VRF)
+#   pve02: fd00:255:254:2::1/127 (global) <-> fd00:255:254:2::0/127 (VRF)
+#   pve03: fd00:255:254:3::1/127 (global) <-> fd00:255:254:3::0/127 (VRF)
+#
+
+set -euo pipefail
+
+# Determine PVE ID from hostname
+HOSTNAME=$(hostname -s)
+case "$HOSTNAME" in
+    pve01) PVE_ID=1 ;;
+    pve02) PVE_ID=2 ;;
+    pve03) PVE_ID=3 ;;
+    pve04) PVE_ID=4 ;;
+    *) echo "Unknown hostname: $HOSTNAME"; exit 1 ;;
+esac
+
+GLOBAL_ADDR="fd00:255:254:${PVE_ID}::1/127"
+VRF_ADDR="fd00:255:254:${PVE_ID}::0/127"
+
+# Check if xvrf pair exists (created by Proxmox SDN)
+if ! ip link show xvrf_evpnz1 &>/dev/null || ! ip link show xvrfp_evpnz1 &>/dev/null; then
+    echo "xvrf pair not found - SDN may not be configured yet"
+    exit 0
+fi
+
+# Remove ALL old addresses (various previous attempts)
+for old_net in "fd00:255:255::" "fd00:255:254::" "fd00:10::"; do
+    ip -6 addr flush dev xvrf_evpnz1 scope global 2>/dev/null || true
+    ip vrf exec vrf_evpnz1 ip -6 addr flush dev xvrfp_evpnz1 scope global 2>/dev/null || true
+done
+
+# Configure global side (xvrf_evpnz1)
+if ! ip -6 addr show dev xvrf_evpnz1 | grep -q "$GLOBAL_ADDR"; then
+    echo "Adding $GLOBAL_ADDR to xvrf_evpnz1 (global table)"
+    ip -6 addr add "$GLOBAL_ADDR" dev xvrf_evpnz1
+else
+    echo "xvrf_evpnz1 already has $GLOBAL_ADDR"
+fi
+
+# Configure VRF side (xvrfp_evpnz1)
+if ! ip vrf exec vrf_evpnz1 ip -6 addr show dev xvrfp_evpnz1 | grep -q "$VRF_ADDR"; then
+    echo "Adding $VRF_ADDR to xvrfp_evpnz1 (VRF table)"
+    ip vrf exec vrf_evpnz1 ip -6 addr add "$VRF_ADDR" dev xvrfp_evpnz1
+else
+    echo "xvrfp_evpnz1 already has $VRF_ADDR"
+fi
+
+# Ensure interfaces are up
+ip link set xvrf_evpnz1 up
+ip link set xvrfp_evpnz1 up
+
+# Enable IPv6 forwarding on both ends
+sysctl -w net.ipv6.conf.xvrf_evpnz1.forwarding=1 >/dev/null
+sysctl -w net.ipv6.conf.xvrfp_evpnz1.forwarding=1 >/dev/null
+
+echo "xvrf cross-connect configured successfully"

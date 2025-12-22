@@ -12,7 +12,7 @@ locals {
   extension_version = "v1.11.5"
 
   # Kubernetes version (managed by Talos)
-  kubernetes_version = "1.34.1"  # Latest stable K8s for Talos v1.11.5
+  kubernetes_version = "1.34.1"  # Current K8s version for Talos v1.11.5
 
   # Terraform provider versions
   provider_versions = {

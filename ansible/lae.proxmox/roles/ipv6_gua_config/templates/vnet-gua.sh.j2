@@ -1,0 +1,39 @@
+#!/bin/bash
+# Add GUA addresses to Proxmox SDN VNets for IPv6 internet connectivity
+# Deployed by Ansible role: ipv6_gua_config
+# Uses AT&T delegated prefixes from DHCPv6-PD
+
+set -e
+
+{% if delegated_prefixes is defined %}
+{% for vnet, prefix in delegated_prefixes.items() %}
+# {{ vnet }}: {{ prefix }}
+if ip link show {{ vnet }} >/dev/null 2>&1; then
+  GATEWAY="{{ prefix | regex_replace('::/64$', '::ffff') }}"
+
+  if ! ip -6 addr show dev {{ vnet }} | grep -q "$GATEWAY"; then
+    ip -6 addr add ${GATEWAY}/64 dev {{ vnet }}
+    echo "✓ Added GUA ${GATEWAY}/64 to {{ vnet }}"
+  else
+    echo "✓ GUA ${GATEWAY}/64 already present on {{ vnet }}"
+  fi
+
+  # Enable IPv6 forwarding on VNet interface
+  sysctl -w net.ipv6.conf.{{ vnet }}.forwarding=1 >/dev/null
+else
+  echo "⚠ {{ vnet }} interface not found - SDN may not be configured yet"
+fi
+
+{% endfor %}
+{% else %}
+echo "ERROR: delegated_prefixes variable not defined"
+exit 1
+{% endif %}
+
+echo ""
+echo "GUA configuration complete on {{ inventory_hostname }}"
+echo ""
+echo "VNet Addresses:"
+{% for vnet in delegated_prefixes.keys() %}
+ip -6 addr show dev {{ vnet }} 2>/dev/null | grep -E "(inet6|scope)" || echo "{{ vnet }}: not found"
+{% endfor %}

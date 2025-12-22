@@ -238,3 +238,85 @@
 # - name: Reload sysctls once
 #   ansible.builtin.command: sysctl --system
 #   changed_when: true
+
+# ============================================================================
+# SDN Anycast Link-Local Configuration
+# ============================================================================
+# Deploy script to add anycast link-local addresses to SDN VNet interfaces
+# Required for dynamic unnumbered BGP peering (fe80::255:ffff)
+# ============================================================================
+
+- name: Deploy SDN anycast link-local setup script
+  ansible.builtin.template:
+    src: sdn_anycast_linklocal.j2
+    dest: /usr/local/bin/sdn-linklocal-setup.sh
+    mode: '0755'
+  when: inventory_hostname in ['pve01','pve02','pve03']
+
+- name: Execute SDN anycast link-local setup
+  ansible.builtin.command: /usr/local/bin/sdn-linklocal-setup.sh
+  when: inventory_hostname in ['pve01','pve02','pve03']
+  changed_when: false
+  register: sdn_linklocal_result
+
+- name: Display SDN anycast link-local setup result
+  ansible.builtin.debug:
+    var: sdn_linklocal_result.stdout_lines
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - sdn_linklocal_result.stdout_lines is defined
+
+# ============================================================================
+# SDN IPv4 Gateway Configuration
+# ============================================================================
+# Deploy script to add IPv4 gateway addresses to SDN VNet interfaces
+# Required because Proxmox SDN (as of 9.x) doesn't automatically configure
+# IPv4 gateway addresses from subnet definitions
+# ============================================================================
+
+- name: Deploy SDN IPv4 gateway setup script
+  ansible.builtin.template:
+    src: sdn_ipv4_gateway.j2
+    dest: /usr/local/bin/sdn-ipv4-gateway-setup.sh
+    mode: '0755'
+  when: inventory_hostname in ['pve01','pve02','pve03']
+
+- name: Execute SDN IPv4 gateway setup
+  ansible.builtin.command: /usr/local/bin/sdn-ipv4-gateway-setup.sh
+  when: inventory_hostname in ['pve01','pve02','pve03']
+  changed_when: false
+  register: sdn_ipv4_result
+
+- name: Display SDN IPv4 gateway setup result
+  ansible.builtin.debug:
+    var: sdn_ipv4_result.stdout_lines
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - sdn_ipv4_result.stdout_lines is defined
+
+# ============================================================================
+# xvrf Cross-Connect Configuration - DISABLED
+# ============================================================================
+# FRR 10.0+ (PR #16044, May 2024) fixed the route leaking bug where routes
+# incorrectly pointed to loopback. We can now use "import vrf default" directly.
+# ============================================================================
+
+# - name: Deploy xvrf cross-connect setup script
+#   ansible.builtin.template:
+#     src: xvrf_cross_connect.j2
+#     dest: /usr/local/bin/xvrf-cross-connect-setup.sh
+#     mode: '0755'
+#   when: inventory_hostname in ['pve01','pve02','pve03','pve04']
+#
+# - name: Execute xvrf cross-connect setup
+#   ansible.builtin.command: /usr/local/bin/xvrf-cross-connect-setup.sh
+#   when: inventory_hostname in ['pve01','pve02','pve03','pve04']
+#   changed_when: false
+#   register: xvrf_result
+#
+# - name: Display xvrf cross-connect setup result
+#   ansible.builtin.debug:
+#     var: xvrf_result.stdout_lines
+#   when:
+#     - inventory_hostname in ['pve01','pve02','pve03','pve04']
+#     - xvrf_result.stdout_lines is defined

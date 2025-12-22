@@ -1,11 +1,140 @@
 ---
 # roles/frr/tasks/main.yaml
+# Ownership Policy:
+#   - FRR: All routing and control-plane logic (IS-IS, BGP, EVPN, VRFs, policy)
+#   - Proxmox SDN: L2/VXLAN/VRF device plumbing ONLY
+#   - frr@sdn.service: MUST be masked (never enabled, even after upgrades)
+
+# ============================================================================
+# PRE-FLIGHT CHECKS: Verify SDN is not managing FRR
+# ============================================================================
+
+- name: Check if frr@sdn.service exists and is running (pre-flight check)
+  ansible.builtin.systemd:
+    name: frr@sdn.service
+  register: frr_sdn_status
+  failed_when: false
+  changed_when: false
+  tags: frr
+
+- name: Fail if frr@sdn.service is running
+  ansible.builtin.fail:
+    msg: |
+      CRITICAL: frr@sdn.service is running!
+      This service MUST be masked to prevent SDN from managing FRR.
+
+      Immediate action required:
+        systemctl stop frr@sdn.service
+        systemctl mask frr@sdn.service
+
+      Re-run this playbook after masking the service.
+  when:
+    - frr_sdn_status.status is defined
+    - frr_sdn_status.status.ActiveState == 'active'
+  tags: frr
+
+- name: Mask frr@sdn.service to prevent SDN from managing FRR (upgrade-safe)
+  ansible.builtin.systemd:
+    name: frr@sdn.service
+    masked: true
+  tags: frr
+
+# ============================================================================
+# CONFIGURATION INTEGRITY: Hash verification tripwire
+# ============================================================================
+
+- name: Check if FRR configuration file exists
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+  register: frr_conf_exists
+  tags: frr
+
+- name: Generate SHA256 hash of current FRR configuration
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+    checksum_algorithm: sha256
+  register: frr_conf_stat
+  when: frr_conf_exists.stat.exists
+  tags: frr
+
+- name: Read stored configuration hash
+  ansible.builtin.slurp:
+    path: /etc/frr/.frr.conf.ansible-hash
+  register: stored_hash
+  failed_when: false
+  changed_when: false
+  tags: frr
+
+- name: Verify FRR configuration has not been modified externally
+  ansible.builtin.fail:
+    msg: |
+      ============================================================================
+      CRITICAL: /etc/frr/frr.conf has been modified externally!
+      ============================================================================
+      This violates the FRR ownership policy.
+
+      Expected hash: {{ stored_hash.content | b64decode | trim }}
+      Current hash:  {{ frr_conf_stat.stat.checksum }}
+
+      Possible causes:
+        - Proxmox SDN modified FRR configuration
+        - frr@sdn.service was enabled/started
+        - Manual modification outside Ansible
+        - Proxmox upgrade re-enabled SDN → FRR integration
+
+      Action required:
+        1. Investigate what modified the file
+        2. Re-run this playbook to restore correct configuration
+        3. Verify frr@sdn.service is masked
+
+      The playbook will now restore the Ansible-managed configuration.
+      ============================================================================
+  when:
+    - frr_conf_exists.stat.exists
+    - stored_hash.content is defined
+    - stored_hash.content | b64decode | trim != frr_conf_stat.stat.checksum
+  tags: frr
+  ignore_errors: true  # Allow playbook to continue and restore config
+
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
+- name: Enable VRF TCP accept for BGP peering
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_l3mdev_accept
+    value: '1'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+
+- name: Disable ICMP redirects to prevent routing cache pollution
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  loop:
+    - net.ipv4.conf.all.accept_redirects
+    - net.ipv4.conf.default.accept_redirects
+    - net.ipv4.conf.all.send_redirects
+    - net.ipv4.conf.default.send_redirects
+    - net.ipv6.conf.all.accept_redirects
+    - net.ipv6.conf.default.accept_redirects
+  tags: frr
+
+# ============================================================================
+# FRR CONFIGURATION DEPLOYMENT
+# ============================================================================
 
 - name: Deploy FRR configuration - daemons
   ansible.builtin.template:
     src: daemons-pve.j2
     dest: /etc/frr/daemons
     mode: '0644'
+  notify: restart frr
+  tags: frr
 
 - name: Deploy FRR configuration - frr.conf
   ansible.builtin.template:
@@ -13,9 +142,29 @@
     dest: /etc/frr/frr.conf
     mode: '0644'
   notify: restart frr
+  tags: frr
+
+- name: Store FRR configuration hash for integrity verification
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+    checksum_algorithm: sha256
+  register: frr_conf_new_stat
+  tags: frr
+
+- name: Save configuration hash to tripwire file
+  ansible.builtin.copy:
+    content: "{{ frr_conf_new_stat.stat.checksum }}\n"
+    dest: /etc/frr/.frr.conf.ansible-hash
+    mode: '0644'
+  tags: frr
+
+# ============================================================================
+# SERVICE MANAGEMENT
+# ============================================================================
 
 - name: Restart and enable FRR
   ansible.builtin.systemd:
     name: frr
     state: restarted
     enabled: true
+  tags: frr

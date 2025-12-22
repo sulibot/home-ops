@@ -1,0 +1,53 @@
+! FRR Configuration for ${hostname}
+! BGP peering with PVE FRR via link-local IPv6
+! Terraform templatefile() rendering
+!
+frr version 10.2
+frr defaults datacenter
+hostname ${hostname}
+log syslog informational
+service integrated-vtysh-config
+!
+! Import default route only from PVE
+ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
+ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
+!
+route-map IMPORT-DEFAULT-v6 permit 10
+ match ipv6 address prefix-list DEFAULT-ONLY-v6
+exit
+!
+route-map IMPORT-DEFAULT-v6 deny 90
+exit
+!
+route-map IMPORT-DEFAULT-v4 permit 10
+ match ip address prefix-list DEFAULT-ONLY-v4
+exit
+!
+route-map IMPORT-DEFAULT-v4 deny 90
+exit
+!
+! BGP Configuration
+router bgp ${local_asn}
+ bgp router-id ${router_id}
+ no bgp default ipv4-unicast
+ bgp graceful-restart
+ timers bgp 10 30
+ !
+ ! Peer with PVE FRR using link-local IPv6
+ neighbor fe80::%ens18 remote-as ${remote_asn}
+ neighbor fe80::%ens18 timers connect 5
+ !
+ address-family ipv4 unicast
+  neighbor fe80::%ens18 activate
+  neighbor fe80::%ens18 route-map IMPORT-DEFAULT-v4 in
+  neighbor fe80::%ens18 extended-nexthop
+ exit-address-family
+ !
+ address-family ipv6 unicast
+  neighbor fe80::%ens18 activate
+  neighbor fe80::%ens18 route-map IMPORT-DEFAULT-v6 in
+ exit-address-family
+exit
+!
+line vty
+!

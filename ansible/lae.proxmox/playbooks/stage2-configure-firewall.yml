@@ -1,0 +1,8 @@
+---
+- name: Stage 2 - Configure cluster firewall
+  hosts: pve
+  become: true
+  gather_facts: false
+
+  roles:
+    - firewall

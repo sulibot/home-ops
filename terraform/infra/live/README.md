@@ -1,292 +1,456 @@
-# Cluster Management Guide
+# Multi-Cluster Infrastructure
 
-This directory contains Terragrunt configurations for managing Kubernetes clusters on Proxmox.
+Enterprise-grade multi-cluster management for Talos Linux Kubernetes on Proxmox.
 
-## Directory Structure
+## Architecture Overview
+
+This infrastructure follows **Option A: Environment-Based Structure** with shared artifacts:
 
 ```
 live/
-├── common/              # Shared configuration for all clusters
-│   ├── credentials.hcl  # Proxmox credentials (SOPS encrypted)
-│   ├── schematic.hcl    # Default Talos image schematic
-│   └── versions.hcl     # Centralized version management
-├── globals.hcl          # Global settings (uses common/versions.hcl)
-└── cluster-<id>/        # Per-cluster configuration
-    ├── cluster.hcl      # Cluster definition (nodes, network, etc.)
-    ├── image.hcl        # Optional: override schematic for this cluster
-    ├── image/           # Builds & uploads Talos image
-    │   └── terragrunt.hcl
-    └── nodes/           # Provisions VMs
-        └── terragrunt.hcl
+├── common/              # Shared configuration
+│   ├── versions.hcl            # Centralized version management
+│   ├── install-schematic.hcl   # System extensions
+│   ├── ipv6-prefixes.hcl       # IPv6 GUA allocation
+│   ├── 0-sdn-setup/            # Proxmox SDN configuration
+│   └── 1-firewall/             # Proxmox firewall rules
+│
+├── artifacts/           # Shared artifact pipeline (NEW)
+│   ├── extension/      # Build FRR extension (optional)
+│   ├── images/         # Build installer + ISO
+│   └── registry/       # Upload ISO to Proxmox
+│
+└── clusters/            # Multi-cluster deployments (NEW)
+    ├── cluster-101/    # Production (sol)
+    ├── cluster-102/    # Staging (luna)
+    └── cluster-103/    # Development (terra)
 ```
+
+### Key Principles
+
+1. **Shared Artifacts**: Build Talos images once, deploy to multiple clusters
+2. **Version Consistency**: All clusters use the same Talos version from `common/versions.hcl`
+3. **DRY (Don't Repeat Yourself)**: No duplication of image build logic
+4. **Clear Separation**: Artifact generation vs cluster deployment
 
 ## Quick Start
 
-### Create a New Cluster
+### Deploy a New Cluster
+
+**Step 1: Build Shared Artifacts (Run Once)**
 
 ```bash
-# 1. Copy cluster template
-cd terraform/infra/live
+cd artifacts
+terragrunt run-all apply
+```
+
+This builds:
+- Installer image: `ghcr.io/sulibot/talos-frr-installer:v1.11.5`
+- Boot ISO: `talos-frr-v1.11.5-nocloud-amd64.iso`
+- Uploads ISO to all Proxmox nodes
+
+**Step 2: Deploy Cluster**
+
+```bash
+cd clusters/cluster-101
+terragrunt run-all apply
+```
+
+This executes:
+1. `compute/` - Creates Proxmox VMs
+2. `config/` - Generates Talos machine configs
+3. `bootstrap/` - Bootstraps Kubernetes cluster
+
+### Add a New Cluster
+
+```bash
+# 1. Copy existing cluster
+cd clusters
 cp -r cluster-101 cluster-102
 
-# 2. Update cluster configuration
+# 2. Update cluster.hcl
 cd cluster-102
+vim cluster.hcl
 ```
 
-Edit `cluster.hcl`:
+Edit these fields:
 ```hcl
 locals {
-  cluster_name    = "102"  # Must match directory name
-  cluster_id      = 102
-  controlplanes   = 3
-  workers         = 3
-  proxmox_nodes   = ["pve01", "pve02", "pve03"]
-  storage_default = "rbd-vm"
+  cluster_name = "luna"  # Change from "sol"
+  cluster_id   = 102     # Change from 101
 
   network = {
-    bridge_public = "vmbr0"
-    vlan_public   = 102      # Update VLAN
-    bridge_mesh   = "vnet102" # Update mesh bridge
-    vlan_mesh     = 0
-    public_mtu    = 1500
-    mesh_mtu      = 8930
-  }
-
-  node_overrides = {
-    # Optional: override specific node settings
-    # "102-wk01" = { memory_mb = 32768 }
+    vlan_public = 102    # Change from 101
+    bridge_mesh = "vnet102"  # Change from "vnet101"
   }
 }
 ```
-
-### Deploy Cluster Infrastructure
 
 ```bash
-# 3. Validate configuration
-../../scripts/validate-cluster.sh 102
-
-# 4. Create Talos secrets
-task talos:gen-secrets -- 102
-
-# 5. Build and upload Talos image
-cd image
-terragrunt apply
-
-# 6. Provision VMs
-cd ../nodes
-terragrunt apply
-
-# 7. Generate Talos machine configs
-task talos:gen-config -- 102
-
-# 8. Bootstrap cluster
-task talos:bootstrap -- 102
-
-# 9. Install CNI
-task cni:bootstrap
+# 3. Deploy (uses shared artifacts automatically)
+terragrunt run-all apply
 ```
 
-## Configuration Files
+**That's it!** No need to rebuild images - cluster-102 uses the same artifacts as cluster-101.
 
-### cluster.hcl
+## Directory Structure
 
-Defines the high-level cluster configuration:
-- `cluster_name` - Cluster identifier (should match directory: cluster-ID)
-- `cluster_id` - Numeric cluster ID (e.g., 101, 102)
-- `controlplanes` - Number of control plane nodes
-- `workers` - Number of worker nodes
-- `proxmox_nodes` - List of Proxmox nodes to distribute VMs across
-- `network` - Network configuration (VLANs, bridges, MTU)
-- `node_overrides` - Per-node configuration overrides
+### `common/` - Shared Configuration
 
-### image.hcl (Optional)
+**Purpose**: Configuration shared across all clusters
 
-Override the default Talos image schematic for this cluster only.
+**Files**:
+- `versions.hcl` - Talos version, Kubernetes version
+- `install-schematic.hcl` - System extensions (FRR, QEMU, etc.)
+- `ipv6-prefixes.hcl` - IPv6 GUA prefix delegation
+- `credentials.hcl` - Proxmox credentials (SOPS encrypted)
+- `0-sdn-setup/` - Proxmox SDN VNets (vnet100-103)
+- `1-firewall/` - Proxmox firewall rules
 
-**Example:** Custom kernel args for specific hardware:
+**When to modify**:
+- Upgrading Talos/Kubernetes for all clusters
+- Adding/removing system extensions
+- Changing IPv6 prefix allocation
+
+### `artifacts/` - Shared Artifact Pipeline
+
+**Purpose**: Build Talos images once, consumed by all clusters
+
+**Stages**:
+1. `extension/` - Build custom FRR extension (optional)
+2. `images/` - Build installer (metal) + ISO (nocloud)
+3. `registry/` - Upload ISO to Proxmox Ceph storage
+
+**Outputs**:
+- Installer: `ghcr.io/sulibot/talos-frr-installer:v1.11.5`
+- ISO: `talos-frr-v1.11.5-nocloud-amd64.iso`
+
+**When to rebuild**:
+- After updating `common/versions.hcl`
+- After changing system extensions
+- When adding new extension versions
+
+See [artifacts/README.md](artifacts/README.md) for details.
+
+### `clusters/` - Multi-Cluster Deployments
+
+**Purpose**: Per-cluster deployment configurations
+
+**Each cluster contains**:
+- `cluster.hcl` - Cluster definition (name, ID, nodes, network)
+- `compute/` - Proxmox VM creation
+- `config/` - Talos machine configuration generation
+- `bootstrap/` - Kubernetes cluster bootstrap
+
+**Cluster Naming**:
+- cluster-101: Production (sol)
+- cluster-102: Staging (luna)
+- cluster-103: Development (terra)
+
+**IP Allocation** (automatic based on cluster_id):
+- Public IPv6: `fd00:${cluster_id}::/64`
+- Public IPv4: `10.0.${cluster_id}.0/24`
+- Control plane VIP: `fd00:${cluster_id}::10`
+
+## Workflow
+
+### Initial Setup (Once)
+
+```bash
+# 1. Configure Proxmox SDN
+cd common/0-sdn-setup
+terragrunt apply
+
+# 2. Configure Proxmox firewall
+cd ../1-firewall
+terragrunt apply
+
+# 3. Build shared artifacts
+cd ../../artifacts
+terragrunt run-all apply
+```
+
+### Deploy Cluster-101 (Production)
+
+```bash
+cd clusters/cluster-101
+
+# Run complete pipeline
+terragrunt run-all apply
+
+# Or run stages separately:
+cd compute && terragrunt apply    # Create VMs
+cd ../config && terragrunt apply  # Generate configs
+cd ../bootstrap && terragrunt apply  # Bootstrap K8s
+```
+
+### Deploy Cluster-102 (Staging)
+
+```bash
+# Copy cluster-101
+cp -r clusters/cluster-101 clusters/cluster-102
+
+# Edit cluster.hcl (change cluster_name, cluster_id, network)
+vim clusters/cluster-102/cluster.hcl
+
+# Deploy (uses shared artifacts automatically)
+cd clusters/cluster-102
+terragrunt run-all apply
+```
+
+### Upgrade Talos Version
+
+**For all clusters**:
+
+```bash
+# 1. Update version
+vim common/versions.hcl
+# Change: talos_version = "v1.12.0"
+
+# 2. Rebuild shared artifacts
+cd artifacts
+terragrunt run-all apply
+
+# 3. Upgrade each cluster
+cd ../clusters/cluster-101
+terragrunt run-all apply
+
+cd ../cluster-102
+terragrunt run-all apply
+```
+
+This ensures all clusters stay on the same version.
+
+## Configuration Reference
+
+### `common/versions.hcl`
+
+Centralized version management for all clusters:
+
 ```hcl
 locals {
-  talos_extra_kernel_args = [
-    "intel_iommu=on",
-    "iommu=pt",
-    "custom-arg=value"
+  talos_version      = "v1.11.5"      # Talos Linux version
+  kubernetes_version = "1.31.4"       # Kubernetes version
+  talos_platform     = "nocloud"      # Platform for boot ISO
+  talos_architecture = "amd64"        # CPU architecture
+  cilium_version     = "1.18.4"       # Cilium CNI version
+}
+```
+
+### `common/install-schematic.hcl`
+
+System extensions included in all images:
+
+```hcl
+locals {
+  install_system_extensions = [
+    "ghcr.io/siderolabs/intel-ucode:20250812@sha256:...",
+    "ghcr.io/siderolabs/qemu-guest-agent:10.0.2@sha256:...",
+    "ghcr.io/siderolabs/crun:1.24@sha256:...",
+    "ghcr.io/siderolabs/ctr:v2.1.5@sha256:...",
   ]
 
-  # Only include fields you want to override
-  # Unspecified fields use defaults from common/schematic.hcl
+  install_custom_extensions = [
+    "ghcr.io/sulibot/talos-frr-extension:v1.0.18",
+  ]
+
+  install_kernel_args = [
+    "talos.unified_cgroup_hierarchy=1",
+  ]
 }
 ```
 
-Leave empty (or delete) to use defaults from `common/schematic.hcl`.
+### `cluster.hcl` (per cluster)
 
-### common/versions.hcl
-
-Centralized version management. Update versions here and all clusters inherit changes:
+Cluster-specific configuration:
 
 ```hcl
 locals {
-  talos_version      = "v1.11.5"
-  kubernetes_version = "v1.31.4"
-  talos_platform     = "nocloud"
-  talos_architecture = "amd64"
-}
-```
+  cluster_name   = "sol"              # Human-readable name
+  cluster_id     = 101                # Numeric ID (affects IPs)
+  controlplanes  = 3                  # Control plane count
+  workers        = 3                  # Worker count
+  proxmox_nodes  = ["pve01", "pve02", "pve03"]
+  proxmox_hostnames = ["pve01.sulibot.com", ...]
 
-To override for a specific cluster, add to `cluster.hcl`:
-```hcl
-locals {
-  # ... other settings
-  talos_version = "v1.12.0"  # Override only for this cluster
-}
-```
+  network = {
+    bridge_public = "vmbr0"           # Physical bridge
+    vlan_public   = 101               # VLAN ID
+    bridge_mesh   = "vnet101"         # SDN VNet
+    use_sdn       = true              # Enable SDN with BGP
+  }
 
-### common/schematic.hcl
-
-Default Talos image schematic applied to all clusters. Defines:
-- Kernel arguments
-- System extensions
-- Talos patches
-
-Override per-cluster using `image.hcl`.
-
-## Node Naming Convention
-
-Nodes are automatically named based on cluster ID and role:
-
-**Control Planes:**
-- `<cluster_id>cp01`, `<cluster_id>cp02`, `<cluster_id>cp03`
-- Examples: `101cp01`, `102cp01`
-
-**Workers:**
-- `<cluster_id>wk01`, `<cluster_id>wk02`, `<cluster_id>wk03`
-- Examples: `101wk01`, `102wk01`
-
-## Network Configuration
-
-### Dual-Stack Networking
-
-Each cluster gets dual-stack (IPv4 + IPv6) networking:
-
-**Public Network (ens18):**
-- IPv4: `10.0.<cluster_id>.0/24`
-- IPv6: `fd00:<cluster_id>::/64`
-- Gateway: Configured in cluster.hcl
-
-**Mesh Network (ens19):**
-- IPv4: `10.10.<cluster_id>.0/24`
-- IPv6: `fc00:<cluster_id>::/64`
-- No gateway (internal only)
-
-### VLAN Assignment
-
-Recommended VLAN strategy:
-- Cluster 101: VLAN 101
-- Cluster 102: VLAN 102
-- Cluster 103: VLAN 103
-
-Configured in `cluster.hcl` under `network.vlan_public`.
-
-## Resource Sizing
-
-Default node sizing (defined in `nodes/terragrunt.hcl`):
-
-**Control Plane Nodes:**
-- CPU: 4 cores
-- Memory: 8GB
-- Disk: 40GB
-
-**Worker Nodes:**
-- CPU: 6 cores
-- Memory: 16GB
-- Disk: 80GB
-
-Override per-node in `cluster.hcl`:
-```hcl
-locals {
   node_overrides = {
-    "101-wk01" = {
-      cpu_cores = 8
-      memory_mb = 32768
-      disk_gb   = 120
+    # Per-node customization (GPU, sizing, etc.)
+    "solwk01" = {
+      gpu_passthrough = { ... }
     }
   }
 }
 ```
 
-## Maintenance
+## Network Design
 
-### Update Talos Version
+### Cluster Isolation
 
-1. Update `common/versions.hcl`:
-   ```hcl
-   talos_version = "v1.12.0"
-   ```
+Each cluster gets isolated networks based on `cluster_id`:
 
-2. Rebuild images for all clusters:
-   ```bash
-   cd cluster-101/image && terragrunt apply
-   cd ../../cluster-102/image && terragrunt apply
-   ```
+**Cluster-101**:
+- Public: `fd00:101::/64`, `10.0.101.0/24`
+- VIP: `fd00:101::10`
+- VNet: `vnet101`
+- BGP ASN: `421010101X` (X = node suffix)
 
-3. Update nodes following Talos upgrade procedure
+**Cluster-102**:
+- Public: `fd00:102::/64`, `10.0.102.0/24`
+- VIP: `fd00:102::10`
+- VNet: `vnet102`
+- BGP ASN: `421010201X`
 
-### Update Cluster Configuration
+### BGP Routing
 
-After modifying `cluster.hcl` or network settings:
+- **Protocol**: Unnumbered BGP over link-local IPv6
+- **Peer**: Proxmox SDN anycast gateway (`fe80::255:ffff`)
+- **Advertised**: Node loopback IPs (`fd00:255:${cluster_id}::${node_suffix}`)
+- **Learned**: Default route (`::/0`, `0.0.0.0/0`)
 
-```bash
-cd cluster-<id>/nodes
-terragrunt apply
+## Dependency Graph
+
+```
+common/versions.hcl ──┐
+common/install-schematic.hcl ──┼──> artifacts/images/ ──> artifacts/registry/
+                                │
+                                └──> clusters/cluster-101/config/
+                                     clusters/cluster-101/compute/ ──┘
+
+artifacts/registry/ ───> clusters/cluster-101/compute/
+artifacts/images/ ─────> clusters/cluster-101/config/
 ```
 
-### Destroy Cluster
+**Terragrunt automatically resolves these dependencies** - just run `terragrunt run-all apply`.
+
+## Best Practices
+
+### 1. Build Artifacts First
+
+Always build shared artifacts before deploying clusters:
 
 ```bash
-# ⚠️  WARNING: This destroys all VMs and data!
-task cluster:destroy -- <cluster_id>
+cd artifacts && terragrunt run-all apply
+cd clusters/cluster-101 && terragrunt run-all apply
 ```
 
-## Validation
+### 2. Version Consistency
 
-Validate cluster configuration before applying:
+Keep all clusters on the same Talos version:
+- Update `common/versions.hcl`
+- Rebuild `artifacts/`
+- Upgrade all clusters
+
+### 3. Use `run-all` for Pipelines
+
+Let Terragrunt handle dependency order:
 
 ```bash
-# Validate specific cluster
-./scripts/validate-cluster.sh 101
-
-# Check all cluster statuses
-./scripts/cluster-status.sh
+terragrunt run-all apply  # Correct order automatically
 ```
+
+### 4. Test in Staging First
+
+Use cluster-102 (staging) to test changes before production:
+
+```bash
+# Test in staging
+cd clusters/cluster-102 && terragrunt run-all apply
+
+# Validate
+kubectl --context luna get nodes
+
+# Deploy to production
+cd ../cluster-101 && terragrunt run-all apply
+```
+
+### 5. Document Cluster Purpose
+
+Update cluster README with:
+- Cluster purpose (prod/staging/dev)
+- Special configuration
+- Ownership/contacts
 
 ## Troubleshooting
 
-### Image Build Fails
-
-Check:
-- Proxmox node has sufficient disk space in `resources` datastore
-- Network connectivity to Talos image factory
-- Cache directory exists: `terraform/infra/cache/talos`
-
-### VM Creation Fails
-
-Check:
-- Talos image uploaded successfully (`image/terragrunt.hcl` applied)
-- Proxmox nodes specified in `cluster.hcl` exist and are accessible
-- Storage pool `rbd-vm` exists and has capacity
-- Network bridges/VLANs configured on Proxmox
-
-### Node Configuration Mismatch
+### Artifacts Not Building
 
 ```bash
-# Regenerate configs from Terraform state
-task talos:gen-config -- <cluster_id>
-
-# Validate consistency
-./scripts/validate-cluster.sh <cluster_id>
+cd artifacts/images
+terragrunt plan  # Check for errors
+terragrunt apply --terragrunt-log-level debug
 ```
 
-## See Also
+### Cluster Can't Find ISO
 
-- [Talos Configuration Workflow](../../../talos/README.md)
-- [Main Taskfile](../../../Taskfile.yml)
-- [Cluster Status Script](../../../scripts/cluster-status.sh)
+```bash
+# Verify ISO uploaded
+cd artifacts/registry
+terragrunt output
+
+# Should show:
+# talos_image_file_ids = {
+#   "pve01" = "resources:iso/talos-frr-v1.11.5-nocloud-amd64.iso"
+# }
+```
+
+### Dependency Resolution Fails
+
+```bash
+# Clear cache
+rm -rf .terragrunt-cache
+
+# Re-init
+terragrunt run-all init
+terragrunt run-all plan
+```
+
+### Version Mismatch
+
+```bash
+# Check versions
+cat common/versions.hcl
+cd artifacts/images && terragrunt output talos_version
+cd clusters/cluster-101/compute && terragrunt output talos_version
+
+# Should all match
+```
+
+## Migration from Old Structure
+
+**Old (Per-Cluster Artifacts)**:
+```
+cluster-101/
+├── artifacts/build/
+├── artifacts/publish/
+└── cluster/...
+```
+
+**New (Shared Artifacts)**:
+```
+artifacts/images/
+artifacts/registry/
+clusters/cluster-101/...
+```
+
+**Migration completed**: All paths updated, no per-cluster artifact duplication.
+
+## Related Documentation
+
+- [Shared Artifacts Pipeline](artifacts/README.md) - Detailed artifact build documentation
+- [Cluster-101 Deployment](clusters/cluster-101/README.md) - Production cluster example
+- [Multi-Cluster Refactoring Plan](MULTI_CLUSTER_REFACTORING_PLAN.md) - Architecture decisions
+
+## Success Criteria
+
+✅ Artifacts built once, consumed by all clusters
+✅ Adding cluster-102 requires only `cluster.hcl` + deployment files
+✅ No duplication of image build logic
+✅ Clear naming: `artifacts/` vs `clusters/`
+✅ Version consistency enforced automatically

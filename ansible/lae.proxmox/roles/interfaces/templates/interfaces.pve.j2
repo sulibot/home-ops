@@ -5,27 +5,30 @@
 # ============================================================
 # Proxmox VE Network Configuration — {{ inventory_hostname }}
 #
-# - vmbr0: VLAN-aware bridge (egress/infra, MTU 1500)
+# Infra / Host networking (Ansible-managed):
+# - vmbr0: VLAN-aware bridge (infra egress, MTU 1500)
 # - bond0: uplink bond for vmbr0
+# - vmbr0.10: management/API (native VLAN / PVID)
+# - vmbr0.200: Ceph client / storage LAN (tagged)
+#
+# Tenant networking (Proxmox SDN-managed):
+# - VNets (vnet101, vnet102, ...) + VRFs + VXLAN are created by Proxmox SDN
+# - SDN config is included via: /etc/network/interfaces.d/*
+# - No physical VLAN trunking for tenant VNets (100-103) is expected.
+#
+# Underlay:
 # - mesh links: 25G ring, MTU 9000, IPv6-only (link-local)
-# - dummy_underlay: Ceph public/cluster IPv6 + IPv4 loopback
-# - lo:
-#     * infra loopback for BGP router-id: fd00:255::{{ node_id }}/128
-#     * tenant anycast gateways: fd00:<vlan>::fffe/128
+# - dummy_underlay: Infrastructure loopbacks
+#     * IPv4 VTEP loopback: 10.255.0.{{ node_id }}/32 (BGP router-id)
+#     * IPv6 infra loopback: fd00:255::{{ node_id }}/128 (iBGP peering)
+#     * Ceph public/cluster: fc00:20::{{ node_id }}/128, fc00:21::{{ node_id }}/128
 # ============================================================
 
 auto lo
 iface lo inet loopback
 
-# Host infra loopback (BGP router-id, infra identity)
-iface lo inet static
-    address 10.255.0.{{ node_id }}/32
-
-iface lo inet6 static
-    address fd00:255::{{ node_id }}/128
-
 # ------------------------------------------------------------
-# Bond (bond0) + slaves (egress / management uplink)
+# Bond (bond0) + slaves (infra uplink)
 # ------------------------------------------------------------
 
 {% for slave in public.slaves %}
@@ -46,7 +49,7 @@ iface bond0 inet manual
 {% endif %}
 
 # ------------------------------------------------------------
-# vmbr0 — VLAN-aware egress/infra bridge (MTU 1500)
+# vmbr0 — VLAN-aware infra bridge (MTU 1500)
 # ------------------------------------------------------------
 
 auto vmbr0
@@ -56,7 +59,7 @@ iface vmbr0 inet manual
     bridge-fd 0
     bridge-vlan-aware yes
     bridge-pvid 10
-    bridge-vids 10 100-103 200
+    bridge-vids 10 200
     mtu 1500
 
 # VLAN 10 — management/API (native)
@@ -75,23 +78,6 @@ iface vmbr0.10 inet6 static
     pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
     pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
 
-# ---- tenant VLANs on vmbr0.V (VM networks, gateways via ANYCAST on lo) ----
-{% for vlan_id in TENANT_VLANS | sort %}
-auto vmbr0.{{ vlan_id }}
-iface vmbr0.{{ vlan_id }} inet manual
-    vlan-raw-device vmbr0
-    mtu 1500
-
-iface vmbr0.{{ vlan_id }} inet6 static
-    address fe80::255:{{ node_id }}/64
-    vlan-raw-device vmbr0
-    mtu 1500
-    post-up sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/proxy_ndp'
-    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
-    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
-    post-up sh -c 'echo 0 > /proc/sys/net/ipv6/conf/$IFACE/autoconf'
-{% endfor %}
-
 # VLAN 200 — Ceph client / storage LAN (tagged)
 auto vmbr0.200
 iface vmbr0.200 inet static
@@ -102,8 +88,8 @@ iface vmbr0.200 inet static
 # ------------------------------------------------------------
 # Underlay ring links @ MTU 9000 — IPv6-only
 #
-# These are 25Gb point-to-point links between PVE nodes.
-# We rely on IPv6 link-local for BGP neighbors (neighbor <iface> interface).
+# 25Gb point-to-point links between PVE nodes.
+# IPv6 link-local only (fe80::/64) for IGP/BGP unnumbered style.
 # ------------------------------------------------------------
 
 {% if HAS_MESH %}
@@ -114,28 +100,24 @@ iface {{ link.iface }} inet manual
 
 iface {{ link.iface }} inet6 manual
     mtu 9000
-    # No ULA/GUA here; IPv6 link-local only (fe80::/64) for BGP peering.
 {% endfor %}
 {% endif %}
 
 # ------------------------------------------------------------
-# dummy_underlay — Ceph public & cluster IPs + IPv4 loopback
-#
-# These addresses are redistributed into BGP so Ceph traffic
-# follows the routed underlay.
+# dummy_underlay — infra loopbacks (routed underlay identity)
 # ------------------------------------------------------------
 
 {% if HAS_MESH %}
-#auto dummy_underlay
-#iface dummy_underlay inet static
-#    address 10.255.0.{{ node_id }}/32
-#    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
-#    mtu 9000
+auto dummy_underlay
+iface dummy_underlay inet static
+    address 10.255.0.{{ node_id }}/32
+    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
+    mtu 9000
 
 iface dummy_underlay inet6 static
+    address fd00:255::{{ node_id }}/128
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
-    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
     mtu 9000
 {% endif %}
 

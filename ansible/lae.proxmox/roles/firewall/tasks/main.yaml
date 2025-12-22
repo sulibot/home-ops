@@ -1,0 +1,20 @@
+---
+# Deploy Proxmox cluster firewall configuration
+# Whitelists xvrf interfaces to bypass SDN IPAM filtering
+
+- name: Deploy cluster firewall configuration
+  ansible.builtin.template:
+    src: cluster.fw.j2
+    dest: /etc/pve/firewall/cluster.fw
+    owner: root
+    group: www-data
+    mode: '0640'
+  when: inventory_hostname == 'pve01'  # Only run on one node since /etc/pve is shared
+  register: firewall_config
+
+- name: Reload firewall if configuration changed
+  ansible.builtin.command: pve-firewall compile && pve-firewall restart
+  when:
+    - inventory_hostname == 'pve01'
+    - firewall_config.changed
+  changed_when: true

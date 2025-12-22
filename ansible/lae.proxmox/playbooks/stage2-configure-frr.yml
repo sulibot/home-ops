@@ -1,9 +1,8 @@
 ---
-- name: Stage 2 - Configure FRR routing
+- name: Stage 2 - Configure FRR routing on Proxmox hosts
   hosts: pve
   become: true
   vars_files:
-    - ../group_vars/all.yaml
     - ../group_vars/cluster.yaml
   roles:
-    - role: frr
+    - frr

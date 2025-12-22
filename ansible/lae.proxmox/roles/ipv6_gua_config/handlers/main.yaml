@@ -1,0 +1,7 @@
+---
+# Handlers for IPv6 GUA configuration
+
+- name: reload frr
+  ansible.builtin.systemd:
+    name: frr
+    state: reloaded

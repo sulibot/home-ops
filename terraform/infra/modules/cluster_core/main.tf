@@ -48,6 +48,7 @@ variable "network" {
     vlan_mesh     = number
     public_mtu    = optional(number, 1500)
     mesh_mtu      = optional(number, 1500)
+    use_sdn       = optional(bool, false) # Enable SDN VNet bridges instead of VLAN-aware bridges
   })
 }
 
@@ -91,6 +92,8 @@ variable "ip_config" {
       ipv4_prefix  = string
       ipv6_gateway = optional(string)
       ipv4_gateway = optional(string)
+      gua_ipv6_prefix  = optional(string, "")  # GUA prefix for internet connectivity
+      gua_ipv6_gateway = optional(string, "")  # GUA gateway
     })
     dns_servers = list(string)
   })
@@ -113,6 +116,9 @@ variable "kubernetes_version" {
 }
 
 locals {
+  # Cluster ID for SDN VNet naming (vnet${cluster_id})
+  cluster_id = var.cluster_id
+
   # Generate full node configuration, including calculated IP addresses
   nodes = { for idx, node in var.nodes : node.name => merge(node, {
     index       = idx
@@ -121,6 +127,8 @@ locals {
     # mesh_ipv4   = format("%s%d", var.ip_config.mesh.ipv4_prefix, node.ip_suffix)
     public_ipv6 = format("%s%d", var.ip_config.public.ipv6_prefix, node.ip_suffix)
     public_ipv4 = format("%s%d", var.ip_config.public.ipv4_prefix, node.ip_suffix)
+    # GUA IPv6 address (if configured)
+    gua_ipv6 = var.ip_config.public.gua_ipv6_prefix != "" ? format("%s::%d", trimsuffix(var.ip_config.public.gua_ipv6_prefix, "::/64"), node.ip_suffix) : ""
   }) }
 
   hypervisors = length(var.proxmox.nodes) > 0 ? var.proxmox.nodes : [var.proxmox.node_primary]
@@ -145,8 +153,75 @@ locals {
 # Instead, we use direct PCI ID passthrough via the hostpci.id parameter in the VM resource
 # This requires root PAM credentials (already configured) and bypasses hardware mappings entirely
 
+# Custom cloud-init network configuration to assign multiple IPv6 addresses
+# Proxmox's ipconfig only supports one IPv6 address, so we use custom user-data
+# to configure both ULA and GUA addresses on the same interface
+resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
+  for_each = local.nodes
+
+  content_type = "snippets"
+  datastore_id = var.proxmox.datastore_id
+  # Upload all cloud-init files to the primary node to avoid race conditions
+  # The shared "resources" datastore makes files available to all nodes
+  node_name = var.proxmox.node_primary
+
+  source_raw {
+    data = yamlencode({
+      version = 1
+      config = [
+        {
+          type = "physical"
+          name = "eth0"
+          # MTU removed - let Proxmox SDN/Talos handle it to avoid cloud-init netlink errors
+          subnets = concat(
+            # IPv4 configuration
+            [
+              {
+                type    = "static"
+                address = each.value.public_ipv4
+                netmask = "255.255.255.0"
+                gateway = try(var.ip_config.public.ipv4_gateway, null)
+              }
+            ],
+            # IPv6 ULA address (no gateway - Talos machine config handles routing)
+            [
+              {
+                type    = "static6"
+                address = "${each.value.public_ipv6}/64"
+              }
+            ],
+            # IPv6 GUA address (if configured, no gateway - Talos machine config handles routing)
+            each.value.gua_ipv6 != "" ? [
+              {
+                type    = "static6"
+                address = "${each.value.gua_ipv6}/64"
+              }
+            ] : [],
+            # IPv6 link-local (static for BGP peering)
+            [
+              {
+                type    = "static6"
+                address = "fe80::${var.cluster_id}:${each.value.ip_suffix}/64"
+              }
+            ]
+          )
+        },
+        {
+          type        = "nameserver"
+          address     = var.ip_config.dns_servers
+        }
+      ]
+    })
+
+    file_name = "cloud-init-network-${each.value.name}.yml"
+  }
+}
+
 resource "proxmox_virtual_environment_vm" "nodes" {
   for_each = local.nodes
+
+  # Ensure cloud-init network config files are fully uploaded before VM starts
+  depends_on = [proxmox_virtual_environment_file.cloud_init_network_config]
 
   vm_id = try(each.value.vm_id, null)
   name  = each.value.name
@@ -196,10 +271,16 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   }
 
   # net0 (ens18): Public/management network - used for Talos API and internet access
+  # Uses SDN VNet bridge instead of VLAN-aware bridge
   network_device {
-    bridge  = coalesce(try(each.value.bridge_public, null), var.network.bridge_public)
-    vlan_id = coalesce(try(each.value.vlan_public, null), var.network.vlan_public)
-    mtu     = try(each.value.public_mtu, var.network.public_mtu)
+    bridge = coalesce(
+      try(each.value.bridge_public, null),
+      var.network.use_sdn ? "vnet${local.cluster_id}" : var.network.bridge_public
+    )
+    # No vlan_id when using SDN - VXLAN handles network segmentation
+    vlan_id = var.network.use_sdn ? null : coalesce(try(each.value.vlan_public, null), var.network.vlan_public)
+    # Reduced MTU to account for VXLAN overhead (50 bytes)
+    mtu = var.network.use_sdn ? 1450 : try(each.value.public_mtu, var.network.public_mtu)
   }
 
   # REMOVED - mesh network no longer needed for link-local migration
@@ -211,41 +292,16 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   # }
 
 
-  # Use Cloud-Init to inject a static IP into the Talos installer environment.
+  # Use Cloud-Init to inject static IPs into the Talos installer environment.
   # This makes the node reachable at a predictable IP for `talosctl apply-config`.
-  # The permanent static IP in the machine config must match what's defined here.
+  # Using custom network-config to support multiple IPv6 addresses (ULA + GUA + link-local)
+  # since Proxmox's native ipconfig only supports one IPv6 address per interface.
   initialization {
     # Use the same datastore as the VM disk for Cloud-Init data.
     datastore_id = var.proxmox.vm_datastore
 
-    # Public network (net0)
-    ip_config {
-      ipv4 {
-        address = "${each.value.public_ipv4}/24"
-        gateway = try(var.ip_config.public.ipv4_gateway, null)
-      }
-      ipv6 {
-        address = "${each.value.public_ipv6}/64"
-        gateway = try(var.ip_config.public.ipv6_gateway, null)
-      }
-    }
-
-    # REMOVED - mesh network no longer needed for link-local migration
-    # Mesh network (net1)
-    # ip_config {
-    #   ipv4 {
-    #     address = "${each.value.mesh_ipv4}/24"
-    #     gateway = try(var.ip_config.mesh.ipv4_gateway, null)
-    #   }
-    #   ipv6 {
-    #     address = "${each.value.mesh_ipv6}/64"
-    #     gateway = try(var.ip_config.mesh.ipv6_gateway, null)
-    #   }
-    # }
-
-    dns {
-      servers = var.ip_config.dns_servers
-    }
+    # Reference the custom network configuration file
+    network_data_file_id = proxmox_virtual_environment_file.cloud_init_network_config[each.key].id
   }
 
   agent {
@@ -331,7 +387,7 @@ output "talenv_yaml" {
       clusterName       = "cluster-${var.cluster_id}"
       cluster_id        = var.cluster_id
       talosVersion      = var.talos_version
-      kubernetesVersion = var.kubernetes_version
+      kubernetesVersion = startswith(var.kubernetes_version, "v") ? var.kubernetes_version : "v${var.kubernetes_version}"
       endpoint          = "https://[fd00:${var.cluster_id}::10]:6443"
 
       # Network CIDRs from k8s_network_config

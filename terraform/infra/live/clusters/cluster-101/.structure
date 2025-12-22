@@ -1,0 +1,10 @@
+cluster-101/
+├── artifacts/                          # Talos Image Pipeline
+│   ├── extension/                     # Build: FRR extension → ghcr.io
+│   ├── build/                         # Build: installer (metal) + ISO (nocloud)
+│   └── publish/                       # Publish: Upload ISO to Proxmox
+│
+└── cluster/                            # Cluster Deployment
+    ├── compute/                       # Create Proxmox VMs
+    ├── config/                        # Generate Talos machine configs
+    └── bootstrap/                     # Bootstrap Kubernetes cluster

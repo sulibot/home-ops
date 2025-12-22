@@ -1,0 +1,12 @@
+---
+- name: Configure IPv6 GUA addressing on PVE hosts
+  hosts: pve
+  become: true
+  tasks:
+    - name: Import ipv6_gua_config role
+      ansible.builtin.import_role:
+        name: ipv6_gua_config
+
+    - name: Import frr role to update BGP configuration
+      ansible.builtin.import_role:
+        name: frr

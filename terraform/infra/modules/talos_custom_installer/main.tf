@@ -37,22 +37,28 @@ variable "output_registry" {
   description = "Container registry to push the custom installer (e.g., ghcr.io/username/repo)"
 }
 
+variable "kernel_args" {
+  type        = list(string)
+  description = "Extra kernel arguments to include in the installer"
+  default     = []
+}
+
 locals {
   installer_tag = "${var.output_registry}:${var.talos_version}"
 
-  # Only add custom extension flags (official extensions come from factory base installer)
+  # Build extension flags for ALL extensions (official + custom)
+  # Official extensions should be passed as full image references with digests
   extension_flags = join(" ", [
-    for ext in var.custom_extensions :
+    for ext in concat(var.official_extensions, var.custom_extensions) :
     "--system-extension-image ${ext}"
   ])
 
-  # Generate factory schematic for official extensions
+  # Generate factory schematic for kernel args only
+  # Extensions are added directly via --system-extension-image flags
   factory_schematic_request = jsonencode({
-    customization = {
-      systemExtensions = {
-        officialExtensions = var.official_extensions
-      }
-    }
+    customization = length(var.kernel_args) > 0 ? {
+      extraKernelArgs = var.kernel_args
+    } : {}
   })
 }
 
@@ -62,6 +68,7 @@ resource "null_resource" "build_installer" {
     talos_version        = var.talos_version
     official_extensions  = join(",", var.official_extensions)
     custom_extensions    = join(",", var.custom_extensions)
+    kernel_args          = join(",", var.kernel_args)
     registry             = var.output_registry
   }
 
@@ -83,9 +90,10 @@ resource "null_resource" "build_installer" {
         jq -r '.id')
 
       echo "Factory schematic ID: $SCHEMATIC_ID"
-      echo "Building custom installer ${var.talos_version} with BIRD2 extension..."
+      echo "Building custom installer ${var.talos_version} with all extensions..."
 
-      # Use factory installer with official extensions as base, add only custom extensions
+      # Build installer with all extensions (official + custom)
+      # Extensions must be full image references (e.g., ghcr.io/siderolabs/qemu-guest-agent:v1.11.5@sha256:...)
       docker run --rm \
         -v "$TEMP_DIR:/out" \
         -v /var/run/docker.sock:/var/run/docker.sock \

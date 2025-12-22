@@ -66,3 +66,26 @@ output "secrets_yaml" {
   value       = yamlencode(talos_machine_secrets.cluster.machine_secrets)
   sensitive   = true
 }
+
+# BGP Configuration Preview (for debugging)
+output "bgp_config_preview" {
+  description = "Preview of rendered FRR configs (first 800 chars per node, for debugging)"
+  value = {
+    for node_name in keys(local.frr_configs) :
+    node_name => substr(local.frr_configs[node_name], 0, 800)
+  }
+  sensitive = false
+}
+
+output "bgp_asn_assignments" {
+  description = "BGP ASN assignments per node (for verification)"
+  value = {
+    for node_name, node in local.all_nodes :
+    node_name => {
+      local_asn  = var.bgp_asn_base + (var.cluster_id * 1000) + node.node_suffix
+      remote_asn = var.bgp_remote_asn
+      router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
+    }
+  }
+  sensitive = false
+}

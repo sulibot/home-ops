@@ -39,6 +39,13 @@ terragrunt_rendered.json
 *.vdi
 terraform/infra/cache/
 
+# Artifact build output directories (large images and binaries)
+build/
+**/build/talos-iso/
+terraform/infra/live/artifacts/build/
+terraform/infra/live/artifacts/.terragrunt-cache/
+terraform/infra/live/clusters/*/.terragrunt-cache/
+
 # Python
 *.pyc
 *.pyo
