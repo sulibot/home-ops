@@ -68,9 +68,9 @@ iface vmbr0 inet manual
 # VLAN 10 — management/API (native)
 auto vmbr0.10
 iface vmbr0.10 inet static
-    address 10.0.10.{{ node_id }}/24
+#    address 10.0.10.{{ node_id }}/24
     address 10.10.0.{{ node_id }}/24
-    gateway 10.0.10.254
+    gateway 10.10.0.254
     vlan-raw-device vmbr0
 
 iface vmbr0.10 inet6 static
@@ -85,7 +85,7 @@ iface vmbr0.10 inet6 static
 # VLAN 200 — Ceph client / storage LAN (tagged)
 auto vmbr0.200
 iface vmbr0.200 inet static
-    address 10.0.200.{{ node_id }}/24
+#    address 10.0.200.{{ node_id }}/24
     address 10.200.0.{{ node_id }}/24
     vlan-raw-device vmbr0
     mtu 1500
@@ -130,7 +130,7 @@ iface dummy_underlay inet static
 
 iface dummy_underlay inet6 static
     address fd00:0:0:ffff::{{ node_id }}/128
-    address fd00:255::{{ node_id }}/128
+#    address fd00:255::{{ node_id }}/128
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
     mtu 9000

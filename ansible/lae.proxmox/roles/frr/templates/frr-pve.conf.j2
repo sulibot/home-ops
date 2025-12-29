@@ -357,6 +357,11 @@ router bgp {{ PVE_ASN }}
     ! Import VM/Talos loopback routes from tenant VRF
     import vrf {{ VNET_VRF }}
 
+    ! Export routes to VPN RIB for route leaking to tenant VRF
+    rd vpn export {{ PVE_ASN }}:{{ 100 }}
+    rt vpn export {{ PVE_ASN }}:{{ 100 }}
+    export vpn
+
     ! Tenant VNet ULA prefixes (moved from vrf_export)
 {% for id in VNET_IDS | sort %}
 {% if ula_subnet(id) %}
@@ -529,8 +534,12 @@ router bgp {{ PVE_ASN }} vrf {{ VNET_VRF }}
     ! Set next-hop to a static IP on the vrf_evpnz1 side of the cross-VRF link
     nexthop vpn export 10.255.255.2
 
+    ! Advertise default route to VMs
+    neighbor VM-TENANTS default-originate
+
     neighbor VM-TENANTS activate
     neighbor VM-TENANTS route-map IMPORT-VM-ROUTES in
+    neighbor VM-TENANTS next-hop-self
     neighbor VM-TENANTS soft-reconfiguration inbound
   exit-address-family
 
@@ -539,12 +548,19 @@ router bgp {{ PVE_ASN }} vrf {{ VNET_VRF }}
     rd vpn export {{ PVE_ASN }}:{{ 13 }}
     rt vpn export {{ PVE_ASN }}:{{ 13 }}
     rt vpn import {{ PVE_ASN }}:{{ 13 }}
+    ! Import routes from default VRF (including default route from RouterOS)
+    rt vpn import {{ PVE_ASN }}:{{ 100 }}
     export vpn
+    import vpn
     ! Set next-hop to PVE loopback for resolvability in default VRF
     nexthop vpn export fd00:0:0:ffff::{{ PVE_ID }}
 
+    ! Advertise default route to VMs
+    neighbor VM-TENANTS default-originate
+
     neighbor VM-TENANTS activate
     neighbor VM-TENANTS route-map IMPORT-VM-ROUTES in
+    neighbor VM-TENANTS next-hop-self
     neighbor VM-TENANTS soft-reconfiguration inbound
   exit-address-family
 
@@ -559,9 +575,10 @@ exit
 ! ----------------------------------------------------------------------
 
 vrf {{ VNET_VRF }}
-  ip route 10.0.10.0/24 10.0.10.{{ PVE_ID }} vmbr0.10 nexthop-vrf default
-  ipv6 route fd00:10::/64 fd00:10::{{ PVE_ID }} vmbr0.10 nexthop-vrf default
-  ipv6 route ::/0 fd00:10::{{ PVE_ID }} vmbr0.10 nexthop-vrf default
+  ip route 0.0.0.0/0 10.10.0.254 vmbr0.10 nexthop-vrf default
+  ip route 10.10.0.0/24 10.10.0.254 vmbr0.10 nexthop-vrf default
+  ipv6 route fd00:10::/64 fd00:10::fffe vmbr0.10 nexthop-vrf default
+  ipv6 route ::/0 fd00:10::fffe vmbr0.10 nexthop-vrf default
 exit-vrf
 
 vrf {{ EXPORT_VRF }}
