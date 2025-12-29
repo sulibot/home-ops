@@ -17,6 +17,15 @@ resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
 
   # Import default route from RouterOS into VRF
   rt_import = var.rt_import
+
+  lifecycle {
+    ignore_changes = [
+      # Workaround for provider bug where these attributes are incorrectly reported as changed
+      controller,
+      vrf_vxlan,
+      rt_import,
+    ]
+  }
 }
 
 # VNets - one per cluster/workload type
@@ -80,5 +89,30 @@ resource "proxmox_virtual_environment_sdn_applier" "main" {
       proxmox_virtual_environment_sdn_subnet.ula_subnets,
       proxmox_virtual_environment_sdn_subnet.gua_subnets,
     ]
+  }
+}
+
+# Reminder - notify user to run Ansible after SDN changes
+resource "null_resource" "ansible_reminder_trigger" {
+  depends_on = [proxmox_virtual_environment_sdn_applier.main]
+
+  triggers = {
+    # Re-run this provisioner whenever the SDN applier resource is replaced.
+    sdn_applier_id = proxmox_virtual_environment_sdn_applier.main.id
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "--------------------------------------------------------------------------------"
+      echo "✅ Proxmox SDN configuration updated."
+      echo ""
+      echo "ACTION REQUIRED: Apply FRR configuration with Ansible."
+      echo ""
+      echo "Run the following commands from your terminal:"
+      echo ""
+      echo "cd $(git rev-parse --show-toplevel)/ansible/lae.proxmox && ansible-playbook -i inventory/hosts.ini playbooks/stage2-configure-frr.yml"
+      echo ""
+      echo "--------------------------------------------------------------------------------"
+    EOT
   }
 }

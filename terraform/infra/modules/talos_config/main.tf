@@ -248,7 +248,8 @@ locals {
       # Formula: bgp_asn_base + (cluster_id * 1000) + (node_suffix)
       # Supports cluster IDs 000-999 and node suffixes 00-99
       local_asn  = var.bgp_asn_base + var.cluster_id * 1000 + node.node_suffix
-      remote_asn = var.bgp_remote_asn
+      gw_asn     = var.bgp_remote_asn
+      gw_ipv6    = "fd00:${var.cluster_id}:ff::fffe"
 
       # Network configuration
       interface        = var.bgp_interface
@@ -256,6 +257,7 @@ locals {
       node_suffix      = node.node_suffix
       loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"
       loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"
+      bgp_loopback_ipv6 = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
 
       # Feature flags
       enable_bfd               = var.bgp_enable_bfd
@@ -302,13 +304,19 @@ locals {
                     # IPv4: static route (no RA for IPv4) - will be overridden by BGP
                     {
                       network = "0.0.0.0/0"
-                      gateway = "10.0.${var.cluster_id}.254"
+                      gateway = "10.${var.cluster_id}.0.254"
                       metric  = 1024
                     },
-                    # IPv6: default route - LLA gateway for all IPv6 routing (BGP unnumbered)
+                    # IPv6: control-plane anycast reachability (pre-BGP)
+                    {
+                      network = "fd00:${var.cluster_id}:ff::/64"
+                      gateway = "fd00:${var.cluster_id}::fffe"
+                      metric  = 1024
+                    },
+                    # IPv6: default route via tenant anycast gateway (no LLAs)
                     {
                       network = "::/0"
-                      gateway = "fe80::ffff"  # Link-local anycast gateway
+                      gateway = "fd00:${var.cluster_id}::fffe"
                       metric  = 1024          # High metric ensures BGP routes (metric 0) are preferred
                     }
                   ]
@@ -320,6 +328,7 @@ locals {
                   interface = "lo"
                   addresses = [
                     "fd00:255:${var.cluster_id}::${node.node_suffix}/128",
+                    "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
                     "10.255.${var.cluster_id}.${node.node_suffix}/32"
                   ]
                 }

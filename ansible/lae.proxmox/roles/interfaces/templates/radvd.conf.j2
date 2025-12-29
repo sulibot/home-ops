@@ -1,0 +1,32 @@
+# radvd configuration for Proxmox SDN VNets
+# Advertises both ULA and GUA prefixes for dual-stack operation
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+{% for vnet in tenant_vnets %}
+interface {{ vnet.name }} {
+    AdvSendAdvert on;
+    MinRtrAdvInterval 3;
+    MaxRtrAdvInterval 10;
+    AdvManagedFlag off;
+    AdvOtherConfigFlag off;
+
+    # ULA prefix
+    prefix {{ vnet.ula_prefix }} {
+        AdvOnLink on;
+        AdvAutonomous on;
+        AdvRouterAddr on;
+    };
+
+{% if vnet.gua_prefix is defined %}
+    # GUA prefix from AT&T PD
+    prefix {{ vnet.gua_prefix }} {
+        AdvOnLink on;
+        AdvAutonomous on;
+        AdvRouterAddr on;
+    };
+{% else %}
+    # No GUA prefix configured for this vnet
+{% endif %}
+};
+
+{% endfor %}

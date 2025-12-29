@@ -1,0 +1,12 @@
+[Unit]
+Description=Tenant Anycast BGP Peering host-to-VRF steering
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tenant-anycast-bgp-steer.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

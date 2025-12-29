@@ -4,8 +4,8 @@ kubernetesVersion: v1.32.3
 clusterName: sol-k8s
 controlPlaneEndpoint: "fd00:255:101::ac:6443"
 networking:
-  podSubnet: "fd00:101:240::/60"
-  serviceSubnet: "fd00:101:96::/112"
+  podSubnet: "fd00:101:244::/60"
+  serviceSubnet: "fd00:101:96::/108"
   dnsDomain: "cluster.local"
 apiServer:
   certSANs:
@@ -16,8 +16,8 @@ apiServer:
     advertise-address: "127.0.0.1"
 controllerManager:
   extraArgs:
-    cluster-cidr: "fd00:101:240::/60"
-    service-cluster-ip-range: "fd00:101:96::/112"
+    cluster-cidr: "fd00:101:244::/60"
+    service-cluster-ip-range: "fd00:101:96::/108"
     node-cidr-mask-size-ipv6: "64"
 etcd:
   local:

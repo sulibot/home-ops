@@ -1,0 +1,261 @@
+- name: Tenant anycast BGP peering debug (VRF + EVPN)
+  block:
+    - name: Show VRF link (table id)
+      ansible.builtin.command: "ip -d link show dev {{ tenant_vrf | default('vrf_evpnz1') }}"
+      register: vrf_link_debug
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Lookup VRF table id
+      ansible.builtin.shell: "ip -d link show dev {{ tenant_vrf | default('vrf_evpnz1') }} | sed -n 's/.* table \\([0-9]\\+\\).*/\\1/p'"
+      register: vrf_table_id
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display VRF link output
+      ansible.builtin.debug:
+        var: vrf_link_debug.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_link_debug.stdout_lines is defined
+
+    - name: Show export VRF link (table id)
+      ansible.builtin.command: "ip -d link show dev {{ export_vrf_name | default('vrf_export') }}"
+      register: export_vrf_link
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display export VRF link output
+      ansible.builtin.debug:
+        var: export_vrf_link.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - export_vrf_link.stdout_lines is defined
+
+    - name: Lookup export VRF table id
+      ansible.builtin.shell: "ip -d link show dev {{ export_vrf_name | default('vrf_export') }} | sed -n 's/.* table \\([0-9]\\+\\).*/\\1/p'"
+      register: export_vrf_table_id
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Show export VRF IPv4 routes (explicit table)
+      ansible.builtin.command: "ip -4 route show table {{ export_vrf_table_id.stdout | default('') }}"
+      register: export_vrf_ipv4_routes
+      changed_when: false
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - export_vrf_table_id.stdout is defined
+        - export_vrf_table_id.stdout | length > 0
+
+    - name: Display export VRF IPv4 routes
+      ansible.builtin.debug:
+        var: export_vrf_ipv4_routes.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - export_vrf_ipv4_routes.stdout_lines is defined
+
+    - name: Show VRF IPv4 routes (explicit table)
+      ansible.builtin.command: "ip -4 route show table {{ vrf_table_id.stdout | default('') }}"
+      register: vrf_ipv4_routes
+      changed_when: false
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_table_id.stdout is defined
+        - vrf_table_id.stdout | length > 0
+
+    - name: Display VRF IPv4 routes
+      ansible.builtin.debug:
+        var: vrf_ipv4_routes.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_ipv4_routes.stdout_lines is defined
+
+    - name: Show VRF IPv4 route for vnet101 (explicit table)
+      ansible.builtin.shell: "ip -4 route show table {{ vrf_table_id.stdout | default('') }} | grep -E '10\\.101\\.0\\.0/24|vnet101' || true"
+      register: vrf_vnet101_route
+      changed_when: false
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_table_id.stdout is defined
+        - vrf_table_id.stdout | length > 0
+
+    - name: Display VRF IPv4 route for vnet101
+      ansible.builtin.debug:
+        var: vrf_vnet101_route.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_vnet101_route.stdout_lines is defined
+
+    - name: Show VRF route for tenant subnet (10.101.0.0/24)
+      ansible.builtin.command: "ip -4 route show table {{ vrf_table_id.stdout | default('') }} 10.101.0.0/24"
+      register: tenant_v4_route
+      changed_when: false
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_table_id.stdout is defined
+        - vrf_table_id.stdout | length > 0
+
+    - name: Assert tenant subnet is kernel on vnet101
+      ansible.builtin.assert:
+        that:
+          - tenant_v4_route.stdout is search('dev vnet101')
+          - tenant_v4_route.stdout is search('proto kernel')
+          - not (tenant_v4_route.stdout is search('dev vrf_evpnz1'))
+        fail_msg: "Expected 10.101.0.0/24 as 'proto kernel' on vnet101; got: {{ tenant_v4_route.stdout | default('') }}"
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - tenant_v4_route.stdout is defined
+
+    - name: Show VRF route lookup for 10.101.0.6
+      ansible.builtin.command: "ip -4 route get 10.101.0.6 vrf {{ tenant_vrf | default('vrf_evpnz1') }}"
+      register: tenant_v4_route_get
+      changed_when: false
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_table_id.stdout is defined
+
+    - name: Assert VRF route get uses vnet101
+      ansible.builtin.assert:
+        that:
+          - tenant_v4_route_get.stdout is search('dev vnet101')
+          - not (tenant_v4_route_get.stdout is search('dev vrf_evpnz1'))
+        fail_msg: "Expected route to 10.101.0.6 via vnet101; got: {{ tenant_v4_route_get.stdout | default('') }}"
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - tenant_v4_route_get.stdout is defined
+
+    - name: Set tenant prefix maps for VRF BGP validation
+      ansible.builtin.set_fact:
+        tenant_v4_map: "{{ tenant_v4_subnets | default(VNET_V4_SUBNETS | default({})) }}"
+        tenant_ula_map: "{{ tenant_ula_subnets | default(VNET_ULA_SUBNETS | default({})) }}"
+        tenant_gua_map: "{{ tenant_gua_prefixes | default(VNET_GUA_PREFIXES | default({})) }}"
+        export_vrf_name: "{{ tenant_export_vrf | default('vrf_export') }}"
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Show export VRF BGP IPv4 unicast
+      ansible.builtin.command: "vtysh -c 'show bgp vrf {{ export_vrf_name }} ipv4 unicast'"
+      register: vrf_bgp_v4
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Assert export VRF BGP IPv4 process is present
+      ansible.builtin.assert:
+        that:
+          - not (vrf_bgp_v4.stdout is search('No BGP process is configured'))
+        fail_msg: "Export VRF BGP IPv4 process missing; got: {{ vrf_bgp_v4.stdout | default('') }}"
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_bgp_v4.stdout is defined
+
+    - name: Assert export VRF BGP IPv4 has tenant prefix (vnet101)
+      ansible.builtin.assert:
+        that:
+          - vrf_bgp_v4.stdout is search(tenant_v4_map[101] | regex_escape)
+        fail_msg: "Expected tenant prefix {{ tenant_v4_map[101] | default('') }} in export VRF BGP IPv4 RIB."
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_bgp_v4.stdout is defined
+        - tenant_v4_map is defined
+        - tenant_v4_map[101] is defined
+
+    - name: Show export VRF BGP IPv6 unicast
+      ansible.builtin.command: "vtysh -c 'show bgp vrf {{ export_vrf_name }} ipv6 unicast'"
+      register: vrf_bgp_v6
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Assert export VRF BGP IPv6 process is present
+      ansible.builtin.assert:
+        that:
+          - not (vrf_bgp_v6.stdout is search('No BGP process is configured'))
+        fail_msg: "Export VRF BGP IPv6 process missing; got: {{ vrf_bgp_v6.stdout | default('') }}"
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_bgp_v6.stdout is defined
+
+    - name: Assert export VRF BGP IPv6 has tenant ULA prefix (vnet101)
+      ansible.builtin.assert:
+        that:
+          - vrf_bgp_v6.stdout is search(tenant_ula_map[101] | regex_escape)
+        fail_msg: "Expected tenant ULA prefix {{ tenant_ula_map[101] | default('') }} in export VRF BGP IPv6 RIB."
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vrf_bgp_v6.stdout is defined
+        - tenant_ula_map is defined
+        - tenant_ula_map[101] is defined
+
+    - name: Show vnet101 IPv4 address
+      ansible.builtin.command: "ip vrf exec {{ tenant_vrf | default('vrf_evpnz1') }} ip -4 addr show dev vnet101"
+      register: vnet101_ipv4_addr
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display vnet101 IPv4 address
+      ansible.builtin.debug:
+        var: vnet101_ipv4_addr.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vnet101_ipv4_addr.stdout_lines is defined
+
+    - name: Show vnet101 neighbors
+      ansible.builtin.command: "ip vrf exec {{ tenant_vrf | default('vrf_evpnz1') }} ip neigh show dev vnet101"
+      register: vnet101_neighbors
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display vnet101 neighbors
+      ansible.builtin.debug:
+        var: vnet101_neighbors.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - vnet101_neighbors.stdout_lines is defined
+
+    - name: Show EVPN summary
+      ansible.builtin.command: "vtysh -c 'show bgp l2vpn evpn summary'"
+      register: evpn_summary
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display EVPN summary
+      ansible.builtin.debug:
+        var: evpn_summary.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - evpn_summary.stdout_lines is defined
+
+    - name: Show EVPN MAC/IP routes
+      ansible.builtin.command: "vtysh -c 'show bgp l2vpn evpn route type macip'"
+      register: evpn_macip
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display EVPN MAC/IP routes
+      ansible.builtin.debug:
+        var: evpn_macip.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - evpn_macip.stdout_lines is defined
+
+    - name: Show EVPN VNI state
+      ansible.builtin.command: "vtysh -c 'show evpn vni'"
+      register: evpn_vni
+      changed_when: false
+      when: inventory_hostname in ['pve01','pve02','pve03']
+
+    - name: Display EVPN VNI state
+      ansible.builtin.debug:
+        var: evpn_vni.stdout_lines
+      when:
+        - inventory_hostname in ['pve01','pve02','pve03']
+        - evpn_vni.stdout_lines is defined
+
+    - name: Debug command hints
+      ansible.builtin.debug:
+        msg:
+          - "tcpdump -ni vnet101 arp"
+          - "ip vrf exec {{ tenant_vrf | default('vrf_evpnz1') }} arping -I vnet101 10.101.0.6"
+          - "TBL=$(ip -d link show vrf_evpnz1 | sed -n 's/.* table \\([0-9]\\+\\).*/\\1/p')"
+          - "ip -4 route replace 10.101.0.0/24 dev vnet101 table $TBL src 10.101.0.254 scope link metric 1"
+  tags:
+    - debug
+    - never

@@ -1,12 +1,12 @@
 locals {
   # DNS configuration (centralized infrastructure)
   dns_servers = {
-    ipv6 = "fd00:255::53"
+    ipv6 = "fd00:0:0:ffff::53"
     ipv4 = "10.255.0.53"
   }
 
   # NTP configuration (uses same infrastructure as DNS)
-  ntp_servers = ["fd00:255::53"]
+  ntp_servers = ["fd00:0:0:ffff::53"]
 
   # BGP configuration
   bgp = {
@@ -37,7 +37,7 @@ locals {
     # Subnet patterns (parameterized by cluster_id)
     # ULA (Unique Local Address) - fd00::/7
     public_ipv6_pattern = "fd00:%d::"       # fd00:101::
-    public_ipv4_pattern = "10.0.%d."        # 10.0.101.
+    public_ipv4_pattern = "10.%d.0."        # 10.101.0.
 
     # Loopback networks (shared infrastructure)
     loopback_ipv6_pattern = "fd00:255:%d::" # fd00:255:101::

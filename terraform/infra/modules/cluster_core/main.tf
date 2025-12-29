@@ -366,7 +366,7 @@ output "talhelper_env" {
     # REMOVED - mesh network no longer needed for link-local migration
     # meshMTU      = coalesce(try(n.mesh_mtu, null), var.network.mesh_mtu)
     publicMTU    = coalesce(try(n.public_mtu, null), var.network.public_mtu)
-    endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.0.${cluster_id}.10)
+    endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.${cluster_id}.0.10)
     # Determine the node role based on its name prefix
     controlPlane = substr(n.name, 4, 2) == "cp"
     # You can add other node-specific values here if needed

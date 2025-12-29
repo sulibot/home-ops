@@ -1,0 +1,28 @@
+#!/bin/bash
+# Force VXLAN local VTEP to IPv4 loopback for FRR 10.5 EVPN compatibility.
+# Deployed via Ansible to /usr/local/bin/sdn-vxlan-local-v4.sh
+
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+{% set PVE_ID = inventory_hostname | regex_replace('^pve0?', '') | int %}
+
+VTEP_IPV4="10.255.0.{{ PVE_ID }}"
+
+{% for vnet_id in VNET_IDS | sort %}
+IFACE="vxlan_vnet{{ vnet_id }}"
+if ip link show "$IFACE" >/dev/null 2>&1; then
+  CURRENT_LOCAL="$(ip -d link show dev "$IFACE" | awk '/vxlan id/ {for (i=1;i<=NF;i++) if ($i=="local") {print $(i+1); exit}}')"
+  if [ "$CURRENT_LOCAL" != "$VTEP_IPV4" ]; then
+    if ip link set dev "$IFACE" type vxlan local "$VTEP_IPV4" 2>/dev/null; then
+      echo "Set $IFACE local to $VTEP_IPV4 (was ${CURRENT_LOCAL:-unknown})"
+    else
+      echo "Failed to set $IFACE local to $VTEP_IPV4"
+    fi
+  else
+    echo "$IFACE local already $VTEP_IPV4"
+  fi
+else
+  echo "$IFACE not found - SDN may not be configured yet"
+fi
+
+{% endfor %}
+{% endif %}

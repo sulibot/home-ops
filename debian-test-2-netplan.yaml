@@ -6,21 +6,21 @@ network:
       dhcp6: false
       mtu: 1450  # If using SDN/VXLAN
       addresses:
-        - 10.0.101.7/24
+        - 10.101.0.7/24
         - fd00:101::7/64
         - 2600:1700:ab1a:500e::7/64
         - fe80::101:7/64
       routes:
         # IPv4 default route
         - to: 0.0.0.0/0
-          via: 10.0.101.254
+          via: 10.101.0.254
         # ULA gateway for routing to other ULA subnets (fc00::/7)
         - to: fc00::/7
-          via: fd00:101::ffff
+          via: fd00:101::fffe
         # GUA default route (overrides any IPv6 default from ULA)
         - to: ::/0
           via: 2600:1700:ab1a:500e::ffff
       nameservers:
         addresses:
-          - fd00:255::53
+          - fd00:0:0:ffff::53
           - 10.255.0.53

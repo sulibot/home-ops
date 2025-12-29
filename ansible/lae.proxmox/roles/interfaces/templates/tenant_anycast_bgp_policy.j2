@@ -1,0 +1,80 @@
+# Tenant anycast BGP peering - kept separate from SDN-generated files
+# NOTE: Deployment is currently disabled in the interfaces role.
+# - Adds per-host identities: fd00:<tenant>:ff::<host>/128
+# - Adds per-tenant BGP anycast: fd00:<tenant>:ff::fffe/128 on vnet<tenant>
+# - Pins source for control-plane/loopback prefixes to keep host-originated traffic consistent
+
+{% set node_id = (inventory_hostname | regex_replace('^pve0?', '')) %}
+{% set vrf_name = VNET_VRF | default('vrf_evpnz1') %}
+{% set tenant_vnet_ids = tenant_vnets | default(VNET_IDS | default([])) %}
+{% set tenant_ula_map = tenant_ula_subnets | default(VNET_ULA_SUBNETS | default({})) %}
+{% set tenant_gua_map = tenant_gua_prefixes | default(VNET_GUA_PREFIXES | default({})) %}
+{% set tenant_v4_map = tenant_v4_subnets | default(VNET_V4_SUBNETS | default({})) %}
+
+auto {{ vrf_name }}
+iface {{ vrf_name }} inet manual
+
+iface {{ vrf_name }} inet6 manual
+{% for vnet_id in tenant_vnet_ids | sort %}
+{% set vnet_ula = tenant_ula_map[vnet_id] | default('') %}
+{% if vnet_ula %}
+{% set tenant_prefix = vnet_ula | regex_replace('::/64$', '') %}
+{% set host_prefix = tenant_prefix ~ ':ff::' %}
+{% set host_addr = host_prefix ~ node_id %}
+    post-up   ip -6 addr add {{ host_addr }}/128 dev $IFACE || true
+    post-down ip -6 addr del {{ host_addr }}/128 dev $IFACE || true
+{% endif %}
+{% endfor %}
+
+{% for vnet_id in tenant_vnet_ids | sort %}
+{% set vnet_ula = tenant_ula_map[vnet_id] | default('') %}
+{% if vnet_ula %}
+{% set tenant_prefix = vnet_ula | regex_replace('::/64$', '') %}
+{% set host_prefix = tenant_prefix ~ ':ff::' %}
+{% set host_addr = host_prefix ~ node_id %}
+{% set bgp_anycast = host_prefix ~ 'fffe' %}
+{% set loop_prefix = tenant_prefix ~ ':fe::' %}
+{% set gw_addr = tenant_prefix ~ '::fffe' %}
+{% set gua_prefix = tenant_gua_map[vnet_id] | default('') %}
+{% set v4_subnet = tenant_v4_map[vnet_id] | default('') %}
+{% if v4_subnet %}
+{% set v4_gw = v4_subnet | regex_replace('0/24$', '254/24') %}
+{% endif %}
+
+# Tenant anycast BGP peering + source pinning for vnet{{ vnet_id }}
+auto vnet{{ vnet_id }}
+iface vnet{{ vnet_id }} inet6 manual
+    # Data-plane gateway address (not used for BGP)
+    post-up   ip -6 addr add {{ gw_addr }}/128 dev $IFACE || true
+    # BGP anycast address for VM peering
+    post-up   ip -6 addr add {{ bgp_anycast }}/128 dev $IFACE || true
+{% if v4_subnet %}
+    # IPv4 gateway address for tenant L2 (safety belt)
+    post-up   ip addr add {{ v4_gw }} dev $IFACE || true
+{% endif %}
+{% if gua_prefix %}
+    # Source pinning for tenant GUA prefix
+    post-up   sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route replace {{ gua_prefix }} dev $IFACE table $TBL src {{ host_addr }} metric 200' || true
+{% endif %}
+    # On-link route for VM loopback space (BGP source)
+    post-up   sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route replace {{ loop_prefix }}/64 dev $IFACE table $TBL src {{ host_addr }} metric 200' || true
+    # Source pinning for BGP anycast prefix
+    post-up   sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route replace {{ host_prefix }}/64 dev $IFACE table $TBL src {{ host_addr }} metric 200' || true
+{% if v4_subnet %}
+    # Source pinning for tenant IPv4 subnet in VRF table
+    post-up   sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip route replace {{ v4_subnet }} dev $IFACE table $TBL src {{ v4_gw | regex_replace('/24$', '') }} metric 200' || true
+{% endif %}
+    # Route cleanup to prevent stale VRF entries
+{% if gua_prefix %}
+    post-down sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route del {{ gua_prefix }} dev $IFACE table $TBL || true' || true
+{% endif %}
+    post-down sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route del {{ loop_prefix }}/64 dev $IFACE table $TBL || true' || true
+    post-down sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip -6 route del {{ host_prefix }}/64 dev $IFACE table $TBL || true' || true
+{% if v4_subnet %}
+    post-down sh -c 'TBL=$(ip -d link show dev {{ vrf_name }} | sed -n "s/.* table \\([0-9]\\+\\).*/\\1/p"); ip route del {{ v4_subnet }} dev $IFACE table $TBL || true' || true
+    post-down ip addr del {{ v4_gw }} dev $IFACE || true
+{% endif %}
+    post-down ip -6 addr del {{ bgp_anycast }}/128 dev $IFACE || true
+    post-down ip -6 addr del {{ gw_addr }}/128 dev $IFACE || true
+{% endif %}
+{% endfor %}

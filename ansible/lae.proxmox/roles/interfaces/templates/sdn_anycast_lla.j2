@@ -1,0 +1,23 @@
+# Static Anycast Link-Local Configuration for BGP Unnumbered Peering
+# Deployed via Ansible to /etc/network/interfaces.d/sdn-anycast-lla
+#
+# This file configures identical link-local IPv6 addresses on all PVE nodes
+# for VM BGP unnumbered peering. VMs peer with fe80::<cluster_id>:1 which
+# is present on every PVE node, enabling seamless VM live migration.
+#
+# Each VNet bridge gets:
+#   - Static link-local address: fe80::<vnet_id>:1/64
+#   - Static anycast MAC: 00:00:5e:00:01:<vnet_id_hex>
+#
+# This allows VMs to use unnumbered BGP with the same neighbor address
+# regardless of which PVE host they're running on.
+
+{% if inventory_hostname in ['pve01','pve02','pve03'] %}
+{% for vnet_id in VNET_IDS | sort %}
+# VNet {{ vnet_id }} - Cluster {{ vnet_id }}
+iface vnet{{ vnet_id }} inet6 static
+    address fe80::{{ vnet_id }}:1/64
+    pre-up /sbin/ip link set vnet{{ vnet_id }} address 00:00:5e:00:01:{{ '%02x' | format(vnet_id) }} || true
+
+{% endfor %}
+{% endif %}

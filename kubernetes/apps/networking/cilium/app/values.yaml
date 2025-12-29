@@ -40,8 +40,8 @@ endpointRoutes:
   enabled: false
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.240.0/20
-ipv6NativeRoutingCIDR: fd00:101:240::/60
+ipv4NativeRoutingCIDR: 10.101.244.0/22
+ipv6NativeRoutingCIDR: fd00:101:244::/60
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is disabled in Talos machine config to prevent conflicts
@@ -79,7 +79,7 @@ ingressController:
   loadbalancerMode: shared
 
 # Define IP pools for LoadBalancer services
-# Note: These must NOT overlap with node IPs (10.0.101.0/24, fd00:101::/64)
+# Note: These must NOT overlap with node IPs (10.101.0.0/24, fd00:101::/64)
 loadBalancer:
   algorithm: maglev
   # Mode is controlled by bpf.lbMode (snat) with per-service annotation override

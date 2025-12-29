@@ -1,51 +1,50 @@
 ! FRR Configuration for ${hostname}
-! BGP peering with PVE FRR via link-local IPv6
-! Terraform templatefile() rendering
+! Talos -> PVE Static Anycast LLA MP-BGP (BGP unnumbered, v4+v6 families)
 !
-frr version 10.2
+frr version 10.5.0
 frr defaults datacenter
 hostname ${hostname}
-log syslog informational
 service integrated-vtysh-config
+log syslog informational
 !
-! Import default route only from PVE
-ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
-ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
+ip prefix-list DEFAULT_ONLY_V4 seq 10 permit 0.0.0.0/0
+ipv6 prefix-list DEFAULT_ONLY_V6 seq 10 permit ::/0
 !
-route-map IMPORT-DEFAULT-v6 permit 10
- match ipv6 address prefix-list DEFAULT-ONLY-v6
+route-map IMPORT_DEFAULT_V4 permit 10
+ match ip address prefix-list DEFAULT_ONLY_V4
+exit
+route-map IMPORT_DEFAULT_V4 deny 90
 exit
 !
-route-map IMPORT-DEFAULT-v6 deny 90
+route-map IMPORT_DEFAULT_V6 permit 10
+ match ipv6 address prefix-list DEFAULT_ONLY_V6
+exit
+route-map IMPORT_DEFAULT_V6 deny 90
 exit
 !
-route-map IMPORT-DEFAULT-v4 permit 10
- match ip address prefix-list DEFAULT-ONLY-v4
-exit
-!
-route-map IMPORT-DEFAULT-v4 deny 90
-exit
-!
-! BGP Configuration
 router bgp ${local_asn}
  bgp router-id ${router_id}
  no bgp default ipv4-unicast
+ no bgp default ipv6-unicast
  bgp graceful-restart
  timers bgp 10 30
- !
- ! Peer with PVE FRR using link-local IPv6
- neighbor fe80::%ens18 remote-as ${remote_asn}
- neighbor fe80::%ens18 timers connect 5
- !
+
+ ! Static Anycast LLA on PVE (fe80::<cluster_id>:1)
+ neighbor fe80::${cluster_id}:1 remote-as ${gw_asn}
+ neighbor fe80::${cluster_id}:1 interface ens18
+ neighbor fe80::${cluster_id}:1 description "PVE Static Anycast LLA (BGP unnumbered)"
+ neighbor fe80::${cluster_id}:1 capability extended-nexthop
+
  address-family ipv4 unicast
-  neighbor fe80::%ens18 activate
-  neighbor fe80::%ens18 route-map IMPORT-DEFAULT-v4 in
-  neighbor fe80::%ens18 extended-nexthop
+  neighbor fe80::${cluster_id}:1 activate
+  neighbor fe80::${cluster_id}:1 route-map IMPORT_DEFAULT_V4 in
+  network ${ipv4_loopback}/32
  exit-address-family
- !
+
  address-family ipv6 unicast
-  neighbor fe80::%ens18 activate
-  neighbor fe80::%ens18 route-map IMPORT-DEFAULT-v6 in
+  neighbor fe80::${cluster_id}:1 activate
+  neighbor fe80::${cluster_id}:1 route-map IMPORT_DEFAULT_V6 in
+  network ${ipv6_loopback}/128
  exit-address-family
 exit
 !

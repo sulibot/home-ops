@@ -1,0 +1,9 @@
+# Tenant export-only VRF (no interfaces)
+# - Holds tenant prefixes for BGP export to RouterOS
+# - Keeps tenant VRF FIB clean for EVPN L2
+{% set export_vrf_name = tenant_export_vrf | default('vrf_export') %}
+{% set export_vrf_table = tenant_export_vrf_table | default(1101) %}
+
+auto {{ export_vrf_name }}
+iface {{ export_vrf_name }} inet manual
+    vrf-table {{ export_vrf_table }}

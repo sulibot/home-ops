@@ -17,3 +17,11 @@ mesh0_anycast_vlans:
   - 101
   - 102
   - 103
+
+# Tenant Anycast BGP Peering steering prefixes (host -> VRF)
+tenant_steer_ipv4_prefixes:
+  - 10.101.0.0/16
+tenant_steer_ipv6_prefixes:
+  - fd00:101::/60
+
+# Note: tenant_vnets is now defined in group_vars/pve.yml

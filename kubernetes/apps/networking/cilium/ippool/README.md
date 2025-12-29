@@ -9,8 +9,8 @@ This directory defines IP pools that Cilium can assign to LoadBalancer services.
 - **IPv6:** `fd00:101:1b::/112` (fd00:101:1b::0 - fd00:101:1b::ffff)
 
 **Important:** These ranges must:
-1. NOT overlap with node IPs (10.0.101.0-63, fd00:101::10-23)
-2. NOT overlap with pod CIDRs (10.101.240.0/20, fd00:101:240::/60)
+1. NOT overlap with node IPs (10.101.0.0-63, fd00:101::10-23)
+2. NOT overlap with pod CIDRs (10.101.244.0/22, fd00:101:244::/60)
 3. Be routable by your network infrastructure
 
 ## How It Works

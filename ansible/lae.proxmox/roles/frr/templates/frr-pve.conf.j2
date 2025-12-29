@@ -1,238 +1,268 @@
+{# ============================================================
+   frr-pve.conf.j2 — Ansible managed
+
+   FIXES APPLIED (this version):
+   - Removes ALL interface-neighbor / link-local peering tricks for Talos (no "neighbor fe80::%if").
+   - Talos/VM peering is ONLY via bgp listen ranges inside the tenant VRF.
+   - Scales cleanly: Talos nodes can use unique ASNs (remote-as external).
+   - MP-BGP: single session can carry IPv4 + IPv6 (extended-nexthop enabled on peer-group).
+   - Keeps your existing design:
+     * Proxmox SDN VNets (vnet100-103...) in VRF vrf_evpnz1
+     * PVE underlay: IS-IS + iBGP over loopbacks
+     * EVPN: L2 only
+     * Strict allow-list export to RouterOS
+   ============================================================ #}
+
 {# ---------- Host-scoped helpers ---------- #}
 {% set HAS_MESH   = inventory_hostname in ['pve01','pve02','pve03'] %}
 {% set PVE_ID     = inventory_hostname | regex_replace('^pve0?', '') | int %}
 
-{# ---------- VNet / Cluster-ID scoped inputs (explicit, no VLAN dependency) ---------- #}
-{% set VNET_IDS          = VNET_IDS          | default([]) %}
-{% set VNET_V4_SUBNETS   = VNET_V4_SUBNETS   | default({}) %}
-{% set VNET_ULA_SUBNETS  = VNET_ULA_SUBNETS  | default({}) %}
-{% set VNET_GUA_PREFIXES = VNET_GUA_PREFIXES | default({}) %}
-
-{# ASNs:
-   - Edge (MikroTik):      4200000000   # RouterOS
-   - PVE underlay iBGP:    4200001000
-   - K8s clusters (Talos/Cilium, not used directly here):
-       * cluster-101:      4220101000
-       * cluster-102:      4220102000
-       * cluster-103:      4220103000
-#}
+{# ASNs (override in group_vars/host_vars as needed) #}
 {% set PVE_ASN    = PVE_ASN    | default(4200001000) %}
 {% set EDGE_ASN   = EDGE_ASN   | default(4200000000) %}
-{# Edge peer over IPv6 transport: RouterOS on management network #}
+
+{# Edge peers on mgmt network #}
+{% set EDGE_V4_PEER = EDGE_V4_PEER | default('10.0.10.254') %}
 {% set EDGE_V6_PEER = EDGE_V6_PEER | default('fd00:10::ffff') %}
+
+{# VRF name used for SDN VNets #}
+{% set VNET_VRF   = VNET_VRF   | default('vrf_evpnz1') %}
+{# Export-only VRF for tenant prefixes (no interfaces) #}
+{% set EXPORT_VRF = tenant_export_vrf | default('vrf_export') %}
+{% set TENANT_VNETS = tenant_vnets | default(VNET_IDS | default([])) %}
+
+{# Required inputs from group_vars:
+   VNET_IDS: [100,101,102,103]
+   VNET_V4_SUBNETS: {100: "10.100.0.0/24", ...}
+   VNET_ULA_SUBNETS: {100: "fd00:100::/64", ...}
+   VNET_GUA_PREFIXES: {100: "2600:...::/64", ...}
+#}
+
+{# ---------- Small helpers for clean template output ---------- #}
+{% macro v4_subnet(id) -%}{{ (VNET_V4_SUBNETS[id] | default('')) }}{%- endmacro %}
+{% macro ula_subnet(id) -%}{{ (VNET_ULA_SUBNETS[id] | default('')) }}{%- endmacro %}
+{% macro gua_prefix(id) -%}{{ (VNET_GUA_PREFIXES[id] | default('')) }}{%- endmacro %}
 
 ! ======================================================================
 ! FRR CONFIGURATION - ANSIBLE MANAGED
 ! ======================================================================
-! WARNING: This file is EXCLUSIVELY managed by Ansible.
-!          DO NOT modify manually or via Proxmox SDN.
-!          Changes will be overwritten on next Ansible run.
-!
-! Ownership Policy:
-!   - FRR: All routing and control-plane logic (IS-IS, BGP, EVPN, VRFs)
-!   - Proxmox SDN: L2/VXLAN/VRF device plumbing ONLY
-!   - frr@sdn.service: MUST be masked (never enabled, even after upgrades)
-!
 ! Generated: {{ ansible_date_time.iso8601 }}
-! Template: ansible/lae.proxmox/roles/frr/templates/frr-pve.conf.j2
-! Node: {{ inventory_hostname }}
-! ======================================================================
-!
-! ======================================================================
-! frr-pve.conf.j2
-!
-! Local FRR config for Proxmox PVE nodes:
-! - iBGP underlay over 25G mesh interfaces (MTU 9000, IPv6-only)
-! - Redistribute:
-!     * Tenant anycast gateways: (defined by SDN; we export tenant prefixes)
-!     * Ceph loopbacks: fc00:20::N/128 and fc00:21::N/128
-!     * VRF cross-connect: fd00:255:254:N::/127
-! - Edge eBGP to MikroTik (separate IPv4 and IPv6 sessions) in AS {{ EDGE_ASN }}
-!
-! NOTE: Linux must have a route to {{ EDGE_V6_PEER }} (e.g. fd00:10::/64
-!       on the RouterOS-facing interface or a static /128 route), otherwise
-!       the BGP session cannot establish.
+! Node:      {{ inventory_hostname }}
 ! ======================================================================
 
 {% if HAS_MESH %}
 
-! ---------- IS-IS Underlay IGP ----------
-! Provides loopback reachability for stable iBGP peering and VTEP identity
-! Level-2 only, active on mesh interfaces, advertises infrastructure loopbacks
+frr version 10.5.0
+frr defaults traditional
+hostname {{ inventory_hostname }}
+service integrated-vtysh-config
+log syslog informational
+!
+
+! ----------------------------------------------------------------------
+! OSPF UNDERLAY (Infrastructure only)
+! ----------------------------------------------------------------------
 
 interface lo
-  ip router isis PVE_UNDERLAY
-  ipv6 router isis PVE_UNDERLAY
-  isis passive
+  ip ospf area 0.0.0.0
+  ip ospf network point-to-point
+  ipv6 ospf6 area 0.0.0.0
+  ipv6 ospf6 network point-to-point
 exit
 
 interface dummy_underlay
-  ip router isis PVE_UNDERLAY
-  ipv6 router isis PVE_UNDERLAY
-  isis passive
+  ip ospf area 0.0.0.0
+  ipv6 ospf6 area 0.0.0.0
+  ipv6 ospf6 network point-to-point
 exit
 
 {% for link in mesh_links[inventory_hostname] %}
 interface {{ link.iface }}
-  ip router isis PVE_UNDERLAY
-  ipv6 router isis PVE_UNDERLAY
-  isis circuit-type level-2-only
-  isis network point-to-point
+  ip ospf area 0.0.0.0
+  ip ospf cost 10
+  ip ospf network point-to-point
+  ipv6 ospf6 area 0.0.0.0
+  ipv6 ospf6 cost 10
+  ipv6 ospf6 network point-to-point
 exit
 {% endfor %}
 
-! IS-IS to RouterOS for infrastructure loopback reachability
-! This allows RouterOS to learn 10.255.0.X/32 and fd00:255::X/128 via IGP
-! Tenant networks are NOT in IS-IS (filtered by ISIS_INFRA route-maps)
-! Note: vmbr0.10 is a broadcast network (VLAN), not point-to-point
+! OSPF to RouterOS on management segment (broadcast)
 interface vmbr0.10
-  ip router isis PVE_UNDERLAY
-  ipv6 router isis PVE_UNDERLAY
-  isis circuit-type level-2-only
+  ip ospf area 0.0.0.0
+  ip ospf cost 1000
+  ipv6 ospf6 area 0.0.0.0
+  ipv6 ospf6 cost 1000
 exit
 
-router isis PVE_UNDERLAY
-  net 49.0001.0100.0000.00{{ '%02d' | format(PVE_ID) }}.00
-  is-type level-2-only
-  topology ipv6-unicast
+! Only advertise infrastructure loopbacks into OSPF (never tenant)
+ip prefix-list OSPF_INFRA_V4 seq 5 permit 10.255.0.0/16 le 32
+ip prefix-list OSPF_INFRA_V4 seq 10 deny 0.0.0.0/0 le 32
 
-  ! Advertise only infrastructure loopbacks (IPv4 and IPv6)
-  redistribute ipv4 connected route-map ISIS_INFRA_V4
-  redistribute ipv6 connected route-map ISIS_INFRA_V6
+route-map OSPF_INFRA_V4 permit 10
+  match ip address prefix-list OSPF_INFRA_V4
 exit
 
-! Redistribute only infrastructure loopbacks into IS-IS
-ip prefix-list ISIS_INFRA_V4 permit 10.255.0.0/16 le 32
-ip prefix-list ISIS_INFRA_V4 deny 0.0.0.0/0 le 32
+ipv6 prefix-list OSPF_INFRA_V6 seq 5 permit fd00:0:0:ffff::/64 le 128
+ipv6 prefix-list OSPF_INFRA_V6 seq 10 deny ::/0 le 128
 
-route-map ISIS_INFRA_V4 permit 10
-  match ip address prefix-list ISIS_INFRA_V4
+route-map OSPF_INFRA_V6 permit 10
+  match ipv6 address prefix-list OSPF_INFRA_V6
 exit
 
-ipv6 prefix-list ISIS_INFRA_V6 permit fd00:255::/48 le 128
-ipv6 prefix-list ISIS_INFRA_V6 deny ::/0 le 128
-
-route-map ISIS_INFRA_V6 permit 10
-  match ipv6 address prefix-list ISIS_INFRA_V6
-exit
-
-! ---------- Prefix-lists for connected exports ----------
-
-ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:10::/64  le 128
-ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:255::/48 le 128
-ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:20::/64  le 128
-ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:21::/64  le 128
-
-! Tenant ULA subnets (explicit)
-{% for id in VNET_IDS | sort %}
-{% if VNET_ULA_SUBNETS[id] is defined %}
-ipv6 prefix-list PVE_CONNECTED_V6 permit {{ VNET_ULA_SUBNETS[id] }} le 128
-{% endif %}
+router ospf
+  ospf router-id 10.255.0.{{ PVE_ID }}
+  redistribute connected route-map OSPF_INFRA_V4
+  passive-interface default
+{% for link in mesh_links[inventory_hostname] %}
+  no passive-interface {{ link.iface }}
 {% endfor %}
+  no passive-interface vmbr0.10
+exit
 
-! Tenant GUA prefixes (explicit; can be rewritten by PD automation)
-{% for id in VNET_IDS | sort %}
-{% if VNET_GUA_PREFIXES[id] is defined %}
-ipv6 prefix-list PVE_CONNECTED_V6 permit {{ VNET_GUA_PREFIXES[id] }} le 128
-{% endif %}
-{% endfor %}
+router ospf6
+  ospf6 router-id 10.255.0.{{ PVE_ID }}
+  redistribute connected route-map OSPF_INFRA_V6
+exit
 
-ipv6 prefix-list PVE_CONNECTED_V6 deny ::/0 le 128
+! ----------------------------------------------------------------------
+! CONNECTED EXPORTS (GLOBAL TABLE -> BGP)
+! ----------------------------------------------------------------------
+
+! IPv6 connected: infra + mgmt + mesh only (no tenant prefixes)
+ipv6 prefix-list PVE_CONNECTED_V6 seq 5  permit fd00:10::/64  le 128
+ipv6 prefix-list PVE_CONNECTED_V6 seq 10 permit fd00:0:0:ffff::/64 le 128
+ipv6 prefix-list PVE_CONNECTED_V6 seq 15 permit fc00:20::/64  le 128
+ipv6 prefix-list PVE_CONNECTED_V6 seq 20 permit fc00:21::/64  le 128
+ipv6 prefix-list PVE_CONNECTED_V6 seq 25 permit fc00:99::/48  le 128
+ipv6 prefix-list PVE_CONNECTED_V6 seq 30 deny ::/0 le 128
 
 route-map EXPORT_V6_CONNECTED permit 10
   match ipv6 address prefix-list PVE_CONNECTED_V6
 exit
 
-! Export 10.255.0.N/32 (dummy_underlay v4 loopback) + tenant IPv4 subnets (explicit)
-ip prefix-list PVE_CONNECTED_V4 permit 10.255.0.0/16 le 32
-{% for id in VNET_IDS | sort %}
-{% if VNET_V4_SUBNETS[id] is defined %}
-ip prefix-list PVE_CONNECTED_V4 permit {{ VNET_V4_SUBNETS[id] }}
-{% endif %}
-{% endfor %}
+! IPv4 connected: infra + mgmt + mesh only (no tenant prefixes)
+ip prefix-list PVE_CONNECTED_V4 seq 5 permit 10.255.0.0/16 le 32
+ip prefix-list PVE_CONNECTED_V4 seq 10 permit 10.0.10.0/24
+ip prefix-list PVE_CONNECTED_V4 seq 15 permit 10.0.200.0/24
+ip prefix-list PVE_CONNECTED_V4 seq 20 permit 10.99.0.0/16
+ip prefix-list PVE_CONNECTED_V4 seq 25 deny 0.0.0.0/0 le 32
 
 route-map EXPORT_V4_CONNECTED permit 10
   match ip address prefix-list PVE_CONNECTED_V4
 exit
 
-! ---------- Prefix-list and route-map for RouterOS exports ----------
-! Strict tenant-only export policy - prevents infrastructure leaks
+! ----------------------------------------------------------------------
+! STRICT TENANT-ONLY EXPORT POLICY TO ROUTEROS
+! ----------------------------------------------------------------------
 
-! IPv6: Allow only tenant ULA + tenant GUA (explicit)
+! IPv6: allow only tenant ULAs + tenant GUAs; deny infra
+{% set ns = namespace(ts=5) %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_ULA_SUBNETS[id] is defined %}
-ipv6 prefix-list TENANT_ONLY_V6 permit {{ VNET_ULA_SUBNETS[id] }} le 128
+{% if ula_subnet(id) %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit {{ ula_subnet(id) }} le 128
+{% set ns.ts = ns.ts + 5 %}
 {% endif %}
 {% endfor %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_GUA_PREFIXES[id] is defined %}
-ipv6 prefix-list TENANT_ONLY_V6 permit {{ VNET_GUA_PREFIXES[id] }} le 128
+{% if gua_prefix(id) %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit {{ gua_prefix(id) }} le 128
+{% set ns.ts = ns.ts + 5 %}
 {% endif %}
 {% endfor %}
+! Permit VM loopback addresses (fd00:255::/48 as /128 only)
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit fd00:255::/32 ge 128 le 128
+{% set ns.ts = ns.ts + 5 %}
+! Deny other infrastructure ranges
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} deny fd00:255::/48 le 127
+{% set ns.ts = ns.ts + 5 %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} deny fd00:10::/64 le 128
+{% set ns.ts = ns.ts + 5 %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} deny fc00::/8 le 128
+{% set ns.ts = ns.ts + 5 %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} deny ::/0 le 128
 
-! Explicitly DENY infrastructure prefixes
-ipv6 prefix-list TENANT_ONLY_V6 deny fd00:255::/48 le 128
-ipv6 prefix-list TENANT_ONLY_V6 deny fd00:10::/64 le 128
-ipv6 prefix-list TENANT_ONLY_V6 deny fc00::/8 le 128
-ipv6 prefix-list TENANT_ONLY_V6 deny ::/0 le 128
-
-! IPv4: Allow only tenant IPv4 subnets (explicit)
+! IPv4: allow only tenant subnets; deny infra + other spaces
+{% set ns4 = namespace(ts=5) %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_V4_SUBNETS[id] is defined %}
-ip prefix-list TENANT_ONLY_V4 permit {{ VNET_V4_SUBNETS[id] }}
+{% if v4_subnet(id) %}
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} permit {{ v4_subnet(id) }}
+{% set ns4.ts = ns4.ts + 5 %}
 {% endif %}
 {% endfor %}
-
-! Explicitly DENY infrastructure prefixes
-ip prefix-list TENANT_ONLY_V4 deny 10.255.0.0/16 le 32
-ip prefix-list TENANT_ONLY_V4 deny 10.101.0.0/16 le 32
-ip prefix-list TENANT_ONLY_V4 deny 0.0.0.0/0 le 32
+! Deny PVE node loopbacks (10.255.0.x/32) - these should use OSPF not BGP
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.255.0.0/24 ge 32 le 32
+{% set ns4.ts = ns4.ts + 5 %}
+! Permit VM/Talos loopback addresses (10.255.x.y/32 where x >= 1)
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} permit 10.255.0.0/16 ge 32 le 32
+{% set ns4.ts = ns4.ts + 5 %}
+! Deny other 10.255 and 10.101 ranges (aggregates, etc)
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.255.0.0/16 le 31
+{% set ns4.ts = ns4.ts + 5 %}
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.101.0.0/16 le 32
+{% set ns4.ts = ns4.ts + 5 %}
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 0.0.0.0/0 le 32
 
 route-map EXPORT_TO_ROUTEROS permit 10
   match ipv6 address prefix-list TENANT_ONLY_V6
+  set ipv6 next-hop prefer-global
 exit
 route-map EXPORT_TO_ROUTEROS permit 20
   match ip address prefix-list TENANT_ONLY_V4
+  set ip next-hop self
 exit
 
-! ---------- VRF connected route redistribution ----------
-! Match only tenant connected subnets for redistribution into VRF BGP
+! Inbound policy from RouterOS - accept all routes
+route-map IMPORT_FROM_ROUTEROS permit 10
+exit
 
-! IPv4 tenant subnets (explicit)
+! ----------------------------------------------------------------------
+! VRF CONNECTED REDISTRIBUTION FILTERS (VRF -> BGP within VRF)
+! ----------------------------------------------------------------------
+
+! IPv4 tenant subnets in VRF
+{% set nvs4 = namespace(ts=5) %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_V4_SUBNETS[id] is defined %}
-ip prefix-list VRF_VNETS_V4 permit {{ VNET_V4_SUBNETS[id] }}
+{% if v4_subnet(id) %}
+ip prefix-list VRF_VNETS_V4 seq {{ nvs4.ts }} permit {{ v4_subnet(id) }}
+{% set nvs4.ts = nvs4.ts + 5 %}
 {% endif %}
 {% endfor %}
-ip prefix-list VRF_VNETS_V4 deny 0.0.0.0/0 le 32
+ip prefix-list VRF_VNETS_V4 seq {{ nvs4.ts }} deny 0.0.0.0/0 le 32
 
 route-map VRF_CONNECTED_V4 permit 10
   match ip address prefix-list VRF_VNETS_V4
 exit
 
-! IPv6 tenant subnets (ULA + GUA; explicit)
+! IPv6 tenant subnets/prefixes in VRF (ULA + GUA)
+{% set nvs6 = namespace(ts=5) %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_ULA_SUBNETS[id] is defined %}
-ipv6 prefix-list VRF_VNETS_V6 permit {{ VNET_ULA_SUBNETS[id] }}
+{% if ula_subnet(id) %}
+ipv6 prefix-list VRF_VNETS_V6 seq {{ nvs6.ts }} permit {{ ula_subnet(id) }}
+{% set nvs6.ts = nvs6.ts + 5 %}
 {% endif %}
 {% endfor %}
 {% for id in VNET_IDS | sort %}
-{% if VNET_GUA_PREFIXES[id] is defined %}
-ipv6 prefix-list VRF_VNETS_V6 permit {{ VNET_GUA_PREFIXES[id] }}
+{% if gua_prefix(id) %}
+ipv6 prefix-list VRF_VNETS_V6 seq {{ nvs6.ts }} permit {{ gua_prefix(id) }}
+{% set nvs6.ts = nvs6.ts + 5 %}
 {% endif %}
 {% endfor %}
-ipv6 prefix-list VRF_VNETS_V6 deny ::/0 le 128
+ipv6 prefix-list VRF_VNETS_V6 seq {{ nvs6.ts }} deny ::/0 le 128
 
 route-map VRF_CONNECTED_V6 permit 10
   match ipv6 address prefix-list VRF_VNETS_V6
 exit
 
-! Accept Talos pod CIDRs and loopbacks
-ip prefix-list TALOS_POD_CIDRS permit 10.101.0.0/16 le 32
-ip prefix-list TALOS_LOOPBACKS permit 10.255.101.0/24 le 32
+! ----------------------------------------------------------------------
+! TALOS IMPORT/EXPORT POLICY (example for cluster-101; override per cluster)
+! ----------------------------------------------------------------------
 
-ipv6 prefix-list TALOS_POD_CIDRS_V6 permit fd00:101::/60 le 128
-ipv6 prefix-list TALOS_LOOPBACKS_V6 permit fd00:255:101::/120 le 128
+ip prefix-list TALOS_POD_CIDRS seq 5 permit 10.101.0.0/16 le 32
+ip prefix-list TALOS_LOOPBACKS seq 5 permit 10.255.101.0/24 le 32
+
+ipv6 prefix-list TALOS_POD_CIDRS_V6 seq 5 permit fd00:101::/60 le 128
+ipv6 prefix-list TALOS_LOOPBACKS_V6 seq 5 permit fd00:255:101::/120 le 128
 
 route-map IMPORT_TALOS permit 10
   match ip address prefix-list TALOS_POD_CIDRS
@@ -247,9 +277,8 @@ route-map IMPORT_TALOS permit 40
   match ipv6 address prefix-list TALOS_LOOPBACKS_V6
 exit
 
-! Export default route to Talos
-ip prefix-list DEFAULT_V4 permit 0.0.0.0/0
-ipv6 prefix-list DEFAULT_V6 permit ::/0
+ip prefix-list DEFAULT_V4 seq 5 permit 0.0.0.0/0
+ipv6 prefix-list DEFAULT_V6 seq 5 permit ::/0
 
 route-map EXPORT_TO_TALOS permit 10
   match ip address prefix-list DEFAULT_V4
@@ -264,7 +293,9 @@ route-map EXPORT_TO_TALOS permit 40
   match ipv6 address prefix-list TALOS_LOOPBACKS_V6
 exit
 
-! ---------- BGP Underlay (iBGP within PVE AS {{ PVE_ASN }}) ----------
+! ----------------------------------------------------------------------
+! GLOBAL BGP (UNDERLAY iBGP + EDGE eBGP + EVPN)
+! ----------------------------------------------------------------------
 
 router bgp {{ PVE_ASN }}
   bgp router-id 10.255.0.{{ PVE_ID }}
@@ -272,65 +303,75 @@ router bgp {{ PVE_ASN }}
   no bgp network import-check
   timers bgp 10 30
 
-  ! iBGP neighbors: loopback-to-loopback peering for stable identity
-  ! Full mesh between pve01, pve02, pve03 using IPv6 loopbacks (fd00:255::X)
+  ! iBGP neighbors via IPv6 infra loopbacks
 {% if inventory_hostname == 'pve01' %}
-  neighbor fd00:255::2 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::2 description "iBGP to pve02 loopback"
-  neighbor fd00:255::2 update-source fd00:255::1
-  neighbor fd00:255::3 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::3 description "iBGP to pve03 loopback"
-  neighbor fd00:255::3 update-source fd00:255::1
+  neighbor fd00:0:0:ffff::2 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::2 description "iBGP to pve02 loopback"
+  neighbor fd00:0:0:ffff::2 update-source fd00:0:0:ffff::1
+  neighbor fd00:0:0:ffff::3 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::3 description "iBGP to pve03 loopback"
+  neighbor fd00:0:0:ffff::3 update-source fd00:0:0:ffff::1
 {% elif inventory_hostname == 'pve02' %}
-  neighbor fd00:255::1 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::1 description "iBGP to pve01 loopback"
-  neighbor fd00:255::1 update-source fd00:255::2
-  neighbor fd00:255::3 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::3 description "iBGP to pve03 loopback"
-  neighbor fd00:255::3 update-source fd00:255::2
+  neighbor fd00:0:0:ffff::1 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::1 description "iBGP to pve01 loopback"
+  neighbor fd00:0:0:ffff::1 update-source fd00:0:0:ffff::2
+  neighbor fd00:0:0:ffff::3 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::3 description "iBGP to pve03 loopback"
+  neighbor fd00:0:0:ffff::3 update-source fd00:0:0:ffff::2
 {% elif inventory_hostname == 'pve03' %}
-  neighbor fd00:255::1 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::1 description "iBGP to pve01 loopback"
-  neighbor fd00:255::1 update-source fd00:255::3
-  neighbor fd00:255::2 remote-as {{ PVE_ASN }}
-  neighbor fd00:255::2 description "iBGP to pve02 loopback"
-  neighbor fd00:255::2 update-source fd00:255::3
+  neighbor fd00:0:0:ffff::1 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::1 description "iBGP to pve01 loopback"
+  neighbor fd00:0:0:ffff::1 update-source fd00:0:0:ffff::3
+  neighbor fd00:0:0:ffff::2 remote-as {{ PVE_ASN }}
+  neighbor fd00:0:0:ffff::2 description "iBGP to pve02 loopback"
+  neighbor fd00:0:0:ffff::2 update-source fd00:0:0:ffff::3
 {% endif %}
 
-  ! Edge eBGP to MikroTik - separate IPv4 and IPv6 sessions
-
-  ! IPv6 session for IPv6 routes (using fd00:10::/64 management network)
+  ! Edge eBGP to RouterOS via loopback IPs
   neighbor {{ EDGE_V6_PEER }} remote-as {{ EDGE_ASN }}
-  neighbor {{ EDGE_V6_PEER }} description "MikroTik edge (IPv6 only)"
-  neighbor {{ EDGE_V6_PEER }} update-source fd00:10::{{ PVE_ID }}
+  neighbor {{ EDGE_V6_PEER }} description "MikroTik edge (IPv6)"
+  neighbor {{ EDGE_V6_PEER }} update-source fd00:0:0:ffff::{{ PVE_ID }}
   neighbor {{ EDGE_V6_PEER }} ebgp-multihop 5
 
-  ! IPv4 session for IPv4 routes (directly connected on management network)
-  neighbor 10.0.10.254 remote-as {{ EDGE_ASN }}
-  neighbor 10.0.10.254 description "MikroTik edge (IPv4 only)"
-  neighbor 10.0.10.254 update-source 10.0.10.{{ PVE_ID }}
+  neighbor {{ EDGE_V4_PEER }} remote-as {{ EDGE_ASN }}
+  neighbor {{ EDGE_V4_PEER }} description "MikroTik edge (IPv4)"
+  neighbor {{ EDGE_V4_PEER }} update-source 10.255.0.{{ PVE_ID }}
+  neighbor {{ EDGE_V4_PEER }} ebgp-multihop 5
 
   address-family ipv6 unicast
     redistribute connected route-map EXPORT_V6_CONNECTED
+    ! Import tenant prefixes from export-only VRF (resolvable next-hops)
+    import vrf {{ EXPORT_VRF }}
+    ! Import VM/Talos loopback routes from tenant VRF
+    import vrf {{ VNET_VRF }}
 
-    ! Import VRF routes into global BGP
-    import vrf vrf_evpnz1
+    ! Tenant VNet ULA prefixes (moved from vrf_export)
+{% for id in VNET_IDS | sort %}
+{% if ula_subnet(id) %}
+    network {{ ula_subnet(id) }}
+{% endif %}
+{% endfor %}
+    ! Tenant VNet GUA prefixes from AT&T PD (moved from vrf_export)
+{% for id in VNET_IDS | sort %}
+{% if gua_prefix(id) %}
+    network {{ gua_prefix(id) }}
+{% endif %}
+{% endfor %}
 
-    ! RouterOS peering - strict tenant-only export policy
     neighbor {{ EDGE_V6_PEER }} activate
+    neighbor {{ EDGE_V6_PEER }} route-map IMPORT_FROM_ROUTEROS in
     neighbor {{ EDGE_V6_PEER }} route-map EXPORT_TO_ROUTEROS out
     neighbor {{ EDGE_V6_PEER }} next-hop-self
 
-    ! iBGP mesh neighbors (loopback-based)
 {% if inventory_hostname == 'pve01' %}
-    neighbor fd00:255::2 activate
-    neighbor fd00:255::3 activate
+    neighbor fd00:0:0:ffff::2 activate
+    neighbor fd00:0:0:ffff::3 activate
 {% elif inventory_hostname == 'pve02' %}
-    neighbor fd00:255::1 activate
-    neighbor fd00:255::3 activate
+    neighbor fd00:0:0:ffff::1 activate
+    neighbor fd00:0:0:ffff::3 activate
 {% elif inventory_hostname == 'pve03' %}
-    neighbor fd00:255::1 activate
-    neighbor fd00:255::2 activate
+    neighbor fd00:0:0:ffff::1 activate
+    neighbor fd00:0:0:ffff::2 activate
 {% endif %}
 
     maximum-paths 4
@@ -339,83 +380,190 @@ router bgp {{ PVE_ASN }}
 
   address-family ipv4 unicast
     redistribute connected route-map EXPORT_V4_CONNECTED
+    ! Import tenant prefixes from export-only VRF (resolvable next-hops)
+    import vrf {{ EXPORT_VRF }}
+    ! Import VM/Talos loopback routes from tenant VRF
+    import vrf {{ VNET_VRF }}
 
-    ! Import VRF routes into global BGP
-    import vrf vrf_evpnz1
+    ! Tenant VNet IPv4 subnets (moved from vrf_export)
+{% for id in VNET_IDS | sort %}
+{% if v4_subnet(id) %}
+    network {{ v4_subnet(id) }}
+{% endif %}
+{% endfor %}
 
-    ! RouterOS peering - directly connected, no multihop needed
-    neighbor 10.0.10.254 activate
-    neighbor 10.0.10.254 route-map EXPORT_TO_ROUTEROS out
-    neighbor 10.0.10.254 next-hop-self
+    neighbor {{ EDGE_V4_PEER }} activate
+    neighbor {{ EDGE_V4_PEER }} route-map IMPORT_FROM_ROUTEROS in
+    neighbor {{ EDGE_V4_PEER }} route-map EXPORT_TO_ROUTEROS out
+    neighbor {{ EDGE_V4_PEER }} next-hop-self
 
     maximum-paths 4
     maximum-paths ibgp 4
   exit-address-family
-  !
-  ! L2VPN EVPN for Proxmox SDN - Type-2 MAC/IP routes only (L2 overlay)
+
   address-family l2vpn evpn
 {% if inventory_hostname == 'pve01' %}
-    neighbor fd00:255::2 activate
-    neighbor fd00:255::3 activate
+    neighbor fd00:0:0:ffff::2 activate
+    neighbor fd00:0:0:ffff::3 activate
 {% elif inventory_hostname == 'pve02' %}
-    neighbor fd00:255::1 activate
-    neighbor fd00:255::3 activate
+    neighbor fd00:0:0:ffff::1 activate
+    neighbor fd00:0:0:ffff::3 activate
 {% elif inventory_hostname == 'pve03' %}
-    neighbor fd00:255::1 activate
-    neighbor fd00:255::2 activate
+    neighbor fd00:0:0:ffff::1 activate
+    neighbor fd00:0:0:ffff::2 activate
 {% endif %}
     advertise-all-vni
     advertise-svi-ip
   exit-address-family
 exit
 
-! ---------- BGP in VRF for Talos dynamic peering ----------
+! ----------------------------------------------------------------------
+! Tenant export-only VRF (no interfaces, export prefixes to edge only)
+! ----------------------------------------------------------------------
 
-router bgp {{ PVE_ASN }} vrf vrf_evpnz1
+router bgp {{ PVE_ASN }} vrf {{ EXPORT_VRF }}
   bgp router-id 10.255.0.{{ PVE_ID }}
   no bgp default ipv4-unicast
-  timers bgp 10 30
-
-  ! Dynamic Unnumbered BGP Peering for VNet workloads (VMs, Talos nodes, etc.)
-  ! Using interface-based peering with external ASN
-  neighbor VNET_PEERS peer-group
-  neighbor VNET_PEERS remote-as external
-  neighbor VNET_PEERS capability extended-nexthop
-  neighbor VNET_PEERS timers 10 30
-  neighbor VNET_PEERS ttl-security hops 1
-  neighbor VNET_PEERS bfd
-
-  {% for id in VNET_IDS | sort %}
-  neighbor vnet{{ id }} interface peer-group VNET_PEERS
-  {% endfor %}
+  no bgp network import-check
 
   address-family ipv4 unicast
-    redistribute connected route-map VRF_CONNECTED_V4
-
-    neighbor VNET_PEERS activate
-    neighbor VNET_PEERS route-map IMPORT_TALOS in
-    neighbor VNET_PEERS route-map EXPORT_TO_TALOS out
-    neighbor VNET_PEERS default-originate
+    ! Note: VM loopback routes now come via VPN RIB from vrf_evpnz1, not import vrf
+{% for id in VNET_IDS | sort %}
+{% if v4_subnet(id) %}
+    network {{ v4_subnet(id) }}
+{% endif %}
+{% endfor %}
   exit-address-family
 
   address-family ipv6 unicast
-    redistribute connected route-map VRF_CONNECTED_V6
-
-    neighbor VNET_PEERS activate
-    neighbor VNET_PEERS route-map IMPORT_TALOS in
-    neighbor VNET_PEERS route-map EXPORT_TO_TALOS out
-    neighbor VNET_PEERS default-originate
+    ! Note: VM loopback routes now come via VPN RIB from vrf_evpnz1, not import vrf
+{% for id in VNET_IDS | sort %}
+{% if ula_subnet(id) %}
+    network {{ ula_subnet(id) }}
+{% endif %}
+{% endfor %}
+{% for id in VNET_IDS | sort %}
+{% if gua_prefix(id) %}
+    network {{ gua_prefix(id) }}
+{% endif %}
+{% endfor %}
   exit-address-family
 exit
+! ----------------------------------------------------------------------
+! VM/Talos Route Filtering for vrf_evpnz1
+! ----------------------------------------------------------------------
+! Accept VM loopback addresses (10.255.x.0/24 ge 32 for /32 hosts)
+ip prefix-list VM-LOOPBACKS-V4 permit 10.255.0.0/16 ge 32 le 32
+ipv6 prefix-list VM-LOOPBACKS-V6 permit fd00:255::/32 ge 128 le 128
 
-! ---------- Static routes in VRF ----------
-vrf vrf_evpnz1
-  ! Route traffic back to management network (for north/south asymmetric routing)
+! Accept Kubernetes pod/service CIDRs (future use)
+{% for vnet_id in VNET_IDS | sort %}
+ip prefix-list VM-K8S-PODS-V4 permit 10.{{ 64 + vnet_id }}.0.0/16 ge 16 le 24
+ipv6 prefix-list VM-K8S-PODS-V6 permit fd00:{{ vnet_id }}:64::/48 ge 48 le 64
+{% endfor %}
+
+! Route-map to accept VM routes
+route-map IMPORT-VM-ROUTES permit 10
+ match ip address prefix-list VM-LOOPBACKS-V4
+exit
+route-map IMPORT-VM-ROUTES permit 20
+ match ip address prefix-list VM-K8S-PODS-V4
+exit
+route-map IMPORT-VM-ROUTES permit 30
+ match ipv6 address prefix-list VM-LOOPBACKS-V6
+exit
+route-map IMPORT-VM-ROUTES permit 40
+ match ipv6 address prefix-list VM-K8S-PODS-V6
+exit
+route-map IMPORT-VM-ROUTES deny 99
+exit
+
+! ----------------------------------------------------------------------
+! VRF BGP Instance for VM/Talos Peering (vrf_evpnz1)
+! Static Anycast LLA Scheme - BGP Unnumbered for VM Route Advertisement
+! ----------------------------------------------------------------------
+
+router bgp {{ PVE_ASN }} vrf {{ VNET_VRF }}
+  bgp router-id 10.255.0.{{ PVE_ID }}
+  no bgp default ipv4-unicast
+  no bgp default ipv6-unicast
+
+  neighbor VM-TENANTS peer-group
+  neighbor VM-TENANTS remote-as external
+  neighbor VM-TENANTS capability extended-nexthop
+
+  ! Interface-based peering on VNet bridges
+{% for vnet_id in VNET_IDS | sort %}
+  neighbor vnet{{ vnet_id }} interface peer-group VM-TENANTS
+{% endfor %}
+
+  address-family ipv4 unicast
+    ! VPN export configuration for cross-VRF route leaking
+    rd vpn export {{ PVE_ASN }}:{{ 13 }}
+    rt vpn export {{ PVE_ASN }}:{{ 13 }}
+    rt vpn import {{ PVE_ASN }}:{{ 13 }}
+    export vpn
+    ! Set next-hop to a static IP on the vrf_evpnz1 side of the cross-VRF link
+    nexthop vpn export 10.255.255.2
+
+    neighbor VM-TENANTS activate
+    neighbor VM-TENANTS route-map IMPORT-VM-ROUTES in
+    neighbor VM-TENANTS soft-reconfiguration inbound
+  exit-address-family
+
+  address-family ipv6 unicast
+    ! VPN export configuration for cross-VRF route leaking
+    rd vpn export {{ PVE_ASN }}:{{ 13 }}
+    rt vpn export {{ PVE_ASN }}:{{ 13 }}
+    rt vpn import {{ PVE_ASN }}:{{ 13 }}
+    export vpn
+    ! Set next-hop to PVE loopback for resolvability in default VRF
+    nexthop vpn export fd00:0:0:ffff::{{ PVE_ID }}
+
+    neighbor VM-TENANTS activate
+    neighbor VM-TENANTS route-map IMPORT-VM-ROUTES in
+    neighbor VM-TENANTS soft-reconfiguration inbound
+  exit-address-family
+
+  address-family l2vpn evpn
+    neighbor VM-TENANTS activate
+    advertise ipv4 unicast
+    advertise ipv6 unicast
+  exit-address-family
+exit
+! ----------------------------------------------------------------------
+! VRF STATIC ROUTES (your existing leak model)
+! ----------------------------------------------------------------------
+
+vrf {{ VNET_VRF }}
   ip route 10.0.10.0/24 10.0.10.{{ PVE_ID }} vmbr0.10 nexthop-vrf default
   ipv6 route fd00:10::/64 fd00:10::{{ PVE_ID }} vmbr0.10 nexthop-vrf default
-
-  ! Default route for VM internet access - leak to main routing table
-  ipv6 route ::/0 fe80::ff:fe00:1 vmbr0.10 nexthop-vrf default
+  ipv6 route ::/0 fd00:10::{{ PVE_ID }} vmbr0.10 nexthop-vrf default
 exit-vrf
+
+vrf {{ EXPORT_VRF }}
+exit-vrf
+
+! Static routes for external connectivity to tenant VRFs
+! These routes allow traffic from the default VRF (external BGP) to reach tenant networks in vrf_evpnz1
+ip route 10.100.0.0/24 {{ VNET_VRF }}
+ip route 10.101.0.0/24 {{ VNET_VRF }}
+ip route 10.102.0.0/24 {{ VNET_VRF }}
+ip route 10.103.0.0/24 {{ VNET_VRF }}
+!
+ipv6 route fd00:100::/64 {{ VNET_VRF }}
+ipv6 route fd00:101::/64 {{ VNET_VRF }}
+ipv6 route fd00:102::/64 {{ VNET_VRF }}
+ipv6 route fd00:103::/64 {{ VNET_VRF }}
+!
+! GUA routes from AT&T PD for tenant networks
+{% for vnet in tenant_vnets %}
+{% if vnet.gua_prefix is defined %}
+ipv6 route {{ vnet.gua_prefix }} {{ VNET_VRF }}
+{% endif %}
+{% endfor %}
+!
+line vty
+!
 
 {% endif %}

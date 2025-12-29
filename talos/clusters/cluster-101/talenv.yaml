@@ -1,80 +1,80 @@
 clusterName: cluster-101
 cluster_id: 101
 dns_server_ipv4: 10.255.0.53
-dns_server_ipv6: fd00:255::53
+dns_server_ipv6: fd00:0:0:ffff::53
 endpoint: https://[fd00:101::10]:6443
 kubernetesVersion: v1.34.1
 nodes:
   - controlPlane: true
     hostname: solcp01
-    ipAddress: 10.0.101.11
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.11
+    ipAddress: 10.101.0.11
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.11
     publicIPv6: fd00:101::11
     publicMTU: 1500
   - controlPlane: true
     hostname: solcp02
-    ipAddress: 10.0.101.12
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.12
+    ipAddress: 10.101.0.12
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.12
     publicIPv6: fd00:101::12
     publicMTU: 1500
   - controlPlane: true
     hostname: solcp03
-    ipAddress: 10.0.101.13
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.13
+    ipAddress: 10.101.0.13
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.13
     publicIPv6: fd00:101::13
     publicMTU: 1500
   - controlPlane: false
     hostname: solwk01
-    ipAddress: 10.0.101.21
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.21
+    ipAddress: 10.101.0.21
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.21
     publicIPv6: fd00:101::21
     publicMTU: 1500
   - controlPlane: false
     hostname: solwk02
-    ipAddress: 10.0.101.22
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.22
+    ipAddress: 10.101.0.22
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.22
     publicIPv6: fd00:101::22
     publicMTU: 1500
   - controlPlane: false
     hostname: solwk03
-    ipAddress: 10.0.101.23
-    publicGatewayIPv4: 10.0.101.254
-    publicGatewayIPv6: fd00:101::ffff
-    publicIPv4: 10.0.101.23
+    ipAddress: 10.101.0.23
+    publicGatewayIPv4: 10.101.0.254
+    publicGatewayIPv6: fd00:101::fffe
+    publicIPv4: 10.101.0.23
     publicIPv6: fd00:101::23
     publicMTU: 1500
-pods_ipv4: 10.101.240.0/20
-pods_ipv6: fd00:101:240::/60
-public_gateway_ipv4: 10.0.101.254
-public_gateway_ipv6: fd00:101::ffff
+pods_ipv4: 10.101.244.0/22
+pods_ipv6: fd00:101:244::/60
+public_gateway_ipv4: 10.101.0.254
+public_gateway_ipv6: fd00:101::fffe
 services_ipv4: 10.101.96.0/24
-services_ipv6: fd00:101:96::/112
-solcp01_ipAddress: 10.0.101.11
-solcp01_public_ipv4: 10.0.101.11
+services_ipv6: fd00:101:96::/108
+solcp01_ipAddress: 10.101.0.11
+solcp01_public_ipv4: 10.101.0.11
 solcp01_public_ipv6: fd00:101::11
-solcp02_ipAddress: 10.0.101.12
-solcp02_public_ipv4: 10.0.101.12
+solcp02_ipAddress: 10.101.0.12
+solcp02_public_ipv4: 10.101.0.12
 solcp02_public_ipv6: fd00:101::12
-solcp03_ipAddress: 10.0.101.13
-solcp03_public_ipv4: 10.0.101.13
+solcp03_ipAddress: 10.101.0.13
+solcp03_public_ipv4: 10.101.0.13
 solcp03_public_ipv6: fd00:101::13
-solwk01_ipAddress: 10.0.101.21
-solwk01_public_ipv4: 10.0.101.21
+solwk01_ipAddress: 10.101.0.21
+solwk01_public_ipv4: 10.101.0.21
 solwk01_public_ipv6: fd00:101::21
-solwk02_ipAddress: 10.0.101.22
-solwk02_public_ipv4: 10.0.101.22
+solwk02_ipAddress: 10.101.0.22
+solwk02_public_ipv4: 10.101.0.22
 solwk02_public_ipv6: fd00:101::22
-solwk03_ipAddress: 10.0.101.23
-solwk03_public_ipv4: 10.0.101.23
+solwk03_ipAddress: 10.101.0.23
+solwk03_public_ipv4: 10.101.0.23
 solwk03_public_ipv6: fd00:101::23
 talosVersion: v1.11.5

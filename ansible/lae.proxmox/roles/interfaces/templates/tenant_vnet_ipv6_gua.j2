@@ -1,0 +1,14 @@
+# Tenant VNet IPv6 GUA (Global Unicast Address) Configuration
+# Managed by Ansible - DO NOT EDIT MANUALLY
+# Configures IPv6 GUA addresses from AT&T PD on tenant vnets
+# These addresses are configured as anycast gateways with the same MAC on all nodes
+
+{% for vnet in tenant_vnets %}
+{% if vnet.gua_prefix is defined %}
+# {{ vnet.name }} - GUA from AT&T PD
+auto {{ vnet.name }}
+iface {{ vnet.name }} inet6 static
+    address {{ vnet.gua_prefix | regex_replace('::/64$', '::ffff/64') }}
+
+{% endif %}
+{% endfor %}

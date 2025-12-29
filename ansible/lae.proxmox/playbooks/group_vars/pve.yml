@@ -1,9 +1,35 @@
 ---
+# Public Interface Configuration
+public_interfaces:
+  pve01:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve02:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve03:
+    slaves: [enp61s0]
+    mode: active-backup
+    primary: enp61s0
+    xmit_hash_policy: layer3+4
+
+  pve04:
+    slaves: [enp1s0]
+    mode: active-backup
+    primary: enp1s0
+    xmit_hash_policy: layer3+4
+
 # NTP Configuration
 ntp_manage_config: true
 ntp_servers:
-  - fd00:255::fffe
-  - 10.255.255.254
+  - fd00:0:0:ffff::fffe
+  - 10.255.0.254
 
 # Proxmox Cluster Settings
 pve_group: pve
@@ -498,30 +524,46 @@ mesh_links:
       peer_id: 2
   pve04: []
 
+# Edge BGP Configuration (RouterOS)
+EDGE_ASN: 4200000000
+EDGE_V4_PEER: "10.255.0.254"  # RouterOS loopback IPv4
+EDGE_V6_PEER: "fd00:0:0:ffff::fffe"  # RouterOS loopback IPv6
+
 # Tenant VLANs (required by FRR template)
 TENANT_VLANS: []
 
-# These are *VNet IDs / cluster IDs*, not physical VLAN trunk IDs.
-# They are used to generate prefix-lists and to refer to SDN devices like vnet101.
-VNET_IDS: [100, 101, 102, 103]
+# Tenant VNets configuration for radvd and IP addressing
+# Each vnet has ULA prefix and optionally a GUA prefix from AT&T PD
+tenant_vnets:
+  - name: vnet100
+    id: 100
+    ipv4_subnet: "10.100.0.0/24"
+    ula_prefix: "fd00:100::/64"
+    gua_prefix: "2600:1700:ab1a:500c::/64"
+  - name: vnet101
+    id: 101
+    ipv4_subnet: "10.101.0.0/24"
+    ula_prefix: "fd00:101::/64"
+    gua_prefix: "2600:1700:ab1a:500d::/64"
+  - name: vnet102
+    id: 102
+    ipv4_subnet: "10.102.0.0/24"
+    ula_prefix: "fd00:102::/64"
+    gua_prefix: "2600:1700:ab1a:500f::/64"
+  - name: vnet103
+    id: 103
+    ipv4_subnet: "10.103.0.0/24"
+    ula_prefix: "fd00:103::/64"
+    # No GUA prefix - only 3 PD delegations available from AT&T
 
-# IPv4 tenant subnets (explicit)
-VNET_V4_SUBNETS:
-  100: "10.0.100.0/24"
-  101: "10.0.101.0/24"
-  102: "10.0.102.0/24"
-  103: "10.0.103.0/24"
+# Legacy compatibility - VNet IDs list for templates that still use it
+VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"
 
-# IPv6 ULA tenant subnets (explicit)
-VNET_ULA_SUBNETS:
-  100: "fd00:100::/64"
-  101: "fd00:101::/64"
-  102: "fd00:102::/64"
-  103: "fd00:103::/64"
+# Legacy compatibility - IPv4 subnets dictionary
+VNET_V4_SUBNETS: "{{ dict(tenant_vnets | map(attribute='id') | zip(tenant_vnets | map(attribute='ipv4_subnet'))) }}"
 
-# IPv6 GUA prefixes (explicit, and can be rewritten by your PD automation)
-VNET_GUA_PREFIXES:
-  100: "2600:1700:ab1a:5009::/64"
-  101: "2600:1700:ab1a:500e::/64"
-  102: "2600:1700:ab1a:500b::/64"
-  103: "2600:1700:ab1a:5008::/64"
+# Legacy compatibility - ULA prefixes dictionary
+VNET_ULA_SUBNETS: "{{ dict(tenant_vnets | map(attribute='id') | zip(tenant_vnets | map(attribute='ula_prefix'))) }}"
+
+# Legacy compatibility - GUA prefixes dictionary (only for vnets with gua_prefix defined)
+VNET_GUA_PREFIXES: "{{ dict(tenant_vnets | selectattr('gua_prefix', 'defined') | map(attribute='id') | zip(tenant_vnets | selectattr('gua_prefix', 'defined') | map(attribute='gua_prefix'))) }}"

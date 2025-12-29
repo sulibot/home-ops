@@ -5,10 +5,10 @@
 # and advertised via BGP to the upstream router
 #
 # IP Allocation Strategy for cluster-101:
-#   Node subnet:     10.0.101.0/24   (fd00:101::/64)
-#   Nodes:           10.0.101.1-63   (fd00:101::1-3f)
-#   LoadBalancers:   10.0.101.64-127 (fd00:101:40::/120)
-#   Reserved/Future: 10.0.101.128-254
+#   Node subnet:     10.101.0.0/24   (fd00:101::/64)
+#   Nodes:           10.101.0.1-63   (fd00:101::1-3f)
+#   LoadBalancers:   10.101.0.64-127 (fd00:101:40::/120)
+#   Reserved/Future: 10.101.0.128-254
 
 ---
 # Dual-stack pool for general LoadBalancer services

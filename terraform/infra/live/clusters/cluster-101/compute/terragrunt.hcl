@@ -137,10 +137,10 @@ inputs = merge(
       }
       public = {
         ipv6_prefix  = "fd00:${local.cluster_config.cluster_id}::"
-        ipv4_prefix  = "10.0.${local.cluster_config.cluster_id}."
+        ipv4_prefix  = "10.${local.cluster_config.cluster_id}.0."
         # ULA gateway for routing to other ULA subnets (e.g., fd00:255::53)
-        ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::ffff"
-        ipv4_gateway = "10.0.${local.cluster_config.cluster_id}.254"
+        ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::fffe"
+        ipv4_gateway = "10.${local.cluster_config.cluster_id}.0.254"
         # GUA IPv6 gateway overrides ULA as the default route for internet
         gua_ipv6_prefix  = try(local.ipv6_prefixes.delegated_prefixes["vnet${local.cluster_config.cluster_id}"], "")
         gua_ipv6_gateway = try(local.ipv6_prefixes.delegated_gateways["vnet${local.cluster_config.cluster_id}"], "")

@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+VRF_NAME="{{ VNET_VRF | default('vrf_evpnz1') }}"
+TBL=$(ip -d link show dev "$VRF_NAME" 2>/dev/null | sed -n 's/.* table \([0-9]\+\).*/\1/p')
+if [ -z "$TBL" ]; then
+  logger -t tenant-anycast-bgp-steer "vrf $VRF_NAME not found; skipping"
+  exit 0
+fi
+
+for prefix in {{ tenant_steer_ipv4_prefixes | default([]) | join(' ') }}; do
+  ip -4 route replace "$prefix" dev "$VRF_NAME" metric 50 proto static
+done
+
+for prefix in {{ tenant_steer_ipv6_prefixes | default([]) | join(' ') }}; do
+  ip -6 route replace "$prefix" dev "$VRF_NAME" metric 50 proto static
+done
+
+logger -t tenant-anycast-bgp-steer "vrf $VRF_NAME table $TBL steering applied"

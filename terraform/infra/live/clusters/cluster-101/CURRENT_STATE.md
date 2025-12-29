@@ -122,9 +122,9 @@ Test VM 9999 exists on pve01:
 #### VNet 101 (Primary Cluster Network)
 - IPv6: fd00:101::/64
 - IPv4: 10.0.101.0/24
-- Gateway IPv6: fd00:101::ffff (anycast)
+- Gateway IPv6: fd00:101::fffe (anycast)
 - Gateway IPv4: 10.0.101.254
-- DNS: fd00:101::fffd, 10.0.101.253
+- DNS: fd00:101::fffe, 10.0.101.254
 
 #### Node Loopbacks
 - IPv6: fd00:255:101::{node_suffix}/128

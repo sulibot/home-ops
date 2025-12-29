@@ -5,4 +5,4 @@ isis_interfaces:
   - eth0
 net_id: "49.0001.0100.0000.0001.00"
 pve_neighbor_v6: fd00:10::1
-pve_neighbor_v4: 10.0.100.1
+pve_neighbor_v4: 10.100.0.1

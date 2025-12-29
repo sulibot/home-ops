@@ -149,7 +149,7 @@ See [artifacts/README.md](artifacts/README.md) for details.
 
 **IP Allocation** (automatic based on cluster_id):
 - Public IPv6: `fd00:${cluster_id}::/64`
-- Public IPv4: `10.0.${cluster_id}.0/24`
+- Public IPv4: `10.${cluster_id}.0.0/24`
 - Control plane VIP: `fd00:${cluster_id}::10`
 
 ## Workflow

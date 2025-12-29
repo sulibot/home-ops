@@ -1,0 +1,11 @@
+---
+# Handlers for interfaces role
+
+- name: Reload network
+  ansible.builtin.command: /usr/sbin/ifreload -a
+  changed_when: false
+
+- name: Restart radvd
+  ansible.builtin.systemd:
+    name: radvd
+    state: restarted
