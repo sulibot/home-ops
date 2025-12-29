@@ -170,9 +170,15 @@ ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit {{ gua_prefix(id) }} le 1
 {% set ns.ts = ns.ts + 5 %}
 {% endif %}
 {% endfor %}
-! Permit VM loopback addresses (fd00:255::/48 as /128 only)
+! Permit VM loopback addresses
+! Old pattern: fd00:255::/48 as /128 only
 ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit fd00:255::/32 ge 128 le 128
 {% set ns.ts = ns.ts + 5 %}
+! New pattern: fd00:x:fe::/64 as /128 only (x = tenant ID)
+{% for vnet_id in VNET_IDS | sort %}
+ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} permit fd00:{{ vnet_id }}:fe::/64 ge 128 le 128
+{% set ns.ts = ns.ts + 5 %}
+{% endfor %}
 ! Deny other infrastructure ranges
 ipv6 prefix-list TENANT_ONLY_V6 seq {{ ns.ts }} deny fd00:255::/48 le 127
 {% set ns.ts = ns.ts + 5 %}
@@ -193,13 +199,19 @@ ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} permit {{ v4_subnet(id) }}
 ! Deny PVE node loopbacks (10.255.0.x/32) - these should use OSPF not BGP
 ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.255.0.0/24 ge 32 le 32
 {% set ns4.ts = ns4.ts + 5 %}
-! Permit VM/Talos loopback addresses (10.255.x.y/32 where x >= 1)
+! Permit VM/Talos loopback addresses
+! Old pattern: 10.255.x.y/32 where x >= 1
 ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} permit 10.255.0.0/16 ge 32 le 32
 {% set ns4.ts = ns4.ts + 5 %}
+! New pattern: 10.x.254.0/24 as /32 hosts (x = tenant ID)
+{% for vnet_id in VNET_IDS | sort %}
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} permit 10.{{ vnet_id }}.254.0/24 ge 32 le 32
+{% set ns4.ts = ns4.ts + 5 %}
+{% endfor %}
 ! Deny other 10.255 and 10.101 ranges (aggregates, etc)
 ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.255.0.0/16 le 31
 {% set ns4.ts = ns4.ts + 5 %}
-ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.101.0.0/16 le 32
+ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 10.101.0.0/16 le 31
 {% set ns4.ts = ns4.ts + 5 %}
 ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 0.0.0.0/0 le 32
 
@@ -452,9 +464,20 @@ exit
 ! ----------------------------------------------------------------------
 ! VM/Talos Route Filtering for vrf_evpnz1
 ! ----------------------------------------------------------------------
-! Accept VM loopback addresses (10.255.x.0/24 ge 32 for /32 hosts)
-ip prefix-list VM-LOOPBACKS-V4 permit 10.255.0.0/16 ge 32 le 32
-ipv6 prefix-list VM-LOOPBACKS-V6 permit fd00:255::/32 ge 128 le 128
+! Accept VM loopback addresses
+! Old pattern: 10.255.x.0/24 (x >= 1) as /32 hosts
+ip prefix-list VM-LOOPBACKS-V4 seq 5 permit 10.255.0.0/16 ge 32 le 32
+! New pattern: 10.x.254.0/24 (x = tenant ID) as /32 hosts
+{% for vnet_id in VNET_IDS | sort %}
+ip prefix-list VM-LOOPBACKS-V4 seq {{ 10 + (vnet_id * 5) }} permit 10.{{ vnet_id }}.254.0/24 ge 32 le 32
+{% endfor %}
+
+! Old pattern: fd00:255:x::/64 as /128 hosts
+ipv6 prefix-list VM-LOOPBACKS-V6 seq 5 permit fd00:255::/32 ge 128 le 128
+! New pattern: fd00:x:fe::/64 (x = tenant ID) as /128 hosts
+{% for vnet_id in VNET_IDS | sort %}
+ipv6 prefix-list VM-LOOPBACKS-V6 seq {{ 10 + (vnet_id * 5) }} permit fd00:{{ vnet_id }}:fe::/64 ge 128 le 128
+{% endfor %}
 
 ! Accept Kubernetes pod/service CIDRs (future use)
 {% for vnet_id in VNET_IDS | sort %}

@@ -104,8 +104,10 @@ data "talos_machine_configuration" "controlplane" {
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64", # IPv6 loopback (preferred)
-              "10.255.${var.cluster_id}.0/24"    # IPv4 loopback (for dual-stack endpoints)
+              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (OLD pattern)
+              "fd00:${var.cluster_id}:fe::/64",   # IPv6 loopback (NEW pattern)
+              "10.255.${var.cluster_id}.0/24",    # IPv4 loopback (OLD pattern)
+              "10.${var.cluster_id}.254.0/24"     # IPv4 loopback (NEW pattern)
             ]
           }
         }
@@ -128,7 +130,10 @@ data "talos_machine_configuration" "controlplane" {
           )
         }
         etcd = {
-          advertisedSubnets = ["fd00:255:${var.cluster_id}::/64"] # Force etcd to use loopback IPs
+          advertisedSubnets = [
+            "fd00:255:${var.cluster_id}::/64",  # OLD pattern
+            "fd00:${var.cluster_id}:fe::/64"    # NEW pattern
+          ] # Force etcd to use loopback IPs
         }
         # Install Gateway API CRDs and Cilium CNI via inline manifests
         # Gateway API CRDs must be installed first (if enabled in Cilium config)
@@ -210,8 +215,10 @@ data "talos_machine_configuration" "worker" {
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64", # IPv6 loopback (preferred)
-              "10.255.${var.cluster_id}.0/24"    # IPv4 loopback (for dual-stack endpoints)
+              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (OLD pattern)
+              "fd00:${var.cluster_id}:fe::/64",   # IPv6 loopback (NEW pattern)
+              "10.255.${var.cluster_id}.0/24",    # IPv4 loopback (OLD pattern)
+              "10.${var.cluster_id}.254.0/24"     # IPv4 loopback (NEW pattern)
             ]
           }
           clusterDNS = [
@@ -255,9 +262,10 @@ locals {
       interface        = var.bgp_interface
       cluster_id       = var.cluster_id
       node_suffix      = node.node_suffix
-      loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"
-      loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"
-      bgp_loopback_ipv6 = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
+      loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"       # OLD pattern
+      loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"    # OLD pattern
+      bgp_loopback_ipv4 = "10.${var.cluster_id}.254.${node.node_suffix}"      # NEW pattern
+      bgp_loopback_ipv6 = "fd00:${var.cluster_id}:fe::${node.node_suffix}"    # NEW pattern
 
       # Feature flags
       enable_bfd               = var.bgp_enable_bfd

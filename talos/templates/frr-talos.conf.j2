@@ -29,21 +29,21 @@ router bgp ${local_asn}
  bgp graceful-restart
  timers bgp 10 30
 
- ! Static Anycast LLA on PVE (fe80::<cluster_id>:1)
- neighbor fe80::${cluster_id}:1 remote-as ${gw_asn}
- neighbor fe80::${cluster_id}:1 interface ens18
- neighbor fe80::${cluster_id}:1 description "PVE Static Anycast LLA (BGP unnumbered)"
- neighbor fe80::${cluster_id}:1 capability extended-nexthop
+ ! Static Anycast LLA on PVE (fe80::<cluster_id>:fffe)
+ neighbor fe80::${cluster_id}:fffe remote-as ${gw_asn}
+ neighbor fe80::${cluster_id}:fffe interface ens18
+ neighbor fe80::${cluster_id}:fffe description "PVE Static Anycast LLA (BGP unnumbered)"
+ neighbor fe80::${cluster_id}:fffe capability extended-nexthop
 
  address-family ipv4 unicast
-  neighbor fe80::${cluster_id}:1 activate
-  neighbor fe80::${cluster_id}:1 route-map IMPORT_DEFAULT_V4 in
+  neighbor fe80::${cluster_id}:fffe activate
+  neighbor fe80::${cluster_id}:fffe route-map IMPORT_DEFAULT_V4 in
   network ${ipv4_loopback}/32
  exit-address-family
 
  address-family ipv6 unicast
-  neighbor fe80::${cluster_id}:1 activate
-  neighbor fe80::${cluster_id}:1 route-map IMPORT_DEFAULT_V6 in
+  neighbor fe80::${cluster_id}:fffe activate
+  neighbor fe80::${cluster_id}:fffe route-map IMPORT_DEFAULT_V6 in
   network ${ipv6_loopback}/128
  exit-address-family
 exit
