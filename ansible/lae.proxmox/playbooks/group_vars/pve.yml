@@ -539,7 +539,7 @@ tenant_vnets:
     id: 100
     ipv4_subnet: "10.100.0.0/24"
     ula_prefix: "fd00:100::/64"
-    gua_prefix: "2600:1700:ab1a:500c::/64"
+    gua_prefix: "2600:1700:ab1a:500e::/64"
   - name: vnet101
     id: 101
     ipv4_subnet: "10.101.0.0/24"
@@ -549,12 +549,12 @@ tenant_vnets:
     id: 102
     ipv4_subnet: "10.102.0.0/24"
     ula_prefix: "fd00:102::/64"
-    gua_prefix: "2600:1700:ab1a:500f::/64"
+    gua_prefix: "2600:1700:ab1a:500c::/64"
   - name: vnet103
     id: 103
     ipv4_subnet: "10.103.0.0/24"
     ula_prefix: "fd00:103::/64"
-    # No GUA prefix - only 3 PD delegations available from AT&T
+    gua_prefix: "2600:1700:ab1a:500b::/64"
 
 # Legacy compatibility - VNet IDs list for templates that still use it
 VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"

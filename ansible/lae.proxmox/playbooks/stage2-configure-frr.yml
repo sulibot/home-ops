@@ -3,6 +3,8 @@
   hosts: pve
   become: true
   vars_files:
-    - ../group_vars/cluster.yaml
+    - ../group_vars/all.yaml
+    # - ../group_vars/cluster.yaml
+    - group_vars/pve.yml
   roles:
     - frr

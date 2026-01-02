@@ -1,0 +1,24 @@
+# Distributed IPv6 RA configuration for Proxmox EVPN-VXLAN cluster
+# Runs in VRF context to advertise GUA prefixes to VMs
+# Managed by Ansible vnet_gua role - updates when Proxmox SDN GUA changes
+# DO NOT EDIT MANUALLY
+
+# Disable DNS server functionality (only RA)
+port=0
+
+# Do not bind to wildcard - only to specified interfaces
+bind-interfaces
+
+# Enable Router Advertisements globally
+enable-ra
+
+# Quiet mode - prevents logging every RA
+quiet-ra
+
+{% for vnet in tenant_vnets %}
+# {{ vnet.name }} - Advertise GUA prefix {{ vnet.gua_prefix }}
+interface={{ vnet.name }}
+dhcp-range={{ vnet.name }},{{ vnet.gua_prefix | regex_replace('::/64$', '::') }},{{ vnet.gua_prefix | regex_replace('::/64$', ':ffff:ffff:ffff:ffff') }},ra-stateless,ra-names,64
+dhcp-option={{ vnet.name }},option6:dns-server,[fe80::{{ vnet.id }}:fffe]
+
+{% endfor %}

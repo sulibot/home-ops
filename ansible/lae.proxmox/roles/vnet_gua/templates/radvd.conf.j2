@@ -1,0 +1,48 @@
+# radvd configuration for Proxmox EVPN-VXLAN tenant networks
+# Runs in VRF context to advertise IPv6 GUA prefixes to VMs
+# Uses automatic prefix discovery (prefix ::/64) - updates when DHCPv6-PD prefix changes
+# Managed by Ansible vnet_gua role - DO NOT EDIT MANUALLY
+
+{% for vnet_id in vnet_gua_vnets | sort %}
+{% set vnet_name = "vnet" ~ vnet_id %}
+# {{ vnet_name }} - Automatic GUA prefix discovery
+interface {{ vnet_name }} {
+    AdvSendAdvert on;
+
+    # Send RAs frequently for fast convergence
+    MinRtrAdvInterval 3;
+    MaxRtrAdvInterval 10;
+
+    # Ignore list: Don't automatically advertise ULA prefixes
+    # Only advertise GUA prefixes in 2000::/3 range
+    autoignoreprefixes {
+        fd00:{{ vnet_id }}::/64;          # Exclude ULA prefix for this vnet
+        fd00:{{ vnet_id }}:ff::fffe/128;  # Exclude Proxmox anycast /128 address
+    };
+
+    # Advertise only GUA prefixes - automatically discovered from interface
+    # This automatically updates when DHCPv6-PD prefix changes
+    prefix ::/64 {
+        AdvOnLink on;
+        AdvAutonomous on;
+        AdvRouterAddr off;
+
+        # Lifetimes match typical DHCPv6-PD lease times
+        AdvValidLifetime 3600;
+        AdvPreferredLifetime 3600;
+
+        # Deprecate prefix on radvd shutdown (when replacing with new prefix)
+        DeprecatePrefix on;
+
+        # Age prefix lifetimes in parallel with DHCPv6-PD lease
+        # When ISP renews lease, send SIGUSR1 to radvd to reset lifetimes
+        DecrementLifetimes on;
+    };
+
+    # Advertise DNS server using stable anycast address
+    RDNSS fd00:0:0:ffff::53 {
+        AdvRDNSSLifetime 300;
+    };
+};
+
+{% endfor %}

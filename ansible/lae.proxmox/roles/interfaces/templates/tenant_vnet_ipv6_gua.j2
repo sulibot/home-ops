@@ -8,7 +8,7 @@
 # {{ vnet.name }} - GUA from AT&T PD
 auto {{ vnet.name }}
 iface {{ vnet.name }} inet6 static
-    address {{ vnet.gua_prefix | regex_replace('::/64$', '::ffff/64') }}
+    address {{ vnet.gua_prefix | regex_replace('::/64$', '::fffe/64') }}
 
 {% endif %}
 {% endfor %}

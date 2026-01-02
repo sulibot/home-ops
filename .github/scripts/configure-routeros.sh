@@ -57,7 +57,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CLUSTER_DIR="${REPO_ROOT}/terraform/live/clusters/cluster-${CLUSTER_ID}"
 
 # RouterOS configuration
-ROUTEROS_HOST="${ROUTEROS_HOST:-fd00:255::fffe}"
+ROUTEROS_HOST="${ROUTEROS_HOST:-fd00:0:0:ffff::fffe}"
 ROUTEROS_USER="${ROUTEROS_USER:-admin}"
 ROUTEROS_ASN="${ROUTEROS_ASN:-65000}"
 CLUSTER_ASN="${CLUSTER_ASN:-65101}"

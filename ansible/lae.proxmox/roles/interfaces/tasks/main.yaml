@@ -19,55 +19,55 @@
     mode: '0644'
   notify: Reload network
 
-# # Ensure /etc/sysctl.d directory exists for custom sysctl files
-# - name: Ensure /etc/sysctl.d exists
-#   ansible.builtin.file:
-#     path: /etc/sysctl.d
-#     state: directory
-#     mode: '0755'
-# 
-# # Task: Configure global IP forwarding and general network sanity settings
-# - name: Configure global IP forwarding and general network sanity
-#   ansible.posix.sysctl:
-#     name: "{{ item.name }}"
-#     value: "{{ item.value }}"
-#     sysctl_file: "{{ sysctl_file_path }}"
-#     state: present
-#     reload: no
-#   loop:
-#     # --- IP Forwarding ---
-#     - { name: 'net/ipv4/ip_forward',                 value: '1' }
-#     - { name: 'net/ipv6/conf/all/forwarding',        value: '1' }
-#     - { name: 'net/ipv6/conf/default/forwarding',    value: '1' }
-#     - { name: 'net/ipv6/conf/lo/forwarding',         value: '1' }
-# 
-#     # --- ARP Behavior (IPv4) - Global permissive ---
-#     - { name: 'net/ipv4/conf/all/arp_ignore',        value: '0' }
-#     - { name: 'net/ipv4/conf/default/arp_ignore',    value: '0' }
-#     - { name: 'net/ipv4/conf/all/arp_filter',        value: '0' }
-#     - { name: 'net/ipv4/conf/default/arp_filter',    value: '0' }
-#     - { name: 'net/ipv4/conf/all/arp_announce',      value: '2' }
-#     - { name: 'net/ipv4/conf/default/arp_announce',  value: '2' }
-# 
-#     # --- Neighbor (IPv6) - Global ---
-#     - { name: 'net/ipv6/conf/all/proxy_ndp',         value: '0' }
-#     - { name: 'net/ipv6/conf/default/proxy_ndp',     value: '0' }
-# 
-#     # --- Reverse Path Filtering (IPv4) ---
-#     # Loose globally; we turn OFF per anycast VLAN
-#     - { name: 'net/ipv4/conf/all/rp_filter',         value: '0' }
-#     - { name: 'net/ipv4/conf/default/rp_filter',     value: '0' }
-# 
-#     # --- ICMP Redirects (v4/v6) ---
-#     - { name: 'net/ipv4/conf/all/accept_redirects',     value: '0' }
-#     - { name: 'net/ipv4/conf/default/accept_redirects', value: '0' }
-#     - { name: 'net/ipv4/conf/all/send_redirects',       value: '0' }
-#     - { name: 'net/ipv4/conf/default/send_redirects',   value: '0' }
-#     - { name: 'net/ipv6/conf/all/accept_redirects',     value: '0' }
-#     - { name: 'net/ipv6/conf/default/accept_redirects', value: '0' }
-# 
-#     # --- DAD on loopback anycast /128s ---
-#     - { name: 'net/ipv6/conf/lo/accept_dad',         value: '0' }
+# Ensure /etc/sysctl.d directory exists for custom sysctl files
+- name: Ensure /etc/sysctl.d exists
+  ansible.builtin.file:
+    path: /etc/sysctl.d
+    state: directory
+    mode: '0755'
+
+# Task: Configure global IP forwarding and general network sanity settings
+- name: Configure global IP forwarding and general network sanity
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-forwarding.conf
+    state: present
+    reload: yes
+  loop:
+    # --- IP Forwarding ---
+    - { name: 'net/ipv4/ip_forward',                 value: '1' }
+    - { name: 'net/ipv6/conf/all/forwarding',        value: '1' }
+    - { name: 'net/ipv6/conf/default/forwarding',    value: '1' }
+    - { name: 'net/ipv6/conf/lo/forwarding',         value: '1' }
+
+    # --- ARP Behavior (IPv4) - Global permissive ---
+    - { name: 'net/ipv4/conf/all/arp_ignore',        value: '0' }
+    - { name: 'net/ipv4/conf/default/arp_ignore',    value: '0' }
+    - { name: 'net/ipv4/conf/all/arp_filter',        value: '0' }
+    - { name: 'net/ipv4/conf/default/arp_filter',    value: '0' }
+    - { name: 'net/ipv4/conf/all/arp_announce',      value: '2' }
+    - { name: 'net/ipv4/conf/default/arp_announce',  value: '2' }
+
+    # --- Neighbor (IPv6) - Global ---
+    - { name: 'net/ipv6/conf/all/proxy_ndp',         value: '0' }
+    - { name: 'net/ipv6/conf/default/proxy_ndp',     value: '0' }
+
+    # --- Reverse Path Filtering (IPv4) ---
+    # Loose globally; we turn OFF per anycast VLAN
+    - { name: 'net/ipv4/conf/all/rp_filter',         value: '0' }
+    - { name: 'net/ipv4/conf/default/rp_filter',     value: '0' }
+
+    # --- ICMP Redirects (v4/v6) ---
+    - { name: 'net/ipv4/conf/all/accept_redirects',     value: '0' }
+    - { name: 'net/ipv4/conf/default/accept_redirects', value: '0' }
+    - { name: 'net/ipv4/conf/all/send_redirects',       value: '0' }
+    - { name: 'net/ipv4/conf/default/send_redirects',   value: '0' }
+    - { name: 'net/ipv6/conf/all/accept_redirects',     value: '0' }
+    - { name: 'net/ipv6/conf/default/accept_redirects', value: '0' }
+
+    # --- DAD on loopback anycast /128s ---
+    - { name: 'net/ipv6/conf/lo/accept_dad',         value: '0' }
 # 
 # # IPv6 RA/autoconf OFF on vmbr0.* (anycast VLAN bridges)
 # - name: Disable IPv6 Autoconf/RA on vmbr0 anycast bridges
@@ -369,65 +369,24 @@
   ansible.builtin.import_tasks: tenant_anycast_bgp_debug.yaml
 
 # ============================================================================
-# xvrf Cross-Connect Configuration - DISABLED
+# xvrf Cross-Connect Configuration
 # ============================================================================
-# FRR 10.0+ (PR #16044, May 2024) fixed the route leaking bug where routes
-# incorrectly pointed to loopback. We can now use "import vrf default" directly.
-# ============================================================================
-
-# - name: Deploy xvrf cross-connect setup script
-#   ansible.builtin.template:
-#     src: xvrf_cross_connect.j2
-#     dest: /usr/local/bin/xvrf-cross-connect-setup.sh
-#     mode: '0755'
-#   when: inventory_hostname in ['pve01','pve02','pve03','pve04']
-#
-# - name: Execute xvrf cross-connect setup
-#   ansible.builtin.command: /usr/local/bin/xvrf-cross-connect-setup.sh
-#   when: inventory_hostname in ['pve01','pve02','pve03','pve04']
-#   changed_when: false
-#   register: xvrf_result
-#
-# - name: Display xvrf cross-connect setup result
-#   ansible.builtin.debug:
-#     var: xvrf_result.stdout_lines
-#   when:
-#     - inventory_hostname in ['pve01','pve02','pve03','pve04']
-#     - xvrf_result.stdout_lines is defined
-
-# ============================================================================
-# radvd Configuration for Tenant VNets
-# ============================================================================
-# Enables IPv6 Router Advertisements on tenant VNets for SLAAC
-# Advertises both ULA and GUA prefixes from AT&T PD
+# Creates IPv6 /127 point-to-point link between default VRF and vrf_evpnz1
+# Enables BGP "import vrf default" routes to have resolvable nexthops
 # ============================================================================
 
-- name: Install radvd package
-  ansible.builtin.apt:
-    name: radvd
-    state: present
-    update_cache: yes
-  when:
-    - inventory_hostname in ['pve01','pve02','pve03']
-
-- name: Deploy radvd configuration
+- name: Deploy xvrf cross-connect network configuration
   ansible.builtin.template:
-    src: radvd.conf.j2
-    dest: /etc/radvd.conf
+    src: xvrf_addresses.j2
+    dest: /etc/network/interfaces.d/xvrf-cross-connect
     mode: '0644'
-    owner: root
-    group: root
-  notify: Restart radvd
-  when:
-    - inventory_hostname in ['pve01','pve02','pve03']
+  notify: Reload network
+  when: inventory_hostname in ['pve01','pve02','pve03']
 
-- name: Enable and start radvd service
-  ansible.builtin.systemd:
-    name: radvd
-    enabled: yes
-    state: started
-  when:
-    - inventory_hostname in ['pve01','pve02','pve03']
+# ============================================================================
+# DEPRECATED: radvd configuration removed - now using dnsmasq-ra
+# See roles/dnsmasq_ra for current IPv6 RA configuration
+# ============================================================================
 
 # ============================================================================
 # Tenant VNet GUA Address Configuration
@@ -457,6 +416,67 @@
   when:
     - inventory_hostname in ['pve01','pve02','pve03']
     - tenant_gua_reload.stdout_lines is defined
+
+# ============================================================================
+# dnsmasq-ra VRF-aware Service for GUA Router Advertisements
+# ============================================================================
+# Configures dnsmasq to run in VRF context to advertise GUA prefixes to VMs.
+# ULA prefixes are static (configured via Proxmox SDN), only GUA needs RA.
+# Fixes Proxmox SDN limitation where dnsmasq can't bind to VRF interfaces.
+# ============================================================================
+
+- name: Ensure dnsmasq.d directory exists
+  ansible.builtin.file:
+    path: /etc/dnsmasq.d
+    state: directory
+    mode: '0755'
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+
+- name: Stop and disable old unified dnsmasq-ra service
+  ansible.builtin.systemd:
+    name: dnsmasq-ra
+    state: stopped
+    enabled: no
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+  failed_when: false
+
+- name: Deploy per-vnet dnsmasq-ra configuration with explicit GUA
+  ansible.builtin.template:
+    src: dnsmasq_ra_per_vnet.conf.j2
+    dest: /etc/dnsmasq.d/{{ item.name }}-ra.conf
+    mode: '0644'
+  loop: "{{ tenant_vnets }}"
+  vars:
+    vnet_name: "{{ item.name }}"
+    vnet_id: "{{ item.id }}"
+    gua_prefix: "{{ item.gua_prefix }}"
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+  notify: Restart per-vnet dnsmasq
+
+- name: Deploy per-vnet dnsmasq-ra systemd service
+  ansible.builtin.template:
+    src: dnsmasq_ra_vnet.service.j2
+    dest: /etc/systemd/system/dnsmasq-{{ item.name }}.service
+    mode: '0644'
+  loop: "{{ tenant_vnets }}"
+  vars:
+    vnet_name: "{{ item.name }}"
+    vrf_name: vrf_evpnz1
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+
+- name: Enable and start per-vnet dnsmasq-ra services
+  ansible.builtin.systemd:
+    name: dnsmasq-{{ item.name }}
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  loop: "{{ tenant_vnets }}"
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
 
 # ============================================================================
 # Static Anycast LLA Configuration for BGP Unnumbered Peering

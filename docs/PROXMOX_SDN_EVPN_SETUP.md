@@ -69,7 +69,7 @@ This document describes the Proxmox Software-Defined Networking (SDN) implementa
 1. **FRR Installed**: FRR must be running on all PVE hosts
 2. **BGP iBGP Mesh**: BGP sessions established between all PVE nodes
 3. **Network Connectivity**: 25G mesh network (enp1s0f0np0, enp1s0f1np1)
-4. **Loopback Addresses**: Infrastructure loopbacks configured (fd00:255::1-3)
+4. **Loopback Addresses**: Infrastructure loopbacks configured (fd00:0:0:ffff::1-3)
 
 ### Step 1: Configure FRR for EVPN
 
@@ -110,7 +110,7 @@ ssh root@pve01.sulibot.com \
     --controller frr \
     --type evpn \
     --asn 4200001000 \
-    --peers "fd00:255::1,fd00:255::2,fd00:255::3"'
+    --peers "fd00:0:0:ffff::1,fd00:0:0:ffff::2,fd00:0:0:ffff::3"'
 ```
 
 ### Step 3: Deploy SDN Infrastructure via Terraform

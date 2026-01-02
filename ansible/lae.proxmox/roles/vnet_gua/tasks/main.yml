@@ -1,0 +1,233 @@
+---
+# vnet_gua role
+
+- name: Fetch PD pool prefix from RouterOS (single pool)
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'single'
+  community.routeros.command:
+    commands:
+      - /ipv6/dhcp-client/print detail where interface={{ routeros_pd_interface }}
+      - /ipv6/pool/print detail where name={{ routeros_pd_pool }}
+  register: routeros_pool
+  changed_when: false
+  check_mode: false
+
+- name: Assert DHCPv6-PD client is bound on {{ routeros_pd_interface }}
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'single'
+  ansible.builtin.assert:
+    that:
+      - routeros_pool.stdout[0] is search('status=bound')
+    fail_msg: "DHCPv6-PD client is not bound on {{ routeros_pd_interface }}"
+
+- name: Set PD prefix fact from RouterOS pool (single pool)
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'single'
+  ansible.builtin.set_fact:
+    routeros_pd_prefix: "{{ (routeros_pool.stdout[1] | regex_search('prefix=([0-9A-Fa-f:]+/[0-9]+)', '\\1')) | default('') }}"
+
+- name: Fetch PD pool prefixes per VNet
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'per_vnet'
+  community.routeros.command:
+    commands:
+      - /ipv6/pool/print detail where name={{ pool_name }}
+  loop: "{{ vnet_gua_vnets | map('int') | list }}"
+  loop_control:
+    loop_var: vnet_id
+    label: "vnet{{ vnet_id }}"
+  vars:
+    pool_name: "{{ routeros_pd_pool_map.get(vnet_id, routeros_pd_pool_name_pattern | replace('VNET_ID', vnet_id | string)) }}"
+  register: routeros_pools
+  changed_when: false
+  check_mode: false
+
+- name: Build per-VNet PD prefix map
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'per_vnet'
+    - routeros_pools is defined
+    - routeros_pools.results is defined
+    - routeros_pools.results | length > 0
+  ansible.builtin.set_fact:
+    routeros_pd_prefix_map: >-
+      {{ routeros_pd_prefix_map | default({}) |
+         combine({ (item.vnet_id | string):
+           ((item.stdout | default([]) | join(' ') |
+             regex_findall('prefix=([0-9A-Fa-f:]+/[0-9]+)') | first | default('')) ) }) }}
+  loop: "{{ routeros_pools.results }}"
+
+- name: Assert PD prefixes were found for all VNets
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'per_vnet'
+    - routeros_pd_prefix_map is defined
+  ansible.builtin.assert:
+    that:
+      - (routeros_pd_prefix_map | default({})) | length == (vnet_gua_vnets | length)
+      - (routeros_pd_prefix_map | default({}) | dict2items |
+         selectattr('value', 'match', '.+') | list | length) == (vnet_gua_vnets | length)
+    fail_msg: "Missing PD prefix for one or more VNets in RouterOS pools"
+
+- name: Assert PD prefix was found in RouterOS pool
+  when: "'routeros' in group_names"
+  ansible.builtin.assert:
+    that:
+      - routeros_pd_prefix | length > 0
+    fail_msg: "No prefix found in RouterOS pool {{ routeros_pd_pool }}"
+
+- name: Compute GUA /64s for VNets
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: localhost
+  become: false
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import ipaddress
+    import json
+    import os
+
+    vnet_ids = json.loads(os.environ["VNET_IDS"])
+    index_map = json.loads(os.environ["INDEX_MAP"])
+    pd_prefix = os.environ.get("PD_PREFIX", "")
+    pd_map_raw = os.environ.get("PD_MAP", "")
+    out = {}
+
+    if pd_map_raw:
+        pd_map = json.loads(pd_map_raw)
+        for vnet_id in vnet_ids:
+            key = str(vnet_id)
+            prefix = pd_map.get(key)
+            if not prefix:
+                raise SystemExit(f"Missing PD prefix for vnet {vnet_id}")
+            subnet = ipaddress.ip_network(prefix, strict=False)
+            gw = subnet.network_address + 0xfffe
+            out[key] = {"prefix": str(subnet), "gateway": str(gw)}
+    else:
+        if not pd_prefix:
+            raise SystemExit("PD prefix is empty")
+        net = ipaddress.ip_network(pd_prefix, strict=False)
+        if net.prefixlen > 64:
+            raise SystemExit(f"PD prefix too specific: {pd_prefix}")
+
+        subnets = list(net.subnets(new_prefix=64))
+        for vnet_id in vnet_ids:
+            key = str(vnet_id)
+            idx = index_map.get(key)
+            if idx is None:
+                raise SystemExit(f"Missing index for vnet {vnet_id}")
+            subnet = subnets[idx]
+            gw = subnet.network_address + 0xfffe
+            out[key] = {
+                "prefix": str(subnet),
+                "gateway": str(gw)
+            }
+
+    print(json.dumps(out))
+    PY
+  environment:
+    PD_PREFIX: >-
+      {{ hostvars[(groups.get(routeros_group, []) | first | default(''))].routeros_pd_prefix
+         | default('') }}
+    PD_MAP: >-
+      {{ hostvars[(groups.get(routeros_group, []) | first | default(''))].routeros_pd_prefix_map
+         | default({}) | to_json }}
+    VNET_IDS: "{{ vnet_gua_vnets | to_json }}"
+    INDEX_MAP: "{{ vnet_gua_index_map | to_json }}"
+  register: vnet_gua_map_json
+  changed_when: false
+
+- name: Store computed GUA prefix map
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: localhost
+  become: false
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    vnet_gua_prefix_map: "{{ vnet_gua_map_json.stdout | from_json }}"
+
+- name: Manage GUA subnets in Proxmox SDN
+  when: "'pve' in group_names"
+  run_once: true
+  loop: "{{ vnet_gua_vnets }}"
+  loop_control:
+    label: "vnet{{ item }}"
+  vars:
+    vnet_id: "{{ item | int }}"
+    vnet_name: "vnet{{ vnet_id }}"
+    gua_entry: "{{ hostvars['localhost'].vnet_gua_prefix_map[vnet_id | string] }}"
+    gua_prefix: "{{ gua_entry.prefix }}"
+    gua_gateway: "{{ gua_entry.gateway }}"
+    vnet_gua_delegate_host: "{{ groups['pve'][0] }}"
+  ansible.builtin.include_tasks: manage_sdn_subnet.yml
+
+- name: Deploy Proxmox SDN dnsmasq template for GUA Router Advertisements
+  when: "false"  # Disabled - using radvd instead
+  run_once: true
+  ansible.builtin.template:
+    src: dnsmasq.conf.child.j2
+    dest: /var/lib/pve-cluster/sdn/dnsmasq.conf.child
+    mode: '0644'
+    owner: root
+    group: www-data
+
+- name: Apply SDN configuration
+  when: "'pve' in group_names and vnet_gua_apply_sdn"
+  run_once: true
+  delegate_to: "{{ groups['pve'][0] }}"
+  ansible.builtin.command: pvesh set /cluster/sdn
+
+- name: Install radvd package
+  when: "'pve' in group_names"
+  ansible.builtin.apt:
+    name: radvd
+    state: present
+    update_cache: false
+
+- name: Stop and disable all per-vnet dnsmasq services
+  when: "'pve' in group_names"
+  ansible.builtin.systemd:
+    name: "dnsmasq-{{ item }}"
+    state: stopped
+    enabled: no
+  loop: "{{ vnet_gua_vnets | map('int') | map('string') | map('regex_replace', '^(.*)$', 'vnet\\1') | list }}"
+  failed_when: false
+
+- name: Deploy radvd configuration for VRF tenant networks
+  when: "'pve' in group_names"
+  ansible.builtin.template:
+    src: radvd.conf.j2
+    dest: /etc/radvd-vrf.conf
+    mode: '0644'
+    owner: root
+    group: root
+  notify: Restart radvd-vrf
+
+- name: Deploy radvd systemd service
+  when: "'pve' in group_names"
+  ansible.builtin.template:
+    src: radvd.service.j2
+    dest: /etc/systemd/system/radvd-vrf.service
+    mode: '0644'
+    owner: root
+    group: root
+  vars:
+    vrf_name: vrf_evpnz1
+
+- name: Enable and start radvd-vrf service
+  when: "'pve' in group_names"
+  ansible.builtin.systemd:
+    name: radvd-vrf
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Debug vnet GUA SDN state
+  ansible.builtin.import_tasks: vnet_gua_debug.yml
+  tags:
+    - debug
+    - never

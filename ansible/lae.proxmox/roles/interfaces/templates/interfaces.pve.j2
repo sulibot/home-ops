@@ -23,7 +23,7 @@
 # - dummy_underlay: Infrastructure loopbacks
 #     * IPv4 VTEP loopback: 10.255.0.{{ node_id }}/32 (BGP router-id)
 #     * IPv6 infra loopback: fd00:0:0:ffff::{{ node_id }}/128 (iBGP peering) [NEW]
-#     * IPv6 infra loopback: fd00:255::{{ node_id }}/128 (iBGP peering) [OLD - transition]
+#     * IPv6 infra loopback: fd00:0:0:ffff::{{ node_id }}/128 (iBGP peering) [OLD - transition]
 #     * Ceph public/cluster: fc00:20::{{ node_id }}/128, fc00:21::{{ node_id }}/128
 # ============================================================
 
@@ -130,10 +130,11 @@ iface dummy_underlay inet static
 
 iface dummy_underlay inet6 static
     address fd00:0:0:ffff::{{ node_id }}/128
-#    address fd00:255::{{ node_id }}/128
+#    address fd00:0:0:ffff::{{ node_id }}/128
     address fc00:20::{{ node_id }}/128
     address fc00:21::{{ node_id }}/128
     mtu 9000
+    post-up sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/forwarding'
 {% endif %}
 
 # ------------------------------------------------------------

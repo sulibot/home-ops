@@ -1,0 +1,34 @@
+# xvrf Cross-Connect for VRF to Global Routing Table Connectivity
+# Deployed via Ansible to /etc/network/interfaces.d/xvrf-cross-connect
+#
+# Each PVE gets its own unique /127 to avoid conflicts:
+#   pve01: fd00:255:254:1::1/127 (global) <-> fd00:255:254:1::0/127 (VRF)
+#   pve02: fd00:255:254:2::1/127 (global) <-> fd00:255:254:2::0/127 (VRF)
+#   pve03: fd00:255:254:3::1/127 (global) <-> fd00:255:254:3::0/127 (VRF)
+#
+# These veth interfaces are created by Proxmox SDN when evpnz1 zone is configured.
+
+{% if inventory_hostname == 'pve01' %}
+{% set pve_id = 1 %}
+{% elif inventory_hostname == 'pve02' %}
+{% set pve_id = 2 %}
+{% elif inventory_hostname == 'pve03' %}
+{% set pve_id = 3 %}
+{% elif inventory_hostname == 'pve04' %}
+{% set pve_id = 4 %}
+{% endif %}
+
+# Global side (default VRF)
+auto xvrf_evpnz1
+iface xvrf_evpnz1 inet6 static
+    address fd00:255:254:{{ pve_id }}::1/127
+    pre-up /sbin/ip link set xvrf_evpnz1 up || true
+    post-up /sbin/sysctl -w net.ipv6.conf.xvrf_evpnz1.forwarding=1
+
+# VRF side (vrf_evpnz1)
+auto xvrfp_evpnz1
+iface xvrfp_evpnz1 inet6 static
+    address fd00:255:254:{{ pve_id }}::0/127
+    vrf vrf_evpnz1
+    pre-up /sbin/ip link set xvrfp_evpnz1 up || true
+    post-up /sbin/sysctl -w net.ipv6.conf.xvrfp_evpnz1.forwarding=1

@@ -25,7 +25,7 @@ The design prioritizes:
 |---|---|---|---|
 | Management | 10.10.0.0/24 | fd00:10::/64 | PVE UI, SSH, API |
 | Underlay fabric | 10.99.0.0/16 | fc00:99::/48 | Routed point-to-point |
-| Host loopbacks | 10.255.0.0/16 | fd00:255::/64 | Stable host identity |
+| Host loopbacks | 10.255.0.0/16 | fd00:0:0:ffff::/64 | Stable host identity |
 | Tenant space | 10.100.0.0/14 | fd00::/48 | Tenants / clusters |
 
 ---
@@ -44,9 +44,9 @@ The design prioritizes:
 
 | Host | IPv4 (/32) | IPv6 (/128) |
 |---|---|---|
-| pve01 | 10.255.0.1 | fd00:255::1 |
-| pve02 | 10.255.0.2 | fd00:255::2 |
-| pve03 | 10.255.0.3 | fd00:255::3 |
+| pve01 | 10.255.0.1 | fd00:0:0:ffff::1 |
+| pve02 | 10.255.0.2 | fd00:0:0:ffff::2 |
+| pve03 | 10.255.0.3 | fd00:0:0:ffff::3 |
 
 ---
 

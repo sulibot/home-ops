@@ -1,0 +1,5 @@
+---
+- name: Restart radvd-vrf
+  ansible.builtin.systemd:
+    name: radvd-vrf
+    state: restarted

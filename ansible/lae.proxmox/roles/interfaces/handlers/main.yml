@@ -1,11 +1,10 @@
 ---
-# Handlers for interfaces role
-
 - name: Reload network
   ansible.builtin.command: /usr/sbin/ifreload -a
-  changed_when: false
-
-- name: Restart radvd
+  
+- name: Restart per-vnet dnsmasq
   ansible.builtin.systemd:
-    name: radvd
+    name: "dnsmasq-{{ item.name }}"
     state: restarted
+  loop: "{{ tenant_vnets }}"
+  when: "'pve' in group_names"

@@ -1,0 +1,69 @@
+---
+- name: Debug RouterOS PD pool prefixes
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_mode == 'per_vnet'
+  community.routeros.command:
+    commands:
+      - /ipv6/pool/print detail where name={{ pool_name }}
+  loop: "{{ vnet_gua_vnets | map('int') | list }}"
+  loop_control:
+    loop_var: vnet_id
+    label: "pd-vnet{{ vnet_id }}"
+  vars:
+    pool_name: "{{ routeros_pd_pool_map.get(vnet_id, routeros_pd_pool_name_pattern | replace('VNET_ID', vnet_id | string)) }}"
+  register: routeros_pd_debug
+  changed_when: false
+  check_mode: false
+
+- name: Display RouterOS PD pool output
+  when:
+    - inventory_hostname in groups.get(routeros_group, [])
+    - routeros_pd_debug is defined
+  ansible.builtin.debug:
+    var: routeros_pd_debug.results
+
+- name: Show SDN vnet list
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: "{{ groups['pve'][0] }}"
+  ansible.builtin.command: pvesh ls /cluster/sdn/vnets
+  register: sdn_vnet_list
+  changed_when: false
+  failed_when: false
+
+- name: Display SDN vnet list
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: "{{ groups['pve'][0] }}"
+  ansible.builtin.debug:
+    var: sdn_vnet_list.stdout_lines
+
+- name: Show SDN subnets for VNets
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: "{{ groups['pve'][0] }}"
+  ansible.builtin.command: pvesh get /cluster/sdn/vnets/{{ vnet_name }}/subnets --output-format json-pretty
+  register: sdn_vnet_subnets
+  loop: "{{ vnet_gua_vnets | map('int') | list }}"
+  loop_control:
+    loop_var: vnet_id
+    label: "vnet{{ vnet_id }}"
+  vars:
+    vnet_name: "vnet{{ vnet_id }}"
+  changed_when: false
+  failed_when: false
+
+- name: Display SDN subnet output
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: "{{ groups['pve'][0] }}"
+  ansible.builtin.debug:
+    var: sdn_vnet_subnets.results
+
+- name: Show computed GUA prefix map
+  when: "'pve' in group_names"
+  run_once: true
+  delegate_to: localhost
+  ansible.builtin.debug:
+    var: hostvars['localhost'].vnet_gua_prefix_map

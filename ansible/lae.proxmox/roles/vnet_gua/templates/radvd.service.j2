@@ -1,0 +1,28 @@
+[Unit]
+Description=radvd - Router Advertisement Daemon for EVPN tenant networks
+Documentation=man:radvd(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+PIDFile=/run/radvd/radvd-vrf.pid
+
+# Test configuration before starting
+ExecStartPre=/usr/sbin/ip vrf exec {{ vrf_name }} /usr/sbin/radvd -c -C /etc/radvd-vrf.conf
+
+# Start radvd in VRF context
+ExecStart=/usr/sbin/ip vrf exec {{ vrf_name }} /usr/sbin/radvd -C /etc/radvd-vrf.conf -p /run/radvd/radvd-vrf.pid -m syslog
+
+# Reload configuration
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5
+
+# Create PID directory
+RuntimeDirectory=radvd
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

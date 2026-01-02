@@ -36,7 +36,7 @@ locals {
   vip_ipv6_loopback_ip = "${local.egress_ipv6_loopback_id_prefix}::ac"
 
   # DNS servers (set to your infra; only include the stacks that are enabled)
-  dns_server_ipv6 = "fd00:255::fffe"
+  dns_server_ipv6 = "fd00:0:0:ffff::fffe"
   dns_server_ipv4 = "10.255.255.254"
 
   dns_servers = concat(
@@ -150,7 +150,7 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
         egress_ipv6_iface_gateway     = local.egress_ipv6_iface_gateway
         egress_ipv4_iface_gateway     = local.egress_ipv4_iface_gateway
         ros_neighbor_v4               = "10.255.255.254"
-        ros_neighbor_v6               = "fd00:255::fffe"
+        ros_neighbor_v6               = "fd00:0:0:ffff::fffe"
         ros_asn                       = "65000"
         bgp_port                      = "179"
         cluster_id                    = var.cluster_id

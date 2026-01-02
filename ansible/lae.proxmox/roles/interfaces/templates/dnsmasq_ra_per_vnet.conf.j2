@@ -1,0 +1,23 @@
+# dnsmasq RA configuration for {{ vnet_name }}
+# Runs in VRF context - updated by vnet_gua role when GUA changes
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Disable DNS server functionality
+port=0
+
+# Bind only to this specific interface
+interface={{ vnet_name }}
+bind-interfaces
+
+# Enable Router Advertisements
+enable-ra
+
+# Quiet mode
+#quiet-ra
+
+# Explicit GUA prefix (constructor doesn't work in VRF - sees all interfaces)
+# This is updated dynamically when Proxmox SDN GUA prefixes change
+dhcp-range={{ vnet_name }},{{ gua_prefix | regex_replace('::/64$', '::') }},{{ gua_prefix | regex_replace('::/64$', ':ffff:ffff:ffff:ffff') }},ra-stateless,ra-names,64
+
+# Stable DNS via link-local
+dhcp-option={{ vnet_name }},option6:dns-server,[fe80::{{ vnet_id }}:fffe]

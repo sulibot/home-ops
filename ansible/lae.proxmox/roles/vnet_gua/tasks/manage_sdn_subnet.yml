@@ -1,0 +1,56 @@
+---
+- name: Fetch existing SDN subnets for {{ vnet_name }}
+  ansible.builtin.command: pvesh get /cluster/sdn/vnets/{{ vnet_name }}/subnets --output-format json
+  register: sdn_subnets
+  changed_when: false
+  delegate_to: "{{ vnet_gua_delegate_host }}"
+
+- name: Locate existing GUA subnets for {{ vnet_name }}
+  ansible.builtin.set_fact:
+    vnet_gua_existing: >-
+      {{ (sdn_subnets.stdout | from_json |
+          selectattr('cidr', 'defined') |
+          selectattr('cidr', 'equalto', gua_prefix | trim) |
+          list | first) | default({}) }}
+    vnet_gua_other: >-
+      {{ (sdn_subnets.stdout | from_json |
+          selectattr('cidr', 'defined') |
+          selectattr('cidr', 'search', ':') |
+          rejectattr('cidr', 'match', '^(fd|fc|fe80)[0-9a-fA-F]*:') |
+          rejectattr('cidr', 'equalto', gua_prefix | trim) |
+          list) }}
+  delegate_to: "{{ vnet_gua_delegate_host }}"
+
+- name: Remove outdated GUA subnet(s) for {{ vnet_name }}
+  ansible.builtin.command: pvesh delete /cluster/sdn/vnets/{{ vnet_name }}/subnets/{{ old_gua.subnet }}
+  when:
+    - vnet_gua_other | length > 0
+    - old_gua.subnet is defined
+    - old_gua.cidr is defined
+    - old_gua.cidr != gua_prefix | trim
+  loop: "{{ vnet_gua_other }}"
+  loop_control:
+    loop_var: old_gua
+  delegate_to: "{{ vnet_gua_delegate_host }}"
+
+- name: Create GUA subnet for {{ vnet_name }}
+  ansible.builtin.command: >
+    pvesh create /cluster/sdn/vnets/{{ vnet_name }}/subnets
+    --subnet {{ gua_prefix }}
+    --gateway {{ gua_gateway }}
+    --type subnet
+  when:
+    - vnet_gua_create_missing
+    - vnet_gua_existing.cidr is not defined or vnet_gua_existing.cidr != gua_prefix | trim
+  delegate_to: "{{ vnet_gua_delegate_host }}"
+
+- name: Update GUA subnet for {{ vnet_name }}
+  ansible.builtin.command: >
+    pvesh set /cluster/sdn/vnets/{{ vnet_name }}/subnets/{{ vnet_gua_existing.subnet }}
+    --gateway {{ gua_gateway }}
+  when:
+    - vnet_gua_existing.subnet is defined
+    - vnet_gua_existing.cidr is defined
+    - vnet_gua_existing.cidr == gua_prefix | trim
+    - vnet_gua_existing.gateway is not defined or vnet_gua_existing.gateway != gua_gateway | trim
+  delegate_to: "{{ vnet_gua_delegate_host }}"

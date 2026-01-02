@@ -1,0 +1,20 @@
+[Unit]
+Description=dnsmasq - IPv6 RA for {{ vnet_name }} (VRF-aware)
+Documentation=man:dnsmasq(8)
+After=network.target
+
+[Service]
+Type=forking
+# Pre-flight check: test configuration syntax
+ExecStartPre=/bin/sh -c '/usr/sbin/ip vrf exec {{ vrf_name }} /usr/sbin/dnsmasq --test -C /etc/dnsmasq.d/{{ vnet_name }}-ra.conf'
+
+# Start dnsmasq in VRF context for this specific vnet
+ExecStart=/usr/sbin/ip vrf exec {{ vrf_name }} /usr/sbin/dnsmasq -C /etc/dnsmasq.d/{{ vnet_name }}-ra.conf --pid-file=/run/dnsmasq-{{ vnet_name }}.pid
+
+PIDFile=/run/dnsmasq-{{ vnet_name }}.pid
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

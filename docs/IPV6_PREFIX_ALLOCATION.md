@@ -83,15 +83,15 @@ VMs and services receive BOTH address types via SLAAC, providing:
 
 | Prefix | Purpose |
 |--------|---------|
-| fd00:255::/64 | PVE host loopbacks (BGP router IDs) |
+| fd00:0:0:ffff::/64 | PVE host loopbacks (BGP router IDs) |
 | fd00:255:101::/48 | Talos node loopbacks (cluster 101) |
 | fc00:20::/64 | Ceph public network |
 | fc00:21::/64 | Ceph cluster network |
 
 **PVE Loopbacks:**
-- `fd00:255::1` / `10.255.0.1` - pve01 BGP router ID
-- `fd00:255::2` / `10.255.0.2` - pve02 BGP router ID
-- `fd00:255::3` / `10.255.0.3` - pve03 BGP router ID
+- `fd00:0:0:ffff::1` / `10.255.0.1` - pve01 BGP router ID
+- `fd00:0:0:ffff::2` / `10.255.0.2` - pve02 BGP router ID
+- `fd00:0:0:ffff::3` / `10.255.0.3` - pve03 BGP router ID
 
 **Talos Loopbacks (example for cluster 101):**
 - `fd00:255:101::11` / `10.255.101.11` - solcp01

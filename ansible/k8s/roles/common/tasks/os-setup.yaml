@@ -106,7 +106,7 @@
   ansible.builtin.copy:
     dest: /etc/chrony/chrony.conf
     content: |
-      server [fd00:255::fffe] iburst
+      server [fd00:0:0:ffff::fffe] iburst
       driftfile /var/lib/chrony/chrony.drift
       makestep 1.0 3
       rtcsync

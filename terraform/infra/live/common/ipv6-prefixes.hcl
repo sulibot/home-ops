@@ -10,10 +10,10 @@ locals {
   # AT&T delegated prefixes (current as of 2025-12-16)
   # Source: RouterOS DHCPv6-PD pools
   delegated_prefixes = {
-    vnet100 = "2600:1700:ab1a:5009::/64"  # General Workloads
-    vnet101 = "2600:1700:ab1a:500e::/64"  # Talos Cluster 101
-    vnet102 = "2600:1700:ab1a:500b::/64"  # Talos Cluster 102
-    vnet103 = "2600:1700:ab1a:5008::/64"  # Talos Cluster 103
+    vnet100 = "2600:1700:ab1a:500e::/64"  # General Workloads (from wan6-v100)
+    vnet101 = "2600:1700:ab1a:500d::/64"  # Talos Cluster 101 (from wan6-v101)
+    vnet102 = "2600:1700:ab1a:500c::/64"  # Talos Cluster 102 (from wan6-v102)
+    vnet103 = "2600:1700:ab1a:500b::/64"  # Talos Cluster 103 (from wan6-v103)
   }
 
   # Gateway addresses follow the ::ffff pattern

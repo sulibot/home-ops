@@ -11,10 +11,10 @@ This guide covers the deployment of Phase 1 infrastructure loopback renumbering 
 ## What Changed
 
 ### Infrastructure Addresses
-- Infrastructure loopbacks: `fd00:255::/48` → `fd00:0:0:ffff::/64`
-- RouterOS IPv6: `fd00:255::fffe` → `fd00:0:0:ffff::fffe`
+- Infrastructure loopbacks: `fd00:0:0:ffff::/48` → `fd00:0:0:ffff::/64`
+- RouterOS IPv6: `fd00:0:0:ffff::fffe` → `fd00:0:0:ffff::fffe`
 - RouterOS IPv4: `10.255.255.254` → `10.255.0.254`
-- DNS/NTP: `fd00:255::53` → `fd00:0:0:ffff::53`
+- DNS/NTP: `fd00:0:0:ffff::53` → `fd00:0:0:ffff::53`
 
 ### Strategy
 **Dual Addressing**: New infrastructure loopbacks are configured alongside old addresses. BGP sessions use the new addresses, but old addresses remain for safe rollback during the transition.
@@ -71,7 +71,7 @@ ssh root@pve01 "vtysh -c 'show bgp ipv6 neighbors fd00:0:0:ffff::3'"
 **Expected Results**:
 - All BGP sessions ESTABLISHED
 - New loopback `fd00:0:0:ffff::1/128` present
-- Old loopback `fd00:255::1/128` still present
+- Old loopback `fd00:0:0:ffff::1/128` still present
 - Routes exchanged successfully
 
 ### Step 3: Deploy to pve02 and pve03
@@ -174,11 +174,11 @@ ssh root@pve01 "vtysh -c 'show bgp summary'"
 **Only after Phase 1 is fully verified and stable**, create a follow-up commit to remove old addresses:
 
 1. Edit `ansible/lae.proxmox/roles/interfaces/templates/interfaces.pve.j2`:
-   - Remove line 133: `address fd00:255::{{ node_id }}/128`
+   - Remove line 133: `address fd00:0:0:ffff::{{ node_id }}/128`
 
 2. Update RouterOS:
    - Remove old IPv4: `10.255.255.254`
-   - Remove old IPv6: `fd00:255::fffe`
+   - Remove old IPv6: `fd00:0:0:ffff::fffe`
 
 3. Commit and deploy removal
 

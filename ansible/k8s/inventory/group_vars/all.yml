@@ -21,14 +21,14 @@ flux_git_repo: sol-k8s-cluster-config
 k8s_repo_url: https://apt.kubernetes.io/
 
 cluster_dns_forwarders:
-  - "fd00:255::fffe"
+  - "fd00:0:0:ffff::fffe"
 
 
 # FRR / VRRP / BGP globals
 frr_asn:    65101                       # your K8s cluster ASN
 frr_peer_asn: 65000                     # RouterOS ASN
 frr_bgp_neighbors: # fill in your router peer IPs here
-  - "fd00:255::fffe"                    # fill in your router peer IPs here
+  - "fd00:0:0:ffff::fffe"                    # fill in your router peer IPs here
 frr_update_source_ipv6: "fd00:255:101::{{ ansible_host.split('::')[1] }}"  # Use loopback IP for FRR BGP
 
 frr_vrrp_interface: "{{ kube_vip_interface }}"

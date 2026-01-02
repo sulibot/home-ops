@@ -12,12 +12,12 @@ Update RouterOS (MikroTik edge router) configuration to use new infrastructure l
 
 ### Current Loopback Addresses
 - IPv4: `10.255.255.254/32`
-- IPv6: `fd00:255::fffe/128`
+- IPv6: `fd00:0:0:ffff::fffe/128`
 
 ### Current BGP Peers
-- pve01: `fd00:255::1` (IPv6), `10.255.0.1` (IPv4)
-- pve02: `fd00:255::2` (IPv6), `10.255.0.2` (IPv4)
-- pve03: `fd00:255::3` (IPv6), `10.255.0.3` (IPv4)
+- pve01: `fd00:0:0:ffff::1` (IPv6), `10.255.0.1` (IPv4)
+- pve02: `fd00:0:0:ffff::2` (IPv6), `10.255.0.2` (IPv4)
+- pve03: `fd00:0:0:ffff::3` (IPv6), `10.255.0.3` (IPv4)
 
 ---
 
@@ -38,7 +38,7 @@ Update RouterOS (MikroTik edge router) configuration to use new infrastructure l
 # Should show both: 10.255.255.254/32 and 10.255.0.254/32
 
 /ipv6/address print where interface=loopback
-# Should show both: fd00:255::fffe/128 and fd00:0:0:ffff::fffe/128
+# Should show both: fd00:0:0:ffff::fffe/128 and fd00:0:0:ffff::fffe/128
 ```
 
 ---
@@ -90,9 +90,9 @@ Update RouterOS (MikroTik edge router) configuration to use new infrastructure l
 
 # For IPv6 BGP sessions:
 /routing/bgp/connection
-  set [find remote.address=fd00:255::1] local.address=fd00:0:0:ffff::fffe
-  set [find remote.address=fd00:255::2] local.address=fd00:0:0:ffff::fffe
-  set [find remote.address=fd00:255::3] local.address=fd00:0:0:ffff::fffe
+  set [find remote.address=fd00:0:0:ffff::1] local.address=fd00:0:0:ffff::fffe
+  set [find remote.address=fd00:0:0:ffff::2] local.address=fd00:0:0:ffff::fffe
+  set [find remote.address=fd00:0:0:ffff::3] local.address=fd00:0:0:ffff::fffe
 
 # For IPv4 BGP sessions:
 /routing/bgp/connection
@@ -153,7 +153,7 @@ If your connections are named (recommended approach):
 # Check both IPv6 addresses are present
 /ipv6/address print where interface=loopback
 # Expected:
-# - fd00:255::fffe/128 (old)
+# - fd00:0:0:ffff::fffe/128 (old)
 # - fd00:0:0:ffff::fffe/128 (new)
 ```
 
@@ -245,9 +245,9 @@ If BGP sessions fail to establish or routing issues occur:
 ```routeros
 # Revert BGP connections to old loopback addresses
 /routing/bgp/connection
-  set [find remote.address=fd00:0:0:ffff::1] local.address=fd00:255::fffe
-  set [find remote.address=fd00:0:0:ffff::2] local.address=fd00:255::fffe
-  set [find remote.address=fd00:0:0:ffff::3] local.address=fd00:255::fffe
+  set [find remote.address=fd00:0:0:ffff::1] local.address=fd00:0:0:ffff::fffe
+  set [find remote.address=fd00:0:0:ffff::2] local.address=fd00:0:0:ffff::fffe
+  set [find remote.address=fd00:0:0:ffff::3] local.address=fd00:0:0:ffff::fffe
 
 # For IPv4:
 /routing/bgp/connection
@@ -270,7 +270,7 @@ If BGP sessions fail to establish or routing issues occur:
 /ip/address remove [find address=10.255.255.254/32 and interface=loopback]
 
 # Remove old IPv6 loopback
-/ipv6/address remove [find address=fd00:255::fffe/128 and interface=loopback]
+/ipv6/address remove [find address=fd00:0:0:ffff::fffe/128 and interface=loopback]
 
 # Verify only new addresses remain
 /ip/address print where interface=loopback

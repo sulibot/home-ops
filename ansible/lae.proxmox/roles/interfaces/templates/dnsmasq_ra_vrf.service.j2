@@ -1,0 +1,18 @@
+# Managed by Ansible - DO NOT EDIT MANUALLY
+[Unit]
+Description=dnsmasq - IPv6 Router Advertisement for VNets (VRF-aware)
+Documentation=man:dnsmasq(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+PIDFile=/run/dnsmasq-ra.pid
+ExecStartPre=/bin/sh -c '/usr/sbin/ip vrf exec vrf_evpnz1 /usr/sbin/dnsmasq --test -C /etc/dnsmasq.d/v6-pd.conf'
+ExecStart=/usr/sbin/ip vrf exec vrf_evpnz1 /usr/sbin/dnsmasq -C /etc/dnsmasq.d/v6-pd.conf --pid-file=/run/dnsmasq-ra.pid
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

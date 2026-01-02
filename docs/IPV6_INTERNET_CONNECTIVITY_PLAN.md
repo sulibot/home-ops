@@ -243,7 +243,7 @@ Add GUA prefixes to export list:
 ```jinja2
 ! Export both ULA and GUA prefixes
 ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:10::/64  le 128
-ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:255::/48 le 128
+ipv6 prefix-list PVE_CONNECTED_V6 permit fd00:0:0:ffff::/48 le 128
 ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:20::/64  le 128
 ipv6 prefix-list PVE_CONNECTED_V6 permit fc00:21::/64  le 128
 

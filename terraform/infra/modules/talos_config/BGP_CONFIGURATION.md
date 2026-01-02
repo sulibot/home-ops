@@ -139,7 +139,7 @@ talosctl -n node01 exec --namespace system --cmd /usr/bin/vtysh -- vtysh -c "sho
 
 **What Gets Advertised:**
 - IPv4: `10.255.<cluster_id>.0/24` with `/32` loopbacks
-- IPv6: `fd00:255:<cluster_id>::/48` with `/128` loopbacks
+- IPv6: `fd00:0:0:ffff:::<cluster_id>::/48` with `/128` loopbacks
 
 **Example:**
 ```hcl

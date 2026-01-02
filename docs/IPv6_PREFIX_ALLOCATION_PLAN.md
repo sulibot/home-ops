@@ -171,18 +171,18 @@ ip -6 route add default via fd00:101::fffe dev eth1            # Default route
 **Purpose:** IPv6-only → IPv4 translation
 **Services:** Jool NAT64, Unbound DNS64
 
-### fd00:255::/56 - Infrastructure Loopbacks
+### fd00:0:0:ffff::/56 - Infrastructure Loopbacks
 
 **Convention:** The `255` sub-prefix is reserved for infrastructure loopbacks and VIPs (following IPv4 tradition where x.x.x.255 is often infrastructure).
 
-#### fd00:255::/64 - Proxmox Infrastructure Loopbacks
+#### fd00:0:0:ffff::/64 - Proxmox Infrastructure Loopbacks
 | IP | Host | Interface | Purpose |
 |----|------|-----------|---------|
-| `fd00:255::1/128` | pve01 | dummy_underlay | BGP peering source, router ID |
-| `fd00:255::2/128` | pve02 | dummy_underlay | BGP peering source, router ID |
-| `fd00:255::3/128` | pve03 | dummy_underlay | BGP peering source, router ID |
-| `fd00:255::4/128` | pve04 | dummy_underlay | BGP peering source, router ID (future) |
-| `fd00:255::fffe/128` | RouterOS | Loopback | BGP peer for PVE hosts |
+| `fd00:0:0:ffff::1/128` | pve01 | dummy_underlay | BGP peering source, router ID |
+| `fd00:0:0:ffff::2/128` | pve02 | dummy_underlay | BGP peering source, router ID |
+| `fd00:0:0:ffff::3/128` | pve03 | dummy_underlay | BGP peering source, router ID |
+| `fd00:0:0:ffff::4/128` | pve04 | dummy_underlay | BGP peering source, router ID (future) |
+| `fd00:0:0:ffff::fffe/128` | RouterOS | Loopback | BGP peer for PVE hosts |
 
 **Purpose:** BGP session source IPs, stable identifiers
 **BGP Session:** PVE (AS 65001) ↔ RouterOS (AS 65000)
@@ -623,9 +623,9 @@ For additional clusters, follow the same pattern:
 ### Proxmox Hosts
 | Host | Management | BGP Loopback | Ceph Public | Ceph Cluster |
 |------|------------|--------------|-------------|--------------|
-| pve01 | fd00:10::1 | fd00:255::1 | fc00:20::1 | fc00:21::1 |
-| pve02 | fd00:10::2 | fd00:255::2 | fc00:20::2 | fc00:21::2 |
-| pve03 | fd00:10::3 | fd00:255::3 | fc00:20::3 | fc00:21::3 |
+| pve01 | fd00:10::1 | fd00:0:0:ffff::1 | fc00:20::1 | fc00:21::1 |
+| pve02 | fd00:10::2 | fd00:0:0:ffff::2 | fc00:20::2 | fc00:21::2 |
+| pve03 | fd00:10::3 | fd00:0:0:ffff::3 | fc00:20::3 | fc00:21::3 |
 
 ### Kubernetes Nodes
 | Host | Mesh (eth0) | Egress (eth1) | BGP Loopback | Pod CIDR |
@@ -651,7 +651,7 @@ For additional clusters, follow the same pattern:
 | fc00:101::fffe | K8s mesh anycast gateway | All PVE hosts (vnet101) |
 | fd00:101::fffe | K8s egress gateway | RouterOS (VLAN 101) |
 | fd00:10::fffe | Management gateway | RouterOS (VLAN 10) |
-| fd00:255::fffe | PVE BGP peer | RouterOS loopback |
+| fd00:0:0:ffff::fffe | PVE BGP peer | RouterOS loopback |
 | fd00:255:101::ac | K8s control plane VIP | solcp01X (health-checked) |
 
 ---

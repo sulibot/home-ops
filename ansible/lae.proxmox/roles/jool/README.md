@@ -237,11 +237,11 @@ journalctl -u unbound -f
 ┌─────────────────────────────────────────┐
 │         IPv6-Only Clients               │
 │    (K8s nodes, containers, etc.)        │
-│    DNS: fd00:255::fffe (RouterOS)       │
+│    DNS: fd00:0:0:ffff::fffe (RouterOS)       │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│  RouterOS DNS (fd00:255::fffe)          │
+│  RouterOS DNS (fd00:0:0:ffff::fffe)          │
 │  - Authoritative for local zones        │
 │  - Forwards to Jool for DNS64           │
 │  - Static overrides (quay.io, etc.)     │
@@ -286,7 +286,7 @@ journalctl -u unbound -f
    ```
 
 3. **Clients continue using RouterOS DNS** - No client reconfiguration needed
-   - K8s nodes: `fd00:255::fffe`
+   - K8s nodes: `fd00:0:0:ffff::fffe`
    - Other clients: `fd00:101::fffe`
 
 The Jool role only manages the Jool VM itself. Network-level DNS configuration (RouterOS forwarding) is managed separately.

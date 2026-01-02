@@ -26,10 +26,10 @@ Phase 1 of the IP addressing scheme v2 migration has been successfully deployed 
 
 | Component | Old Address | New Address | Status |
 |-----------|-------------|-------------|--------|
-| pve01 IPv6 | `fd00:255::1/128` | `fd00:0:0:ffff::1/128` | ✅ Deployed |
-| pve02 IPv6 | `fd00:255::2/128` | `fd00:0:0:ffff::2/128` | ✅ Deployed |
-| pve03 IPv6 | `fd00:255::3/128` | `fd00:0:0:ffff::3/128` | ✅ Deployed |
-| RouterOS IPv6 | `fd00:255::fffe/128` | `fd00:0:0:ffff::fffe/128` | ✅ Deployed |
+| pve01 IPv6 | `fd00:0:0:ffff::1/128` | `fd00:0:0:ffff::1/128` | ✅ Deployed |
+| pve02 IPv6 | `fd00:0:0:ffff::2/128` | `fd00:0:0:ffff::2/128` | ✅ Deployed |
+| pve03 IPv6 | `fd00:0:0:ffff::3/128` | `fd00:0:0:ffff::3/128` | ✅ Deployed |
+| RouterOS IPv6 | `fd00:0:0:ffff::fffe/128` | `fd00:0:0:ffff::fffe/128` | ✅ Deployed |
 | RouterOS IPv4 | `10.255.255.254/32` | `10.255.0.254/32` | ✅ Deployed |
 
 **Strategy**: Dual addressing - Both old and new addresses configured simultaneously
@@ -43,9 +43,9 @@ Phase 1 of the IP addressing scheme v2 migration has been successfully deployed 
 All three PVE nodes confirmed with dual addressing:
 
 ```
-pve01: fd00:0:0:ffff::1/128 + fd00:255::1/128 (legacy)
-pve02: fd00:0:0:ffff::2/128 + fd00:255::2/128 (legacy)
-pve03: fd00:0:0:ffff::3/128 + fd00:255::3/128 (legacy)
+pve01: fd00:0:0:ffff::1/128 + fd00:0:0:ffff::1/128 (legacy)
+pve02: fd00:0:0:ffff::2/128 + fd00:0:0:ffff::2/128 (legacy)
+pve03: fd00:0:0:ffff::3/128 + fd00:0:0:ffff::3/128 (legacy)
 ```
 
 ### 2. RouterOS BGP Sessions ✅
@@ -132,13 +132,13 @@ Both old and new addresses operational:
 
 **PVE Nodes:**
 - ✅ New loopbacks: `fd00:0:0:ffff::/64`
-- ✅ Old loopbacks: `fd00:255::/48` (for rollback)
+- ✅ Old loopbacks: `fd00:0:0:ffff::/48` (for rollback)
 - ✅ BGP exclusively using new loopbacks
 - ✅ OSPF advertising both ranges
 
 **RouterOS:**
 - ✅ New loopbacks: `10.255.0.254`, `fd00:0:0:ffff::fffe`
-- ✅ Old loopbacks: `10.255.255.254`, `fd00:255::fffe` (for rollback)
+- ✅ Old loopbacks: `10.255.255.254`, `fd00:0:0:ffff::fffe` (for rollback)
 - ✅ BGP connections using new local addresses
 
 ---
@@ -224,9 +224,9 @@ ansible-playbook ansible/lae.proxmox/playbooks/stage2-configure-network.yml \
 
 # Revert RouterOS BGP (manual)
 ssh admin@10.0.30.254
-/routing bgp connection set [find remote.address=fd00:0:0:ffff::1] local.address=fd00:255::fffe
-/routing bgp connection set [find remote.address=fd00:0:0:ffff::2] local.address=fd00:255::fffe
-/routing bgp connection set [find remote.address=fd00:0:0:ffff::3] local.address=fd00:255::fffe
+/routing bgp connection set [find remote.address=fd00:0:0:ffff::1] local.address=fd00:0:0:ffff::fffe
+/routing bgp connection set [find remote.address=fd00:0:0:ffff::2] local.address=fd00:0:0:ffff::fffe
+/routing bgp connection set [find remote.address=fd00:0:0:ffff::3] local.address=fd00:0:0:ffff::fffe
 ```
 
 **Safety**: Old addresses functional, ensuring instant rollback

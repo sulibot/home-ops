@@ -316,7 +316,7 @@ machine:
           - REPLACE_WITH_EGRESS_IP
         routes:
           - network: 0.0.0.0/0
-            gateway: fd00:255::1
+            gateway: fd00:0:0:ffff::1
 cluster:
   network:
     cni:

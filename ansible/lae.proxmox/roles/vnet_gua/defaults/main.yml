@@ -1,0 +1,35 @@
+---
+# vnet_gua role defaults
+# RouterOS DHCPv6-PD source
+# Modes: per_vnet (one /64 per VNet pool) or single (one /56 or /60 pool split to /64s)
+routeros_pd_mode: "per_vnet"
+routeros_pd_pool: "att-pool"
+routeros_pd_interface: "wan6"
+routeros_pd_pool_name_pattern: "pd-vnetVNET_ID"
+routeros_pd_pool_map: {}
+
+# RouterOS connection settings (override in inventory/group_vars)
+routeros_host: "{{ ansible_host | default('routeros') }}"
+routeros_user: "{{ ansible_user | default('admin') }}"
+routeros_password: "{{ ansible_password | default(omit) }}"
+routeros_command_timeout: 30
+routeros_group: "edge_routers"
+
+# VNet mapping (vnet100->subnet 0, vnet101->subnet 1, etc.)
+vnet_gua_index_map:
+  100: 0
+  101: 1
+  102: 2
+  103: 3
+
+# VNet list (fallback to tenant_vnets if present)
+vnet_gua_vnets: "{{ (tenant_vnets | default([]) | map(attribute='id') | list) | default([100,101,102,103], true) }}"
+
+# Gateway token (per /64)
+vnet_gua_gateway_token: "fffe"
+
+# Create missing SDN subnets (when Terragrunt does not pre-create them)
+vnet_gua_create_missing: true
+
+# Apply SDN after updates
+vnet_gua_apply_sdn: true
