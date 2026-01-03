@@ -4,7 +4,7 @@ terraform {
 
   required_providers {
     external = { source = "hashicorp/external", version = "~> 2.2" }
-    proxmox  = { source = "bpg/proxmox", version = "~> 0.89.0" }
+    proxmox  = { source = "bpg/proxmox", version = "~> 0.91.0" }
     sops     = { source = "carlpett/sops", version = "~> 1.3.0" }
   }
 }
