@@ -1,0 +1,14 @@
+---
+# Host-specific variables for debian-test-2
+
+# VM IP addresses
+vm_ipv4: "10.101.0.7"
+vm_ipv6: "fd00:101::7"
+vm_link_local: "fe80::101:7"
+
+# Loopback addresses
+vm_loopback_v4: "10.101.254.7"
+vm_loopback_v6: "fd00:101:fe::7"
+
+# BGP ASN (unique per VM)
+vm_bgp_asn: 4200101007

@@ -20,14 +20,8 @@ dependency "talos_config" {
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
-dependency "talos_apply" {
-  config_path = "../apply"
-
-  # Bootstrap must wait for machine configs to be applied first
-  skip_outputs = true
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
-}
+# NOTE: Bootstrap module applies configs itself (talos_machine_configuration_apply.nodes)
+# Do NOT add dependency on apply module - that creates a circular dependency
 
 terraform {
   source = "../../../../modules/talos_bootstrap"

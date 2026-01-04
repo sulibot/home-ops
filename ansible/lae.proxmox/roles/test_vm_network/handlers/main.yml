@@ -1,0 +1,12 @@
+---
+# Handlers for test VM network configuration
+
+- name: apply netplan
+  ansible.builtin.command: netplan apply
+  become: yes
+
+- name: restart frr
+  ansible.builtin.systemd:
+    name: frr
+    state: restarted
+  become: yes

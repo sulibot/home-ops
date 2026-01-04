@@ -1,0 +1,23 @@
+---
+# Default variables for test VM network configuration
+
+# Network configuration
+tenant_id: 101
+vnet_subnet_v4: "10.101.0.0/24"
+vnet_subnet_v6: "fd00:101::/64"
+gateway_v4: "10.101.0.254"
+gateway_v6: "fd00:101::fffe"
+
+# DNS servers
+dns_server_v4: "10.255.0.53"
+dns_server_v6: "fd00:0:0:ffff::53"
+
+# MTU for VXLAN
+interface_mtu: 1450
+
+# BGP configuration
+bgp_remote_asn: 4200001000
+bgp_advertise_loopbacks: true
+
+# FRR version
+frr_version: "10.2"

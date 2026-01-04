@@ -1,0 +1,21 @@
+---
+- name: Configure Test VMs Network and BGP
+  hosts: test_vms
+  become: true
+  vars_files:
+    - ../group_vars/all.yaml
+
+  roles:
+    - test_vm_network
+
+  post_tasks:
+    - name: Display BGP summary
+      ansible.builtin.command: vtysh -c "show bgp summary"
+      register: bgp_summary
+      changed_when: false
+      failed_when: false
+
+    - name: Show BGP summary
+      ansible.builtin.debug:
+        msg: "{{ bgp_summary.stdout_lines }}"
+      when: bgp_summary.stdout_lines is defined

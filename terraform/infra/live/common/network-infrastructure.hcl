@@ -39,9 +39,9 @@ locals {
     public_ipv6_pattern = "fd00:%d::"       # fd00:101::
     public_ipv4_pattern = "10.%d.0."        # 10.101.0.
 
-    # Loopback networks (shared infrastructure)
-    loopback_ipv6_pattern = "fd00:255:%d::" # fd00:255:101::
-    loopback_ipv4_pattern = "10.255.%d."    # 10.255.101.
+    # Loopback networks (VM loopbacks per tenant/cluster)
+    loopback_ipv6_pattern = "fd00:%d:fe::" # fd00:101:fe::
+    loopback_ipv4_pattern = "10.%d.254."    # 10.101.254.
 
     # Kubernetes network CIDRs (derived from cluster_id)
     pods_ipv4_pattern          = "10.%d.240.0/20"

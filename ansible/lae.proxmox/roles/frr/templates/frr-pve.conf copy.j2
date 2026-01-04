@@ -163,12 +163,11 @@ ip prefix-list TENANT_ONLY_V4 seq {{ ns4.ts }} deny 0.0.0.0/0 le 32
 
 route-map EXPORT_TO_ROUTEROS permit 10
   match ipv6 address prefix-list TENANT_ONLY_V6
-  set ipv6 next-hop global fd00:0:0:ffff::{{ PVE_ID }}
+  set ipv6 next-hop self
 exit
-
 route-map EXPORT_TO_ROUTEROS permit 20
   match ip address prefix-list TENANT_ONLY_V4
-  set ip next-hop 10.255.0.{{ PVE_ID }}
+  set ip next-hop self
 exit
 
 ! Inbound policy from RouterOS - accept all routes
@@ -409,49 +408,57 @@ router bgp {{ PVE_ASN }}
   exit-address-family
 exit
 
+! ----------------------------------------------------------------------
+! VRF BGP Instance (vrf_evpnz1) - VM/Talos peering via BGP unnumbered
+! ----------------------------------------------------------------------
 router bgp {{ PVE_ASN }} vrf {{ VNET_VRF }}
   bgp router-id 10.255.0.{{ PVE_ID }}
   no bgp default ipv4-unicast
   bgp listen limit 100
-
-  ! Peer-group for dynamic VM/Talos neighbors
+  !
   neighbor VMS peer-group
   neighbor VMS remote-as external
   neighbor VMS capability extended-nexthop
-
-  ! Listen for BGP connections from tenant subnets and loopback ranges
-  {% for id in VNET_IDS | sort %}
-  bgp listen range fd00:{{ id }}::/64 peer-group VMS
-  bgp listen range fd00:{{ id }}:fe::/64 peer-group VMS
-  {% endfor %}
-
+  neighbor VMS timers 10 30
+  !
+{% for id in VNET_IDS | sort %}
+  ! BGP unnumbered peers on vnet{{ id }} (dynamic listen on static anycast LLA)
+  bgp listen range fe80::{{ id }}:0/64 peer-group VMS
+{% endfor %}
+  !
   address-family ipv4 unicast
-    neighbor VMS activate
-    neighbor VMS route-map IMPORT-VM-ROUTES in
-    neighbor VMS route-map EXPORT_TO_TALOS out
     redistribute connected route-map VRF_CONNECTED_V4
-    import vrf default
-  exit-address-family
-
-  address-family ipv6 unicast
     neighbor VMS activate
     neighbor VMS route-map IMPORT-VM-ROUTES in
-    neighbor VMS route-map EXPORT_TO_TALOS out
-    redistribute connected route-map VRF_CONNECTED_V6
+    ! Import infrastructure routes from default VRF (bidirectional with default VRF's import)
     import vrf default
   exit-address-family
-
+  !
+  address-family ipv6 unicast
+    redistribute connected route-map VRF_CONNECTED_V6
+    neighbor VMS activate
+    neighbor VMS route-map IMPORT-VM-ROUTES in
+    ! Import infrastructure routes from default VRF (bidirectional with default VRF's import)
+    import vrf default
+  exit-address-family
+  !
+  address-family l2vpn evpn
+    advertise ipv4 unicast
+    advertise ipv6 unicast
+  exit-address-family
+exit
+!
 ! ======================================================================
 ! SECTION III: INTERFACE CONFIGURATION
 ! ======================================================================
 
 ! OSPF interface configuration (must come after router ospf declaration)
-!interface lo
-!  ip ospf area 0.0.0.0
-!  ip ospf network point-to-point
-!  ipv6 ospf6 area 0.0.0.0
-!  ipv6 ospf6 network point-to-point
-!exit
+interface lo
+  ip ospf area 0.0.0.0
+  ip ospf network point-to-point
+  ipv6 ospf6 area 0.0.0.0
+  ipv6 ospf6 network point-to-point
+exit
 
 interface dummy_underlay
   ip ospf area 0.0.0.0

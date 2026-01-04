@@ -1,0 +1,79 @@
+! FRR Configuration for {{ inventory_hostname }}
+! BGP peering with Proxmox ULA Anycast Gateway
+!
+frr version {{ frr_version }}
+frr defaults datacenter
+hostname {{ inventory_hostname }}
+log syslog informational
+service integrated-vtysh-config
+!
+! Import only default routes from upstream
+ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
+ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
+!
+route-map IMPORT-DEFAULT-v6 permit 10
+ match ipv6 address prefix-list DEFAULT-ONLY-v6
+exit
+!
+route-map IMPORT-DEFAULT-v6 deny 90
+exit
+!
+route-map IMPORT-DEFAULT-v4 permit 10
+ match ip address prefix-list DEFAULT-ONLY-v4
+exit
+!
+route-map IMPORT-DEFAULT-v4 deny 90
+exit
+!
+{% if bgp_advertise_loopbacks %}
+! Advertise VM loopback addresses
+ip prefix-list LOOPBACKS seq 10 permit 10.{{ tenant_id }}.254.0/24 ge 32
+ipv6 prefix-list LOOPBACKS-V6 seq 10 permit fd00:{{ tenant_id }}:fe::/64 ge 128
+!
+route-map ADVERTISE-LOOPBACKS permit 10
+ match ip address prefix-list LOOPBACKS
+exit
+!
+route-map ADVERTISE-LOOPBACKS-V6 permit 10
+ match ipv6 address prefix-list LOOPBACKS-V6
+exit
+!
+{% endif %}
+! BGP Configuration
+router bgp {{ vm_bgp_asn }}
+ bgp router-id {{ vm_loopback_v4 }}
+ no bgp default ipv4-unicast
+ no bgp default ipv6-unicast
+ bgp graceful-restart
+ timers bgp 10 30
+ !
+ ! Peer with PVE ULA anycast gateway (fd00:{{ tenant_id }}::fffe)
+ neighbor {{ gateway_v6 }} remote-as {{ bgp_remote_asn }}
+ neighbor {{ gateway_v6 }} description "PVE ULA Anycast Gateway"
+ neighbor {{ gateway_v6 }} capability extended-nexthop
+ !
+ address-family ipv4 unicast
+{% if bgp_advertise_loopbacks %}
+  redistribute connected route-map ADVERTISE-LOOPBACKS
+{% endif %}
+  neighbor {{ gateway_v6 }} activate
+  neighbor {{ gateway_v6 }} route-map IMPORT-DEFAULT-v4 in
+{% if bgp_advertise_loopbacks %}
+  neighbor {{ gateway_v6 }} route-map ADVERTISE-LOOPBACKS out
+{% endif %}
+ exit-address-family
+ !
+ address-family ipv6 unicast
+{% if bgp_advertise_loopbacks %}
+  redistribute connected route-map ADVERTISE-LOOPBACKS-V6
+{% endif %}
+  neighbor {{ gateway_v6 }} activate
+  neighbor {{ gateway_v6 }} route-map IMPORT-DEFAULT-v6 in
+{% if bgp_advertise_loopbacks %}
+  neighbor {{ gateway_v6 }} route-map ADVERTISE-LOOPBACKS-V6 out
+{% endif %}
+ exit-address-family
+exit
+!
+line vty
+!

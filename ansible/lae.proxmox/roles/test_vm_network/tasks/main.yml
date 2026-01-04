@@ -1,0 +1,76 @@
+---
+# Main tasks for test VM network configuration
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - frr
+      - frr-pythontools
+      - netplan.io
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Deploy netplan configuration
+  ansible.builtin.template:
+    src: netplan.yaml.j2
+    dest: /etc/netplan/50-cloud-init.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  notify: apply netplan
+
+- name: Deploy FRR daemons configuration
+  ansible.builtin.template:
+    src: frr-daemons.j2
+    dest: /etc/frr/daemons
+    owner: frr
+    group: frr
+    mode: '0640'
+  become: yes
+  notify: restart frr
+
+- name: Deploy FRR configuration
+  ansible.builtin.template:
+    src: frr.conf.j2
+    dest: /etc/frr/frr.conf
+    owner: frr
+    group: frr
+    mode: '0640'
+    backup: yes
+  become: yes
+  notify: restart frr
+
+- name: Enable and start FRR service
+  ansible.builtin.systemd:
+    name: frr
+    enabled: yes
+    state: started
+  become: yes
+
+- name: Disable Router Advertisements from test VMs
+  ansible.builtin.iptables:
+    chain: OUTPUT
+    protocol: ipv6-icmp
+    icmp_type: router-advertisement
+    jump: DROP
+    ip_version: ipv6
+  become: yes
+  when: disable_router_advertisements | default(true)
+
+- name: Create iptables directory
+  ansible.builtin.file:
+    path: /etc/iptables
+    state: directory
+    mode: '0755'
+  become: yes
+  when: disable_router_advertisements | default(true)
+
+- name: Save ip6tables rules
+  ansible.builtin.shell: |
+    ip6tables-save > /etc/iptables/rules.v6
+  args:
+    creates: /etc/iptables/rules.v6
+  become: yes
+  when: disable_router_advertisements | default(true)

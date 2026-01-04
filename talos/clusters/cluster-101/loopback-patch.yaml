@@ -1,0 +1,9 @@
+machine:
+  network:
+    interfaces:
+      - interface: lo
+        addresses:
+          - fd00:255:101::${NODE_SUFFIX}/128
+          - fd00:101:fe::${NODE_SUFFIX}/128
+          - 10.255.101.${NODE_SUFFIX}/32
+          - 10.101.254.${NODE_SUFFIX}/32

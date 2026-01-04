@@ -90,9 +90,9 @@ data "talos_machine_configuration" "controlplane" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Disable RA completely - all IPv6 addresses are statically configured
-          "net.ipv6.conf.all.accept_ra"     = "0"
-          "net.ipv6.conf.default.accept_ra" = "0"
+          # Accept RAs even when forwarding is enabled (for DHCPv6-PD GUA SLAAC)
+          "net.ipv6.conf.all.accept_ra"     = "2"
+          "net.ipv6.conf.default.accept_ra" = "2"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -201,9 +201,9 @@ data "talos_machine_configuration" "worker" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Disable RA completely - all IPv6 addresses are statically configured
-          "net.ipv6.conf.all.accept_ra"     = "0"
-          "net.ipv6.conf.default.accept_ra" = "0"
+          # Accept RAs even when forwarding is enabled (for DHCPv6-PD GUA SLAAC)
+          "net.ipv6.conf.all.accept_ra"     = "2"
+          "net.ipv6.conf.default.accept_ra" = "2"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -262,6 +262,7 @@ locals {
       interface        = var.bgp_interface
       cluster_id       = var.cluster_id
       node_suffix      = node.node_suffix
+      node_ipv6        = node.public_ipv6                                      # Node's primary IPv6 for BGP update-source
       loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"       # OLD pattern
       loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"    # OLD pattern
       bgp_loopback_ipv4 = "10.${var.cluster_id}.254.${node.node_suffix}"      # NEW pattern
@@ -335,9 +336,8 @@ locals {
                 {
                   interface = "lo"
                   addresses = [
-                    "fd00:255:${var.cluster_id}::${node.node_suffix}/128",
-                    "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
-                    "10.255.${var.cluster_id}.${node.node_suffix}/32"
+                    "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
+                    "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
                   ]
                 }
               ], [])

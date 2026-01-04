@@ -53,12 +53,12 @@ nodes:
     publicIPv4: 10.101.0.23
     publicIPv6: fd00:101::23
     publicMTU: 1500
-pods_ipv4: 10.101.244.0/22
-pods_ipv6: fd00:101:244::/60
+pods_ipv4: 10.101.240.0/20
+pods_ipv6: fd00:101:240::/60
 public_gateway_ipv4: 10.101.0.254
 public_gateway_ipv6: fd00:101::fffe
 services_ipv4: 10.101.96.0/24
-services_ipv6: fd00:101:96::/108
+services_ipv6: fd00:101:96::/112
 solcp01_ipAddress: 10.101.0.11
 solcp01_public_ipv4: 10.101.0.11
 solcp01_public_ipv6: fd00:101::11

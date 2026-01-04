@@ -7,23 +7,23 @@ network:
       accept-ra: false  # Don't process RAs
       ipv6-privacy: false  # Disable privacy extensions
       link-local: []  # Disable automatic link-local generation
-      mtu: 1450  # If using SDN/VXLAN
+      mtu: {{ interface_mtu }}
       addresses:
-        - 10.101.0.7/24
-        - fd00:101::7/64
-        - fe80::101:7/64
+        - {{ vm_ipv4 }}/24
+        - {{ vm_ipv6 }}/64
+        - {{ vm_link_local }}/64
       routes:
         # IPv4 default route
         - to: 0.0.0.0/0
-          via: 10.101.0.254
+          via: {{ gateway_v4 }}
         # ULA gateway for routing to other ULA subnets (fc00::/7)
         - to: fc00::/7
-          via: fd00:101::fffe
+          via: {{ gateway_v6 }}
       nameservers:
         addresses:
-          - fd00:0:0:ffff::53
-          - 10.255.0.53
+          - {{ dns_server_v6 }}
+          - {{ dns_server_v4 }}
     lo:
       addresses:
-        - 10.101.254.7/32
-        - fd00:101:fe::7/128
+        - {{ vm_loopback_v4 }}/32
+        - {{ vm_loopback_v6 }}/128

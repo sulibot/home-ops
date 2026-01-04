@@ -27,15 +27,9 @@ route-map IMPORT-DEFAULT-v4 deny 90
 exit
 !
 %{ if advertise_loopbacks ~}
-! Advertise node loopback networks
-! Old pattern: 10.255.${cluster_id}.0/24
-ip prefix-list LOOPBACKS seq 10 permit 10.255.${cluster_id}.0/24 ge 32
-! New pattern: 10.${cluster_id}.254.0/24
-ip prefix-list LOOPBACKS seq 15 permit 10.${cluster_id}.254.0/24 ge 32
-! Old pattern: fd00:255:${cluster_id}::/48
-ipv6 prefix-list LOOPBACKS-V6 seq 10 permit fd00:255:${cluster_id}::/48 ge 128
-! New pattern: fd00:${cluster_id}:fe::/64
-ipv6 prefix-list LOOPBACKS-V6 seq 15 permit fd00:${cluster_id}:fe::/64 ge 128
+! Advertise node loopback networks (10.${cluster_id}.254.0/24 and fd00:${cluster_id}:fe::/64)
+ip prefix-list LOOPBACKS seq 10 permit 10.${cluster_id}.254.0/24 ge 32
+ipv6 prefix-list LOOPBACKS-V6 seq 10 permit fd00:${cluster_id}:fe::/64 ge 128
 !
 route-map ADVERTISE-LOOPBACKS permit 10
  match ip address prefix-list LOOPBACKS
@@ -54,20 +48,20 @@ router bgp ${local_asn}
  bgp graceful-restart
  timers bgp 10 30
  !
- ! Static Anycast LLA on PVE (fe80::<cluster_id>:fffe)
- neighbor fe80::${cluster_id}:fffe remote-as ${gw_asn}
- neighbor fe80::${cluster_id}:fffe interface ${interface}
- neighbor fe80::${cluster_id}:fffe description "PVE Static Anycast LLA (BGP unnumbered)"
- neighbor fe80::${cluster_id}:fffe capability extended-nexthop
+ ! Peer with PVE ULA anycast gateway (fd00:<cluster_id>::fffe)
+ neighbor fd00:${cluster_id}::fffe remote-as ${gw_asn}
+ neighbor fd00:${cluster_id}::fffe update-source ${node_ipv6}
+ neighbor fd00:${cluster_id}::fffe description "PVE ULA Anycast Gateway"
+ neighbor fd00:${cluster_id}::fffe capability extended-nexthop
  !
  address-family ipv4 unicast
 %{ if advertise_loopbacks ~}
   redistribute connected route-map ADVERTISE-LOOPBACKS
 %{ endif ~}
-  neighbor fe80::${cluster_id}:fffe activate
-  neighbor fe80::${cluster_id}:fffe route-map IMPORT-DEFAULT-v4 in
+  neighbor fd00:${cluster_id}::fffe activate
+  neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v4 in
 %{ if advertise_loopbacks ~}
-  neighbor fe80::${cluster_id}:fffe route-map ADVERTISE-LOOPBACKS out
+  neighbor fd00:${cluster_id}::fffe route-map ADVERTISE-LOOPBACKS out
 %{ endif ~}
  exit-address-family
  !
@@ -75,10 +69,10 @@ router bgp ${local_asn}
 %{ if advertise_loopbacks ~}
   redistribute connected route-map ADVERTISE-LOOPBACKS-V6
 %{ endif ~}
-  neighbor fe80::${cluster_id}:fffe activate
-  neighbor fe80::${cluster_id}:fffe route-map IMPORT-DEFAULT-v6 in
+  neighbor fd00:${cluster_id}::fffe activate
+  neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v6 in
 %{ if advertise_loopbacks ~}
-  neighbor fe80::${cluster_id}:fffe route-map ADVERTISE-LOOPBACKS-V6 out
+  neighbor fd00:${cluster_id}::fffe route-map ADVERTISE-LOOPBACKS-V6 out
 %{ endif ~}
  exit-address-family
 exit

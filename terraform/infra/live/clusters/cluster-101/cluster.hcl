@@ -14,7 +14,7 @@ locals {
     vlan_public   = 101          # Legacy: used when use_sdn = false
     bridge_mesh   = "vnet101"
     vlan_mesh     = 0
-    public_mtu    = 1500         # Legacy: used when use_sdn = false
+    public_mtu    = 1450         # Legacy: used when use_sdn = false
     mesh_mtu      = 8930
     use_sdn       = true         # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }

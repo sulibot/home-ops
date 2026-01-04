@@ -13,6 +13,11 @@ interface {{ vnet_name }} {
     MinRtrAdvInterval 3;
     MaxRtrAdvInterval 10;
 
+    # Use stable ULA anycast gateway as default router
+    # This provides stable routing even if GUA prefix changes
+    AdvDefaultLifetime 3600;
+    AdvDefaultPreference medium;
+
     # Ignore list: Don't automatically advertise ULA prefixes
     # Only advertise GUA prefixes in 2000::/3 range
     autoignoreprefixes {
@@ -37,6 +42,13 @@ interface {{ vnet_name }} {
         # Age prefix lifetimes in parallel with DHCPv6-PD lease
         # When ISP renews lease, send SIGUSR1 to radvd to reset lifetimes
         DecrementLifetimes on;
+    };
+
+    # Advertise stable ULA anycast gateway as default route
+    # VMs will route both ULA and GUA traffic via fd00:<vnet_id>::fffe
+    route ::/0 {
+        AdvRouteLifetime 3600;
+        AdvRoutePreference medium;
     };
 
     # Advertise DNS server using stable anycast address

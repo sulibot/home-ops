@@ -310,6 +310,12 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     trim    = true
   }
 
+  # VGA display for graphical console access via noVNC
+  # Keep this as the default to maintain web UI console access
+  vga {
+    type = "std"
+  }
+
   # GPU Passthrough (if configured for this node)
   # Using direct PCI ID instead of hardware mapping due to bpg/proxmox provider bug
   # with iommugroup parameter. This requires root PAM credentials (already configured).
