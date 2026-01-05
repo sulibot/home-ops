@@ -132,9 +132,11 @@ router bgp 4200001000
  neighbor 10.255.0.254 remote-as 4200000000
  neighbor 10.255.0.254 update-source lo-infra
  neighbor 10.255.0.254 ebgp-multihop 2
+ neighbor 10.255.0.254 timers 10 30
  neighbor fd00:0:0:ffff::fffe remote-as 4200000000
  neighbor fd00:0:0:ffff::fffe update-source lo-infra
  neighbor fd00:0:0:ffff::fffe ebgp-multihop 2
+ neighbor fd00:0:0:ffff::fffe timers 10 30
  !
  ! Cross-Connect Pipe (Global Side)
  neighbor {{ pipe_vrf }} remote-as 4200001000
