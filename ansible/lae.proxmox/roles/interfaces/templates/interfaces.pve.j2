@@ -42,12 +42,14 @@ iface vmbr0 inet static
     bridge-stp off
     bridge-fd 0
     mtu 1500
+    post-up bridge vlan add dev vmbr0 vid 1 pvid untagged self || true
+    post-up bridge vlan del dev vmbr0 vid 2 self 2>/dev/null || true
 
 iface vmbr0 inet6 static
     address fd00:1::{{ node_id }}/64
     # Accept RAs on management plane
-    post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0.accept_ra=2 || true
-    post-up   sysctl -w net.ipv6.conf.vmbr0.accept_ra_defrtr=2 || true
+    #post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0.accept_ra=2 || true
+    #post-up   sysctl -w net.ipv6.conf.vmbr0.accept_ra_defrtr=2 || true
 
 # ------------------------------------------------------------------------------
 # Transit / Exit Path (Tagged VLAN 10)
@@ -72,6 +74,10 @@ auto vmbr0.200
 iface vmbr0.200 inet static
     address 10.200.0.{{ node_id }}/24
     vlan-raw-device vmbr0
+    mtu 1500
+
+iface vmbr0.200 inet6 static
+    address fd00:200::{{ node_id }}/64
 
 # ------------------------------------------------------------------------------
 # 2. UNDERLAY MESH (25G Ring)
