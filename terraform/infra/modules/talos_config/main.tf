@@ -104,10 +104,7 @@ data "talos_machine_configuration" "controlplane" {
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (OLD pattern)
-              "fd00:${var.cluster_id}:fe::/64",   # IPv6 loopback (NEW pattern)
-              "10.255.${var.cluster_id}.0/24",    # IPv4 loopback (OLD pattern)
-              "10.${var.cluster_id}.254.0/24"     # IPv4 loopback (NEW pattern)
+              "fd00:${var.cluster_id}:fe::/64"
             ]
           }
         }
@@ -215,10 +212,7 @@ data "talos_machine_configuration" "worker" {
         kubelet = {
           nodeIP = {
             validSubnets = [
-              "fd00:255:${var.cluster_id}::/64",  # IPv6 loopback (OLD pattern)
-              "fd00:${var.cluster_id}:fe::/64",   # IPv6 loopback (NEW pattern)
-              "10.255.${var.cluster_id}.0/24",    # IPv4 loopback (OLD pattern)
-              "10.${var.cluster_id}.254.0/24"     # IPv4 loopback (NEW pattern)
+              "fd00:${var.cluster_id}:fe::/64"
             ]
           }
           clusterDNS = [

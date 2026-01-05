@@ -1,0 +1,9 @@
+---
+- hosts: pve
+  become: true
+  vars_files:
+    - playbooks/group_vars/pve.yml
+
+  roles:
+    - interfaces
+    - frr

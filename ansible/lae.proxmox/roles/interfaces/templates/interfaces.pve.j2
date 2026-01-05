@@ -1,39 +1,17 @@
-{% set node_id  = (inventory_hostname[-2:] | regex_replace('^0*', '') | int) %}
+{% set node_id  = (inventory_hostname | regex_replace('^pve0?', '') | int) %}
 {% set public   = (public_interfaces[inventory_hostname] | default({})) %}
 {% set HAS_MESH = inventory_hostname in ['pve01','pve02','pve03'] %}
 
-# ============================================================
-# Proxmox VE Network Configuration — {{ inventory_hostname }}
-#
-# Infra / Host networking (Ansible-managed):
-# - vmbr0: VLAN-aware bridge (infra egress, MTU 1500)
-# - bond0: uplink bond for vmbr0
-# - vmbr0.10: management/API (native VLAN / PVID)
-# - vmbr0.200: Ceph client / storage LAN (tagged)
-#
-# Tenant networking (Proxmox SDN-managed):
-# - VNets (vnet101, vnet102, ...) + VRFs + VXLAN are created by Proxmox SDN
-# - SDN config is included via: /etc/network/interfaces.d/*
-# - No physical VLAN trunking for tenant VNets (100-103) is expected.
-#5r4
-# Underlay:
-# - mesh links: 25G ring, MTU 9000, IPv4+IPv6
-#   * IPv4: 10.99.<ab>.<peer>/29 (ab = node pair, peer = far-end node ID)
-#   * IPv6: fc00:99:<ab>::<peer>/125
-# - dummy_underlay: Infrastructure loopbacks
-#     * IPv4 VTEP loopback: 10.255.0.{{ node_id }}/32 (BGP router-id)
-#     * IPv6 infra loopback: fd00:0:0:ffff::{{ node_id }}/128 (iBGP peering) [NEW]
-#     * IPv6 infra loopback: fd00:0:0:ffff::{{ node_id }}/128 (iBGP peering) [OLD - transition]
-#     * Ceph public/cluster: fc00:20::{{ node_id }}/128, fc00:21::{{ node_id }}/128
-# ============================================================
+# ==============================================================================
+# PROXMOX VE NETWORK CONFIGURATION - DC STANDARD
+# ==============================================================================
 
 auto lo
 iface lo inet loopback
 
-# ------------------------------------------------------------
-# Bond (bond0) + slaves (infra uplink)
-# ------------------------------------------------------------
-
+# ------------------------------------------------------------------------------
+# 1. PHYSICAL UPLINKS & BONDING
+# ------------------------------------------------------------------------------
 {% for slave in public.slaves %}
 auto {{ slave }}
 iface {{ slave }} inet manual
@@ -41,104 +19,96 @@ iface {{ slave }} inet manual
 
 auto bond0
 iface bond0 inet manual
-    bond-mode {{ public.mode }}
-    bond-miimon 100
+    bond-mode {{ public.mode | default('802.3ad') }}
     bond-slaves {{ public.slaves | join(' ') }}
+    bond-miimon 100
+    bond-xmit-hash-policy layer2+3
 {% if public.primary is defined %}
     bond-primary {{ public.primary }}
 {% endif %}
-{% if public.xmit_hash_policy is defined %}
-    bond-xmit-hash-policy {{ public.xmit_hash_policy }}
-{% endif %}
 
-# ------------------------------------------------------------
-# vmbr0 — VLAN-aware infra bridge (MTU 1500)
-# ------------------------------------------------------------
-
+# ------------------------------------------------------------------------------
+# Management Plane (Untagged PVID 1)
+# ------------------------------------------------------------------------------
+# Purpose: SSH/GUI Access. Untagged for "Out-of-Band" style reliability.
 auto vmbr0
-iface vmbr0 inet manual
+iface vmbr0 inet static
+    address 10.1.0.{{ node_id }}/24
+    gateway 10.1.0.254
     bridge-ports bond0
+    bridge-vlan-aware yes
+    bridge-vids 1 10 200
+    bridge-pvid 1
     bridge-stp off
     bridge-fd 0
-    bridge-vlan-aware yes
-    bridge-pvid 10
-    bridge-vids 10 200
     mtu 1500
 
-# VLAN 10 — management/API (native)
+iface vmbr0 inet6 static
+    address fd00:1::{{ node_id }}/64
+    # Accept RAs on management plane
+    post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0.accept_ra=2 || true
+    post-up   sysctl -w net.ipv6.conf.vmbr0.accept_ra_defrtr=2 || true
+
+# ------------------------------------------------------------------------------
+# Transit / Exit Path (Tagged VLAN 10)
+# ------------------------------------------------------------------------------
+# Purpose: BGP Peering to MikroTik. Tagged for Control Plane isolation.
 auto vmbr0.10
 iface vmbr0.10 inet static
-#    address 10.0.10.{{ node_id }}/24
     address 10.10.0.{{ node_id }}/24
-    gateway 10.10.0.254
     vlan-raw-device vmbr0
+    mtu 1500
 
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
-    vlan-raw-device vmbr0
-    # Accept RAs even with forwarding and accept default from RA
-    post-up   sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
-    post-up   sh -c 'echo 2 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
-    pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra_defrtr'
-    pre-down  sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/accept_ra'
+    # SLAAC/RA disabled on transit interface - static routing only
+    # post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=2 || true
+    # post-up   sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=2 || true
+    # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=1 || true
+    # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=1 || true
 
-# VLAN 200 — Ceph client / storage LAN (tagged)
+# Generic Workload / Ceph Transport (VLAN 200)
 auto vmbr0.200
 iface vmbr0.200 inet static
-#    address 10.0.200.{{ node_id }}/24
     address 10.200.0.{{ node_id }}/24
     vlan-raw-device vmbr0
-    mtu 1500
 
-# ------------------------------------------------------------
-# Underlay ring links @ MTU 9000 — IPv4+IPv6
-#
-# 25Gb point-to-point links between PVE nodes.
-# Addressing scheme (readable):
-# - Third octet = link endpoints (e.g., 1<->3 => 13)
-# - Fourth octet / last hextet = peer node ID (so you can see the far end)
-# Example: pve01 <-> pve03 uses 10.99.13.1/29 on pve03, 10.99.13.3/29 on pve01
-#          and fc00:99:13::1/125 on pve03, fc00:99:13::3/125 on pve01
-# ------------------------------------------------------------
-
+# ------------------------------------------------------------------------------
+# 2. UNDERLAY MESH (25G Ring)
+# ------------------------------------------------------------------------------
 {% if HAS_MESH %}
 {% for link in mesh_links[inventory_hostname] %}
 {% set a = [node_id, link.peer_id] | min %}
 {% set b = [node_id, link.peer_id] | max %}
-{% set subnet = '10.99.' ~ a ~ b %}
-{% set host = link.peer_id %}
 auto {{ link.iface }}
 iface {{ link.iface }} inet static
-    address {{ subnet }}.{{ host }}/29
+    address 10.99.{{ a }}{{ b }}.{{ node_id }}/29
     mtu 9000
 
 iface {{ link.iface }} inet6 static
-    address fc00:99:{{ a }}{{ b }}::{{ host }}/125
+    address fc00:99:{{ a }}{{ b }}::{{ node_id }}/125
 {% endfor %}
 {% endif %}
 
-# ------------------------------------------------------------
-# dummy_underlay — infra loopbacks (routed underlay identity)
-# ------------------------------------------------------------
-
+# ------------------------------------------------------------------------------
+# 3. IDENTITY LOOPBACKS (Used by FRR)
+# ------------------------------------------------------------------------------
 {% if HAS_MESH %}
-auto dummy_underlay
-iface dummy_underlay inet static
+# lo-infra: BGP/EVPN Router-ID & VTEP Source
+auto lo-infra
+iface lo-infra inet static
     address 10.255.0.{{ node_id }}/32
-    pre-up ip link add dummy_underlay type dummy 2>/dev/null || true
-    mtu 9000
+    pre-up ip link add lo-infra type dummy 2>/dev/null || true
 
-iface dummy_underlay inet6 static
+iface lo-infra inet6 static
     address fd00:0:0:ffff::{{ node_id }}/128
-#    address fd00:0:0:ffff::{{ node_id }}/128
-    address fc00:20::{{ node_id }}/128
-    address fc00:21::{{ node_id }}/128
-    mtu 9000
-    post-up sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/forwarding'
-{% endif %}
 
-# ------------------------------------------------------------
-# Include drop-ins (Proxmox SDN, manual tweaks, etc.)
-# ------------------------------------------------------------
+# lo-svcs: Storage/Internal Application identity
+auto lo-svcs
+iface lo-svcs inet manual
+    pre-up ip link add lo-svcs type dummy 2>/dev/null || true
+    up ip -6 addr add fc00:20::{{ node_id }}/128 dev lo-svcs
+    up ip -6 addr add fc00:21::{{ node_id }}/128 dev lo-svcs
+{% endif %}
 
 source /etc/network/interfaces.d/*
