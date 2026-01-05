@@ -92,8 +92,31 @@ The primary goal is **operational clarity and stability**, not novelty.
 - EVPN VTEP source
 - Control-plane reachability
 
-> These addresses never change.  
+> These addresses never change.
 > Physical interfaces are irrelevant to identity.
+
+---
+
+### 3.3 Generic Workload / Ceph Transport (VLAN 200)
+
+| Host | IPv4 | IPv6 |
+|------|------|------|
+| pve01 | `10.200.0.1` | `fd00:200::1` |
+| pve02 | `10.200.0.2` | `fd00:200::2` |
+| pve03 | `10.200.0.3` | `fd00:200::3` |
+
+**Purpose**
+
+- Ceph OSD replication and recovery traffic
+- Generic workload network for non-tenant VMs
+- Dedicated transport network to isolate storage traffic from tenant networks
+- No tenant traffic or routing
+
+**Notes**
+
+- VLAN 200 is intentionally outside the tenant VRF
+- Provides dedicated bandwidth for storage replication
+- Subnet: `10.200.0.0/24` and `fd00:200::/64`
 
 ---
 
