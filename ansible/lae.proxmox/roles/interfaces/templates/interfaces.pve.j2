@@ -34,7 +34,7 @@ iface bond0 inet manual
 auto vmbr0
 iface vmbr0 inet static
     address 10.1.0.{{ node_id }}/24
-    gateway 10.1.0.254
+    # No static gateway - using BGP-learned default route from RouterOS
     bridge-ports bond0
     bridge-vlan-aware yes
     bridge-vids 1 10 200
