@@ -250,7 +250,7 @@ locals {
       # Supports cluster IDs 000-999 and node suffixes 00-99
       local_asn  = var.bgp_asn_base + var.cluster_id * 1000 + node.node_suffix
       gw_asn     = var.bgp_remote_asn
-      gw_ipv6    = "fd00:${var.cluster_id}:ff::fffe"
+      gw_ipv6    = "fe80::${var.cluster_id}:fffe"  # Link-local anycast gateway
 
       # Network configuration
       interface        = var.bgp_interface
@@ -310,17 +310,17 @@ locals {
                       gateway = "10.${var.cluster_id}.0.254"
                       metric  = 1024
                     },
+                    # IPv6: default route via link-local anycast gateway
+                    {
+                      network = "::/0"
+                      gateway = "fe80::${var.cluster_id}:fffe"
+                      metric  = 1024  # High metric ensures BGP routes (metric 0) are preferred
+                    },
                     # IPv6: control-plane anycast reachability (pre-BGP)
                     {
                       network = "fd00:${var.cluster_id}:ff::/64"
-                      gateway = "fd00:${var.cluster_id}::fffe"
+                      gateway = "fe80::${var.cluster_id}:fffe"
                       metric  = 1024
-                    },
-                    # IPv6: default route via tenant anycast gateway (no LLAs)
-                    {
-                      network = "::/0"
-                      gateway = "fd00:${var.cluster_id}::fffe"
-                      metric  = 1024          # High metric ensures BGP routes (metric 0) are preferred
                     }
                   ]
                   vip = node.machine_type == "controlplane" ? {
