@@ -76,10 +76,33 @@
 # Enables BGP "import vrf default" routes to have resolvable nexthops
 # ============================================================================
 
+# ============================================================================
+# xvrf Cross-Connect Configuration
+# ============================================================================
+# Creates IPv6 /127 point-to-point link between default VRF and vrf_evpnz1
+# Enables BGP "import vrf default" routes to have resolvable nexthops
+# ============================================================================
+
 - name: Deploy xvrf cross-connect network configuration
   ansible.builtin.template:
     src: xvrf_ips.j2
     dest: /etc/network/interfaces.d/xvrf-ips
+    mode: '0644'
+  notify: Reload network
+  when: inventory_hostname in ['pve01','pve02','pve03']
+
+# ============================================================================
+# SDN Anycast Link-Local Address Configuration
+# ============================================================================
+# Configures static link-local IPv6 addresses (fe80::<vnet_id>:fffe) on all
+# VNet bridges to enable BGP unnumbered peering with consistent addresses
+# across all PVE nodes for seamless VM migration
+# ============================================================================
+
+- name: Deploy SDN anycast link-local address configuration
+  ansible.builtin.template:
+    src: sdn_anycast_lla.j2
+    dest: /etc/network/interfaces.d/sdn-anycast-lla
     mode: '0644'
   notify: Reload network
   when: inventory_hostname in ['pve01','pve02','pve03']
