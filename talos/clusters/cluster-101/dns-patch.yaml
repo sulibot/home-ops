@@ -1,5 +1,0 @@
-machine:
-  network:
-    nameservers:
-      - 10.101.0.254
-      - fd00:101::fffe

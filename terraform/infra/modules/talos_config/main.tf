@@ -284,77 +284,79 @@ locals {
         data.talos_machine_configuration.worker.machine_configuration
       )
       # Per-node network patch and FRR ExtensionServiceConfig
-      config_patch = join("\n---\n", [
-        yamlencode({
-          machine = {
-            nodeLabels = {
-              "topology.kubernetes.io/region" = var.region
-              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-              # 4-byte ASN pattern: 4210<cluster_id>0<suffix>
-              # Formula: 4210000000 + (cluster_id * 1000) + node_suffix
-              "bgp.frr.asn"                   = tostring(4210000000 + var.cluster_id * 1000 + node.node_suffix)
-              # Cilium ASN: 4220<cluster_id>0<suffix>
-              "bgp.cilium.asn"                = tostring(4220000000 + var.cluster_id * 1000 + node.node_suffix)
-            }
-            network = {
-              hostname = node.hostname
-              interfaces = concat([
-                {
-                  interface = "ens18"
-                  mtu       = 1450  # Reduced for VXLAN overhead (SDN)
-                  addresses = concat(
-                    [
-                      "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
-                      "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
-                      "fe80::${var.cluster_id}:${node.node_suffix}/64"  # Link-local
-                    ],
-                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
-                  )
-                  routes = [
-                    # IPv4: static route (no RA for IPv4) - will be overridden by BGP
-                    {
-                      network = "0.0.0.0/0"
-                      gateway = "10.${var.cluster_id}.0.254"
-                      metric  = 2048
-                    },
-                    # IPv6: default route via link-local anycast gateway
-                    {
-                      network = "::/0"
-                      gateway = "fe80::${var.cluster_id}:fffe"
-                      metric  = 1000
-                    },
-                  ]
-                  vip = node.machine_type == "controlplane" ? {
-                    ip = var.vip_ipv6
-                  } : null
-                },
-                {
-                  interface = "lo"
-                  addresses = [
-                    "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
-                    "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
-                  ]
-                }
-              ], [])
-              nameservers = var.dns_servers
-            }
-            kubelet = {
-              nodeIP = {
-                validSubnets = [
-                  "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
-                  "fd00:${var.cluster_id}::${node.node_suffix}/128",
-                ]
-              }
-            }
-          }
-        }),
-        # ExtensionServiceConfig as raw YAML to avoid JSON-quoted strings from yamlencode
-        templatefile("${path.module}/extension-service-config.yaml.tpl", {
-          frr_conf_content = local.frr_configs[node_name]
-          hostname         = node.hostname
-          enable_bfd       = var.bgp_enable_bfd
-        })
-      ])
+      # Using heredoc to create proper multi-document YAML for Talos config_patch
+      config_patch = <<-EOT
+---
+${yamlencode({
+  machine = {
+    nodeLabels = {
+      "topology.kubernetes.io/region" = var.region
+      "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+      # 4-byte ASN pattern: 4210<cluster_id>0<suffix>
+      # Formula: 4210000000 + (cluster_id * 1000) + node_suffix
+      "bgp.frr.asn"                   = tostring(4210000000 + var.cluster_id * 1000 + node.node_suffix)
+      # Cilium ASN: 4220<cluster_id>0<suffix>
+      "bgp.cilium.asn"                = tostring(4220000000 + var.cluster_id * 1000 + node.node_suffix)
+    }
+    network = {
+      hostname = node.hostname
+      interfaces = concat([
+        {
+          interface = "ens18"
+          mtu       = 1450  # Reduced for VXLAN overhead (SDN)
+          addresses = concat(
+            [
+              "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
+              "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
+              "fe80::${var.cluster_id}:${node.node_suffix}/64"  # Link-local
+            ],
+            var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
+          )
+          routes = [
+            # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+            {
+              network = "0.0.0.0/0"
+              gateway = "10.${var.cluster_id}.0.254"
+              metric  = 2048
+            },
+            # IPv6: default route via link-local anycast gateway
+            {
+              network = "::/0"
+              gateway = "fe80::${var.cluster_id}:fffe"
+              metric  = 1000
+            },
+          ]
+          vip = node.machine_type == "controlplane" ? {
+            ip = var.vip_ipv6
+          } : null
+        },
+        {
+          interface = "lo"
+          addresses = [
+            "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
+            "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
+          ]
+        }
+      ], [])
+      nameservers = var.dns_servers
+    }
+    kubelet = {
+      nodeIP = {
+        validSubnets = [
+          "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
+          "fd00:${var.cluster_id}::${node.node_suffix}/128",
+        ]
+      }
+    }
+  }
+})}
+---
+${templatefile("${path.module}/extension-service-config.yaml.tpl", {
+  frr_conf_content = local.frr_configs[node_name]
+  hostname         = node.hostname
+  enable_bfd       = var.bgp_enable_bfd
+})}
+EOT
     }
   }
 }
