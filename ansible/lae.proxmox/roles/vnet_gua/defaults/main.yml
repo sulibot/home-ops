@@ -31,5 +31,6 @@ vnet_gua_gateway_token: "fffe"
 # Create missing SDN subnets (when Terragrunt does not pre-create them)
 vnet_gua_create_missing: true
 
-# Apply SDN after updates
-vnet_gua_apply_sdn: true
+# Apply SDN after updates (disabled by default to prevent FRR config overwrite)
+# Set to true only if you plan to manually restore FRR config after apply
+vnet_gua_apply_sdn: false

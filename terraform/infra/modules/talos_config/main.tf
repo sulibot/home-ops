@@ -90,9 +90,13 @@ data "talos_machine_configuration" "controlplane" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Accept RAs even when forwarding is enabled (for DHCPv6-PD GUA SLAAC)
-          "net.ipv6.conf.all.accept_ra"     = "2"
-          "net.ipv6.conf.default.accept_ra" = "2"
+          # Neighbor Discovery and ARP notifications for faster network convergence
+          "net.ipv6.conf.all.ndisc_notify"     = "1"
+          "net.ipv6.conf.default.ndisc_notify" = "1"
+          "net.ipv6.conf.ens18.ndisc_notify"   = "1"
+          "net.ipv4.conf.all.arp_notify"       = "1"
+          "net.ipv4.conf.default.arp_notify"   = "1"
+          "net.ipv4.conf.ens18.arp_notify"     = "1"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -101,13 +105,7 @@ data "talos_machine_configuration" "controlplane" {
             forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
           }
         }
-        kubelet = {
-          nodeIP = {
-            validSubnets = [
-              "fd00:${var.cluster_id}:fe::/64"
-            ]
-          }
-        }
+        kubelet = {}
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
@@ -120,11 +118,11 @@ data "talos_machine_configuration" "controlplane" {
           disabled = true # Cilium kube-proxy replacement
         }
         apiServer = {
-          certSANs = concat(
+          certSANs = distinct(concat(
             [var.vip_ipv6, var.vip_ipv4],
             [for node in local.control_plane_nodes : node.public_ipv6],
             [for node in local.control_plane_nodes : node.public_ipv4]
-          )
+          ))
         }
         etcd = {
           advertisedSubnets = [
@@ -198,9 +196,13 @@ data "talos_machine_configuration" "worker" {
           "net.core.somaxconn"            = "32768"
           "net.ipv4.ip_forward"           = "1"
           "net.ipv6.conf.all.forwarding"  = "1"
-          # Accept RAs even when forwarding is enabled (for DHCPv6-PD GUA SLAAC)
-          "net.ipv6.conf.all.accept_ra"     = "2"
-          "net.ipv6.conf.default.accept_ra" = "2"
+          # Neighbor Discovery and ARP notifications for faster network convergence
+          "net.ipv6.conf.all.ndisc_notify"     = "1"
+          "net.ipv6.conf.default.ndisc_notify" = "1"
+          "net.ipv6.conf.ens18.ndisc_notify"   = "1"
+          "net.ipv4.conf.all.arp_notify"       = "1"
+          "net.ipv4.conf.default.arp_notify"   = "1"
+          "net.ipv4.conf.ens18.arp_notify"     = "1"
         }
         features = {
           kubePrism = { enabled = true, port = 7445 }
@@ -210,11 +212,6 @@ data "talos_machine_configuration" "worker" {
           }
         }
         kubelet = {
-          nodeIP = {
-            validSubnets = [
-              "fd00:${var.cluster_id}:fe::/64"
-            ]
-          }
           clusterDNS = [
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
@@ -230,6 +227,16 @@ data "talos_machine_configuration" "worker" {
 EOF
           }
         ]
+      }
+      cluster = {
+        network = {
+          cni            = { name = "none" }                              # Cilium installed via inline manifests
+          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
+          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
+        }
+        proxy = {
+          disabled = true # Cilium kube-proxy replacement
+        }
       }
     })
   ]
@@ -294,7 +301,7 @@ locals {
               interfaces = concat([
                 {
                   interface = "ens18"
-                  mtu       = 1500
+                  mtu       = 1450  # Reduced for VXLAN overhead (SDN)
                   addresses = concat(
                     [
                       "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
@@ -308,20 +315,14 @@ locals {
                     {
                       network = "0.0.0.0/0"
                       gateway = "10.${var.cluster_id}.0.254"
-                      metric  = 1024
+                      metric  = 2048
                     },
                     # IPv6: default route via link-local anycast gateway
                     {
                       network = "::/0"
                       gateway = "fe80::${var.cluster_id}:fffe"
-                      metric  = 1024  # High metric ensures BGP routes (metric 0) are preferred
+                      metric  = 1000
                     },
-                    # IPv6: control-plane anycast reachability (pre-BGP)
-                    {
-                      network = "fd00:${var.cluster_id}:ff::/64"
-                      gateway = "fe80::${var.cluster_id}:fffe"
-                      metric  = 1024
-                    }
                   ]
                   vip = node.machine_type == "controlplane" ? {
                     ip = var.vip_ipv6
@@ -336,6 +337,14 @@ locals {
                 }
               ], [])
               nameservers = var.dns_servers
+            }
+            kubelet = {
+              nodeIP = {
+                validSubnets = [
+                  "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
+                  "fd00:${var.cluster_id}::${node.node_suffix}/128",
+                ]
+              }
             }
           }
         }),

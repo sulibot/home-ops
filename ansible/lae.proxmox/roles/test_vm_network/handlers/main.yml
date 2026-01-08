@@ -4,6 +4,13 @@
 - name: apply netplan
   ansible.builtin.command: netplan apply
   become: yes
+  notify: restart systemd-resolved
+
+- name: restart systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  become: yes
 
 - name: restart frr
   ansible.builtin.systemd:

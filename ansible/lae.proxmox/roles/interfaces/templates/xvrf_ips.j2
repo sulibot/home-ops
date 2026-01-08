@@ -8,8 +8,11 @@
 auto xvrf_evpnz1
 iface xvrf_evpnz1 inet6 static
     address fd00:255:254:{{ node_id }}::1/127
+    # Create the veth pair if Proxmox hasn't already
+    pre-up ip link show xvrf_evpnz1 >/dev/null 2>&1 || ip link add xvrf_evpnz1 type veth peer name xvrfp_evpnz1
     # Ensure the link is administratively UP before addressing
     pre-up ip link set xvrf_evpnz1 up || true
+    pre-up ip link set xvrfp_evpnz1 up || true
     # Enable IPv6 forwarding specifically on this interface for BGP peering
     post-up sleep 1 && sysctl -w net.ipv6.conf.xvrf_evpnz1.forwarding=1 || true
     # Optimization: Disable Router Advertisements to prevent neighbors from getting confused
@@ -20,6 +23,8 @@ auto xvrfp_evpnz1
 iface xvrfp_evpnz1 inet6 static
     address fd00:255:254:{{ node_id }}::0/127
     vrf vrf_evpnz1
+    # Ensure the veth pair exists even if this stanza runs first
+    pre-up ip link show xvrfp_evpnz1 >/dev/null 2>&1 || ip link add xvrf_evpnz1 type veth peer name xvrfp_evpnz1
     pre-up ip link set xvrfp_evpnz1 up || true
     post-up sleep 1 && sysctl -w net.ipv6.conf.xvrfp_evpnz1.forwarding=1 || true
     post-up sysctl -w net.ipv6.conf.xvrfp_evpnz1.accept_ra=0 || true

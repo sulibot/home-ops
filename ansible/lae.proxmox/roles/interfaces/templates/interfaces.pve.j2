@@ -58,11 +58,15 @@ iface vmbr0 inet6 static
 auto vmbr0.10
 iface vmbr0.10 inet static
     address 10.10.0.{{ node_id }}/24
+    gateway 10.10.0.254
+    metric 1024
     vlan-raw-device vmbr0
     mtu 1500
 
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
+    gateway fe80::10:fffe
+    metric 1024
     # SLAAC/RA disabled on transit interface - static routing only
     # post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=2 || true
     # post-up   sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=2 || true
@@ -78,6 +82,26 @@ iface vmbr0.200 inet static
 
 iface vmbr0.200 inet6 static
     address fd00:200::{{ node_id }}/64
+
+## VLAN 30
+#auto vmbr0.30
+#iface vmbr0.30 inet static
+#    address 10.30.0.{{ node_id }}/24
+#    vlan-raw-device vmbr0
+#    mtu 1500
+#
+#iface vmbr0.30 inet6 static
+#    address fd00:30::{{ node_id }}/64
+#
+## VLAN 31
+#auto vmbr0.31
+#iface vmbr0.31 inet static
+#    address 10.31.0.{{ node_id }}/24
+#    vlan-raw-device vmbr0
+#    mtu 1500
+#
+#iface vmbr0.31 inet6 static
+#    address fd00:31::{{ node_id }}/64
 
 # ------------------------------------------------------------------------------
 # 2. UNDERLAY MESH (25G Ring)
@@ -108,6 +132,7 @@ iface lo-infra inet static
 
 iface lo-infra inet6 static
     address fd00:0:0:ffff::{{ node_id }}/128
+    post-up sh -c 'echo 1 > /proc/sys/net/ipv6/conf/$IFACE/forwarding'
 
 # lo-svcs: Storage/Internal Application identity
 auto lo-svcs

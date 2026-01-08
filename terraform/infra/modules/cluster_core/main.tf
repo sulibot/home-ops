@@ -134,13 +134,17 @@ locals {
   hypervisors = length(var.proxmox.nodes) > 0 ? var.proxmox.nodes : [var.proxmox.node_primary]
 
   # Kubernetes Network CIDRs (derived from cluster_id)
+  # Aligned with IP addressing documentation:
+  # - Pod CIDR: 10.<TID>.244.0/22 and fd00:<TID>:244::/60
+  # - Service CIDR: 10.<TID>.96.0/24 and fd00:<TID>:96::/108
+  # - LoadBalancer VIP Pool: 10.<TID>.240.0/24 and fd00:<TID>:fffe::/112
   k8s_network_config = {
-    pods_ipv4          = format("10.%d.240.0/20", var.cluster_id)
-    pods_ipv6          = format("fd00:%d:240::/60", var.cluster_id)
+    pods_ipv4          = format("10.%d.244.0/22", var.cluster_id)
+    pods_ipv6          = format("fd00:%d:244::/60", var.cluster_id)
     services_ipv4      = format("10.%d.96.0/24", var.cluster_id)
-    services_ipv6      = format("fd00:%d:96::/112", var.cluster_id)
-    loadbalancers_ipv4 = format("10.%d.27.0/24", var.cluster_id)
-    loadbalancers_ipv6 = format("fd00:%d:1b::/120", var.cluster_id)
+    services_ipv6      = format("fd00:%d:96::/108", var.cluster_id)
+    loadbalancers_ipv4 = format("10.%d.240.0/24", var.cluster_id)
+    loadbalancers_ipv6 = format("fd00:%d:fffe::/112", var.cluster_id)
     talosVersion      = var.talos_version
     kubernetesVersion = var.kubernetes_version
   }
@@ -152,6 +156,36 @@ locals {
 #
 # Instead, we use direct PCI ID passthrough via the hostpci.id parameter in the VM resource
 # This requires root PAM credentials (already configured) and bypasses hardware mappings entirely
+
+# Custom cloud-init user-data to configure sysctls during install phase
+resource "proxmox_virtual_environment_file" "cloud_init_user_data" {
+  for_each = local.nodes
+
+  content_type = "snippets"
+  datastore_id = var.proxmox.datastore_id
+  # Upload all cloud-init files to the primary node to avoid race conditions
+  # The shared "resources" datastore makes files available to all nodes
+  node_name = var.proxmox.node_primary
+
+  source_raw {
+    data = <<-EOT
+      #cloud-config
+      bootcmd:
+        # Set sysctls for neighbor discovery and ARP notifications
+        - sysctl -w net.ipv6.conf.all.accept_ra=0
+        - sysctl -w net.ipv6.conf.default.accept_ra=0
+        - sysctl -w net.ipv6.conf.ens18.accept_ra=0
+        - sysctl -w net.ipv6.conf.all.ndisc_notify=1
+        - sysctl -w net.ipv6.conf.default.ndisc_notify=1
+        - sysctl -w net.ipv6.conf.ens18.ndisc_notify=1
+        - sysctl -w net.ipv4.conf.all.arp_notify=1
+        - sysctl -w net.ipv4.conf.default.arp_notify=1
+        - sysctl -w net.ipv4.conf.ens18.arp_notify=1
+    EOT
+
+    file_name = "cloud-init-user-data-${each.value.name}.yml"
+  }
+}
 
 # Custom cloud-init network configuration to assign multiple IPv6 addresses
 # Proxmox's ipconfig only supports one IPv6 address, so we use custom user-data
@@ -171,8 +205,8 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
       config = [
         {
           type = "physical"
-          name = "eth0"
-          # MTU removed - let Proxmox SDN/Talos handle it to avoid cloud-init netlink errors
+          name = "ens18"  # Talos uses predictable interface naming, not eth0
+          mtu = 1450  # VXLAN overhead (matches Proxmox VM network device and Talos config)
           subnets = concat(
             # IPv4 configuration
             [
@@ -183,11 +217,12 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
                 gateway = try(var.ip_config.public.ipv4_gateway, null)
               }
             ],
-            # IPv6 ULA address (no gateway - Talos machine config handles routing)
+            # IPv6 ULA address + link-local default gateway (for installer reachability)
             [
               {
                 type    = "static6"
                 address = "${each.value.public_ipv6}/64"
+                gateway = format("fe80::%d:fffe", var.cluster_id)
               }
             ],
             # IPv6 GUA address (if configured, no gateway - Talos machine config handles routing)
@@ -220,8 +255,11 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
 resource "proxmox_virtual_environment_vm" "nodes" {
   for_each = local.nodes
 
-  # Ensure cloud-init network config files are fully uploaded before VM starts
-  depends_on = [proxmox_virtual_environment_file.cloud_init_network_config]
+  # Ensure cloud-init config files are fully uploaded before VM starts
+  depends_on = [
+    proxmox_virtual_environment_file.cloud_init_user_data,
+    proxmox_virtual_environment_file.cloud_init_network_config
+  ]
 
   vm_id = try(each.value.vm_id, null)
   name  = each.value.name
@@ -300,7 +338,8 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     # Use the same datastore as the VM disk for Cloud-Init data.
     datastore_id = var.proxmox.vm_datastore
 
-    # Reference the custom network configuration file
+    # Reference the custom user-data and network configuration files
+    user_data_file_id    = proxmox_virtual_environment_file.cloud_init_user_data[each.key].id
     network_data_file_id = proxmox_virtual_environment_file.cloud_init_network_config[each.key].id
   }
 
@@ -359,24 +398,22 @@ output "talhelper_env" {
   value = { for n in local.nodes : n.name => {
     # Use the public network IP for Talos API and bootstrap access
     ipAddress    = n.public_ipv4
-    # REMOVED - mesh network no longer needed for link-local migration
-    # meshIPv4     = n.mesh_ipv4
-    # meshIPv6     = n.mesh_ipv6
     hostname     = n.name
     publicIPv4   = n.public_ipv4
     publicIPv6   = n.public_ipv6
-    # REMOVED - mesh network no longer needed for link-local migration
-    # meshGatewayIPv4 = try(var.ip_config.mesh.ipv4_gateway, null)
-    # meshGatewayIPv6 = try(var.ip_config.mesh.ipv6_gateway, null)
+    # IPv4 gateway (static)
     publicGatewayIPv4 = try(var.ip_config.public.ipv4_gateway, null)
-    # REMOVED - mesh network no longer needed for link-local migration
-    # meshMTU      = coalesce(try(n.mesh_mtu, null), var.network.mesh_mtu)
+    # IPv6 gateway (link-local anycast per IP addressing documentation)
+    # Format: fe80::<cluster_id>:fffe
+    publicGatewayIPv6 = format("fe80::%d:fffe", var.cluster_id)
     publicMTU    = coalesce(try(n.public_mtu, null), var.network.public_mtu)
     endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.${cluster_id}.0.10)
     # Determine the node role based on its name prefix
     controlPlane = substr(n.name, 4, 2) == "cp"
-    # You can add other node-specific values here if needed
-    # installDisk = "/dev/sda"
+    # Node loopback addresses (VM identity per IP addressing documentation)
+    # Format: 10.<TID>.254.<suffix> and fd00:<TID>:fe::<suffix>
+    loopbackIPv4 = format("10.%d.254.%d", var.cluster_id, n.ip_suffix)
+    loopbackIPv6 = format("fd00:%d:fe::%d", var.cluster_id, n.ip_suffix)
   } }
 }
 
@@ -403,11 +440,11 @@ output "talenv_yaml" {
       services_ipv6 = local.k8s_network_config.services_ipv6
 
       # Gateway addresses
-      # REMOVED - mesh network no longer needed for link-local migration
-      # mesh_gateway_ipv4   = var.ip_config.mesh.ipv4_gateway
-      # mesh_gateway_ipv6   = var.ip_config.mesh.ipv6_gateway
+      # IPv4 gateway (static)
       public_gateway_ipv4 = var.ip_config.public.ipv4_gateway
-      public_gateway_ipv6 = var.ip_config.public.ipv6_gateway
+      # IPv6 gateway (link-local anycast per IP addressing documentation)
+      # Format: fe80::<cluster_id>:fffe
+      public_gateway_ipv6 = format("fe80::%d:fffe", var.cluster_id)
 
       # DNS servers
       dns_server_ipv6 = length(var.ip_config.dns_servers) > 0 ? var.ip_config.dns_servers[0] : null
@@ -418,19 +455,17 @@ output "talenv_yaml" {
         hostname         = n.name
         ipAddress        = n.public_ipv4
         controlPlane     = n.control_plane
-        # REMOVED - mesh network no longer needed for link-local migration
-        # meshIPv4         = n.mesh_ipv4
-        # meshIPv6         = n.mesh_ipv6
         publicIPv4       = n.public_ipv4
         publicIPv6       = n.public_ipv6
-        # REMOVED - mesh network no longer needed for link-local migration
-        # meshGatewayIPv4  = var.ip_config.mesh.ipv4_gateway
-        # meshGatewayIPv6  = var.ip_config.mesh.ipv6_gateway
+        # IPv4 gateway (static)
         publicGatewayIPv4 = var.ip_config.public.ipv4_gateway
-        publicGatewayIPv6 = var.ip_config.public.ipv6_gateway
-        # REMOVED - mesh network no longer needed for link-local migration
-        # meshMTU          = 8930
-        publicMTU        = 1500
+        # IPv6 gateway (link-local anycast per IP addressing documentation)
+        publicGatewayIPv6 = format("fe80::%d:fffe", var.cluster_id)
+        publicMTU        = coalesce(try(n.public_mtu, null), var.network.public_mtu)
+        # Node loopback addresses (VM identity per IP addressing documentation)
+        # Format: 10.<TID>.254.<suffix> and fd00:<TID>:fe::<suffix>
+        loopbackIPv4     = format("10.%d.254.%d", var.cluster_id, n.ip_suffix)
+        loopbackIPv6     = format("fd00:%d:fe::%d", var.cluster_id, n.ip_suffix)
       }]
     },
     # Flatten node properties as individual variables for envsubst

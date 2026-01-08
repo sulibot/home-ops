@@ -76,6 +76,9 @@ terraform {
       EOT
     ]
   }
+
+  # Note: Removed wait_for_nodes hook - the Talos provider handles retries and timeouts
+  # when applying configurations. The compute dependency ensures VMs exist before this runs.
 }
 
 locals {

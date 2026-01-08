@@ -18,11 +18,10 @@ interface {{ vnet_name }} {
     AdvDefaultLifetime 3600;
     AdvDefaultPreference medium;
 
-    # Ignore list: Don't automatically advertise ULA prefixes
+    # Ignore list: Don't automatically advertise any ULA prefixes
     # Only advertise GUA prefixes in 2000::/3 range
     autoignoreprefixes {
-        fd00:{{ vnet_id }}::/64;          # Exclude ULA prefix for this vnet
-        fd00:{{ vnet_id }}:ff::fffe/128;  # Exclude Proxmox anycast /128 address
+        fc00::/7;  # Exclude all ULAs (fc00::/7 covers fd00::/8)
     };
 
     # Advertise only GUA prefixes - automatically discovered from interface

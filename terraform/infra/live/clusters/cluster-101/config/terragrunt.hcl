@@ -264,13 +264,10 @@ inputs = {
   # NTP servers from centralized infrastructure config
   ntp_servers = local.network_infra.ntp_servers
 
-  # IPv6 GUA (Global Unicast Address) - DISABLED for BGP-only routing
-  # Static GUA routes conflict with BGP-learned routes causing FRR crashloop
-  # BGP will provide default routes via fe80::ffff (anycast link-local gateway)
-  # gua_prefix  = local.ipv6_prefixes.delegated_prefixes["vnet${local.cluster_config.cluster_id}"]
-  # gua_gateway = local.ipv6_prefixes.delegated_gateways["vnet${local.cluster_config.cluster_id}"]
-  gua_prefix  = ""
-  gua_gateway = ""
+  # IPv6 GUA (Global Unicast Address) for internet reachability
+  # Uses delegated prefix per vnet to avoid ULA-only egress.
+  gua_prefix  = local.ipv6_prefixes.delegated_prefixes["vnet${local.cluster_config.cluster_id}"]
+  gua_gateway = local.ipv6_prefixes.delegated_gateways["vnet${local.cluster_config.cluster_id}"]
 
   # Schematic configuration for Talos image customization (from install schematic)
   kernel_args       = local.install_schematic_config.install_kernel_args

@@ -58,6 +58,20 @@ spec:
 #              limits:
 #                memory: 4Gi # Reduced from 6Gi due to worker node capacity
     defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan30",
+              "namespace": "kube-system",
+              "ips": ["10.30.0.250/24", "fd00:30::250/64"]
+            },
+            {
+              "name": "vlan31",
+              "namespace": "kube-system",
+              "ips": ["10.31.0.250/24", "fd00:31::250/64"]
+            }
+          ]
       resourceClaims:
         - name: gpu
           resourceClaimTemplateName: plex

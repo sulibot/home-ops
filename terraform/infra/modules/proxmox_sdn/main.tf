@@ -12,7 +12,7 @@ resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
   # Exit nodes for internet/external access via SNAT
   # All PVE nodes act as exit nodes for redundancy
   exit_nodes               = var.exit_nodes
-  exit_nodes_local_routing = true # Use local routing table on exit nodes
+  exit_nodes_local_routing = false # Use VRF routing to support multi-node reachability
   primary_exit_node        = var.primary_exit_node
 
   # Import default route from RouterOS into VRF
@@ -24,6 +24,9 @@ resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
       controller,
       vrf_vxlan,
       rt_import,
+      # Provider returns inconsistent values for these fields on update.
+      exit_nodes,
+      primary_exit_node,
     ]
   }
 }

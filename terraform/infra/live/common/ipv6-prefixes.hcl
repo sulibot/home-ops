@@ -20,6 +20,6 @@ locals {
   # Example: 2600:1700:ab1a:500e::/64 -> gateway is 2600:1700:ab1a:500e::ffff
   delegated_gateways = {
     for vnet, prefix in local.delegated_prefixes :
-    vnet => "${trimsuffix(prefix, "::/64")}::ffff"
+    vnet => "${trimsuffix(prefix, "::/64")}::fffe"
   }
 }

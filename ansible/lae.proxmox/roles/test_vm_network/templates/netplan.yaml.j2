@@ -3,22 +3,30 @@ network:
   ethernets:
     eth0:
       dhcp4: false
-      dhcp6: false  # Disable DHCP6/SLAAC autoconf
-      accept-ra: false  # Don't process RAs
+      dhcp6: false  # Disable DHCP6 but allow SLAAC
+      accept-ra: false  # Use static addressing only (avoid SLAAC-only EVPN learning)
       ipv6-privacy: false  # Disable privacy extensions
       link-local: []  # Disable automatic link-local generation
       mtu: {{ interface_mtu }}
       addresses:
         - {{ vm_ipv4 }}/24
         - {{ vm_ipv6 }}/64
+{% if gua_prefix is defined and gua_prefix|length > 0 %}
+{% set gua_base = gua_prefix | regex_replace('/64$', '') %}
+{% if gua_base[-2:] != '::' %}
+{% set gua_base = gua_base ~ '::' %}
+{% endif %}
+        - {{ gua_base }}{{ vm_ipv6.split('::')[-1] }}/64
+{% endif %}
         - {{ vm_link_local }}/64
       routes:
         # IPv4 default route
         - to: 0.0.0.0/0
           via: {{ gateway_v4 }}
-        # ULA gateway for routing to other ULA subnets (fc00::/7)
-        - to: fc00::/7
+        # IPv6 default route (anycast gateway in VNet)
+        - to: ::/0
           via: {{ gateway_v6 }}
+          metric: 1024
       nameservers:
         addresses:
           - {{ dns_server_v6 }}

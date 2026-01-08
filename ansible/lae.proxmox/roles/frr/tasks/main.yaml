@@ -75,71 +75,6 @@
   changed_when: false
   tags: frr
 
-- name: Verify FRR configuration has not been modified externally
-  ansible.builtin.fail:
-    msg: |
-      ============================================================================
-      CRITICAL: /etc/frr/frr.conf has been modified externally!
-      ============================================================================
-      This violates the FRR ownership policy.
-
-      Expected hash: {{ stored_hash.content | b64decode | trim }}
-      Current hash:  {{ frr_conf_stat.stat.checksum }}
-
-      Possible causes:
-        - Proxmox SDN modified FRR configuration
-        - frr@sdn.service was enabled/started
-        - Manual modification outside Ansible
-        - Proxmox upgrade re-enabled SDN → FRR integration
-
-      Action required:
-        1. Investigate what modified the file
-        2. Re-run this playbook to restore correct configuration
-        3. Verify frr@sdn.service is masked
-
-      The playbook will now restore the Ansible-managed configuration.
-      ============================================================================
-  when:
-    - frr_conf_exists.stat.exists
-    - stored_hash.content is defined
-    - stored_hash.content | b64decode | trim != frr_conf_stat.stat.checksum
-  tags: frr
-  ignore_errors: true  # Allow playbook to continue and restore config
-
-# ============================================================================
-# SYSTEM CONFIGURATION
-# ============================================================================
-
-- name: Check for IPv6 VRF TCP accept sysctl
-  ansible.builtin.stat:
-    path: /proc/sys/net/ipv6/tcp_l3mdev_accept
-  register: frr_ipv6_l3mdev_accept
-
-- name: Remove unsupported IPv6 VRF TCP accept sysctl
-  ansible.builtin.lineinfile:
-    path: /etc/sysctl.d/99-frr-vrf.conf
-    regexp: '^net\.ipv6\.tcp_l3mdev_accept'
-    state: absent
-    create: true
-  when: not frr_ipv6_l3mdev_accept.stat.exists
-
-- name: Enable VRF TCP accept for BGP peering
-  ansible.posix.sysctl:
-    name: net.ipv4.tcp_l3mdev_accept
-    value: '1'
-    state: present
-    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
-    reload: true
-
-- name: Enable VRF TCP accept for IPv6 BGP peering
-  ansible.posix.sysctl:
-    name: net.ipv6.tcp_l3mdev_accept
-    value: '1'
-    state: present
-    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
-    reload: true
-  when: frr_ipv6_l3mdev_accept.stat.exists
-
 - name: Disable ICMP redirects to prevent routing cache pollution
   ansible.posix.sysctl:
     name: "{{ item }}"
@@ -154,6 +89,41 @@
     - net.ipv4.conf.default.send_redirects
     - net.ipv6.conf.all.accept_redirects
     - net.ipv6.conf.default.accept_redirects
+  tags: frr
+
+# ============================================================================
+# BACKUP CURRENT CONFIGURATION
+# ============================================================================
+
+- name: Create FRR backup directory
+  ansible.builtin.file:
+    path: /etc/frr/_backup
+    state: directory
+    mode: '0755'
+    owner: frr
+    group: frr
+  tags: frr
+
+- name: Generate timestamp for backup
+  ansible.builtin.set_fact:
+    frr_backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  tags: frr
+
+- name: Backup current frr.conf before deployment
+  ansible.builtin.copy:
+    src: /etc/frr/frr.conf
+    dest: "/etc/frr/_backup/frr.conf.{{ frr_backup_timestamp }}"
+    remote_src: true
+    mode: '0644'
+  when: frr_conf_exists.stat.exists
+  tags: frr
+
+- name: Backup current daemons file before deployment
+  ansible.builtin.copy:
+    src: /etc/frr/daemons
+    dest: "/etc/frr/_backup/daemons.{{ frr_backup_timestamp }}"
+    remote_src: true
+    mode: '0644'
   tags: frr
 
 # ============================================================================
