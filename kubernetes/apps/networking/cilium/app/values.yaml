@@ -55,8 +55,9 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # BPF host routing (NOT legacy) - enables eBPF routing for autoDirectNodeRoutes
-  hostLegacyRouting: false
+  # Use legacy routing for host-bound traffic to support Talos forwardKubeDNSToHost
+  # Required for compatibility with link-local address 169.254.116.108
+  hostLegacyRouting: true
 
 # Disable ip-masq-agent - using eBPF masquerading instead
 ipMasqAgent:

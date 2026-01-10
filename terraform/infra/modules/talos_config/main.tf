@@ -16,23 +16,89 @@ locals {
     { for k, v in local.control_plane_nodes : k => merge(v, {
       machine_type = "controlplane"
       node_suffix  = v.ip_suffix
+      # Centralize ASN calculation to avoid duplication and ensure consistency
+      frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
+      cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
+      frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
+      cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
     }) }
   )
 
   # Read Cilium values from Flux config for inline manifests
-  cilium_values_yaml = var.cilium_values_path != "" ? file(var.cilium_values_path) : ""
+  # Use fileexists() to safely handle file reading - prevents "open : no such file or directory" errors
+  cilium_values_yaml = var.cilium_values_path != "" && try(fileexists(var.cilium_values_path), false) ? file(var.cilium_values_path) : ""
 
   # Read Gateway API CRDs (required before Cilium if gatewayAPI.enabled: true)
   gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml" : ""
-  gateway_api_crds      = var.cilium_values_path != "" && fileexists(local.gateway_api_crds_path) ? file(local.gateway_api_crds_path) : ""
+  # Use fileexists() to safely handle file reading
+  gateway_api_crds      = local.gateway_api_crds_path != "" && try(fileexists(local.gateway_api_crds_path), false) ? file(local.gateway_api_crds_path) : ""
 
-  # Path to FRR config template (native frr.conf format)
-  # Template must be in module directory for Terraform to find it
-  frr_template_path = "${path.module}/frr.conf.j2"
+  # Common configuration to avoid repetition
+  common_install = merge(
+    {
+      disk = var.install_disk
+      wipe = false
+    },
+    var.installer_image != "" ? { image = var.installer_image } : {}
+  )
+
+  common_sysctls = {
+    "fs.inotify.max_user_watches"   = "1048576"
+    "fs.inotify.max_user_instances" = "8192"
+    "fs.file-max"                   = "1000000"
+    "net.core.somaxconn"            = "32768"
+    "net.ipv4.ip_forward"           = "1"
+    "net.ipv6.conf.all.forwarding"  = "1"
+    # Neighbor Discovery and ARP notifications for faster network convergence
+    "net.ipv6.conf.all.ndisc_notify"     = "1"
+    "net.ipv6.conf.default.ndisc_notify" = "1"
+    "net.ipv6.conf.ens18.ndisc_notify"  = "1"
+    "net.ipv4.conf.all.arp_notify"       = "1"
+    "net.ipv4.conf.default.arp_notify"   = "1"
+    "net.ipv4.conf.ens18.arp_notify"    = "1"
+  }
+
+  common_features = {
+    kubePrism = { enabled = true, port = 7445 }
+    hostDNS = {
+      enabled              = true # Required for Talos Helm controller
+      forwardKubeDNSToHost = true # Enable with Cilium hostLegacyRouting for proper DNS integration
+    }
+  }
+
+  common_cluster_network = {
+    cni            = { name = "none" }                              # Cilium installed via inline manifests
+    podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
+    serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
+  }
+
+  # Control Plane specific configuration
+  api_server_cert_sans = distinct(concat(
+    [var.vip_ipv6, var.vip_ipv4],
+    [for node in local.control_plane_nodes : node.public_ipv6],
+    [for node in local.control_plane_nodes : node.public_ipv4],
+    [for node in local.control_plane_nodes : "fd00:${var.cluster_id}:fe::${node.ip_suffix}"],
+    [for node in local.control_plane_nodes : "10.${var.cluster_id}.254.${node.ip_suffix}"]
+  ))
+
+  controlplane_inline_manifests = concat(
+    local.gateway_api_crds != "" ? [
+      {
+        name     = "gateway-api-crds"
+        contents = local.gateway_api_crds
+      }
+    ] : [],
+    [
+      {
+        name     = "cilium"
+        contents = data.helm_template.cilium.manifest
+      }
+    ]
+  )
 }
 
 # Template Cilium Helm chart with values from Flux config
@@ -46,9 +112,9 @@ data "helm_template" "cilium" {
   skip_crds    = false
   include_crds = true
 
-  values = [
-    local.cilium_values_yaml
-  ]
+  # Only include values if cilium_values_yaml is not empty
+  # This prevents Talos provider 0.10.0 validation errors
+  values = local.cilium_values_yaml != "" ? [local.cilium_values_yaml] : []
 }
 
 # Generate cluster secrets (CA, bootstrap token, etc.)
@@ -83,69 +149,28 @@ data "talos_machine_configuration" "controlplane" {
         time = {
           servers = var.ntp_servers
         }
-        sysctls = {
-          "fs.inotify.max_user_watches"   = "1048576"
-          "fs.inotify.max_user_instances" = "8192"
-          "fs.file-max"                   = "1000000"
-          "net.core.somaxconn"            = "32768"
-          "net.ipv4.ip_forward"           = "1"
-          "net.ipv6.conf.all.forwarding"  = "1"
-          # Neighbor Discovery and ARP notifications for faster network convergence
-          "net.ipv6.conf.all.ndisc_notify"     = "1"
-          "net.ipv6.conf.default.ndisc_notify" = "1"
-          "net.ipv6.conf.ens18.ndisc_notify"   = "1"
-          "net.ipv4.conf.all.arp_notify"       = "1"
-          "net.ipv4.conf.default.arp_notify"   = "1"
-          "net.ipv4.conf.ens18.arp_notify"     = "1"
-        }
-        features = {
-          kubePrism = { enabled = true, port = 7445 }
-          hostDNS = {
-            enabled              = true  # Required for Talos Helm controller
-            forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
-          }
-        }
+        sysctls  = local.common_sysctls
+        features = local.common_features
         kubelet = {}
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
-        network = {
-          cni            = { name = "none" }                              # Cilium installed via inline manifests
-          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
-          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
-        }
+        network = local.common_cluster_network
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
         apiServer = {
-          certSANs = distinct(concat(
-            [var.vip_ipv6, var.vip_ipv4],
-            [for node in local.control_plane_nodes : node.public_ipv6],
-            [for node in local.control_plane_nodes : node.public_ipv4]
-          ))
+          certSANs = local.api_server_cert_sans
         }
         etcd = {
           advertisedSubnets = [
-            "fd00:255:${var.cluster_id}::/64",  # OLD pattern
-            "fd00:${var.cluster_id}:fe::/64"    # NEW pattern
+            "fd00:${var.cluster_id}:fe::/64",
+            "fd00:${var.cluster_id}::/64"
           ] # Force etcd to use loopback IPs
         }
         # Install Gateway API CRDs and Cilium CNI via inline manifests
         # Gateway API CRDs must be installed first (if enabled in Cilium config)
-        inlineManifests = concat(
-          local.gateway_api_crds != "" ? [
-            {
-              name     = "gateway-api-crds"
-              contents = local.gateway_api_crds
-            }
-          ] : [],
-          [
-            {
-              name     = "cilium"
-              contents = data.helm_template.cilium.manifest
-            }
-          ]
-        )
+        inlineManifests = local.controlplane_inline_manifests
       }
     }),
     # Separate patch for API server extraArgs (must be separate to work with Talos provider)
@@ -189,28 +214,11 @@ data "talos_machine_configuration" "worker" {
             { name = "i915" } # load Intel GPU driver when present
           ]
         }
-        sysctls = {
-          "fs.inotify.max_user_watches"   = "1048576"
-          "fs.inotify.max_user_instances" = "8192"
-          "fs.file-max"                   = "1000000"
-          "net.core.somaxconn"            = "32768"
-          "net.ipv4.ip_forward"           = "1"
-          "net.ipv6.conf.all.forwarding"  = "1"
-          # Neighbor Discovery and ARP notifications for faster network convergence
-          "net.ipv6.conf.all.ndisc_notify"     = "1"
-          "net.ipv6.conf.default.ndisc_notify" = "1"
-          "net.ipv6.conf.ens18.ndisc_notify"   = "1"
-          "net.ipv4.conf.all.arp_notify"       = "1"
-          "net.ipv4.conf.default.arp_notify"   = "1"
-          "net.ipv4.conf.ens18.arp_notify"     = "1"
+        time = {
+          servers = var.ntp_servers
         }
-        features = {
-          kubePrism = { enabled = true, port = 7445 }
-          hostDNS = {
-            enabled              = true  # Required for Talos Helm controller
-            forwardKubeDNSToHost = false # Disable to allow Cilium bpf.masquerade=true
-          }
-        }
+        sysctls  = local.common_sysctls
+        features = local.common_features
         kubelet = {
           clusterDNS = [
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
@@ -229,11 +237,7 @@ EOF
         ]
       }
       cluster = {
-        network = {
-          cni            = { name = "none" }                              # Cilium installed via inline manifests
-          podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
-          serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
-        }
+        network = local.common_cluster_network
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
@@ -243,10 +247,11 @@ EOF
 }
 
 # Generate per-node configurations with network settings
+# Split into separate locals blocks to avoid circular dependencies with Talos provider 0.10.0+
 locals {
   # Render FRR config per node using native frr.conf template
   frr_configs = {
-    for node_name, node in local.all_nodes : node_name => templatefile(local.frr_template_path, {
+    for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/frr.conf.j2", {
       # Node identity
       hostname   = node.hostname
       router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
@@ -255,7 +260,7 @@ locals {
       # Example: base=4210000000, cluster 101, node 11 -> 4210101011
       # Formula: bgp_asn_base + (cluster_id * 1000) + (node_suffix)
       # Supports cluster IDs 000-999 and node suffixes 00-99
-      local_asn  = var.bgp_asn_base + var.cluster_id * 1000 + node.node_suffix
+      local_asn  = node.frr_asn
       gw_asn     = var.bgp_remote_asn
       gw_ipv6    = "fe80::${var.cluster_id}:fffe"  # Link-local anycast gateway
 
@@ -274,7 +279,23 @@ locals {
       advertise_loopbacks      = var.bgp_advertise_loopbacks
     })
   }
+}
 
+# Pre-render extension service configs per node for use in config patches
+# This is required for Talos provider 0.10.0+ which validates config patches early
+# Separate locals block to ensure frr_configs is fully evaluated first
+locals {
+  extension_service_configs = {
+    for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/extension-service-config.yaml.tpl", {
+      frr_conf_content = local.frr_configs[node_name]
+      hostname         = node.hostname
+      enable_bfd       = var.bgp_enable_bfd
+    })
+  }
+}
+
+# Generate machine configs with per-node patches
+locals {
   machine_configs = {
     for node_name, node in local.all_nodes : node_name => {
       machine_type = node.machine_type
@@ -292,23 +313,19 @@ ${yamlencode({
     nodeLabels = {
       "topology.kubernetes.io/region" = var.region
       "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-      # 4-byte ASN pattern: 4210<cluster_id>0<suffix>
-      # Formula: 4210000000 + (cluster_id * 1000) + node_suffix
-      "bgp.frr.asn"                   = tostring(4210000000 + var.cluster_id * 1000 + node.node_suffix)
-      # Cilium ASN: 4220<cluster_id>0<suffix>
-      "bgp.cilium.asn"                = tostring(4220000000 + var.cluster_id * 1000 + node.node_suffix)
+      "bgp.frr.asn"                   = tostring(node.frr_asn)
+      "bgp.cilium.asn"                = tostring(node.cilium_asn)
     }
     network = {
       hostname = node.hostname
       interfaces = concat([
         {
-          interface = "ens18"
+          interface = var.bgp_interface
           mtu       = 1450  # Reduced for VXLAN overhead (SDN)
           addresses = concat(
             [
               "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
               "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
-              "fe80::${var.cluster_id}:${node.node_suffix}/64"  # Link-local
             ],
             var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
           )
@@ -323,7 +340,7 @@ ${yamlencode({
             {
               network = "::/0"
               gateway = "fe80::${var.cluster_id}:fffe"
-              metric  = 1000
+              metric  = 150
             },
           ]
           vip = node.machine_type == "controlplane" ? {
@@ -351,11 +368,7 @@ ${yamlencode({
   }
 })}
 ---
-${templatefile("${path.module}/extension-service-config.yaml.tpl", {
-  frr_conf_content = local.frr_configs[node_name]
-  hostname         = node.hostname
-  enable_bfd       = var.bgp_enable_bfd
-})}
+${local.extension_service_configs[node_name]}
 EOT
     }
   }
