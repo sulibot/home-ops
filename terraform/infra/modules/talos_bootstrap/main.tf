@@ -52,8 +52,7 @@ resource "null_resource" "wait_for_etcd" {
 
         if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
           echo "✓ Cluster is healthy!"
-          rm -f "$KUBECONFIG_FILE"
-          exit 0
+          break
         fi
 
         if [ $ATTEMPT -lt $RETRIES ]; then
@@ -62,8 +61,13 @@ resource "null_resource" "wait_for_etcd" {
         fi
       done
 
+      # Check if cluster became healthy
+      if ! kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
+        echo "⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
+      fi
+
       echo "🔧 Configuring CoreDNS to use host DNS forwarder (169.254.116.108)..."
-      
+
       # Wait for CoreDNS ConfigMap to exist
       echo "⏳ Waiting for CoreDNS ConfigMap..."
       timeout 60s bash -c "until kubectl --kubeconfig='$KUBECONFIG_FILE' -n kube-system get configmap coredns >/dev/null 2>&1; do sleep 2; done"
@@ -75,14 +79,13 @@ resource "null_resource" "wait_for_etcd" {
       # Restart CoreDNS to pick up changes
       echo "🔄 Restarting CoreDNS..."
       kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout restart deployment coredns
-      
+
       # Wait for rollout to complete
       kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout status deployment coredns --timeout=60s
 
       echo "✅ CoreDNS configured successfully"
 
       rm -f "$KUBECONFIG_FILE"
-      echo "⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
       exit 0
     EOT
   }
