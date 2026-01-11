@@ -152,7 +152,9 @@ data "talos_machine_configuration" "controlplane" {
         sysctls  = local.common_sysctls
         features = local.common_features
         kubelet = {
-          resolvConf = "/etc/resolv.conf.kubelet"
+          extraArgs = {
+            "resolv-conf" = "/etc/resolv.conf.kubelet"
+          }
         }
         files = [
           {
@@ -233,7 +235,9 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
-          resolvConf = "/etc/resolv.conf.kubelet"
+          extraArgs = {
+            "resolv-conf" = "/etc/resolv.conf.kubelet"
+          }
         }
         files = [
           {
