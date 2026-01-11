@@ -44,7 +44,7 @@ ipv4NativeRoutingCIDR: 10.101.244.0/22
 ipv6NativeRoutingCIDR: fd00:101:244::/60
 
 # BPF configuration optimized for Talos + Istio Ambient
-# forwardKubeDNSToHost is disabled in Talos machine config to prevent conflicts
+# forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
   masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
