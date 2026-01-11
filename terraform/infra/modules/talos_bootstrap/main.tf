@@ -62,6 +62,25 @@ resource "null_resource" "wait_for_etcd" {
         fi
       done
 
+      echo "🔧 Configuring CoreDNS to use host DNS forwarder (169.254.116.108)..."
+      
+      # Wait for CoreDNS ConfigMap to exist
+      echo "⏳ Waiting for CoreDNS ConfigMap..."
+      timeout 60s bash -c "until kubectl --kubeconfig='$KUBECONFIG_FILE' -n kube-system get configmap coredns >/dev/null 2>&1; do sleep 2; done"
+
+      # Patch CoreDNS ConfigMap to forward to Talos link-local DNS
+      # This overrides the default forward to /etc/resolv.conf (127.0.0.53) which is unreachable
+      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system patch configmap coredns --type merge -p '{"data":{"Corefile":".:53 {\n    errors\n    health {\n        lameduck 5s\n    }\n    ready\n    log . {\n        class error\n    }\n    prometheus :9153\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    forward . 169.254.116.108 {\n       max_concurrent 1000\n    }\n    cache 30 {\n        denial 9984 30\n    }\n    loop\n    reload\n    loadbalance\n}\n"}}'
+
+      # Restart CoreDNS to pick up changes
+      echo "🔄 Restarting CoreDNS..."
+      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout restart deployment coredns
+      
+      # Wait for rollout to complete
+      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout status deployment coredns --timeout=60s
+
+      echo "✅ CoreDNS configured successfully"
+
       rm -f "$KUBECONFIG_FILE"
       echo "⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
       exit 0

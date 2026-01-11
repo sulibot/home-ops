@@ -151,18 +151,7 @@ data "talos_machine_configuration" "controlplane" {
         }
         sysctls  = local.common_sysctls
         features = local.common_features
-        kubelet = {
-          extraArgs = {
-            "resolv-conf" = "/etc/resolv.conf.kubelet"
-          }
-        }
-        files = [
-          {
-            content = "nameserver 169.254.116.108\n"
-            path    = "/etc/resolv.conf.kubelet"
-            op      = "create"
-          }
-        ]
+        kubelet = {}
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
@@ -235,16 +224,8 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
-          extraArgs = {
-            "resolv-conf" = "/etc/resolv.conf.kubelet"
-          }
         }
         files = [
-          {
-            content = "nameserver 169.254.116.108\n"
-            path    = "/etc/resolv.conf.kubelet"
-            op      = "create"
-          },
           {
             op      = "create"
             path    = "/etc/cri/conf.d/20-customization.part"

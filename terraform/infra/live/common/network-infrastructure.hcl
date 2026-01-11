@@ -45,7 +45,7 @@ locals {
     loopback_ipv4_pattern = "10.%d.254."    # 10.101.254.
 
     # Kubernetes network CIDRs (derived from cluster_id)
-    pods_ipv4_pattern          = "10.%d.244.0/22"
+    pods_ipv4_pattern          = "10.%d.240.0/20"  # Supports 16 nodes with /24 per-node allocations
     pods_ipv6_pattern          = "fd00:%d:244::/60"
     services_ipv4_pattern      = "10.%d.96.0/24"
     services_ipv6_pattern      = "fd00:%d:96::/112"
