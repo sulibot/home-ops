@@ -45,7 +45,7 @@ output "all_node_ips" {
 
 output "machine_secrets" {
   description = "Talos machine secrets (for bootstrap module)"
-  value       = talos_machine_secrets.cluster.machine_secrets
+  value       = local.machine_secrets
   sensitive   = true
 }
 
@@ -57,13 +57,13 @@ output "all_node_names" {
 
 output "client_configuration" {
   description = "Talos client configuration object (for Terraform provider)"
-  value       = talos_machine_secrets.cluster.client_configuration
+  value       = local.client_configuration
   sensitive   = true
 }
 
 output "secrets_yaml" {
   description = "Talos secrets in YAML format (for adding new nodes)"
-  value       = yamlencode(talos_machine_secrets.cluster.machine_secrets)
+  value       = yamlencode(local.machine_secrets)
   sensitive   = true
 }
 
@@ -88,4 +88,10 @@ output "bgp_asn_assignments" {
     }
   }
   sensitive = false
+}
+
+output "cilium_bgp_cluster_config_yaml" {
+  description = "Generated CiliumBGPClusterConfig manifests for this cluster"
+  value       = local.cilium_bgp_cluster_config_yaml
+  sensitive   = false
 }

@@ -165,3 +165,25 @@ variable "bgp_advertise_loopbacks" {
   type        = bool
   default     = false
 }
+
+variable "enable_i915" {
+  description = "Load the Intel i915 kernel module on Talos nodes"
+  type        = bool
+  default     = false
+}
+
+variable "machine_secrets" {
+  description = "Existing Talos machine secrets to reuse; when set, secrets are not regenerated"
+  type        = any
+  default     = null
+}
+
+variable "client_configuration" {
+  description = "Existing Talos client configuration to reuse with machine_secrets"
+  type = object({
+    ca_certificate     = string
+    client_certificate = string
+    client_key         = string
+  })
+  default = null
+}

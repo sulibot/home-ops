@@ -5,6 +5,7 @@ cluster-101/
 │   └── publish/                       # Publish: Upload ISO to Proxmox
 │
 └── cluster/                            # Cluster Deployment
+    ├── secrets/                       # Talos cluster secrets (one-time)
     ├── compute/                       # Create Proxmox VMs
     ├── config/                        # Generate Talos machine configs
     └── bootstrap/                     # Bootstrap Kubernetes cluster

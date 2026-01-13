@@ -46,7 +46,7 @@ router bgp ${local_asn}
  no bgp default ipv4-unicast
  no bgp default ipv6-unicast
  bgp graceful-restart
- timers bgp 10 30
+ timers bgp 30 90
  !
  ! Peer with PVE ULA anycast gateway (fd00:<cluster_id>::fffe)
  neighbor fd00:${cluster_id}::fffe remote-as ${gw_asn}
@@ -54,10 +54,26 @@ router bgp ${local_asn}
  neighbor fd00:${cluster_id}::fffe description "PVE ULA Anycast Gateway"
  neighbor fd00:${cluster_id}::fffe capability extended-nexthop
  !
+ ! Peer with local Cilium BGP speaker (loopback addresses)
+ neighbor CILIUMv4 peer-group
+ neighbor CILIUMv4 remote-as ${cilium_asn}
+ neighbor CILIUMv4 update-source ${bgp_loopback_ipv4}
+ neighbor CILIUMv4 ebgp-multihop 2
+ neighbor CILIUMv4 description "Cilium BGP (loopback IPv4)"
+ neighbor ${bgp_loopback_ipv4} peer-group CILIUMv4
+ !
+ neighbor CILIUMv6 peer-group
+ neighbor CILIUMv6 remote-as ${cilium_asn}
+ neighbor CILIUMv6 update-source ${bgp_loopback_ipv6}
+ neighbor CILIUMv6 ebgp-multihop 2
+ neighbor CILIUMv6 description "Cilium BGP (loopback IPv6)"
+ neighbor ${bgp_loopback_ipv6} peer-group CILIUMv6
+ !
  address-family ipv4 unicast
 %{ if advertise_loopbacks ~}
   redistribute connected route-map ADVERTISE-LOOPBACKS
 %{ endif ~}
+  neighbor CILIUMv4 activate
   neighbor fd00:${cluster_id}::fffe activate
   neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v4 in
 %{ if advertise_loopbacks ~}
@@ -69,6 +85,7 @@ router bgp ${local_asn}
 %{ if advertise_loopbacks ~}
   redistribute connected route-map ADVERTISE-LOOPBACKS-V6
 %{ endif ~}
+  neighbor CILIUMv6 activate
   neighbor fd00:${cluster_id}::fffe activate
   neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v6 in
 %{ if advertise_loopbacks ~}

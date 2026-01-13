@@ -4,6 +4,7 @@ terraform {
 
   required_providers {
     external = { source = "hashicorp/external", version = "~> 2.2" }
+    null     = { source = "hashicorp/null", version = "~> 3.0" }
     proxmox  = { source = "bpg/proxmox", version = "~> 0.89.0" }
     sops     = { source = "carlpett/sops", version = "~> 1.3.0" }
   }
@@ -28,6 +29,60 @@ variable "proxmox" {
     node_primary = string
     nodes        = list(string)
   })
+}
+
+variable "proxmox_ssh_hostnames" {
+  description = "Map of Proxmox node names to SSH hostnames"
+  type        = map(string)
+  default     = {}
+}
+
+variable "proxmox_ssh_user" {
+  description = "SSH user for Proxmox host commands"
+  type        = string
+  default     = "root"
+}
+
+variable "proxmox_ssh_private_key_path" {
+  description = "Path to the SSH private key for Proxmox host access"
+  type        = string
+  default     = "~/.ssh/id_ed25519"
+}
+
+variable "proxmox_ssh_port" {
+  description = "SSH port for Proxmox host access"
+  type        = number
+  default     = 22
+}
+
+variable "proxmox_ping_vrf" {
+  description = "VRF name used for host-side ping checks"
+  type        = string
+  default     = "vrf_evpnz1"
+}
+
+variable "proxmox_ping_enabled" {
+  description = "Enable host-side ping checks for node IPs"
+  type        = bool
+  default     = true
+}
+
+variable "proxmox_ping_retries" {
+  description = "Number of ping attempts per IP"
+  type        = number
+  default     = 5
+}
+
+variable "proxmox_ping_delay_seconds" {
+  description = "Delay between ping retries in seconds"
+  type        = number
+  default     = 2
+}
+
+variable "proxmox_ping_timeout_seconds" {
+  description = "Per-attempt ping timeout in seconds"
+  type        = number
+  default     = 1
 }
 
 variable "vm_defaults" {
@@ -133,13 +188,41 @@ locals {
 
   hypervisors = length(var.proxmox.nodes) > 0 ? var.proxmox.nodes : [var.proxmox.node_primary]
 
+  node_hypervisors = {
+    for name, node in local.nodes :
+    name => coalesce(
+      try(node.node_name, null),
+      local.hypervisors[node.index % length(local.hypervisors)],
+      var.proxmox.node_primary
+    )
+  }
+
+  hypervisors_used = distinct(values(local.node_hypervisors))
+
+  ping_targets_by_hypervisor = {
+    for hypervisor in local.hypervisors_used :
+    hypervisor => distinct(compact(flatten([
+      for name, node in local.nodes :
+      local.node_hypervisors[name] == hypervisor ? [
+        node.public_ipv4,
+        node.public_ipv6,
+        node.gua_ipv6 != "" ? node.gua_ipv6 : null
+      ] : []
+    ])))
+  }
+
+  ping_batches = var.proxmox_ping_enabled ? {
+    for hypervisor, ips in local.ping_targets_by_hypervisor :
+    hypervisor => ips if length(ips) > 0
+  } : {}
+
   # Kubernetes Network CIDRs (derived from cluster_id)
   # Aligned with IP addressing documentation:
   # - Pod CIDR: 10.<TID>.244.0/22 and fd00:<TID>:244::/60
   # - Service CIDR: 10.<TID>.96.0/24 and fd00:<TID>:96::/108
   # - LoadBalancer VIP Pool: 10.<TID>.240.0/24 and fd00:<TID>:fffe::/112
   k8s_network_config = {
-    pods_ipv4          = format("10.%d.244.0/22", var.cluster_id)
+    pods_ipv4          = format("10.%d.240.0/20", var.cluster_id)
     pods_ipv6          = format("fd00:%d:244::/60", var.cluster_id)
     services_ipv4      = format("10.%d.96.0/24", var.cluster_id)
     services_ipv6      = format("fd00:%d:96::/108", var.cluster_id)
@@ -372,6 +455,62 @@ resource "proxmox_virtual_environment_vm" "nodes" {
 
   # Boot from disk first (Talos is installed), then CD-ROM
   boot_order = ["scsi0", "ide0"]
+}
+
+resource "null_resource" "proxmox_vrf_pings" {
+  for_each = local.ping_batches
+
+  triggers = {
+    ips      = jsonencode(each.value)
+    host     = each.key
+    ssh_host = lookup(var.proxmox_ssh_hostnames, each.key, each.key)
+    ssh_user = var.proxmox_ssh_user
+    ssh_port = tostring(var.proxmox_ssh_port)
+    ssh_key  = var.proxmox_ssh_private_key_path
+    vrf      = var.proxmox_ping_vrf
+    retries  = tostring(var.proxmox_ping_retries)
+    delay_s  = tostring(var.proxmox_ping_delay_seconds)
+    timeout_s = tostring(var.proxmox_ping_timeout_seconds)
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+
+      SSH_HOST="${self.triggers.ssh_host}"
+      SSH_USER="${self.triggers.ssh_user}"
+      SSH_PORT="${self.triggers.ssh_port}"
+      SSH_KEY="${pathexpand(self.triggers.ssh_key)}"
+
+      echo "Running VRF ping checks on $SSH_HOST for ${self.triggers.host}..."
+
+      ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
+        set -euo pipefail
+        VRF="${var.proxmox_ping_vrf}"
+        RETRIES="${var.proxmox_ping_retries}"
+        DELAY="${var.proxmox_ping_delay_seconds}"
+        TIMEOUT="${var.proxmox_ping_timeout_seconds}"
+        IPS="${join(" ", each.value)}"
+        for IP in $IPS; do
+          ATTEMPT=1
+          while [ "$ATTEMPT" -le "$RETRIES" ]; do
+            if ip vrf exec "$VRF" ping -c1 -W "$TIMEOUT" "$IP" >/dev/null 2>&1; then
+              echo "OK $IP"
+              break
+            fi
+            if [ "$ATTEMPT" -eq "$RETRIES" ]; then
+              echo "WARN ping failed for $IP"
+            else
+              sleep "$DELAY"
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+        done
+      ENDSSH
+    EOT
+  }
+
+  depends_on = [proxmox_virtual_environment_vm.nodes]
 }
 
 output "node_ips" {

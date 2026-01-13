@@ -18,7 +18,7 @@ kubeProxyReplacement: true
 socketLB:
   hostNamespaceOnly: true
 
-# Enable dual-stack
+# Enable dual-stack with IPv6 first
 ipv4:
   enabled: true
 ipv6:
@@ -28,19 +28,23 @@ ipv6:
 ipam:
   mode: kubernetes
 
+# IPv6 configuration for IPv6-first cluster
+k8s:
+  requireIPv6PodCIDR: true
+
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
 routingMode: native
-# Disable autoDirectNodeRoutes - BIRD2 will install routes instead
-autoDirectNodeRoutes: false
+# Enable autoDirectNodeRoutes so nodes learn each other's pod CIDRs
+autoDirectNodeRoutes: true
 directRoutingSkipUnreachable: false
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
-# This allows BIRD2 to redistribute these /24 routes via BGP instead of individual pod IPs
+# This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
 endpointRoutes:
   enabled: false
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.244.0/22
+ipv4NativeRoutingCIDR: 10.101.240.0/20
 ipv6NativeRoutingCIDR: fd00:101:244::/60
 
 # BPF configuration optimized for Talos + Istio Ambient

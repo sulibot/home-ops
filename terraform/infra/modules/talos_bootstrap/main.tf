@@ -4,29 +4,11 @@ locals {
   first_cp_node = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
 }
 
-# Apply machine configurations to all nodes
-resource "talos_machine_configuration_apply" "nodes" {
-  for_each = toset(var.all_node_names)
-
-  client_configuration        = var.client_configuration
-  machine_configuration_input = replace(var.machine_configs[each.key].machine_configuration, "$$", "$")
-  node                        = each.key
-
-  config_patches = [
-    replace(var.machine_configs[each.key].config_patch, "$$", "$")
-  ]
-
-  # Apply configs via IPv6 (static fc00::/7 route provides connectivity)
-  endpoint = var.all_node_ips[each.key].ipv6
-}
-
 # Bootstrap the cluster on the first control plane node
 resource "talos_machine_bootstrap" "cluster" {
   client_configuration = var.client_configuration
   node                 = local.first_cp_node.ipv6
   endpoint             = local.first_cp_node.ipv6
-
-  depends_on = [talos_machine_configuration_apply.nodes]
 }
 
 # Smart wait: Poll for cluster health every 10s, up to 5 minutes
@@ -37,55 +19,129 @@ resource "null_resource" "wait_for_etcd" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      echo "Waiting for cluster to become healthy..."
+      set -x  # Enable debug mode - print all commands
+
+      echo "=========================================="
+      echo "DEBUG: Starting cluster health check"
+      echo "=========================================="
+
+      # Use the generated talosconfig directly for this run
+      TALOSCONFIG_FILE=$(mktemp)
+      cat > "$TALOSCONFIG_FILE" <<'EOF'
+${var.talosconfig}
+EOF
+      export TALOSCONFIG="$TALOSCONFIG_FILE"
+      echo "DEBUG: Created temp talosconfig at: $TALOSCONFIG_FILE"
 
       # Generate kubeconfig to temp file
       KUBECONFIG_FILE=$(mktemp)
-      talosctl -n ${local.first_cp_node.ipv6} kubeconfig "$KUBECONFIG_FILE" 2>/dev/null || true
+      echo "DEBUG: Created temp kubeconfig at: $KUBECONFIG_FILE"
+
+      TALOS_RETRIES=12
+      TALOS_ATTEMPT=0
+      while [ $TALOS_ATTEMPT -lt $TALOS_RETRIES ]; do
+        TALOS_ATTEMPT=$((TALOS_ATTEMPT + 1))
+        if talosctl -n ${local.first_cp_node.ipv6} kubeconfig "$KUBECONFIG_FILE" 2>&1; then
+          echo "DEBUG: Kubeconfig generated"
+          break
+        fi
+
+        if [ $TALOS_ATTEMPT -lt $TALOS_RETRIES ]; then
+          echo "WARN: talosctl kubeconfig failed (attempt $TALOS_ATTEMPT/$TALOS_RETRIES), retrying in 5 seconds..."
+          sleep 5
+        else
+          echo "ERROR: talosctl kubeconfig failed after $TALOS_RETRIES attempts"
+          exit 1
+        fi
+      done
 
       RETRIES=30  # 30 retries * 10 seconds = 5 minutes max
       ATTEMPT=0
 
       while [ $ATTEMPT -lt $RETRIES ]; do
         ATTEMPT=$((ATTEMPT + 1))
-        echo "⏱ Attempt $ATTEMPT/$RETRIES: Checking cluster health..."
+        echo "DEBUG: ⏱ Attempt $ATTEMPT/$RETRIES: Checking cluster health..."
 
-        if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
-          echo "✓ Cluster is healthy!"
+        if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes 2>&1; then
+          echo "DEBUG: ✓ Cluster is healthy!"
           break
         fi
 
         if [ $ATTEMPT -lt $RETRIES ]; then
-          echo "   Cluster not ready, waiting 10 seconds..."
+          echo "DEBUG:    Cluster not ready, waiting 10 seconds..."
           sleep 10
         fi
       done
 
       # Check if cluster became healthy
       if ! kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
-        echo "⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
+        echo "DEBUG: ⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
       fi
 
-      echo "🔧 Configuring CoreDNS to use host DNS forwarder (169.254.116.108)..."
+      echo "=========================================="
+      echo "DEBUG: Starting CoreDNS patch"
+      echo "=========================================="
 
-      # Wait for CoreDNS ConfigMap to exist
-      echo "⏳ Waiting for CoreDNS ConfigMap..."
-      timeout 60s bash -c "until kubectl --kubeconfig='$KUBECONFIG_FILE' -n kube-system get configmap coredns >/dev/null 2>&1; do sleep 2; done"
+      # Wait for CoreDNS ConfigMap to exist (Talos creates it during bootstrap)
+      echo "DEBUG: ⏳ Waiting for CoreDNS ConfigMap to be created..."
+      WAIT_ATTEMPTS=0
+      MAX_WAIT=60  # Wait up to 60 seconds for ConfigMap to appear
 
-      # Patch CoreDNS ConfigMap to forward to Talos link-local DNS
-      # This overrides the default forward to /etc/resolv.conf (127.0.0.53) which is unreachable
-      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system patch configmap coredns --type merge -p '{"data":{"Corefile":".:53 {\n    errors\n    health {\n        lameduck 5s\n    }\n    ready\n    log . {\n        class error\n    }\n    prometheus :9153\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    forward . 169.254.116.108 {\n       max_concurrent 1000\n    }\n    cache 30 {\n        denial 9984 30\n    }\n    loop\n    reload\n    loadbalance\n}\n"}}'
+      while [ $WAIT_ATTEMPTS -lt $MAX_WAIT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system get configmap coredns >/dev/null 2>&1; then
+          echo "DEBUG: ✓ CoreDNS ConfigMap found after $${WAIT_ATTEMPTS}s"
+          break
+        fi
+        WAIT_ATTEMPTS=$((WAIT_ATTEMPTS + 1))
+        sleep 1
+      done
 
-      # Restart CoreDNS to pick up changes
-      echo "🔄 Restarting CoreDNS..."
-      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout restart deployment coredns
+      if ! kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system get configmap coredns >/dev/null 2>&1; then
+        echo "DEBUG: ✗ CoreDNS ConfigMap not found after $${MAX_WAIT}s, aborting"
+        exit 1
+      fi
 
-      # Wait for rollout to complete
-      kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout status deployment coredns --timeout=60s
+      # PATCH: Ensure CoreDNS is configured to use the host DNS forwarder
+      # This is required because Talos/Cilium integration sometimes reverts to /etc/resolv.conf
+      echo "DEBUG: 🔧 Patching CoreDNS to use host DNS forwarder (169.254.116.108)..."
 
-      echo "✅ CoreDNS configured successfully"
+      if kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system patch configmap coredns --type merge -p '{"data":{"Corefile":".:53 {\n    errors\n    health {\n        lameduck 5s\n    }\n    ready\n    log . {\n        class error\n    }\n    prometheus :9153\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    forward . 169.254.116.108 {\n       max_concurrent 1000\n    }\n    cache 30 {\n        denial 9984 30\n    }\n    loop\n    reload\n    loadbalance\n}\n"}}' 2>&1; then
+        echo "DEBUG: ✓ CoreDNS ConfigMap patched successfully"
+      else
+        echo "DEBUG: ✗ CoreDNS ConfigMap patch failed"
+        exit 1
+      fi
 
+      echo "DEBUG: 🔄 Restarting CoreDNS..."
+      if kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system get deployment coredns >/dev/null 2>&1; then
+        if kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout restart deployment coredns 2>&1; then
+          echo "DEBUG: ✓ CoreDNS restart initiated"
+        else
+          echo "DEBUG: ✗ CoreDNS restart failed"
+          exit 1
+        fi
+
+        # Wait for rollout to complete (optional, but good for verification)
+        echo "DEBUG: ⏳ Waiting for CoreDNS rollout to complete..."
+        if kubectl --kubeconfig="$KUBECONFIG_FILE" -n kube-system rollout status deployment coredns --timeout=60s 2>&1; then
+          echo "DEBUG: ✓ CoreDNS rollout completed"
+        else
+          echo "DEBUG: ⚠ CoreDNS rollout status check timed out (continuing anyway)"
+        fi
+      else
+        echo "DEBUG: ⚠ CoreDNS deployment not found, skipping restart"
+      fi
+
+      echo "=========================================="
+      echo "DEBUG: Verifying CoreDNS configuration"
+      echo "=========================================="
+      kubectl --kubeconfig="$KUBECONFIG_FILE" get configmap coredns -n kube-system -o jsonpath='{.data.Corefile}' | grep -A 2 forward || true
+
+      echo "=========================================="
+      echo "DEBUG: Bootstrap completed successfully"
+      echo "=========================================="
       rm -f "$KUBECONFIG_FILE"
+      rm -f "$TALOSCONFIG_FILE"
       exit 0
     EOT
   }

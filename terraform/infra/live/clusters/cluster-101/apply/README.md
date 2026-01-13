@@ -61,7 +61,7 @@ The `talos_machine_configuration_apply` resource:
 |------|-----------|-------|
 | Purpose | Initial cluster creation | Update running cluster |
 | When | Once, at cluster creation | Repeatedly, for updates |
-| What it does | Bootstrap etcd + Apply configs + Install Flux | Only apply configs |
+| What it does | Bootstrap etcd + Install Flux | Only apply configs |
 | Safe to rerun | No (will fail if cluster exists) | Yes (idempotent) |
 
 ## Typical Workflow

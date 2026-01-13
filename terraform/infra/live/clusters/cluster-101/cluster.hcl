@@ -19,34 +19,15 @@ locals {
     use_sdn       = true         # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }
   node_overrides = {
-    # GPU passthrough for all worker nodes
-    # All Proxmox hosts have Intel iGPUs at PCI address 0000:00:02.0
+    # Keep worker placement on specific Proxmox hosts but disable iGPU passthrough.
     "solwk01" = {
       node_name = "pve01"
-      gpu_passthrough = {
-        pci_address = "0000:00:02.0"  # Intel UHD Graphics 730 (AlderLake-S GT1)
-        pcie        = true
-        rombar      = true
-        x_vga       = false
-      }
     }
     "solwk02" = {
       node_name = "pve02"
-      gpu_passthrough = {
-        pci_address = "0000:00:02.0"  # Intel UHD Graphics 730 (AlderLake-S GT1)
-        pcie        = true
-        rombar      = true
-        x_vga       = false
-      }
     }
     "solwk03" = {
       node_name = "pve03"
-      gpu_passthrough = {
-        pci_address = "0000:00:02.0"  # Intel UHD Graphics 630 (CometLake-S GT2)
-        pcie        = true
-        rombar      = true
-        x_vga       = false
-      }
     }
   }
 }

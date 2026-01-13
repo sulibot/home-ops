@@ -162,6 +162,8 @@ inputs = merge(
       nodes        = local.proxmox_infra.proxmox_nodes
     }
 
+    proxmox_ssh_hostnames = local.proxmox_infra.proxmox_hostnames
+
     # Provide generic fallbacks for the module (all nodes already have explicit sizing)
     vm_defaults = {
       cpu_cores = local.control_plane_defaults.cpu_cores

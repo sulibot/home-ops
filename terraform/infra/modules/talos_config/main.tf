@@ -96,9 +96,55 @@ locals {
       {
         name     = "cilium"
         contents = data.helm_template.cilium.manifest
+      },
+      {
+        name     = "coredns-config"
+        contents = yamlencode({
+          apiVersion = "v1"
+          kind       = "ConfigMap"
+          metadata = {
+            name      = "coredns"
+            namespace = "kube-system"
+          }
+          data = {
+            Corefile = <<-EOT
+              .:53 {
+                  errors
+                  health {
+                      lameduck 5s
+                  }
+                  ready
+                  log . {
+                      class error
+                  }
+                  prometheus :9153
+                  kubernetes cluster.local in-addr.arpa ip6.arpa {
+                      pods insecure
+                      fallthrough in-addr.arpa ip6.arpa
+                      ttl 30
+                  }
+                  forward . 169.254.116.108 {
+                     max_concurrent 1000
+                  }
+                  cache 30 {
+                      denial 9984 30
+                  }
+                  loop
+                  reload
+                  loadbalance
+              }
+            EOT
+          }
+        })
       }
     ]
   )
+
+  reuse_machine_secrets        = var.machine_secrets != null && var.client_configuration != null
+  generated_machine_secrets    = try(talos_machine_secrets.cluster[0].machine_secrets, null)
+  generated_client_configuration = try(talos_machine_secrets.cluster[0].client_configuration, null)
+  machine_secrets              = local.reuse_machine_secrets ? var.machine_secrets : local.generated_machine_secrets
+  client_configuration         = local.reuse_machine_secrets ? var.client_configuration : local.generated_client_configuration
 }
 
 # Template Cilium Helm chart with values from Flux config
@@ -119,6 +165,7 @@ data "helm_template" "cilium" {
 
 # Generate cluster secrets (CA, bootstrap token, etc.)
 resource "talos_machine_secrets" "cluster" {
+  count         = local.reuse_machine_secrets ? 0 : 1
   talos_version = var.talos_version
 }
 
@@ -127,7 +174,7 @@ data "talos_machine_configuration" "controlplane" {
   cluster_name     = var.cluster_name
   cluster_endpoint = var.cluster_endpoint
   machine_type     = "controlplane"
-  machine_secrets  = talos_machine_secrets.cluster.machine_secrets
+  machine_secrets  = local.machine_secrets
 
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
@@ -193,7 +240,7 @@ data "talos_machine_configuration" "worker" {
   cluster_name     = var.cluster_name
   cluster_endpoint = var.cluster_endpoint
   machine_type     = "worker"
-  machine_secrets  = talos_machine_secrets.cluster.machine_secrets
+  machine_secrets  = local.machine_secrets
 
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
@@ -210,9 +257,9 @@ data "talos_machine_configuration" "worker" {
           wipe  = false
         }
         kernel = {
-          modules = [
-            { name = "i915" } # load Intel GPU driver when present
-          ]
+          modules = var.enable_i915 ? [
+            { name = "i915" } # load Intel GPU driver when enabled
+          ] : []
         }
         time = {
           servers = var.ntp_servers
@@ -261,6 +308,7 @@ locals {
       # Formula: bgp_asn_base + (cluster_id * 1000) + (node_suffix)
       # Supports cluster IDs 000-999 and node suffixes 00-99
       local_asn  = node.frr_asn
+      cilium_asn = node.cilium_asn
       gw_asn     = var.bgp_remote_asn
       gw_ipv6    = "fe80::${var.cluster_id}:fffe"  # Link-local anycast gateway
 
@@ -359,10 +407,7 @@ ${yamlencode({
     }
     kubelet = {
       nodeIP = {
-        validSubnets = [
-          "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",
-          "fd00:${var.cluster_id}::${node.node_suffix}/128",
-        ]
+        validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
       }
     }
   }
@@ -374,10 +419,62 @@ EOT
   }
 }
 
+# Render Cilium BGP cluster config from computed node data (generated artifact)
+locals {
+  cilium_bgp_cluster_config_docs = [
+    for node_name, node in local.all_nodes : {
+      apiVersion = "cilium.io/v2"
+      kind       = "CiliumBGPClusterConfig"
+      metadata = {
+        name      = "${node_name}-bgp"
+        namespace = "kube-system"
+      }
+      spec = {
+        nodeSelector = {
+          matchLabels = {
+            "kubernetes.io/hostname" = node.hostname
+          }
+        }
+        bgpInstances = [
+          {
+            name     = "frr-loopback"
+            localASN = node.cilium_asn
+            peers = [
+              {
+                name         = "frr-ipv4"
+                peerAddress  = format("10.%d.254.%d", var.cluster_id, node.node_suffix)
+                peerASN      = node.frr_asn
+                peerConfigRef = {
+                  name = "frr-peer-ipv4"
+                }
+              },
+              {
+                name         = "frr-ipv6"
+                peerAddress  = format("fd00:%d:fe::%d", var.cluster_id, node.node_suffix)
+                peerASN      = node.frr_asn
+                peerConfigRef = {
+                  name = "frr-peer-ipv6"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+
+  cilium_bgp_cluster_config_yaml = join("\n", [
+    "# Generated from terraform/infra/modules/talos_config. Do not edit by hand.",
+    join("\n---\n", [
+      for doc in local.cilium_bgp_cluster_config_docs : yamlencode(doc)
+    ])
+  ])
+}
+
 # Generate client configuration (talosconfig)
 data "talos_client_configuration" "cluster" {
   cluster_name         = var.cluster_name
-  client_configuration = talos_machine_secrets.cluster.client_configuration
+  client_configuration = local.client_configuration
   endpoints            = [for node in local.control_plane_nodes : node.public_ipv6]
   nodes = concat(
     [for node in local.control_plane_nodes : node.public_ipv6],

@@ -1,26 +1,13 @@
 # Apply Talos machine configurations to running nodes
 # This step ONLY applies configs - it does NOT bootstrap the cluster
-# Use this to update machine configs on an already-running cluster
-#
-# EXCLUDED from run-all to avoid conflict with bootstrap
-# To run explicitly: terragrunt apply --terragrunt-working-dir ./apply
+# Safe to run repeatedly (used by run-all)
 
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-# Exclude this module from run-all operations (bootstrap already applies configs)
-# Note: This prevents redundant config application since bootstrap includes apply
 locals {
-  # Always exclude this module - it should only be run manually for config updates
-  should_exclude = true
   cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
-}
-
-exclude {
-  if = local.should_exclude
-  actions = ["all"]
-  exclude_dependencies = false
 }
 
 dependency "talos_config" {

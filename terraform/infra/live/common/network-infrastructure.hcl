@@ -5,9 +5,8 @@ locals {
     ipv4 = "10.255.0.53"
   }
 
-  # NTP configuration - use public servers by IP for bootstrap reliability
-  # Using Cloudflare's public NTP (doesn't require DNS resolution)
-  ntp_servers = ["162.159.200.123", "162.159.200.1"]
+  # NTP configuration - use internal DNS server which also provides NTP
+  ntp_servers = ["fd00:0:0:ffff::53", "10.255.0.53"]
 
   # BGP configuration
   bgp = {

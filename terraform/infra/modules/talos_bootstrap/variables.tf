@@ -15,29 +15,6 @@ variable "client_configuration" {
   sensitive   = true
 }
 
-variable "machine_configs" {
-  description = "Machine configurations from talos_config module"
-  type = map(object({
-    machine_type          = string
-    machine_configuration = string
-    config_patch          = string
-  }))
-  sensitive = true
-}
-
-variable "all_node_names" {
-  description = "List of all node names (non-sensitive)"
-  type        = list(string)
-}
-
-variable "all_node_ips" {
-  description = "All node IP addresses from talos_config module"
-  type = map(object({
-    ipv6 = string
-    ipv4 = string
-  }))
-}
-
 variable "control_plane_nodes" {
   description = "Control plane node IP addresses from talos_config module"
   type = map(object({

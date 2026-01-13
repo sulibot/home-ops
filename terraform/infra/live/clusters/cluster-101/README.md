@@ -16,6 +16,7 @@ Production Talos Linux Kubernetes cluster with BGP routing.
 ```
 cluster-101/
 ├── cluster.hcl        # Cluster definition (name, ID, nodes, network)
+├── secrets/           # Talos cluster secrets (one-time)
 ├── compute/           # Proxmox VMs
 ├── config/            # Talos machine configs
 ├── apply/             # Apply configs to running cluster (no bootstrap)
@@ -31,17 +32,32 @@ cluster-101/
 cd ../../artifacts
 terragrunt run-all apply
 
-# 2. Create VMs
+# 2. Generate cluster secrets (one-time)
+cd ../clusters/cluster-101/secrets
+terragrunt apply
+
+# 3. Create VMs
 cd ../clusters/cluster-101/compute
 terragrunt apply
 
-# 3. Generate machine configs
+# 4. Generate machine configs
 cd ../config
 terragrunt apply
 
-# 4. Bootstrap cluster (includes Flux)
+# 5. Apply machine configs to running nodes
+cd ../apply
+terragrunt apply
+
+# 6. Bootstrap cluster (includes Flux)
 cd ../bootstrap
 terragrunt apply
+```
+
+### Run-All (Full Stack)
+
+```bash
+# Full stack in dependency order
+terragrunt apply --all
 ```
 
 ### Updating Running Cluster (Repeatable)
@@ -61,6 +77,18 @@ terragrunt apply
 **Key**: Use `apply/` instead of `bootstrap/` to avoid re-bootstrapping an existing cluster.
 
 ## Deployment Stages
+
+### Stage 0: Secrets (`secrets/`)
+
+**Purpose**: Generate one-time Talos cluster secrets (CA, tokens, client certs)
+
+**Actions**:
+- Generates `talos_machine_secrets`
+- Exports `secrets.sops.yaml` for reuse across rebuilds
+
+**Destroy behavior**:
+- Skipped by default on `terragrunt destroy`
+- To destroy secrets intentionally: set `TALOS_DESTROY_SECRETS=1`
 
 ### Stage 1: Compute (`compute/`)
 
@@ -95,7 +123,6 @@ terragrunt apply
 
 **Outputs**:
 - `talosconfig`: Talos CLI configuration
-- `secrets.sops.yaml`: Encrypted cluster secrets
 - Machine configs for troubleshooting
 
 ### Stage 3a: Apply (`apply/`) - For Updates
@@ -117,15 +144,16 @@ terragrunt apply
 **Purpose**: Bootstrap Kubernetes cluster (one-time)
 
 **Dependencies**:
-- Machine configs from `config/`
+- Machine configs already applied via `apply/`
 
 **Actions**:
-- Applies machine configs to all nodes
 - Bootstraps etcd on first control plane
 - Installs Cilium CNI (BGP mode)
 - Deploys Flux GitOps
 
 **When to use**: Initial cluster creation only
+
+**Safety**: Use `--terragrunt-exclude-dir bootstrap` to skip bootstrap in run-all
 
 **Result**: Fully functional Kubernetes cluster
 

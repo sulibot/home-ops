@@ -1,164 +1,149 @@
+# Generated from terraform/infra/modules/talos_config. Do not edit by hand.
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solcp01-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101011
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101011
+      "peerAddress": "10.101.254.11"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101011
+      "peerAddress": "fd00:101:fe::11"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solcp01"
+
 ---
-# Cilium BGP Cluster Configuration - BIRD2 Integration
-# Each node peers with its local BIRD2 instance on localhost
-#
-# New AS Numbering Scheme (per-node 32-bit private ASNs):
-#   AS 65000        - RouterOS (backbone)
-#   AS 4210101011   - BIRD2 on solcp01 (4210000000 + 101*1000 + 11)
-#   AS 4210101012   - BIRD2 on solcp02
-#   AS 4210101013   - BIRD2 on solcp03
-#   AS 4210101021   - BIRD2 on solwk01
-#   AS 4210101022   - BIRD2 on solwk02
-#   AS 4210101023   - BIRD2 on solwk03
-#   AS 4220101011   - Cilium on solcp01 (4220000000 + 101*1000 + 11)
-#   AS 4220101012   - Cilium on solcp02
-#   AS 4220101013   - Cilium on solcp03
-#   AS 4220101021   - Cilium on solwk01
-#   AS 4220101022   - Cilium on solwk02
-#   AS 4220101023   - Cilium on solwk03
-#
-# BGP Topology: RouterOS (AS 65000) ←eBGP→ BIRD2 (AS 4210...) ←eBGP→ Cilium (AS 4220...)
-#
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solcp01-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solcp01
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101011  # Cilium ASN for solcp01
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101011  # BIRD2 ASN for solcp01
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101011  # BIRD2 ASN for solcp01
-          peerConfigRef:
-            name: bird2-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solcp02-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101012
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101012
+      "peerAddress": "10.101.254.12"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101012
+      "peerAddress": "fd00:101:fe::12"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solcp02"
+
 ---
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solcp02-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solcp02
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101012  # Cilium ASN for solcp02
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101012  # BIRD2 ASN for solcp02
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101012  # BIRD2 ASN for solcp02
-          peerConfigRef:
-            name: bird2-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solcp03-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101013
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101013
+      "peerAddress": "10.101.254.13"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101013
+      "peerAddress": "fd00:101:fe::13"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solcp03"
+
 ---
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solcp03-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solcp03
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101013  # Cilium ASN for solcp03
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101013  # BIRD2 ASN for solcp03
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101013  # BIRD2 ASN for solcp03
-          peerConfigRef:
-            name: bird2-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solwk01-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101021
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101021
+      "peerAddress": "10.101.254.21"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101021
+      "peerAddress": "fd00:101:fe::21"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solwk01"
+
 ---
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solwk01-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solwk01
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101021  # Cilium ASN for solwk01
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101021  # BIRD2 ASN for solwk01
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101021  # BIRD2 ASN for solwk01
-          peerConfigRef:
-            name: bird2-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solwk02-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101022
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101022
+      "peerAddress": "10.101.254.22"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101022
+      "peerAddress": "fd00:101:fe::22"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solwk02"
+
 ---
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solwk02-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solwk02
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101022  # Cilium ASN for solwk02
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101022  # BIRD2 ASN for solwk02
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101022  # BIRD2 ASN for solwk02
-          peerConfigRef:
-            name: bird2-peer-ipv6
----
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: solwk03-bgp
-  namespace: kube-system
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/hostname: solwk03
-  bgpInstances:
-    - name: bird2-localhost
-      localASN: 4220101023  # Cilium ASN for solwk03
-      peers:
-        - name: bird2-ipv4
-          peerAddress: 127.0.0.1
-          peerASN: 4210101023  # BIRD2 ASN for solwk03
-          peerConfigRef:
-            name: bird2-peer-ipv4
-        - name: bird2-ipv6
-          peerAddress: ::1
-          peerASN: 4210101023  # BIRD2 ASN for solwk03
-          peerConfigRef:
-            name: bird2-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "solwk03-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101023
+    "name": "frr-loopback"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101023
+      "peerAddress": "10.101.254.23"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101023
+      "peerAddress": "fd00:101:fe::23"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
+  "nodeSelector":
+    "matchLabels":
+      "kubernetes.io/hostname": "solwk03"

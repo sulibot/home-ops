@@ -1,10 +1,10 @@
 ---
-# BGP Peer Configuration for BIRD2 on localhost (IPv4)
-# Cilium peers with local BIRD2 instance instead of directly with RouterOS
+# BGP Peer Configuration for FRR on loopback (IPv4)
+# Cilium peers with local FRR instance instead of directly with PVE
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: bird2-peer-ipv4
+  name: frr-peer-ipv4
   namespace: kube-system
 spec:
   # Advertise IPv4 pod CIDRs and LoadBalancer IPs
@@ -36,12 +36,12 @@ spec:
     enabled: true
     restartTimeSeconds: 120
 ---
-# BGP Peer Configuration for BIRD2 on localhost (IPv6)
-# Cilium peers with local BIRD2 instance instead of directly with RouterOS
+# BGP Peer Configuration for FRR on loopback (IPv6)
+# Cilium peers with local FRR instance instead of directly with PVE
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: bird2-peer-ipv6
+  name: frr-peer-ipv6
   namespace: kube-system
 spec:
   # Advertise IPv6 pod CIDRs and LoadBalancer IPs

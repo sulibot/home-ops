@@ -2,6 +2,10 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+dependencies {
+  paths = ["../apply"]
+}
+
 dependency "talos_config" {
   config_path = "../config"
 
@@ -41,14 +45,14 @@ terraform {
         # Check if talosconfig exists
         if [ ! -f "$CLUSTER_DIR/talosconfig" ]; then
           echo "ERROR: talosconfig does not exist at $CLUSTER_DIR/talosconfig"
-          echo "Please run: terragrunt apply --terragrunt-working-dir ../5-machine-config-generate"
+          echo "Please run: terragrunt apply --terragrunt-working-dir ../config"
           exit 1
         fi
 
         # Check if secrets exist
         if [ ! -f "$CLUSTER_DIR/secrets.sops.yaml" ]; then
           echo "ERROR: secrets.sops.yaml does not exist at $CLUSTER_DIR/secrets.sops.yaml"
-          echo "Please run: terragrunt apply --terragrunt-working-dir ../5-machine-config-generate"
+          echo "Please run: terragrunt apply --terragrunt-working-dir ../secrets"
           exit 1
         fi
 
@@ -56,7 +60,7 @@ terraform {
         if ! grep -q 'ENC\[' "$CLUSTER_DIR/secrets.sops.yaml" && ! grep -q 'sops:' "$CLUSTER_DIR/secrets.sops.yaml"; then
           echo "ERROR: secrets.sops.yaml is not encrypted"
           echo "The file exists but doesn't appear to be SOPS-encrypted"
-          echo "Please run: terragrunt apply --terragrunt-working-dir ../5-machine-config-generate"
+          echo "Please run: terragrunt apply --terragrunt-working-dir ../secrets"
           exit 1
         fi
 
@@ -68,8 +72,8 @@ terraform {
         # Allow 10 second tolerance for file timestamp differences
         if [ $SECRETS_MTIME -gt 0 ] && [ $TALOSCONFIG_MTIME -gt 0 ] && [ $((SECRETS_MTIME - TALOSCONFIG_MTIME)) -gt 10 ]; then
           echo "WARNING: secrets.sops.yaml is newer than talosconfig"
-          echo "This may indicate that module 5 was partially applied"
-          echo "Consider re-running: terragrunt apply --terragrunt-working-dir ../5-machine-config-generate"
+          echo "This may indicate secrets were rotated without regenerating configs"
+          echo "Consider re-running: terragrunt apply --terragrunt-working-dir ../config"
         fi
 
         echo "✓ Machine configs and secrets validated successfully"
@@ -91,10 +95,7 @@ inputs = {
   cluster_id           = local.cluster_config.cluster_id
   talosconfig          = dependency.talos_config.outputs.talosconfig
   client_configuration = dependency.talos_config.outputs.client_configuration
-  machine_configs      = dependency.talos_config.outputs.machine_configs
   control_plane_nodes  = dependency.talos_config.outputs.control_plane_ips
-  all_node_names       = dependency.talos_config.outputs.all_node_names
-  all_node_ips         = dependency.talos_config.outputs.all_node_ips
 
   # Flux GitOps configuration - from centralized config
   flux_git_repository = local.app_versions.gitops.flux_git_repository
