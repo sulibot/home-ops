@@ -23,6 +23,12 @@ variable "control_plane_nodes" {
   }))
 }
 
+variable "cluster_endpoint" {
+  description = "Kubernetes API endpoint (e.g., https://[fd00:101::10]:6443)"
+  type        = string
+  default     = ""
+}
+
 variable "region" {
   description = "Region identifier"
   type        = string

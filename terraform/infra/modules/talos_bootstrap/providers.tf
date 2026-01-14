@@ -3,11 +3,12 @@
 locals {
   # Safe provider config - use defaults if control_plane_nodes is empty (e.g., during destroy)
   first_cp_host = length(var.control_plane_nodes) > 0 ? "https://[${var.control_plane_nodes[keys(var.control_plane_nodes)[0]].ipv6}]:6443" : "https://localhost:6443"
+  cluster_host  = var.cluster_endpoint != "" ? var.cluster_endpoint : local.first_cp_host
 }
 
 provider "flux" {
   kubernetes = {
-    host                   = local.first_cp_host
+    host                   = local.cluster_host
     client_certificate     = base64decode(talos_cluster_kubeconfig.cluster.kubernetes_client_configuration.client_certificate)
     client_key             = base64decode(talos_cluster_kubeconfig.cluster.kubernetes_client_configuration.client_key)
     cluster_ca_certificate = base64decode(talos_cluster_kubeconfig.cluster.kubernetes_client_configuration.ca_certificate)

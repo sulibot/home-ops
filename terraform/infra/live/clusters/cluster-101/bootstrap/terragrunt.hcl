@@ -16,6 +16,7 @@ dependency "talos_config" {
       client_certificate = "mock-cert"
       client_key         = "mock-key"
     }
+    cluster_endpoint    = "https://[fd00:101::10]:6443"
     machine_configs      = {}
     control_plane_ips    = {}
     all_node_names       = []
@@ -96,6 +97,7 @@ inputs = {
   talosconfig          = dependency.talos_config.outputs.talosconfig
   client_configuration = dependency.talos_config.outputs.client_configuration
   control_plane_nodes  = dependency.talos_config.outputs.control_plane_ips
+  cluster_endpoint     = dependency.talos_config.outputs.cluster_endpoint
 
   # Flux GitOps configuration - from centralized config
   flux_git_repository = local.app_versions.gitops.flux_git_repository

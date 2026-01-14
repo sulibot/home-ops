@@ -2,6 +2,24 @@
 locals {
   first_cp_name = length(var.control_plane_nodes) > 0 ? sort(keys(var.control_plane_nodes))[0] : ""
   first_cp_node = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
+  cluster_endpoint_host = var.cluster_endpoint != "" ? replace(
+    replace(
+      replace(
+        replace(
+          replace(var.cluster_endpoint, "https://", ""),
+          "http://",
+          ""
+        ),
+        "[",
+        ""
+      ),
+      "]",
+      ""
+    ),
+    ":6443",
+    ""
+  ) : ""
+  effective_cluster_endpoint = local.cluster_endpoint_host != "" ? local.cluster_endpoint_host : local.first_cp_node.ipv6
 }
 
 # Bootstrap the cluster on the first control plane node
@@ -158,7 +176,7 @@ EOF
 resource "talos_cluster_kubeconfig" "cluster" {
   client_configuration = var.client_configuration
   node                 = local.first_cp_node.ipv6
-  endpoint             = local.first_cp_node.ipv6
+  endpoint             = local.effective_cluster_endpoint
 
   depends_on = [null_resource.wait_for_etcd]
 }
