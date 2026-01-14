@@ -459,6 +459,65 @@ EOT
 
 # Render Cilium BGP cluster config from computed node data (generated artifact)
 locals {
+  # CiliumBGPPeerConfig resources (shared by all nodes)
+  cilium_bgp_peer_config_docs = [
+    {
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPPeerConfig"
+      metadata = {
+        name      = "frr-peer-ipv4"
+        namespace = "kube-system"
+      }
+      spec = {
+        authSecretRef = null
+        ebgpMultihop  = 2
+        families = [
+          {
+            afi  = "ipv4"
+            safi = "unicast"
+            advertisements = {
+              matchLabels = {
+                advertise = "bgp-v4"
+              }
+            }
+          }
+        ]
+        gracefulRestart = {
+          enabled            = true
+          restartTimeSeconds = 120
+        }
+      }
+    },
+    {
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPPeerConfig"
+      metadata = {
+        name      = "frr-peer-ipv6"
+        namespace = "kube-system"
+      }
+      spec = {
+        authSecretRef = null
+        ebgpMultihop  = 2
+        families = [
+          {
+            afi  = "ipv6"
+            safi = "unicast"
+            advertisements = {
+              matchLabels = {
+                advertise = "bgp-v6"
+              }
+            }
+          }
+        ]
+        gracefulRestart = {
+          enabled            = true
+          restartTimeSeconds = 120
+        }
+      }
+    }
+  ]
+
+  # CiliumBGPClusterConfig resources (one per node)
   cilium_bgp_cluster_config_docs = [
     for node_name, node in local.all_nodes : {
       apiVersion = "cilium.io/v2"
@@ -501,11 +560,93 @@ locals {
     }
   ]
 
+  # CiliumBGPAdvertisement resources (what to advertise to FRR)
+  cilium_bgp_advertisement_docs = [
+    {
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPAdvertisement"
+      metadata = {
+        name      = "bgp-advertisements-v4"
+        namespace = "kube-system"
+        labels = {
+          advertise = "bgp-v4"
+        }
+      }
+      spec = {
+        advertisements = [
+          {
+            advertisementType = "PodCIDR"
+            attributes = {
+              communities = {
+                standard = ["65000:100"]
+              }
+            }
+          },
+          {
+            advertisementType = "Service"
+            service = {
+              addresses = ["LoadBalancerIP"]
+            }
+            selector = {
+              matchExpressions = [
+                {
+                  key      = "somekey"
+                  operator = "NotIn"
+                  values   = ["never-used-value"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPAdvertisement"
+      metadata = {
+        name      = "bgp-advertisements-v6"
+        namespace = "kube-system"
+        labels = {
+          advertise = "bgp-v6"
+        }
+      }
+      spec = {
+        advertisements = [
+          {
+            advertisementType = "PodCIDR"
+            attributes = {
+              communities = {
+                standard = ["65000:100"]
+              }
+            }
+          },
+          {
+            advertisementType = "Service"
+            service = {
+              addresses = ["LoadBalancerIP"]
+            }
+            selector = {
+              matchExpressions = [
+                {
+                  key      = "somekey"
+                  operator = "NotIn"
+                  values   = ["never-used-value"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+
+  # Generate ONLY the cluster configs (peer configs and advertisements are manually maintained)
   cilium_bgp_cluster_config_yaml = join("\n", [
     "# Generated from terraform/infra/modules/talos_config. Do not edit by hand.",
-    join("\n---\n", [
-      for doc in local.cilium_bgp_cluster_config_docs : yamlencode(doc)
-    ])
+    "# Prerequisites:",
+    "#  1. Proxmox FRR must be configured (run ansible/lae.proxmox FRR playbook)",
+    "#  2. Peer configs and advertisements are in kubernetes/apps/networking/cilium/bgp/",
+    join("\n---\n", [for doc in local.cilium_bgp_cluster_config_docs : yamlencode(doc)])
   ])
 }
 

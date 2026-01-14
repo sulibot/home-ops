@@ -73,7 +73,7 @@ EOF
         fi
       done
 
-      RETRIES=30  # 30 retries * 10 seconds = 5 minutes max
+      RETRIES=60  # 60 retries * 10 seconds = 10 minutes max
       ATTEMPT=0
 
       while [ $ATTEMPT -lt $RETRIES ]; do
@@ -93,7 +93,8 @@ EOF
 
       # Check if cluster became healthy
       if ! kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
-        echo "DEBUG: ⚠ Cluster health check timed out after 5 minutes, proceeding anyway..."
+        echo "ERROR: ✗ Cluster health check timed out after 10 minutes. Aborting."
+        exit 1
       fi
 
       echo "=========================================="
