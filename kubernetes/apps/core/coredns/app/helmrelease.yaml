@@ -60,7 +60,7 @@ spec:
           - name: reload
           - name: loadbalance
           - name: prometheus
-            parameters: "[::]:9153"
+            parameters: ":9153"
           - name: log
             configBlock: |-
               class error
