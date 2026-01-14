@@ -72,9 +72,9 @@ spec:
               "ips": ["10.31.0.250/24", "fd00:31::250/64"]
             }
           ]
-      resourceClaims:
-        - name: gpu
-          resourceClaimTemplateName: plex
+#      resourceClaims:
+#        - name: gpu
+#          resourceClaimTemplateName: plex
       # Schedule on worker nodes only (nodes without control-plane role)
       affinity:
         nodeAffinity:
