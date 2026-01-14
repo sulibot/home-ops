@@ -10,8 +10,9 @@ metadata:
     component: application
     critical: "false"
 spec:
-  components:
-    - ../../../../components/volsync
+  # Temporarily disabled volsync component for manual restore
+  # components:
+  #   - ../../../../components/volsync
 
   dependsOn:
     - name: external-secrets
@@ -21,8 +22,9 @@ spec:
     #   namespace: kube-system
     - name: ceph-csi
       namespace: flux-system
-    - name: volsync
-      namespace: flux-system
+    # Temporarily disabled for manual restore
+    # - name: volsync
+    #   namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/applications/plex/app
