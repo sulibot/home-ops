@@ -26,6 +26,7 @@ Essential cluster services.
 - `metrics-server` - Resource metrics (depends on: cilium)
 - `coredns` - DNS services (depends on: cilium)
 - `spegel` - P2P image distribution (depends on: cilium)
+  - Note: CoreDNS must be owned by Flux; keep the HelmRelease selectors aligned with `k8s-app: kube-dns` to avoid empty endpoints.
 
 ## Layer 4: Network Services
 Ingress, egress, and DNS automation.
