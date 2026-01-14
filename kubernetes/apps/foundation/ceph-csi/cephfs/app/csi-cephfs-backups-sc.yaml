@@ -28,10 +28,6 @@ parameters:
   # Prefix for backup volumes
   volumeNamePrefix: "backup-csi-vol-"
 
-  # Use FUSE mounter to work around Talos kernel bug (60x performance issue)
-  # https://github.com/siderolabs/talos/issues/11129
-  mounter: "fuse"
-
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: Immediate

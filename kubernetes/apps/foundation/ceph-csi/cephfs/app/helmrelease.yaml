@@ -33,9 +33,6 @@ spec:
         nodeplugin:
             httpMetrics:
                 enabled: false
-            # Use OnDelete strategy for ceph-fuse client
-            updateStrategy:
-                type: OnDelete
         secret:
             create: false
             name: csi-ceph-admin-secret

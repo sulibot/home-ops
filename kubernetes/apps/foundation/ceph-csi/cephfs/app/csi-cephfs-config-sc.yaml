@@ -25,10 +25,6 @@ parameters:
   # Prefix for config volumes
   volumeNamePrefix: "sol-config-csi-vol-"
 
-  # Use FUSE mounter to work around Talos kernel bug (60x performance issue)
-  # https://github.com/siderolabs/talos/issues/11129
-  mounter: "fuse"
-
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 #volumeBindingMode: WaitForFirstConsumer
