@@ -19,7 +19,14 @@ spec:
       create: true
     service:
       name: kube-dns
-      clusterIP: fd00:101:96::53
+      clusterIP: 10.101.96.10
+      clusterIPs:
+        - 10.101.96.10
+        - fd00:101:96::a
+      ipFamilies:
+        - IPv4
+        - IPv6
+      ipFamilyPolicy: RequireDualStack
     servers:
       - zones:
           - zone: .
