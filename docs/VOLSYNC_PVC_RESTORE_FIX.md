@@ -478,6 +478,151 @@ Future improvements (lower priority):
 
 ---
 
+## Post-Rebuild Manual Trigger Restoration (Option 2)
+
+When rebuilding the cluster, use manual triggers to control restore order and avoid resource contention.
+
+### How It Works
+
+The VolSync component uses `trigger: manual: restore-once`. After cluster rebuild:
+- All ReplicationDestinations are created but **NOT started**
+- To start a restore, change the manual trigger value
+- Restores process sequentially (VolSync queues them automatically)
+- You control which apps restore first
+
+### Batch Restoration Script
+
+Save as `restore-volsync-batches.sh`:
+
+```bash
+#!/bin/bash
+# VolSync Manual Trigger Batch Restore
+# Triggers restores in priority order to avoid overwhelming the cluster
+
+set -e
+
+# Batch definitions
+BATCH_1=(mosquitto redis tautulli)
+BATCH_2=(prowlarr qui thelounge)
+BATCH_3=(nzbget sabnzbd qbittorrent)
+BATCH_4=(sonarr sonarr-4k radarr radarr-4k lidarr)
+BATCH_5=(emby immich)
+BATCH_6=(atuin autobrr bookshelf filebrowser home-assistant seerr slskd)
+
+trigger_restore() {
+    local app=$1
+    local ts=$(date +%s)
+    echo "Triggering: $app"
+    kubectl patch replicationdestination ${app}-dst -n default \
+        --type merge -p "{\"spec\":{\"trigger\":{\"manual\":\"restore-${ts}\"}}}"
+}
+
+wait_for_batch() {
+    echo "Waiting for batch to complete..."
+    while true; do
+        pending=$(kubectl get replicationdestination -n default -o json | \
+            jq '[.items[] | select(.status.lastSyncTime == null)] | length')
+        if [ "$pending" -eq 0 ]; then
+            echo "Batch complete!"
+            break
+        fi
+        echo "  $pending restores pending..."
+        sleep 30
+    done
+}
+
+# Execute batches
+for batch in "BATCH_1[@]" "BATCH_2[@]" "BATCH_3[@]" "BATCH_4[@]" "BATCH_5[@]" "BATCH_6[@]"; do
+    for app in "${!batch}"; do
+        trigger_restore "$app"
+    done
+    wait_for_batch
+done
+```
+
+### Manual Commands (Individual Apps)
+
+**Batch 1 - Quick Start:**
+```bash
+kubectl patch replicationdestination mosquitto-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination redis-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination tautulli-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+**Batch 2 - Media Utilities:**
+```bash
+kubectl patch replicationdestination prowlarr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination qui-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination thelounge-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+**Batch 3 - Download Clients:**
+```bash
+kubectl patch replicationdestination nzbget-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination sabnzbd-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination qbittorrent-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+**Batch 4 - *arr Apps:**
+```bash
+kubectl patch replicationdestination sonarr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination sonarr-4k-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination radarr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination radarr-4k-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination lidarr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+**Batch 5 - Media Servers:**
+```bash
+kubectl patch replicationdestination emby-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination immich-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+**Batch 6 - Remaining:**
+```bash
+kubectl patch replicationdestination atuin-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination autobrr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination bookshelf-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination filebrowser-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination home-assistant-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination seerr-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+kubectl patch replicationdestination slskd-dst -n default --type merge -p '{"spec":{"trigger":{"manual":"restore-'$(date +%s)'"}}}'
+```
+
+### Monitoring Restores
+
+```bash
+# Check all ReplicationDestinations
+kubectl get replicationdestination -n default
+
+# Watch restore pods
+kubectl get pods -n default | grep volsync-dst
+
+# Monitor specific restore
+kubectl logs -f -n default -l volsync.backube/replication-destination=<app>-dst
+
+# Check completion status
+kubectl get replicationdestination -n default -o custom-columns=\
+NAME:.metadata.name,LAST_SYNC:.status.lastSyncTime,DURATION:.status.lastSyncDuration
+```
+
+### Post-Rebuild Checklist
+
+- [ ] Cluster rebuilt, Flux deployed
+- [ ] Kopia repository PVC created and bound
+- [ ] VolSync controller running
+- [ ] CephFS CSI healthy
+- [ ] Run batch script or trigger manually
+- [ ] Monitor each batch completion
+- [ ] **Plex:** Restore manually (volsync disabled)
+
+### Current Plex Status
+
+- **VolSync:** DISABLED in ks.yaml
+- **GPU:** DISABLED in helmrelease.yaml
+- **PVC:** Simple 50Gi (no auto-restore)
+- **Action:** Manual restore after cluster rebuild
+
 ## Questions?
 
 Before implementing, confirm:
@@ -485,5 +630,6 @@ Before implementing, confirm:
 1. **Repository Size:** Is 20Gi per namespace reasonable for your app count/sizes?
 2. **Testing Strategy:** Test on radarr first, then roll out to other apps?
 3. **Timing:** Apply changes now or during scheduled maintenance window?
+4. **Post-Rebuild:** Use batch script for controlled restoration?
 
 Ready to proceed with implementation?
