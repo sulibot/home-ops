@@ -27,14 +27,14 @@ locals {
     "talos.auditd.disabled=1",  # Less security, faster performance
   ]
 
-  # Install extensions for Talos v1.11.5
+  # Install extensions for Talos v1.12.1
   # Official Siderolabs extensions with pinned digests
-  # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.11.5 - | tar x -O image-digests
+  # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.12.1 - | tar x -O image-digests
   install_system_extensions = [
-    "ghcr.io/siderolabs/i915:20251021-v1.11.5@sha256:4a1ca2f0139639f9c54a2ebea369bcc7f552e225a5fed2623b0fe17a1259c1db",
-    "ghcr.io/siderolabs/qemu-guest-agent:10.0.2@sha256:9720300de00544eca155bc19369dfd7789d39a0e23d72837a7188f199e13dc6c",
-    "ghcr.io/siderolabs/crun:1.24@sha256:157f1c563931275443dd46fbc44c854c669f5cf4bbc285356636a57c6d33caed",
-    "ghcr.io/siderolabs/ctr:v2.1.5@sha256:73abe655f96bb40a02fc208bf2bed695aa02a85fcd93ff521a78bb92417652c5",
+    "ghcr.io/siderolabs/i915:20251125-v1.12.1@sha256:fb89c85a04ecb85abaec9d400e03a1628bf68aef3580e98f340cbe8920a6e4ed",
+    "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7",
+    "ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4",
+    "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00",
   ]
 
   # FRR extension from sulibot fork
