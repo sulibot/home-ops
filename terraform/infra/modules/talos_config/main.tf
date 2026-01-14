@@ -28,6 +28,12 @@ locals {
     }) }
   )
 
+  # Check if any worker nodes have GPU passthrough enabled
+  has_gpu_nodes = anytrue([
+    for name, node in local.worker_nodes :
+    try(node.gpu_passthrough.enabled, false)
+  ])
+
   # Read Cilium values from Flux config for inline manifests
   # Use fileexists() to safely handle file reading - prevents "open : no such file or directory" errors
   cilium_values_yaml = var.cilium_values_path != "" && try(fileexists(var.cilium_values_path), false) ? file(var.cilium_values_path) : ""
@@ -186,9 +192,11 @@ data "talos_machine_configuration" "controlplane" {
     yamlencode({
       machine = {
         install = {
-          disk  = var.install_disk
-          image = var.installer_image
-          wipe  = false
+          disk       = var.install_disk
+          image      = var.installer_image
+          wipe       = false
+          extensions = [for ext in var.system_extensions : { image = ext }]
+          extraKernelArgs = var.kernel_args
         }
         kernel = {
           modules = []
@@ -252,14 +260,16 @@ data "talos_machine_configuration" "worker" {
     yamlencode({
       machine = {
         install = {
-          disk  = var.install_disk
-          image = var.installer_image
-          wipe  = false
+          disk       = var.install_disk
+          image      = var.installer_image
+          wipe       = false
+          extensions = [for ext in var.system_extensions : { image = ext }]
+          extraKernelArgs = var.kernel_args
         }
         kernel = {
-          modules = var.enable_i915 ? [
-            { name = "i915" } # load Intel GPU driver when enabled
-          ] : []
+          # GPU kernel modules are configured per-node in config_patch
+          # This keeps the base worker config generic
+          modules = []
         }
         time = {
           servers = var.ntp_servers
@@ -272,16 +282,18 @@ data "talos_machine_configuration" "worker" {
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
         }
-        files = [
-          {
-            op      = "create"
-            path    = "/etc/cri/conf.d/20-customization.part"
-            content = <<EOF
+        files = concat(
+          [
+            {
+              op      = "create"
+              path    = "/etc/cri/conf.d/20-customization.part"
+              content = <<EOF
 [plugins."io.containerd.cri.v1.runtime"]
   cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
 EOF
-          }
-        ]
+            }
+          ]
+        )
       }
       cluster = {
         network = local.common_cluster_network
@@ -356,62 +368,88 @@ locals {
       # Using heredoc to create proper multi-document YAML for Talos config_patch
       config_patch = <<-EOT
 ---
-${yamlencode({
-  machine = {
-    nodeLabels = {
-      "topology.kubernetes.io/region" = var.region
-      "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-      "bgp.frr.asn"                   = tostring(node.frr_asn)
-      "bgp.cilium.asn"                = tostring(node.cilium_asn)
-    }
-    network = {
-      hostname = node.hostname
-      interfaces = concat([
+${yamlencode(merge(
+  {
+    machine = {
+      nodeLabels = merge(
         {
-          interface = var.bgp_interface
-          mtu       = 1450  # Reduced for VXLAN overhead (SDN)
-          addresses = concat(
-            [
-              "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
-              "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
-            ],
-            var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
-          )
-          routes = [
-            # IPv4: static route (no RA for IPv4) - will be overridden by BGP
-            {
-              network = "0.0.0.0/0"
-              gateway = "10.${var.cluster_id}.0.254"
-              metric  = 2048
-            },
-            # IPv6: default route via link-local anycast gateway
-            {
-              network = "::/0"
-              gateway = "fe80::${var.cluster_id}:fffe"
-              metric  = 150
-            },
-          ]
-          vip = node.machine_type == "controlplane" ? {
-            ip = var.vip_ipv6
-          } : null
+          "topology.kubernetes.io/region" = var.region
+          "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+          "bgp.frr.asn"                   = tostring(node.frr_asn)
+          "bgp.cilium.asn"                = tostring(node.cilium_asn)
         },
-        {
-          interface = "lo"
-          addresses = [
-            "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
-            "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
-          ]
+        # Add GPU label if GPU passthrough is enabled for this node
+        try(node.gpu_passthrough.enabled, false) ? {
+          "gpu.passthrough.enabled" = "true"
+          "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
+          "gpu.pci.address"         = try(node.gpu_passthrough.pci_address, "")
+        } : {}
+      )
+      network = {
+        hostname = node.hostname
+        interfaces = concat([
+          {
+            interface = var.bgp_interface
+            mtu       = 1450  # Reduced for VXLAN overhead (SDN)
+            addresses = concat(
+              [
+                "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
+                "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
+              ],
+              var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
+            )
+            routes = [
+              # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+              {
+                network = "0.0.0.0/0"
+                gateway = "10.${var.cluster_id}.0.254"
+                metric  = 2048
+              },
+              # IPv6: default route via link-local anycast gateway
+              {
+                network = "::/0"
+                gateway = "fe80::${var.cluster_id}:fffe"
+                metric  = 150
+              },
+            ]
+            vip = node.machine_type == "controlplane" ? {
+              ip = var.vip_ipv6
+            } : null
+          },
+          {
+            interface = "lo"
+            addresses = [
+              "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
+              "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
+            ]
+          }
+        ], [])
+        nameservers = var.dns_servers
+      }
+      kubelet = {
+        nodeIP = {
+          validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
         }
-      ], [])
-      nameservers = var.dns_servers
-    }
-    kubelet = {
-      nodeIP = {
-        validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
       }
     }
-  }
-})}
+  },
+  # Add GPU kernel module configuration if GPU passthrough is enabled
+  try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
+    machine = {
+      kernel = {
+        modules = [
+          {
+            name = try(node.gpu_passthrough.driver, "i915")
+            parameters = [
+              for k, v in try(node.gpu_passthrough.driver_params, {}) :
+              "${k}=${v}"
+            ]
+          }
+        ]
+      }
+    }
+  } : {}
+))}
 ---
 ${local.extension_service_configs[node_name]}
 EOT

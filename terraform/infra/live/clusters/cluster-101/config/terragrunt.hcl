@@ -281,7 +281,8 @@ inputs = {
   gua_gateway = local.ipv6_prefixes.delegated_gateways["vnet${local.cluster_config.cluster_id}"]
 
   # Schematic configuration for Talos image customization (from install schematic)
-  kernel_args       = local.install_schematic_config.install_kernel_args
+  # GPU passthrough is disabled - using default kernel args only
+  kernel_args = local.install_schematic_config.install_kernel_args
   system_extensions = local.install_schematic_config.install_system_extensions
 
   # Install disk
@@ -296,6 +297,9 @@ inputs = {
 
   # Application versions - from centralized config
   cilium_version = local.app_versions.applications.cilium_version
+
+  # GPU driver configuration is now per-node (passed through all_node_ips from cluster_core)
+  # The enable_i915 global flag is deprecated in favor of per-node gpu_passthrough config
 
   # Talos secrets and client configuration from dedicated secrets stack
   machine_secrets      = dependency.secrets.outputs.machine_secrets

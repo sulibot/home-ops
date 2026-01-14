@@ -19,15 +19,40 @@ locals {
     use_sdn       = true         # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }
   node_overrides = {
-    # Keep worker placement on specific Proxmox hosts but disable iGPU passthrough.
+    # Pin worker nodes to specific Proxmox hosts
+    # GPU passthrough DISABLED - uncomment gpu_passthrough blocks below to re-enable
     "solwk01" = {
       node_name = "pve01"
+      # gpu_passthrough = {
+      #   pci_address = "0000:00:02.0"  # Intel iGPU PCI address (find with: lspci | grep VGA)
+      #   pcie        = true            # PCIe passthrough mode (recommended)
+      #   rombar      = false           # Disable ROM BAR for iGPU (required for Intel)
+      #   x_vga       = false           # Not primary VGA (keeps serial console accessible)
+      #   driver      = "i915"          # Optional: driver hint (defaults to i915 if omitted)
+      #   driver_params = {             # Optional: override default params
+      #     "enable_display" = "0"      # Disable display to prevent boot hang
+      #     "enable_guc"     = "3"      # Enable GuC/HuC firmware
+      #     "force_probe"    = "*"      # Probe all Intel GPUs
+      #   }
+      # }
     }
     "solwk02" = {
       node_name = "pve02"
+      # gpu_passthrough = {
+      #   pci_address = "0000:00:02.0"
+      #   pcie        = true
+      #   rombar      = false
+      #   x_vga       = false
+      # }
     }
     "solwk03" = {
       node_name = "pve03"
+      # gpu_passthrough = {
+      #   pci_address = "0000:00:02.0"
+      #   pcie        = true
+      #   rombar      = false
+      #   x_vga       = false
+      # }
     }
   }
 }

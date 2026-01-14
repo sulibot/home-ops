@@ -368,6 +368,8 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     sockets = 1
     cores   = coalesce(try(each.value.cpu_cores, null), var.vm_defaults.cpu_cores)
     type    = "host" # Pass through host CPU flags for best performance.
+    # Hide CPU flags that might cause issues with GPU passthrough (only if enabled)
+    flags = try(each.value.gpu_passthrough, null) != null ? ["-x2apic"] : []
   }
 
   memory {
@@ -432,24 +434,48 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     trim    = true
   }
 
-  # VGA display for graphical console access via noVNC
-  # Keep this as the default to maintain web UI console access
-  vga {
-    type = "std"
+  # Serial console configuration for text-based access
+  # Only enabled when GPU is passed through to provide fallback console
+  # Access via: qm terminal <vmid> or Proxmox web UI console
+  dynamic "serial_device" {
+    for_each = try(each.value.gpu_passthrough, null) != null ? [1] : []
+    content {
+      device = "/dev/ttyS0"  # Maps to serial0 in QEMU
+    }
   }
 
-  # GPU Passthrough (if configured for this node)
+  # VGA Configuration Strategy:
+  # - With GPU passthrough: Disable VGA completely (none) - use serial console instead
+  # - Without GPU: Use 'std' VGA for graphical console
+  # This maintains console access even when GPU is passed to VM
+  vga {
+    type = try(each.value.gpu_passthrough, null) != null ? "none" : "std"
+    # none: No VGA device (GPU passthrough nodes use serial console only)
+    # std: Standard VGA for graphical display (normal operation)
+  }
+
+  # GPU Passthrough Configuration
   # Using direct PCI ID instead of hardware mapping due to bpg/proxmox provider bug
   # with iommugroup parameter. This requires root PAM credentials (already configured).
+  #
+  # Console Access Note:
+  # - When GPU is passed through, VGA output goes to physical GPU
+  # - Use serial console (vga=serial0) for text-based noVNC/terminal access
+  # - Talos Linux works fine with serial console for remote management
+  #
+  # Boot Hang Prevention:
+  # - rombar=false: Prevents UEFI from initializing GPU (critical for iGPU)
+  # - xvga=false: GPU is not primary display (prevents early init)
+  # - Kernel args (i915.enable_display=0, nomodeset) prevent driver init
   dynamic "hostpci" {
     for_each = each.value.gpu_passthrough != null ? [each.value.gpu_passthrough] : []
     content {
       device = "hostpci0"
       # Use raw PCI ID instead of mapping (requires root@pam credentials)
       id     = hostpci.value.pci_address
-      pcie   = hostpci.value.pcie
-      rombar = hostpci.value.rombar
-      xvga   = hostpci.value.x_vga
+      pcie   = try(hostpci.value.pcie, true)
+      rombar = try(hostpci.value.rombar, false)  # CRITICAL: false for iGPU to prevent UEFI init
+      xvga   = try(hostpci.value.x_vga, false)   # CRITICAL: false to prevent early GPU init
     }
   }
 
@@ -514,7 +540,7 @@ resource "null_resource" "proxmox_vrf_pings" {
 }
 
 output "node_ips" {
-  description = "Map of node names to their configured IP addresses"
+  description = "Map of node names to their configured IP addresses and GPU configuration"
   value = {
     for name, node in local.nodes : name => {
       # REMOVED - mesh network no longer needed for link-local migration
@@ -523,6 +549,20 @@ output "node_ips" {
       public_ipv4 = node.public_ipv4
       public_ipv6 = node.public_ipv6
       ip_suffix   = node.ip_suffix
+      # Pass through GPU passthrough configuration to talos_config module
+      # Derives driver configuration automatically from PCI device detection
+      gpu_passthrough = try(node.gpu_passthrough, null) != null ? {
+        enabled       = true
+        pci_address   = node.gpu_passthrough.pci_address
+        # Auto-detect driver from PCI address or default to i915 for Intel
+        # talos_config module will use this to look up the correct driver config
+        driver        = try(node.gpu_passthrough.driver, "i915")
+        driver_params = try(node.gpu_passthrough.driver_params, {
+          "enable_display" = "0"
+          "enable_guc"     = "3"
+          "force_probe"    = "*"  # Universal Intel GPU probe
+        })
+      } : null
     }
   }
 }

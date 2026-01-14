@@ -53,6 +53,18 @@ variable "all_node_ips" {
     # REMOVED - mesh network no longer needed for link-local migration
     # mesh_ipv4   = string
     # mesh_ipv6   = string
+    # GPU passthrough configuration (optional, for worker nodes)
+    gpu_passthrough = optional(object({
+      enabled     = bool                      # Enable GPU passthrough for this node
+      pci_address = string                    # PCI address of GPU (from cluster_core hostpci config)
+      driver      = optional(string, "i915")  # Kernel driver (i915, amdgpu, nvidia, etc.)
+      # Driver-specific parameters
+      driver_params = optional(map(string), {
+        "enable_display" = "0"
+        "enable_guc"     = "3"
+        "force_probe"    = "4680"
+      })
+    }))
   }))
 }
 
@@ -167,9 +179,49 @@ variable "bgp_advertise_loopbacks" {
 }
 
 variable "enable_i915" {
-  description = "Load the Intel i915 kernel module on Talos nodes"
+  description = "DEPRECATED: Use per-node gpu_passthrough configuration instead"
   type        = bool
   default     = false
+}
+
+# GPU driver configurations - centralized mappings for different GPU types
+locals {
+  gpu_driver_configs = {
+    # Intel iGPU (Alder Lake and newer)
+    i915 = {
+      driver = "i915"
+      kernel_params = {
+        "enable_display" = "0"  # Disable display output to prevent boot stall
+        "enable_guc"     = "3"  # Enable GuC/HuC firmware loading
+        "force_probe"    = "*"  # Force probe for all Intel GPUs
+      }
+      kernel_args = [
+        "i915.enable_display=0",
+        "i915.enable_guc=3",
+        "i915.force_probe=*"
+      ]
+    }
+    # AMD GPU
+    amdgpu = {
+      driver = "amdgpu"
+      kernel_params = {
+        "dc"    = "1"  # Display Core
+        "ppfeaturemask" = "0xffffffff"
+      }
+      kernel_args = [
+        "amdgpu.dc=1",
+        "amdgpu.ppfeaturemask=0xffffffff"
+      ]
+    }
+    # NVIDIA GPU (requires proprietary extension)
+    nvidia = {
+      driver = "nvidia"
+      kernel_params = {}
+      kernel_args = [
+        "nvidia-drm.modeset=1"
+      ]
+    }
+  }
 }
 
 variable "machine_secrets" {
