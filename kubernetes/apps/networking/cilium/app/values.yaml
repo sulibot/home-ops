@@ -141,11 +141,10 @@ securityContext:
       - SYS_ADMIN
       - SYS_RESOURCE
 
-# Envoy configuration - embedded in Cilium agent for hostNetwork mode
-# Setting enabled: false uses embedded Envoy within the Cilium agent pod
-# This works with hostNetwork mode for direct node IP binding
+# Envoy configuration - standalone DaemonSet required for LoadBalancer Gateway services
+# Required when gatewayAPI.hostNetwork.enabled is false
 envoy:
-  enabled: false
+  enabled: true
 
 # Gateway API configuration
 gatewayAPI:
