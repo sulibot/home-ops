@@ -10,11 +10,12 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-production
 spec:
   gatewayClassName: cilium
-  addresses:
-    - type: IPAddress
-      value: 10.101.27.11
-    - type: IPAddress
-      value: fd00:101:1b::11
+  # Removed hardcoded addresses - let Cilium allocate LoadBalancer IPs dynamically
+  # addresses:
+  #   - type: IPAddress
+  #     value: 10.101.27.11
+  #   - type: IPAddress
+  #     value: fd00:101:1b::11
   infrastructure:
     labels:
       # Workaround for Cilium bug where Gateway LoadBalancer IPs aren't advertised
