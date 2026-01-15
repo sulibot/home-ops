@@ -150,9 +150,10 @@ envoy:
 # Gateway API configuration
 gatewayAPI:
   enabled: true
-  # Host network mode for Gateway (recommended for BGP-advertised LB IPs)
+  # Host network mode breaks LoadBalancer IP allocation in Cilium
+  # Use LoadBalancer services with LB-IPAM instead
   hostNetwork:
-    enabled: true
+    enabled: false
   enableProxyProtocol: false
   enableAppProtocol: false
   enableAlpn: true
