@@ -9,8 +9,9 @@ spec:
     {
       "cniVersion": "0.3.1",
       "type": "macvlan",
-      "master": "vmbr0.31",
+      "master": "ens18",
       "mode": "bridge",
+      "vlan": 31,
       "ipam": {
         "type": "static"
       }
