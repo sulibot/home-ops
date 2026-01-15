@@ -1,0 +1,6 @@
+---
+# Configure backup and sync to Kopia repository
+# Uses ${APP} variable from kustomize component
+APP: prometheus
+NAMESPACE: observability
+VOLSYNC_CAPACITY: 10Gi
