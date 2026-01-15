@@ -19,9 +19,11 @@ locals {
 
   # SDN configuration
   sdn = {
-    zone_id   = "evpnz1"
-    vrf_vxlan = 4096
-    mtu       = 1450  # VXLAN overhead accounted
+    zone_id                    = "evpnz1"
+    vrf_vxlan                  = 4096
+    mtu                        = 1450  # VXLAN overhead accounted
+    disable_arp_nd_suppression = false
+    advertise_subnets          = true
   }
 
   # IP addressing patterns

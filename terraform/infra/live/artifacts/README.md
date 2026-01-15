@@ -36,7 +36,7 @@ This follows enterprise patterns:
 
 **Purpose**: Build custom FRR BGP routing extension for Talos
 
-**Status**: Placeholder created (`extension/terragrunt.hcl`) - FRR extension currently pre-built at `ghcr.io/sulibot/frr-talos-extension:v1.0.18@sha256:b6cd79caf...`
+**Status**: Placeholder created (`extension/terragrunt.hcl`) - FRR extension currently pre-built at `ghcr.io/sulibot/frr-talos-extension:v1.0.19`
 
 **When to implement local builds**:
 - Updating FRR version or daemon configuration
@@ -62,7 +62,7 @@ This follows enterprise patterns:
   - `qemu-guest-agent:10.0.2` - Proxmox integration
   - `crun:1.24` - OCI runtime
   - `ctr:v2.1.5` - Container runtime interface
-  - `frr:v1.0.18` - Custom BGP routing daemon
+  - `frr:v1.0.19` - Custom BGP routing daemon
 
 **Outputs**:
 1. **Installer Image** (metal platform)

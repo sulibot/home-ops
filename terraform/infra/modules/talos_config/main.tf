@@ -19,12 +19,20 @@ locals {
       # Centralize ASN calculation to avoid duplication and ensure consistency
       frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
       cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
+      frr_veth_ipv4    = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2)
+      cilium_veth_ipv4 = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2 + 1)
+      frr_veth_ipv6    = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2)
+      cilium_veth_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2 + 1)
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
       frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
       cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
+      frr_veth_ipv4    = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2)
+      cilium_veth_ipv4 = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2 + 1)
+      frr_veth_ipv6    = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2)
+      cilium_veth_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2 + 1)
     }) }
   )
 
@@ -305,49 +313,126 @@ EOF
   ]
 }
 
-# Generate per-node configurations with network settings
+# Generate per-node FRR config YAML for the extension
 # Split into separate locals blocks to avoid circular dependencies with Talos provider 0.10.0+
 locals {
-  # Render FRR config per node using native frr.conf template
-  frr_configs = {
-    for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/frr.conf.j2", {
-      # Node identity
-      hostname   = node.hostname
-      router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
-
-      # BGP ASN configuration (4-byte ASN pattern: base + cluster_id * 1000 + suffix)
-      # Example: base=4210000000, cluster 101, node 11 -> 4210101011
-      # Formula: bgp_asn_base + (cluster_id * 1000) + (node_suffix)
-      # Supports cluster IDs 000-999 and node suffixes 00-99
-      local_asn  = node.frr_asn
-      cilium_asn = node.cilium_asn
-      gw_asn     = var.bgp_remote_asn
-      gw_ipv6    = "fe80::${var.cluster_id}:fffe"  # Link-local anycast gateway
-
-      # Network configuration
-      interface        = var.bgp_interface
-      cluster_id       = var.cluster_id
-      node_suffix      = node.node_suffix
-      node_ipv6        = node.public_ipv6                                      # Node's primary IPv6 for BGP update-source
-      loopback_ipv4    = "10.255.${var.cluster_id}.${node.node_suffix}"       # OLD pattern
-      loopback_ipv6    = "fd00:255:${var.cluster_id}::${node.node_suffix}"    # OLD pattern
-      bgp_loopback_ipv4 = "10.${var.cluster_id}.254.${node.node_suffix}"      # NEW pattern
-      bgp_loopback_ipv6 = "fd00:${var.cluster_id}:fe::${node.node_suffix}"    # NEW pattern
-
-      # Feature flags
-      enable_bfd               = var.bgp_enable_bfd
-      advertise_loopbacks      = var.bgp_advertise_loopbacks
+  frr_config_yamls = {
+    for node_name, node in local.all_nodes : node_name => yamlencode({
+      bgp = {
+        cilium = {
+          local_asn  = node.frr_asn
+          remote_asn = node.cilium_asn
+          namespace  = "cilium"
+          peering = {
+            ipv4 = {
+              local  = node.frr_veth_ipv4
+              remote = node.cilium_veth_ipv4
+              prefix = 31
+            }
+            ipv6 = {
+              local  = node.frr_veth_ipv6
+              remote = node.cilium_veth_ipv6
+              prefix = 126
+            }
+          }
+        }
+        upstream = {
+          local_asn          = node.frr_asn
+          router_id          = "10.255.${var.cluster_id}.${node.node_suffix}"
+          router_id_v6       = node.public_ipv6
+          update_source      = node.public_ipv6
+          advertise_loopbacks = var.bgp_advertise_loopbacks
+          peers = [
+            {
+              address                     = "fd00:${var.cluster_id}::fffe"
+              remote_asn                  = var.bgp_remote_asn
+              description                 = "PVE ULA Anycast Gateway"
+              update_source               = node.public_ipv6
+              address_family              = "ipv6"
+              capability_extended_nexthop = true
+              route_map_in                = "IMPORT-DEFAULT-v6"
+            }
+          ]
+        }
+      }
+      network = {
+        interface_mtu = 1500
+        veth_names = {
+          frr_side    = "veth-frr"
+          cilium_side = "veth-cilium"
+        }
+      }
+      route_filters = {
+        prefix_lists = {
+          ipv4 = {
+            "DEFAULT-ONLY-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "0.0.0.0/0"
+                }
+              ]
+            }
+          }
+          ipv6 = {
+            "DEFAULT-ONLY-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "::/0"
+                }
+              ]
+            }
+          }
+        }
+        route_maps = {
+          "IMPORT-DEFAULT-v4" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv4"
+                  prefix_list    = "DEFAULT-ONLY-v4"
+                }
+              },
+              {
+                seq    = 90
+                action = "deny"
+              }
+            ]
+          }
+          "IMPORT-DEFAULT-v6" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "DEFAULT-ONLY-v6"
+                }
+              },
+              {
+                seq    = 90
+                action = "deny"
+              }
+            ]
+          }
+        }
+      }
     })
   }
 }
 
 # Pre-render extension service configs per node for use in config patches
 # This is required for Talos provider 0.10.0+ which validates config patches early
-# Separate locals block to ensure frr_configs is fully evaluated first
+# Separate locals block to ensure frr_config_yamls is fully evaluated first
 locals {
   extension_service_configs = {
     for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/extension-service-config.yaml.tpl", {
-      frr_conf_content = local.frr_configs[node_name]
+      frr_config_yaml = local.frr_config_yamls[node_name]
       hostname         = node.hostname
       enable_bfd       = var.bgp_enable_bfd
     })
@@ -534,12 +619,12 @@ locals {
         }
         bgpInstances = [
           {
-            name     = "frr-loopback"
+            name     = "frr-veth"
             localASN = node.cilium_asn
             peers = [
               {
                 name         = "frr-ipv4"
-                peerAddress  = format("10.%d.254.%d", var.cluster_id, node.node_suffix)
+                peerAddress  = node.frr_veth_ipv4
                 peerASN      = node.frr_asn
                 peerConfigRef = {
                   name = "frr-peer-ipv4"
@@ -547,7 +632,7 @@ locals {
               },
               {
                 name         = "frr-ipv6"
-                peerAddress  = format("fd00:%d:fe::%d", var.cluster_id, node.node_suffix)
+                peerAddress  = node.frr_veth_ipv6
                 peerASN      = node.frr_asn
                 peerConfigRef = {
                   name = "frr-peer-ipv6"

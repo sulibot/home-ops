@@ -285,50 +285,67 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
   source_raw {
     data = yamlencode({
       version = 1
-      config = [
-        {
-          type = "physical"
-          name = "ens18"  # Talos uses predictable interface naming, not eth0
-          mtu = 1450  # VXLAN overhead (matches Proxmox VM network device and Talos config)
-          subnets = concat(
-            # IPv4 configuration
-            [
+      config = concat(
+        [
+          {
+            type = "physical"
+            name = "ens18"  # Talos uses predictable interface naming, not eth0
+            mtu = 1450  # VXLAN overhead (matches Proxmox VM network device and Talos config)
+            subnets = concat(
+              # IPv4 configuration
+              [
+                {
+                  type    = "static"
+                  address = each.value.public_ipv4
+                  netmask = "255.255.255.0"
+                  gateway = try(var.ip_config.public.ipv4_gateway, null)
+                }
+              ],
+              # IPv6 ULA address + link-local default gateway (for installer reachability)
+              [
+                {
+                  type    = "static6"
+                  address = "${each.value.public_ipv6}/64"
+                  gateway = format("fe80::%d:fffe", var.cluster_id)
+                }
+              ],
+              # IPv6 GUA address (if configured, no gateway - Talos machine config handles routing)
+              each.value.gua_ipv6 != "" ? [
+                {
+                  type    = "static6"
+                  address = "${each.value.gua_ipv6}/64"
+                }
+              ] : [],
+              # IPv6 link-local (static for BGP peering)
+              [
+                {
+                  type    = "static6"
+                  address = "fe80::${var.cluster_id}:${each.value.ip_suffix}/64"
+                }
+              ]
+            )
+          }
+        ],
+        # Add ens19 configuration for worker nodes (VLAN trunk, no IP)
+        !each.value.control_plane ? [
+          {
+            type    = "physical"
+            name    = "ens19"
+            mtu     = 1500
+            subnets = [
               {
-                type    = "static"
-                address = each.value.public_ipv4
-                netmask = "255.255.255.0"
-                gateway = try(var.ip_config.public.ipv4_gateway, null)
-              }
-            ],
-            # IPv6 ULA address + link-local default gateway (for installer reachability)
-            [
-              {
-                type    = "static6"
-                address = "${each.value.public_ipv6}/64"
-                gateway = format("fe80::%d:fffe", var.cluster_id)
-              }
-            ],
-            # IPv6 GUA address (if configured, no gateway - Talos machine config handles routing)
-            each.value.gua_ipv6 != "" ? [
-              {
-                type    = "static6"
-                address = "${each.value.gua_ipv6}/64"
-              }
-            ] : [],
-            # IPv6 link-local (static for BGP peering)
-            [
-              {
-                type    = "static6"
-                address = "fe80::${var.cluster_id}:${each.value.ip_suffix}/64"
+                type = "manual"  # No IP address, just bring it up
               }
             ]
-          )
-        },
-        {
-          type        = "nameserver"
-          address     = var.ip_config.dns_servers
-        }
-      ]
+          }
+        ] : [],
+        [
+          {
+            type        = "nameserver"
+            address     = var.ip_config.dns_servers
+          }
+        ]
+      )
     })
 
     file_name = "cloud-init-network-${each.value.name}.yml"
@@ -351,6 +368,12 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     local.hypervisors[each.value.index % length(local.hypervisors)],
     var.proxmox.node_primary
   )
+
+  # VM lifecycle management
+  started         = true   # Ensure VM starts after creation
+  stop_on_destroy = true   # Force stop VM during destroy (don't wait indefinitely)
+  on_boot         = true   # Auto-start VM when Proxmox node boots
+  reboot          = false  # Don't auto-reboot on config changes (managed by Talos)
 
   machine       = "q35"
   scsi_hardware = "virtio-scsi-single"
@@ -406,13 +429,17 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     mtu = var.network.use_sdn ? 1450 : try(each.value.public_mtu, var.network.public_mtu)
   }
 
-  # REMOVED - mesh network no longer needed for link-local migration
-  # net1 (ens19): Mesh network - used for internal cluster communication
-  # network_device {
-  #   bridge  = coalesce(try(each.value.bridge_mesh, null), var.network.bridge_mesh)
-  #   vlan_id = coalesce(try(each.value.vlan_mesh, null), var.network.vlan_mesh)
-  #   mtu     = try(each.value.mesh_mtu, var.network.mesh_mtu)
-  # }
+  # net1 (ens19): VLAN trunk for Multus - connected to vmbr0 for direct VLAN access
+  # This provides VLANs 30 and 31 for IoT devices that need macvlan networking
+  # Only added to worker nodes (not control plane)
+  dynamic "network_device" {
+    for_each = !each.value.control_plane ? [1] : []
+    content {
+      bridge  = "vmbr0"
+      vlan_id = null  # No VLAN tagging at VM level - trunk all VLANs
+      mtu     = 1500
+    }
+  }
 
 
   # Use Cloud-Init to inject static IPs into the Talos installer environment.

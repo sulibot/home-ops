@@ -69,10 +69,10 @@ output "secrets_yaml" {
 
 # BGP Configuration Preview (for debugging)
 output "bgp_config_preview" {
-  description = "Preview of rendered FRR configs (first 800 chars per node, for debugging)"
+  description = "Preview of rendered FRR config.yaml (first 800 chars per node, for debugging)"
   value = {
-    for node_name in keys(local.frr_configs) :
-    node_name => substr(local.frr_configs[node_name], 0, 800)
+    for node_name in keys(local.frr_config_yamls) :
+    node_name => substr(local.frr_config_yamls[node_name], 0, 800)
   }
   sensitive = false
 }

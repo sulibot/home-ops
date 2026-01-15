@@ -12,6 +12,7 @@ dependency "build" {
     iso_path        = "/tmp/mock-talos.iso"
     iso_name        = "mock-talos-nocloud-amd64.iso"
     talos_version   = "v1.11.5"
+    kubernetes_version = "1.31.4"
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }

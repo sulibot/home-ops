@@ -1,6 +1,6 @@
 ---
-# BGP Peer Configuration for FRR on loopback (IPv4)
-# Cilium peers with local FRR instance instead of directly with PVE
+# BGP Peer Configuration for FRR on veth (IPv4)
+# Cilium peers with local FRR instance over a dedicated veth link
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
@@ -19,7 +19,7 @@ spec:
               - pod-cidr
               - loadbalancer
 
-  # eBGP multihop (required for localhost peering)
+  # eBGP multihop (safe for local veth peering)
   ebgpMultihop: 2
 
   # Transport configuration
@@ -36,8 +36,8 @@ spec:
     enabled: true
     restartTimeSeconds: 120
 ---
-# BGP Peer Configuration for FRR on loopback (IPv6)
-# Cilium peers with local FRR instance instead of directly with PVE
+# BGP Peer Configuration for FRR on veth (IPv6)
+# Cilium peers with local FRR instance over a dedicated veth link
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
@@ -56,7 +56,7 @@ spec:
               - pod-cidr
               - loadbalancer
 
-  # eBGP multihop (required for localhost peering)
+  # eBGP multihop (safe for local veth peering)
   ebgpMultihop: 2
 
   # Transport configuration

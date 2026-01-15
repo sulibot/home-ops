@@ -271,18 +271,20 @@ bgp_asn_assignments = {
 terragrunt output bgp_config_preview
 ```
 
-Output shows first 800 characters of each node's `frr.conf`:
+Output shows first 800 characters of each node's `config.yaml`:
 ```
 bgp_config_preview = {
   "solcp01" = <<-EOT
-  ! FRR Configuration for solcp01
-  ! BGP peering with upstream router via link-local IPv6
+  bgp:
+    cilium:
+      local_asn: 4210101011
+      remote_asn: 4220101011
   ...
   EOT
 }
 ```
 
-### View Full FRR Config
+### View Full FRR config.yaml
 
 ```bash
 terragrunt output -json | jq -r '.bgp_config_preview.value.solcp01'

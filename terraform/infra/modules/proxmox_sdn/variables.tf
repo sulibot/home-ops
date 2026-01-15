@@ -27,10 +27,22 @@ variable "mtu" {
   default     = 1450
 }
 
+variable "disable_arp_nd_suppression" {
+  description = "Disable ARP/ND suppression for EVPN (false = suppression enabled)"
+  type        = bool
+  default     = false
+}
+
 variable "nodes" {
   description = "Proxmox nodes participating in SDN"
   type        = set(string)
   default     = ["pve01", "pve02", "pve03"]
+}
+
+variable "advertise_subnets" {
+  description = "Advertise subnets from the EVPN zone"
+  type        = bool
+  default     = true
 }
 
 variable "exit_nodes" {

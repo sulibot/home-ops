@@ -79,6 +79,8 @@ inputs = {
   zone_id           = local.network_infra.sdn.zone_id
   vrf_vxlan         = local.network_infra.sdn.vrf_vxlan
   mtu               = local.network_infra.sdn.mtu
+  disable_arp_nd_suppression = local.network_infra.sdn.disable_arp_nd_suppression
+  advertise_subnets          = local.network_infra.sdn.advertise_subnets
 
   # Use centralized Proxmox cluster configuration
   nodes             = local.proxmox_infra.proxmox_nodes

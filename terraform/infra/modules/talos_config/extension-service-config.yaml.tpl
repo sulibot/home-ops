@@ -3,8 +3,8 @@ kind: ExtensionServiceConfig
 name: frr
 configFiles:
   - content: |
-      ${replace(frr_conf_content, "\n", "\n      ")}
-    mountPath: /usr/local/etc/frr/frr.conf
+      ${replace(frr_config_yaml, "\n", "\n      ")}
+    mountPath: /usr/local/etc/frr/config.yaml
   - content: |
       zebra=true
       zebra_options="-n -A 127.0.0.1"

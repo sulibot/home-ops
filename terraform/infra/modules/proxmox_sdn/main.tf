@@ -8,6 +8,8 @@ resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
   vrf_vxlan  = var.vrf_vxlan
   mtu        = var.mtu
   nodes      = var.nodes
+  advertise_subnets = var.advertise_subnets
+  disable_arp_nd_suppression = var.disable_arp_nd_suppression
 
   # Exit nodes for internet/external access via SNAT
   # All PVE nodes act as exit nodes for redundancy

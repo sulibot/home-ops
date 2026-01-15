@@ -69,34 +69,35 @@ resource "null_resource" "wait_for_nodes" {
     command = <<-EOT
       set -e
 
-      echo "🔍 Checking health of all Talos nodes before applying configs..."
+      echo "🔍 Checking network connectivity to all Talos nodes before applying configs..."
 
-      NODES=(${join(" ", [for name, ips in var.all_node_ips : ips.ipv6])})
-      RETRIES=30  # 30 retries * 10 seconds = 5 minutes max
+      NODES=(${join(" ", [for name, ips in var.all_node_ips : ips.ipv4])})
+      RETRIES=10  # 10 retries * 3 seconds = 30 seconds max per node
 
       for NODE in "$${NODES[@]}"; do
         ATTEMPT=0
-        echo "Checking node $NODE..."
+        echo "Checking network connectivity to $NODE..."
 
         while [ $ATTEMPT -lt $RETRIES ]; do
           ATTEMPT=$((ATTEMPT + 1))
 
-          if timeout 5 talosctl -n "$NODE" get addresses --insecure >/dev/null 2>&1; then
-            echo "✓ Node $NODE is responsive"
+          # Simple network check - can we reach the node at all?
+          if ping -c 1 -W 2 "$NODE" >/dev/null 2>&1; then
+            echo "✓ Node $NODE is network reachable"
             break
           fi
 
           if [ $ATTEMPT -lt $RETRIES ]; then
-            echo "   Node $NODE not ready (attempt $ATTEMPT/$RETRIES), waiting 10 seconds..."
-            sleep 10
+            echo "   Node $NODE not reachable (attempt $ATTEMPT/$RETRIES), waiting 3 seconds..."
+            sleep 3
           else
-            echo "⚠ Node $NODE health check timed out after 5 minutes"
-            echo "   Proceeding anyway - apply may fail if node is not ready"
+            echo "⚠ Node $NODE network check timed out after 30 seconds"
+            echo "   Proceeding anyway - node may still be booting"
           fi
         done
       done
 
-      echo "✓ Health check complete - all responsive nodes ready for config apply"
+      echo "✓ Network check complete - proceeding with config apply"
     EOT
 
     environment = {
