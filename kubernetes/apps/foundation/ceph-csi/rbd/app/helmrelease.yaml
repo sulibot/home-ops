@@ -14,7 +14,15 @@ spec:
                 name: ceph-csi
                 namespace: flux-system
     interval: 1h
-    timeout: 10m  # Give more time for chart to be pulled and reconciled
+    timeout: 10m
+    install:
+        remediation:
+            retries: 3  # Retry up to 3 times if install fails
+            remediateLastFailure: true  # Uninstall and retry on failure
+    upgrade:
+        remediation:
+            retries: 3  # Retry up to 3 times if upgrade fails
+            remediateLastFailure: true  # Rollback and retry on failure
     values:
         externallyManagedConfigmap: true
         csiConfig:
