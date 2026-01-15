@@ -141,19 +141,19 @@ securityContext:
       - SYS_ADMIN
       - SYS_RESOURCE
 
-# Envoy configuration - standalone DaemonSet required for LoadBalancer Gateway services
-# Setting enabled: true creates dedicated envoy pods for Gateway API
-# Required when gatewayAPI.hostNetwork.enabled is false
+# Envoy configuration - embedded in Cilium agent for hostNetwork mode
+# Setting enabled: false uses embedded Envoy within the Cilium agent pod
+# This works with hostNetwork mode for direct node IP binding
 envoy:
-  enabled: true
+  enabled: false
 
 # Gateway API configuration
 gatewayAPI:
   enabled: true
-  # Host network mode breaks LoadBalancer IP allocation in Cilium
-  # Use LoadBalancer services with LB-IPAM instead
+  # Host network mode allows Gateway to listen directly on node IPs
+  # Gateways use spec.addresses with IPs that are BGP-advertised
   hostNetwork:
-    enabled: false
+    enabled: true
   enableProxyProtocol: false
   enableAppProtocol: false
   enableAlpn: true
