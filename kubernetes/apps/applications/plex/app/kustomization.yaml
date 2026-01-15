@@ -8,5 +8,5 @@ resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
-#  - ./pvc.yaml  # Commented out - VolSync will manage PVC lifecycle
+#  - ./manual-plex-config-pvc.yaml  # Break-glass PVC - VolSync manages lifecycle
   - ./resourceclaimtemplate.yaml
