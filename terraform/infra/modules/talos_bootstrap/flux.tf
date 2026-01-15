@@ -17,6 +17,13 @@ resource "flux_bootstrap_git" "this" {
     "image-automation-controller"
   ]
 
+  lifecycle {
+    # During destroy, skip Flux cleanup via Kubernetes API
+    # Flux resources are removed when VMs are destroyed anyway
+    # Manual state cleanup required: terragrunt state rm 'flux_bootstrap_git.this[0]'
+    ignore_changes = all
+  }
+
   # Depends on kubeconfig being available
   depends_on = [
     talos_cluster_kubeconfig.cluster
