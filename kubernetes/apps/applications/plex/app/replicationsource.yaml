@@ -1,0 +1,5 @@
+---
+# Configure backup and sync to Kopia repository
+# Uses ${APP} variable from kustomize component
+APP: plex
+VOLSYNC_CAPACITY: 50Gi
