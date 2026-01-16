@@ -105,7 +105,7 @@ spec:
       app:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: fd00:101:240::120,10.101.240.120
+          lbipam.cilium.io/ips: fd00:101:250::120,10.101.250.120
         ipFamilyPolicy: PreferDualStack
         ipFamilies:
           - IPv6

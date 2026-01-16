@@ -20,9 +20,9 @@ metadata:
 spec:
   blocks:
     # IPv4 blocks
-    - cidr: 10.101.240.0/24  # 10.101.240.0-254 (LoadBalancer VIP Pool - high-range reserved)
+    - cidr: 10.101.250.0/24  # 10.101.240.0-254 (LoadBalancer VIP Pool - high-range reserved)
     # IPv6 blocks
-    - cidr: fd00:101:240::/112  # fd00:101:240:: (LoadBalancer VIP Pool - 65,536 IPs)
+    - cidr: fd00:101:250::/112  # fd00:101:240:: (LoadBalancer VIP Pool - 65,536 IPs)
 
 ---
 # Optional: Dedicated pool for ingress controllers

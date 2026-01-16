@@ -186,9 +186,9 @@ Kubernetes ranges are **subsets of tenant space** and are routed, not NATed.
 
 | Function | IPv4 | IPv6 | Rationale |
 |---------|------|------|-----------|
-| Pod CIDR | `10.101.244.0/22` | `fd00:101:244::/60` | Large, routable workload space |
+| Pod CIDR | `10.101.224.0/20` | `fd00:101:224::/60` | Large, routable workload space |
 | Service CIDR | `10.101.96.0/24` | `fd00:101:96::/108` | Virtual IPs only |
-| LoadBalancer VIP Pool | `10.101.240.0/24` | `fd00:101:fffe::/112` | High-range, clearly reserved |
+| LoadBalancer VIP Pool | `10.101.250.0/24` | `fd00:101:250::/112` | High-range, clearly reserved |
 
 **Notes**
 
@@ -207,7 +207,7 @@ Kubernetes ranges are **subsets of tenant space** and are routed, not NATed.
 | Host identity | `.255.x` | `:ff::/64` |
 | VM loopback | `.254.x` | `:fe::/64` |
 | Workload subnet | `.0.0/24` | `::/64` |
-| LB VIP pool | High `/24` | `fffe::/112` |
+| LB VIP pool | High `/24` | `250::/112` |
 
 ---
 
