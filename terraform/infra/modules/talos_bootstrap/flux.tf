@@ -8,10 +8,10 @@ resource "flux_bootstrap_git" "this" {
   # Path in Git repo where Flux manifests live
   path = "kubernetes/clusters/cluster-${var.cluster_id}"
 
-  # Install Flux v2.7.3 with healthCheckExprs support
-  version = "v2.7.3"
+  # Install Flux v2.7.5 with healthCheckExprs support
+  version = "v2.7.5"
 
-  # Component versions that match Flux v2.7.3
+  # Component versions that match Flux v2.7.5
   components_extra = [
     "image-reflector-controller",
     "image-automation-controller"
@@ -26,6 +26,7 @@ resource "flux_bootstrap_git" "this" {
 
   # Depends on kubeconfig being available
   depends_on = [
-    talos_cluster_kubeconfig.cluster
+    talos_cluster_kubeconfig.cluster,
+    null_resource.sops_age_secret
   ]
 }

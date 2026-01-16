@@ -38,11 +38,12 @@ locals {
   ]
 
   # FRR extension from sulibot fork
+  # v1.0.23: Fix Cilium neighbor address selection; guard BFD rendering when undefined.
   # v1.0.20: Guard BFD config rendering when bfd is omitted.
   # v1.0.19: config.yaml + veth/netns Cilium peering; FRR 10.5.1
   # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
   # v1.0.17: Includes Prometheus metrics exporter on port 9342
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.22",
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.23",
   ]
 }

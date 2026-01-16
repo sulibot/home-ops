@@ -44,6 +44,21 @@ spec:
   retryInterval: 2m
 ```
 
+**Alternative: Add explicit dependency on flux-system**
+
+To ensure the helm-controller is fully ready before creating HelmReleases, add a `dependsOn` to the infrastructure Kustomization:
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: flux-system
+```
+
 **Monitor for this pattern:**
 - If rebuilding frequently, consider pre-pulling CSI images to nodes
 - Or use a local container registry mirror

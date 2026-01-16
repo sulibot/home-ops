@@ -14,12 +14,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101011
-      "peerAddress": "169.254.101.23"
+      "peerAddress": "169.254.101.22"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101011
-      "peerAddress": "fd00:101:fd::23"
+      "peerAddress": "fd00:101:fd::22"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
@@ -39,12 +39,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101012
-      "peerAddress": "169.254.101.25"
+      "peerAddress": "169.254.101.24"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101012
-      "peerAddress": "fd00:101:fd::25"
+      "peerAddress": "fd00:101:fd::24"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
@@ -64,12 +64,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101013
-      "peerAddress": "169.254.101.27"
+      "peerAddress": "169.254.101.26"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101013
-      "peerAddress": "fd00:101:fd::27"
+      "peerAddress": "fd00:101:fd::26"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
@@ -89,12 +89,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101021
-      "peerAddress": "169.254.101.43"
+      "peerAddress": "169.254.101.42"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101021
-      "peerAddress": "fd00:101:fd::43"
+      "peerAddress": "fd00:101:fd::42"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
@@ -114,12 +114,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101022
-      "peerAddress": "169.254.101.45"
+      "peerAddress": "169.254.101.44"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101022
-      "peerAddress": "fd00:101:fd::45"
+      "peerAddress": "fd00:101:fd::44"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
@@ -139,12 +139,12 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101023
-      "peerAddress": "169.254.101.47"
+      "peerAddress": "169.254.101.46"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101023
-      "peerAddress": "fd00:101:fd::47"
+      "peerAddress": "fd00:101:fd::46"
       "peerConfigRef":
         "name": "frr-peer-ipv6"
   "nodeSelector":
