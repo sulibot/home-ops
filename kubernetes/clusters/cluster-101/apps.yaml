@@ -19,22 +19,9 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
-  # Wait for Flux controllers and SOPS secret before applying apps
-  # This prevents HelmReleases from being created before helm-controller is ready
+  # Add health check to ensure secret exists before reconciling
   healthChecks:
     - apiVersion: v1
       kind: Secret
       name: sops-age
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: helm-controller
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: kustomize-controller
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: source-controller
       namespace: flux-system
