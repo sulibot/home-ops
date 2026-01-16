@@ -251,7 +251,7 @@ locals {
   ]
 
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.0.20",
+    "ghcr.io/sulibot/frr-talos-extension:v1.0.22",
   ]
 
   install_kernel_args = [
