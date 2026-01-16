@@ -14,11 +14,11 @@
     "peers":
     - "name": "frr-ipv4"
       "peerASN": 4210101000
-      "peerAddress": "169.254.101.1"
+      "peerAddress": "169.254.101.0"
       "peerConfigRef":
         "name": "frr-peer-ipv4"
     - "name": "frr-ipv6"
       "peerASN": 4210101000
-      "peerAddress": "fd00:101:fd::1"
+      "peerAddress": "fd00:101:fd::2"
       "peerConfigRef":
         "name": "frr-peer-ipv6"

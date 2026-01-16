@@ -643,7 +643,7 @@ locals {
             peers = [
               {
                 name         = "frr-ipv4"
-                peerAddress  = local.frr_veth_ipv4
+                peerAddress  = local.cilium_veth_ipv4
                 peerASN      = local.frr_asn_cluster
                 peerConfigRef = {
                   name = "frr-peer-ipv4"
@@ -651,7 +651,7 @@ locals {
               },
               {
                 name         = "frr-ipv6"
-                peerAddress  = local.frr_veth_ipv6
+                peerAddress  = local.cilium_veth_ipv6
                 peerASN      = local.frr_asn_cluster
                 peerConfigRef = {
                   name = "frr-peer-ipv6"
