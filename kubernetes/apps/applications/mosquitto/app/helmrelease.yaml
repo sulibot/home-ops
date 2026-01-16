@@ -9,6 +9,18 @@ spec:
     kind: OCIRepository
     name: mosquitto
   interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
   values:
     controllers:
       mosquitto:

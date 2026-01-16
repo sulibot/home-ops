@@ -15,6 +15,18 @@ spec:
         namespace: flux-system
       version: 0.8.5
   interval: 1h0m0s
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
   values:
     env:
       DB_DATABASE_NAME: immich
