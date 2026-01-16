@@ -1,0 +1,18 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: frr-peer-ipv4
+  namespace: kube-system
+spec:
+  transport:
+    localAddress: 169.254.101.0
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: frr-peer-ipv6
+  namespace: kube-system
+spec:
+  transport:
+    localAddress: fd00:101:fd::2

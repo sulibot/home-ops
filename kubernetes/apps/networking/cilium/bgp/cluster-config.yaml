@@ -2,23 +2,23 @@
 # Prerequisites:
 #  1. Proxmox FRR must be configured (run ansible/lae.proxmox FRR playbook)
 #  2. Peer configs and advertisements are in kubernetes/apps/networking/cilium/bgp/
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
-metadata:
-  name: cluster-bgp
-  namespace: kube-system
-spec:
-  bgpInstances:
-    - name: frr-veth
-      localASN: 4220101000
-      peers:
-        - name: frr-ipv4
-          peerASN: 4210101000
-          peerAddress: 169.254.101.1
-          peerConfigRef:
-            name: frr-peer-ipv4
-        - name: frr-ipv6
-          peerASN: 4210101000
-          peerAddress: fd00:101:fd::1
-          peerConfigRef:
-            name: frr-peer-ipv6
+"apiVersion": "cilium.io/v2"
+"kind": "CiliumBGPClusterConfig"
+"metadata":
+  "name": "cluster-bgp"
+  "namespace": "kube-system"
+"spec":
+  "bgpInstances":
+  - "localASN": 4220101000
+    "name": "frr-veth"
+    "peers":
+    - "name": "frr-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "169.254.101.1"
+      "peerConfigRef":
+        "name": "frr-peer-ipv4"
+    - "name": "frr-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fd::1"
+      "peerConfigRef":
+        "name": "frr-peer-ipv6"
