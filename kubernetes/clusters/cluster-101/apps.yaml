@@ -9,7 +9,7 @@ spec:
   interval: 10m
   retryInterval: 30s  # Retry every 30 seconds on failure
   timeout: 5m         # Fail after 5 minutes of retries
-  path: ./kubernetes/apps
+  path: ./kubernetes/clusters/cluster-101/apps
   prune: false
   sourceRef:
     kind: GitRepository

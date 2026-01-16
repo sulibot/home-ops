@@ -10,6 +10,3 @@ resources:
   - ../../app
   - ../../bgp
   - ../../ippool
-
-patches:
-  - path: bgp-peer-local-address.yaml
