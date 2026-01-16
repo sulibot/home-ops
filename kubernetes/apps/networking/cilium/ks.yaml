@@ -18,7 +18,7 @@ spec:
     - name: cilium-helm-repo
       namespace: flux-system
   interval: 10m
-  retryInterval: 30s
+  retryInterval: 1m  # Increased retry interval to give helm-controller more time
   path: ./kubernetes/apps/networking/cilium/app
   prune: true
   sourceRef:

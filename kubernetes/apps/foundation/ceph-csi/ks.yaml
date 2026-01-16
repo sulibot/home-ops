@@ -16,7 +16,8 @@ spec:
     - name: snapshot-controller
       namespace: flux-system
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 1m  # Increased retry interval to give helm-controller more time
+  timeout: 10m       # Allow longer for initial reconciliation
   path: ./kubernetes/apps/foundation/ceph-csi
   prune: true
   sourceRef:
