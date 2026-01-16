@@ -508,7 +508,23 @@ ${yamlencode(merge(
               "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
             ]
           }
-        ], [])
+        ], node.machine_type == "worker" ? [
+          {
+            interface = "ens19"
+            dhcp      = false
+            mtu       = 1500
+            vlans = [
+              {
+                vlanId = 30
+                mtu    = 1500
+              },
+              {
+                vlanId = 31
+                mtu    = 1500
+              }
+            ]
+          }
+        ] : [])
         nameservers = var.dns_servers
       }
       kubelet = {

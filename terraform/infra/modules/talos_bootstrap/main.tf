@@ -252,87 +252,77 @@ resource "null_resource" "fix_stuck_helmreleases" {
       echo "🔧 Checking for stuck HelmReleases"
       echo "=========================================="
 
-      # Wait for Ceph CSI HelmReleases to exist (up to 2 minutes)
-      echo "⏱ Waiting for Ceph CSI HelmReleases to be created..."
-      RETRIES=24
-      ATTEMPT=0
-      while [ $ATTEMPT -lt $RETRIES ]; do
-        if kubectl get helmrelease -n ceph-csi ceph-csi-cephfs ceph-csi-rbd >/dev/null 2>&1; then
-          echo "✓ Ceph CSI HelmReleases found"
+      # Loop for up to 10 minutes checking every 30 seconds
+      MAX_DURATION=600  # 10 minutes
+      CHECK_INTERVAL=30
+      START_TIME=$(date +%s)
+      FIX_APPLIED=false
+
+      while true; do
+        ELAPSED=$(($(date +%s) - START_TIME))
+        if [ $ELAPSED -ge $MAX_DURATION ]; then
+          echo "⏱ Reached 10-minute timeout"
           break
         fi
-        ATTEMPT=$((ATTEMPT + 1))
-        sleep 5
-      done
 
-      if [ $ATTEMPT -eq $RETRIES ]; then
-        echo "⚠ Warning: Ceph CSI HelmReleases not found after 2 minutes, skipping fix"
-        exit 0
-      fi
+        # Check if HelmReleases exist
+        if ! kubectl get helmrelease -n ceph-csi ceph-csi-cephfs ceph-csi-rbd >/dev/null 2>&1; then
+          echo "⏱ [$ELAPSED s] Waiting for Ceph CSI HelmReleases to be created..."
+          sleep $CHECK_INTERVAL
+          continue
+        fi
 
-      # Wait for HelmReleases to reconcile (up to 3 minutes)
-      echo "⏱ Waiting for Ceph CSI HelmReleases to reconcile..."
-      RETRIES=36
-      ATTEMPT=0
-      STUCK=false
-      while [ $ATTEMPT -lt $RETRIES ]; do
         # Check if HelmReleases are ready
         CEPHFS_READY=$(kubectl get helmrelease ceph-csi-cephfs -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
         RBD_READY=$(kubectl get helmrelease ceph-csi-rbd -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
 
         if [ "$CEPHFS_READY" = "True" ] && [ "$RBD_READY" = "True" ]; then
           echo "✓ Ceph CSI HelmReleases are ready"
-          exit 0
+          break
         fi
 
-        # Check if stuck with observedGeneration: -1 after 90 seconds
-        if [ $ATTEMPT -gt 18 ]; then
+        # Check if stuck with observedGeneration: -1 (only check after 90 seconds)
+        if [ $ELAPSED -ge 90 ] && [ "$FIX_APPLIED" = "false" ]; then
           CEPHFS_GEN=$(kubectl get helmrelease ceph-csi-cephfs -n ceph-csi -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo "")
           RBD_GEN=$(kubectl get helmrelease ceph-csi-rbd -n ceph-csi -o jsonpath='{.status.observedGeneration}' 2>/dev/null || echo "")
 
           if [ "$CEPHFS_GEN" = "-1" ] || [ "$RBD_GEN" = "-1" ]; then
-            echo "⚠ Detected stuck HelmReleases (observedGeneration: -1)"
-            STUCK=true
-            break
+            echo "⚠ [$ELAPSED s] Detected stuck HelmReleases (observedGeneration: -1)"
+            echo "🔧 Applying fix for stuck HelmReleases..."
+
+            # Remove finalizers and delete HelmReleases
+            kubectl patch helmrelease ceph-csi-cephfs -n ceph-csi -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+            kubectl patch helmrelease ceph-csi-rbd -n ceph-csi -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
+            sleep 2
+
+            # Reconcile kustomizations to recreate HelmReleases
+            kubectl annotate kustomization ceph-csi-cephfs -n flux-system reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite 2>/dev/null || true
+            kubectl annotate kustomization ceph-csi-rbd -n flux-system reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite 2>/dev/null || true
+            sleep 5
+
+            # Restart helm-controller to pick up new HelmReleases
+            kubectl rollout restart deployment helm-controller -n flux-system
+            kubectl rollout status deployment helm-controller -n flux-system --timeout=60s
+
+            echo "✓ Fix applied, HelmReleases recreated and helm-controller restarted"
+            FIX_APPLIED=true
+            # Continue loop to verify fix worked
           fi
         fi
 
-        ATTEMPT=$((ATTEMPT + 1))
-        sleep 5
+        echo "⏱ [$ELAPSED s] Waiting for Ceph CSI HelmReleases to reconcile..."
+        sleep $CHECK_INTERVAL
       done
 
-      # If stuck or timed out, apply fix
-      if [ "$STUCK" = "true" ] || [ $ATTEMPT -eq $RETRIES ]; then
-        echo "🔧 Applying fix for stuck HelmReleases..."
+      # Final status check
+      CEPHFS_READY=$(kubectl get helmrelease ceph-csi-cephfs -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+      RBD_READY=$(kubectl get helmrelease ceph-csi-rbd -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
 
-        # Remove finalizers and delete HelmReleases
-        kubectl patch helmrelease ceph-csi-cephfs -n ceph-csi -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
-        kubectl patch helmrelease ceph-csi-rbd -n ceph-csi -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
-        sleep 2
-
-        # Reconcile kustomizations to recreate HelmReleases
-        kubectl annotate kustomization ceph-csi-cephfs -n flux-system reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
-        kubectl annotate kustomization ceph-csi-rbd -n flux-system reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
-        sleep 5
-
-        # Restart helm-controller to pick up new HelmReleases
-        kubectl rollout restart deployment helm-controller -n flux-system
-        kubectl rollout status deployment helm-controller -n flux-system --timeout=60s
-
-        echo "✓ Fix applied, HelmReleases recreated and helm-controller restarted"
-        echo "⏱ Waiting 30s for reconciliation..."
-        sleep 30
-
-        # Verify fix worked
-        CEPHFS_READY=$(kubectl get helmrelease ceph-csi-cephfs -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
-        RBD_READY=$(kubectl get helmrelease ceph-csi-rbd -n ceph-csi -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
-
-        if [ "$CEPHFS_READY" = "True" ] && [ "$RBD_READY" = "True" ]; then
-          echo "✓ Ceph CSI HelmReleases are now ready after fix"
-        else
-          echo "⚠ Warning: Ceph CSI may still need manual intervention"
-          echo "   Check with: kubectl get helmrelease -n ceph-csi"
-        fi
+      if [ "$CEPHFS_READY" = "True" ] && [ "$RBD_READY" = "True" ]; then
+        echo "✓ Ceph CSI HelmReleases are ready"
+      else
+        echo "⚠ Warning: Ceph CSI may still need manual intervention"
+        echo "   Check with: kubectl get helmrelease -n ceph-csi"
       fi
 
       echo "=========================================="
