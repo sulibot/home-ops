@@ -16,12 +16,12 @@ dependency "nodes" {
       "solwk03" = { public_ipv6 = "fd00:101::23", public_ipv4 = "10.0.101.23", ip_suffix = 23 }
     }
     k8s_network_config = {
-      pods_ipv4          = format("10.%d.240.0/20", local.cluster_config.cluster_id)
-      pods_ipv6          = "fd00:${local.cluster_config.cluster_id}:240::/60"
+      pods_ipv4          = format("10.%d.224.0/20", local.cluster_config.cluster_id)
+      pods_ipv6          = "fd00:${local.cluster_config.cluster_id}:224::/60"
       services_ipv4      = format("10.%d.96.0/24", local.cluster_config.cluster_id)
-      services_ipv6      = "fd00:${local.cluster_config.cluster_id}:96::/112"
-      loadbalancers_ipv4 = format("10.%d.27.0/24", local.cluster_config.cluster_id)
-      loadbalancers_ipv6 = "fd00:${local.cluster_config.cluster_id}:1b::/120"
+      services_ipv6      = "fd00:${local.cluster_config.cluster_id}:96::/108"
+      loadbalancers_ipv4 = format("10.%d.250.0/24", local.cluster_config.cluster_id)
+      loadbalancers_ipv6 = "fd00:${local.cluster_config.cluster_id}:250::/112"
       talosVersion       = "v1.11.5"
       kubernetesVersion  = "v1.31.4"
     }

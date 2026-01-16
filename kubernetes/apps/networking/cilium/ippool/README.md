@@ -5,12 +5,12 @@ This directory defines IP pools that Cilium can assign to LoadBalancer services.
 ## IP Pool Configuration
 
 **Cluster-101 IP Pools:**
-- **IPv4:** `10.101.240.0/24` (10.101.240.0 - 10.101.240.255)
-- **IPv6:** `fd00:101:fffe::/112` (fd00:101:fffe::0 - fd00:101:fffe::ffff)
+- **IPv4:** `10.101.250.0/24` (10.101.250.0 - 10.101.250.255)
+- **IPv6:** `fd00:101:250::/112` (fd00:101:250::0 - fd00:101:250::ffff)
 
 **Important:** These ranges must:
 1. NOT overlap with node IPs (10.101.0.0-63, fd00:101::10-23)
-2. NOT overlap with pod CIDRs (10.101.244.0/22, fd00:101:244::/60)
+2. NOT overlap with pod CIDRs (10.101.224.0/20, fd00:101:224::/60)
 3. Be routable by your network infrastructure
 
 ## How It Works
@@ -33,7 +33,7 @@ metadata:
 spec:
   type: LoadBalancer
   # Optional: request specific IP from pool
-  # loadBalancerIP: 10.101.240.120
+  # loadBalancerIP: 10.101.250.120
   ports:
     - name: http
       port: 80
@@ -54,7 +54,7 @@ metadata:
     bgp-advertise: "true"
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.101.240.80  # Reserve IP for ingress
+  loadBalancerIP: 10.101.250.80  # Reserve IP for ingress
   ports:
     - name: http
       port: 80

@@ -11,28 +11,36 @@ locals {
     name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
   }
 
+  # Cluster-wide BGP/veth settings (shared across nodes)
+  frr_asn_cluster    = var.bgp_asn_base + var.cluster_id * 1000
+  cilium_asn_cluster = 4220000000 + var.cluster_id * 1000
+  frr_veth_ipv4      = format("169.254.%d.1", var.cluster_id)
+  cilium_veth_ipv4   = format("169.254.%d.0", var.cluster_id)
+  frr_veth_ipv6      = format("fd00:%d:fd::1", var.cluster_id)
+  cilium_veth_ipv6   = format("fd00:%d:fd::2", var.cluster_id)
+
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
       machine_type = "controlplane"
       node_suffix  = v.ip_suffix
       # Centralize ASN calculation to avoid duplication and ensure consistency
-      frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
-      cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
-      frr_veth_ipv4    = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2)
-      cilium_veth_ipv4 = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2 + 1)
-      frr_veth_ipv6    = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2)
-      cilium_veth_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2 + 1)
+      frr_asn      = local.frr_asn_cluster
+      cilium_asn   = local.cilium_asn_cluster
+      frr_veth_ipv4    = local.frr_veth_ipv4
+      cilium_veth_ipv4 = local.cilium_veth_ipv4
+      frr_veth_ipv6    = local.frr_veth_ipv6
+      cilium_veth_ipv6 = local.cilium_veth_ipv6
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
-      frr_asn      = var.bgp_asn_base + var.cluster_id * 1000 + v.ip_suffix
-      cilium_asn   = 4220000000 + var.cluster_id * 1000 + v.ip_suffix
-      frr_veth_ipv4    = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2)
-      cilium_veth_ipv4 = format("169.254.%d.%d", var.cluster_id, v.ip_suffix * 2 + 1)
-      frr_veth_ipv6    = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2)
-      cilium_veth_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix * 2 + 1)
+      frr_asn      = local.frr_asn_cluster
+      cilium_asn   = local.cilium_asn_cluster
+      frr_veth_ipv4    = local.frr_veth_ipv4
+      cilium_veth_ipv4 = local.cilium_veth_ipv4
+      frr_veth_ipv6    = local.frr_veth_ipv6
+      cilium_veth_ipv6 = local.cilium_veth_ipv6
     }) }
   )
 
@@ -460,8 +468,8 @@ ${yamlencode(merge(
         {
           "topology.kubernetes.io/region" = var.region
           "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-          "bgp.frr.asn"                   = tostring(node.frr_asn)
-          "bgp.cilium.asn"                = tostring(node.cilium_asn)
+          "bgp.frr.asn"                   = tostring(local.frr_asn_cluster)
+          "bgp.cilium.asn"                = tostring(local.cilium_asn_cluster)
         },
         # Add GPU label if GPU passthrough is enabled for this node
         try(node.gpu_passthrough.enabled, false) ? {
@@ -618,38 +626,33 @@ locals {
     }
   ]
 
-  # CiliumBGPClusterConfig resources (one per node)
+  # CiliumBGPClusterConfig resources (single config applied to all nodes)
   cilium_bgp_cluster_config_docs = [
-    for node_name, node in local.all_nodes : {
+    {
       apiVersion = "cilium.io/v2"
       kind       = "CiliumBGPClusterConfig"
       metadata = {
-        name      = "${node_name}-bgp"
+        name      = "cluster-bgp"
         namespace = "kube-system"
       }
       spec = {
-        nodeSelector = {
-          matchLabels = {
-            "kubernetes.io/hostname" = node.hostname
-          }
-        }
         bgpInstances = [
           {
             name     = "frr-veth"
-            localASN = node.cilium_asn
+            localASN = local.cilium_asn_cluster
             peers = [
               {
                 name         = "frr-ipv4"
-                peerAddress  = node.frr_veth_ipv4
-                peerASN      = node.frr_asn
+                peerAddress  = local.frr_veth_ipv4
+                peerASN      = local.frr_asn_cluster
                 peerConfigRef = {
                   name = "frr-peer-ipv4"
                 }
               },
               {
                 name         = "frr-ipv6"
-                peerAddress  = node.frr_veth_ipv6
-                peerASN      = node.frr_asn
+                peerAddress  = local.frr_veth_ipv6
+                peerASN      = local.frr_asn_cluster
                 peerConfigRef = {
                   name = "frr-peer-ipv6"
                 }

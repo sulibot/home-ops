@@ -2,151 +2,23 @@
 # Prerequisites:
 #  1. Proxmox FRR must be configured (run ansible/lae.proxmox FRR playbook)
 #  2. Peer configs and advertisements are in kubernetes/apps/networking/cilium/bgp/
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solcp01-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101011
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101011
-      "peerAddress": "169.254.101.22"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101011
-      "peerAddress": "fd00:101:fd::22"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solcp01"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solcp02-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101012
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101012
-      "peerAddress": "169.254.101.24"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101012
-      "peerAddress": "fd00:101:fd::24"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solcp02"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solcp03-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101013
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101013
-      "peerAddress": "169.254.101.26"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101013
-      "peerAddress": "fd00:101:fd::26"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solcp03"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solwk01-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101021
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101021
-      "peerAddress": "169.254.101.42"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101021
-      "peerAddress": "fd00:101:fd::42"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solwk01"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solwk02-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101022
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101022
-      "peerAddress": "169.254.101.44"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101022
-      "peerAddress": "fd00:101:fd::44"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solwk02"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "solwk03-bgp"
-  "namespace": "kube-system"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101023
-    "name": "frr-veth"
-    "peers":
-    - "name": "frr-ipv4"
-      "peerASN": 4210101023
-      "peerAddress": "169.254.101.46"
-      "peerConfigRef":
-        "name": "frr-peer-ipv4"
-    - "name": "frr-ipv6"
-      "peerASN": 4210101023
-      "peerAddress": "fd00:101:fd::46"
-      "peerConfigRef":
-        "name": "frr-peer-ipv6"
-  "nodeSelector":
-    "matchLabels":
-      "kubernetes.io/hostname": "solwk03"
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cluster-bgp
+  namespace: kube-system
+spec:
+  bgpInstances:
+    - name: frr-veth
+      localASN: 4220101000
+      peers:
+        - name: frr-ipv4
+          peerASN: 4210101000
+          peerAddress: 169.254.101.1
+          peerConfigRef:
+            name: frr-peer-ipv4
+        - name: frr-ipv6
+          peerASN: 4210101000
+          peerAddress: fd00:101:fd::1
+          peerConfigRef:
+            name: frr-peer-ipv6

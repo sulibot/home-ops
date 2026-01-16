@@ -12,9 +12,9 @@ spec:
   gatewayClassName: cilium
   addresses:
     - type: IPAddress
-      value: 10.101.240.11
+      value: 10.101.250.11
     - type: IPAddress
-      value: fd00:101:240::11
+      value: fd00:101:250::11
   infrastructure:
     labels:
       # Workaround for Cilium bug where Gateway LoadBalancer IPs aren't advertised
@@ -75,7 +75,6 @@ spec:
 #                port: 443
 #      ipAddresses:
 #        - 10.10.0.140  # Same IP as HTTPS listener for consistency
-
 
 
 

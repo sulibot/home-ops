@@ -6,8 +6,8 @@
 #
 # IP Allocation Strategy for cluster-101 (per authoritative scheme):
 #   VM Data Plane:   10.101.0.0/24   (fd00:101::/64) - Nodes use .11-.23
-#   Pod CIDR:        10.101.244.0/22 (fd00:101:244::/60)
-#   LoadBalancer:    10.101.240.0/24 (fd00:101:240::/112)
+#   Pod CIDR:        10.101.224.0/20 (fd00:101:224::/60)
+#   LoadBalancer:    10.101.250.0/24 (fd00:101:250::/112)
 
 ---
 # Dual-stack pool for general LoadBalancer services
@@ -20,9 +20,9 @@ metadata:
 spec:
   blocks:
     # IPv4 blocks
-    - cidr: 10.101.250.0/24  # 10.101.240.0-254 (LoadBalancer VIP Pool - high-range reserved)
+    - cidr: 10.101.250.0/24  # 10.101.250.0-254 (LoadBalancer VIP Pool - high-range reserved)
     # IPv6 blocks
-    - cidr: fd00:101:250::/112  # fd00:101:240:: (LoadBalancer VIP Pool - 65,536 IPs)
+    - cidr: fd00:101:250::/112  # fd00:101:250:: (LoadBalancer VIP Pool - 65,536 IPs)
 
 ---
 # Optional: Dedicated pool for ingress controllers

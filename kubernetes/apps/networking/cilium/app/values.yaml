@@ -44,8 +44,8 @@ endpointRoutes:
   enabled: false
 
 # Pod CIDRs for cluster-101
-ipv4NativeRoutingCIDR: 10.101.240.0/20
-ipv6NativeRoutingCIDR: fd00:101:244::/60
+ipv4NativeRoutingCIDR: 10.101.224.0/20
+ipv6NativeRoutingCIDR: fd00:101:224::/60
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
