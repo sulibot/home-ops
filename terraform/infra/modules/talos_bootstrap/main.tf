@@ -151,3 +151,31 @@ resource "null_resource" "sops_age_secret" {
     flux_bootstrap_git.this
   ]
 }
+
+# Run post-bootstrap operations (HelmRelease fix, Kopia restore)
+resource "null_resource" "post_bootstrap" {
+  count = var.flux_git_repository != "" && var.repo_root != "" ? 1 : 0
+
+  triggers = {
+    sops_secret_created = try(null_resource.sops_age_secret[0].id, "")
+  }
+
+  provisioner "local-exec" {
+    working_dir = var.repo_root
+    command = <<-EOT
+      # Create temp kubeconfig for post-bootstrap script
+      KUBECONFIG_FILE=$(mktemp)
+      echo '${base64encode(talos_cluster_kubeconfig.cluster.kubeconfig_raw)}' | base64 -d > "$KUBECONFIG_FILE"
+
+      # Run post-bootstrap script
+      KUBECONFIG="$KUBECONFIG_FILE" ./scripts/post-bootstrap.sh
+
+      # Cleanup
+      rm -f "$KUBECONFIG_FILE"
+    EOT
+  }
+
+  depends_on = [
+    null_resource.sops_age_secret
+  ]
+}
