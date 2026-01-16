@@ -5,7 +5,8 @@ kind: Kustomization
 resources:
   - ./externalsecret.yaml
   - ./kopia-config-pvc.yaml
-  # kopia-repository-pvc.yaml excluded - managed manually via reclaim script
+  - ./kopia-repository-pv.yaml  # Re-attach existing 200GB Kopia repository
+  - ./kopia-repository-pvc.yaml
   - ./kopia-repository-subvolume-secret.yaml
   - ./kopia-init-job.yaml
   - ./helmrelease.yaml
