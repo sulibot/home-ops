@@ -148,6 +148,6 @@ resource "null_resource" "sops_age_secret" {
   }
 
   depends_on = [
-    talos_cluster_kubeconfig.cluster
+    flux_bootstrap_git.this
   ]
 }
