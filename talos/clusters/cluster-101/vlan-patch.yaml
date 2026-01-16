@@ -1,0 +1,10 @@
+machine:
+  network:
+    interfaces:
+      - interface: ens19
+        mtu: 1500
+        vlans:
+          - vlanId: 30
+            mtu: 1500
+          - vlanId: 31
+            mtu: 1500
