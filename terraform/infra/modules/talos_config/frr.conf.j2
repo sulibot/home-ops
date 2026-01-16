@@ -76,9 +76,6 @@ router bgp ${local_asn}
   neighbor CILIUMv4 activate
   neighbor fd00:${cluster_id}::fffe activate
   neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v4 in
-%{ if advertise_loopbacks ~}
-  neighbor fd00:${cluster_id}::fffe route-map ADVERTISE-LOOPBACKS out
-%{ endif ~}
  exit-address-family
  !
  address-family ipv6 unicast
@@ -88,9 +85,6 @@ router bgp ${local_asn}
   neighbor CILIUMv6 activate
   neighbor fd00:${cluster_id}::fffe activate
   neighbor fd00:${cluster_id}::fffe route-map IMPORT-DEFAULT-v6 in
-%{ if advertise_loopbacks ~}
-  neighbor fd00:${cluster_id}::fffe route-map ADVERTISE-LOOPBACKS-V6 out
-%{ endif ~}
  exit-address-family
 exit
 !

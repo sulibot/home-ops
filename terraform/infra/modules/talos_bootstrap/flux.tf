@@ -26,6 +26,7 @@ resource "flux_bootstrap_git" "this" {
 
   # Depends on kubeconfig being available
   depends_on = [
-    talos_cluster_kubeconfig.cluster
+    talos_cluster_kubeconfig.cluster,
+    null_resource.sops_age_secret
   ]
 }
