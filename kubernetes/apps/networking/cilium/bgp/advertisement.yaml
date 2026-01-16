@@ -32,3 +32,6 @@ spec:
       service:
         addresses:
           - LoadBalancerIP
+      selector:
+        matchLabels:
+          advertise: loadbalancer
