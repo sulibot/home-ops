@@ -13,16 +13,23 @@ spec:
                 kind: HelmRepository
                 name: ceph-csi
                 namespace: flux-system
-    interval: 1h
+    interval: 10m  # Shorter interval for faster recovery
     timeout: 10m
+    maxHistory: 3
     install:
+        crds: CreateReplace
         remediation:
-            retries: 3  # Retry up to 3 times if install fails
+            retries: 5  # More retries for install
             remediateLastFailure: true  # Uninstall and retry on failure
+        timeout: 10m
     upgrade:
+        crds: CreateReplace
+        cleanupOnFail: true
         remediation:
-            retries: 3  # Retry up to 3 times if upgrade fails
+            retries: 5  # More retries for upgrade
             remediateLastFailure: true  # Rollback and retry on failure
+            strategy: rollback
+        timeout: 10m
     values:
         externallyManagedConfigmap: true
         csiConfig:
