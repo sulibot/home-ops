@@ -6,6 +6,8 @@ metadata:
   name: apps
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: flux-system
   interval: 10m
   retryInterval: 30s  # Retry every 30 seconds on failure
   timeout: 5m         # Fail after 5 minutes of retries
@@ -19,23 +21,3 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
-  # Wait for Flux controllers to be healthy before creating HelmReleases
-  # This prevents the observedGeneration: -1 race condition where HelmReleases
-  # are created before helm-controller has initialized its cache
-  healthChecks:
-    - apiVersion: v1
-      kind: Secret
-      name: sops-age
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: helm-controller
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: kustomize-controller
-      namespace: flux-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: source-controller
-      namespace: flux-system
