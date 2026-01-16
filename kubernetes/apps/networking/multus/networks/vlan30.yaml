@@ -9,9 +9,8 @@ spec:
     {
       "cniVersion": "0.3.1",
       "type": "macvlan",
-      "master": "ens19",
+      "master": "ens19.30",
       "mode": "bridge",
-      "vlan": 30,
       "ipam": {
         "type": "static"
       }
