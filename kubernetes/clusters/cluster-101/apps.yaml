@@ -19,9 +19,23 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
-  # Add health check to ensure secret exists before reconciling
+  # Wait for Flux controllers to be healthy before creating HelmReleases
+  # This prevents the observedGeneration: -1 race condition where HelmReleases
+  # are created before helm-controller has initialized its cache
   healthChecks:
     - apiVersion: v1
       kind: Secret
       name: sops-age
+      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: helm-controller
+      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: kustomize-controller
+      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: source-controller
       namespace: flux-system
