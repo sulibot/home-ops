@@ -19,13 +19,6 @@ spec:
   chartRef:
     kind: OCIRepository
     name: emby
-  install:
-    remediation:
-      retries: -1
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      retries: 3
   values:
     controllers:
       emby:
