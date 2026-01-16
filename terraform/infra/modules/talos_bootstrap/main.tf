@@ -247,6 +247,7 @@ resource "null_resource" "fix_stuck_helmreleases" {
   }
 
   provisioner "local-exec" {
+    working_dir = var.repo_root
     command = <<-EOT
       echo "=========================================="
       echo "🔧 Checking for stuck HelmReleases"

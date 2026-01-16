@@ -66,3 +66,9 @@ variable "sops_age_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "repo_root" {
+  description = "Repository root path for resolving relative paths in scripts"
+  type        = string
+  default     = ""
+}

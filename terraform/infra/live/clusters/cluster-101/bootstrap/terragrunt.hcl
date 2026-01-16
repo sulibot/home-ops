@@ -106,4 +106,7 @@ inputs = {
 
   # SOPS AGE key for decrypting secrets (read from file to keep it out of state)
   sops_age_key         = get_env("SOPS_AGE_KEY_FILE", "") != "" ? file(get_env("SOPS_AGE_KEY_FILE")) : ""
+
+  # Repository root for resolving relative paths in bootstrap scripts
+  repo_root            = get_repo_root()
 }
