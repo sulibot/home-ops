@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helm-controller
+  namespace: flux-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: manager
+          args:
+            - --events-addr=http://notification-controller.flux-system.svc.cluster.local/
+            - --watch-all-namespaces
+            - --log-level=info
+            - --log-encoding=json
+            - --enable-leader-election
+            # Tuning parameters for high-concurrency bootstrap
+            - --concurrent=20        # Increase from 4 to 20
+            - --kube-api-qps=100     # Increase from 20 to 100
+            - --kube-api-burst=300   # Increase from 50 to 300
+          resources:
+            limits:
+              memory: 1Gi           # Increase memory limit
+            requests:
+              cpu: 100m
+              memory: 128Mi
