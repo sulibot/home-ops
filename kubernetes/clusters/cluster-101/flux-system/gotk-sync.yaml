@@ -25,3 +25,19 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # Wait for Flux controllers to be fully ready before marking flux-system as Ready
+  # This gives helm-controller time to initialize its cache and establish watches
+  # Prevents the observedGeneration: -1 race condition
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: helm-controller
+      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: kustomize-controller
+      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: source-controller
+      namespace: flux-system
