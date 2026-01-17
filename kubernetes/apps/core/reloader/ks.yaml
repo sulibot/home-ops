@@ -10,6 +10,8 @@ metadata:
     component: core-service
     critical: "true"
 spec:
+  dependsOn:
+    - name: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/core/reloader/app

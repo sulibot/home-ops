@@ -13,6 +13,7 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
+    - name: flux-system
     - name: gateway-api-crds
       namespace: flux-system
     - name: cilium-helm-repo

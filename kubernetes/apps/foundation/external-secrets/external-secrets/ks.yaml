@@ -10,6 +10,8 @@ metadata:
     component: secrets
     critical: "true"
 spec:
+  dependsOn:
+    - name: flux-system
   interval: 15m
   path: ./kubernetes/apps/foundation/external-secrets/external-secrets/app
   prune: true
