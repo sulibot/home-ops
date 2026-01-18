@@ -52,9 +52,9 @@ spec:
           - name: autopath
             parameters: "@kubernetes"
           - name: forward
-            parameters: . fd00:0:0:ffff::53 10.255.0.53
+            parameters: . /etc/resolv.conf
             configBlock: |-
-              policy sequential
+              max_concurrent 1000
           - name: cache
             configBlock: |-
               prefetch 20

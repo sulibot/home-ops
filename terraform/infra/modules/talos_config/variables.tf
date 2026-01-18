@@ -100,6 +100,16 @@ variable "service_cidr_ipv4" {
   type        = string
 }
 
+variable "loadbalancers_ipv4" {
+  description = "IPv4 CIDR for LoadBalancer IP pool"
+  type        = string
+}
+
+variable "loadbalancers_ipv6" {
+  description = "IPv6 CIDR for LoadBalancer IP pool"
+  type        = string
+}
+
 variable "dns_servers" {
   description = "DNS servers for cluster nodes"
   type        = list(string)
@@ -141,7 +151,7 @@ variable "region" {
 
 # BGP Configuration Variables
 variable "bgp_asn_base" {
-  description = "Base ASN for node BGP routing. Final ASN = base + (cluster_id * 1000) + node_suffix"
+  description = "Base ASN for cluster BGP routing. Final ASN = base + (cluster_id * 1000)"
   type        = number
   # Default removed - should be provided by terragrunt from centralized config
   validation {

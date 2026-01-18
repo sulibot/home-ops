@@ -30,7 +30,7 @@ module "talos_config" {
 **Default:** `4210000000`
 **Validation:** Must be valid private or public ASN (64512-4294967295)
 
-**Formula:** Final node ASN = `bgp_asn_base + (cluster_id × 1000) + node_suffix`
+**Formula:** Final cluster ASN = `bgp_asn_base + (cluster_id × 1000)`
 
 **Examples:**
 ```hcl
@@ -45,11 +45,9 @@ bgp_asn_base = 65000
 ```
 
 **ASN Assignment Example (cluster_id=101):**
-| Node | Suffix | Calculated ASN |
-|------|--------|----------------|
-| solcp01 | 11 | 4210000000 + (101 × 1000) + 11 = **4210101011** |
-| solcp02 | 12 | 4210000000 + (101 × 1000) + 12 = **4210101012** |
-| solwk01 | 21 | 4210000000 + (101 × 1000) + 21 = **4210101021** |
+| Nodes | Calculated ASN |
+|------|----------------|
+| All cluster nodes | 4210000000 + (101 × 1000) = **4210101000** |
 
 ### `bgp_remote_asn`
 
@@ -238,7 +236,7 @@ module "talos_config" {
   # Node ASNs will be:
   # solcp01: 64512 + (1 × 1000) + 11 = 65523
   # solcp02: 64512 + (1 × 1000) + 12 = 65524
-  # WARNING: May exceed 65535 with high cluster_id or node_suffix!
+  # WARNING: May exceed 65535 with high cluster_id!
 
   # ... other variables ...
 }
@@ -276,9 +274,12 @@ Output shows first 800 characters of each node's `config.yaml`:
 bgp_config_preview = {
   "solcp01" = <<-EOT
   bgp:
-    cilium:
-      local_asn: 4210101011
-      remote_asn: 4220101011
+    upstream:
+      local_asn: 4210101000
+      router_id: 10.255.101.11
+    kernel:
+      ipv4:
+        enabled: true
   ...
   EOT
 }
@@ -297,7 +298,7 @@ terragrunt output -json | jq -r '.bgp_config_preview.value.solcp01'
 **Before:**
 ```hcl
 # ASNs were hardcoded in template
-local_asn = 4210000000 + (var.cluster_id * 1000) + node.node_suffix
+local_asn = 4210000000 + (var.cluster_id * 1000)
 remote_asn = 4200001000
 ```
 

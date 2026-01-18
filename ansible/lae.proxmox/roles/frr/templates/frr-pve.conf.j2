@@ -38,6 +38,10 @@ ip prefix-list PL_TENANT_V4 seq 10 permit 10.100.0.0/14 ge 24 le 32
 ipv6 prefix-list PL_TENANT_V6 seq {{ loop.index * 5 }} permit fd00:{{ id }}::/64 le 128
 {% endfor %}
 !
+! Cluster pod + LB pools (explicit ranges)
+ipv6 prefix-list PL_TENANT_V6 seq 25 permit fd00:101:224::/60 le 128
+ipv6 prefix-list PL_TENANT_V6 seq 30 permit fd00:101:250::/112 le 128
+!
 ! GUA Tenant Ranges (AT&T Fiber Residential Block)
 ! Permitting broader block to handle dynamic PD rotation
 ipv6 prefix-list PL_TENANT_V6 seq 100 permit 2600:1700::/28 le 128

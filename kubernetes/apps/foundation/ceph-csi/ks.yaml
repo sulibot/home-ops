@@ -11,9 +11,7 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
-    - name: snapshot-controller-crds
-      namespace: flux-system
-    - name: snapshot-controller
+    - name: flux-system
       namespace: flux-system
   interval: 15m
   retryInterval: 1m  # Increased retry interval to give helm-controller more time

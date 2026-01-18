@@ -7,4 +7,3 @@ resources:
   - ../../../apps
 
 patches:
-  - path: cilium-bgp-path-patch.yaml

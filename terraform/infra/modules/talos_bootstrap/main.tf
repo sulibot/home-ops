@@ -97,85 +97,17 @@ resource "talos_cluster_kubeconfig" "cluster" {
   depends_on = [null_resource.wait_for_etcd]
 }
 
-# Create SOPS AGE secret for Flux to decrypt secrets
-resource "null_resource" "sops_age_secret" {
-  count = var.flux_git_repository != "" && var.sops_age_key != "" ? 1 : 0
+# Note: SOPS AGE secret creation moved to flux-instance module
+# This keeps the bootstrap module focused on Talos cluster bootstrap only
 
-  triggers = {
-    kubeconfig = sha256(talos_cluster_kubeconfig.cluster.kubeconfig_raw)
-  }
+# Write kubeconfig to file for use by downstream modules
+resource "local_sensitive_file" "kubeconfig" {
+  content         = talos_cluster_kubeconfig.cluster.kubeconfig_raw
+  filename        = "${var.repo_root}/talos/clusters/cluster-${var.cluster_id}/kubeconfig"
+  file_permission = "0600"
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      # Create temp kubeconfig for kubectl
-      KUBECONFIG_FILE=$(mktemp)
-      echo '${base64encode(talos_cluster_kubeconfig.cluster.kubeconfig_raw)}' | base64 -d > "$KUBECONFIG_FILE"
-      export KUBECONFIG="$KUBECONFIG_FILE"
-
-      echo "🔑 Creating SOPS AGE secret in flux-system namespace..."
-
-      # Create namespace if it doesn't exist (required before Flux bootstrap)
-      kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
-
-      # Create or update the secret
-      kubectl create secret generic sops-age \
-        --namespace=flux-system \
-        --from-literal=age.agekey="${var.sops_age_key}" \
-        --dry-run=client -o yaml | kubectl apply -f -
-
-      echo "✓ SOPS AGE secret created"
-
-      # IMPORTANT: Wait for secret to be actually readable
-      # This ensures Flux controllers can access it before Kustomizations reconcile
-      echo "⏱ Verifying secret is readable..."
-      RETRIES=30
-      ATTEMPT=0
-      while [ $ATTEMPT -lt $RETRIES ]; do
-        if kubectl get secret sops-age -n flux-system >/dev/null 2>&1 && \
-           kubectl get secret sops-age -n flux-system -o jsonpath='{.data.age\.agekey}' | base64 -d | grep -q "AGE-SECRET-KEY"; then
-          echo "✓ SOPS AGE secret is readable and valid"
-          exit 0
-        fi
-        ATTEMPT=$((ATTEMPT + 1))
-        sleep 1
-      done
-
-      echo "⚠ Warning: Secret verification timed out, but proceeding anyway"
-
-      rm -f "$KUBECONFIG_FILE"
-      exit 0
-    EOT
-  }
-
-  depends_on = [
-    talos_cluster_kubeconfig.cluster
-  ]
+  depends_on = [talos_cluster_kubeconfig.cluster]
 }
 
-# Run post-bootstrap operations (HelmRelease fix, Kopia restore)
-resource "null_resource" "post_bootstrap" {
-  count = var.flux_git_repository != "" && var.repo_root != "" ? 1 : 0
-
-  triggers = {
-    sops_secret_created = try(null_resource.sops_age_secret[0].id, "")
-  }
-
-  provisioner "local-exec" {
-    working_dir = var.repo_root
-    command = <<-EOT
-      # Create temp kubeconfig for post-bootstrap script
-      KUBECONFIG_FILE=$(mktemp)
-      echo '${base64encode(talos_cluster_kubeconfig.cluster.kubeconfig_raw)}' | base64 -d > "$KUBECONFIG_FILE"
-
-      # Run post-bootstrap script
-      KUBECONFIG="$KUBECONFIG_FILE" ./scripts/post-bootstrap.sh
-
-      # Cleanup
-      rm -f "$KUBECONFIG_FILE"
-    EOT
-  }
-
-  depends_on = [
-    null_resource.sops_age_secret
-  ]
-}
+# Note: Post-bootstrap operations moved to flux-instance module
+# This is where HelmRelease fix and Kopia restore should run after Flux is ready

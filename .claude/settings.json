@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git stash:*)",
-      "Bash(flux bootstrap git --help:*)"
+      "Bash(flux bootstrap git --help:*)",
+      "Bash(grep:*)"
     ]
   }
 }

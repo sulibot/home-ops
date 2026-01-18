@@ -4,6 +4,17 @@ output "kubeconfig" {
   sensitive   = true
 }
 
+output "kubeconfig_path" {
+  description = "Path to kubeconfig file"
+  value       = local_sensitive_file.kubeconfig.filename
+}
+
+output "cluster_ready" {
+  description = "Indicates cluster is bootstrapped and ready for Flux"
+  value       = true
+  depends_on  = [null_resource.wait_for_etcd, local_sensitive_file.kubeconfig]
+}
+
 output "post_bootstrap_instructions" {
   description = "Manual steps required after cluster bootstrap"
   value = <<-EOT

@@ -8,5 +8,4 @@ namespace: kube-system
 # This overlay exists for consistency with cluster-102 structure
 resources:
   - ../../app
-  - ../../bgp
   - ../../ippool

@@ -197,21 +197,6 @@ terraform {
     run_on_error = false
   }
 
-  # Generate Cilium BGP cluster config from Terraform outputs
-  after_hook "export_cilium_bgp_cluster_config" {
-    commands     = ["apply"]
-    execute      = ["bash", "-c", <<-EOT
-      set -e
-      cd ${get_terragrunt_dir()}
-
-      terragrunt output -raw cilium_bgp_cluster_config_yaml > \
-        ${get_repo_root()}/kubernetes/apps/networking/cilium/bgp/cluster-config.yaml
-
-      echo "✓ Exported Cilium BGP cluster config"
-    EOT
-    ]
-    run_on_error = false
-  }
 }
 
 locals {
@@ -263,6 +248,8 @@ inputs = {
   pod_cidr_ipv4     = dependency.nodes.outputs.k8s_network_config.pods_ipv4
   service_cidr_ipv6 = dependency.nodes.outputs.k8s_network_config.services_ipv6
   service_cidr_ipv4 = dependency.nodes.outputs.k8s_network_config.services_ipv4
+  loadbalancers_ipv4 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4
+  loadbalancers_ipv6 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6
   # Use custom installer with FRR extension from shared artifacts
   installer_image = dependency.custom_installer.outputs.installer_image
 

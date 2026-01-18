@@ -3,8 +3,49 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # Namespaces
   - ./namespace.yaml
-  - ./app/ks.yaml
-  - ./cephfs/ks.yaml
-  - ./rbd/ks.yaml
-  - ./shared-storage/ks.yaml
+  - ./snapshot-controller/namespace.yaml
+
+  # Snapshot Controller CRDs (must be applied first)
+  - ./snapshot-crds/volumesnapshots.yaml
+  - ./snapshot-crds/volumesnapshotclasses.yaml
+  - ./snapshot-crds/volumesnapshotcontents.yaml
+
+  # Snapshot Controller
+  - ./snapshot-controller/rbac.yaml
+  - ./snapshot-controller/deployment.yaml
+
+  # Ceph CSI Helm Repository
+  - ./helm-repo/helmrepository.yaml
+
+  # Ceph CSI Shared Secret & Config (namespace: ceph-csi)
+  - ./app/csi-ceph-admin-secret.yaml
+  - ./app/ceph-csi-config.yaml
+
+  # CephFS Driver (namespace: ceph-csi)
+  - ./cephfs/app/helmrelease.yaml
+  - ./cephfs/app/csi-cephfs-config-sc.yaml
+  - ./cephfs/app/csi-cephfs-backups-sc.yaml
+  - ./cephfs/app/csi-cephfs-config-snapclass.yaml
+  - ./cephfs/app/csi-cephfs-backups-snapclass.yaml
+
+  # RBD Driver (namespace: ceph-csi)
+  - ./rbd/app/helmrelease.yaml
+  - ./rbd/app/csi-rbd-rbd-vm-sc.yaml
+  - ./rbd/app/csi-rbd-rbd-vm-sc-retain.yaml
+  - ./rbd/app/csi-rbd-rbd-backups-sc.yaml
+  - ./rbd/app/csi-rbd-rbd-backups-sc-retain.yaml
+  - ./rbd/app/csi-rbd-rbd-vm-snapclass.yaml
+  - ./rbd/app/csi-rbd-rbd-backups-snapclass.yaml
+
+  # Shared Storage (pre-created PVs/PVCs)
+  - ./shared-storage/app/csi-cephfs-content-pv-retain.yaml
+  - ./shared-storage/app/csi-cephfs-content-pvc.yaml
+
+patches:
+  # CephFS Provisioner Deployment Patch
+  - path: ./cephfs/app/deployment-patch.yaml
+    target:
+      kind: Deployment
+      name: ceph-csi-cephfs-provisioner

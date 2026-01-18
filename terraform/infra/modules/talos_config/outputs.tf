@@ -78,20 +78,14 @@ output "bgp_config_preview" {
 }
 
 output "bgp_asn_assignments" {
-  description = "BGP ASN assignments per node (for verification)"
+  description = "BGP ASN assignments per node (cluster ASN + node router-id)"
   value = {
     for node_name, node in local.all_nodes :
     node_name => {
-      local_asn  = var.bgp_asn_base + (var.cluster_id * 1000) + node.node_suffix
+      local_asn  = local.frr_asn_cluster
       remote_asn = var.bgp_remote_asn
       router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
     }
   }
   sensitive = false
-}
-
-output "cilium_bgp_cluster_config_yaml" {
-  description = "Generated CiliumBGPClusterConfig manifests for this cluster"
-  value       = local.cilium_bgp_cluster_config_yaml
-  sensitive   = false
 }

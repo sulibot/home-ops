@@ -7,13 +7,5 @@ resources:
   - ./external-secrets/external-secrets/ks.yaml
   - ./external-secrets/onepassword/ks.yaml
 
-  # Ceph CSI Storage
-  - ./ceph-csi/helm-repo/ks.yaml
+  # Ceph CSI Storage (includes snapshot-controller and CRDs)
   - ./ceph-csi/ks.yaml
-  - ./ceph-csi/app/ks.yaml
-  - ./ceph-csi/cephfs/ks.yaml
-  - ./ceph-csi/rbd/ks.yaml
-  - ./ceph-csi/shared-storage/ks.yaml
-
-  # Snapshot Controller
-  - ./snapshot-controller/ks.yaml

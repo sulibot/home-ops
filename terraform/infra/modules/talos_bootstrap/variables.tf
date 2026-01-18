@@ -41,31 +41,7 @@ variable "cilium_values" {
   default     = {}
 }
 
-variable "flux_git_repository" {
-  description = "Git repository URL for Flux bootstrap (empty to skip Flux)"
-  type        = string
-  default     = ""
-}
-
-variable "flux_git_branch" {
-  description = "Git branch for Flux bootstrap"
-  type        = string
-  default     = "main"
-}
-
-variable "flux_github_token" {
-  description = "GitHub Personal Access Token for Flux Git authentication"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "sops_age_key" {
-  description = "SOPS AGE private key for decrypting secrets (read from SOPS_AGE_KEY_FILE env var, empty to skip)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
+# Note: Flux-related variables removed - Flux is now deployed via flux-operator and flux-instance modules
 
 variable "repo_root" {
   description = "Repository root path for resolving relative paths in scripts"

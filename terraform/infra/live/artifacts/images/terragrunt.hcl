@@ -8,7 +8,7 @@ include "root" {
 }
 
 # NOTE: Extension build step exists at ../extension/ but is optional
-# The FRR extension is pre-built and available at ghcr.io/sulibot/frr-talos-extension:v1.0.19
+# The FRR extension is pre-built and available at ghcr.io/sulibot/frr-talos-extension:v1.0.30
 # Only rebuild extension when the FRR extension code itself changes
 
 terraform {

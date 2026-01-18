@@ -67,9 +67,9 @@ bpf:
 ipMasqAgent:
   enabled: false
 
-# BGP Control Plane for VIP and LoadBalancer advertisement
+# BGP Control Plane disabled; FRR redistributes kernel routes upstream
 bgpControlPlane:
-  enabled: true
+  enabled: false
 
 # LoadBalancer IP Address Management (IPAM)
 # Define pools of IPs that can be assigned to LoadBalancer services

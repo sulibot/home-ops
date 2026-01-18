@@ -11,13 +11,8 @@ locals {
     name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
   }
 
-  # Cluster-wide BGP/veth settings (shared across nodes)
-  frr_asn_cluster    = var.bgp_asn_base + var.cluster_id * 1000
-  cilium_asn_cluster = 4220000000 + var.cluster_id * 1000
-  frr_veth_ipv4      = format("169.254.%d.1", var.cluster_id)
-  cilium_veth_ipv4   = format("169.254.%d.0", var.cluster_id)
-  frr_veth_ipv6      = format("fd00:%d:fd::1", var.cluster_id)
-  cilium_veth_ipv6   = format("fd00:%d:fd::2", var.cluster_id)
+  # Cluster-wide BGP settings (shared across nodes)
+  frr_asn_cluster = var.bgp_asn_base + var.cluster_id * 1000
 
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
@@ -26,21 +21,11 @@ locals {
       node_suffix  = v.ip_suffix
       # Centralize ASN calculation to avoid duplication and ensure consistency
       frr_asn      = local.frr_asn_cluster
-      cilium_asn   = local.cilium_asn_cluster
-      frr_veth_ipv4    = local.frr_veth_ipv4
-      cilium_veth_ipv4 = local.cilium_veth_ipv4
-      frr_veth_ipv6    = local.frr_veth_ipv6
-      cilium_veth_ipv6 = local.cilium_veth_ipv6
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
       frr_asn      = local.frr_asn_cluster
-      cilium_asn   = local.cilium_asn_cluster
-      frr_veth_ipv4    = local.frr_veth_ipv4
-      cilium_veth_ipv4 = local.cilium_veth_ipv4
-      frr_veth_ipv6    = local.frr_veth_ipv6
-      cilium_veth_ipv6 = local.cilium_veth_ipv6
     }) }
   )
 
@@ -327,28 +312,11 @@ locals {
   frr_config_yamls = {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
-        cilium = {
-          local_asn  = node.frr_asn
-          remote_asn = node.cilium_asn
-          namespace  = "cilium"
-          peering = {
-            ipv4 = {
-              local  = node.frr_veth_ipv4
-              remote = node.cilium_veth_ipv4
-              prefix = 31
-            }
-            ipv6 = {
-              local  = node.frr_veth_ipv6
-              remote = node.cilium_veth_ipv6
-              prefix = 126
-            }
-          }
-        }
         upstream = {
-          local_asn          = node.frr_asn
-          router_id          = "10.255.${var.cluster_id}.${node.node_suffix}"
-          router_id_v6       = node.public_ipv6
-          update_source      = node.public_ipv6
+          local_asn           = node.frr_asn
+          router_id           = "10.255.${var.cluster_id}.${node.node_suffix}"
+          router_id_v6        = node.public_ipv6
+          update_source       = node.public_ipv6
           advertise_loopbacks = var.bgp_advertise_loopbacks
           peers = [
             {
@@ -358,21 +326,43 @@ locals {
               update_source               = node.public_ipv6
               address_family              = "ipv6"
               capability_extended_nexthop = true
-              route_map_in                = "IMPORT-DEFAULT-v6"
+              route_map_in_v4             = "IMPORT-DEFAULT-v4"
+              route_map_in_v6             = "IMPORT-DEFAULT-v6"
             }
           ]
         }
-      }
-      network = {
-        interface_mtu = 1500
-        veth_names = {
-          frr_side    = "veth-frr"
-          cilium_side = "veth-cilium"
+        kernel = {
+          ipv4 = {
+            enabled   = true
+            route_map = "EXPORT-KERNEL-v4"
+          }
+          ipv6 = {
+            enabled   = true
+            route_map = "EXPORT-KERNEL-v6"
+          }
         }
       }
       route_filters = {
         prefix_lists = {
           ipv4 = {
+            "CILIUM-PODS-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.pod_cidr_ipv4
+                }
+              ]
+            }
+            "CILIUM-LB-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.loadbalancers_ipv4
+                }
+              ]
+            }
             "DEFAULT-ONLY-v4" = {
               rules = [
                 {
@@ -384,6 +374,24 @@ locals {
             }
           }
           ipv6 = {
+            "CILIUM-PODS-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.pod_cidr_ipv6
+                }
+              ]
+            }
+            "CILIUM-LB-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.loadbalancers_ipv6
+                }
+              ]
+            }
             "DEFAULT-ONLY-v6" = {
               rules = [
                 {
@@ -396,6 +404,44 @@ locals {
           }
         }
         route_maps = {
+          "EXPORT-KERNEL-v4" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-PODS-v4"
+                }
+              },
+              {
+                seq    = 20
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-LB-v4"
+                }
+              }
+            ]
+          }
+          "EXPORT-KERNEL-v6" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-PODS-v6"
+                }
+              },
+              {
+                seq    = 20
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-LB-v6"
+                }
+              }
+            ]
+          }
           "IMPORT-DEFAULT-v4" = {
             rules = [
               {
@@ -469,7 +515,6 @@ ${yamlencode(merge(
           "topology.kubernetes.io/region" = var.region
           "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
           "bgp.frr.asn"                   = tostring(local.frr_asn_cluster)
-          "bgp.cilium.asn"                = tostring(local.cilium_asn_cluster)
         },
         # Add GPU label if GPU passthrough is enabled for this node
         try(node.gpu_passthrough.enabled, false) ? {
@@ -564,194 +609,6 @@ ${local.extension_service_configs[node_name]}
 EOT
     }
   }
-}
-
-# Render Cilium BGP cluster config from computed node data (generated artifact)
-locals {
-  # CiliumBGPPeerConfig resources (shared by all nodes)
-  cilium_bgp_peer_config_docs = [
-    {
-      apiVersion = "cilium.io/v2alpha1"
-      kind       = "CiliumBGPPeerConfig"
-      metadata = {
-        name      = "frr-peer-ipv4"
-        namespace = "kube-system"
-      }
-      spec = {
-        authSecretRef = null
-        ebgpMultihop  = 2
-        families = [
-          {
-            afi  = "ipv4"
-            safi = "unicast"
-            advertisements = {
-              matchLabels = {
-                advertise = "bgp-v4"
-              }
-            }
-          }
-        ]
-        gracefulRestart = {
-          enabled            = true
-          restartTimeSeconds = 120
-        }
-      }
-    },
-    {
-      apiVersion = "cilium.io/v2alpha1"
-      kind       = "CiliumBGPPeerConfig"
-      metadata = {
-        name      = "frr-peer-ipv6"
-        namespace = "kube-system"
-      }
-      spec = {
-        authSecretRef = null
-        ebgpMultihop  = 2
-        families = [
-          {
-            afi  = "ipv6"
-            safi = "unicast"
-            advertisements = {
-              matchLabels = {
-                advertise = "bgp-v6"
-              }
-            }
-          }
-        ]
-        gracefulRestart = {
-          enabled            = true
-          restartTimeSeconds = 120
-        }
-      }
-    }
-  ]
-
-  # CiliumBGPClusterConfig resources (single config applied to all nodes)
-  cilium_bgp_cluster_config_docs = [
-    {
-      apiVersion = "cilium.io/v2"
-      kind       = "CiliumBGPClusterConfig"
-      metadata = {
-        name      = "cluster-bgp"
-        namespace = "kube-system"
-      }
-      spec = {
-        bgpInstances = [
-          {
-            name     = "frr-veth"
-            localASN = local.cilium_asn_cluster
-            peers = [
-              {
-                name         = "frr-ipv4"
-                peerAddress  = local.cilium_veth_ipv4
-                peerASN      = local.frr_asn_cluster
-                peerConfigRef = {
-                  name = "frr-peer-ipv4"
-                }
-              },
-              {
-                name         = "frr-ipv6"
-                peerAddress  = local.cilium_veth_ipv6
-                peerASN      = local.frr_asn_cluster
-                peerConfigRef = {
-                  name = "frr-peer-ipv6"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  ]
-
-  # CiliumBGPAdvertisement resources (what to advertise to FRR)
-  cilium_bgp_advertisement_docs = [
-    {
-      apiVersion = "cilium.io/v2alpha1"
-      kind       = "CiliumBGPAdvertisement"
-      metadata = {
-        name      = "bgp-advertisements-v4"
-        namespace = "kube-system"
-        labels = {
-          advertise = "bgp-v4"
-        }
-      }
-      spec = {
-        advertisements = [
-          {
-            advertisementType = "PodCIDR"
-            attributes = {
-              communities = {
-                standard = ["65000:100"]
-              }
-            }
-          },
-          {
-            advertisementType = "Service"
-            service = {
-              addresses = ["LoadBalancerIP"]
-            }
-            selector = {
-              matchExpressions = [
-                {
-                  key      = "somekey"
-                  operator = "NotIn"
-                  values   = ["never-used-value"]
-                }
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      apiVersion = "cilium.io/v2alpha1"
-      kind       = "CiliumBGPAdvertisement"
-      metadata = {
-        name      = "bgp-advertisements-v6"
-        namespace = "kube-system"
-        labels = {
-          advertise = "bgp-v6"
-        }
-      }
-      spec = {
-        advertisements = [
-          {
-            advertisementType = "PodCIDR"
-            attributes = {
-              communities = {
-                standard = ["65000:100"]
-              }
-            }
-          },
-          {
-            advertisementType = "Service"
-            service = {
-              addresses = ["LoadBalancerIP"]
-            }
-            selector = {
-              matchExpressions = [
-                {
-                  key      = "somekey"
-                  operator = "NotIn"
-                  values   = ["never-used-value"]
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
-  ]
-
-  # Generate ONLY the cluster configs (peer configs and advertisements are manually maintained)
-  cilium_bgp_cluster_config_yaml = join("\n", [
-    "# Generated from terraform/infra/modules/talos_config. Do not edit by hand.",
-    "# Prerequisites:",
-    "#  1. Proxmox FRR must be configured (run ansible/lae.proxmox FRR playbook)",
-    "#  2. Peer configs and advertisements are in kubernetes/apps/networking/cilium/bgp/",
-    join("\n---\n", [for doc in local.cilium_bgp_cluster_config_docs : yamlencode(doc)])
-  ])
 }
 
 # Generate client configuration (talosconfig)

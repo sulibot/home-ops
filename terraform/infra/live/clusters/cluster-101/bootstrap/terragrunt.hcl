@@ -88,8 +88,6 @@ terraform {
 
 locals {
   cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
-  app_versions   = read_terragrunt_config(find_in_parent_folders("common/application-versions.hcl")).locals
-  secrets        = yamldecode(sops_decrypt_file("${get_repo_root()}/terraform/infra/live/common/secrets.sops.yaml"))
 }
 
 inputs = {
@@ -99,14 +97,8 @@ inputs = {
   control_plane_nodes  = dependency.talos_config.outputs.control_plane_ips
   cluster_endpoint     = dependency.talos_config.outputs.cluster_endpoint
 
-  # Flux GitOps configuration - from centralized config
-  flux_git_repository = local.app_versions.gitops.flux_git_repository
-  flux_git_branch     = local.app_versions.gitops.flux_git_branch
-  flux_github_token   = local.secrets.github_token
+  # Repository root for resolving relative paths (kubeconfig file location)
+  repo_root = get_repo_root()
 
-  # SOPS AGE key for decrypting secrets (read from file to keep it out of state)
-  sops_age_key         = get_env("SOPS_AGE_KEY_FILE", "") != "" ? file(get_env("SOPS_AGE_KEY_FILE")) : ""
-
-  # Repository root for resolving relative paths in bootstrap scripts
-  repo_root            = get_repo_root()
+  # Note: Flux configuration moved to flux-operator and flux-instance modules
 }

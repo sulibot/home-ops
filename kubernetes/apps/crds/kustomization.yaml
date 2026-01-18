@@ -4,4 +4,4 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./gateway-api-crds/ks.yaml
-  - ./snapshot-controller-crds/ks.yaml
+  # snapshot-controller-crds moved to ceph-csi kustomization

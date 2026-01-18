@@ -5,7 +5,6 @@ kind: Kustomization
 resources:
   - ./cilium/helm-repo/ks.yaml
   - ./cilium/ks.yaml
-  - ./cilium/bgp/ks.yaml
   - ./cilium/ippool/ks.yaml
   - ./cilium/gateway/ks.yaml
   - ./multus/ks.yaml
