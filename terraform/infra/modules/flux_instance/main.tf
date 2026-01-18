@@ -129,6 +129,11 @@ resource "null_resource" "wait_flux_controllers" {
 resource "null_resource" "suspend_flux_system" {
   depends_on = [null_resource.wait_flux_controllers]
 
+  # Trigger recreation when FluxInstance changes
+  triggers = {
+    flux_instance_id = kubernetes_manifest.flux_instance.object.metadata.uid
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
       set -e
@@ -159,6 +164,11 @@ resource "null_resource" "suspend_flux_system" {
 # Using kubectl apply instead of kubernetes_manifest to avoid CRD validation issues during plan
 resource "null_resource" "deploy_canary" {
   depends_on = [null_resource.suspend_flux_system]
+
+  # Trigger recreation when suspend_flux_system changes
+  triggers = {
+    suspend_id = null_resource.suspend_flux_system.id
+  }
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -225,6 +235,11 @@ EOF
 resource "null_resource" "wait_helm_cache_ready" {
   depends_on = [null_resource.deploy_canary]
 
+  # Trigger recreation when deploy_canary changes
+  triggers = {
+    canary_id = null_resource.deploy_canary.id
+  }
+
   provisioner "local-exec" {
     command = <<-EOT
       set -e
@@ -257,6 +272,11 @@ resource "null_resource" "wait_helm_cache_ready" {
 # Step 5: Resume flux-system and clean up canary (atomic operation)
 resource "null_resource" "resume_and_cleanup" {
   depends_on = [null_resource.wait_helm_cache_ready]
+
+  # Trigger recreation when wait_helm_cache_ready changes
+  triggers = {
+    wait_id = null_resource.wait_helm_cache_ready.id
+  }
 
   provisioner "local-exec" {
     command = <<-EOT
