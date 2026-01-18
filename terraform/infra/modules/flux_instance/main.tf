@@ -125,22 +125,154 @@ resource "null_resource" "wait_flux_controllers" {
   }
 }
 
-# Wait for helm-controller cache to be ready by checking actual HelmRelease processing
-# Instead of blind 45s sleep, we query direct state: observedGeneration != -1
-# This proves the controller cache is synced and processing resources
-resource "null_resource" "wait_helm_cache_ready" {
+# Step 1: Suspend flux-system to prevent apps from deploying before helm cache is ready
+resource "null_resource" "suspend_flux_system" {
   depends_on = [null_resource.wait_flux_controllers]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      echo "Waiting for helm-controller cache to be ready..."
+      echo "Suspending flux-system to prevent premature app deployment..."
 
-      # Wait for ANY HelmRelease to move past observedGeneration: -1
-      # Direct state query from Kubernetes API - not a timing assumption
-      timeout 90 bash -c 'until [ "$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease -A -o jsonpath='\''{range .items[*]}{.status.observedGeneration}{"\n"}{end}'\'' 2>/dev/null | grep -v "^-1$" | grep -v "^$" | wc -l)" -gt "0" ]; do echo "  ⏳ Waiting for HelmReleases to be processed by helm-controller..."; sleep 2; done'
+      # Wait for flux-system Kustomization to exist (created by FluxInstance)
+      timeout 30 bash -c '
+        until kubectl --kubeconfig="$KUBECONFIG" get kustomization flux-system -n flux-system >/dev/null 2>&1; do
+          echo "  ⏳ Waiting for flux-system Kustomization to be created..."
+          sleep 1
+        done
+      '
 
-      echo "✓ helm-controller cache is ready (HelmRelease processed with observedGeneration != -1)"
+      # Suspend it immediately
+      kubectl --kubeconfig="$KUBECONFIG" patch kustomization flux-system -n flux-system \
+        --type=merge -p '{"spec":{"suspend":true}}'
+
+      echo "✓ flux-system suspended - apps blocked from deploying"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 2 & 3: Deploy canary HelmRepository and HelmRelease for testing helm-controller cache
+# Using kubectl apply instead of kubernetes_manifest to avoid CRD validation issues during plan
+resource "null_resource" "deploy_canary" {
+  depends_on = [null_resource.suspend_flux_system]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Deploying canary HelmRepository and HelmRelease..."
+
+      # Create HelmRepository
+      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: podinfo
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/managed-by: terraform
+    flux.home-ops.io/cache-test: "true"
+spec:
+  interval: 1h
+  url: https://stefanprodan.github.io/podinfo
+EOF
+
+      # Wait a moment for source-controller to process the HelmRepository
+      sleep 2
+
+      # Create HelmRelease
+      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-cache-canary
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/managed-by: terraform
+    flux.home-ops.io/cache-test: "true"
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: podinfo
+      version: 6.7.0
+      sourceRef:
+        kind: HelmRepository
+        name: podinfo
+        namespace: flux-system
+  values:
+    replicaCount: 0
+    resources:
+      requests:
+        cpu: 1m
+        memory: 1Mi
+EOF
+
+      echo "✓ Canary resources deployed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 4: Wait for canary to prove helm-controller cache is ready
+# Falls back to time-based wait if canary fails
+resource "null_resource" "wait_helm_cache_ready" {
+  depends_on = [null_resource.deploy_canary]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Testing helm-controller cache with canary HelmRelease..."
+
+      # Try to wait for canary to have observedGeneration != -1
+      # This proves helm-controller cache is synced and processing resources
+      if timeout 90 bash -c '
+        until [ "$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease flux-cache-canary -n flux-system -o jsonpath='\''{.status.observedGeneration}'\'' 2>/dev/null)" != "-1" ] && \
+              [ "$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease flux-cache-canary -n flux-system -o jsonpath='\''{.status.observedGeneration}'\'' 2>/dev/null)" != "" ]; do
+          echo "  ⏳ Waiting for helm-controller cache..."
+          sleep 2
+        done
+      '; then
+        echo "✓ helm-controller cache is ready (canary observedGeneration != -1)"
+      else
+        echo "⚠️  Canary timeout - falling back to time-based wait (45s)"
+        echo "    This ensures flux-system won't stay suspended indefinitely"
+        sleep 45
+        echo "✓ Fallback wait complete - proceeding"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 5: Resume flux-system and clean up canary (atomic operation)
+resource "null_resource" "resume_and_cleanup" {
+  depends_on = [null_resource.wait_helm_cache_ready]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+
+      # Resume flux-system first (most critical operation)
+      echo "Resuming flux-system (helm cache is ready)..."
+      kubectl --kubeconfig="$KUBECONFIG" patch kustomization flux-system -n flux-system \
+        --type=merge -p '{"spec":{"suspend":false}}'
+      echo "✓ flux-system resumed - apps will now deploy"
+
+      # Clean up canary (best effort - don't fail if this errors)
+      echo "Cleaning up cache test canary..."
+      kubectl --kubeconfig="$KUBECONFIG" delete helmrelease flux-cache-canary -n flux-system --ignore-not-found=true || true
+      kubectl --kubeconfig="$KUBECONFIG" delete helmrepository podinfo -n flux-system --ignore-not-found=true || true
+      echo "✓ Canary cleanup complete"
     EOT
 
     environment = {
@@ -153,7 +285,7 @@ resource "null_resource" "wait_helm_cache_ready" {
 resource "null_resource" "post_bootstrap" {
   count = var.repo_root != "" ? 1 : 0
 
-  depends_on = [null_resource.wait_helm_cache_ready]
+  depends_on = [null_resource.resume_and_cleanup]
 
   provisioner "local-exec" {
     working_dir = var.repo_root
