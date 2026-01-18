@@ -11,9 +11,7 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
-    - name: snapshot-controller
+    - name: ceph-csi  # Includes snapshot-controller
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
