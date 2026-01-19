@@ -312,6 +312,26 @@ locals {
   frr_config_yamls = {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
+        cilium = {
+          peers = [
+            {
+              address        = "127.0.0.1"
+              address_family = "ipv4"
+              remote_asn     = local.frr_asn_cluster
+              description    = "Cilium Local iBGP (IPv4)"
+              passive        = true
+              route_map_in_v4 = "IMPORT-CILIUM-LB-v4"
+            },
+            {
+              address        = "::1"
+              address_family = "ipv6"
+              remote_asn     = local.frr_asn_cluster
+              description    = "Cilium Local iBGP (IPv6)"
+              passive        = true
+              route_map_in_v6 = "IMPORT-CILIUM-LB-v6"
+            }
+          ]
+        }
         upstream = {
           local_asn           = node.frr_asn
           router_id           = "10.255.${var.cluster_id}.${node.node_suffix}"
@@ -351,6 +371,7 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.pod_cidr_ipv4
+                  le     = 32
                 }
               ]
             }
@@ -360,6 +381,7 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.loadbalancers_ipv4
+                  le     = 32
                 }
               ]
             }
@@ -380,6 +402,7 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.pod_cidr_ipv6
+                  le     = 128
                 }
               ]
             }
@@ -389,6 +412,7 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.loadbalancers_ipv6
+                  le     = 128
                 }
               ]
             }
@@ -458,6 +482,22 @@ locals {
               }
             ]
           }
+          "IMPORT-CILIUM-LB-v4" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv4"
+                  prefix_list    = "CILIUM-LB-v4"
+                }
+              },
+              {
+                seq    = 90
+                action = "deny"
+              }
+            ]
+          }
           "IMPORT-DEFAULT-v6" = {
             rules = [
               {
@@ -466,6 +506,22 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "DEFAULT-ONLY-v6"
+                }
+              },
+              {
+                seq    = 90
+                action = "deny"
+              }
+            ]
+          }
+          "IMPORT-CILIUM-LB-v6" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-LB-v6"
                 }
               },
               {

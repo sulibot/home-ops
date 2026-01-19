@@ -67,9 +67,9 @@ bpf:
 ipMasqAgent:
   enabled: false
 
-# BGP Control Plane disabled; FRR redistributes kernel routes upstream
+# BGP Control Plane enabled; Cilium only peers to local FRR for LB VIP origination
 bgpControlPlane:
-  enabled: false
+  enabled: true
 
 # LoadBalancer IP Address Management (IPAM)
 # Define pools of IPs that can be assigned to LoadBalancer services
