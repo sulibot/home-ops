@@ -38,6 +38,7 @@ locals {
   ]
 
   # FRR extension from sulibot fork
+  # v1.0.34: Fix template newline bug causing BGP config parse errors
   # v1.0.32: Refresh docs/examples for local Cilium iBGP LB VIP import.
   # v1.0.25: Make BGP prefsrc optional to avoid route install failures.
   # v1.0.23: Fix Cilium neighbor address selection; guard BFD rendering when undefined.
@@ -46,6 +47,6 @@ locals {
   # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
   # v1.0.17: Includes Prometheus metrics exporter on port 9342
   install_custom_extensions = [
-  "ghcr.io/sulibot/frr-talos-extension:v1.0.33",
+  "ghcr.io/sulibot/frr-talos-extension:v1.0.34",
   ]
 }
