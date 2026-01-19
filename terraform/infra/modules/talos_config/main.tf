@@ -436,13 +436,6 @@ locals {
                 match = {
                   prefix_list = "CILIUM-PODS-v4"
                 }
-              },
-              {
-                seq    = 20
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-LB-v4"
-                }
               }
             ]
           }
@@ -454,14 +447,6 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-PODS-v6"
-                }
-              },
-              {
-                seq    = 20
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-LB-v6"
                 }
               }
             ]

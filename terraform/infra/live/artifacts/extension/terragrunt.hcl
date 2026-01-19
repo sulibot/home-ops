@@ -6,7 +6,7 @@
 #
 # Current Status: PLACEHOLDER - Extension currently built externally
 # Source: https://github.com/sulibot/frr-talos-extension (assumed)
-# Pre-built: ghcr.io/sulibot/frr-talos-extension:v1.0.31
+# Pre-built: ghcr.io/sulibot/frr-talos-extension:v1.0.33
 #
 # To enable local builds:
 # 1. Clone FRR extension source to this repo or external location
@@ -47,10 +47,10 @@ locals {
 
 # Expected outputs (for consumption by images/ stage):
 # - extension_image: Full image reference with digest
-#   Example: ghcr.io/sulibot/frr-talos-extension:v1.0.31@sha256:abc123...
+#   Example: ghcr.io/sulibot/frr-talos-extension:v1.0.33@sha256:abc123...
 # - extension_version: Semantic version tag
 #   Example: v1.0.19
 
 # NOTE: Until this stage is implemented, clusters will continue using
 # the pre-built extension specified in common/install-schematic.hcl:
-#   ghcr.io/sulibot/frr-talos-extension:v1.0.31
+#   ghcr.io/sulibot/frr-talos-extension:v1.0.33

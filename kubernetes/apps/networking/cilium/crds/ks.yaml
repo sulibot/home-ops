@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cilium-ippool
+  name: cilium-crds
   namespace: flux-system
   labels:
     layer: "networking"
@@ -11,13 +11,10 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
-    - name: cilium-crds
-      namespace: flux-system
-    - name: cilium
-      namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
-  path: ./kubernetes/apps/networking/cilium/ippool
+    - name: flux-system
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/apps/networking/cilium/crds
   prune: true
   sourceRef:
     kind: GitRepository

@@ -11,6 +11,8 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
+    - name: cilium-crds
+      namespace: flux-system
     - name: cilium
       namespace: flux-system
     - name: cilium-ippool
