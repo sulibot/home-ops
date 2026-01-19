@@ -14,7 +14,8 @@ locals {
   # BGP ASN base for this cluster (used to calculate per-node ASN)
   # Format: 4210${cluster_id}${node_suffix} where node_suffix is 3 digits (zero-padded)
   # Example: cluster 101, node suffix 11 → 4210101011
-  frr_asn_base_cluster = var.bgp_asn_base + var.cluster_id * 1000000
+  # Calculation: 4210000000 + (101 * 1000) + 11 = 4210101011
+  frr_asn_base_cluster = var.bgp_asn_base + var.cluster_id * 1000
 
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(

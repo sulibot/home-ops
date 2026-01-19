@@ -4,18 +4,18 @@
   "name": "solcp01"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000011
+  - "localASN": 4210101011
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.11"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000011
+      "peerASN": 4210101011
       "peerAddress": "10.101.254.11"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::11"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000011
+      "peerASN": 4210101011
       "peerAddress": "fd00:101:fe::11"
       "peerConfigRef":
         "name": "frr-local-ipv6"
@@ -27,18 +27,18 @@
   "name": "solcp02"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000012
+  - "localASN": 4210101012
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.12"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000012
+      "peerASN": 4210101012
       "peerAddress": "10.101.254.12"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::12"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000012
+      "peerASN": 4210101012
       "peerAddress": "fd00:101:fe::12"
       "peerConfigRef":
         "name": "frr-local-ipv6"
@@ -50,18 +50,18 @@
   "name": "solcp03"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000013
+  - "localASN": 4210101013
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.13"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000013
+      "peerASN": 4210101013
       "peerAddress": "10.101.254.13"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::13"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000013
+      "peerASN": 4210101013
       "peerAddress": "fd00:101:fe::13"
       "peerConfigRef":
         "name": "frr-local-ipv6"
@@ -73,18 +73,18 @@
   "name": "solwk01"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000021
+  - "localASN": 4210101021
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.21"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000021
+      "peerASN": 4210101021
       "peerAddress": "10.101.254.21"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::21"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000021
+      "peerASN": 4210101021
       "peerAddress": "fd00:101:fe::21"
       "peerConfigRef":
         "name": "frr-local-ipv6"
@@ -96,18 +96,18 @@
   "name": "solwk02"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000022
+  - "localASN": 4210101022
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.22"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000022
+      "peerASN": 4210101022
       "peerAddress": "10.101.254.22"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::22"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000022
+      "peerASN": 4210101022
       "peerAddress": "fd00:101:fe::22"
       "peerConfigRef":
         "name": "frr-local-ipv6"
@@ -119,18 +119,18 @@
   "name": "solwk03"
 "spec":
   "bgpInstances":
-  - "localASN": 4311000023
+  - "localASN": 4210101023
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.23"
       "name": "frr-local-ipv4"
-      "peerASN": 4311000023
+      "peerASN": 4210101023
       "peerAddress": "10.101.254.23"
       "peerConfigRef":
         "name": "frr-local-ipv4"
     - "localAddress": "fd00:101:fe::23"
       "name": "frr-local-ipv6"
-      "peerASN": 4311000023
+      "peerASN": 4210101023
       "peerAddress": "fd00:101:fe::23"
       "peerConfigRef":
         "name": "frr-local-ipv6"
