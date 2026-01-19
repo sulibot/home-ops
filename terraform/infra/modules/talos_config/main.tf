@@ -11,21 +11,24 @@ locals {
     name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
   }
 
-  # Cluster-wide BGP settings (shared across nodes)
-  frr_asn_cluster = var.bgp_asn_base + var.cluster_id * 1000
+  # BGP ASN base for this cluster (used to calculate per-node ASN)
+  # Format: 4210${cluster_id}${node_suffix} where node_suffix is 3 digits (zero-padded)
+  # Example: cluster 101, node suffix 11 → 4210101011
+  frr_asn_base_cluster = var.bgp_asn_base + var.cluster_id * 1000000
 
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
       machine_type = "controlplane"
       node_suffix  = v.ip_suffix
-      # Centralize ASN calculation to avoid duplication and ensure consistency
-      frr_asn      = local.frr_asn_cluster
+      # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
+      frr_asn      = local.frr_asn_base_cluster + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
-      frr_asn      = local.frr_asn_cluster
+      # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
+      frr_asn      = local.frr_asn_base_cluster + v.ip_suffix
     }) }
   )
 
@@ -315,27 +318,29 @@ locals {
         cilium = {
           peers = [
             {
-              address        = "127.0.0.1"
+              address        = "10.${var.cluster_id}.254.${node.node_suffix}"
               address_family = "ipv4"
-              remote_asn     = local.frr_asn_cluster
+              remote_asn     = node.frr_asn  # iBGP: same ASN as local node
               description    = "Cilium Local iBGP (IPv4)"
               passive        = true
+              update_source  = "lo"
               route_map_in_v4 = "IMPORT-CILIUM-LB-v4"
             },
             {
-              address        = "::1"
+              address        = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
               address_family = "ipv6"
-              remote_asn     = local.frr_asn_cluster
+              remote_asn     = node.frr_asn  # iBGP: same ASN as local node
               description    = "Cilium Local iBGP (IPv6)"
               passive        = true
+              update_source  = "lo"
               route_map_in_v6 = "IMPORT-CILIUM-LB-v6"
             }
           ]
         }
         upstream = {
           local_asn           = node.frr_asn
-          router_id           = "10.255.${var.cluster_id}.${node.node_suffix}"
-          router_id_v6        = node.public_ipv6
+          router_id           = "10.${var.cluster_id}.254.${node.node_suffix}"
+          router_id_v6        = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
           update_source       = node.public_ipv6
           advertise_loopbacks = var.bgp_advertise_loopbacks
           peers = [
@@ -375,6 +380,16 @@ locals {
                 }
               ]
             }
+            "CILIUM-SVC-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.service_cidr_ipv4
+                  le     = 32
+                }
+              ]
+            }
             "CILIUM-LB-v4" = {
               rules = [
                 {
@@ -402,6 +417,16 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.pod_cidr_ipv6
+                  le     = 128
+                }
+              ]
+            }
+            "CILIUM-SVC-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.service_cidr_ipv6
                   le     = 128
                 }
               ]
@@ -436,6 +461,20 @@ locals {
                 match = {
                   prefix_list = "CILIUM-PODS-v4"
                 }
+              },
+              {
+                seq    = 20
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-SVC-v4"
+                }
+              },
+              {
+                seq    = 30
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-LB-v4"
+                }
               }
             ]
           }
@@ -447,6 +486,22 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-PODS-v6"
+                }
+              },
+              {
+                seq    = 20
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-SVC-v6"
+                }
+              },
+              {
+                seq    = 30
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-LB-v6"
                 }
               }
             ]
@@ -521,6 +576,46 @@ locals {
   }
 }
 
+locals {
+  cilium_bgp_node_configs_yaml = join("\n---\n", [
+    for node_name, node in local.all_nodes : yamlencode({
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPNodeConfig"
+      metadata = {
+        name = node_name
+      }
+      spec = {
+        bgpInstances = [
+          {
+            name     = "local-frr"
+            localASN = node.frr_asn  # Per-node ASN (e.g., 4210101011)
+            peers = [
+              {
+                name         = "frr-local-ipv4"
+                peerASN      = node.frr_asn  # iBGP: same ASN as local
+                peerAddress  = "10.${var.cluster_id}.254.${node.node_suffix}"
+                localAddress = "10.${var.cluster_id}.254.${node.node_suffix}"
+                peerConfigRef = {
+                  name = "frr-local-ipv4"
+                }
+              },
+              {
+                name         = "frr-local-ipv6"
+                peerASN      = node.frr_asn  # iBGP: same ASN as local
+                peerAddress  = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
+                localAddress = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
+                peerConfigRef = {
+                  name = "frr-local-ipv6"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    })
+  ])
+}
+
 # Pre-render extension service configs per node for use in config patches
 # This is required for Talos provider 0.10.0+ which validates config patches early
 # Separate locals block to ensure frr_config_yamls is fully evaluated first
@@ -555,7 +650,7 @@ ${yamlencode(merge(
         {
           "topology.kubernetes.io/region" = var.region
           "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-          "bgp.frr.asn"                   = tostring(local.frr_asn_cluster)
+          "bgp.frr.asn"                   = tostring(node.frr_asn)
         },
         # Add GPU label if GPU passthrough is enabled for this node
         try(node.gpu_passthrough.enabled, false) ? {

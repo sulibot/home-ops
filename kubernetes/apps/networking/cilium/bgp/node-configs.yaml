@@ -1,0 +1,136 @@
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solcp01"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.11"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.11"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::11"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::11"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"
+
+---
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solcp02"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.12"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.12"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::12"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::12"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"
+
+---
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solcp03"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.13"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.13"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::13"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::13"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"
+
+---
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solwk01"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.21"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.21"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::21"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::21"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"
+
+---
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solwk02"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.22"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.22"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::22"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::22"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"
+
+---
+"apiVersion": "cilium.io/v2alpha1"
+"kind": "CiliumBGPNodeConfig"
+"metadata":
+  "name": "solwk03"
+"spec":
+  "bgpInstances":
+  - "localASN": 4210101000
+    "name": "local-frr"
+    "peers":
+    - "localAddress": "10.101.254.23"
+      "name": "frr-local-ipv4"
+      "peerASN": 4210101000
+      "peerAddress": "10.101.254.23"
+      "peerConfigRef":
+        "name": "frr-local-ipv4"
+    - "localAddress": "fd00:101:fe::23"
+      "name": "frr-local-ipv6"
+      "peerASN": 4210101000
+      "peerAddress": "fd00:101:fe::23"
+      "peerConfigRef":
+        "name": "frr-local-ipv6"

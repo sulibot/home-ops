@@ -38,27 +38,3 @@ spec:
       advertisements:
         matchLabels:
           advertise: cilium-lb
-
----
-apiVersion: cilium.io/v2alpha1
-kind: CiliumBGPClusterConfig
-metadata:
-  name: cilium-local-frr
-spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/os: linux
-  bgpInstances:
-    - name: local-frr
-      localASN: 4210101000
-      peers:
-        - name: frr-local-ipv4
-          peerASN: 4210101000
-          peerAddress: 127.0.0.1
-          peerConfigRef:
-            name: frr-local-ipv4
-        - name: frr-local-ipv6
-          peerASN: 4210101000
-          peerAddress: ::1
-          peerConfigRef:
-            name: frr-local-ipv6
