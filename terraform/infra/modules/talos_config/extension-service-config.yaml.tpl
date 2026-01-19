@@ -4,7 +4,7 @@ name: frr
 configFiles:
   - content: |
       ${replace(frr_config_yaml, "\n", "\n      ")}
-    mountPath: /usr/local/etc/frr/config.yaml
+    mountPath: /etc/frr/config.default.yaml
   - content: |
       zebra=true
       zebra_options="-n -A 127.0.0.1"
@@ -16,8 +16,8 @@ configFiles:
       bfdd=true
       bfdd_options="-A 127.0.0.1"
 %{ endif ~}
-    mountPath: /usr/local/etc/frr/daemons
+    mountPath: /etc/frr/daemons
   - content: |
       service integrated-vtysh-config
       hostname ${hostname}
-    mountPath: /usr/local/etc/frr/vtysh.conf
+    mountPath: /etc/frr/vtysh.conf

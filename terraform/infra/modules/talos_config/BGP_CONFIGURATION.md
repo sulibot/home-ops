@@ -136,18 +136,18 @@ talosctl -n node01 exec --namespace system --cmd /usr/bin/vtysh -- vtysh -c "sho
 - ❌ You only need default route (internet access)
 
 **What Gets Advertised:**
-- IPv4: `10.255.<cluster_id>.0/24` with `/32` loopbacks
-- IPv6: `fd00:0:0:ffff:::<cluster_id>::/48` with `/128` loopbacks
+- IPv4: `10.<cluster_id>.254.0/24` with `/32` loopbacks
+- IPv6: `fd00:<cluster_id>:fe::/64` with `/128` loopbacks
 
 **Example:**
 ```hcl
 bgp_advertise_loopbacks = true
 
 # Advertises:
-# - 10.255.101.11/32 (solcp01)
-# - 10.255.101.12/32 (solcp02)
-# - fd00:255:101::11/128 (solcp01)
-# - fd00:255:101::12/128 (solcp02)
+# - 10.101.254.11/32 (solcp01)
+# - 10.101.254.12/32 (solcp02)
+# - fd00:101:fe::11/128 (solcp01)
+# - fd00:101:fe::12/128 (solcp02)
 ```
 
 **Verification:**
@@ -257,7 +257,7 @@ bgp_asn_assignments = {
   "solcp01" = {
     "local_asn" = 4210101011
     "remote_asn" = 4200001000
-    "router_id" = "10.255.101.11"
+    "router_id" = "10.101.254.11"
   }
   # ...
 }
@@ -276,7 +276,7 @@ bgp_config_preview = {
   bgp:
     upstream:
       local_asn: 4210101000
-      router_id: 10.255.101.11
+      router_id: 10.101.254.11
     kernel:
       ipv4:
         enabled: true

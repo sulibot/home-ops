@@ -31,8 +31,7 @@ Essential cluster services.
 ## Layer 4: Network Services
 Ingress, egress, and DNS automation.
 - `cilium-gateway` - Gateway API (depends on: cert-manager, cilium)
-- `cilium-bgp` - BGP configuration (depends on: cilium)
-- `cilium-ippool` - IP pool management (depends on: cilium)
+- `cilium` - BGP + IP pool configuration (bundled with Cilium core)
 - `external-dns` - Automatic DNS records (depends on: cilium-gateway)
 - `certificates` - TLS certificates (depends on: cert-manager)
 - `cloudflare-tunnel` - Cloudflare Tunnel (depends on: external-secrets)

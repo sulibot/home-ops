@@ -197,6 +197,19 @@ terraform {
     run_on_error = false
   }
 
+  after_hook "export_cilium_bgp_node_configs" {
+    commands     = ["apply"]
+    execute      = ["bash", "-c", <<-EOT
+      set -e
+      cd ${get_terragrunt_dir()}
+      terragrunt output -raw cilium_bgp_node_configs_yaml > \
+        ${get_repo_root()}/kubernetes/apps/networking/cilium/bgp/node-configs.yaml
+      echo "✓ Exported Cilium BGP node configs"
+    EOT
+    ]
+    run_on_error = false
+  }
+
 }
 
 locals {

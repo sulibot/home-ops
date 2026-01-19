@@ -84,8 +84,14 @@ output "bgp_asn_assignments" {
     node_name => {
       local_asn  = local.frr_asn_cluster
       remote_asn = var.bgp_remote_asn
-      router_id  = "10.255.${var.cluster_id}.${node.node_suffix}"
+      router_id  = "10.${var.cluster_id}.254.${node.node_suffix}"
     }
   }
   sensitive = false
+}
+
+output "cilium_bgp_node_configs_yaml" {
+  description = "Generated CiliumBGPNodeConfig resources for per-node loopback peering"
+  value       = local.cilium_bgp_node_configs_yaml
+  sensitive   = false
 }

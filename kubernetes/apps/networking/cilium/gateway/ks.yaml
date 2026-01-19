@@ -13,8 +13,6 @@ spec:
   dependsOn:
     - name: cilium
       namespace: flux-system
-    - name: cilium-ippool
-      namespace: flux-system
     - name: cert-manager-issuers
       namespace: flux-system
   interval: 15m

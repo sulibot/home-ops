@@ -120,7 +120,7 @@ gateway-api-crds
   ↓
 cilium
   ↓
-cilium-gateway / cilium-bgp / cilium-ippool (parallel)
+cilium-gateway (Cilium BGP + IP pool config is bundled with Cilium)
   ↓
 external-dns
 ```
