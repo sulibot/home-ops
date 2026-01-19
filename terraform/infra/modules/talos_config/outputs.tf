@@ -78,11 +78,11 @@ output "bgp_config_preview" {
 }
 
 output "bgp_asn_assignments" {
-  description = "BGP ASN assignments per node (cluster ASN + node router-id)"
+  description = "BGP ASN assignments per node (per-node ASN + node router-id)"
   value = {
     for node_name, node in local.all_nodes :
     node_name => {
-      local_asn  = local.frr_asn_cluster
+      local_asn  = node.frr_asn  # Per-node ASN (e.g., 4210101011)
       remote_asn = var.bgp_remote_asn
       router_id  = "10.${var.cluster_id}.254.${node.node_suffix}"
     }
