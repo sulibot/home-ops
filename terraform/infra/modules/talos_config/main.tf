@@ -318,7 +318,16 @@ locals {
       bgp = {
         cilium = {
           local_bgp_in = {
-            enabled = false  # Disabled - using kernel route redistribution instead
+            enabled          = true
+            neighbor_address = "::1"
+            peer_asn         = node.frr_asn
+            export_loopbacks = false
+            vip_prefixes_v4 = [
+              var.loadbalancers_ipv4
+            ]
+            vip_prefixes_v6 = [
+              var.loadbalancers_ipv6
+            ]
           }
         }
         upstream = {
@@ -343,12 +352,10 @@ locals {
         }
         kernel = {
           ipv4 = {
-            enabled   = true
-            route_map = "EXPORT-KERNEL-v4"
+            enabled = false  # Not using kernel route redistribution
           }
           ipv6 = {
-            enabled   = true
-            route_map = "EXPORT-KERNEL-v6"
+            enabled = false  # Not using kernel route redistribution
           }
         }
       }
@@ -545,7 +552,7 @@ locals {
                 seq    = 10
                 action = "permit"
                 match = {
-                  prefix_list = "CILIUM-PODS-v4"
+                  prefix_list = "CILIUM-LB-v4"
                 }
               },
               {
@@ -553,48 +560,18 @@ locals {
                 action = "permit"
                 match = {
                   address_family = "ipv6"
-                  prefix_list    = "CILIUM-PODS-v6"
+                  prefix_list    = "CILIUM-LB-v6"
                 }
               },
               {
                 seq    = 20
                 action = "permit"
                 match = {
-                  prefix_list = "CILIUM-SVC-v4"
-                }
-              },
-              {
-                seq    = 25
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-SVC-v6"
-                }
-              },
-              {
-                seq    = 30
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-LB-v4"
-                }
-              },
-              {
-                seq    = 35
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-LB-v6"
-                }
-              },
-              {
-                seq    = 40
-                action = "permit"
-                match = {
                   interface = "lo"
                 }
               },
               {
-                seq    = 45
+                seq    = 25
                 action = "permit"
                 match = {
                   interface = "dummy0"
@@ -625,9 +602,43 @@ locals {
 }
 
 locals {
-  # Cilium BGP disabled - using kernel route redistribution instead
-  # Keeping empty YAML to avoid breaking terraform outputs
-  cilium_bgp_node_configs_yaml = "# Cilium BGP disabled - using FRR kernel route redistribution for Pod/Service/LB CIDRs"
+  cilium_bgp_node_configs_yaml = join("\n---\n", [
+    for node_name, node in local.all_nodes : yamlencode({
+      apiVersion = "cilium.io/v2alpha1"
+      kind       = "CiliumBGPNodeConfig"
+      metadata = {
+        name = node_name
+      }
+      spec = {
+        bgpInstances = [
+          {
+            name     = "local-frr"
+            localASN = node.frr_asn
+            peers = [
+              {
+                name         = "frr-local-ipv4"
+                peerASN      = node.frr_asn
+                peerAddress  = "127.0.0.1"
+                localAddress = "127.0.0.1"
+                peerConfigRef = {
+                  name = "frr-local-ipv4"
+                }
+              },
+              {
+                name         = "frr-local-ipv6"
+                peerASN      = node.frr_asn
+                peerAddress  = "::1"
+                localAddress = "::1"
+                peerConfigRef = {
+                  name = "frr-local-ipv6"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    })
+  ])
 }
 
 # Pre-render extension service configs per node for use in config patches
