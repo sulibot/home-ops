@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git stash:*)",
       "Bash(flux bootstrap git --help:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(gh secret:*)"
     ]
   }
 }

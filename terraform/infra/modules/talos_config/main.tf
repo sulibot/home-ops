@@ -317,26 +317,9 @@ locals {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
         cilium = {
-          peers = [
-            {
-              address        = "10.${var.cluster_id}.254.${node.node_suffix}"
-              address_family = "ipv4"
-              remote_asn     = node.frr_asn  # iBGP: same ASN as local node
-              description    = "Cilium Local iBGP (IPv4)"
-              passive        = true
-              update_source  = "lo"
-              route_map_in_v4 = "IMPORT-CILIUM-LB-v4"
-            },
-            {
-              address        = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
-              address_family = "ipv6"
-              remote_asn     = node.frr_asn  # iBGP: same ASN as local node
-              description    = "Cilium Local iBGP (IPv6)"
-              passive        = true
-              update_source  = "lo"
-              route_map_in_v6 = "IMPORT-CILIUM-LB-v6"
-            }
-          ]
+          local_bgp_in = {
+            enabled = false  # Disabled - using kernel route redistribution instead
+          }
         }
         upstream = {
           local_asn           = node.frr_asn
@@ -354,6 +337,7 @@ locals {
               capability_extended_nexthop = true
               route_map_in_v4             = "IMPORT-DEFAULT-v4"
               route_map_in_v6             = "IMPORT-DEFAULT-v6"
+              route_map_out               = "EXPORT-TO-UPSTREAM"
             }
           ]
         }
@@ -555,6 +539,69 @@ locals {
               }
             ]
           }
+          "EXPORT-TO-UPSTREAM" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-PODS-v4"
+                }
+              },
+              {
+                seq    = 15
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-PODS-v6"
+                }
+              },
+              {
+                seq    = 20
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-SVC-v4"
+                }
+              },
+              {
+                seq    = 25
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-SVC-v6"
+                }
+              },
+              {
+                seq    = 30
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-LB-v4"
+                }
+              },
+              {
+                seq    = 35
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-LB-v6"
+                }
+              },
+              {
+                seq    = 40
+                action = "permit"
+                match = {
+                  interface = "lo"
+                }
+              },
+              {
+                seq    = 45
+                action = "permit"
+                match = {
+                  interface = "dummy0"
+                }
+              }
+            ]
+          }
           "IMPORT-CILIUM-LB-v6" = {
             rules = [
               {
@@ -578,43 +625,9 @@ locals {
 }
 
 locals {
-  cilium_bgp_node_configs_yaml = join("\n---\n", [
-    for node_name, node in local.all_nodes : yamlencode({
-      apiVersion = "cilium.io/v2alpha1"
-      kind       = "CiliumBGPNodeConfig"
-      metadata = {
-        name = node_name
-      }
-      spec = {
-        bgpInstances = [
-          {
-            name     = "local-frr"
-            localASN = node.frr_asn  # Per-node ASN (e.g., 4210101011)
-            peers = [
-              {
-                name         = "frr-local-ipv4"
-                peerASN      = node.frr_asn  # iBGP: same ASN as local
-                peerAddress  = "10.${var.cluster_id}.254.${node.node_suffix}"
-                localAddress = "10.${var.cluster_id}.254.${node.node_suffix}"
-                peerConfigRef = {
-                  name = "frr-local-ipv4"
-                }
-              },
-              {
-                name         = "frr-local-ipv6"
-                peerASN      = node.frr_asn  # iBGP: same ASN as local
-                peerAddress  = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
-                localAddress = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
-                peerConfigRef = {
-                  name = "frr-local-ipv6"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    })
-  ])
+  # Cilium BGP disabled - using kernel route redistribution instead
+  # Keeping empty YAML to avoid breaking terraform outputs
+  cilium_bgp_node_configs_yaml = "# Cilium BGP disabled - using FRR kernel route redistribution for Pod/Service/LB CIDRs"
 }
 
 # Pre-render extension service configs per node for use in config patches
