@@ -7,8 +7,7 @@
   - "localASN": 4220101011
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
+    - "name": "frr-local-veth"
       "peerASN": 4210101011
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
@@ -24,8 +23,7 @@
   - "localASN": 4220101012
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
+    - "name": "frr-local-veth"
       "peerASN": 4210101012
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
@@ -41,8 +39,7 @@
   - "localASN": 4220101013
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
+    - "name": "frr-local-veth"
       "peerASN": 4210101013
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
@@ -58,8 +55,7 @@
   - "localASN": 4220101021
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
+    - "name": "frr-local-veth"
       "peerASN": 4210101021
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
@@ -75,9 +71,8 @@
   - "localASN": 4220101022
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
-      "peerASN": 4210101022
+    - "name": "frr-local-veth"
+      "peerASN": 4220101022
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
         "name": "frr-local-veth"
@@ -92,8 +87,7 @@
   - "localASN": 4220101023
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.100.2"
-      "name": "frr-local-veth"
+    - "name": "frr-local-veth"
       "peerASN": 4210101023
       "peerAddress": "169.254.100.1"
       "peerConfigRef":

@@ -490,7 +490,6 @@ locals {
                   name         = "frr-local-veth"
                   peerASN      = node.frr_asn
                   peerAddress  = "169.254.100.1"
-                  localAddress = "169.254.100.2"
                   peerConfigRef = {
                     name = "frr-local-veth"
                   }
