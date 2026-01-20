@@ -4,7 +4,7 @@
   "name": "solcp01"
 "spec":
   "bgpInstances":
-doe  - "localASN": 4210101011
+  - "localASN": 4210101011
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.254.11"
