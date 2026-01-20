@@ -324,8 +324,6 @@ locals {
               local_bgp_in = {
                 enabled          = true
                 neighbor_address = node.loopback_ipv6
-                local_address    = node.loopback_ipv6
-                update_source    = node.loopback_ipv6
                 peer_asn         = node.frr_asn
                 export_loopbacks = false
                 vip_prefixes_v4 = [
