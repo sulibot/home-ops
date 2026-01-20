@@ -38,12 +38,13 @@ locals {
   ]
 
   # FRR extension from sulibot fork
+  # v1.0.48: Fix BGP command order - remote-as must come before disable-connected-check.
   # v1.0.47: Fix ip command path in netns exec (use /sbin/ip).
   # v1.0.46: Isolate veth-cilium in cilium namespace (true jsenecal approach).
   # v1.0.45: Keep both veth ends in host namespace (jsenecal approach).
   # v1.0.44: Don't pre-assign IP to veth-cilium - let Cilium manage it.
   # v1.0.43: Add veth pair support for Cilium BGP peering (169.254.100.1/2).
-  # v1.0.42: Fix command order - disable-connected-check must come before remote-as.
+  # v1.0.42: WRONG - disable-connected-check must come AFTER remote-as.
   # v1.0.41: Remove invalid local-address command (FRR doesn't support it).
   # v1.0.40: Use real loopback addresses for Cilium peering instead of ::1/127.0.0.1.
   # v1.0.39: Add disable-connected-check for localhost Cilium peer.
@@ -59,6 +60,6 @@ locals {
   # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
   # v1.0.17: Includes Prometheus metrics exporter on port 9342
   install_custom_extensions = [
-  "ghcr.io/sulibot/frr-talos-extension:v1.0.47",
+  "ghcr.io/sulibot/frr-talos-extension:v1.0.48",
   ]
 }
