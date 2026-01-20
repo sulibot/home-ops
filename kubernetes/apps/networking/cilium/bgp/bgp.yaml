@@ -1,6 +1,6 @@
 ---
 # Cilium BGP advertises only Service LoadBalancer VIPs to local FRR
-apiVersion: cilium.io/v2
+apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
 metadata:
   name: cilium-lb-vips
@@ -12,6 +12,7 @@ spec:
       service:
         addresses:
           - LoadBalancerIP
+      selector: {}
 
 ---
 apiVersion: cilium.io/v2
