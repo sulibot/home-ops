@@ -37,6 +37,12 @@ locals {
     }) }
   )
 
+  cilium_veth_octet     = var.cluster_id % 256
+  cilium_veth_ipv4_local  = format("169.254.%d.2", local.cilium_veth_octet)
+  cilium_veth_ipv4_remote = format("169.254.%d.1", local.cilium_veth_octet)
+  cilium_veth_ipv6_local  = format("fd00:%x:c111::2", var.cluster_id)
+  cilium_veth_ipv6_remote = format("fd00:%x:c111::1", var.cluster_id)
+
   # Check if any worker nodes have GPU passthrough enabled
   has_gpu_nodes = anytrue([
     for name, node in local.worker_nodes :
@@ -321,18 +327,28 @@ locals {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
             cilium = {
-              local_bgp_in = {
-                enabled          = true
-                neighbor_address = "169.254.100.2"
-                peer_asn         = local.frr_asn_base_cluster + 10000000 + node.node_suffix
-                export_loopbacks = false
-                vip_prefixes_v4 = [
-                  var.loadbalancers_ipv4
-                ]
-                vip_prefixes_v6 = [
-                  var.loadbalancers_ipv6
-                ]
+              local_asn = node.frr_asn
+              remote_asn = node.frr_asn
+              namespace = "cilium"
+              peering = {
+                ipv4 = {
+                  local  = local.cilium_veth_ipv4_remote
+                  remote = local.cilium_veth_ipv4_local
+                  prefix = 30
+                }
+                ipv6 = {
+                  local  = local.cilium_veth_ipv6_remote
+                  remote = local.cilium_veth_ipv6_local
+                  prefix = 126
+                }
               }
+              vip_prefixes_v4 = [
+                var.loadbalancers_ipv4
+              ]
+              vip_prefixes_v6 = [
+                var.loadbalancers_ipv6
+              ]
+              export_loopbacks = false
             }
         upstream = {
           local_asn           = node.frr_asn
@@ -353,6 +369,13 @@ locals {
               route_map_out               = "EXPORT-TO-UPSTREAM"
             }
           ]
+        }
+      }
+      network = {
+        interface_mtu = 1450
+        veth_names = {
+          frr_side    = "veth-frr"
+          cilium_side = "veth-cilium"
         }
       }
       route_filters = {
@@ -484,17 +507,27 @@ locals {
         bgpInstances = [
           {
             name     = "local-frr"
-            localASN = local.frr_asn_base_cluster + 10000000 + node.node_suffix
-              peers = [
-                {
-                  name         = "frr-local-veth"
-                  peerASN      = node.frr_asn
-                  peerAddress  = "169.254.100.1"
-                  peerConfigRef = {
-                    name = "frr-local-veth"
-                  }
+            localASN = node.frr_asn
+            peers = [
+              {
+                name         = "frr-local-ipv4"
+                peerASN      = node.frr_asn
+                peerAddress  = local.cilium_veth_ipv4_remote
+                localAddress = local.cilium_veth_ipv4_local
+                peerConfigRef = {
+                  name = "frr-local-ipv4"
                 }
-              ]
+              },
+              {
+                name         = "frr-local-ipv6"
+                peerASN      = node.frr_asn
+                peerAddress  = local.cilium_veth_ipv6_remote
+                localAddress = local.cilium_veth_ipv6_local
+                peerConfigRef = {
+                  name = "frr-local-ipv6"
+                }
+              }
+            ]
           }
         ]
       }
