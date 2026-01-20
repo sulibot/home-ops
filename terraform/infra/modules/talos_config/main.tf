@@ -471,7 +471,7 @@ locals {
 locals {
   cilium_bgp_node_configs_yaml = join("\n---\n", [
     for node_name, node in local.all_nodes : yamlencode({
-      apiVersion = "cilium.io/v2alpha1"
+      apiVersion = "cilium.io/v2"
       kind       = "CiliumBGPNodeConfig"
       metadata = {
         name = node_name

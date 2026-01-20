@@ -1,4 +1,4 @@
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solcp01"
@@ -21,7 +21,7 @@
         "name": "frr-local-ipv6"
 
 ---
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solcp02"
@@ -44,7 +44,7 @@
         "name": "frr-local-ipv6"
 
 ---
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solcp03"
@@ -67,7 +67,7 @@
         "name": "frr-local-ipv6"
 
 ---
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solwk01"
@@ -90,7 +90,7 @@
         "name": "frr-local-ipv6"
 
 ---
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solwk02"
@@ -113,7 +113,7 @@
         "name": "frr-local-ipv6"
 
 ---
-"apiVersion": "cilium.io/v2alpha1"
+"apiVersion": "cilium.io/v2"
 "kind": "CiliumBGPNodeConfig"
 "metadata":
   "name": "solwk03"
