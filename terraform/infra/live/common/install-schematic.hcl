@@ -38,6 +38,7 @@ locals {
   ]
 
   # FRR extension from sulibot fork
+  # v1.0.46: Isolate veth-cilium in cilium namespace (true jsenecal approach).
   # v1.0.45: Keep both veth ends in host namespace (jsenecal approach).
   # v1.0.44: Don't pre-assign IP to veth-cilium - let Cilium manage it.
   # v1.0.43: Add veth pair support for Cilium BGP peering (169.254.100.1/2).
@@ -57,6 +58,6 @@ locals {
   # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
   # v1.0.17: Includes Prometheus metrics exporter on port 9342
   install_custom_extensions = [
-  "ghcr.io/sulibot/frr-talos-extension:v1.0.45",
+  "ghcr.io/sulibot/frr-talos-extension:v1.0.46",
   ]
 }
