@@ -7,16 +7,16 @@
   - "localASN": 4210101011
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.11"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101011
-      "peerAddress": "10.101.254.11"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::11"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101011
-      "peerAddress": "fd00:101:fe::11"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
 
@@ -30,16 +30,16 @@
   - "localASN": 4210101012
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.12"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101012
-      "peerAddress": "10.101.254.12"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::12"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101012
-      "peerAddress": "fd00:101:fe::12"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
 
@@ -53,16 +53,16 @@
   - "localASN": 4210101013
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.13"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101013
-      "peerAddress": "10.101.254.13"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::13"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101013
-      "peerAddress": "fd00:101:fe::13"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
 
@@ -76,16 +76,16 @@
   - "localASN": 4210101021
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.21"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101021
-      "peerAddress": "10.101.254.21"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::21"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101021
-      "peerAddress": "fd00:101:fe::21"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
 
@@ -99,16 +99,16 @@
   - "localASN": 4210101022
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.22"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101022
-      "peerAddress": "10.101.254.22"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::22"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101022
-      "peerAddress": "fd00:101:fe::22"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
 
@@ -122,15 +122,15 @@
   - "localASN": 4210101023
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.254.23"
+    - "localAddress": "127.0.0.1"
       "name": "frr-local-ipv4"
       "peerASN": 4210101023
-      "peerAddress": "10.101.254.23"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-ipv4"
-    - "localAddress": "fd00:101:fe::23"
+    - "localAddress": "::1"
       "name": "frr-local-ipv6"
       "peerASN": 4210101023
-      "peerAddress": "fd00:101:fe::23"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-ipv6"
