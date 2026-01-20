@@ -20,16 +20,20 @@ locals {
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
-      machine_type = "controlplane"
-      node_suffix  = v.ip_suffix
+      machine_type   = "controlplane"
+      node_suffix    = v.ip_suffix
+      loopback_ipv6  = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4  = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
-      frr_asn      = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn        = local.frr_asn_base_cluster + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
-      machine_type = "worker"
-      node_suffix  = v.ip_suffix
+      machine_type   = "worker"
+      node_suffix    = v.ip_suffix
+      loopback_ipv6  = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4  = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
-      frr_asn      = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn        = local.frr_asn_base_cluster + v.ip_suffix
     }) }
   )
 
@@ -316,20 +320,22 @@ locals {
   frr_config_yamls = {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
-        cilium = {
-          local_bgp_in = {
-            enabled          = true
-            neighbor_address = "::1"
-            peer_asn         = node.frr_asn
-            export_loopbacks = false
-            vip_prefixes_v4 = [
-              var.loadbalancers_ipv4
-            ]
-            vip_prefixes_v6 = [
-              var.loadbalancers_ipv6
-            ]
-          }
-        }
+            cilium = {
+              local_bgp_in = {
+                enabled          = true
+                neighbor_address = node.loopback_ipv6
+                local_address    = node.loopback_ipv6
+                update_source    = node.loopback_ipv6
+                peer_asn         = node.frr_asn
+                export_loopbacks = false
+                vip_prefixes_v4 = [
+                  var.loadbalancers_ipv4
+                ]
+                vip_prefixes_v6 = [
+                  var.loadbalancers_ipv6
+                ]
+              }
+            }
         upstream = {
           local_asn           = node.frr_asn
           router_id           = "10.${var.cluster_id}.254.${node.node_suffix}"
@@ -481,26 +487,26 @@ locals {
           {
             name     = "local-frr"
             localASN = node.frr_asn
-            peers = [
-              {
-                name         = "frr-local-ipv4"
-                peerASN      = node.frr_asn
-                peerAddress  = "127.0.0.1"
-                localAddress = "127.0.0.1"
-                peerConfigRef = {
-                  name = "frr-local-ipv4"
+              peers = [
+                {
+                  name         = "frr-local-ipv4"
+                  peerASN      = node.frr_asn
+                  peerAddress  = node.loopback_ipv4
+                  localAddress = node.loopback_ipv4
+                  peerConfigRef = {
+                    name = "frr-local-ipv4"
+                  }
+                },
+                {
+                  name         = "frr-local-ipv6"
+                  peerASN      = node.frr_asn
+                  peerAddress  = node.loopback_ipv6
+                  localAddress = node.loopback_ipv6
+                  peerConfigRef = {
+                    name = "frr-local-ipv6"
+                  }
                 }
-              },
-              {
-                name         = "frr-local-ipv6"
-                peerASN      = node.frr_asn
-                peerAddress  = "::1"
-                localAddress = "::1"
-                peerConfigRef = {
-                  name = "frr-local-ipv6"
-                }
-              }
-            ]
+              ]
           }
         ]
       }
