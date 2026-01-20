@@ -72,7 +72,7 @@
     "name": "local-frr"
     "peers":
     - "name": "frr-local-veth"
-      "peerASN": 4220101022
+      "peerASN": 4210101022
       "peerAddress": "169.254.100.1"
       "peerConfigRef":
         "name": "frr-local-veth"
