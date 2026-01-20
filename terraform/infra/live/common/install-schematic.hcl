@@ -38,6 +38,7 @@ locals {
   ]
 
   # FRR extension from sulibot fork
+  # v1.0.43: Add veth pair support for Cilium BGP peering (169.254.100.1/2).
   # v1.0.42: Fix command order - disable-connected-check must come before remote-as.
   # v1.0.41: Remove invalid local-address command (FRR doesn't support it).
   # v1.0.40: Use real loopback addresses for Cilium peering instead of ::1/127.0.0.1.
@@ -54,6 +55,6 @@ locals {
   # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
   # v1.0.17: Includes Prometheus metrics exporter on port 9342
   install_custom_extensions = [
-  "ghcr.io/sulibot/frr-talos-extension:v1.0.42",
+  "ghcr.io/sulibot/frr-talos-extension:v1.0.43",
   ]
 }

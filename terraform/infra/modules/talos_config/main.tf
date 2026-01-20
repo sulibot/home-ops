@@ -323,7 +323,7 @@ locals {
             cilium = {
               local_bgp_in = {
                 enabled          = true
-                neighbor_address = node.loopback_ipv6
+                neighbor_address = "169.254.100.2"
                 peer_asn         = local.frr_asn_base_cluster + 10000000 + node.node_suffix
                 export_loopbacks = false
                 vip_prefixes_v4 = [
@@ -487,21 +487,12 @@ locals {
             localASN = local.frr_asn_base_cluster + 10000000 + node.node_suffix
               peers = [
                 {
-                  name         = "frr-local-ipv4"
+                  name         = "frr-local-veth"
                   peerASN      = node.frr_asn
-                  peerAddress  = node.loopback_ipv4
-                  localAddress = node.loopback_ipv4
+                  peerAddress  = "169.254.100.1"
+                  localAddress = "169.254.100.2"
                   peerConfigRef = {
-                    name = "frr-local-ipv4"
-                  }
-                },
-                {
-                  name         = "frr-local-ipv6"
-                  peerASN      = node.frr_asn
-                  peerAddress  = node.loopback_ipv6
-                  localAddress = node.loopback_ipv6
-                  peerConfigRef = {
-                    name = "frr-local-ipv6"
+                    name = "frr-local-veth"
                   }
                 }
               ]

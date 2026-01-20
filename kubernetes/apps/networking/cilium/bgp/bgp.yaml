@@ -18,23 +18,10 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: frr-local-ipv4
+  name: frr-local-veth
 spec:
   families:
     - afi: ipv4
-      safi: unicast
-      advertisements:
-        matchLabels:
-          advertise: cilium-lb
-
----
-apiVersion: cilium.io/v2
-kind: CiliumBGPPeerConfig
-metadata:
-  name: frr-local-ipv6
-spec:
-  families:
-    - afi: ipv6
       safi: unicast
       advertisements:
         matchLabels:
