@@ -378,6 +378,19 @@ locals {
           cilium_side = "veth-cilium"
         }
       }
+      bfd = {
+        profiles = {
+          normal = {
+            detect_multiplier  = 3
+            receive_interval   = 300
+            transmit_interval  = 300
+          }
+        }
+        cilium_peering = {
+          enabled = false
+          profile = "normal"
+        }
+      }
       route_filters = {
         prefix_lists = {
           ipv4 = {
