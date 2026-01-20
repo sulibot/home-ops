@@ -324,7 +324,7 @@ locals {
               local_bgp_in = {
                 enabled          = true
                 neighbor_address = node.loopback_ipv6
-                peer_asn         = node.frr_asn
+                peer_asn         = local.frr_asn_base_cluster + 10000000 + node.node_suffix
                 export_loopbacks = false
                 vip_prefixes_v4 = [
                   var.loadbalancers_ipv4
@@ -484,7 +484,7 @@ locals {
         bgpInstances = [
           {
             name     = "local-frr"
-            localASN = node.frr_asn
+            localASN = local.frr_asn_base_cluster + 10000000 + node.node_suffix
               peers = [
                 {
                   name         = "frr-local-ipv4"
