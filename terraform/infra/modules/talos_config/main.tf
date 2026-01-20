@@ -350,38 +350,10 @@ locals {
             }
           ]
         }
-        kernel = {
-          ipv4 = {
-            enabled = false  # Not using kernel route redistribution
-          }
-          ipv6 = {
-            enabled = false  # Not using kernel route redistribution
-          }
-        }
       }
       route_filters = {
         prefix_lists = {
           ipv4 = {
-            "CILIUM-PODS-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.pod_cidr_ipv4
-                  le     = 32
-                }
-              ]
-            }
-            "CILIUM-SVC-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.service_cidr_ipv4
-                  le     = 32
-                }
-              ]
-            }
             "CILIUM-LB-v4" = {
               rules = [
                 {
@@ -403,26 +375,6 @@ locals {
             }
           }
           ipv6 = {
-            "CILIUM-PODS-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.pod_cidr_ipv6
-                  le     = 128
-                }
-              ]
-            }
-            "CILIUM-SVC-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.service_cidr_ipv6
-                  le     = 128
-                }
-              ]
-            }
             "CILIUM-LB-v6" = {
               rules = [
                 {
@@ -445,59 +397,6 @@ locals {
           }
         }
         route_maps = {
-          "EXPORT-KERNEL-v4" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-PODS-v4"
-                }
-              },
-              {
-                seq    = 20
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-SVC-v4"
-                }
-              },
-              {
-                seq    = 30
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-LB-v4"
-                }
-              }
-            ]
-          }
-          "EXPORT-KERNEL-v6" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-PODS-v6"
-                }
-              },
-              {
-                seq    = 20
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-SVC-v6"
-                }
-              },
-              {
-                seq    = 30
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-LB-v6"
-                }
-              }
-            ]
-          }
           "IMPORT-DEFAULT-v4" = {
             rules = [
               {
@@ -506,22 +405,6 @@ locals {
                 match = {
                   address_family = "ipv4"
                   prefix_list    = "DEFAULT-ONLY-v4"
-                }
-              },
-              {
-                seq    = 90
-                action = "deny"
-              }
-            ]
-          }
-          "IMPORT-CILIUM-LB-v4" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                match = {
-                  address_family = "ipv4"
-                  prefix_list    = "CILIUM-LB-v4"
                 }
               },
               {
@@ -576,22 +459,6 @@ locals {
                 match = {
                   interface = "dummy0"
                 }
-              }
-            ]
-          }
-          "IMPORT-CILIUM-LB-v6" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-LB-v6"
-                }
-              },
-              {
-                seq    = 90
-                action = "deny"
               }
             ]
           }
