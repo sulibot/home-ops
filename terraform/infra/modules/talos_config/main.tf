@@ -38,10 +38,10 @@ locals {
   )
 
   cilium_veth_octet     = var.cluster_id % 256
-  cilium_veth_ipv4_local  = format("169.254.%d.2", local.cilium_veth_octet)
-  cilium_veth_ipv4_remote = format("169.254.%d.1", local.cilium_veth_octet)
-  cilium_veth_ipv6_local  = format("fd00:%x:c111::2", var.cluster_id)
-  cilium_veth_ipv6_remote = format("fd00:%x:c111::1", var.cluster_id)
+  cilium_veth_ipv4_local  = format("169.254.%d.1", local.cilium_veth_octet)
+  cilium_veth_ipv4_remote = format("169.254.%d.2", local.cilium_veth_octet)
+  cilium_veth_ipv6_local  = format("fd00:%x:c111::1", var.cluster_id)
+  cilium_veth_ipv6_remote = format("fd00:%x:c111::2", var.cluster_id)
 
   # Check if any worker nodes have GPU passthrough enabled
   has_gpu_nodes = anytrue([
