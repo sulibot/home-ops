@@ -30,7 +30,7 @@ spec:
           volume-permissions:
             image:
               repository: public.ecr.aws/docker/library/busybox
-              tag: 1.36.1
+              tag: 1.37.0
             command:
               - sh
               - -c
