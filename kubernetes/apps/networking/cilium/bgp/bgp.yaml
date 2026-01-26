@@ -15,10 +15,12 @@ spec:
       selector: {}
 
 ---
+# MP-BGP Peer Configuration
+# Single peer carries both IPv4 and IPv6 routes over IPv6 session
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: frr-local-ipv4
+  name: frr-local-mpbgp
 spec:
   families:
     - afi: ipv4
@@ -26,14 +28,6 @@ spec:
       advertisements:
         matchLabels:
           advertise: cilium-lb
-
----
-apiVersion: cilium.io/v2
-kind: CiliumBGPPeerConfig
-metadata:
-  name: frr-local-ipv6
-spec:
-  families:
     - afi: ipv6
       safi: unicast
       advertisements:
