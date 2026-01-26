@@ -118,3 +118,6 @@ talos/clusters/**/worker.yaml
 
 # Talos client config (per-user credentials)
 talos/clusters/**/talosconfig
+
+# FRR extension symlink (links to separate repository)
+FRR/
