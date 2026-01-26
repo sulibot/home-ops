@@ -1,100 +1,107 @@
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp01"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101011
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101011
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solcp01
+spec:
+  bgpInstances:
+  - localASN: 4210101011
+    name: local-frr
+    routerID: 10.101.255.11
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101011
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp02"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101012
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101012
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solcp02
+spec:
+  bgpInstances:
+  - localASN: 4210101012
+    name: local-frr
+    routerID: 10.101.255.12
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101012
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp03"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101013
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101013
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solcp03
+spec:
+  bgpInstances:
+  - localASN: 4210101013
+    name: local-frr
+    routerID: 10.101.255.13
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101013
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk01"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101021
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101021
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solwk01
+spec:
+  bgpInstances:
+  - localASN: 4210101021
+    name: local-frr
+    routerID: 10.101.255.21
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101021
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk02"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101022
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101022
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solwk02
+spec:
+  bgpInstances:
+  - localASN: 4210101022
+    name: local-frr
+    routerID: 10.101.255.22
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101022
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk03"
-"spec":
-  "bgpInstances":
-  - "localASN": 4210101023
-    "name": "local-frr"
-    "peers":
-    - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-mpbgp"
-      "peerASN": 4210101023
-      "peerAddress": "fd00:65:c111::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: solwk03
+spec:
+  bgpInstances:
+  - localASN: 4210101023
+    name: local-frr
+    routerID: 10.101.255.23
+    peers:
+    - localAddress: fd00:65:c111::2
+      name: frr-local-mpbgp
+      peerASN: 4210101023
+      peerAddress: fd00:65:c111::1
+      peerConfigRef:
+        name: frr-local-mpbgp
