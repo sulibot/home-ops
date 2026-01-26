@@ -1,0 +1,119 @@
+name: Update FRR Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'FRR extension version (e.g., v1.1.2)'
+        required: false
+        type: string
+  schedule:
+    # Check for updates daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get latest FRR extension version
+        id: get_version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            LATEST_VERSION="${{ inputs.version }}"
+            echo "Using manually specified version: $LATEST_VERSION"
+          else
+            # Get latest release from frr-talos-extension repo
+            LATEST_VERSION=$(curl -s "https://api.github.com/repos/sulibot/frr-talos-extension/releases/latest" | jq -r '.tag_name')
+            if [ "$LATEST_VERSION" = "null" ] || [ -z "$LATEST_VERSION" ]; then
+              echo "Failed to get latest version, falling back to git tags"
+              LATEST_VERSION=$(curl -s "https://api.github.com/repos/sulibot/frr-talos-extension/tags" | jq -r '.[0].name')
+            fi
+          fi
+          
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest FRR extension version: $LATEST_VERSION"
+      
+      - name: Get current version from install-schematic.hcl
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(grep -oP 'ghcr.io/sulibot/frr-talos-extension:\K[^"]+' terraform/infra/live/common/install-schematic.hcl | head -1)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current FRR extension version: $CURRENT_VERSION"
+      
+      - name: Check if update needed
+        id: check_update
+        run: |
+          LATEST="${{ steps.get_version.outputs.latest_version }}"
+          CURRENT="${{ steps.current_version.outputs.current_version }}"
+          
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "update_needed=false" >> $GITHUB_OUTPUT
+            echo "Already on latest version: $CURRENT"
+          else
+            echo "update_needed=true" >> $GITHUB_OUTPUT
+            echo "Update needed: $CURRENT -> $LATEST"
+          fi
+      
+      - name: Update install-schematic.hcl
+        if: steps.check_update.outputs.update_needed == 'true'
+        run: |
+          LATEST="${{ steps.get_version.outputs.latest_version }}"
+          
+          # Update the version in install-schematic.hcl
+          sed -i.bak "s|ghcr.io/sulibot/frr-talos-extension:[^\"]*|ghcr.io/sulibot/frr-talos-extension:$LATEST|g" \
+            terraform/infra/live/common/install-schematic.hcl
+          
+          rm -f terraform/infra/live/common/install-schematic.hcl.bak
+          
+          # Update comment with new version info
+          sed -i.bak "s|# v[0-9]\+\.[0-9]\+\.[0-9]\+:|# $LATEST:|g" \
+            terraform/infra/live/common/install-schematic.hcl
+          
+          rm -f terraform/infra/live/common/install-schematic.hcl.bak
+          
+          echo "Updated to version: $LATEST"
+      
+      - name: Create Pull Request
+        if: steps.check_update.outputs.update_needed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: Update FRR extension to ${{ steps.get_version.outputs.latest_version }}
+            
+            Updates frr-talos-extension from ${{ steps.current_version.outputs.current_version }} to ${{ steps.get_version.outputs.latest_version }}
+          branch: update-frr-extension-${{ steps.get_version.outputs.latest_version }}
+          delete-branch: true
+          title: 'chore: Update FRR extension to ${{ steps.get_version.outputs.latest_version }}'
+          body: |
+            ## FRR Extension Update
+            
+            Updates `frr-talos-extension` to version `${{ steps.get_version.outputs.latest_version }}`
+            
+            **Current version:** `${{ steps.current_version.outputs.current_version }}`  
+            **New version:** `${{ steps.get_version.outputs.latest_version }}`
+            
+            ### Changes
+            
+            View the changelog at: https://github.com/sulibot/frr-talos-extension/releases/tag/${{ steps.get_version.outputs.latest_version }}
+            
+            ### Next Steps
+            
+            After merging this PR:
+            1. Rebuild Talos installer images: `cd terraform/infra/live/artifacts/images && terragrunt apply`
+            2. Upgrade cluster nodes to use the new installer image
+            
+            ---
+            🤖 This PR was automatically created by the Update FRR Extension workflow
+          labels: |
+            dependencies
+            automated
