@@ -6,6 +6,7 @@
   "bgpInstances":
   - "localASN": 4210101011
     "name": "local-frr"
+    "routerID": "10.101.255.11"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
@@ -23,6 +24,7 @@
   "bgpInstances":
   - "localASN": 4210101012
     "name": "local-frr"
+    "routerID": "10.101.255.12"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
@@ -40,6 +42,7 @@
   "bgpInstances":
   - "localASN": 4210101013
     "name": "local-frr"
+    "routerID": "10.101.255.13"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
@@ -57,6 +60,7 @@
   "bgpInstances":
   - "localASN": 4210101021
     "name": "local-frr"
+    "routerID": "10.101.255.21"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
@@ -74,6 +78,7 @@
   "bgpInstances":
   - "localASN": 4210101022
     "name": "local-frr"
+    "routerID": "10.101.255.22"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
@@ -91,6 +96,7 @@
   "bgpInstances":
   - "localASN": 4210101023
     "name": "local-frr"
+    "routerID": "10.101.255.23"
     "peers":
     - "localAddress": "fd00:65:c111::2"
       "name": "frr-local-mpbgp"
