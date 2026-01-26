@@ -331,11 +331,6 @@ locals {
               remote_asn = node.frr_asn
               namespace = "cilium"
               peering = {
-                ipv4 = {
-                  local  = local.cilium_veth_ipv4_local
-                  remote = local.cilium_veth_ipv4_remote
-                  prefix = 30
-                }
                 ipv6 = {
                   local  = local.cilium_veth_ipv6_local
                   remote = local.cilium_veth_ipv6_remote
@@ -523,21 +518,12 @@ locals {
             localASN = node.frr_asn
             peers = [
               {
-                name         = "frr-local-ipv4"
-                peerASN      = node.frr_asn
-                peerAddress  = local.cilium_veth_ipv4_remote
-                localAddress = local.cilium_veth_ipv4_local
-                peerConfigRef = {
-                  name = "frr-local-ipv4"
-                }
-              },
-              {
-                name         = "frr-local-ipv6"
+                name         = "frr-local-mpbgp"
                 peerASN      = node.frr_asn
                 peerAddress  = local.cilium_veth_ipv6_remote
                 localAddress = local.cilium_veth_ipv6_local
                 peerConfigRef = {
-                  name = "frr-local-ipv6"
+                  name = "frr-local-mpbgp"
                 }
               }
             ]
