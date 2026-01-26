@@ -283,7 +283,10 @@ inputs = {
   # Schematic configuration for Talos image customization (from install schematic)
   # GPU passthrough is disabled - using default kernel args only
   kernel_args = local.install_schematic_config.install_kernel_args
-  system_extensions = local.install_schematic_config.install_system_extensions
+  system_extensions = concat(
+    local.install_schematic_config.install_system_extensions,
+    local.install_schematic_config.install_custom_extensions
+  )
 
   # Install disk
   install_disk = "/dev/sda"
