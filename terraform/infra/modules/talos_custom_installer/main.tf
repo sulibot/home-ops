@@ -104,14 +104,11 @@ resource "null_resource" "build_installer" {
         --base-installer-image factory.talos.dev/installer/$SCHEMATIC_ID:${var.talos_version} \
         ${local.extension_flags}
 
-      # Load the built image and get the image reference
+      # Load and tag installer locally (no registry push)
       LOADED_IMAGE=$(docker load < $TEMP_DIR/installer-amd64.tar | sed -n 's/^Loaded image: //p')
-
-      # Tag and push
       docker tag "$LOADED_IMAGE" ${local.installer_tag}
-      docker push ${local.installer_tag}
 
-      echo "Custom installer pushed to ${local.installer_tag}"
+      echo "✓ Custom installer built and tagged locally as ${local.installer_tag}"
     EOT
   }
 }

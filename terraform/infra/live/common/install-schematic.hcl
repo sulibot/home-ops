@@ -37,30 +37,10 @@ locals {
     "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00",
   ]
 
-  # FRR extension from sulibot fork
-  # v1.0.49: Match jsenecal exactly - remove disable-connected-check and update-source.
-  # v1.0.48: Fix BGP command order - remote-as must come before disable-connected-check.
-  # v1.0.47: Fix ip command path in netns exec (use /sbin/ip).
-  # v1.0.46: Isolate veth-cilium in cilium namespace (true jsenecal approach).
-  # v1.0.45: Keep both veth ends in host namespace (jsenecal approach).
-  # v1.0.44: Don't pre-assign IP to veth-cilium - let Cilium manage it.
-  # v1.0.43: Add veth pair support for Cilium BGP peering (169.254.100.1/2).
-  # v1.0.42: WRONG - disable-connected-check must come AFTER remote-as.
-  # v1.0.41: Remove invalid local-address command (FRR doesn't support it).
-  # v1.0.40: Use real loopback addresses for Cilium peering instead of ::1/127.0.0.1.
-  # v1.0.39: Add disable-connected-check for localhost Cilium peer.
-  # v1.0.38: Remove incorrect update-source for localhost Cilium peer.
-  # v1.0.37: Enable Cilium BGP by default; remove kernel route redistribution from embedded config.
-  # v1.0.35: Change embedded default config to use local_bgp_in mode instead of peers mode
-  # v1.0.34: Fix template newline bug causing BGP config parse errors
-  # v1.0.32: Refresh docs/examples for local Cilium iBGP LB VIP import.
-  # v1.0.25: Make BGP prefsrc optional to avoid route install failures.
-  # v1.0.23: Fix Cilium neighbor address selection; guard BFD rendering when undefined.
-  # v1.0.20: Guard BFD config rendering when bfd is omitted.
-  # v1.0.19: config.yaml + veth/netns Cilium peering; FRR 10.5.1
-  # v1.0.18: Fixed bgpd health check - restarts process instead of killing container
-  # v1.0.17: Includes Prometheus metrics exporter on port 9342
+  # FRR extension - using your fork
+  # Published from: /Users/sulibot/repos/github/frr-talos-extension
+  # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
   install_custom_extensions = [
-  "ghcr.io/jsenecal/frr-talos-extension:latest",
+    "ghcr.io/sulibot/frr-talos-extension:latest",
   ]
 }

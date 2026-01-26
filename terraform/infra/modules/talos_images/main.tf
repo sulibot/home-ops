@@ -149,12 +149,11 @@ resource "null_resource" "build_images" {
         --base-installer-image factory.talos.dev/installer/$SCHEMATIC_ID:${var.talos_version} \
         ${local.extension_flags}
 
-      # Load, tag, and push installer
+      # Load and tag installer locally (no registry push)
       LOADED_IMAGE=$(docker load < $TEMP_DIR/installer-amd64.tar | sed -n 's/^Loaded image: //p')
       docker tag "$LOADED_IMAGE" ${local.installer_tag}
-      docker push ${local.installer_tag}
 
-      echo "✓ Installer image pushed to ${local.installer_tag}"
+      echo "✓ Installer image built and tagged locally as ${local.installer_tag}"
 
       # ============================================================
       # STEP 2: Build Boot ISO (nocloud platform)
