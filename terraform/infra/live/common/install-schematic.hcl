@@ -40,6 +40,8 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.1.11: Fix IPv6 loopback redistribution (address-family-aware route-maps) and restore namespace isolation for veth peering
+  # v1.1.10: Match test VM config - use LOOPBACKS (uppercase), add BGP timers, disable SETSRC
   # v1.1.9: Remove IPv6 outbound route-map to match test VM (send all redistributed routes)
   # v1.1.8: Disable SETSRC_V6 route-map to fix IPv6 loopback redistribution (circular dependency)
   # v1.1.7: Remove passive and denymap to match working test VM config
@@ -51,6 +53,6 @@ locals {
   # v1.1.1: Fix MP-BGP template bug (use correct peer address for neighbor config)
   # v1.1.0: MP-BGP support (single IPv6 session carries IPv4+IPv6)
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.9",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.11",
   ]
 }
