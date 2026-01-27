@@ -138,8 +138,21 @@ write_files:
       route-map IMPORT-DEFAULT-v6 deny 90
       exit
       !
-      route-map LOOPBACKS permit 10
-       match interface lo
+      ! ========================================
+      ! Fix #1: IPv6 Loopback Redistribution
+      ! Use address-family-aware prefix-lists instead of generic interface matching
+      ! ========================================
+%{ if loopback != null ~}
+      ip prefix-list LOOPBACK-v4 seq 10 permit ${loopback.ipv4}/32
+      ipv6 prefix-list LOOPBACK-v6 seq 10 permit ${loopback.ipv6}/128
+%{ endif ~}
+      !
+      route-map LOOPBACKS-v4 permit 10
+       match ip address prefix-list LOOPBACK-v4
+      exit
+      !
+      route-map LOOPBACKS-v6 permit 10
+       match ipv6 address prefix-list LOOPBACK-v6
       exit
       !
       router bgp ${frr_config.local_asn}
@@ -171,7 +184,7 @@ write_files:
 %{ endif ~}
         neighbor ${frr_config.upstream_peer} activate
         neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v4 in
-        redistribute connected route-map LOOPBACKS
+        redistribute connected route-map LOOPBACKS-v4
        exit-address-family
        !
        address-family ipv6 unicast
@@ -182,7 +195,7 @@ write_files:
 %{ endif ~}
         neighbor ${frr_config.upstream_peer} activate
         neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v6 in
-        redistribute connected route-map LOOPBACKS
+        redistribute connected route-map LOOPBACKS-v6
        exit-address-family
       exit
       !
@@ -355,6 +368,12 @@ write_files:
 runcmd:
   # Apply sysctl settings
   - sysctl -p /etc/sysctl.d/99-evpn-notify.conf
+
+%{ if loopback != null ~}
+  # Configure loopback addresses for BGP
+  - ip addr add ${loopback.ipv4}/32 dev lo
+  - ip addr add ${loopback.ipv6}/128 dev lo
+%{ endif ~}
 
   # Fix FRR file permissions
   - chown frr:frr /etc/frr/daemons /etc/frr/frr.conf
