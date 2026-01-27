@@ -40,6 +40,7 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.1.8: Disable SETSRC_V6 route-map to fix IPv6 loopback redistribution (circular dependency)
   # v1.1.7: Remove passive and denymap to match working test VM config
   # v1.1.6: Add next-hop-self for Cilium neighbor to enable route redistribution
   # v1.1.5: Set FRR as passive for Cilium peering to prevent connection collision
@@ -49,6 +50,6 @@ locals {
   # v1.1.1: Fix MP-BGP template bug (use correct peer address for neighbor config)
   # v1.1.0: MP-BGP support (single IPv6 session carries IPv4+IPv6)
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.7",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.8",
   ]
 }
