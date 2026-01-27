@@ -408,6 +408,16 @@ locals {
                 }
               ]
             }
+            "LOOPBACK-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "10.101.254.0/24"
+                  le     = 32
+                }
+              ]
+            }
           }
           ipv6 = {
             "CILIUM-LB-v6" = {
@@ -426,6 +436,16 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = "::/0"
+                }
+              ]
+            }
+            "LOOPBACK-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "fd00:101:fe::/48"
+                  le     = 128
                 }
               ]
             }
@@ -474,11 +494,26 @@ locals {
                 }
               },
               {
+                seq    = 12
+                action = "permit"
+                match = {
+                  prefix_list = "LOOPBACK-v4"
+                }
+              },
+              {
                 seq    = 15
                 action = "permit"
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
+                }
+              },
+              {
+                seq    = 17
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "LOOPBACK-v6"
                 }
               },
               {
@@ -516,6 +551,8 @@ locals {
           {
             name     = "local-frr"
             localASN = node.frr_asn
+            # Use 10.101.255.x for Cilium router ID to avoid collision with FRR (10.101.254.x)
+            routerID = replace(node.loopback_ipv4, "10.101.254.", "10.101.255.")
             peers = [
               {
                 name         = "frr-local-mpbgp"
