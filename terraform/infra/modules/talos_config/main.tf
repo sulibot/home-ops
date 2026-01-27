@@ -351,6 +351,10 @@ locals {
           router_id_v6        = "fd00:${var.cluster_id}:fe::${node.node_suffix}"
           update_source       = node.public_ipv6
           advertise_loopbacks = var.bgp_advertise_loopbacks
+          loopbacks = {
+            ipv4 = node.loopback_ipv4
+            ipv6 = node.loopback_ipv6
+          }
           peers = [
             {
               address                     = "fd00:${var.cluster_id}::fffe"
