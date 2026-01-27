@@ -40,6 +40,7 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.1.15: Remove passive directive - causes bgpd configuration failure (error 13), revert to v1.1.7 active-active
   # v1.1.14: Per-node loopback prefix-lists from Terraform config, add BGP diagnostics helper for FSM debugging
   # v1.1.13: Make FRR passive for Cilium peer to fix iBGP connection collision (both sides were active)
   # v1.1.12: Revert namespace isolation (v1.1.11) - incompatible with Cilium hostNetwork=true. Keep only IPv6 loopback route-map fix.
@@ -56,6 +57,6 @@ locals {
   # v1.1.1: Fix MP-BGP template bug (use correct peer address for neighbor config)
   # v1.1.0: MP-BGP support (single IPv6 session carries IPv4+IPv6)
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.14",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.15",
   ]
 }
