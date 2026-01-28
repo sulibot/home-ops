@@ -323,6 +323,10 @@ EOF
 # Generate per-node FRR config YAML for the extension
 # Split into separate locals blocks to avoid circular dependencies with Talos provider 0.10.0+
 locals {
+  cilium_allowed_prefixes = {
+    ipv4 = [for prefix in var.bgp_cilium_allowed_prefixes.ipv4 : prefix if prefix != ""]
+    ipv6 = [for prefix in var.bgp_cilium_allowed_prefixes.ipv6 : prefix if prefix != ""]
+  }
   frr_config_yamls = {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
@@ -344,6 +348,7 @@ locals {
                 var.loadbalancers_ipv6
               ]
               export_loopbacks = false
+              allowed_prefixes = local.cilium_allowed_prefixes
             }
         upstream = {
           local_asn           = node.frr_asn
@@ -354,6 +359,10 @@ locals {
           loopbacks = {
             ipv4 = node.loopback_ipv4
             ipv6 = node.loopback_ipv6
+          }
+          loopback_addresses = {
+            ipv4 = [node.loopback_ipv4]
+            ipv6 = [node.loopback_ipv6]
           }
           peers = [
             {
@@ -412,16 +421,16 @@ locals {
                 }
               ]
             }
-            "LOOPBACK-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "10.101.254.0/24"
-                  le     = 32
-                }
-              ]
+        "LOOPBACK-v4" = {
+          rules = [
+            {
+              seq    = 10
+              action = "permit"
+              prefix = "10.${var.cluster_id}.254.0/24"
+              le     = 32
             }
+          ]
+        }
           }
           ipv6 = {
             "CILIUM-LB-v6" = {
@@ -448,7 +457,7 @@ locals {
                 {
                   seq    = 10
                   action = "permit"
-                  prefix = "fd00:101:fe::/48"
+                  prefix = "fd00:${var.cluster_id}:fe::/48"
                   le     = 128
                 }
               ]
@@ -501,7 +510,7 @@ locals {
                 seq    = 12
                 action = "permit"
                 match = {
-                  prefix_list = "LOOPBACK-v4"
+                  prefix_list = "LOOPBACK-self-v4"
                 }
               },
               {
@@ -517,7 +526,7 @@ locals {
                 action = "permit"
                 match = {
                   address_family = "ipv6"
-                  prefix_list    = "LOOPBACK-v6"
+                  prefix_list    = "LOOPBACK-self-v6"
                 }
               },
               {

@@ -18,6 +18,16 @@ This document explains how to configure FRR (BGP routing daemon) to be running a
 - BGP sessions establish before disk installation
 - No manual configuration steps required
 
+### Host-Network Deployment and Prefix Trust Model
+
+Because the FRR extension and Cilium both run with `hostNetwork: true`, they share the same Linux network namespace. This removes the need for veth namespace juggling or helper scripts and makes it straightforward for Cilium to peer directly with FRR over the existing `veth-cilium/veth-frr` pair.
+
+- **Loopback advertisement** is still gated by the Terragrunt-rendered prefix-lists (`LOOPBACK-self-v4`/`LOOPBACK-self-v6`), which are generated from the per-node loopback IPs (`10.${cluster_id}.254.${suffix}/32` and `fd00:${cluster_id}:fe::${suffix}/128`).
+- **Cilium remains the arbiter** of which additional prefixes (LoadBalancer IPs, pod CIDRs, etc.) propagate to FRR. The extension exposes `bgp_cilium_allowed_prefixes` (aka `CILIUM_ALLOWED_PREFIXES` in the ExtensionServiceConfig) so operators can optionally gate what Cilium advertises; when that list is empty, FRR simply forwards everything Cilium sends.
+- **No host helper script** is necessary—the extension now configures the shared veth pair directly inside its startup script.
+
+This model keeps FRR transparent; you only need to update Cilium’s advertisements when you want to change what reaches the upstream fabric. The FRR extension just ensures the node loopbacks are advertised early while trusting Cilium for everything else.
+
 ## Solution: Hybrid Cloud-Init + Per-Node ISOs
 
 ### Approach

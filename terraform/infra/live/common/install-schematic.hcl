@@ -40,6 +40,15 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.1.34: FRR runs in hostNetwork mode, uses templated loopback prefix-lists, and pairs with a host-side helper service for the node-local veth.
+  # v1.1.30: Rigorous namespace testing - improved PID discovery with comprehensive diagnostics to prove namespace access or provide failure evidence
+  # v1.1.29: Use PID directly for namespace operations - with hostPID: true, ip link set netns accepts host PID numbers directly without needing /proc paths
+  # v1.1.28: Fix host namespace access by mounting /proc to /hostproc
+  # v1.1.27: Add robust host netns discovery with multiple process fallsbacks and logging
+  # v1.1.20: Fix ip command path in namespace exec - use /sbin/ip for commands inside cilium namespace
+  # v1.1.19: Fix veth namespace isolation - move veth-cilium into dedicated cilium namespace while keeping FRR in host namespace. Preserves both loopback visibility and Cilium BGP peering.
+  # v1.1.18: Enable hostNetwork so FRR can see host loopback addresses for redistribute connected
+  # v1.1.17: Fix route advertisement - enable IPv6 outbound route-map and support route_map_in_v4/v6 from Terraform
   # v1.1.16: Fix passive directive placement - must be inside address-family blocks for MP-BGP over IPv6
   # v1.1.15: Remove passive directive - causes bgpd configuration failure (error 13), revert to v1.1.7 active-active
   # v1.1.14: Per-node loopback prefix-lists from Terraform config, add BGP diagnostics helper for FSM debugging
@@ -58,6 +67,6 @@ locals {
   # v1.1.1: Fix MP-BGP template bug (use correct peer address for neighbor config)
   # v1.1.0: MP-BGP support (single IPv6 session carries IPv4+IPv6)
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.16",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.36",
   ]
 }

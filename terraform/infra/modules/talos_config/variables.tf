@@ -188,6 +188,18 @@ variable "bgp_advertise_loopbacks" {
   default     = false
 }
 
+variable "bgp_cilium_allowed_prefixes" {
+  description = "Optional prefixes that FRR should gate before advertising upstream (empty = trust)."
+  type = object({
+    ipv4 = list(string)
+    ipv6 = list(string)
+  })
+  default = {
+    ipv4 = []
+    ipv6 = []
+  }
+}
+
 variable "enable_i915" {
   description = "DEPRECATED: Use per-node gpu_passthrough configuration instead"
   type        = bool

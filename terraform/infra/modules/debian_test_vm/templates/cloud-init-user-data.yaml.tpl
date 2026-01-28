@@ -35,8 +35,8 @@ package_update: true
 package_upgrade: true
 
 packages:
-  - frr
-  - frr-pythontools
+  - docker.io
+  - docker-compose
   - gobgpd
   - qemu-guest-agent
   - curl
@@ -66,6 +66,125 @@ write_files:
       net.ipv6.conf.all.forwarding=1
     owner: root:root
     permissions: '0644'
+
+%{ if frr_enabled && frr_config != null ~}
+  # FRR extension config file (Talos format)
+  # This file is mounted into the container at /etc/frr/frr.yaml
+  - path: /var/lib/frr/frr.yaml
+    content: |
+      network:
+        interface_mtu: 1450
+        veth_names:
+          frr_side: veth-frr
+          cilium_side: veth-cilium
+
+      bgp:
+        local_asn: ${frr_config.local_asn}
+        router_id: "${frr_config.router_id}"
+
+%{ if frr_config.veth_enabled ~}
+        # Cilium local peering configuration
+        cilium:
+          enabled: true
+          namespace: ${frr_config.veth_namespace}
+          peering:
+            ipv4:
+              local: "${frr_config.veth_ipv4_local}"
+              remote: "${frr_config.veth_ipv4_remote}"
+              prefix: 31
+            ipv6:
+              local: "${frr_config.veth_ipv6_local}"
+              remote: "${frr_config.veth_ipv6_remote}"
+              prefix: 126
+%{ endif ~}
+
+        # Upstream BGP peer configuration
+        upstream:
+          enabled: true
+          peer_address: "${frr_config.upstream_peer}"
+          peer_asn: ${frr_config.upstream_asn}
+%{ if loopback != null ~}
+          loopbacks:
+            ipv4: "${loopback.ipv4}"
+            ipv6: "${loopback.ipv6}"
+%{ endif ~}
+    owner: root:root
+    permissions: '0644'
+
+  # FRR extension container service (mimics Talos environment)
+  - path: /etc/systemd/system/frr-container.service
+    content: |
+      [Unit]
+      Description=FRR Extension Container (mimics Talos)
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=simple
+      ExecStartPre=/usr/bin/docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.25
+      ExecStart=/usr/bin/docker run --rm \
+        --name frr-extension \
+        --privileged \
+        --pid=host \
+        -v /var/lib/frr:/etc/frr:rw \
+        -v /var/run/frr:/tmp:rw \
+        ghcr.io/sulibot/frr-talos-extension:v1.1.25
+      ExecStop=/usr/bin/docker stop frr-extension
+      Restart=always
+      RestartSec=10
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    permissions: '0644'
+
+  # Namespace diagnostic script for debugging
+  - path: /usr/local/bin/debug-namespace.sh
+    content: |
+      #!/bin/bash
+      # Interactive debugging of namespace operations
+
+      echo "=== Container PID Info ==="
+      CONTAINER_PID=$$(docker inspect -f '{{.State.Pid}}' frr-extension 2>/dev/null)
+      if [ -z "$$CONTAINER_PID" ] || [ "$$CONTAINER_PID" = "0" ]; then
+          echo "ERROR: FRR container not running"
+          exit 1
+      fi
+      echo "FRR container PID: $$CONTAINER_PID"
+
+      echo ""
+      echo "=== Namespace Comparison ==="
+      echo "Host (PID 1) network namespace:"
+      readlink /proc/1/ns/net
+      echo "Container network namespace:"
+      readlink /proc/$$CONTAINER_PID/ns/net
+      echo "Are they same? $$([ $$(readlink /proc/1/ns/net) = $$(readlink /proc/$$CONTAINER_PID/ns/net) ] && echo YES || echo NO)"
+
+      echo ""
+      echo "=== Veth Interfaces ==="
+      echo "In host namespace:"
+      ip link show | grep veth || echo "  No veth interfaces"
+
+      echo ""
+      echo "In container namespace:"
+      nsenter -t $$CONTAINER_PID -n ip link show | grep veth || echo "  No veth interfaces"
+
+      echo ""
+      echo "=== Routing in Host Namespace ==="
+      if ip addr show veth-cilium &>/dev/null; then
+          CILIUM_IP=$$(ip addr show veth-cilium | grep "inet6.*fd00:65:c111" | awk '{print $$2}' | cut -d/ -f1)
+          if [ -n "$$CILIUM_IP" ]; then
+              echo "Testing route to Cilium peering IP ($$CILIUM_IP):"
+              ip route get $$CILIUM_IP
+          fi
+      fi
+
+      echo ""
+      echo "=== Container Logs (last 20 lines) ==="
+      docker logs --tail 20 frr-extension
+    owner: root:root
+    permissions: '0755'
+%{ endif ~}
 
   # FRR daemons configuration
   - path: /etc/frr/daemons
@@ -375,33 +494,43 @@ runcmd:
   - ip addr add ${loopback.ipv6}/128 dev lo
 %{ endif ~}
 
-  # Fix FRR file permissions
-  - chown frr:frr /etc/frr/daemons /etc/frr/frr.conf
-  - chmod 640 /etc/frr/daemons /etc/frr/frr.conf
-
   # Enable and start qemu-guest-agent
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 
-%{ if frr_enabled && frr_config != null && frr_config.veth_enabled ~}
-  # Enable and run veth setup before FRR
-  - systemctl daemon-reload
-  - systemctl enable veth-setup.service
-  - systemctl start veth-setup.service
-%{ endif ~}
-
 %{ if frr_enabled && frr_config != null ~}
-  # Enable and start FRR
-  - systemctl enable frr
-  - systemctl restart frr
+  # Create FRR directories for container mounts
+  - mkdir -p /var/lib/frr /var/run/frr
+  - chmod 755 /var/lib/frr /var/run/frr
+
+  # Enable and start Docker
+  - systemctl enable docker
+  - systemctl start docker
+
+  # Pull FRR extension image
+  - docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.25
+
+  # Start FRR container (mimics Talos environment)
+  - systemctl daemon-reload
+  - systemctl enable frr-container.service
+  - systemctl start frr-container.service
+
+  # Wait for container startup
+  - sleep 10
+
+  # Display container status and logs
+  - echo "=== FRR Container Status ===" && docker ps -f name=frr-extension
+  - echo "=== FRR Container Logs ===" && docker logs frr-extension || true
 
 %{ if frr_config.veth_enabled ~}
-  # Enable and start GoBGP in cilium namespace
+  # Enable and start GoBGP in cilium namespace (simulates Cilium BGP)
+  # NOTE: This will only work once veth namespace isolation is fixed
   - systemctl daemon-reload
   - systemctl enable gobgpd-cilium
-  - systemctl start gobgpd-cilium
-  - sleep 5
-  - echo "BGP status:" && vtysh -c "show bgp summary"
+  - systemctl start gobgpd-cilium || echo "GoBGP start failed (expected until veth works)"
+
+  # Display namespace debugging info
+  - echo "=== Namespace Debug Info ===" && /usr/local/bin/debug-namespace.sh || true
 %{ endif ~}
 %{ endif ~}
 
