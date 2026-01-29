@@ -40,33 +40,10 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
-  # v1.1.34: FRR runs in hostNetwork mode, uses templated loopback prefix-lists, and pairs with a host-side helper service for the node-local veth.
-  # v1.1.30: Rigorous namespace testing - improved PID discovery with comprehensive diagnostics to prove namespace access or provide failure evidence
-  # v1.1.29: Use PID directly for namespace operations - with hostPID: true, ip link set netns accepts host PID numbers directly without needing /proc paths
-  # v1.1.28: Fix host namespace access by mounting /proc to /hostproc
-  # v1.1.27: Add robust host netns discovery with multiple process fallsbacks and logging
-  # v1.1.20: Fix ip command path in namespace exec - use /sbin/ip for commands inside cilium namespace
-  # v1.1.19: Fix veth namespace isolation - move veth-cilium into dedicated cilium namespace while keeping FRR in host namespace. Preserves both loopback visibility and Cilium BGP peering.
-  # v1.1.18: Enable hostNetwork so FRR can see host loopback addresses for redistribute connected
-  # v1.1.17: Fix route advertisement - enable IPv6 outbound route-map and support route_map_in_v4/v6 from Terraform
-  # v1.1.16: Fix passive directive placement - must be inside address-family blocks for MP-BGP over IPv6
-  # v1.1.15: Remove passive directive - causes bgpd configuration failure (error 13), revert to v1.1.7 active-active
-  # v1.1.14: Per-node loopback prefix-lists from Terraform config, add BGP diagnostics helper for FSM debugging
-  # v1.1.13: Make FRR passive for Cilium peer to fix iBGP connection collision (both sides were active)
-  # v1.1.12: Revert namespace isolation (v1.1.11) - incompatible with Cilium hostNetwork=true. Keep only IPv6 loopback route-map fix.
-  # v1.1.11: Fix IPv6 loopback redistribution (address-family-aware route-maps) and restore namespace isolation for veth peering
-  # v1.1.10: Match test VM config - use LOOPBACKS (uppercase), add BGP timers, disable SETSRC
-  # v1.1.9: Remove IPv6 outbound route-map to match test VM (send all redistributed routes)
-  # v1.1.8: Disable SETSRC_V6 route-map to fix IPv6 loopback redistribution (circular dependency)
-  # v1.1.7: Remove passive and denymap to match working test VM config
-  # v1.1.6: Add next-hop-self for Cilium neighbor to enable route redistribution
-  # v1.1.5: Set FRR as passive for Cilium peering to prevent connection collision
-  # v1.1.4: Fix Cilium peering - add update-source veth-frr for BGP OPEN to succeed
-  # v1.1.3: Enable MP-BGP for upstream peers (capability extended-nexthop support) - fixed build
-  # v1.1.2: Enable MP-BGP for upstream peers (capability extended-nexthop support) - broken build
-  # v1.1.1: Fix MP-BGP template bug (use correct peer address for neighbor config)
-  # v1.1.0: MP-BGP support (single IPv6 session carries IPv4+IPv6)
+  # v1.1.41: Replace MP-BGP with dual-stack traditional BGP - separate IPv4/IPv6 sessions for better Cilium compatibility
+  # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
+  # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.36",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.41",
   ]
 }
