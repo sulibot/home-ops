@@ -2,7 +2,7 @@
 apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
-  name: frr-local-ipv4
+  name: frr-local-mpbgp
 spec:
   families:
   - afi: ipv4
@@ -10,16 +10,6 @@ spec:
     advertisements:
       matchLabels:
         advertise: cilium-lb
-  transport:
-    peerPort: 179
-
----
-apiVersion: cilium.io/v2
-kind: CiliumBGPPeerConfig
-metadata:
-  name: frr-local-ipv6
-spec:
-  families:
   - afi: ipv6
     safi: unicast
     advertisements:

@@ -1,0 +1,19 @@
+machine:
+  files:
+    - content: |
+        bgp:
+          cilium:
+            local_asn: 4210101011
+            remote_asn: 4210101011
+            namespace: cilium
+            peering:
+              ipv4:
+                local: "169.254.101.2"
+                remote: "169.254.101.1"
+                prefix: 31
+              ipv6:
+                local: "fd00:65:c111::2"
+                remote: "fd00:65:c111::1"
+                prefix: 126
+      mountPath: /usr/local/etc/frr/config.yaml
+      op: append

@@ -7,18 +7,12 @@
   - "localASN": 4210101011
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101011
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101011
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.11"
 
 ---
@@ -31,18 +25,12 @@
   - "localASN": 4210101012
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101012
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101012
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.12"
 
 ---
@@ -55,18 +43,12 @@
   - "localASN": 4210101013
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101013
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101013
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.13"
 
 ---
@@ -79,18 +61,12 @@
   - "localASN": 4210101021
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101021
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101021
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.21"
 
 ---
@@ -103,18 +79,12 @@
   - "localASN": 4210101022
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101022
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101022
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.22"
 
 ---
@@ -127,16 +97,10 @@
   - "localASN": 4210101023
     "name": "local-frr"
     "peers":
-    - "localAddress": "169.254.101.2"
-      "name": "frr-local-ipv4"
-      "peerASN": 4210101023
-      "peerAddress": "169.254.101.1"
-      "peerConfigRef":
-        "name": "frr-local-ipv4"
     - "localAddress": "fd00:65:c111::2"
-      "name": "frr-local-ipv6"
+      "name": "frr-local-mpbgp"
       "peerASN": 4210101023
       "peerAddress": "fd00:65:c111::1"
       "peerConfigRef":
-        "name": "frr-local-ipv6"
+        "name": "frr-local-mpbgp"
     "routerID": "10.101.255.23"

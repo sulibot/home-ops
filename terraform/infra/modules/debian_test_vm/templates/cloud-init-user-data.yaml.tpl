@@ -121,14 +121,14 @@ write_files:
 
       [Service]
       Type=simple
-      ExecStartPre=/usr/bin/docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.25
+      ExecStartPre=/usr/bin/docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.39
       ExecStart=/usr/bin/docker run --rm \
         --name frr-extension \
         --privileged \
         --pid=host \
         -v /var/lib/frr:/etc/frr:rw \
         -v /var/run/frr:/tmp:rw \
-        ghcr.io/sulibot/frr-talos-extension:v1.1.25
+        ghcr.io/sulibot/frr-talos-extension:v1.1.39
       ExecStop=/usr/bin/docker stop frr-extension
       Restart=always
       RestartSec=10
@@ -508,7 +508,7 @@ runcmd:
   - systemctl start docker
 
   # Pull FRR extension image
-  - docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.25
+  - docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.39
 
   # Start FRR container (mimics Talos environment)
   - systemctl daemon-reload
