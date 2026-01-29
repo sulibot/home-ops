@@ -40,10 +40,11 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.1.42: Fix loopback prefix-list syntax - add /32 and /128 prefix lengths to host addresses
   # v1.1.41: Replace MP-BGP with dual-stack traditional BGP - separate IPv4/IPv6 sessions for better Cilium compatibility
   # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
   # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.1.41",
+    "ghcr.io/sulibot/frr-talos-extension:v1.1.42",
   ]
 }
