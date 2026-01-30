@@ -40,6 +40,7 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.7.6: Add tmpfs mounts for /var/run/frr, /var/lib/frr, /var/log/frr - fixes FRR daemon startup
   # v1.7.5: Use tmpfs overlay for /etc/frr - makes config directory writable in-memory without host mounts
   # v1.7.3: Use container's internal /run for writable paths - fixes daemon startup without host bind mounts
   # v1.7.1: Mount /run/frr-* from host into container via frr.yaml. Requires machine config to create host dirs.
@@ -61,6 +62,6 @@ locals {
   # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
   # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.7.5",
+    "ghcr.io/sulibot/frr-talos-extension:v1.7.6",
   ]
 }
