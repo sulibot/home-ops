@@ -5,7 +5,6 @@ machine:
           cilium:
             local_asn: 4210101011
             remote_asn: 4210101011
-            namespace: cilium
             peering:
               ipv4:
                 local: "169.254.101.2"
