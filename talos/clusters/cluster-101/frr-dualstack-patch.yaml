@@ -14,5 +14,5 @@ machine:
                 local: "fd00:65:c111::2"
                 remote: "fd00:65:c111::1"
                 prefix: 126
-      mountPath: /usr/local/etc/frr/config.yaml
-      op: append
+      mountPath: /var/lib/frr/config.yaml
+      op: create

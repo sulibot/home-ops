@@ -17,6 +17,9 @@ locals {
   # Calculation: 4210000000 + (101 * 1000) + 11 = 4210101011
   frr_asn_base_cluster = var.bgp_asn_base + var.cluster_id * 1000
 
+  # Cilium Cluster-wide ASN: 4220<cluster>000
+  cilium_asn_cluster = 4220000000 + var.cluster_id * 1000
+
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
@@ -36,12 +39,6 @@ locals {
       frr_asn        = local.frr_asn_base_cluster + v.ip_suffix
     }) }
   )
-
-  cilium_veth_octet     = var.cluster_id % 256
-  cilium_veth_ipv4_local  = format("169.254.%d.2", local.cilium_veth_octet)
-  cilium_veth_ipv4_remote = format("169.254.%d.1", local.cilium_veth_octet)
-  cilium_veth_ipv6_local  = format("fd00:%x:c111::2", var.cluster_id)
-  cilium_veth_ipv6_remote = format("fd00:%x:c111::1", var.cluster_id)
 
   # Check if any worker nodes have GPU passthrough enabled
   has_gpu_nodes = anytrue([
@@ -331,22 +328,16 @@ locals {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
             cilium = {
-              local_asn = node.frr_asn
-              remote_asn = node.frr_asn
-              namespace = "cilium"
+              local_asn = node.frr_asn # FRR's ASN
+              remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
               peering = {
                 ipv6 = {
-                  local  = local.cilium_veth_ipv6_local
-                  remote = local.cilium_veth_ipv6_remote
+                  # Peer on localhost/loopback since we are in host netns
+                  local  = node.loopback_ipv6 # FRR binds to this
+                  remote = node.loopback_ipv6 # Cilium connects to this
                   prefix = 126
                 }
               }
-              vip_prefixes_v4 = [
-                var.loadbalancers_ipv4
-              ]
-              vip_prefixes_v6 = [
-                var.loadbalancers_ipv6
-              ]
               export_loopbacks = false
               allowed_prefixes = local.cilium_allowed_prefixes
             }
@@ -443,6 +434,26 @@ locals {
                 }
               ]
             }
+            "CILIUM-ALL-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "::/0"
+                  le     = 128
+                }
+              ]
+            }
+            "CILIUM-ALL-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "0.0.0.0/0"
+                  le     = 32
+                }
+              ]
+            }
             "DEFAULT-ONLY-v6" = {
               rules = [
                 {
@@ -497,6 +508,30 @@ locals {
               }
             ]
           }
+          "IMPORT-FROM-CILIUM-v4" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv4"
+                  prefix_list    = "CILIUM-ALL-v4"
+                }
+              }
+            ]
+          }
+          "IMPORT-FROM-CILIUM-v6" = {
+            rules = [
+              {
+                seq    = 10
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-ALL-v6"
+                }
+              }
+            ]
+          }
           "EXPORT-TO-UPSTREAM" = {
             rules = [
               {
@@ -504,6 +539,11 @@ locals {
                 action = "permit"
                 match = {
                   prefix_list = "CILIUM-LB-v4"
+                }
+                set = {
+                  # Essential for eBGP to ToR when redistributing routes learned from eBGP (Cilium)
+                  # Ensures ToR sends traffic to this node, not trying to reach Cilium's internal next-hop
+                  next_hop_self = true
                 }
               },
               {
@@ -519,6 +559,9 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
+                }
+                set = {
+                  next_hop_self = true
                 }
               },
               {
@@ -563,15 +606,17 @@ locals {
         bgpInstances = [
           {
             name     = "local-frr"
-            localASN = node.frr_asn
+            # localPort removed to prevent binding :179 (Cilium default behavior when unset is to not listen if not configured?)
+            # Actually, we want Cilium to NOT bind 179.
+            localASN = local.cilium_asn_cluster
             # Use 10.101.255.x for Cilium router ID to avoid collision with FRR (10.101.254.x)
             routerID = replace(node.loopback_ipv4, "10.101.254.", "10.101.255.")
             peers = [
               {
-                name         = "frr-local-mpbgp"
+                name         = "frr-local-ipv6"
                 peerASN      = node.frr_asn
-                peerAddress  = local.cilium_veth_ipv6_remote
-                localAddress = local.cilium_veth_ipv6_local
+                peerAddress  = node.loopback_ipv6 # Connect to FRR on its loopback IP
+                # No localAddress needed if peering on loopback/host netns
                 peerConfigRef = {
                   name = "frr-local-mpbgp"
                 }
@@ -610,7 +655,6 @@ locals {
       # Per-node network patch and FRR ExtensionServiceConfig
       # Using heredoc to create proper multi-document YAML for Talos config_patch
       config_patch = <<-EOT
----
 ${yamlencode(merge(
   {
     machine = {
@@ -724,4 +768,33 @@ data "talos_client_configuration" "cluster" {
     [for node in local.control_plane_nodes : node.public_ipv6],
     [for node in local.worker_nodes : node.public_ipv6]
   )
+}
+
+resource "local_file" "talosconfig" {
+  content  = data.talos_client_configuration.cluster.talos_config
+  filename = "${path.root}/talosconfig"
+}
+
+resource "local_file" "machine_config_patches" {
+  for_each = local.machine_configs
+  content  = each.value.config_patch
+  filename = "${path.root}/${each.key}.patch.yaml"
+}
+
+resource "local_file" "cilium_bgp_node_configs" {
+  content  = local.cilium_bgp_node_configs_yaml
+  filename = "${path.root}/cilium-bgp-node-configs.yaml"
+}
+
+resource "terraform_data" "talos_secrets" {
+  triggers_replace = [
+    sha256(yamlencode(local.machine_secrets))
+  ]
+
+  provisioner "local-exec" {
+    command = "printf '%s' \"$SECRETS\" | sops --encrypt --input-type yaml --output-type yaml --filename-override talsecret.sops.yaml /dev/stdin > \"${path.root}/talsecret.sops.yaml\""
+    environment = {
+      SECRETS = yamlencode(local.machine_secrets)
+    }
+  }
 }
