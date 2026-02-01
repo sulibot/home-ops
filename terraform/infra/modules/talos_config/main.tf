@@ -426,6 +426,22 @@ locals {
             }
           ]
         }
+        "LOOPBACK-self-v4" = {
+          rules = [
+            {
+              seq    = 10
+              action = "permit"
+              prefix = "10.${var.cluster_id}.254.0/24"
+              le     = 32
+            },
+            {
+              seq    = 20
+              action = "permit"
+              prefix = "10.${var.cluster_id}.255.0/24"
+              le     = 32
+            }
+          ]
+        }
             "CILIUM-ALL-v4" = {
               rules = [
                 {
@@ -473,6 +489,22 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = "fd00:${var.cluster_id}:fe::/48"
+                  le     = 128
+                }
+              ]
+            }
+            "LOOPBACK-self-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "fd00:${var.cluster_id}:fe::/112"
+                  le     = 128
+                },
+                {
+                  seq    = 20
+                  action = "permit"
+                  prefix = "fd00:${var.cluster_id}:254::/112"
                   le     = 128
                 }
               ]
