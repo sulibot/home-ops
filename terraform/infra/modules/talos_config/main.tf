@@ -422,6 +422,16 @@ locals {
             }
           ]
         }
+            "CILIUM-ALL-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "0.0.0.0/0"
+                  le     = 32
+                }
+              ]
+            }
           }
           ipv6 = {
             "CILIUM-LB-v6" = {
@@ -441,16 +451,6 @@ locals {
                   action = "permit"
                   prefix = "::/0"
                   le     = 128
-                }
-              ]
-            }
-            "CILIUM-ALL-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "0.0.0.0/0"
-                  le     = 32
                 }
               ]
             }
