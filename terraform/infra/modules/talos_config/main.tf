@@ -23,20 +23,24 @@ locals {
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
-      machine_type   = "controlplane"
-      node_suffix    = v.ip_suffix
-      loopback_ipv6  = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4  = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      machine_type        = "controlplane"
+      node_suffix         = v.ip_suffix
+      loopback_ipv6       = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4       = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      bgp_loopback_ipv6   = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
+      bgp_loopback_ipv4   = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
-      frr_asn        = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn             = local.frr_asn_base_cluster + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
-      machine_type   = "worker"
-      node_suffix    = v.ip_suffix
-      loopback_ipv6  = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4  = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      machine_type        = "worker"
+      node_suffix         = v.ip_suffix
+      loopback_ipv6       = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4       = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      bgp_loopback_ipv6   = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
+      bgp_loopback_ipv4   = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
-      frr_asn        = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn             = local.frr_asn_base_cluster + v.ip_suffix
     }) }
   )
 
@@ -333,8 +337,8 @@ locals {
               peering = {
                 ipv6 = {
                   # Peer on localhost/loopback since we are in host netns
-                  local  = node.loopback_ipv6 # FRR binds to this
-                  remote = node.loopback_ipv6 # Cilium connects to this
+                  local  = node.bgp_loopback_ipv6 # FRR binds to BGP loopback
+                  remote = node.loopback_ipv6     # Cilium connects from main loopback
                   prefix = 126
                 }
               }
@@ -615,7 +619,7 @@ locals {
               {
                 name         = "frr-local-ipv6"
                 peerASN      = node.frr_asn
-                peerAddress  = node.loopback_ipv6 # Connect to FRR on its loopback IP
+                peerAddress  = node.bgp_loopback_ipv6 # Connect to FRR on its BGP loopback IP
                 # No localAddress needed if peering on loopback/host netns
                 peerConfigRef = {
                   name = "frr-local-mpbgp"
@@ -705,8 +709,10 @@ ${yamlencode(merge(
           {
             interface = "lo"
             addresses = [
-              "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback
-              "10.${var.cluster_id}.254.${node.node_suffix}/32"            # IPv4 loopback
+              "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback (main)
+              "10.${var.cluster_id}.254.${node.node_suffix}/32",           # IPv4 loopback (main)
+              "fd00:${var.cluster_id}:254::${node.node_suffix}/128",       # IPv6 BGP loopback (for Cilium peering)
+              "10.${var.cluster_id}.255.${node.node_suffix}/32"            # IPv4 BGP loopback (for Cilium peering)
             ]
           }
         ], node.machine_type == "worker" ? [
