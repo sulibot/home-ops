@@ -1,6 +1,5 @@
 resources:
   - jetstack-source.yaml
-  - cilium-source.yaml
   - ceph-csi-cephfs.yaml
   - sulibot-chart-template.yaml
   - cloudflare-source.yaml
