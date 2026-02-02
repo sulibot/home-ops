@@ -23,24 +23,24 @@ locals {
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
-      machine_type        = "controlplane"
-      node_suffix         = v.ip_suffix
-      loopback_ipv6       = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4       = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
-      bgp_loopback_ipv6   = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
-      bgp_loopback_ipv4   = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
+      machine_type      = "controlplane"
+      node_suffix       = v.ip_suffix
+      loopback_ipv6     = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4     = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      bgp_loopback_ipv6 = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
+      bgp_loopback_ipv4 = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
-      frr_asn             = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
-      machine_type        = "worker"
-      node_suffix         = v.ip_suffix
-      loopback_ipv6       = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4       = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
-      bgp_loopback_ipv6   = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
-      bgp_loopback_ipv4   = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
+      machine_type      = "worker"
+      node_suffix       = v.ip_suffix
+      loopback_ipv6     = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4     = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      bgp_loopback_ipv6 = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
+      bgp_loopback_ipv4 = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
-      frr_asn             = local.frr_asn_base_cluster + v.ip_suffix
+      frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) }
   )
 
@@ -57,7 +57,7 @@ locals {
   # Read Gateway API CRDs (required before Cilium if gatewayAPI.enabled: true)
   gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml" : ""
   # Use fileexists() to safely handle file reading
-  gateway_api_crds      = local.gateway_api_crds_path != "" && try(fileexists(local.gateway_api_crds_path), false) ? file(local.gateway_api_crds_path) : ""
+  gateway_api_crds = local.gateway_api_crds_path != "" && try(fileexists(local.gateway_api_crds_path), false) ? file(local.gateway_api_crds_path) : ""
 
   # Common configuration to avoid repetition
   common_install = merge(
@@ -78,10 +78,10 @@ locals {
     # Neighbor Discovery and ARP notifications for faster network convergence
     "net.ipv6.conf.all.ndisc_notify"     = "1"
     "net.ipv6.conf.default.ndisc_notify" = "1"
-    "net.ipv6.conf.ens18.ndisc_notify"  = "1"
+    "net.ipv6.conf.ens18.ndisc_notify"   = "1"
     "net.ipv4.conf.all.arp_notify"       = "1"
     "net.ipv4.conf.default.arp_notify"   = "1"
-    "net.ipv4.conf.ens18.arp_notify"    = "1"
+    "net.ipv4.conf.ens18.arp_notify"     = "1"
   }
 
   common_features = {
@@ -120,7 +120,7 @@ locals {
         contents = data.helm_template.cilium.manifest
       },
       {
-        name     = "coredns-config"
+        name = "coredns-config"
         contents = yamlencode({
           apiVersion = "v1"
           kind       = "ConfigMap"
@@ -162,11 +162,11 @@ locals {
     ]
   )
 
-  reuse_machine_secrets        = var.machine_secrets != null && var.client_configuration != null
-  generated_machine_secrets    = try(talos_machine_secrets.cluster[0].machine_secrets, null)
+  reuse_machine_secrets          = var.machine_secrets != null && var.client_configuration != null
+  generated_machine_secrets      = try(talos_machine_secrets.cluster[0].machine_secrets, null)
   generated_client_configuration = try(talos_machine_secrets.cluster[0].client_configuration, null)
-  machine_secrets              = local.reuse_machine_secrets ? var.machine_secrets : local.generated_machine_secrets
-  client_configuration         = local.reuse_machine_secrets ? var.client_configuration : local.generated_client_configuration
+  machine_secrets                = local.reuse_machine_secrets ? var.machine_secrets : local.generated_machine_secrets
+  client_configuration           = local.reuse_machine_secrets ? var.client_configuration : local.generated_client_configuration
 }
 
 # Template Cilium Helm chart with values from Flux config
@@ -208,10 +208,10 @@ data "talos_machine_configuration" "controlplane" {
     yamlencode({
       machine = {
         install = {
-          disk       = var.install_disk
-          image      = var.installer_image
-          wipe       = false
-          extensions = [for ext in var.system_extensions : { image = ext }]
+          disk            = var.install_disk
+          image           = var.installer_image
+          wipe            = false
+          extensions      = [for ext in var.system_extensions : { image = ext }]
           extraKernelArgs = var.kernel_args
         }
         kernel = {
@@ -222,11 +222,11 @@ data "talos_machine_configuration" "controlplane" {
         }
         sysctls  = local.common_sysctls
         features = local.common_features
-        kubelet = {}
+        kubelet  = {}
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
-        network = local.common_cluster_network
+        network                        = local.common_cluster_network
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
@@ -276,10 +276,10 @@ data "talos_machine_configuration" "worker" {
     yamlencode({
       machine = {
         install = {
-          disk       = var.install_disk
-          image      = var.installer_image
-          wipe       = false
-          extensions = [for ext in var.system_extensions : { image = ext }]
+          disk            = var.install_disk
+          image           = var.installer_image
+          wipe            = false
+          extensions      = [for ext in var.system_extensions : { image = ext }]
           extraKernelArgs = var.kernel_args
         }
         kernel = {
@@ -331,20 +331,20 @@ locals {
   frr_config_yamls = {
     for node_name, node in local.all_nodes : node_name => yamlencode({
       bgp = {
-            cilium = {
-              local_asn = node.frr_asn # FRR's ASN
-              remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
-              peering = {
-                ipv6 = {
-                  # Peer on localhost/loopback since we are in host netns
-                  local  = node.bgp_loopback_ipv6 # FRR binds to BGP loopback
-                  remote = node.loopback_ipv6     # Cilium connects from main loopback
-                  prefix = 126
-                }
-              }
-              export_loopbacks = false
-              allowed_prefixes = local.cilium_allowed_prefixes
+        cilium = {
+          local_asn  = node.frr_asn             # FRR's ASN
+          remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
+          peering = {
+            ipv6 = {
+              # Peer on localhost/loopback since we are in host netns
+              local  = node.bgp_loopback_ipv6 # FRR binds to BGP loopback
+              remote = node.loopback_ipv6     # Cilium connects from main loopback
+              prefix = 126
             }
+          }
+          export_loopbacks = false
+          allowed_prefixes = local.cilium_allowed_prefixes
+        }
         upstream = {
           local_asn           = node.frr_asn
           router_id           = "10.${var.cluster_id}.254.${node.node_suffix}"
@@ -384,9 +384,9 @@ locals {
       bfd = {
         profiles = {
           normal = {
-            detect_multiplier  = 3
-            receive_interval   = 300
-            transmit_interval  = 300
+            detect_multiplier = 3
+            receive_interval  = 300
+            transmit_interval = 300
           }
         }
         cilium_peering = {
@@ -416,32 +416,32 @@ locals {
                 }
               ]
             }
-        "LOOPBACK-v4" = {
-          rules = [
-            {
-              seq    = 10
-              action = "permit"
-              prefix = "10.${var.cluster_id}.254.0/24"
-              le     = 32
+            "LOOPBACK-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "10.${var.cluster_id}.254.0/24"
+                  le     = 32
+                }
+              ]
             }
-          ]
-        }
-        "LOOPBACK-self-v4" = {
-          rules = [
-            {
-              seq    = 10
-              action = "permit"
-              prefix = "10.${var.cluster_id}.254.0/24"
-              le     = 32
-            },
-            {
-              seq    = 20
-              action = "permit"
-              prefix = "10.${var.cluster_id}.255.0/24"
-              le     = 32
+            "LOOPBACK-self-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = "10.${var.cluster_id}.254.0/24"
+                  le     = 32
+                },
+                {
+                  seq    = 20
+                  action = "permit"
+                  prefix = "10.${var.cluster_id}.255.0/24"
+                  le     = 32
+                }
+              ]
             }
-          ]
-        }
             "CILIUM-ALL-v4" = {
               rules = [
                 {
@@ -554,7 +554,7 @@ locals {
                   prefix_list    = "CILIUM-ALL-v4"
                 }
                 set = {
-                  next_hop_self = true  # Rewrite next-hop on import (Cilium next-hop is local)
+                  next_hop_self = true # Rewrite next-hop on import (Cilium next-hop is local)
                 }
               }
             ]
@@ -569,7 +569,7 @@ locals {
                   prefix_list    = "CILIUM-ALL-v6"
                 }
                 set = {
-                  next_hop_self = true  # Rewrite next-hop on import (Cilium next-hop is local)
+                  next_hop_self = true # Rewrite next-hop on import (Cilium next-hop is local)
                 }
               }
             ]
@@ -635,7 +635,7 @@ locals {
 }
 
 locals {
-  cilium_bgp_node_configs_yaml = join("\n---\n", concat([
+  cilium_bgp_node_configs_yaml = join("\n---\n", [
     for node_name, node in local.all_nodes : yamlencode({
       apiVersion = "cilium.io/v2"
       kind       = "CiliumBGPNodeConfig"
@@ -645,9 +645,9 @@ locals {
       spec = {
         bgpInstances = [
           {
-            name     = "local-frr"
+            name      = "local-frr"
             localPort = 1790 # Avoid port 179 conflict with FRR
-            localASN = local.cilium_asn_cluster
+            localASN  = local.cilium_asn_cluster
             # Use 10.101.255.x for Cilium router ID to avoid collision with FRR (10.101.254.x)
             routerID = replace(node.loopback_ipv4, "10.101.254.", "10.101.255.")
             peers = [
@@ -665,20 +665,7 @@ locals {
         ]
       }
     })
-  ], [
-    yamlencode({
-      apiVersion = "cilium.io/v2"
-      kind       = "CiliumBGPClusterConfig"
-      metadata = {
-        name = "cluster-bgp"
-      }
-      spec = {
-        nodeSelector = {
-          matchLabels = {}
-        }
-      }
-    })
-  ]))
+  ])
 }
 
 # Pre-render extension service configs per node for use in config patches
@@ -688,8 +675,8 @@ locals {
   extension_service_configs = {
     for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/extension-service-config.yaml.tpl", {
       frr_config_yaml = local.frr_config_yamls[node_name]
-      hostname         = node.hostname
-      enable_bfd       = var.bgp_enable_bfd
+      hostname        = node.hostname
+      enable_bfd      = var.bgp_enable_bfd
     })
   }
 }
@@ -708,109 +695,109 @@ locals {
       # Using heredoc to create proper multi-document YAML for Talos config_patch
       config_patch = <<-EOT
 ${yamlencode(merge(
-  {
-    machine = {
-      nodeLabels = merge(
-        {
-          "topology.kubernetes.io/region" = var.region
-          "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-          "bgp.frr.asn"                   = tostring(node.frr_asn)
-        },
-        # Add GPU label if GPU passthrough is enabled for this node
-        try(node.gpu_passthrough.enabled, false) ? {
-          "gpu.passthrough.enabled" = "true"
-          "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
-          "gpu.pci.address"         = try(node.gpu_passthrough.pci_address, "")
-        } : {}
-      )
-      network = {
-        hostname = node.hostname
-        interfaces = concat([
-          {
-            interface = var.bgp_interface
-            mtu       = 1450  # Reduced for VXLAN overhead (SDN)
-            addresses = concat(
-              [
-                "${node.public_ipv6}/64",    # ULA: fd00:101::11/64
-                "${node.public_ipv4}/24",    # IPv4: 10.0.101.11/24
-              ],
-              var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : []  # GUA: 2600:1700:ab1a:500e::11/64
-            )
-            routes = [
-              # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+      {
+        machine = {
+          nodeLabels = merge(
+            {
+              "topology.kubernetes.io/region" = var.region
+              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+              "bgp.frr.asn"                   = tostring(node.frr_asn)
+            },
+            # Add GPU label if GPU passthrough is enabled for this node
+            try(node.gpu_passthrough.enabled, false) ? {
+              "gpu.passthrough.enabled" = "true"
+              "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
+              "gpu.pci.address"         = try(node.gpu_passthrough.pci_address, "")
+            } : {}
+          )
+          network = {
+            hostname = node.hostname
+            interfaces = concat([
               {
-                network = "0.0.0.0/0"
-                gateway = "10.${var.cluster_id}.0.254"
-                metric  = 2048
+                interface = var.bgp_interface
+                mtu       = 1450 # Reduced for VXLAN overhead (SDN)
+                addresses = concat(
+                  [
+                    "${node.public_ipv6}/64", # ULA: fd00:101::11/64
+                    "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
+                  ],
+                  var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [] # GUA: 2600:1700:ab1a:500e::11/64
+                )
+                routes = [
+                  # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+                  {
+                    network = "0.0.0.0/0"
+                    gateway = "10.${var.cluster_id}.0.254"
+                    metric  = 2048
+                  },
+                  # IPv6: default route via global unicast anycast gateway
+                  {
+                    network = "::/0"
+                    gateway = "fd00:${var.cluster_id}::fffe"
+                    metric  = 150
+                  },
+                ]
+                vip = node.machine_type == "controlplane" ? {
+                  ip = var.vip_ipv6
+                } : null
               },
-              # IPv6: default route via global unicast anycast gateway
               {
-                network = "::/0"
-                gateway = "fd00:${var.cluster_id}::fffe"
-                metric  = 150
-              },
-            ]
-            vip = node.machine_type == "controlplane" ? {
-              ip = var.vip_ipv6
-            } : null
-          },
-          {
-            interface = "lo"
-            addresses = [
-              "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",        # IPv6 loopback (main)
-              "10.${var.cluster_id}.254.${node.node_suffix}/32",           # IPv4 loopback (main)
-              "fd00:${var.cluster_id}:254::${node.node_suffix}/128",       # IPv6 BGP loopback (for Cilium peering)
-              "10.${var.cluster_id}.255.${node.node_suffix}/32"            # IPv4 BGP loopback (for Cilium peering)
-            ]
+                interface = "lo"
+                addresses = [
+                  "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",  # IPv6 loopback (main)
+                  "10.${var.cluster_id}.254.${node.node_suffix}/32",     # IPv4 loopback (main)
+                  "fd00:${var.cluster_id}:254::${node.node_suffix}/128", # IPv6 BGP loopback (for Cilium peering)
+                  "10.${var.cluster_id}.255.${node.node_suffix}/32"      # IPv4 BGP loopback (for Cilium peering)
+                ]
+              }
+              ], node.machine_type == "worker" ? [
+              {
+                interface = "ens19"
+                dhcp      = false
+                mtu       = 1500
+                vlans = [
+                  {
+                    vlanId = 30
+                    mtu    = 1500
+                  },
+                  {
+                    vlanId = 31
+                    mtu    = 1500
+                  }
+                ]
+              }
+            ] : [])
+            nameservers = var.dns_servers
           }
-        ], node.machine_type == "worker" ? [
-          {
-            interface = "ens19"
-            dhcp      = false
-            mtu       = 1500
-            vlans = [
+          kubelet = {
+            nodeIP = {
+              validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
+            }
+          }
+        }
+      },
+      # Add GPU kernel module configuration if GPU passthrough is enabled
+      try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
+        machine = {
+          kernel = {
+            modules = [
               {
-                vlanId = 30
-                mtu    = 1500
-              },
-              {
-                vlanId = 31
-                mtu    = 1500
+                name = try(node.gpu_passthrough.driver, "i915")
+                parameters = [
+                  for k, v in try(node.gpu_passthrough.driver_params, {}) :
+                  "${k}=${v}"
+                ]
               }
             ]
           }
-        ] : [])
-        nameservers = var.dns_servers
-      }
-      kubelet = {
-        nodeIP = {
-          validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
         }
-      }
-    }
-  },
-  # Add GPU kernel module configuration if GPU passthrough is enabled
-  try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
-    machine = {
-      kernel = {
-        modules = [
-          {
-            name = try(node.gpu_passthrough.driver, "i915")
-            parameters = [
-              for k, v in try(node.gpu_passthrough.driver_params, {}) :
-              "${k}=${v}"
-            ]
-          }
-        ]
-      }
-    }
-  } : {}
+      } : {}
 ))}
 ---
 ${local.extension_service_configs[node_name]}
 EOT
-    }
-  }
+}
+}
 }
 
 # Generate client configuration (talosconfig)

@@ -110,12 +110,3 @@
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.255.23"
-
----
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPClusterConfig"
-"metadata":
-  "name": "cluster-bgp"
-"spec":
-  "nodeSelector":
-    "matchLabels": {}
