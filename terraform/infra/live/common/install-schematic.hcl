@@ -68,6 +68,6 @@ locals {
   # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
   # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.7.15@sha256:cedb8be2f4737089c7c40653a3efadfc9d1ca0e538ca9fa8c1ef0337b1949ce6",
+    "ghcr.io/sulibot/frr-talos-extension:v1.7.16@sha256:89723879915a94518cdc8f91b87975a2e7a2bed20ccde346c23931bfdb6cbd2d",
   ]
 }
