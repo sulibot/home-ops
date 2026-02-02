@@ -576,11 +576,6 @@ locals {
                 match = {
                   prefix_list = "CILIUM-LB-v4"
                 }
-                set = {
-                  # Essential for eBGP to ToR when redistributing routes learned from eBGP (Cilium)
-                  # Ensures ToR sends traffic to this node, not trying to reach Cilium's internal next-hop
-                  next_hop_self = true
-                }
               },
               {
                 seq    = 12
@@ -595,9 +590,6 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
-                }
-                set = {
-                  next_hop_self = true
                 }
               },
               {
@@ -631,7 +623,7 @@ locals {
 }
 
 locals {
-  cilium_bgp_node_configs_yaml = join("\n---\n", [
+  cilium_bgp_node_configs_yaml = join("\n---\n", concat([
     for node_name, node in local.all_nodes : yamlencode({
       apiVersion = "cilium.io/v2"
       kind       = "CiliumBGPNodeConfig"
@@ -642,8 +634,7 @@ locals {
         bgpInstances = [
           {
             name     = "local-frr"
-            # localPort removed to prevent binding :179 (Cilium default behavior when unset is to not listen if not configured?)
-            # Actually, we want Cilium to NOT bind 179.
+            localPort = 1790 # Avoid port 179 conflict with FRR
             localASN = local.cilium_asn_cluster
             # Use 10.101.255.x for Cilium router ID to avoid collision with FRR (10.101.254.x)
             routerID = replace(node.loopback_ipv4, "10.101.254.", "10.101.255.")
@@ -652,7 +643,7 @@ locals {
                 name         = "frr-local-ipv6"
                 peerASN      = node.frr_asn
                 peerAddress  = node.bgp_loopback_ipv6 # Connect to FRR on its BGP loopback IP
-                # No localAddress needed if peering on loopback/host netns
+                localAddress = node.loopback_ipv6     # Use main loopback as source (for RFC5549 next-hop)
                 peerConfigRef = {
                   name = "frr-local-mpbgp"
                 }
@@ -662,7 +653,20 @@ locals {
         ]
       }
     })
-  ])
+  ], [
+    yamlencode({
+      apiVersion = "cilium.io/v2"
+      kind       = "CiliumBGPClusterConfig"
+      metadata = {
+        name = "cluster-bgp"
+      }
+      spec = {
+        nodeSelector = {
+          matchLabels = {}
+        }
+      }
+    })
+  ]))
 }
 
 # Pre-render extension service configs per node for use in config patches
@@ -727,10 +731,10 @@ ${yamlencode(merge(
                 gateway = "10.${var.cluster_id}.0.254"
                 metric  = 2048
               },
-              # IPv6: default route via link-local anycast gateway
+              # IPv6: default route via global unicast anycast gateway
               {
                 network = "::/0"
-                gateway = "fe80::${var.cluster_id}:fffe"
+                gateway = "fd00:${var.cluster_id}::fffe"
                 metric  = 150
               },
             ]

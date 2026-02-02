@@ -41,6 +41,8 @@ ipv6 prefix-list PL_TENANT_V6 seq {{ loop.index * 5 }} permit fd00:{{ id }}::/64
 ! Cluster pod + LB pools (explicit ranges)
 ipv6 prefix-list PL_TENANT_V6 seq 25 permit fd00:101:224::/60 le 128
 ipv6 prefix-list PL_TENANT_V6 seq 30 permit fd00:101:250::/112 le 128
+ipv6 prefix-list PL_TENANT_V6 seq 35 permit fd00:101:fe::/112 le 128
+ipv6 prefix-list PL_TENANT_V6 seq 40 permit fd00:101:254::/112 le 128
 !
 ! GUA Tenant Ranges (AT&T Fiber Residential Block)
 ! Permitting broader block to handle dynamic PD rotation
@@ -202,6 +204,7 @@ router bgp 4200001000 vrf vrf_evpnz1
  address-family ipv6 unicast
   neighbor VMS activate
   neighbor {{ pipe_global }} activate
+  neighbor {{ pipe_global }} next-hop-self
   redistribute connected
  exit-address-family
 !

@@ -1,0 +1,10 @@
+---
+# CiliumBGPClusterConfig - Top-level BGP configuration for the cluster
+# This enables BGP peering using per-node configurations
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cluster-101-bgp
+spec:
+  nodeSelector:
+    matchLabels: {}  # Apply to all nodes

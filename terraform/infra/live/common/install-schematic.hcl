@@ -40,6 +40,10 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.7.14: Merge duplicate router bgp sections - fixes bgp listen range being lost when Cilium and upstream use same ASN
+  # v1.7.13: Fix BGP peer-group creation order - create peer-group before applying listen range
+  # v1.7.12: Use BGP listen range (fd00::/8) for flexible Cilium peering - no hardcoded IPs, ASN-based validation
+  # v1.7.11: Remove VRF isolation - FRR and Cilium now in same routing domain
   # v1.7.7: Fix MP-BGP for upstream peers - remove invalid syntax, fix IPv6 address-family activation. Enables upstream BGP to PVE VRF.
   # v1.7.6: Add tmpfs mounts for /var/run/frr, /var/lib/frr, /var/log/frr - fixes FRR daemon startup
   # v1.7.5: Use tmpfs overlay for /etc/frr - makes config directory writable in-memory without host mounts
@@ -63,6 +67,6 @@ locals {
   # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
   # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.7.10",
+    "ghcr.io/sulibot/frr-talos-extension:v1.7.14",
   ]
 }

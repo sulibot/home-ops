@@ -297,6 +297,10 @@ inputs = {
   bgp_interface           = local.network_infra.bgp.interface
   bgp_enable_bfd          = local.network_infra.bgp.enable_bfd
   bgp_advertise_loopbacks = local.network_infra.bgp.advertise_loopbacks
+  bgp_cilium_allowed_prefixes = {
+    ipv4 = [dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4]
+    ipv6 = [dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6]
+  }
 
   # Application versions - from centralized config
   cilium_version = local.app_versions.applications.cilium_version
