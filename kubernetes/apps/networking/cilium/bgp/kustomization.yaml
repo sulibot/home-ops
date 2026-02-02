@@ -4,5 +4,4 @@ kind: Kustomization
 
 resources:
   - bgp.yaml
-  - cluster-config.yaml
   - node-configs.yaml
