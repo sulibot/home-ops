@@ -553,6 +553,9 @@ locals {
                   address_family = "ipv4"
                   prefix_list    = "CILIUM-ALL-v4"
                 }
+                set = {
+                  next_hop_self = true  # Rewrite next-hop on import (Cilium next-hop is local)
+                }
               }
             ]
           }
@@ -565,6 +568,9 @@ locals {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-ALL-v6"
                 }
+                set = {
+                  next_hop_self = true  # Rewrite next-hop on import (Cilium next-hop is local)
+                }
               }
             ]
           }
@@ -575,6 +581,9 @@ locals {
                 action = "permit"
                 match = {
                   prefix_list = "CILIUM-LB-v4"
+                }
+                set = {
+                  next_hop_self = true
                 }
               },
               {
@@ -590,6 +599,9 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
+                }
+                set = {
+                  next_hop_self = true
                 }
               },
               {
