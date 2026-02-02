@@ -17,7 +17,7 @@ spec:
 ---
 # MP-BGP Peer Configuration
 # Single peer carries both IPv4 and IPv6 routes over IPv6 session
-apiVersion: cilium.io/v2
+apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPPeerConfig
 metadata:
   name: frr-local-mpbgp

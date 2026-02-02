@@ -228,8 +228,10 @@ locals {
 
 
 inputs = {
-  # Cilium values file path
-  cilium_values_path = "${get_repo_root()}/kubernetes/apps/networking/cilium/app/values.yaml"
+  # Cilium config file paths (single source of truth from Flux directory)
+  cilium_values_path     = "${get_repo_root()}/kubernetes/apps/networking/cilium/app/values.yaml"
+  cilium_bgp_config_path = "${get_repo_root()}/kubernetes/apps/networking/cilium/bgp/bgp.yaml"
+  cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/networking/cilium/ippool/lb-pool.yaml"
 
   # Cluster identity
   cluster_name = local.cluster_config.cluster_name

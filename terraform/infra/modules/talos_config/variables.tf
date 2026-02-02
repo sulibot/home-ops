@@ -9,6 +9,18 @@ variable "cilium_version" {
   type        = string
 }
 
+variable "cilium_bgp_config_path" {
+  description = "Path to Cilium BGP config file (peer-config + advertisement)"
+  type        = string
+  default     = ""
+}
+
+variable "cilium_lb_pool_path" {
+  description = "Path to Cilium LoadBalancer IP pool config"
+  type        = string
+  default     = ""
+}
+
 variable "cluster_name" {
   description = "Name of the Talos cluster"
   type        = string

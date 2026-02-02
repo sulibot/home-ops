@@ -40,6 +40,9 @@ locals {
   # FRR extension - using your fork
   # Published from: /Users/sulibot/repos/github/frr-talos-extension
   # Available at: https://github.com/sulibot/frr-talos-extension/pkgs/container/frr-talos-extension
+  # v1.7.18: Fix next-hop peer-address for IPv6 route-maps - remove Jinja2 dashes that fought trim_blocks=True, causing 'set ipv6 next-hop peer-address!' concatenation
+  # v1.7.17: INCOMPLETE - fixed endif dash but missed {%- else -%} stripping IPv6 branch newline
+  # v1.7.16: INCOMPLETE - correct logic but Jinja2 whitespace created malformed config
   # v1.7.15: Fix RFC5549 next-hop rewriting - always use IPv6 next-hop commands for all BGP sessions. Fixes LoadBalancer route advertisement from Cilium to FRR to PVE.
   # v1.7.14: Merge duplicate router bgp sections - fixes bgp listen range being lost when Cilium and upstream use same ASN
   # v1.7.13: Fix BGP peer-group creation order - create peer-group before applying listen range
@@ -68,6 +71,6 @@ locals {
   # v1.1.40: Remove invalid passive directives from address-family blocks - passive is neighbor-level only
   # v1.1.39: Fix Cilium neighbor template - use bgp.cilium.peering.ipv6 config paths consistently
   install_custom_extensions = [
-    "ghcr.io/sulibot/frr-talos-extension:v1.7.16@sha256:89723879915a94518cdc8f91b87975a2e7a2bed20ccde346c23931bfdb6cbd2d",
+    "ghcr.io/sulibot/frr-talos-extension:v1.7.18@sha256:6c2dc05a76518de62a716f00514671d531e695a20b3824245fa357137636c223",
   ]
 }

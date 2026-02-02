@@ -1,7 +1,7 @@
 locals {
   # Application/platform versions beyond base Talos/K8s
   applications = {
-    cilium_version = "1.18.4"
+    cilium_version = "1.18.6"
     flux_version   = "2.7.5"  # Latest stable - includes healthCheckExprs support
   }
 
