@@ -608,9 +608,6 @@ locals {
                 match = {
                   prefix_list = "CILIUM-LB-v4"
                 }
-                set = {
-                  next_hop_self = true
-                }
               },
               {
                 seq    = 12
@@ -625,9 +622,6 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
-                }
-                set = {
-                  next_hop_self = true
                 }
               },
               {
