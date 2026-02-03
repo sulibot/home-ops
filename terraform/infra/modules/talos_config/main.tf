@@ -696,7 +696,7 @@ locals {
         bgpInstances = [
           {
             name      = "local-frr"
-            localPort = -1 # Don't listen - Cilium connects TO FRR on port 179 (active only)
+            localPort = 1790 # Listen on 1790 to avoid conflict with FRR on 179; actively connects to FRR peerAddress on 179
             localASN  = local.cilium_asn_cluster
             # Use Cilium BGP IP for router ID (10.101.253.x)
             routerID = node.cilium_bgp_ipv4

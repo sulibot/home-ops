@@ -9,6 +9,6 @@ spec:
   bgpInstances:
     - name: local-frr
       localASN: 4220101000
-      localPort: -1
+      localPort: 1790
   nodeSelector:
     matchLabels: {}  # Apply to all nodes
