@@ -23,22 +23,32 @@ locals {
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
-      machine_type      = "controlplane"
-      node_suffix       = v.ip_suffix
-      loopback_ipv6     = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4     = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
-      bgp_loopback_ipv6 = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
-      bgp_loopback_ipv4 = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
+      machine_type = "controlplane"
+      node_suffix  = v.ip_suffix
+      # FRR identity IP (on dummy0) - k8s node IP
+      loopback_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      # Cilium BGP identity IP (on dummy0) - Cilium connects FROM this IP
+      cilium_bgp_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
+      cilium_bgp_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
+      # LoadBalancer IP example (on dummy0) - simulates Cilium LB-IPAM allocation
+      lb_example_ipv6 = format("fd00:%d:250::%d", var.cluster_id, v.ip_suffix)
+      lb_example_ipv4 = format("10.%d.250.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) },
     { for k, v in local.worker_nodes : k => merge(v, {
-      machine_type      = "worker"
-      node_suffix       = v.ip_suffix
-      loopback_ipv6     = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4     = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
-      bgp_loopback_ipv6 = format("fd00:%d:254::%d", var.cluster_id, v.ip_suffix) # Dedicated BGP peering loopback
-      bgp_loopback_ipv4 = format("10.%d.255.%d", var.cluster_id, v.ip_suffix)    # Dedicated BGP peering loopback
+      machine_type = "worker"
+      node_suffix  = v.ip_suffix
+      # FRR identity IP (on dummy0) - k8s node IP
+      loopback_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
+      loopback_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      # Cilium BGP identity IP (on dummy0) - Cilium connects FROM this IP
+      cilium_bgp_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
+      cilium_bgp_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
+      # LoadBalancer IP example (on dummy0) - simulates Cilium LB-IPAM allocation
+      lb_example_ipv6 = format("fd00:%d:250::%d", var.cluster_id, v.ip_suffix)
+      lb_example_ipv4 = format("10.%d.250.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) }
@@ -361,11 +371,17 @@ locals {
           local_asn  = node.frr_asn             # FRR's ASN
           remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
           peering = {
+            # FRR listens on port 179 (default), Cilium connects TO FRR (active only, localPort=-1)
+            # FRR uses dynamic neighbors (bgp listen range) to accept Cilium connections
+            ipv4 = {
+              local  = node.loopback_ipv4    # FRR listens on .254 IPv4
+              remote = node.cilium_bgp_ipv4  # Cilium connects FROM .253 IPv4
+              prefix = 32
+            }
             ipv6 = {
-              # Peer on localhost/loopback since we are in host netns
-              local  = node.bgp_loopback_ipv6 # FRR binds to BGP loopback
-              remote = node.loopback_ipv6     # Cilium connects from main loopback
-              prefix = 126
+              local  = node.loopback_ipv6    # FRR listens on .254 IPv6
+              remote = node.cilium_bgp_ipv6  # Cilium connects FROM .253 IPv6
+              prefix = 128
             }
           }
           export_loopbacks = false
@@ -382,8 +398,16 @@ locals {
             ipv6 = node.loopback_ipv6
           }
           loopback_addresses = {
-            ipv4 = [node.loopback_ipv4]
-            ipv6 = [node.loopback_ipv6]
+            ipv4 = [
+              node.loopback_ipv4,    # FRR identity (10.101.254.X)
+              node.cilium_bgp_ipv4,  # Cilium BGP identity (10.101.253.X)
+              node.lb_example_ipv4,  # LoadBalancer example (10.101.250.X)
+            ]
+            ipv6 = [
+              node.loopback_ipv6,    # FRR identity (fd00:101:fe::X)
+              node.cilium_bgp_ipv6,  # Cilium BGP identity (fd00:101:fd::X)
+              node.lb_example_ipv6,  # LoadBalancer example (fd00:101:250::X)
+            ]
           }
           peers = [
             {
@@ -463,7 +487,13 @@ locals {
                 {
                   seq    = 20
                   action = "permit"
-                  prefix = "10.${var.cluster_id}.255.0/24"
+                  prefix = "10.${var.cluster_id}.253.0/24"
+                  le     = 32
+                },
+                {
+                  seq    = 30
+                  action = "permit"
+                  prefix = "10.${var.cluster_id}.250.0/24"
                   le     = 32
                 }
               ]
@@ -530,7 +560,13 @@ locals {
                 {
                   seq    = 20
                   action = "permit"
-                  prefix = "fd00:${var.cluster_id}:254::/112"
+                  prefix = "fd00:${var.cluster_id}:fd::/112"
+                  le     = 128
+                },
+                {
+                  seq    = 30
+                  action = "permit"
+                  prefix = "fd00:${var.cluster_id}:250::/112"
                   le     = 128
                 }
               ]
@@ -660,16 +696,25 @@ locals {
         bgpInstances = [
           {
             name      = "local-frr"
-            localPort = 1790 # Avoid port 179 conflict with FRR
+            localPort = -1 # Don't listen - Cilium connects TO FRR on port 179 (active only)
             localASN  = local.cilium_asn_cluster
-            # Use 10.101.255.x for Cilium router ID to avoid collision with FRR (10.101.254.x)
-            routerID = replace(node.loopback_ipv4, "10.101.254.", "10.101.255.")
+            # Use Cilium BGP IP for router ID (10.101.253.x)
+            routerID = node.cilium_bgp_ipv4
             peers = [
+              {
+                name         = "frr-local-ipv4"
+                peerASN      = node.frr_asn
+                peerAddress  = node.loopback_ipv4     # Connect TO FRR at .254 IPv4 (port 179)
+                localAddress = node.cilium_bgp_ipv4   # Connect FROM Cilium IP .253 IPv4
+                peerConfigRef = {
+                  name = "frr-local-mpbgp"
+                }
+              },
               {
                 name         = "frr-local-ipv6"
                 peerASN      = node.frr_asn
-                peerAddress  = node.bgp_loopback_ipv6 # Connect to FRR on its BGP loopback IP
-                localAddress = node.loopback_ipv6     # Use main loopback as source (for RFC5549 next-hop)
+                peerAddress  = node.loopback_ipv6     # Connect TO FRR at .254 IPv6 (port 179)
+                localAddress = node.cilium_bgp_ipv6   # Connect FROM Cilium IP .253 IPv6
                 peerConfigRef = {
                   name = "frr-local-mpbgp"
                 }
@@ -756,12 +801,14 @@ ${yamlencode(merge(
                 } : null
               },
               {
-                interface = "lo"
+                interface = "dummy0"
                 addresses = [
-                  "fd00:${var.cluster_id}:fe::${node.node_suffix}/128",  # IPv6 loopback (main)
-                  "10.${var.cluster_id}.254.${node.node_suffix}/32",     # IPv4 loopback (main)
-                  "fd00:${var.cluster_id}:254::${node.node_suffix}/128", # IPv6 BGP loopback (for Cilium peering)
-                  "10.${var.cluster_id}.255.${node.node_suffix}/32"      # IPv4 BGP loopback (for Cilium peering)
+                  "${node.loopback_ipv6}/128",    # FRR identity IPv6 (fd00:101:fe::X)
+                  "${node.loopback_ipv4}/32",     # FRR identity IPv4 (10.101.254.X) - k8s node IP
+                  "${node.cilium_bgp_ipv6}/128",  # Cilium BGP identity IPv6 (fd00:101:fd::X)
+                  "${node.cilium_bgp_ipv4}/32",   # Cilium BGP identity IPv4 (10.101.253.X)
+                  "${node.lb_example_ipv6}/128",  # LoadBalancer example IPv6 (fd00:101:250::X)
+                  "${node.lb_example_ipv4}/32",   # LoadBalancer example IPv4 (10.101.250.X)
                 ]
               }
               ], node.machine_type == "worker" ? [

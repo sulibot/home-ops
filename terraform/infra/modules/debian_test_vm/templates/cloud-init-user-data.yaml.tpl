@@ -8,7 +8,6 @@ users:
     groups: sudo, frr, frrvty
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
-    # Password: debian (for console access)
     passwd: $6$rounds=4096$saltsalt$N8YMmLxkpW7oSbZ3Q4Kh6p5FqJpPH7mD7cPnTk8nJwLm0v2xH7rK8L4V3M2Y9N6W5X4Z3A2S1D0F9G8H7J6K5
     lock_passwd: false
 %{ if ssh_public_key != "" ~}
@@ -16,7 +15,6 @@ users:
       - ${ssh_public_key}
 %{ endif ~}
 
-# Enable root SSH access with public key
 %{ if ssh_public_key != "" ~}
 ssh_authorized_keys:
   - ${ssh_public_key}
@@ -24,7 +22,6 @@ ssh_authorized_keys:
 disable_root: false
 ssh_pwauth: false
 
-# Set passwords for console access
 chpasswd:
   expire: false
   list:
@@ -35,8 +32,8 @@ package_update: true
 package_upgrade: true
 
 packages:
-  - docker.io
-  - docker-compose
+  - frr
+  - frr-pythontools
   - gobgpd
   - qemu-guest-agent
   - curl
@@ -48,14 +45,12 @@ packages:
   - iputils-ping
 
 write_files:
-  # Disable cloud-init network management after first boot
   - path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
     content: |
       network: {config: disabled}
     owner: root:root
     permissions: '0644'
 
-  # EVPN sysctl settings
   - path: /etc/sysctl.d/99-evpn-notify.conf
     content: |
       net.ipv6.conf.all.ndisc_notify=1
@@ -67,130 +62,11 @@ write_files:
     owner: root:root
     permissions: '0644'
 
-%{ if frr_enabled && frr_config != null ~}
-  # FRR extension config file (Talos format)
-  # This file is mounted into the container at /etc/frr/frr.yaml
-  - path: /var/lib/frr/frr.yaml
-    content: |
-      network:
-        interface_mtu: 1450
-        veth_names:
-          frr_side: veth-frr
-          cilium_side: veth-cilium
-
-      bgp:
-        local_asn: ${frr_config.local_asn}
-        router_id: "${frr_config.router_id}"
-
-%{ if frr_config.veth_enabled ~}
-        # Cilium local peering configuration
-        cilium:
-          enabled: true
-          namespace: ${frr_config.veth_namespace}
-          peering:
-            ipv4:
-              local: "${frr_config.veth_ipv4_local}"
-              remote: "${frr_config.veth_ipv4_remote}"
-              prefix: 31
-            ipv6:
-              local: "${frr_config.veth_ipv6_local}"
-              remote: "${frr_config.veth_ipv6_remote}"
-              prefix: 126
-%{ endif ~}
-
-        # Upstream BGP peer configuration
-        upstream:
-          enabled: true
-          peer_address: "${frr_config.upstream_peer}"
-          peer_asn: ${frr_config.upstream_asn}
-%{ if loopback != null ~}
-          loopbacks:
-            ipv4: "${loopback.ipv4}"
-            ipv6: "${loopback.ipv6}"
-%{ endif ~}
-    owner: root:root
-    permissions: '0644'
-
-  # FRR extension container service (mimics Talos environment)
-  - path: /etc/systemd/system/frr-container.service
-    content: |
-      [Unit]
-      Description=FRR Extension Container (mimics Talos)
-      After=docker.service
-      Requires=docker.service
-
-      [Service]
-      Type=simple
-      ExecStartPre=/usr/bin/docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.39
-      ExecStart=/usr/bin/docker run --rm \
-        --name frr-extension \
-        --privileged \
-        --pid=host \
-        -v /var/lib/frr:/etc/frr:rw \
-        -v /var/run/frr:/tmp:rw \
-        ghcr.io/sulibot/frr-talos-extension:v1.1.39
-      ExecStop=/usr/bin/docker stop frr-extension
-      Restart=always
-      RestartSec=10
-
-      [Install]
-      WantedBy=multi-user.target
-    owner: root:root
-    permissions: '0644'
-
-  # Namespace diagnostic script for debugging
-  - path: /usr/local/bin/debug-namespace.sh
-    content: |
-      #!/bin/bash
-      # Interactive debugging of namespace operations
-
-      echo "=== Container PID Info ==="
-      CONTAINER_PID=$$(docker inspect -f '{{.State.Pid}}' frr-extension 2>/dev/null)
-      if [ -z "$$CONTAINER_PID" ] || [ "$$CONTAINER_PID" = "0" ]; then
-          echo "ERROR: FRR container not running"
-          exit 1
-      fi
-      echo "FRR container PID: $$CONTAINER_PID"
-
-      echo ""
-      echo "=== Namespace Comparison ==="
-      echo "Host (PID 1) network namespace:"
-      readlink /proc/1/ns/net
-      echo "Container network namespace:"
-      readlink /proc/$$CONTAINER_PID/ns/net
-      echo "Are they same? $$([ $$(readlink /proc/1/ns/net) = $$(readlink /proc/$$CONTAINER_PID/ns/net) ] && echo YES || echo NO)"
-
-      echo ""
-      echo "=== Veth Interfaces ==="
-      echo "In host namespace:"
-      ip link show | grep veth || echo "  No veth interfaces"
-
-      echo ""
-      echo "In container namespace:"
-      nsenter -t $$CONTAINER_PID -n ip link show | grep veth || echo "  No veth interfaces"
-
-      echo ""
-      echo "=== Routing in Host Namespace ==="
-      if ip addr show veth-cilium &>/dev/null; then
-          CILIUM_IP=$$(ip addr show veth-cilium | grep "inet6.*fd00:65:c111" | awk '{print $$2}' | cut -d/ -f1)
-          if [ -n "$$CILIUM_IP" ]; then
-              echo "Testing route to Cilium peering IP ($$CILIUM_IP):"
-              ip route get $$CILIUM_IP
-          fi
-      fi
-
-      echo ""
-      echo "=== Container Logs (last 20 lines) ==="
-      docker logs --tail 20 frr-extension
-    owner: root:root
-    permissions: '0755'
-%{ endif ~}
-
-  # FRR daemons configuration
   - path: /etc/frr/daemons
     content: |
       zebra=yes
       bgpd=yes
+      bgpd_options=" -p 1790"
       ospfd=no
       ospf6d=no
       ripd=no
@@ -211,19 +87,15 @@ write_files:
     permissions: '0640'
 
 %{ if frr_enabled && frr_config != null ~}
-  # FRR BGP configuration
   - path: /etc/frr/frr.conf
     content: |
-      ! FRR Configuration for ${hostname}
-      ! Dual-stack BGP test setup
-      !
+      ! FRR Configuration for ${hostname} (TALOS PATTERN - Host netns, loopback peering)
       frr version 10.2
       frr defaults datacenter
       hostname ${hostname}
       log syslog informational
       service integrated-vtysh-config
       !
-      ! BFD Configuration
       bfd
        profile normal
         detect-multiplier 3
@@ -232,16 +104,20 @@ write_files:
        exit
       exit
       !
-%{ if frr_config.veth_enabled ~}
-      ! ========================================
-      ! MP-BGP Configuration for local Cilium peering
-      ! Single IPv6 session carries both IPv4 and IPv6 routes
-      ! Uses extended-nexthop capability (RFC 5549)
-      ! ========================================
-%{ endif ~}
-      ! ========================================
-      ! Upstream BGP peering (to RouterOS gateway)
-      ! ========================================
+      ! Prefix lists for Cilium routes
+      ip prefix-list CILIUM-ALL-v4 seq 10 permit 0.0.0.0/0 le 32
+      ipv6 prefix-list CILIUM-ALL-v6 seq 10 permit ::/0 le 128
+      !
+      ! Route maps for Cilium import (accept all Cilium routes)
+      route-map IMPORT-FROM-CILIUM-v4 permit 10
+       match ip address prefix-list CILIUM-ALL-v4
+      exit
+      !
+      route-map IMPORT-FROM-CILIUM-v6 permit 10
+       match ipv6 address prefix-list CILIUM-ALL-v6
+      exit
+      !
+      ! Upstream route filtering
       ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
       ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
       !
@@ -257,13 +133,14 @@ write_files:
       route-map IMPORT-DEFAULT-v6 deny 90
       exit
       !
-      ! ========================================
-      ! Fix #1: IPv6 Loopback Redistribution
-      ! Use address-family-aware prefix-lists instead of generic interface matching
-      ! ========================================
 %{ if loopback != null ~}
+      ! Loopback prefix-lists (FRR IP + GoBGP IP + LoadBalancer IPs)
       ip prefix-list LOOPBACK-v4 seq 10 permit ${loopback.ipv4}/32
+      ip prefix-list LOOPBACK-v4 seq 20 permit ${replace(loopback.ipv4, "254.", "253.")}/32
+      ip prefix-list LOOPBACK-v4 seq 30 permit ${replace(loopback.ipv4, "254.", "250.")}/32
       ipv6 prefix-list LOOPBACK-v6 seq 10 permit ${loopback.ipv6}/128
+      ipv6 prefix-list LOOPBACK-v6 seq 20 permit ${replace(loopback.ipv6, "fe::", "fd::")}/128
+      ipv6 prefix-list LOOPBACK-v6 seq 30 permit ${replace(loopback.ipv6, "fe::", "250::")}/128
 %{ endif ~}
       !
       route-map LOOPBACKS-v4 permit 10
@@ -280,38 +157,36 @@ write_files:
        no bgp default ipv4-unicast
        bgp bestpath as-path multipath-relax
        timers bgp 10 30
+       ! FRR listens on port 1790, GoBGP connects TO FRR
        !
-%{ if frr_config.veth_enabled ~}
-       ! Local Cilium neighbor (MP-BGP over IPv6)
-       neighbor ${frr_config.veth_ipv6_local} remote-as ${frr_config.local_asn}
-       neighbor ${frr_config.veth_ipv6_local} description Cilium-MP-BGP
-       neighbor ${frr_config.veth_ipv6_local} update-source veth-frr
-       neighbor ${frr_config.veth_ipv6_local} capability extended-nexthop
+       ! Cilium peer-group (GoBGP connects to FRR:1790)
+       neighbor CILIUM peer-group
+       neighbor CILIUM remote-as ${frr_config.local_asn + 10000000}
+       neighbor CILIUM description Cilium-BGP-Control-Plane
        !
-%{ endif ~}
-       ! Upstream neighbor (RouterOS gateway)
+       ! Dynamic neighbors - accept GoBGP connections from dummy0 IPs
+       bgp listen range ${replace(loopback.ipv4, "254.", "253.")}/32 peer-group CILIUM
+       bgp listen range ${replace(loopback.ipv6, "fe::", "fd::")}/128 peer-group CILIUM
+       !
+       ! Upstream neighbor (PVE gateway) - bind to FRR loopback
        neighbor ${frr_config.upstream_peer} remote-as ${frr_config.upstream_asn}
-       neighbor ${frr_config.upstream_peer} description RouterOS-ULA-Gateway
+       neighbor ${frr_config.upstream_peer} description PVE-ULA-Gateway
        neighbor ${frr_config.upstream_peer} capability extended-nexthop
        neighbor ${frr_config.upstream_peer} bfd profile normal
+       neighbor ${frr_config.upstream_peer} update-source ${loopback.ipv6}
        !
        address-family ipv4 unicast
-%{ if frr_config.veth_enabled ~}
-        ! Cilium neighbor carries IPv4 routes over IPv6 session
-        neighbor ${frr_config.veth_ipv6_local} activate
-        neighbor ${frr_config.veth_ipv6_local} next-hop-self
-%{ endif ~}
+        neighbor CILIUM activate
+        neighbor CILIUM route-map IMPORT-FROM-CILIUM-v4 in
         neighbor ${frr_config.upstream_peer} activate
         neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v4 in
         redistribute connected route-map LOOPBACKS-v4
        exit-address-family
        !
        address-family ipv6 unicast
-%{ if frr_config.veth_enabled ~}
-        ! Cilium neighbor also carries IPv6 routes
-        neighbor ${frr_config.veth_ipv6_local} activate
-        neighbor ${frr_config.veth_ipv6_local} next-hop-self
-%{ endif ~}
+        neighbor CILIUM activate
+        neighbor CILIUM route-map IMPORT-FROM-CILIUM-v6 in
+        neighbor CILIUM capability extended-nexthop
         neighbor ${frr_config.upstream_peer} activate
         neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v6 in
         redistribute connected route-map LOOPBACKS-v6
@@ -323,122 +198,76 @@ write_files:
     owner: root:root
     permissions: '0640'
 
-%{ if frr_config.veth_enabled ~}
-  # Veth setup script (mimics Talos FRR extension)
-  - path: /usr/local/bin/setup-veth.sh
-    content: |
-      #!/bin/bash
-      set -e
-
-      NAMESPACE="${frr_config.veth_namespace}"
-      VETH_FRR="veth-frr"
-      VETH_CILIUM="veth-cilium"
-      MTU=1450
-
-      echo "[veth-setup] Starting veth pair configuration..."
-
-      # Create namespace if not exists
-      if ! ip netns list | grep -q "^$NAMESPACE\$"; then
-        echo "[veth-setup] Creating network namespace: $NAMESPACE"
-        ip netns add "$NAMESPACE"
-      else
-        echo "[veth-setup] Namespace $NAMESPACE already exists"
-      fi
-
-      # Create veth pair if not exists
-      if ! ip link show "$VETH_FRR" &>/dev/null; then
-        echo "[veth-setup] Creating veth pair: $VETH_CILIUM <-> $VETH_FRR"
-        ip link add "$VETH_CILIUM" type veth peer name "$VETH_FRR"
-        ip link set "$VETH_CILIUM" netns "$NAMESPACE"
-      else
-        echo "[veth-setup] Veth pair already exists"
-      fi
-
-      # Configure FRR side (host namespace)
-      echo "[veth-setup] Configuring $VETH_FRR (FRR side) in host namespace"
-      ip addr add ${frr_config.veth_ipv4_remote}/30 dev "$VETH_FRR" 2>/dev/null || echo "[veth-setup] IPv4 already assigned to $VETH_FRR"
-      ip -6 addr add ${frr_config.veth_ipv6_remote}/126 dev "$VETH_FRR" 2>/dev/null || echo "[veth-setup] IPv6 already assigned to $VETH_FRR"
-      ip link set "$VETH_FRR" mtu $MTU up
-
-      # Configure Cilium side (namespace)
-      echo "[veth-setup] Configuring $VETH_CILIUM (Cilium side) in namespace $NAMESPACE"
-      ip netns exec "$NAMESPACE" ip addr add ${frr_config.veth_ipv4_local}/30 dev "$VETH_CILIUM" 2>/dev/null || echo "[veth-setup] IPv4 already assigned to $VETH_CILIUM"
-      ip netns exec "$NAMESPACE" ip -6 addr add ${frr_config.veth_ipv6_local}/126 dev "$VETH_CILIUM" 2>/dev/null || echo "[veth-setup] IPv6 already assigned to $VETH_CILIUM"
-      ip netns exec "$NAMESPACE" ip link set "$VETH_CILIUM" mtu $MTU up
-      ip netns exec "$NAMESPACE" ip link set lo up
-
-      echo "[veth-setup] Configuration complete:"
-      echo "  $VETH_FRR (host):         ${frr_config.veth_ipv4_remote}/30, ${frr_config.veth_ipv6_remote}/126"
-      echo "  $VETH_CILIUM (ns=$NAMESPACE): ${frr_config.veth_ipv4_local}/30, ${frr_config.veth_ipv6_local}/126"
-
-      # Verify connectivity
-      echo "[veth-setup] Testing connectivity..."
-      if ip netns exec "$NAMESPACE" ping -c1 -W1 ${frr_config.veth_ipv4_remote} &>/dev/null; then
-        echo "[veth-setup] IPv4 connectivity OK"
-      else
-        echo "[veth-setup] WARNING: IPv4 connectivity test failed"
-      fi
-      if ip netns exec "$NAMESPACE" ping6 -c1 -W1 ${frr_config.veth_ipv6_remote} &>/dev/null; then
-        echo "[veth-setup] IPv6 connectivity OK"
-      else
-        echo "[veth-setup] WARNING: IPv6 connectivity test failed"
-      fi
-    owner: root:root
-    permissions: '0755'
-
-  # Systemd service for veth setup
-  - path: /etc/systemd/system/veth-setup.service
-    content: |
-      [Unit]
-      Description=Setup veth pair for BGP testing
-      Before=frr.service
-      After=network-online.target
-      Wants=network-online.target
-
-      [Service]
-      Type=oneshot
-      ExecStart=/usr/local/bin/setup-veth.sh
-      RemainAfterExit=yes
-
-      [Install]
-      WantedBy=multi-user.target
-    owner: root:root
-    permissions: '0644'
-
-  # GoBGP configuration (simulates Cilium BGP)
   - path: /etc/gobgpd-cilium.conf
     content: |
       [global.config]
-        as = ${frr_config.local_asn}
-        router-id = "${frr_config.veth_ipv4_local}"
-        local-address-list = ["${frr_config.veth_ipv6_local}"]
+        as = ${frr_config.local_asn + 10000000}
+        router-id = "${replace(loopback.ipv4, "254.", "253.")}"
+        local-address-list = ["${replace(loopback.ipv4, "254.", "253.")}", "${replace(loopback.ipv6, "fe::", "fd::")}"]
+        port = -1
+
+      # GoBGP connects TO FRR at port 1790 (active peering)
 
       [[neighbors]]
         [neighbors.config]
-          neighbor-address = "${frr_config.veth_ipv6_remote}"
+          neighbor-address = "${loopback.ipv4}"
           peer-as = ${frr_config.local_asn}
+        [neighbors.transport.config]
+          local-address = "${replace(loopback.ipv4, "254.", "253.")}"
+          remote-port = 1790
 
-        [[neighbors.afi-safis]]
-          [neighbors.afi-safis.config]
-            afi-safi-name = "ipv4-unicast"
+      [[neighbors]]
+        [neighbors.config]
+          neighbor-address = "${loopback.ipv6}"
+          peer-as = ${frr_config.local_asn}
+        [neighbors.transport.config]
+          local-address = "${replace(loopback.ipv6, "fe::", "fd::")}"
+          remote-port = 1790
 
-        [[neighbors.afi-safis]]
-          [neighbors.afi-safis.config]
-            afi-safi-name = "ipv6-unicast"
+      # Advertise LoadBalancer IPs (simulates Cilium behavior)
+      [[defined-sets.prefix-sets]]
+        prefix-set-name = "lb-ipv4"
+        [[defined-sets.prefix-sets.prefix-list]]
+          ip-prefix = "${replace(loopback.ipv4, "254.", "250.")}/32"
+
+      [[defined-sets.prefix-sets]]
+        prefix-set-name = "lb-ipv6"
+        [[defined-sets.prefix-sets.prefix-list]]
+          ip-prefix = "${replace(loopback.ipv6, "fe::", "250::")}/128"
+
+      [[policy-definitions]]
+        name = "advertise-lb"
+        [[policy-definitions.statements]]
+          name = "accept-lb-ipv4"
+          [policy-definitions.statements.conditions.match-prefix-set]
+            prefix-set = "lb-ipv4"
+            match-set-options = "any"
+          [policy-definitions.statements.actions]
+            route-disposition = "accept-route"
+
+        [[policy-definitions.statements]]
+          name = "accept-lb-ipv6"
+          [policy-definitions.statements.conditions.match-prefix-set]
+            prefix-set = "lb-ipv6"
+            match-set-options = "any"
+          [policy-definitions.statements.actions]
+            route-disposition = "accept-route"
+
+      [global.apply-policy.config]
+        export-policy-list = ["advertise-lb"]
     owner: root:root
     permissions: '0644'
 
-  # Systemd service for GoBGP in cilium namespace
   - path: /etc/systemd/system/gobgpd-cilium.service
     content: |
       [Unit]
-      Description=GoBGP daemon in cilium namespace (simulates Cilium BGP)
-      After=veth-setup.service frr.service
-      Requires=veth-setup.service
+      Description=GoBGP daemon (simulates Cilium BGP in host netns)
+      After=frr.service
+      Requires=frr.service
 
       [Service]
       Type=simple
-      ExecStart=/usr/bin/ip netns exec ${frr_config.veth_namespace} /usr/bin/gobgpd -f /etc/gobgpd-cilium.conf --disable-stdlog --syslog yes
+      ExecStart=/usr/bin/gobgpd -f /etc/gobgpd-cilium.conf --disable-stdlog --syslog yes
       Restart=on-failure
       RestartSec=5
 
@@ -447,91 +276,67 @@ write_files:
     owner: root:root
     permissions: '0644'
 
-  # Test BGP peer script
-  - path: /usr/local/bin/test-bgp-peer.sh
+  - path: /etc/systemd/system/gobgp-inject-lb.service
     content: |
-      #!/bin/bash
-      # Test MP-BGP connectivity and route exchange
+      [Unit]
+      Description=Inject LoadBalancer routes into GoBGP (simulates Cilium)
+      After=gobgpd-cilium.service
+      Requires=gobgpd-cilium.service
 
-      NAMESPACE="${frr_config.veth_namespace}"
+      [Service]
+      Type=oneshot
+      ExecStartPre=/bin/sleep 3
+      ExecStart=/usr/bin/gobgp global rib add -a ipv4 ${replace(loopback.ipv4, "254.", "250.")}/32 nexthop ${replace(loopback.ipv4, "254.", "253.")}
+      ExecStart=/usr/bin/gobgp global rib add -a ipv6 ${replace(loopback.ipv6, "fe::", "250::")}/128 nexthop ${replace(loopback.ipv6, "fe::", "fd::")}
+      RemainAfterExit=yes
 
-      echo "=== MP-BGP Test for ${hostname} ==="
-      echo ""
-      echo "1. Veth pair status:"
-      ip addr show veth-frr | grep -E "inet6?|state"
-      ip netns exec "$NAMESPACE" ip addr show veth-cilium | grep -E "inet6?|state"
-      echo ""
-      echo "2. IPv6 connectivity test:"
-      ip netns exec "$NAMESPACE" ping -6 -c3 ${frr_config.veth_ipv6_remote}
-      echo ""
-      echo "3. FRR BGP status:"
-      vtysh -c "show bgp summary"
-      echo ""
-      echo "4. GoBGP status:"
-      ip netns exec "$NAMESPACE" gobgp neighbor
-      echo ""
-      echo "5. Test route advertisement (IPv4):"
-      ip netns exec "$NAMESPACE" gobgp global rib add 192.168.100.0/24
-      sleep 2
-      vtysh -c "show bgp ipv4 unicast 192.168.100.0/24"
-      echo ""
-      echo "6. Test route advertisement (IPv6):"
-      ip netns exec "$NAMESPACE" gobgp global rib -a ipv6 add 2001:db8:100::/48
-      sleep 2
-      vtysh -c "show bgp ipv6 unicast 2001:db8:100::/48"
+      [Install]
+      WantedBy=multi-user.target
     owner: root:root
-    permissions: '0755'
-%{ endif ~}
+    permissions: '0644'
 %{ endif ~}
 
 runcmd:
-  # Apply sysctl settings
   - sysctl -p /etc/sysctl.d/99-evpn-notify.conf
 
 %{ if loopback != null ~}
-  # Configure loopback addresses for BGP
-  - ip addr add ${loopback.ipv4}/32 dev lo
-  - ip addr add ${loopback.ipv6}/128 dev lo
+  # Create dummy interface for loopback addresses
+  - ip link add dummy0 type dummy
+  - ip link set dummy0 up
+
+  # FRR Host ID IP on dummy0 (.254 - k8s node IP)
+  - ip addr add ${loopback.ipv4}/32 dev dummy0
+  - ip addr add ${loopback.ipv6}/128 dev dummy0
+
+  # GoBGP/Cilium IP on dummy0 (.253)
+  - ip addr add ${replace(loopback.ipv4, "254.", "253.")}/32 dev dummy0
+  - ip addr add ${replace(loopback.ipv6, "fe::", "fd::")}/128 dev dummy0
+
+  # LoadBalancer IPs on dummy0 (.250 - simulates Cilium LB-IPAM)
+  - ip addr add ${replace(loopback.ipv4, "254.", "250.")}/32 dev dummy0
+  - ip addr add ${replace(loopback.ipv6, "fe::", "250::")}/128 dev dummy0
 %{ endif ~}
 
-  # Enable and start qemu-guest-agent
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 
 %{ if frr_enabled && frr_config != null ~}
-  # Create FRR directories for container mounts
-  - mkdir -p /var/lib/frr /var/run/frr
-  - chmod 755 /var/lib/frr /var/run/frr
-
-  # Enable and start Docker
-  - systemctl enable docker
-  - systemctl start docker
-
-  # Pull FRR extension image
-  - docker pull ghcr.io/sulibot/frr-talos-extension:v1.1.39
-
-  # Start FRR container (mimics Talos environment)
-  - systemctl daemon-reload
-  - systemctl enable frr-container.service
-  - systemctl start frr-container.service
-
-  # Wait for container startup
-  - sleep 10
-
-  # Display container status and logs
-  - echo "=== FRR Container Status ===" && docker ps -f name=frr-extension
-  - echo "=== FRR Container Logs ===" && docker logs frr-extension || true
-
-%{ if frr_config.veth_enabled ~}
-  # Enable and start GoBGP in cilium namespace (simulates Cilium BGP)
-  # NOTE: This will only work once veth namespace isolation is fixed
+  - systemctl enable frr
+  - systemctl start frr
+  - sleep 5
   - systemctl daemon-reload
   - systemctl enable gobgpd-cilium
-  - systemctl start gobgpd-cilium || echo "GoBGP start failed (expected until veth works)"
-
-  # Display namespace debugging info
-  - echo "=== Namespace Debug Info ===" && /usr/local/bin/debug-namespace.sh || true
+  - systemctl start gobgpd-cilium
+  - sleep 3
+  - systemctl enable gobgp-inject-lb
+  - systemctl start gobgp-inject-lb
+  - sleep 2
+  - echo "=== FRR BGP Summary ===" && vtysh -c "show bgp summary" || true
+  - echo "=== GoBGP Neighbor ===" && gobgp neighbor || true
+  - echo "=== GoBGP Advertised Routes (IPv4) ===" && gobgp global rib -a ipv4 || true
+  - echo "=== GoBGP Advertised Routes (IPv6) ===" && gobgp global rib -a ipv6 || true
+  - echo "=== FRR Routes from Cilium (IPv4) ===" && vtysh -c "show bgp ipv4 unicast neighbors ${replace(loopback.ipv4, "254.", "253.")} received-routes" || true
+  - echo "=== FRR Routes from Cilium (IPv6) ===" && vtysh -c "show bgp ipv6 unicast neighbors ${replace(loopback.ipv6, "fe::", "fd::")} received-routes" || true
 %{ endif ~}
-%{ endif ~}
 
-final_message: "Debian FRR test VM ${hostname} ready after $UPTIME seconds"
+final_message: "Debian FRR test VM ${hostname} ready (Talos pattern, host netns) after $UPTIME seconds"

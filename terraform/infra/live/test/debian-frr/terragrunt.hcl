@@ -14,12 +14,6 @@ locals {
   bgp_asn_base   = local.network_infra.bgp.asn_base  # 4210000000
   bgp_remote_asn = local.network_infra.bgp.remote_asn # 4200001000
 
-  # Veth peering IPs (same pattern as Talos FRR extension)
-  cilium_veth_ipv4_local  = "169.254.101.2"
-  cilium_veth_ipv4_remote = "169.254.101.1"
-  cilium_veth_ipv6_local  = "fd00:65:c111::2"
-  cilium_veth_ipv6_remote = "fd00:65:c111::1"
-
   # Test VM definitions
   test_vms = {
     debtest01 = {
@@ -126,17 +120,11 @@ module "${name}" {
   ]
 
   frr_config = {
-    enabled           = true
-    local_asn         = ${local.bgp_asn_base + local.tenant_id * 1000 + vm.ip_suffix}
-    router_id         = "10.${local.tenant_id}.254.${vm.ip_suffix}"
-    upstream_peer     = "fd00:${local.tenant_id}::fffe"
-    upstream_asn      = ${local.bgp_remote_asn}
-    veth_enabled      = true
-    veth_namespace    = "cilium"
-    veth_ipv4_local   = "${local.cilium_veth_ipv4_local}"
-    veth_ipv4_remote  = "${local.cilium_veth_ipv4_remote}"
-    veth_ipv6_local   = "${local.cilium_veth_ipv6_local}"
-    veth_ipv6_remote  = "${local.cilium_veth_ipv6_remote}"
+    enabled       = true
+    local_asn     = ${local.bgp_asn_base + local.tenant_id * 1000 + vm.ip_suffix}
+    router_id     = "10.${local.tenant_id}.254.${vm.ip_suffix}"
+    upstream_peer = "fd00:${local.tenant_id}::fffe"
+    upstream_asn  = ${local.bgp_remote_asn}
   }
 
   ssh_public_key = local.ssh_public_key

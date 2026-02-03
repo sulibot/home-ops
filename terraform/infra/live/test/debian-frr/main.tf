@@ -58,17 +58,11 @@ module "debtest01" {
   ]
 
   frr_config = {
-    enabled          = true
-    local_asn        = 4210101041
-    router_id        = "10.101.254.41"
-    upstream_peer    = "fd00:101::fffe"
-    upstream_asn     = 4200001000
-    veth_enabled     = true
-    veth_namespace   = "cilium"
-    veth_ipv4_local  = "169.254.101.2"
-    veth_ipv4_remote = "169.254.101.1"
-    veth_ipv6_local  = "fd00:65:c111::2"
-    veth_ipv6_remote = "fd00:65:c111::1"
+    enabled       = true
+    local_asn     = 4210101041
+    router_id     = "10.101.254.41"
+    upstream_peer = "fd00:101::fffe"
+    upstream_asn  = 4200001000
   }
 
   ssh_public_key = local.ssh_public_key
@@ -125,17 +119,11 @@ module "debtest02" {
   ]
 
   frr_config = {
-    enabled          = true
-    local_asn        = 4210101042
-    router_id        = "10.101.254.42"
-    upstream_peer    = "fd00:101::fffe"
-    upstream_asn     = 4200001000
-    veth_enabled     = true
-    veth_namespace   = "cilium"
-    veth_ipv4_local  = "169.254.101.2"
-    veth_ipv4_remote = "169.254.101.1"
-    veth_ipv6_local  = "fd00:65:c111::2"
-    veth_ipv6_remote = "fd00:65:c111::1"
+    enabled       = true
+    local_asn     = 4210101042
+    router_id     = "10.101.254.42"
+    upstream_peer = "fd00:101::fffe"
+    upstream_asn  = 4200001000
   }
 
   ssh_public_key = local.ssh_public_key
