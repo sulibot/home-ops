@@ -579,9 +579,6 @@ locals {
                   address_family = "ipv4"
                   prefix_list    = "CILIUM-ALL-v4"
                 }
-                set = {
-                  next_hop_self = true # Rewrite next-hop on import (Cilium next-hop is local)
-                }
               }
             ]
           }
@@ -593,9 +590,6 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-ALL-v6"
-                }
-                set = {
-                  next_hop_self = true # Rewrite next-hop on import (Cilium next-hop is local)
                 }
               }
             ]
