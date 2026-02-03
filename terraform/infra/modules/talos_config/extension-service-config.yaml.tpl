@@ -23,3 +23,8 @@ configFiles:
       hostname ${hostname}
     # mountPath: /var/lib/frr/vtysh.conf
     mountPath: /usr/local/etc/frr/vtysh.conf
+%{ if frr_template != "" ~}
+  - content: |
+      ${replace(frr_template, "\n", "\n      ")}
+    mountPath: /etc/frr/frr.conf.j2
+%{ endif ~}

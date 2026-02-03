@@ -5,6 +5,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.11"
@@ -29,6 +30,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.12"
@@ -53,6 +55,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.13"
@@ -77,6 +80,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.21"
@@ -101,6 +105,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.22"
@@ -125,6 +130,7 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
+    "localPort": 1790
     "name": "local-frr"
     "peers":
     - "localAddress": "10.101.253.23"

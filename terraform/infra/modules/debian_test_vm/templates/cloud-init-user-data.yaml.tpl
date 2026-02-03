@@ -111,10 +111,12 @@ write_files:
       ! Route maps for Cilium import (accept all Cilium routes)
       route-map IMPORT-FROM-CILIUM-v4 permit 10
        match ip address prefix-list CILIUM-ALL-v4
+       set ip next-hop ${network.ipv4_gateway}
       exit
       !
       route-map IMPORT-FROM-CILIUM-v6 permit 10
        match ipv6 address prefix-list CILIUM-ALL-v6
+       set ipv6 next-hop global ${network.ipv6_gateway}
       exit
       !
       ! Upstream route filtering

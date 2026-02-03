@@ -371,16 +371,16 @@ locals {
           local_asn  = node.frr_asn             # FRR's ASN
           remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
           peering = {
-            # FRR listens on port 179 (default), Cilium connects TO FRR (active only, localPort=-1)
-            # FRR uses dynamic neighbors (bgp listen range) to accept Cilium connections
+            # FRR listens on port 179 (default), Cilium connects TO FRR on port 179
+            # Template uses .local as the FRR "neighbor" address (the peer to accept connections from)
             ipv4 = {
-              local  = node.loopback_ipv4    # FRR listens on .254 IPv4
-              remote = node.cilium_bgp_ipv4  # Cilium connects FROM .253 IPv4
+              local  = node.cilium_bgp_ipv4  # Cilium's source IP (.253) — rendered as "neighbor" in FRR
+              remote = node.loopback_ipv4    # FRR's own IP (.254) — not used by template
               prefix = 32
             }
             ipv6 = {
-              local  = node.loopback_ipv6    # FRR listens on .254 IPv6
-              remote = node.cilium_bgp_ipv6  # Cilium connects FROM .253 IPv6
+              local  = node.cilium_bgp_ipv6  # Cilium's source IP (fd::) — rendered as "neighbor" in FRR
+              remote = node.loopback_ipv6    # FRR's own IP (fe::) — not used by template
               prefix = 128
             }
           }
@@ -615,6 +615,9 @@ locals {
                   address_family = "ipv4"
                   prefix_list    = "CILIUM-ALL-v4"
                 }
+                set = {
+                  ip_next_hop = "10.${var.cluster_id}.0.254"
+                }
               }
             ]
           }
@@ -626,6 +629,9 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-ALL-v6"
+                }
+                set = {
+                  ipv6_next_hop = "fd00:${var.cluster_id}::fffe"
                 }
               }
             ]
@@ -736,6 +742,7 @@ locals {
       frr_config_yaml = local.frr_config_yamls[node_name]
       hostname        = node.hostname
       enable_bfd      = var.bgp_enable_bfd
+      frr_template    = var.frr_template_path != "" ? file(var.frr_template_path) : ""
     })
   }
 }

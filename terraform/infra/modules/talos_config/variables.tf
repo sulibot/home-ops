@@ -21,6 +21,12 @@ variable "cilium_lb_pool_path" {
   default     = ""
 }
 
+variable "frr_template_path" {
+  description = "Path to the FRR Jinja2 template (mounted into extension container to override baked-in version)"
+  type        = string
+  default     = ""
+}
+
 variable "cluster_name" {
   description = "Name of the Talos cluster"
   type        = string

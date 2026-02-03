@@ -17,6 +17,7 @@ locals {
     frr_enabled    = var.frr_config != null ? var.frr_config.enabled : false
     frr_config     = var.frr_config
     loopback       = var.loopback
+    network        = var.network
   })
 
   network_config = templatefile("${path.module}/templates/cloud-init-network.yaml.tpl", {
