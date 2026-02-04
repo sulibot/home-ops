@@ -761,107 +761,106 @@ locals {
       # Per-node network patch and FRR ExtensionServiceConfig
       # Using heredoc to create proper multi-document YAML for Talos config_patch
       config_patch = <<-EOT
-${yamlencode(merge(
-      {
-        machine = {
-          nodeLabels = merge(
-            {
-              "topology.kubernetes.io/region" = var.region
-              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-              "bgp.frr.asn"                   = tostring(node.frr_asn)
-            },
-            # Add GPU label if GPU passthrough is enabled for this node
-            try(node.gpu_passthrough.enabled, false) ? {
-              "gpu.passthrough.enabled" = "true"
-              "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
-              "gpu.pci.address"         = try(node.gpu_passthrough.pci_address, "")
-            } : {}
-          )
-          network = {
-            hostname = node.hostname
-            interfaces = concat([
+${yamlencode({
+        machine = merge(
+          {
+            nodeLabels = merge(
               {
-                interface = var.bgp_interface
-                mtu       = 1450 # Reduced for VXLAN overhead (SDN)
-                addresses = concat(
-                  [
-                    "${node.public_ipv6}/64", # ULA: fd00:101::11/64
-                    "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
-                  ],
-                  var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [] # GUA: 2600:1700:ab1a:500e::11/64
-                )
-                routes = [
-                  # IPv4: static route (no RA for IPv4) - will be overridden by BGP
-                  {
-                    network = "0.0.0.0/0"
-                    gateway = "10.${var.cluster_id}.0.254"
-                    metric  = 2048
-                  },
-                  # IPv6: default route via global unicast anycast gateway
-                  {
-                    network = "::/0"
-                    gateway = "fd00:${var.cluster_id}::fffe"
-                    metric  = 150
-                  },
-                ]
-                vip = node.machine_type == "controlplane" ? {
-                  ip = var.vip_ipv6
-                } : null
+                "topology.kubernetes.io/region" = var.region
+                "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+                "bgp.frr.asn"                   = tostring(node.frr_asn)
               },
-              {
-                interface = "dummy0"
-                addresses = [
-                  "${node.loopback_ipv6}/128",    # FRR identity IPv6 (fd00:101:fe::X)
-                  "${node.loopback_ipv4}/32",     # FRR identity IPv4 (10.101.254.X) - k8s node IP
-                  "${node.cilium_bgp_ipv6}/128",  # Cilium BGP identity IPv6 (fd00:101:fd::X)
-                  "${node.cilium_bgp_ipv4}/32",   # Cilium BGP identity IPv4 (10.101.253.X)
-                  "${node.lb_example_ipv6}/128",  # LoadBalancer example IPv6 (fd00:101:250::X)
-                  "${node.lb_example_ipv4}/32",   # LoadBalancer example IPv4 (10.101.250.X)
-                ]
-              }
-              ], node.machine_type == "worker" ? [
-              {
-                interface = "ens19"
-                dhcp      = false
-                mtu       = 1500
-                vlans = [
-                  {
-                    vlanId = 30
-                    mtu    = 1500
-                  },
-                  {
-                    vlanId = 31
-                    mtu    = 1500
-                  }
-                ]
-              }
-            ] : [])
-            nameservers = var.dns_servers
-          }
-          kubelet = {
-            nodeIP = {
-              validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
+              # Add GPU label if GPU passthrough is enabled for this node
+              try(node.gpu_passthrough.enabled, false) ? {
+                "gpu.passthrough.enabled" = "true"
+                "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
+                "gpu.pci.address"         = replace(try(node.gpu_passthrough.pci_address, ""), ":", "-")
+              } : {}
+            )
+            network = {
+              hostname = node.hostname
+              interfaces = concat([
+                {
+                  interface = var.bgp_interface
+                  mtu       = 1450 # Reduced for VXLAN overhead (SDN)
+                  addresses = concat(
+                    [
+                      "${node.public_ipv6}/64", # ULA: fd00:101::11/64
+                      "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
+                    ],
+                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [] # GUA: 2600:1700:ab1a:500e::11/64
+                  )
+                  routes = [
+                    # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+                    {
+                      network = "0.0.0.0/0"
+                      gateway = "10.${var.cluster_id}.0.254"
+                      metric  = 2048
+                    },
+                    # IPv6: default route via global unicast anycast gateway
+                    {
+                      network = "::/0"
+                      gateway = "fd00:${var.cluster_id}::fffe"
+                      metric  = 150
+                    },
+                  ]
+                  vip = node.machine_type == "controlplane" ? {
+                    ip = var.vip_ipv6
+                  } : null
+                },
+                {
+                  interface = "dummy0"
+                  addresses = [
+                    "${node.loopback_ipv6}/128",    # FRR identity IPv6 (fd00:101:fe::X)
+                    "${node.loopback_ipv4}/32",     # FRR identity IPv4 (10.101.254.X) - k8s node IP
+                    "${node.cilium_bgp_ipv6}/128",  # Cilium BGP identity IPv6 (fd00:101:fd::X)
+                    "${node.cilium_bgp_ipv4}/32",   # Cilium BGP identity IPv4 (10.101.253.X)
+                    "${node.lb_example_ipv6}/128",  # LoadBalancer example IPv6 (fd00:101:250::X)
+                    "${node.lb_example_ipv4}/32",   # LoadBalancer example IPv4 (10.101.250.X)
+                  ]
+                }
+                ], node.machine_type == "worker" ? [
+                {
+                  interface = "ens19"
+                  dhcp      = false
+                  mtu       = 1500
+                  vlans = [
+                    {
+                      vlanId = 30
+                      mtu    = 1500
+                    },
+                    {
+                      vlanId = 31
+                      mtu    = 1500
+                    }
+                  ]
+                }
+              ] : [])
+              nameservers = var.dns_servers
             }
-          }
-        }
-      },
-      # Add GPU kernel module configuration if GPU passthrough is enabled
-      try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
-        machine = {
-          kernel = {
-            modules = [
-              {
-                name = try(node.gpu_passthrough.driver, "i915")
-                parameters = [
-                  for k, v in try(node.gpu_passthrough.driver_params, {}) :
-                  "${k}=${v}"
-                ]
+            kubelet = {
+              nodeIP = {
+                validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
               }
-            ]
-          }
-        }
-      } : {}
-))}
+            }
+          },
+          # Add GPU kernel module configuration if GPU passthrough is enabled
+          # This is merged INTO the machine block to avoid shallow merge overwriting nodeLabels
+          try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
+            kernel = {
+              modules = [
+                {
+                  name = try(node.gpu_passthrough.driver, "i915")
+                  parameters = [
+                    for k, v in try(node.gpu_passthrough.driver_params, {}) :
+                    "${k}=${v}"
+                  ]
+                }
+              ]
+            }
+          } : {}
+        )
+      })}
 ---
 ${local.extension_service_configs[node_name]}
 EOT

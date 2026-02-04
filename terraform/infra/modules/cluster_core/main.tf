@@ -391,8 +391,9 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     sockets = 1
     cores   = coalesce(try(each.value.cpu_cores, null), var.vm_defaults.cpu_cores)
     type    = "host" # Pass through host CPU flags for best performance.
-    # Hide CPU flags that might cause issues with GPU passthrough (only if enabled)
-    flags = try(each.value.gpu_passthrough, null) != null ? ["-x2apic"] : []
+    # Note: -x2apic was previously used for GPU passthrough but is no longer valid in PVE 9.x
+    # SR-IOV VF passthrough works fine without CPU flag modifications
+    flags = []
   }
 
   memory {

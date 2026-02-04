@@ -18,41 +18,58 @@ locals {
     mesh_mtu      = 8930
     use_sdn       = true         # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }
-  node_overrides = {
-    # Pin worker nodes to specific Proxmox hosts
-    # GPU passthrough DISABLED - uncomment gpu_passthrough blocks below to re-enable
-    "solwk01" = {
-      node_name = "pve01"
-      # gpu_passthrough = {
-      #   pci_address = "0000:00:02.0"  # Intel iGPU PCI address (find with: lspci | grep VGA)
-      #   pcie        = true            # PCIe passthrough mode (recommended)
-      #   rombar      = false           # Disable ROM BAR for iGPU (required for Intel)
-      #   x_vga       = false           # Not primary VGA (keeps serial console accessible)
-      #   driver      = "i915"          # Optional: driver hint (defaults to i915 if omitted)
-      #   driver_params = {             # Optional: override default params
-      #     "enable_display" = "0"      # Disable display to prevent boot hang
-      #     "enable_guc"     = "3"      # Enable GuC/HuC firmware
-      #     "force_probe"    = "*"      # Probe all Intel GPUs
-      #   }
-      # }
-    }
-    "solwk02" = {
-      node_name = "pve02"
-      # gpu_passthrough = {
-      #   pci_address = "0000:00:02.0"
-      #   pcie        = true
-      #   rombar      = false
-      #   x_vga       = false
-      # }
-    }
-    "solwk03" = {
-      node_name = "pve03"
-      # gpu_passthrough = {
-      #   pci_address = "0000:00:02.0"
-      #   pcie        = true
-      #   rombar      = false
-      #   x_vga       = false
-      # }
+
+  # ---------------------------------------------------------------------------
+  # Reference shared Proxmox hardware mappings so clusters can resolve PCI IDs
+  # without hardcoding them inline.
+  hardware_mappings = read_terragrunt_config(find_in_parent_folders("common/proxmox_hardware_mappings/terragrunt.hcl")).locals
+
+  # GPU Configuration to apply to all worker nodes
+  gpu_config = {
+    enabled     = true
+    mapping     = "intel-igpu-vf1"
+    pcie        = true
+    rombar      = false
+    driver      = "i915"
+    driver_params = {
+      "enable_guc" = "3"
     }
   }
+
+  # USB configuration for a specific worker node
+  usb_config = [
+    {
+      mapping = "sonoff-zigbee"
+      usb3    = true
+    }
+  ]
+
+  # Dynamically generate node overrides for all worker nodes.
+  # This avoids hardcoding and makes the configuration scalable.
+  # - Workers get GPU only if a mapping exists for their PVE node (pve03 has no SR-IOV)
+  # - Worker #2 (`solwk02`) gets the USB passthrough, matching the previous setup.
+  # - Workers are pinned to pve01, pve02, etc. sequentially.
+  worker_configs = {
+    for i in range(1, local.workers + 1) :
+    format("%swk%02d", local.cluster_name, i) => {
+      node_name = format("pve%02d", i)
+      # Only enable GPU passthrough if:
+      # 1. gpu_config.enabled is true
+      # 2. A PCI mapping exists for this node (e.g., pve03 has no SR-IOV support)
+      gpu_passthrough = (
+        local.gpu_config.enabled &&
+        can(local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)])
+      ) ? merge(
+        local.gpu_config,
+        {
+          pci_address = local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)]
+        }
+      ) : null
+      # Conditionally add USB passthrough to the second worker node.
+      # The `try()` function in the compute module will handle the null value.
+      usb = i == 2 ? local.usb_config : null
+    }
+  }
+
+  node_overrides = local.worker_configs
 }

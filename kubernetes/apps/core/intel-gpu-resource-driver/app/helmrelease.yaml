@@ -22,5 +22,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: DoesNotExist
+              - key: gpu.passthrough.enabled
+                operator: In
+                values:
+                  - "true"
