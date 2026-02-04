@@ -8,7 +8,10 @@ locals {
 
   # Kernel args for production system (metal platform)
   install_kernel_args = [
-    "talos.platform=metal",  # Use metal platform for bare metal/VM installation
+    "console=ttyS0,115200",  # Serial console output (VGA is none on GPU passthrough nodes)
+    # NOTE: talos.platform is NOT set here — imager --platform metal/nocloud sets it
+    # per-image.  Setting it here would override nocloud platform on the boot ISO
+    # and break cloud-init (nodes would never get static IPs).
     "-init_on_alloc",        # Less security, faster performance
     "-init_on_free",         # Less security, faster performance
     "-selinux",              # Less security, faster performance

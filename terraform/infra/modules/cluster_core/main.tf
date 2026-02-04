@@ -468,7 +468,7 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   dynamic "serial_device" {
     for_each = try(each.value.gpu_passthrough, null) != null ? [1] : []
     content {
-      device = "/dev/ttyS0"  # Maps to serial0 in QEMU
+      device = "socket"  # Virtual serial port; access via qm terminal or Proxmox noVNC
     }
   }
 
