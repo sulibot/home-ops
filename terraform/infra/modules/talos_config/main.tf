@@ -417,6 +417,7 @@ locals {
               update_source               = node.public_ipv6
               address_family              = "ipv6"
               capability_extended_nexthop = true
+              next_hop_self               = true
               route_map_in_v4             = "IMPORT-DEFAULT-v4"
               route_map_in_v6             = "IMPORT-DEFAULT-v6"
               route_map_out               = "EXPORT-TO-UPSTREAM"

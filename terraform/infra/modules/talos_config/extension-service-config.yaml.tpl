@@ -26,5 +26,5 @@ configFiles:
 %{ if frr_template != "" ~}
   - content: |
       ${replace(frr_template, "\n", "\n      ")}
-    mountPath: /etc/frr/frr.conf.j2
+    mountPath: /usr/local/etc/frr/frr.conf.j2
 %{ endif ~}

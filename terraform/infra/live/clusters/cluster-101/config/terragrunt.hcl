@@ -234,7 +234,7 @@ inputs = {
   cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/networking/cilium/ippool/lb-pool.yaml"
 
   # FRR extension template (mounted into container to override baked-in version)
-  frr_template_path = "${get_repo_root()}/FRR/jsenecal-frr-talos-extension/frr.conf.j2"
+  frr_template_path = "${get_repo_root()}/FRR/frr-talos-extension/frr.conf.j2"
 
   # Cluster identity
   cluster_name = local.cluster_config.cluster_name
