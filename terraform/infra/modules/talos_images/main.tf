@@ -91,12 +91,13 @@ locals {
     "--system-extension-image ${ext}"
   ])
 
-  # Factory schematic for kernel args only (extensions added via flags)
-  factory_schematic_request = jsonencode({
-    customization = length(var.kernel_args) > 0 ? {
-      extraKernelArgs = var.kernel_args
-    } : {}
-  })
+  # Kernel arg flags for imager (Talos v1.10+ uses UKI; extraKernelArgs in the
+  # factory schematic is silently dropped when imager adds extensions.  Pass them
+  # directly via --extra-kernel-arg so they end up in the UKI.)
+  kernel_arg_flags = join(" ", [
+    for arg in var.kernel_args :
+    "--extra-kernel-arg ${arg}"
+  ])
 }
 
 # Build both installer and ISO in a single step
@@ -121,11 +122,12 @@ resource "null_resource" "build_images" {
       echo "ISO: ${var.iso_output_dir}/${var.iso_name}"
       echo "=================================================="
 
-      # Get factory schematic ID for kernel args
+      # Get a base schematic ID from factory (empty customization; kernel args
+      # are passed directly to imager via --extra-kernel-arg for UKI compatibility)
       SCHEMATIC_ID=$(curl -s "https://factory.talos.dev/schematics" \
         -X POST \
         -H "Content-Type: application/json" \
-        -d '${local.factory_schematic_request}' | \
+        -d '{"customization":{}}' | \
         jq -r '.id')
 
       echo "Factory schematic ID: $SCHEMATIC_ID"
@@ -147,7 +149,8 @@ resource "null_resource" "build_images" {
         --arch amd64 \
         --platform metal \
         --base-installer-image factory.talos.dev/installer/$SCHEMATIC_ID:${var.talos_version} \
-        ${local.extension_flags}
+        ${local.extension_flags} \
+        ${local.kernel_arg_flags}
 
       # Load, tag, and push installer to registry
       LOADED_IMAGE=$(docker load < $TEMP_DIR/installer-amd64.tar | sed -n 's/^Loaded image: //p')
@@ -176,7 +179,8 @@ resource "null_resource" "build_images" {
         --base-installer-image factory.talos.dev/installer/$SCHEMATIC_ID:${var.talos_version} \
         --tar-to-stdout=false \
         --output-kind iso \
-        ${local.extension_flags}
+        ${local.extension_flags} \
+        ${local.kernel_arg_flags}
 
       # Rename output to desired name (imager outputs nocloud-amd64.iso)
       mv "${var.iso_output_dir}/nocloud-amd64.iso" "${var.iso_output_dir}/${var.iso_name}"
