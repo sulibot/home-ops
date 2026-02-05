@@ -775,6 +775,11 @@ ${yamlencode({
                 "gpu.passthrough.enabled" = "true"
                 "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
                 "gpu.pci.address"         = replace(try(node.gpu_passthrough.pci_address, ""), ":", "-")
+              } : {},
+              # Add USB label if USB devices are passed through to this node
+              try(length(node.usb), 0) > 0 ? {
+                "usb-zigbee"        = "true"
+                "home-assistant"    = "true"
               } : {}
             )
             network = {
