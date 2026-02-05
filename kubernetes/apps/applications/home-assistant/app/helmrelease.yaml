@@ -39,7 +39,7 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             securityContext:
-              privileged: true  # Required for USB device access
+              privileged: false
               readOnlyRootFilesystem: true
             resources:
               requests:
@@ -47,8 +47,8 @@ spec:
               limits:
                 memory: 2Gi
     defaultPodOptions:
-      nodeSelector:
-        usb-zigbee: "true"
+      # nodeSelector:
+      #   usb-zigbee: "true"
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
           [
@@ -64,10 +64,10 @@ spec:
             }
           ]
       securityContext:
-        runAsNonRoot: false  # Must run as root for USB device access
-        runAsUser: 0
-        runAsGroup: 0
-        fsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
@@ -99,10 +99,10 @@ spec:
           - path: /config/.venv
       tmp:
         type: emptyDir
-      usb-zigbee:
-        enabled: true
-        type: hostPath
-        hostPath: /dev/ttyACM0
-        hostPathType: CharDevice
-        globalMounts:
-          - path: /dev/ttyACM0
+      # usb-zigbee:
+      #   enabled: true
+      #   type: hostPath
+      #   hostPath: /dev/ttyACM0
+      #   hostPathType: CharDevice
+      #   globalMounts:
+      #     - path: /dev/ttyACM0

@@ -36,13 +36,8 @@ locals {
     }
   }
 
-  # USB configuration for a specific worker node
-  usb_config = [
-    {
-      mapping = "sonoff-zigbee"
-      usb3    = true
-    }
-  ]
+  # USB configuration for a specific worker node (disabled)
+  usb_config = []
 
   # Dynamically generate node overrides for all worker nodes.
   # This avoids hardcoding and makes the configuration scalable.
@@ -65,9 +60,8 @@ locals {
           pci_address = local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)]
         }
       ) : null
-      # Conditionally add USB passthrough to the first worker node (solwk01 on pve01).
-      # The USB device is physically plugged into pve01, so it must be assigned to a VM on that host.
-      usb = i == 1 ? local.usb_config : null
+      # USB passthrough disabled
+      usb = null
     }
   }
 
