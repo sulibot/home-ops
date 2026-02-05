@@ -32,7 +32,9 @@ locals {
     rombar      = false
     driver      = "i915"
     driver_params = {
-      "enable_guc" = "3"
+      "enable_display" = "0"      # Disable display for compute-only (headless GPU)
+      "enable_guc"     = "3"      # Enable GuC/HuC firmware for compute execution
+      "force_probe"    = "*"      # Force driver to probe all Intel iGPUs (including Alderlake)
     }
   }
 
