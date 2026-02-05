@@ -64,10 +64,10 @@ spec:
             }
           ]
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsNonRoot: false  # Must run as root for USB device access
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
@@ -100,7 +100,9 @@ spec:
       tmp:
         type: emptyDir
       usb-zigbee:
+        enabled: true
         type: hostPath
         hostPath: /dev/ttyACM0
+        hostPathType: CharDevice
         globalMounts:
           - path: /dev/ttyACM0
