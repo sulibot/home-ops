@@ -516,12 +516,11 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   # Uses hardware mappings for USB device assignment (e.g., Zigbee coordinator)
   # Unlike GPU passthrough, USB devices don't require IOMMU groups, so hardware
   # mappings work correctly without the bpg/proxmox provider bug affecting them.
-  dynamic "hostusb" {
+  dynamic "usb" {
     for_each = try(each.value.usb, null) != null ? each.value.usb : []
     content {
-      device  = "usb${hostusb.key}"  # usb0, usb1, etc.
-      mapping = hostusb.value.mapping
-      usb3    = try(hostusb.value.usb3, true)
+      mapping = usb.value.mapping
+      usb3    = try(usb.value.usb3, true)
     }
   }
 
