@@ -1,4 +1,5 @@
-# yaml-language-server: $schema=raw.githubusercontent.com
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -27,27 +28,32 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/nzbget
-              tag: 25.4.0@sha256:7afaa93e1992f86a033a310eb0f012f1e4c6bd406caa608146df951e85298ff1
+              tag: 26.0.0@sha256:a60b71e46cb01b4187774c0b8028f661e9e3a958b204024a74035117ca6f9d95976f
             env:
               NZBGET__PORT: &port 80
               TZ: America/Los_Angeles
-              # If necessary, explicitly set the bind address to all interfaces (IPv4 and IPv6)
-              # This specific key might vary depending on the image maintainer's implementation
-              NZBGET__HOST: "::"
-              NZBGET__CONTROLIP: "::" 
             probes:
-              liveness: &probes
+              liveness:
+                enabled: true
+                spec:
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
                     path: /jsonrpc/status
                     port: *port
-                  initialDelaySeconds: 30 # Increased delay to allow app startup
                   periodSeconds: 10
-                  timeoutSeconds: 5 # Slightly safer timeout
-                  failureThreshold: 3
-              readiness: *probes
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -55,17 +61,9 @@ spec:
             resources:
               requests:
                 cpu: 100m
-#              limits:
-#                memory: 8Gi
+              limits:
+                memory: 8Gi
     defaultPodOptions:
-#      annotations:
-#        k8s.v1.cni.cncf.io/networks: |-
-#          [{
-#            "name": "vpn",
-#            "namespace": "kube-system",
-#            "ips": ["192.168.90.11/24"],
-#            "mac": "a6:3e:4f:09:e4:9c"
-#          }]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -77,35 +75,21 @@ spec:
         ports:
           http:
             port: *port
-        # Explicitly configure the K8s Service object for dual-stack operation
-        kubernetes:
-          ipFamilyPolicy: PreferDualStack
-          ipFamilies:
-            - IPv6
-            - IPv4
-
     route:
       app:
-        enabled: true
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
           - name: gateway-external
             namespace: network
-
     persistence:
       config:
-        enabled: true
         existingClaim: "{{ .Release.Name }}-config"
-      downloads:
-        type: emptyDir
-        globalMounts:
-          - path: /downloads
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /data
+          - path: /media
             subPath: data
       tmp:
         type: emptyDir
