@@ -39,15 +39,16 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             securityContext:
-              allowPrivilegeEscalation: false
+              privileged: true  # Required for USB device access
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
             resources:
               requests:
                 cpu: 10m
               limits:
                 memory: 2Gi
     defaultPodOptions:
+      nodeSelector:
+        usb-zigbee: "true"
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
           [
@@ -98,3 +99,8 @@ spec:
           - path: /config/.venv
       tmp:
         type: emptyDir
+      usb-zigbee:
+        type: hostPath
+        hostPath: /dev/ttyACM0
+        globalMounts:
+          - path: /dev/ttyACM0
