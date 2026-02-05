@@ -65,9 +65,9 @@ locals {
           pci_address = local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)]
         }
       ) : null
-      # Conditionally add USB passthrough to the second worker node.
-      # The `try()` function in the compute module will handle the null value.
-      usb = i == 2 ? local.usb_config : null
+      # Conditionally add USB passthrough to the first worker node (solwk01 on pve01).
+      # The USB device is physically plugged into pve01, so it must be assigned to a VM on that host.
+      usb = i == 1 ? local.usb_config : null
     }
   }
 

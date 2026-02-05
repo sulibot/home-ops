@@ -130,6 +130,11 @@ variable "nodes" {
       rombar      = optional(bool, true)  # Enable ROM BAR
       x_vga       = optional(bool, false) # Primary VGA (usually false for secondary GPU)
     }))
+    # USB passthrough configuration
+    usb = optional(list(object({
+      mapping = string                  # Hardware mapping name (e.g., "sonoff-zigbee")
+      usb3    = optional(bool, true)   # USB 3.0 support
+    })))
   }))
 }
 
@@ -504,6 +509,19 @@ resource "proxmox_virtual_environment_vm" "nodes" {
       pcie   = try(hostpci.value.pcie, true)
       rombar = try(hostpci.value.rombar, false)  # CRITICAL: false for iGPU to prevent UEFI init
       xvga   = try(hostpci.value.x_vga, false)   # CRITICAL: false to prevent early GPU init
+    }
+  }
+
+  # USB Device Passthrough
+  # Uses hardware mappings for USB device assignment (e.g., Zigbee coordinator)
+  # Unlike GPU passthrough, USB devices don't require IOMMU groups, so hardware
+  # mappings work correctly without the bpg/proxmox provider bug affecting them.
+  dynamic "hostusb" {
+    for_each = try(each.value.usb, null) != null ? each.value.usb : []
+    content {
+      device  = "usb${hostusb.key}"  # usb0, usb1, etc.
+      mapping = hostusb.value.mapping
+      usb3    = try(hostusb.value.usb3, true)
     }
   }
 
