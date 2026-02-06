@@ -83,8 +83,8 @@ spec:
       app:
         ipFamilyPolicy: PreferDualStack
         ipFamilies:
-          - IPv6
           - IPv4
+          - IPv6
         ports:
           http:
             port: *port
