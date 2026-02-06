@@ -40,18 +40,24 @@ spec:
               - |
                 CONFIG_FILE="/config/nzbget.conf"
                 echo "Initializing nzbget config..."
+                echo "ControlIP: ${NZBGET__CONTROLIP}"
+                echo "ControlUsername: ${NZBGET__CONTROLUSERNAME}"
 
-                # If config doesn't exist, create it from defaults
-                if [ ! -f "$CONFIG_FILE" ]; then
-                  echo "Config file not found, creating from defaults..."
-                  /app/nzbget --configfile "$CONFIG_FILE" --option "ControlIP=${NZBGET__CONTROLIP}" --option "ControlUsername=${NZBGET__CONTROLUSERNAME}" --option "ControlPassword=${NZBGET__CONTROLPASSWORD}" --option "ControlPort=80" --printconfig > "$CONFIG_FILE"
-                else
+                # Always ensure these critical settings are correct
+                if [ -f "$CONFIG_FILE" ]; then
                   echo "Config file exists, updating credentials..."
-                  # Update existing config with current credentials
-                  sed -i "s/^ControlIP=.*/ControlIP=${NZBGET__CONTROLIP}/" "$CONFIG_FILE"
-                  sed -i "s/^ControlUsername=.*/ControlUsername=${NZBGET__CONTROLUSERNAME}/" "$CONFIG_FILE"
-                  sed -i "s/^ControlPassword=.*/ControlPassword=${NZBGET__CONTROLPASSWORD}/" "$CONFIG_FILE"
-                  sed -i "s/^ControlPort=.*/ControlPort=80/" "$CONFIG_FILE"
+                  # Use @ as delimiter to avoid issues with :: in ControlIP
+                  sed -i "s@^ControlIP=.*@ControlIP=${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlUsername=.*@ControlUsername=${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlPassword=.*@ControlPassword=${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
+
+                  # Verify the changes
+                  echo "Verifying config updates:"
+                  grep "^ControlIP=" "$CONFIG_FILE"
+                  grep "^ControlUsername=" "$CONFIG_FILE"
+                else
+                  echo "Config file not found - will be created on first run"
                 fi
 
                 echo "Config initialization complete"
