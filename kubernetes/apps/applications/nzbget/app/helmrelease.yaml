@@ -24,6 +24,37 @@ spec:
   values:
     controllers:
       nzbget:
+        initContainers:
+          init-config:
+            image:
+              repository: ghcr.io/home-operations/nzbget
+              tag: 26.0.0@sha256:a60b71e46cb01b41874c0b8028f661e9e3a958b20402a7403517ca6f9d95976f
+            envFrom:
+              - secretRef:
+                  name: nzbget-secret
+            env:
+              NZBGET__CONTROLIP: "::"
+            command:
+              - /bin/sh
+              - -c
+              - |
+                CONFIG_FILE="/config/nzbget.conf"
+                echo "Initializing nzbget config..."
+
+                # If config doesn't exist, create it from defaults
+                if [ ! -f "$CONFIG_FILE" ]; then
+                  echo "Config file not found, creating from defaults..."
+                  /app/nzbget --configfile "$CONFIG_FILE" --option "ControlIP=${NZBGET__CONTROLIP}" --option "ControlUsername=${NZBGET__CONTROLUSERNAME}" --option "ControlPassword=${NZBGET__CONTROLPASSWORD}" --option "ControlPort=80" --printconfig > "$CONFIG_FILE"
+                else
+                  echo "Config file exists, updating credentials..."
+                  # Update existing config with current credentials
+                  sed -i "s/^ControlIP=.*/ControlIP=${NZBGET__CONTROLIP}/" "$CONFIG_FILE"
+                  sed -i "s/^ControlUsername=.*/ControlUsername=${NZBGET__CONTROLUSERNAME}/" "$CONFIG_FILE"
+                  sed -i "s/^ControlPassword=.*/ControlPassword=${NZBGET__CONTROLPASSWORD}/" "$CONFIG_FILE"
+                  sed -i "s/^ControlPort=.*/ControlPort=80/" "$CONFIG_FILE"
+                fi
+
+                echo "Config initialization complete"
         containers:
           app:
             image:
