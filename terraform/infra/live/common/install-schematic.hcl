@@ -27,7 +27,7 @@ locals {
     "module_blacklist=igc",  # Disable onboard NIC
     "security=none",         # Less security, faster performance
     "sysctl.kernel.kexec_load_disabled=1",  # Meteor Lake CPU & Intel iGPU
-    "talos.auditd.disabled=1",  # Less security, faster performance
+    "talos.auditd.disabled=1",  # Less security, faster performanceu.ol80
   ]
 
   # Install extensions for Talos v1.12.1
