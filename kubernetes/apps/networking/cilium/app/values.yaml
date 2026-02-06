@@ -26,8 +26,8 @@ ipv6:
 
 # Enable IPv6 masquerading so pods SNAT to the node's routable source
 enableIPv6Masquerade: true
-enable-masquerade-to-route-source: "true"
-egress-masquerade-interfaces: "ens18"
+enableMasqueradeRouteSource: true
+egressMasqueradeInterfaces: "ens18"
 
 # IPAM mode
 ipam:
