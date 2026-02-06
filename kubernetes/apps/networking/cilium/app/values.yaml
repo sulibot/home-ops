@@ -25,7 +25,7 @@ ipv6:
   enabled: true
 
 # Disable IPv6 masquerading - use native routing
-enable-ipv6-masquerade: false
+enableIPv6Masquerade: false
 
 # IPAM mode
 ipam:
