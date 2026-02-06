@@ -24,6 +24,11 @@ ipv4:
 ipv6:
   enabled: true
 
+# Disable IPv6 masquerading - forces pods to use IPv4 for external connections
+# Nodes have public IPv6 (2600:1700:*/64) but pods have ULA (fd00:101:224::/60)
+# Masquerading uses ULA source which upstream routers reject
+enable-ipv6-masquerade: false
+
 # IPAM mode
 ipam:
   mode: kubernetes
