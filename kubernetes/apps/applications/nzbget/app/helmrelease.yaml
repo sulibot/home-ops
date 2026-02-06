@@ -38,11 +38,36 @@ spec:
                   name: nzbget-secret
             probes:
               liveness:
-                enabled: false
+                enabled: true
+                spec:
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
               readiness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /jsonrpc/status
+                    port: 80
+                    httpHeaders:
+                      - name: Authorization
+                        value: Basic bnpiZ2V0OnRlZ2J6bjY3ODk=
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
               startup:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 80
+                    httpHeaders:
+                      - name: Authorization
+                        value: Basic bnpiZ2V0OnRlZ2J6bjY3ODk=
+                  failureThreshold: 30
+                  periodSeconds: 10
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
