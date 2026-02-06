@@ -33,6 +33,9 @@ spec:
               NZBGET__PORT: &port 80
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: nzbget-secret
             probes:
               liveness:
                 enabled: true
