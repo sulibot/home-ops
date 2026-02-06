@@ -24,9 +24,9 @@ ipv4:
 ipv6:
   enabled: true
 
-# Masquerade control (IPv6 only)
+# Masquerade control - no masquerading needed with GUA pods
 enableIPv4Masquerade: false
-enableIPv6Masquerade: true
+enableIPv6Masquerade: false
 # IPAM mode
 ipam:
   mode: kubernetes
@@ -48,12 +48,13 @@ endpointRoutes:
 
 # Pod CIDRs for cluster-101
 ipv4NativeRoutingCIDR: 10.101.224.0/20
-ipv6NativeRoutingCIDR: fd00:101:224::/60
+ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared with nodes
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  masquerade: false
+  # BPF masquerading enabled (not used for NAT with GUA pods, but improves performance)
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -66,7 +67,7 @@ bpf:
   # Required for compatibility with link-local address 169.254.116.108
   hostLegacyRouting: true
 
-# Disable ip-masq-agent - using eBPF masquerading instead
+# Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
   enabled: false
 
@@ -87,7 +88,8 @@ ingressController:
   loadbalancerMode: shared
 
 # Define IP pools for LoadBalancer services
-# Note: These must NOT overlap with node IPs (10.101.0.0/24, fd00:101::/64)
+# Note: Pods share the same /64 as nodes for IPv6 (2600:1700:ab1a:500d::/64)
+# LB pool uses separate ULA range (fd00:101:250::/112) for internal-only services
 loadBalancer:
   algorithm: maglev
   # Mode is controlled by bpf.lbMode (snat) with per-service annotation override
