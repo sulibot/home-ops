@@ -24,10 +24,9 @@ ipv4:
 ipv6:
   enabled: true
 
-# Enable IPv6 masquerading so pods SNAT to the node's routable source
+# Masquerade control (IPv6 only)
+enableIPv4Masquerade: false
 enableIPv6Masquerade: true
-enableMasqueradeRouteSource: true
-
 # IPAM mode
 ipam:
   mode: kubernetes
@@ -53,9 +52,8 @@ ipv6NativeRoutingCIDR: fd00:101:224::/60
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
-# Note: BPF masquerade disabled to support enableMasqueradeRouteSource
 bpf:
-  masquerade: false
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
