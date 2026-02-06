@@ -18,7 +18,7 @@ locals {
     "apparmor=0",            # Less security, faster performance
     "i915.disable_display=1",  # Disable display subsystem for compute-only (Plex transcoding)
     # "i915.enable_guc=0",     # Disable GuC firmware loading (fixes VM boot hang) - Commented out to allow per-node override
-    "i915.force_probe=4680", # Force enable Alder Lake iGPU support
+    "i915.force_probe=*",    # Force enable all Intel iGPU support (including Alder Lake)
     "init_on_alloc=0",       # Less security, faster performance
     "init_on_free=0",        # Less security, faster performance
     "intel_iommu=on",        # PCI Passthrough
