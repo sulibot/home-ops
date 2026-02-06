@@ -306,21 +306,24 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
                   gateway = try(var.ip_config.public.ipv4_gateway, null)
                 }
               ],
-              # IPv6 ULA address + link-local default gateway (for installer reachability)
-              [
-                {
-                  type    = "static6"
-                  address = "${each.value.public_ipv6}/64"
-                  gateway = format("fe80::%d:fffe", var.cluster_id)
-                }
-              ],
               # IPv6 GUA address (if configured, no gateway - Talos machine config handles routing)
               each.value.gua_ipv6 != "" ? [
                 {
                   type    = "static6"
                   address = "${each.value.gua_ipv6}/64"
+                  # Prefer GUA as the source for the default route
+                  gateway = format("fe80::%d:fffe", var.cluster_id)
                 }
               ] : [],
+              # IPv6 ULA address + link-local default gateway (for installer reachability)
+              [
+                {
+                  type    = "static6"
+                  address = "${each.value.public_ipv6}/64"
+                  # Only use ULA as gateway carrier if GUA is not present
+                  gateway = each.value.gua_ipv6 == "" ? format("fe80::%d:fffe", var.cluster_id) : null
+                }
+              ],
               # IPv6 link-local (static for BGP peering)
               [
                 {

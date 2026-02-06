@@ -53,7 +53,7 @@ ipv6NativeRoutingCIDR: fd00:101:224::/60
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  masquerade: true
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true

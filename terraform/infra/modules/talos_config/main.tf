@@ -94,6 +94,7 @@ locals {
     "net.ipv6.conf.all.ndisc_notify"     = "1"
     "net.ipv6.conf.default.ndisc_notify" = "1"
     "net.ipv6.conf.ens18.ndisc_notify"   = "1"
+    "net.ipv6.conf.ens18.accept_ra"      = "2"
     "net.ipv4.conf.all.arp_notify"       = "1"
     "net.ipv4.conf.default.arp_notify"   = "1"
     "net.ipv4.conf.ens18.arp_notify"     = "1"
@@ -789,11 +790,11 @@ ${yamlencode({
                   interface = var.bgp_interface
                   mtu       = 1450 # Reduced for VXLAN overhead (SDN)
                   addresses = concat(
+                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [], # GUA: 2600:1700:ab1a:500e::11/64
                     [
                       "${node.public_ipv6}/64", # ULA: fd00:101::11/64
                       "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
-                    ],
-                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [] # GUA: 2600:1700:ab1a:500e::11/64
+                    ]
                   )
                   routes = [
                     # IPv4: static route (no RA for IPv4) - will be overridden by BGP
@@ -805,7 +806,7 @@ ${yamlencode({
                     # IPv6: default route via global unicast anycast gateway
                     {
                       network = "::/0"
-                      gateway = "fd00:${var.cluster_id}::fffe"
+                      gateway = "fe80::${var.cluster_id}:fffe"
                       metric  = 150
                     },
                   ]
