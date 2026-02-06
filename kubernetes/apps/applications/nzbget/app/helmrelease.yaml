@@ -51,7 +51,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - curl -f -u nzbget:tegbzn6789 http://127.0.0.1:80/jsonrpc/status || exit 1
+                      - "curl -f -u nzbget:tegbzn6789 http://127.0.0.1:80/jsonrpc/status || exit 1"
                   periodSeconds: 10
                   timeoutSeconds: 5
                   failureThreshold: 5
@@ -63,7 +63,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - curl -f -u nzbget:tegbzn6789 http://127.0.0.1:80/ || exit 1
+                      - "curl -f -u nzbget:tegbzn6789 http://127.0.0.1:80/ || exit 1"
                   failureThreshold: 30
                   periodSeconds: 10
             securityContext:
