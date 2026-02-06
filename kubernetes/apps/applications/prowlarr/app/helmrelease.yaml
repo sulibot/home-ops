@@ -41,6 +41,8 @@ spec:
               PROWLARR__SERVER__PORT: &port 80
               PROWLARR__UPDATE__BRANCH: develop
               TZ: America/Los_Angeles
+              # Disable IPv6 for .NET runtime to fix outbound connection issues
+              DOTNET_SYSTEM_NET_DISABLEIPV6: "true"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
