@@ -38,12 +38,11 @@ spec:
               - /bin/sh
               - -c
               - |
-                set -x  # Enable debug output
+                set -x
                 CONFIG_FILE="/config/nzbget.conf"
                 echo "=== Init container starting ==="
-                echo "ControlIP env: '${NZBGET__CONTROLIP}'"
-                echo "ControlUsername env: '${NZBGET__CONTROLUSERNAME}'"
-                echo "ControlPassword length: ${#NZBGET__CONTROLPASSWORD}"
+                echo "ControlIP env: '$${NZBGET__CONTROLIP}'"
+                echo "ControlUsername env: '$${NZBGET__CONTROLUSERNAME}'"
 
                 if [ -f "$CONFIG_FILE" ]; then
                   echo "Config file exists, size: $(wc -l < $CONFIG_FILE) lines"
@@ -51,10 +50,10 @@ spec:
                   grep "^ControlIP=" "$CONFIG_FILE" || echo "ControlIP not found"
                   grep "^ControlUsername=" "$CONFIG_FILE" || echo "ControlUsername not found"
 
-                  # Update config
-                  sed -i "s@^ControlIP=.*@ControlIP=${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlUsername=.*@ControlUsername=${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlPassword=.*@ControlPassword=${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                  # Update config - use $$ to escape for Helm
+                  sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                   sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
 
                   echo "After update:"
