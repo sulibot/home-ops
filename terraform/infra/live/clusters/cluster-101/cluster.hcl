@@ -25,6 +25,8 @@ locals {
   hardware_mappings = read_terragrunt_config(find_in_parent_folders("common/proxmox_hardware_mappings/terragrunt.hcl")).locals
 
   # GPU Configuration to apply to all worker nodes
+  # Requires Proxmox kernel 6.17.4-2-pve (or 6.14.8-2-pve) with i915-sriov-dkms
+  # Kernel 6.17.2-2-pve has VFIO_MAP_DMA regression - avoid that version
   gpu_config = {
     enabled     = true
     mapping     = "intel-igpu-vf1"
