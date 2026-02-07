@@ -27,13 +27,16 @@ ipv6:
 # Masquerade control - no masquerading needed with GUA pods
 enableIPv4Masquerade: false
 enableIPv6Masquerade: false
-# IPAM mode
-ipam:
-  mode: kubernetes
 
-# IPv6 configuration for IPv6-first cluster
-k8s:
-  requireIPv6PodCIDR: true
+# IPAM mode - cluster-pool for shared /64 support
+# With cluster-pool, all nodes share the same IPv6 /64 without per-node subdivision
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - 10.101.224.0/20
+    clusterPoolIPv6PodCIDRList:
+      - 2600:1700:ab1a:500d::/64  # Shared GUA /64 across all nodes
 
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
@@ -46,9 +49,9 @@ directRoutingSkipUnreachable: false
 endpointRoutes:
   enabled: false
 
-# Pod CIDRs for cluster-101
+# Native routing CIDRs - must match cluster-pool IPAM configuration above
 ipv4NativeRoutingCIDR: 10.101.224.0/20
-ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared with nodes
+ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared /64 across all nodes and pods
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
