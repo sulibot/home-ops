@@ -112,12 +112,6 @@ locals {
     cni            = { name = "none" }                              # Cilium installed via inline manifests
     podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
     serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
-    # Subdivide IPv6 /64 into /112 per-node allocations (65,536 IPs per node)
-    # This allows multiple nodes to share a single /64 from ISP
-    nodeSubnetMaskSize = {
-      ipv4 = 24   # Each node gets /24 from IPv4 pod CIDR
-      ipv6 = 112  # Each node gets /112 from IPv6 /64 (allows ~281 trillion nodes)
-    }
   }
 
   # Control Plane specific configuration
@@ -295,6 +289,18 @@ data "talos_machine_configuration" "controlplane" {
             "runtime-config"           = "admissionregistration.k8s.io/v1beta1=true"
             "feature-gates"            = "MutatingAdmissionPolicy=true"
             "service-cluster-ip-range" = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # Explicit dual-stack
+          }
+        }
+      }
+    }),
+    # Separate patch for controller-manager extraArgs
+    # Configure node CIDR mask sizes to subdivide the /64 into per-node /112 allocations
+    yamlencode({
+      cluster = {
+        controllerManager = {
+          extraArgs = {
+            "node-cidr-mask-size-ipv4" = "24"   # Each node gets /24 from IPv4 pod CIDR
+            "node-cidr-mask-size-ipv6" = "112"  # Each node gets /112 from IPv6 /64 (65,536 IPs each)
           }
         }
       }
