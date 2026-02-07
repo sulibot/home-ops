@@ -303,8 +303,14 @@ inputs = {
   bgp_enable_bfd          = local.network_infra.bgp.enable_bfd
   bgp_advertise_loopbacks = local.network_infra.bgp.advertise_loopbacks
   bgp_cilium_allowed_prefixes = {
-    ipv4 = [dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4]
-    ipv6 = [dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6]
+    ipv4 = [
+      dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4,
+      dependency.nodes.outputs.k8s_network_config.pods_ipv4
+    ]
+    ipv6 = [
+      dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6,
+      dependency.nodes.outputs.k8s_network_config.pods_ipv6
+    ]
   }
 
   # Application versions - from centralized config
