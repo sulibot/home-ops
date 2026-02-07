@@ -294,13 +294,14 @@ data "talos_machine_configuration" "controlplane" {
       }
     }),
     # Separate patch for controller-manager extraArgs
-    # Configure node CIDR mask sizes to subdivide the /64 into per-node /112 allocations
+    # Configure node CIDR mask sizes - /80 per node is standard for IPv6
+    # /80 from /64 allows 65,536 nodes (2^16) with 2^48 IPs per node
     yamlencode({
       cluster = {
         controllerManager = {
           extraArgs = {
-            "node-cidr-mask-size-ipv4" = "24"   # Each node gets /24 from IPv4 pod CIDR
-            "node-cidr-mask-size-ipv6" = "112"  # Each node gets /112 from IPv6 /64 (65,536 IPs each)
+            "node-cidr-mask-size-ipv4" = "24"  # Each node gets /24 from IPv4 pod CIDR
+            "node-cidr-mask-size-ipv6" = "80"  # Standard IPv6 mask - 65k nodes max
           }
         }
       }

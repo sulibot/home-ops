@@ -28,9 +28,9 @@ ipv6:
 enableIPv4Masquerade: false
 enableIPv6Masquerade: false
 
-# IPAM mode - kubernetes with per-node /112 IPv6 allocations
-# The /64 is subdivided into /112 subnets per node (65,536 IPs each)
-# Node subnet mask size is configured in Talos machine config
+# IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
+# The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
+# Allows 65,536 nodes max - node-cidr-mask-size-ipv6 configured in Talos
 ipam:
   mode: kubernetes
 
