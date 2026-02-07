@@ -112,6 +112,12 @@ locals {
     cni            = { name = "none" }                              # Cilium installed via inline manifests
     podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
     serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
+    # Subdivide IPv6 /64 into /112 per-node allocations (65,536 IPs per node)
+    # This allows multiple nodes to share a single /64 from ISP
+    nodeSubnetMaskSize = {
+      ipv4 = 24   # Each node gets /24 from IPv4 pod CIDR
+      ipv6 = 112  # Each node gets /112 from IPv6 /64 (allows ~281 trillion nodes)
+    }
   }
 
   # Control Plane specific configuration

@@ -28,15 +28,15 @@ ipv6:
 enableIPv4Masquerade: false
 enableIPv6Masquerade: false
 
-# IPAM mode - cluster-pool for shared /64 support
-# With cluster-pool, all nodes share the same IPv6 /64 without per-node subdivision
+# IPAM mode - kubernetes with per-node /112 IPv6 allocations
+# The /64 is subdivided into /112 subnets per node (65,536 IPs each)
+# Node subnet mask size is configured in Talos machine config
 ipam:
-  mode: cluster-pool
-  operator:
-    clusterPoolIPv4PodCIDRList:
-      - 10.101.224.0/20
-    clusterPoolIPv6PodCIDRList:
-      - 2600:1700:ab1a:500d::/64  # Shared GUA /64 across all nodes
+  mode: kubernetes
+
+# IPv6 configuration - require pod CIDR from node spec
+k8s:
+  requireIPv6PodCIDR: true
 
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
