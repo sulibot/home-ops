@@ -53,8 +53,8 @@ ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared with nodes
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  # BPF masquerading enabled (not used for NAT with GUA pods, but improves performance)
-  masquerade: true
+  # BPF masquerading disabled (not needed with native routing and GUA pods)
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
