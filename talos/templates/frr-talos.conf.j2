@@ -39,12 +39,16 @@ router bgp ${local_asn}
   neighbor fe80::${cluster_id}:fffe activate
   neighbor fe80::${cluster_id}:fffe route-map IMPORT_DEFAULT_V4 in
   network ${ipv4_loopback}/32
+  ! Advertise pod CIDR to upstream (native routing)
+  network 10.${cluster_id}.224.0/20
  exit-address-family
 
  address-family ipv6 unicast
   neighbor fe80::${cluster_id}:fffe activate
   neighbor fe80::${cluster_id}:fffe route-map IMPORT_DEFAULT_V6 in
   network ${ipv6_loopback}/128
+  ! Advertise pod CIDR to upstream (native routing with GUA)
+  network 2600:1700:ab1a:500d::/64
  exit-address-family
 exit
 !

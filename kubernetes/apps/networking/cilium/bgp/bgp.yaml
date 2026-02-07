@@ -1,5 +1,5 @@
 ---
-# Cilium BGP advertises only Service LoadBalancer VIPs to local FRR
+# Cilium BGP advertises Service LoadBalancer VIPs to local FRR
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
 metadata:
@@ -15,6 +15,18 @@ spec:
       selector: {}
 
 ---
+# Cilium BGP advertises Pod CIDRs to local FRR for upstream routing
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
+metadata:
+  name: cilium-pod-cidrs
+  labels:
+    advertise: cilium-pod
+spec:
+  advertisements:
+    - advertisementType: "PodCIDR"
+
+---
 # MP-BGP Peer Configuration
 # Single peer carries both IPv4 and IPv6 routes over IPv6 session
 apiVersion: cilium.io/v2alpha1
@@ -23,14 +35,28 @@ metadata:
   name: frr-local-mpbgp
 spec:
   families:
+    # IPv4 - LoadBalancer IPs
     - afi: ipv4
       safi: unicast
       advertisements:
         matchLabels:
           advertise: cilium-lb
+    # IPv4 - Pod CIDRs
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: cilium-pod
+    # IPv6 - LoadBalancer IPs
     - afi: ipv6
       safi: unicast
       advertisements:
         matchLabels:
           advertise: cilium-lb
+    # IPv6 - Pod CIDRs
+    - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: cilium-pod
 
