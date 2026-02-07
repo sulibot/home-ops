@@ -472,6 +472,16 @@ locals {
                 }
               ]
             }
+            "CILIUM-POD-v4" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.pod_cidr_ipv4
+                  le     = 32
+                }
+              ]
+            }
             "DEFAULT-ONLY-v4" = {
               rules = [
                 {
@@ -531,6 +541,16 @@ locals {
                   seq    = 10
                   action = "permit"
                   prefix = var.loadbalancers_ipv6
+                  le     = 128
+                }
+              ]
+            }
+            "CILIUM-POD-v6" = {
+              rules = [
+                {
+                  seq    = 10
+                  action = "permit"
+                  prefix = var.pod_cidr_ipv6
                   le     = 128
                 }
               ]
@@ -661,6 +681,13 @@ locals {
                 }
               },
               {
+                seq    = 11
+                action = "permit"
+                match = {
+                  prefix_list = "CILIUM-POD-v4"
+                }
+              },
+              {
                 seq    = 12
                 action = "permit"
                 match = {
@@ -673,6 +700,14 @@ locals {
                 match = {
                   address_family = "ipv6"
                   prefix_list    = "CILIUM-LB-v6"
+                }
+              },
+              {
+                seq    = 16
+                action = "permit"
+                match = {
+                  address_family = "ipv6"
+                  prefix_list    = "CILIUM-POD-v6"
                 }
               },
               {
