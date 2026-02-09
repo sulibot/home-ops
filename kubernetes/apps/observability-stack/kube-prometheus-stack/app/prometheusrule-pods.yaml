@@ -1,0 +1,67 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-pods-rules
+  namespace: observability
+spec:
+  groups:
+    - name: kubernetes.pods
+      interval: 1m
+      rules:
+        - alert: PodStuckInInit
+          expr: |
+            kube_pod_init_container_status_waiting{reason="PodInitializing"}
+            * on(pod, namespace) group_left(phase)
+            (kube_pod_status_phase{phase="Pending"} == 1)
+            > 0
+          for: 5m
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck in init container"
+            description: |
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} has been stuck in PodInitializing state for over 5 minutes.
+              This may indicate:
+              - Image pull failures
+              - Volume mount issues
+              - Broken admission policies
+              - Node resource constraints
+
+              Check pod status: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+          labels:
+            severity: warning
+
+        - alert: PodStuckInInitCritical
+          expr: |
+            kube_pod_init_container_status_waiting{reason="PodInitializing"}
+            * on(pod, namespace) group_left(phase)
+            (kube_pod_status_phase{phase="Pending"} == 1)
+            > 0
+          for: 30m
+          annotations:
+            summary: "CRITICAL: Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck in init for 30+ minutes"
+            description: |
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} has been stuck in PodInitializing state for over 30 minutes.
+              This is a critical issue requiring immediate investigation.
+
+              Troubleshooting steps:
+              1. kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+              2. kubectl get events -n {{ $labels.namespace }} --sort-by='.lastTimestamp'
+              3. Check kubelet logs on the scheduled node
+              4. Verify admission webhooks/policies
+          labels:
+            severity: critical
+
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total[15m]) > 0
+          for: 5m
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+            description: |
+              Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+              is restarting frequently ({{ $value }} restarts/sec over 15m).
+
+              Check logs: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} -c {{ $labels.container }} --previous
+          labels:
+            severity: warning
