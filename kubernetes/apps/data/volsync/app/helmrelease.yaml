@@ -21,6 +21,10 @@ spec:
     rsync-tls: *image
     syncthing: *image
     manageCRDs: true
+    # Disable MutatingAdmissionPolicies (requires v1beta1 feature gates)
+    # These policies cause backup jobs to hang indefinitely in Init:0/1
+    mutatingAdmissionPolicy:
+      enabled: false
     metrics:
       disableAuth: true
     podSecurityContext:
