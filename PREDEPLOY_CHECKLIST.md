@@ -87,19 +87,53 @@ kubectl get pvc -n default | grep volsync
 # Should show cephfs-backup-sc storage class
 ```
 
+### 5. Verify Backups Are Running (CRITICAL)
+```bash
+# Check volsync pods are running (not stuck in Init)
+kubectl get pods -n volsync-system
+kubectl get pods -A | grep volsync-src | grep -v Completed | grep -v Running
+# ⚠️ Should return empty - no stuck pods
+
+# Verify backup jobs complete within 5 minutes
+watch kubectl get jobs -A | grep volsync-src
+# Jobs should transition: Running → Complete
+
+# Check recent backup timestamps (after first hourly run)
+kubectl get replicationsource -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.lastSyncTime}{"\n"}{end}'
+# Should show recent timestamps (within last hour)
+
+# Verify kopia repository is connected
+kubectl logs -n volsync-system job/kopia-repository-connect
+# Should show "Repository already connected" or "Repository connected successfully"
+```
+
+**⚠️ If backups are stuck:**
+1. Check for pods in Init state >5min
+2. Review Prometheus alerts (PodStuckInInit should fire)
+3. Check volsync operator logs: `kubectl logs -n volsync-system deployment/volsync`
+4. Verify no broken admission policies: `kubectl get mutatingadmissionpolicy,validatingadmissionpolicy`
+
 ---
 
 ## Git Repository Status
 
-**Branch:** main  
-**Latest Commit:** 4ed4139 - "Fix namespace dependency: move observability PV/PVC to observability kustomization"
+**Branch:** main
+**Latest Commit:** aafa5449 - "feat(monitoring): Add alerts for pods stuck in Init state"
 
 **Recent Changes:**
 ```
-4ed4139 Fix namespace dependency: move observability PV/PVC to observability kustomization
-1c87d2f Add shared CephFS storage for observability namespace
-bfe66f6 PROPER FIX: Move cephfs-content-pv/pvc to separate kustomization
+aafa5449 feat(monitoring): Add alerts for pods stuck in Init state
+c59a49fc fix(volsync): Remove broken MutatingAdmissionPolicy blocking backups
+3b249ab9 shrinking the subnetting the GUA subnet to /112
+3e1122cc fix(bgp): Add pod CIDRs to FRR allowed_prefixes
+11fe04ab fix(bgp): Add pod CIDRs to FRR allowed_prefixes
 ```
+
+**Critical Fixes Applied:**
+- ✅ Removed broken MutatingAdmissionPolicy that blocked volsync backups
+- ✅ Added Prometheus alerts for pods stuck in Init state (prevents future silent failures)
+- ✅ BGP configuration verified and working
+- ✅ DNS resolution working (IPv4 and IPv6)
 
 ---
 

@@ -208,6 +208,69 @@ Before any upgrade:
 - [ ] Verify extension compatibility with new Talos version
 - [ ] Ensure cluster has enough capacity for rolling upgrade
 
+## Post-Upgrade Verification
+
+After any cluster rebuild or upgrade:
+
+### 1. Core Infrastructure
+```bash
+# Check all nodes are ready
+kubectl get nodes
+
+# Verify Flux reconciliation
+flux get all -A
+
+# Check for failed HelmReleases
+kubectl get helmrelease -A | grep False
+```
+
+### 2. Storage & Backups (CRITICAL)
+```bash
+# Verify volsync is running
+kubectl get pods -n volsync-system
+kubectl get replicationsource -A
+
+# Check for backup jobs stuck in Init (should complete within 5min)
+kubectl get pods -A | grep volsync-src | grep Init
+# ⚠️ If any stuck >5min, investigate immediately
+
+# Verify recent backup completion
+kubectl get replicationsource -A -o custom-columns=\
+NAME:.metadata.name,NAMESPACE:.metadata.namespace,LAST_SYNC:.status.lastSyncTime
+# All should have timestamps within last hour
+
+# Check kopia repository connection
+kubectl logs -n volsync-system -l app.kubernetes.io/name=kopia --tail=20
+```
+
+### 3. Network Services
+```bash
+# Verify BGP sessions (if using FRR)
+talosctl -n <any-node> get bgppeers
+
+# Check Gateway API
+kubectl get gateway -A
+# Should show Programmed: True
+
+# Verify external-dns is publishing
+kubectl logs -n network -l app.kubernetes.io/name=external-dns --tail=20 | grep published
+```
+
+### 4. Monitoring Alerts
+```bash
+# Check Prometheus is scraping
+kubectl get servicemonitor -A
+
+# Verify no critical alerts firing
+kubectl get prometheusrules -A
+```
+
+**⚠️ RED FLAGS:**
+- Pods stuck in Init state >5 minutes → Check admission webhooks/policies
+- No recent backup timestamps → Investigate volsync immediately
+- BGP sessions down → Verify FRR configuration
+- Gateway not programmed → Check Cilium operator logs
+
 ---
 
 ## Rollback Procedures
