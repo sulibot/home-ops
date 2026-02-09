@@ -1,7 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-components:
-  - ../../../../../components/volsync
+# Note: volsync component is included via ks.yaml, not here
 resources:
   - externalsecret.yaml
   - ocirepository.yaml
