@@ -76,7 +76,7 @@ spec:
         hostnames:
           - filebrowser.sulibot.com
         parentRefs:
-          - name: gateway-external
+          - name: gateway-internal
             namespace: network
         rules:
           - backendRefs:
