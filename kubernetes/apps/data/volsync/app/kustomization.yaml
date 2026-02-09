@@ -6,4 +6,5 @@ resources:
   - ../namespace.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+  - ./mutatingadmissionpolicy-restore.yaml
   # Note: grafanadashboard and prometheusrule removed to break circular dependency with kube-prometheus-stack

@@ -1,0 +1,66 @@
+---
+# MutatingAdmissionPolicy to mount repository PVC for RESTORE jobs only
+# This policy only affects volsync-dst-* jobs (restores), not volsync-src-* (backups)
+# Using failurePolicy: Ignore to prevent hangs if the policy fails
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-restore-repository
+spec:
+  policyName: volsync-restore-repository
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-restore-repository
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - jobs
+  matchConditions:
+    # Only match RESTORE jobs (volsync-dst-*)
+    - name: has-volsync-restore-job-prefix
+      expression: >-
+        object.metadata.name.startsWith("volsync-dst-")
+    - name: has-volsync-created-by-labels
+      expression: >-
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+    - name: repository-volume-does-not-exist
+      expression: >-
+        !has(object.spec.template.spec.volumes) ||
+        !object.spec.template.spec.volumes.exists(item, item.name == "repository")
+  failurePolicy: Ignore  # Changed from Fail to Ignore to prevent hangs
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/containers/0/volumeMounts/-",
+              value: Object.spec.template.spec.containers.volumeMounts{
+                name: "repository",
+                mountPath: "/repository"
+              }
+            },
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/volumes/-",
+              value: Object.spec.template.spec.volumes{
+                name: "repository",
+                persistentVolumeClaim: Object.spec.template.spec.volumes.persistentVolumeClaim{
+                  claimName: "kopia",
+                  readOnly: false
+                }
+              }
+            }
+          ]
