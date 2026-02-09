@@ -31,9 +31,6 @@ locals {
       # Cilium BGP identity IP (on dummy0) - Cilium connects FROM this IP
       cilium_bgp_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
-      # LoadBalancer IP example (on dummy0) - simulates Cilium LB-IPAM allocation
-      lb_example_ipv6 = format("fd00:%d:250::%d", var.cluster_id, v.ip_suffix)
-      lb_example_ipv4 = format("10.%d.250.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) },
@@ -46,9 +43,6 @@ locals {
       # Cilium BGP identity IP (on dummy0) - Cilium connects FROM this IP
       cilium_bgp_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
-      # LoadBalancer IP example (on dummy0) - simulates Cilium LB-IPAM allocation
-      lb_example_ipv6 = format("fd00:%d:250::%d", var.cluster_id, v.ip_suffix)
-      lb_example_ipv4 = format("10.%d.250.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) }
@@ -415,12 +409,10 @@ locals {
             ipv4 = [
               node.loopback_ipv4,    # FRR identity (10.101.254.X)
               node.cilium_bgp_ipv4,  # Cilium BGP identity (10.101.253.X)
-              node.lb_example_ipv4,  # LoadBalancer example (10.101.250.X)
             ]
             ipv6 = [
               node.loopback_ipv6,    # FRR identity (fd00:101:fe::X)
               node.cilium_bgp_ipv6,  # Cilium BGP identity (fd00:101:fd::X)
-              node.lb_example_ipv6,  # LoadBalancer example (fd00:101:250::X)
             ]
           }
           peers = [
@@ -869,8 +861,6 @@ ${yamlencode({
                     "${node.loopback_ipv4}/32",     # FRR identity IPv4 (10.101.254.X) - k8s node IP
                     "${node.cilium_bgp_ipv6}/128",  # Cilium BGP identity IPv6 (fd00:101:fd::X)
                     "${node.cilium_bgp_ipv4}/32",   # Cilium BGP identity IPv4 (10.101.253.X)
-                    "${node.lb_example_ipv6}/128",  # LoadBalancer example IPv6 (fd00:101:250::X)
-                    "${node.lb_example_ipv4}/32",   # LoadBalancer example IPv4 (10.101.250.X)
                   ]
                 }
                 ], node.machine_type == "worker" ? [
