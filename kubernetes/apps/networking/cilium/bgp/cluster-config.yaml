@@ -11,4 +11,5 @@ spec:
       localASN: 4220101000
       localPort: 1790
   nodeSelector:
-    matchLabels: {}  # Apply to all nodes
+    matchLabels:
+      kubernetes.io/os: linux  # Apply to all Linux nodes
