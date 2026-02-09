@@ -424,8 +424,8 @@ locals {
               address_family              = "ipv6"
               capability_extended_nexthop = true
               next_hop_self               = true
-              route_map_in_v4             = "IMPORT-DEFAULT-v4"
-              route_map_in_v6             = "IMPORT-DEFAULT-v6"
+              route_map_in_v4             = "IMPORT-FROM-UPSTREAM-v4"
+              route_map_in_v6             = "IMPORT-FROM-UPSTREAM-v6"
               route_map_out               = "EXPORT-TO-UPSTREAM"
             }
           ]
@@ -601,35 +601,23 @@ locals {
           }
         }
         route_maps = {
-          "IMPORT-DEFAULT-v4" = {
+          "IMPORT-FROM-UPSTREAM-v4" = {
             rules = [
               {
                 seq    = 10
                 action = "permit"
-                match = {
-                  address_family = "ipv4"
-                  prefix_list    = "DEFAULT-ONLY-v4"
-                }
-              },
-              {
-                seq    = 90
-                action = "deny"
+                # Trust upstream PVE completely - accept any routes
+                # This allows learning real routes across the network for learning purposes
               }
             ]
           }
-          "IMPORT-DEFAULT-v6" = {
+          "IMPORT-FROM-UPSTREAM-v6" = {
             rules = [
               {
                 seq    = 10
                 action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "DEFAULT-ONLY-v6"
-                }
-              },
-              {
-                seq    = 90
-                action = "deny"
+                # Trust upstream PVE completely - accept any routes
+                # This allows learning real routes across the network for learning purposes
               }
             ]
           }
@@ -638,10 +626,8 @@ locals {
               {
                 seq    = 10
                 action = "permit"
-                match = {
-                  address_family = "ipv4"
-                  prefix_list    = "CILIUM-ALL-v4"
-                }
+                # Trust Cilium completely - no prefix-list filtering
+                # Still set next-hop for proper routing
                 set = {
                   ip_next_hop = "10.${var.cluster_id}.0.254"
                 }
@@ -653,10 +639,8 @@ locals {
               {
                 seq    = 10
                 action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-ALL-v6"
-                }
+                # Trust Cilium completely - no prefix-list filtering
+                # Still set next-hop for proper routing
                 set = {
                   ipv6_next_hop = "fd00:${var.cluster_id}::fffe"
                 }
@@ -668,61 +652,25 @@ locals {
               {
                 seq    = 10
                 action = "permit"
-                match = {
-                  prefix_list = "CILIUM-LB-v4"
-                }
-              },
-              {
-                seq    = 11
-                action = "permit"
-                match = {
-                  prefix_list = "CILIUM-POD-v4"
-                }
-              },
-              {
-                seq    = 12
-                action = "permit"
-                match = {
-                  prefix_list = "LOOPBACK-self-v4"
-                }
-              },
-              {
-                seq    = 15
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-LB-v6"
-                }
-              },
-              {
-                seq    = 16
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "CILIUM-POD-v6"
-                }
-              },
-              {
-                seq    = 17
-                action = "permit"
-                match = {
-                  address_family = "ipv6"
-                  prefix_list    = "LOOPBACK-self-v6"
-                }
-              },
-              {
-                seq    = 20
-                action = "permit"
+                # Export everything from loopback interface (lo)
+                # This includes: FRR loopbacks (.254.x), Cilium loopbacks (.253.x), and LB IPs (.250.x)
                 match = {
                   interface = "lo"
                 }
               },
               {
-                seq    = 25
+                seq    = 20
                 action = "permit"
+                # Export dummy0 interface (if used)
                 match = {
                   interface = "dummy0"
                 }
+              },
+              {
+                seq    = 90
+                action = "permit"
+                # Export anything else we're redistributing
+                # This catches pod CIDRs and any other connected routes
               }
             ]
           }
@@ -801,14 +749,31 @@ locals {
       )
       # Per-node network patch and FRR ExtensionServiceConfig
       # Using heredoc to create proper multi-document YAML for Talos config_patch
+      # Per-Node Configuration Patch (Multi-Document YAML)
+      #
+      # This patch contains TWO YAML documents separated by '---':
+      # 1. Machine config patch (nodeLabels, network, kubelet, kernel)
+      # 2. ExtensionServiceConfig patch (FRR BGP daemon configuration)
+      #
+      # Both documents are per-node and both update safely via patch/ stage.
+      #
+      # Config Organization:
+      # - TRULY PER-NODE: hostname, IPs, node-specific labels → Use patch/ stage
+      # - TEMPLATED CLUSTER STANDARDS: MTU, DNS, route patterns → Use apply/ stage when changing cluster-wide
+      #
+      # Decision Rule: "Does this change require re-templating for ALL nodes?"
+      # - YES (MTU, DNS, VLANs) → Edit here, then use apply/ stage
+      # - NO (single node's IP/label) → Edit here, then use patch/ stage
       config_patch = <<-EOT
 ${yamlencode({
         machine = merge(
           {
             nodeLabels = merge(
               {
+                # Templated cluster-wide labels (same pattern for all nodes)
                 "topology.kubernetes.io/region" = var.region
                 "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+                # Per-node label (unique per node)
                 "bgp.frr.asn"                   = tostring(node.frr_asn)
               },
               # Add GPU label if GPU passthrough is enabled for this node
@@ -824,11 +789,15 @@ ${yamlencode({
               } : {}
             )
             network = {
+              # Per-node: unique hostname for each node
               hostname = node.hostname
               interfaces = concat([
                 {
                   interface = var.bgp_interface
+                  # Templated cluster standard: All nodes use same MTU for VXLAN
+                  # Change via apply/ stage when updating cluster-wide
                   mtu       = 1450 # Reduced for VXLAN overhead (SDN)
+                  # Per-node: unique IP addresses for each node
                   addresses = concat(
                     var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [], # GUA: 2600:1700:ab1a:500e::11/64
                     [
@@ -836,6 +805,8 @@ ${yamlencode({
                       "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
                     ]
                   )
+                  # Templated cluster standard: Default route pattern uses cluster_id
+                  # Change via apply/ stage when updating gateway pattern cluster-wide
                   routes = [
                     # IPv4: static route (no RA for IPv4) - will be overridden by BGP
                     {
@@ -855,6 +826,7 @@ ${yamlencode({
                   } : null
                 },
                 {
+                  # Per-node: unique loopback addresses for BGP identity
                   interface = "dummy0"
                   addresses = [
                     "${node.loopback_ipv6}/128",    # FRR identity IPv6 (fd00:101:fe::X)
@@ -865,6 +837,8 @@ ${yamlencode({
                 }
                 ], node.machine_type == "worker" ? [
                 {
+                  # Templated role-wide standard: All workers have same VLAN config
+                  # Change via apply/ stage when updating VLAN IDs cluster-wide
                   interface = "ens19"
                   dhcp      = false
                   mtu       = 1500
@@ -880,6 +854,8 @@ ${yamlencode({
                   ]
                 }
               ] : [])
+              # Templated cluster standard: All nodes use same DNS servers
+              # Change via apply/ stage when updating DNS servers cluster-wide
               nameservers = var.dns_servers
             }
             kubelet = {
@@ -906,6 +882,9 @@ ${yamlencode({
         )
       })}
 ---
+${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
+${"# Per-node FRR configuration (peers, ASN, route filters)"}
+${"# Updates safely via patch/ stage along with machine config above"}
 ${local.extension_service_configs[node_name]}
 EOT
 }

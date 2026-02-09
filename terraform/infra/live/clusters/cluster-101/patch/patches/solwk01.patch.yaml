@@ -1,0 +1,661 @@
+machine:
+  kernel:
+    modules:
+      - name: i915
+        parameters:
+          - enable_display=0
+          - enable_guc=3
+          - force_probe=*
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - fd00:101::21/128
+  network:
+    hostname: solwk01
+    interfaces:
+      - addresses:
+          - 2600:1700:ab1a:500d::21/64
+          - fd00:101::21/64
+          - 10.101.0.21/24
+        interface: ens18
+        mtu: 1450
+        routes:
+          - gateway: 10.101.0.254
+            metric: 2048
+            network: 0.0.0.0/0
+          - gateway: fe80::101:fffe
+            metric: 150
+            network: ::/0
+        vip: null
+      - addresses:
+          - fd00:101:fe::21/128
+          - 10.101.254.21/32
+          - fd00:101:fd::21/128
+          - 10.101.253.21/32
+        interface: dummy0
+      - dhcp: false
+        interface: ens19
+        mtu: 1500
+        vlans:
+          - mtu: 1500
+            vlanId: 30
+          - mtu: 1500
+            vlanId: 31
+    nameservers:
+      - fd00:0:0:ffff::53
+      - 10.255.0.53
+  nodeLabels:
+    bgp.frr.asn: "4210101021"
+    gpu.driver: i915
+    gpu.passthrough.enabled: "true"
+    gpu.pci.address: 0000-00-02.1
+    patch-test.home-ops.io/timestamp: "2026-02-09"
+    topology.kubernetes.io/region: home-lab
+    topology.kubernetes.io/zone: cluster-101
+---
+# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon
+# Per-node FRR configuration (peers, ASN, route filters)
+# Updates safely via patch/ stage along with machine config above
+apiVersion: v1alpha1
+kind: ExtensionServiceConfig
+name: frr
+configFiles:
+  - content: |
+      "bfd":
+        "cilium_peering":
+          "enabled": false
+          "profile": "normal"
+        "profiles":
+          "normal":
+            "detect_multiplier": 3
+            "receive_interval": 300
+            "transmit_interval": 300
+      "bgp":
+        "cilium":
+          "allowed_prefixes":
+            "ipv4":
+            - "10.101.250.0/24"
+            - "10.101.224.0/20"
+            "ipv6":
+            - "fd00:101:250::/112"
+            - "2600:1700:ab1a:500d::/64"
+          "export_loopbacks": false
+          "local_asn": 4210101021
+          "peering":
+            "ipv4":
+              "local": "10.101.253.21"
+              "prefix": 32
+              "remote": "10.101.254.21"
+            "ipv6":
+              "local": "fd00:101:fd::21"
+              "prefix": 128
+              "remote": "fd00:101:fe::21"
+          "remote_asn": 4220101000
+        "upstream":
+          "advertise_loopbacks": true
+          "local_asn": 4210101021
+          "loopback_addresses":
+            "ipv4":
+            - "10.101.254.21"
+            - "10.101.253.21"
+            "ipv6":
+            - "fd00:101:fe::21"
+            - "fd00:101:fd::21"
+          "loopbacks":
+            "ipv4": "10.101.254.21"
+            "ipv6": "fd00:101:fe::21"
+          "peers":
+          - "address": "fd00:101::fffe"
+            "address_family": "ipv6"
+            "capability_extended_nexthop": true
+            "description": "PVE ULA Anycast Gateway"
+            "next_hop_self": true
+            "remote_asn": 4200001000
+            "route_map_in_v4": "IMPORT-DEFAULT-v4"
+            "route_map_in_v6": "IMPORT-DEFAULT-v6"
+            "route_map_out": "EXPORT-TO-UPSTREAM"
+            "update_source": "fd00:101::21"
+          "router_id": "10.101.254.21"
+          "router_id_v6": "fd00:101:fe::21"
+          "update_source": "fd00:101::21"
+      "network":
+        "interface_mtu": 1450
+        "veth_names":
+          "cilium_side": "veth-cilium"
+          "frr_side": "veth-frr"
+      "route_filters":
+        "prefix_lists":
+          "ipv4":
+            "CILIUM-ALL-v4":
+              "rules":
+              - "action": "permit"
+                "le": 32
+                "prefix": "0.0.0.0/0"
+                "seq": 10
+            "CILIUM-LB-v4":
+              "rules":
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.250.0/24"
+                "seq": 10
+            "CILIUM-POD-v4":
+              "rules":
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.224.0/20"
+                "seq": 10
+            "DEFAULT-ONLY-v4":
+              "rules":
+              - "action": "permit"
+                "prefix": "0.0.0.0/0"
+                "seq": 10
+            "LOOPBACK-self-v4":
+              "rules":
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.254.0/24"
+                "seq": 10
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.253.0/24"
+                "seq": 20
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.250.0/24"
+                "seq": 30
+            "LOOPBACK-v4":
+              "rules":
+              - "action": "permit"
+                "le": 32
+                "prefix": "10.101.254.0/24"
+                "seq": 10
+          "ipv6":
+            "CILIUM-ALL-v6":
+              "rules":
+              - "action": "permit"
+                "le": 128
+                "prefix": "::/0"
+                "seq": 10
+            "CILIUM-LB-v6":
+              "rules":
+              - "action": "permit"
+                "le": 128
+                "prefix": "fd00:101:250::/112"
+                "seq": 10
+            "CILIUM-POD-v6":
+              "rules":
+              - "action": "permit"
+                "le": 128
+                "prefix": "2600:1700:ab1a:500d::/64"
+                "seq": 10
+            "DEFAULT-ONLY-v6":
+              "rules":
+              - "action": "permit"
+                "prefix": "::/0"
+                "seq": 10
+            "LOOPBACK-self-v6":
+              "rules":
+              - "action": "permit"
+                "le": 128
+                "prefix": "fd00:101:fe::/112"
+                "seq": 10
+              - "action": "permit"
+                "le": 128
+                "prefix": "fd00:101:fd::/112"
+                "seq": 20
+              - "action": "permit"
+                "le": 128
+                "prefix": "fd00:101:250::/112"
+                "seq": 30
+            "LOOPBACK-v6":
+              "rules":
+              - "action": "permit"
+                "le": 128
+                "prefix": "fd00:101:fe::/48"
+                "seq": 10
+        "route_maps":
+          "EXPORT-TO-UPSTREAM":
+            "rules":
+            - "action": "permit"
+              "match":
+                "prefix_list": "CILIUM-LB-v4"
+              "seq": 10
+            - "action": "permit"
+              "match":
+                "prefix_list": "CILIUM-POD-v4"
+              "seq": 11
+            - "action": "permit"
+              "match":
+                "prefix_list": "LOOPBACK-self-v4"
+              "seq": 12
+            - "action": "permit"
+              "match":
+                "address_family": "ipv6"
+                "prefix_list": "CILIUM-LB-v6"
+              "seq": 15
+            - "action": "permit"
+              "match":
+                "address_family": "ipv6"
+                "prefix_list": "CILIUM-POD-v6"
+              "seq": 16
+            - "action": "permit"
+              "match":
+                "address_family": "ipv6"
+                "prefix_list": "LOOPBACK-self-v6"
+              "seq": 17
+            - "action": "permit"
+              "match":
+                "interface": "lo"
+              "seq": 20
+            - "action": "permit"
+              "match":
+                "interface": "dummy0"
+              "seq": 25
+          "IMPORT-DEFAULT-v4":
+            "rules":
+            - "action": "permit"
+              "match":
+                "address_family": "ipv4"
+                "prefix_list": "DEFAULT-ONLY-v4"
+              "seq": 10
+            - "action": "deny"
+              "seq": 90
+          "IMPORT-DEFAULT-v6":
+            "rules":
+            - "action": "permit"
+              "match":
+                "address_family": "ipv6"
+                "prefix_list": "DEFAULT-ONLY-v6"
+              "seq": 10
+            - "action": "deny"
+              "seq": 90
+          "IMPORT-FROM-CILIUM-v4":
+            "rules":
+            - "action": "permit"
+              "match":
+                "address_family": "ipv4"
+                "prefix_list": "CILIUM-ALL-v4"
+              "seq": 10
+              "set":
+                "ip_next_hop": "10.101.0.254"
+          "IMPORT-FROM-CILIUM-v6":
+            "rules":
+            - "action": "permit"
+              "match":
+                "address_family": "ipv6"
+                "prefix_list": "CILIUM-ALL-v6"
+              "seq": 10
+              "set":
+                "ipv6_next_hop": "fd00:101::fffe"
+    mountPath: /usr/local/etc/frr/config.yaml
+  - content: |
+      zebra=true
+      zebra_options="-A 127.0.0.1"
+      bgpd=true
+      bgpd_options=""
+      staticd=true
+      staticd_options="-A 127.0.0.1"
+      bfdd=true
+      bfdd_options="-A 127.0.0.1"
+    # mountPath: /var/lib/frr/daemons
+    mountPath: /usr/local/etc/frr/daemons
+  - content: |
+      service integrated-vtysh-config
+      hostname solwk01
+    # mountPath: /var/lib/frr/vtysh.conf
+    mountPath: /usr/local/etc/frr/vtysh.conf
+  - content: |
+      ! FRR Configuration with Multiple Peer Support
+      ! No environment variables required - all config from YAML
+
+      ! BFD Configuration
+      bfd
+      {% if bfd.profiles is defined %}
+      {% for profile_name, profile in bfd.profiles.items() %}
+       profile {{ profile_name }}
+        detect-multiplier {{ profile.detect_multiplier | default(3) }}
+        receive-interval {{ profile.receive_interval | default(300) }}
+        transmit-interval {{ profile.transmit_interval | default(300) }}
+      {% if profile.echo_mode is defined and profile.echo_mode %}
+        echo-mode
+      {% if profile.echo_interval is defined %}
+        echo-interval {{ profile.echo_interval }}
+      {% endif %}
+      {% endif %}
+       exit
+       !
+      {% endfor %}
+      {% endif %}
+      exit
+      !
+
+      ! Route maps and prefix lists (defined before BGP config)
+      ip prefix-list denyall seq 10 deny 0.0.0.0/0
+      !
+      ipv6 prefix-list denyall_v6 seq 10 deny ::/0
+      !
+      {% if route_filters is defined %}
+      ! Custom prefix lists
+      {% if route_filters.prefix_lists is defined %}
+      {% if route_filters.prefix_lists.ipv4 is defined %}
+      {% for pl_name, pl_config in route_filters.prefix_lists.ipv4.items() %}
+      ! IPv4 Prefix List: {{ pl_name }}
+      {% for rule in pl_config.rules %}
+      ip prefix-list {{ pl_name }} seq {{ rule.seq }} {{ rule.action }} {{ rule.prefix }}{% if rule.ge is defined %} ge {{ rule.ge }}{% endif %}{% if rule.le is defined %} le {{ rule.le }}{% endif %}
+
+      {% endfor %}
+      !
+      {% endfor %}
+      {% endif %}
+      {% if route_filters.prefix_lists.ipv6 is defined %}
+      {% for pl_name, pl_config in route_filters.prefix_lists.ipv6.items() %}
+      ! IPv6 Prefix List: {{ pl_name }}
+      {% for rule in pl_config.rules %}
+      ipv6 prefix-list {{ pl_name }} seq {{ rule.seq }} {{ rule.action }} {{ rule.prefix }}{% if rule.ge is defined %} ge {{ rule.ge }}{% endif %}{% if rule.le is defined %} le {{ rule.le }}{% endif %}
+
+      {% endfor %}
+      !
+      {% endfor %}
+      {% endif %}
+      {% endif %}
+      ! Custom route maps
+      {% if route_filters.route_maps is defined %}
+      {% for rm_name, rm_config in route_filters.route_maps.items() %}
+      ! Route Map: {{ rm_name }}
+      {% for rule in rm_config.rules %}
+      route-map {{ rm_name }} {{ rule.action }} {{ rule.seq }}
+      {% if rule.match is defined %}
+      {% if rule.match.prefix_list is defined %}
+       match {% if rule.match.address_family == 'ipv6' %}ipv6{% else %}ip{% endif %} address prefix-list {{ rule.match.prefix_list }}
+      {% endif %}
+      {% if rule.match.as_path is defined %}
+       match as-path {{ rule.match.as_path }}
+      {% endif %}
+      {% if rule.match.community is defined %}
+       match community {{ rule.match.community }}
+      {% endif %}
+      {% if rule.match.interface is defined %}
+       match interface {{ rule.match.interface }}
+      {% endif %}
+      {% endif %}
+      {% if rule.set is defined %}
+      {% if rule.set.local_preference is defined %}
+       set local-preference {{ rule.set.local_preference }}
+      {% endif %}
+      {% if rule.set.metric is defined %}
+       set metric {{ rule.set.metric }}
+      {% endif %}
+      {% if rule.set.weight is defined %}
+       set weight {{ rule.set.weight }}
+      {% endif %}
+      {% if rule.set.as_path_prepend is defined %}
+       set as-path prepend {{ rule.set.as_path_prepend }}
+      {% endif %}
+      {% if rule.set.community is defined %}
+       set community {{ rule.set.community }}{% if rule.set.community_additive is defined and rule.set.community_additive %} additive{% endif %}
+
+      {% endif %}
+      {% if rule.set.src is defined %}
+       set src {{ rule.set.src }}
+      {% endif %}
+      {% if rule.set.ip_next_hop is defined %}
+       set ip next-hop {{ rule.set.ip_next_hop }}
+      {% endif %}
+      {% if rule.set.ipv6_next_hop is defined %}
+       set ipv6 next-hop global {{ rule.set.ipv6_next_hop }}
+      {% endif %}
+      {% endif %}
+      !
+      {% endfor %}
+      {% endfor %}
+      {% endif %}
+      {% endif %}
+      route-map denymap permit 1
+       match ip address prefix-list denyall
+      !
+      route-map denymap_v6 permit 1
+       match ipv6 address prefix-list denyall_v6
+      !
+      route-map SETSRC permit 10
+       set src {{ bgp.upstream.router_id }}
+      !
+      {% if bgp.upstream.router_id_v6 is defined %}
+      route-map SETSRC_V6 permit 10
+       set src {{ bgp.upstream.router_id_v6 }}
+      !
+      {% endif %}
+      route-map loopbacks permit 10
+        match interface lo
+      !
+      route-map loopbacks permit 20
+        match interface dummy0
+      !
+      route-map loopbacks permit 30
+        match interface dummy1
+      !
+      {% if bgp.upstream.peers is defined %}
+      ! Auto-generated route-maps and prefix-lists for network advertisements
+      {% for peer in bgp.upstream.peers %}
+      {% set peer_index = loop.index %}
+      {% if peer.advertise_networks is defined and peer.advertise_networks %}
+      {% if peer.address_family is not defined or peer.address_family == 'ipv4' %}
+      ! IPv4 prefix-list for peer {{ peer.address }}
+      {% for network in peer.advertise_networks %}
+      {# Handle both string and dict formats #}
+      {% if network is mapping %}
+      {% set net_prefix = network.network %}
+      {% set net_ge = network.ge if network.ge is defined else (peer.advertise_ge if peer.advertise_ge is defined else network.network.split('/')[-1]) %}
+      {% set net_le = network.le if network.le is defined else (peer.advertise_le if peer.advertise_le is defined else 32) %}
+      {% else %}
+      {% set net_prefix = network %}
+      {% set net_ge = peer.advertise_ge if peer.advertise_ge is defined else network.split('/')[-1] %}
+      {% set net_le = peer.advertise_le if peer.advertise_le is defined else 32 %}
+      {% endif %}
+      {% if ':' not in net_prefix %}
+      ip prefix-list NETS_{{ peer_index }} seq {{ 10 + loop.index * 10 }} permit {{ net_prefix }}{% if net_ge is not none and net_ge != false %} ge {{ net_ge }}{% endif %}{% if net_le is not none and net_le != false %} le {{ net_le }}{% endif %}
+
+      {% endif %}
+      {% endfor %}
+      !
+      ! IPv4 route-map for peer {{ peer.address }}
+      route-map ADVERTISE_{{ peer_index }} permit 10
+       match ip address prefix-list NETS_{{ peer_index }}
+      {% if peer.advertise_set is defined %}
+      {% if peer.advertise_set.local_preference is defined %}
+       set local-preference {{ peer.advertise_set.local_preference }}
+      {% endif %}
+      {% if peer.advertise_set.metric is defined %}
+       set metric {{ peer.advertise_set.metric }}
+      {% endif %}
+      {% if peer.advertise_set.as_path_prepend is defined %}
+       set as-path prepend {{ peer.advertise_set.as_path_prepend }}
+      {% endif %}
+      {% if peer.advertise_set.community is defined %}
+       set community {{ peer.advertise_set.community }}
+      {% endif %}
+      {% endif %}
+      !
+      route-map ADVERTISE_{{ peer_index }} deny 20
+      !
+      {% endif %}
+      {% if peer.address_family == 'ipv6' or (peer.address_family is defined and peer.capability_extended_nexthop is defined and peer.capability_extended_nexthop) %}
+      ! IPv6 prefix-list for peer {{ peer.address }}
+      {% for network in peer.advertise_networks %}
+      {# Handle both string and dict formats #}
+      {% if network is mapping %}
+      {% set net_prefix = network.network %}
+      {% set net_ge = network.ge if network.ge is defined else (peer.advertise_ge if peer.advertise_ge is defined else network.network.split('/')[-1]) %}
+      {% set net_le = network.le if network.le is defined else (peer.advertise_le if peer.advertise_le is defined else 128) %}
+      {% else %}
+      {% set net_prefix = network %}
+      {% set net_ge = peer.advertise_ge if peer.advertise_ge is defined else network.split('/')[-1] %}
+      {% set net_le = peer.advertise_le if peer.advertise_le is defined else 128 %}
+      {% endif %}
+      {% if ':' in net_prefix %}
+      ipv6 prefix-list NETS_V6_{{ peer_index }} seq {{ 10 + loop.index * 10 }} permit {{ net_prefix }}{% if net_ge is not none and net_ge != false %} ge {{ net_ge }}{% endif %}{% if net_le is not none and net_le != false %} le {{ net_le }}{% endif %}
+
+      {% endif %}
+      {% endfor %}
+      !
+      ! IPv6 route-map for peer {{ peer.address }}
+      route-map ADVERTISE_V6_{{ peer_index }} permit 10
+       match ipv6 address prefix-list NETS_V6_{{ peer_index }}
+      {% if peer.advertise_set is defined %}
+      {% if peer.advertise_set.local_preference is defined %}
+       set local-preference {{ peer.advertise_set.local_preference }}
+      {% endif %}
+      {% if peer.advertise_set.metric is defined %}
+       set metric {{ peer.advertise_set.metric }}
+      {% endif %}
+      {% if peer.advertise_set.as_path_prepend is defined %}
+       set as-path prepend {{ peer.advertise_set.as_path_prepend }}
+      {% endif %}
+      {% if peer.advertise_set.community is defined %}
+       set community {{ peer.advertise_set.community }}
+      {% endif %}
+      {% endif %}
+      !
+      route-map ADVERTISE_V6_{{ peer_index }} deny 20
+      !
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+
+      ! BGP Configuration - Unified router bgp block for Cilium and upstream peers
+      router bgp {{ bgp.upstream.local_asn }}
+       bgp router-id {{ bgp.upstream.router_id }}
+       no bgp ebgp-requires-policy
+       no bgp default ipv4-unicast
+       bgp bestpath as-path multipath-relax
+
+       ! Cilium peer configuration - dynamic peer via listen range
+       ! Accept connections from any ULA address (fd00::/8) with matching ASN
+       ! First create the peer-group, then configure it, then apply listen range
+       neighbor cilium-peers peer-group
+       neighbor cilium-peers remote-as {{ bgp.cilium.remote_asn }}
+       neighbor cilium-peers description Cilium-BGP-Control-Plane
+       neighbor cilium-peers passive
+       neighbor cilium-peers capability extended-nexthop
+       bgp listen range fd00::/8 peer-group cilium-peers
+
+      {% if bgp.upstream.peers is defined %}
+      {% for peer in bgp.upstream.peers %}
+       ! Peer: {{ peer.description | default(peer.address) }}
+       neighbor {{ peer.address }} remote-as {{ peer.remote_asn }}
+      {% if peer.description is defined %}
+       neighbor {{ peer.address }} description {{ peer.description }}
+      {% endif %}
+      {% if peer.password is defined and peer.password != "no" %}
+       neighbor {{ peer.address }} password {{ peer.password }}
+      {% endif %}
+      {% if peer.timers is defined %}
+       neighbor {{ peer.address }} timers {{ peer.timers.keepalive | default(10) }} {{ peer.timers.hold | default(30) }}
+      {% endif %}
+      {% if peer.bfd is defined and peer.bfd.enabled %}
+       neighbor {{ peer.address }} bfd
+      {% if peer.bfd.profile is defined %}
+       neighbor {{ peer.address }} bfd profile {{ peer.bfd.profile }}
+      {% endif %}
+      {% endif %}
+      {% if peer.multihop is defined %}
+       neighbor {{ peer.address }} ebgp-multihop {{ peer.multihop }}
+      {% endif %}
+      {% if peer.update_source is defined %}
+       neighbor {{ peer.address }} update-source {{ peer.update_source }}
+      {% endif %}
+      {% if peer.capability_extended_nexthop is defined and peer.capability_extended_nexthop %}
+       neighbor {{ peer.address }} capability extended-nexthop
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+
+       ! Address families
+       address-family ipv4 unicast
+        ! Activate Cilium peer-group
+        neighbor cilium-peers activate
+        neighbor cilium-peers route-map IMPORT-FROM-CILIUM-v4 in
+      {% if bgp.upstream.peers is defined %}
+      {% for peer in bgp.upstream.peers %}
+      {% if peer.address_family is not defined or peer.address_family == 'ipv4' or (peer.address_family == 'ipv6' and peer.capability_extended_nexthop is defined and peer.capability_extended_nexthop) %}
+        neighbor {{ peer.address }} activate
+      {% if peer.next_hop_self is defined and peer.next_hop_self %}
+        neighbor {{ peer.address }} next-hop-self
+      {% endif %}
+      {% if peer.route_map_in_v4 is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_in_v4 }} in
+      {% elif peer.route_map_in is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_in }} in
+      {% endif %}
+      {% if peer.route_map_out is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_out }} out
+      {% elif peer.advertise_networks is defined and peer.advertise_networks %}
+        ! Using automatic route-map for network advertisements
+        neighbor {{ peer.address }} route-map ADVERTISE_{{ loop.index }} out
+      {% endif %}
+      {% if peer.prefix_list_in is defined %}
+        neighbor {{ peer.address }} prefix-list {{ peer.prefix_list_in }} in
+      {% endif %}
+      {% if peer.prefix_list_out is defined %}
+        neighbor {{ peer.address }} prefix-list {{ peer.prefix_list_out }} out
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+      {% if bgp.upstream.networks is defined and bgp.upstream.networks.ipv4 is defined %}
+      {% for network in bgp.upstream.networks.ipv4 %}
+        network {{ network }}
+      {% endfor %}
+      {% endif %}
+        redistribute connected route-map loopbacks
+       exit-address-family
+
+       address-family ipv6 unicast
+        ! Activate Cilium peer-group
+        neighbor cilium-peers activate
+        neighbor cilium-peers route-map IMPORT-FROM-CILIUM-v6 in
+      {% if bgp.upstream.peers is defined %}
+      {% for peer in bgp.upstream.peers %}
+      {% if peer.address_family == 'ipv6' or (peer.address_family is defined and peer.capability_extended_nexthop is defined and peer.capability_extended_nexthop) %}
+        neighbor {{ peer.address }} activate
+      {% if peer.next_hop_self is defined and peer.next_hop_self %}
+        neighbor {{ peer.address }} next-hop-self
+      {% endif %}
+      {% if peer.route_map_in_v6 is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_in_v6 }} in
+      {% elif peer.route_map_in is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_in }} in
+      {% endif %}
+      {% if peer.route_map_out is defined %}
+        neighbor {{ peer.address }} route-map {{ peer.route_map_out }} out
+      {% elif peer.advertise_networks is defined and peer.advertise_networks %}
+        ! Using automatic route-map for network advertisements
+        neighbor {{ peer.address }} route-map ADVERTISE_V6_{{ loop.index }} out
+      {% endif %}
+      {% if peer.prefix_list_in is defined %}
+        neighbor {{ peer.address }} prefix-list {{ peer.prefix_list_in }} in
+      {% endif %}
+      {% if peer.prefix_list_out is defined %}
+        neighbor {{ peer.address }} prefix-list {{ peer.prefix_list_out }} out
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+      {% if bgp.upstream.networks is defined and bgp.upstream.networks.ipv6 is defined %}
+      {% for network in bgp.upstream.networks.ipv6 %}
+        network {{ network }}
+      {% endfor %}
+      {% endif %}
+        redistribute connected route-map loopbacks
+       exit-address-family
+      !
+      ip protocol bgp route-map SETSRC
+      {% if bgp.upstream.router_id_v6 is defined %}
+      ipv6 protocol bgp route-map SETSRC_V6
+      {% endif %}
+      !
+      line vty
+      !
+      log syslog debugging
+      !
+    mountPath: /usr/local/etc/frr/frr.conf.j2
