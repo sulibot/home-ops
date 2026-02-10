@@ -35,21 +35,13 @@ spec:
     # Use cluster CoreDNS which forwards to ROS DNS servers
     # This works across all clusters without hardcoding cluster IDs
     replicaCount: 2
-    # Configure services as dual-stack for IPv4 fallback when IPv6 ClusterIP has issues
-    service:
-      ipFamilyPolicy: PreferDualStack
-      ipFamilies:
+    # Configure services as dual-stack for IPv4 fallback when IPv6 ClusterIP routing fails
+    serviceIPFamilyPolicy: PreferDualStack
+    serviceIPFamilies:
+      - IPv6
+      - IPv4
+    webhook:
+      serviceIPFamilyPolicy: PreferDualStack
+      serviceIPFamilies:
         - IPv6
         - IPv4
-    webhook:
-      service:
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-          - IPv6
-          - IPv4
-    cainjector:
-      service:
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-          - IPv6
-          - IPv4

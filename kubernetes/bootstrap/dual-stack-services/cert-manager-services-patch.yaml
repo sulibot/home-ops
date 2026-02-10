@@ -1,0 +1,12 @@
+---
+# Patch cainjector service to dual-stack (no Helm chart option for this service)
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-manager-cainjector
+  namespace: cert-manager
+spec:
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
