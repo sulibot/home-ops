@@ -50,26 +50,69 @@ resource "kubernetes_manifest" "flux_instance" {
         path = var.git_path
       }
       kustomize = {
-        patches = var.sops_age_key != "" ? [
-          {
-            target = {
-              kind = "Kustomization"
-              name = "flux-system"
-            }
-            patch = yamlencode([
-              {
-                op    = "add"
-                path  = "/spec/decryption"
-                value = {
-                  provider = "sops"
-                  secretRef = {
-                    name = "sops-age"
+        patches = concat(
+          var.sops_age_key != "" ? [
+            {
+              target = {
+                kind = "Kustomization"
+                name = "flux-system"
+              }
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/decryption"
+                  value = {
+                    provider = "sops"
+                    secretRef = {
+                      name = "sops-age"
+                    }
                   }
                 }
+              ])
+            }
+          ] : [],
+          [
+            # Fix 1: Increase liveness probe delay to prevent restart loops
+            {
+              target = {
+                kind = "Deployment"
+                labelSelector = "app.kubernetes.io/part-of=flux"
               }
-            ])
-          }
-        ] : []
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds"
+                  value = 60
+                }
+              ])
+            },
+            # Fix 2: Allow traffic to health/metrics ports (9090, 9440) in NetworkPolicy
+            {
+              target = {
+                kind = "NetworkPolicy"
+                name = "allow-scraping"
+              }
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/ingress/0/ports/-"
+                  value = {
+                    port = 9090
+                    protocol = "TCP"
+                  }
+                },
+                {
+                  op    = "add"
+                  path  = "/spec/ingress/0/ports/-"
+                  value = {
+                    port = 9440
+                    protocol = "TCP"
+                  }
+                }
+              ])
+            }
+          ]
+        )
       }
     }
   }
