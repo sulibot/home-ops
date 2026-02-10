@@ -24,9 +24,11 @@ ipv4:
 ipv6:
   enabled: true
 
-# Masquerade control - no masquerading needed with GUA pods
-enableIPv4Masquerade: false
-enableIPv6Masquerade: false
+# Masquerade control - IPv6 masquerading required for ClusterIP services
+# While pod-to-pod uses native routing (no masquerade), ClusterIPs are virtual
+# and need masquerading for kube-proxy replacement to function with BPF
+enableIPv4Masquerade: false  # Keep false - will remove IPv4 eventually
+enableIPv6Masquerade: true   # REQUIRED for IPv6 ClusterIP services with BPF masquerade
 
 # IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
 # The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
