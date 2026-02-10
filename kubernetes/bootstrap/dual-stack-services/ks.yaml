@@ -1,0 +1,18 @@
+---
+# Flux Kustomization to ensure critical services are dual-stack
+# Patches the kubernetes.default service to PreferDualStack for IPv4 fallback
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: dual-stack-services
+  namespace: flux-system
+spec:
+  interval: 15m
+  retryInterval: 1m
+  path: ./kubernetes/bootstrap/dual-stack-services
+  prune: false  # Don't prune - we're patching existing resources
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
