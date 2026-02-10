@@ -29,34 +29,31 @@ spec:
 ---
 # MP-BGP Peer Configuration
 # Single peer carries both IPv4 and IPv6 routes over IPv6 session
+# NOTE: Each AFI/SAFI must appear only ONCE - use matchExpressions to select multiple advertisements
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPPeerConfig
 metadata:
   name: frr-local-mpbgp
 spec:
   families:
-    # IPv4 - LoadBalancer IPs
+    # IPv4 Unicast - Advertises both LoadBalancer IPs AND Pod CIDRs
     - afi: ipv4
       safi: unicast
       advertisements:
-        matchLabels:
-          advertise: cilium-lb
-    # IPv4 - Pod CIDRs
-    - afi: ipv4
-      safi: unicast
-      advertisements:
-        matchLabels:
-          advertise: cilium-pod
-    # IPv6 - LoadBalancer IPs
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - cilium-lb
+              - cilium-pod
+    # IPv6 Unicast - Advertises both LoadBalancer IPs AND Pod CIDRs
     - afi: ipv6
       safi: unicast
       advertisements:
-        matchLabels:
-          advertise: cilium-lb
-    # IPv6 - Pod CIDRs
-    - afi: ipv6
-      safi: unicast
-      advertisements:
-        matchLabels:
-          advertise: cilium-pod
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - cilium-lb
+              - cilium-pod
 
