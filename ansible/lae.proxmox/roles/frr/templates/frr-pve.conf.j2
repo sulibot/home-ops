@@ -68,11 +68,13 @@ route-map RM_EDGE_EXPORT permit 20
  match ipv6 address prefix-list PL_TENANT_V6
  set ipv6 next-hop global {{ infra_ip6 }}
 !
-! Leak Down: Global -> VRF (Default Route only)
+! Leak Down: Global -> VRF (Default Route + Ceph Services)
 route-map RM_GLOBAL_TO_VRF permit 10
  match ip address prefix-list PL_DEFAULT_V4
 route-map RM_GLOBAL_TO_VRF permit 20
  match ipv6 address prefix-list PL_DEFAULT_V6
+route-map RM_GLOBAL_TO_VRF permit 30
+ match ipv6 address prefix-list PL_SVCS_V6
 !
 ! Leak Up: VRF -> Global (Tenant routes only)
 route-map RM_VRF_TO_GLOBAL permit 10
@@ -160,6 +162,8 @@ router bgp 4200001000
  exit-address-family
  !
  address-family ipv6 unicast
+  redistribute connected route-map RM_OSPF_EXPORT
+  redistribute ospf6 route-map RM_OSPF_EXPORT
   neighbor fd00:0:0:ffff::fffe activate
   neighbor fd00:0:0:ffff::fffe route-map RM_EDGE_EXPORT out
   neighbor {{ pipe_vrf }} activate
