@@ -11,7 +11,7 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
-    - name: cilium
+    - name: flux-system
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
