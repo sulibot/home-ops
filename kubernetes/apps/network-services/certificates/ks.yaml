@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: certificates-import
+  name: certificates
   namespace: flux-system
   labels:
     layer: "network-services"
@@ -11,37 +11,13 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: cert-manager-issuers
+    - name: cert-manager
       namespace: flux-system
     - name: cilium-gateway
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/network-services/certificates/import
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-    namespace: flux-system
-  targetNamespace: network
-  wait: false
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: certificates-export
-  namespace: flux-system
-  labels:
-    layer: "network-services"
-    component: network-service
-    critical: "false"
-spec:
-  dependsOn:
-    - name: certificates-import
-  interval: 15m
-  retryInterval: 30s
-  path: ./kubernetes/apps/network-services/certificates/export
+  path: ./kubernetes/apps/network-services/certificates/combined
   prune: true
   sourceRef:
     kind: GitRepository
