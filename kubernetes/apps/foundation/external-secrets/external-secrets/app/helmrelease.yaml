@@ -33,5 +33,6 @@ spec:
         enabled: true
     webhook:
       replicaCount: 2
+      failurePolicy: Ignore
       serviceMonitor:
         enabled: true
