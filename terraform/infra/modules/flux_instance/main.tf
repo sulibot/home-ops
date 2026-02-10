@@ -269,13 +269,64 @@ resource "null_resource" "wait_helm_cache_ready" {
   }
 }
 
-# Step 5: Resume flux-system and clean up canary (atomic operation)
-resource "null_resource" "resume_and_cleanup" {
+# Step 5: Adopt Talos-installed Cilium into Helm management
+resource "null_resource" "adopt_cilium" {
   depends_on = [null_resource.wait_helm_cache_ready]
 
   # Trigger recreation when wait_helm_cache_ready changes
   triggers = {
     wait_id = null_resource.wait_helm_cache_ready.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if Cilium was installed by Talos inline manifests..."
+
+      # Check if Cilium DaemonSet exists but has no Helm metadata
+      if kubectl --kubeconfig="$KUBECONFIG" get daemonset cilium -n kube-system >/dev/null 2>&1; then
+        # Check if it's already managed by Helm
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n kube-system -l owner=helm,name=cilium >/dev/null 2>&1; then
+          echo "  Found Talos-installed Cilium - adopting into Helm..."
+
+          # Label critical Cilium resources so Helm can adopt them
+          # This tells Helm: "these resources are yours to manage now"
+          for resource in \
+            "daemonset/cilium" \
+            "daemonset/cilium-envoy" \
+            "deployment/cilium-operator" \
+            "serviceaccount/cilium" \
+            "serviceaccount/cilium-operator" \
+            "configmap/cilium-config" \
+            "service/cilium-agent" \
+            "service/cilium-envoy"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n kube-system \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ Cilium resources labeled for Helm adoption"
+          echo "  Flux HelmRelease will now manage Cilium lifecycle"
+        else
+          echo "✓ Cilium already managed by Helm - no adoption needed"
+        fi
+      else
+        echo "  No existing Cilium installation found - Flux will install fresh"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 6: Resume flux-system and clean up canary (atomic operation)
+resource "null_resource" "resume_and_cleanup" {
+  depends_on = [null_resource.adopt_cilium]
+
+  # Trigger recreation when adopt_cilium changes
+  triggers = {
+    adopt_id = null_resource.adopt_cilium.id
   }
 
   provisioner "local-exec" {
@@ -301,7 +352,7 @@ resource "null_resource" "resume_and_cleanup" {
   }
 }
 
-# Run post-bootstrap operations after Flux is ready
+# Step 7: Run post-bootstrap operations after Flux is ready
 resource "null_resource" "post_bootstrap" {
   count = var.repo_root != "" ? 1 : 0
 

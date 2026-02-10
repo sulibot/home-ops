@@ -26,6 +26,8 @@ spec:
 
   install:
     crds: CreateReplace
+    # Replace existing resources installed by Talos inline manifests
+    replace: true
     remediation:
       retries: 5
     timeout: 10m
