@@ -98,8 +98,8 @@ locals {
 
   common_cluster_network = {
     cni            = { name = "none" }                              # Cilium installed via inline manifests
-    podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 preferred
-    serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 preferred, dual-stack enabled below
+    podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 first-class
+    serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 first-class, dual-stack enabled
   }
 
   # Control Plane specific configuration
@@ -276,7 +276,7 @@ data "talos_machine_configuration" "controlplane" {
           extraArgs = {
             "runtime-config"           = "admissionregistration.k8s.io/v1beta1=true"
             "feature-gates"            = "MutatingAdmissionPolicy=true"
-            "service-cluster-ip-range" = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # Explicit dual-stack
+            "service-cluster-ip-range" = "${var.service_cidr_ipv6},${var.service_cidr_ipv4}" # IPv6 first-class, dual-stack
           }
         }
       }

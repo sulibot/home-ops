@@ -9,6 +9,17 @@ spec:
     kind: OCIRepository
     name: volsync
   interval: 1h
+  timeout: 10m
+  install:
+    remediation:
+      retries: 3
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+    timeout: 10m
   values:
     fullnameOverride: volsync # Required for volsync-perfectra1n fork
     image: &image
