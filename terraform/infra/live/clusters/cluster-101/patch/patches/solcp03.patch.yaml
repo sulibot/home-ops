@@ -105,6 +105,7 @@ configFiles:
         ipv6 {
           import all;
           export none;  # One-way: Cilium → bird2
+          extended next hop on;  # Cilium sends IPv6 routes with IPv4 next hop
         };
       }
 
