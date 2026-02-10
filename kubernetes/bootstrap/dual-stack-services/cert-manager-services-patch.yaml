@@ -22,3 +22,27 @@ spec:
   ipFamilies:
     - IPv6
     - IPv4
+---
+# Patch external-secrets-webhook service to dual-stack
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-secrets-webhook
+  namespace: external-secrets
+spec:
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
+---
+# Patch onepassword service to dual-stack
+apiVersion: v1
+kind: Service
+metadata:
+  name: onepassword
+  namespace: external-secrets
+spec:
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
