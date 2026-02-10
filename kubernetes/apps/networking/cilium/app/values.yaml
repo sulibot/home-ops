@@ -28,7 +28,7 @@ ipv6:
 # While pod-to-pod uses native routing (no masquerade), ClusterIPs are virtual
 # and need masquerading for kube-proxy replacement to function with BPF
 enableIPv4Masquerade: false  # Keep false - will remove IPv4 eventually
-enableIPv6Masquerade: true   # REQUIRED for IPv6 ClusterIP services with BPF masquerade
+enableIPv6Masquerade: false  # Disabled: Upstream router handles return paths via BGP
 
 # IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
 # The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
@@ -45,7 +45,7 @@ k8s:
 routingMode: native
 # Enable autoDirectNodeRoutes so nodes learn each other's pod CIDRs
 autoDirectNodeRoutes: true
-directRoutingSkipUnreachable: false
+directRoutingSkipUnreachable: true  # Skip unreachable routes - rely on BGP for inter-node routing
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
 # This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
 endpointRoutes:
@@ -58,10 +58,8 @@ ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared /64 across all n
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  # BPF masquerading REQUIRED for ClusterIP services to work
-  # While pod-to-pod uses native routing (no masquerade), ClusterIPs are virtual
-  # and need masquerading for kube-proxy replacement to function
-  masquerade: true
+  # Must be FALSE when both IPv4/IPv6 masquerading are disabled to prevent crash
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
