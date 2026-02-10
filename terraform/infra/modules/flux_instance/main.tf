@@ -77,18 +77,43 @@ resource "kubernetes_manifest" "flux_instance" {
   depends_on = [kubernetes_secret_v1.sops_age]
 }
 
+# Patch kubernetes.default service to dual-stack for IPv4 fallback
+# This fixes Cilium IPv6 ClusterIP routing issues that cause timeouts
+# Must be applied BEFORE flux-operator starts, as operator needs API connectivity
+resource "null_resource" "patch_kubernetes_service" {
+  depends_on = [kubernetes_manifest.flux_instance]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Patching kubernetes.default service to dual-stack..."
+
+      kubectl --kubeconfig="$KUBECONFIG" patch service kubernetes -n default \
+        --type=merge \
+        -p '{"spec":{"ipFamilyPolicy":"PreferDualStack","ipFamilies":["IPv6","IPv4"]}}'
+
+      echo "✓ kubernetes.default service configured as dual-stack"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
 # Wait for Flux controllers to be ready
 # Uses kubectl wait for simplicity and reliability
 resource "null_resource" "wait_flux_controllers" {
-  depends_on = [kubernetes_manifest.flux_instance]
+  depends_on = [null_resource.patch_kubernetes_service]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       echo "Waiting for flux-operator to create Flux controllers..."
 
-      # First, wait for flux-operator to create the deployments (up to 2 minutes)
-      TIMEOUT=120
+      # First, wait for flux-operator to create the deployments (up to 5 minutes)
+      # This accounts for: pod scheduling delays, image pulls, and operator startup
+      TIMEOUT=300
       ELAPSED=0
       while [ $ELAPSED -lt $TIMEOUT ]; do
         if kubectl --kubeconfig="$KUBECONFIG" get deployment helm-controller -n flux-system >/dev/null 2>&1; then
