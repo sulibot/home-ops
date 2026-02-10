@@ -29,8 +29,8 @@ machine:
         vip: null
       - addresses:
           - fd00:101:fe::22/128
-          - 10.101.254.22/32
           - fd00:101:fd::22/128
+          - 10.101.254.22/32
           - 10.101.253.22/32
         interface: dummy0
       - dhcp: false
@@ -82,27 +82,27 @@ configFiles:
           "local_asn": 4210101022
           "peering":
             "ipv4":
-              "local": "10.101.253.22"
+              "local": "10.101.254.22"
               "prefix": 32
-              "remote": "10.101.254.22"
+              "remote": "10.101.253.22"
             "ipv6":
-              "local": "fd00:101:fd::22"
+              "local": "fd00:101:fe::22"
               "prefix": 128
-              "remote": "fd00:101:fe::22"
+              "remote": "fd00:101:fd::22"
           "remote_asn": 4220101000
         "upstream":
           "advertise_loopbacks": true
           "local_asn": 4210101022
           "loopback_addresses":
             "ipv4":
-            - "10.101.254.22"
             - "10.101.253.22"
+            - "10.101.254.22"
             "ipv6":
-            - "fd00:101:fe::22"
             - "fd00:101:fd::22"
+            - "fd00:101:fe::22"
           "loopbacks":
-            "ipv4": "10.101.254.22"
-            "ipv6": "fd00:101:fe::22"
+            "ipv4": "10.101.253.22"
+            "ipv6": "fd00:101:fd::22"
           "peers":
           - "address": "fd00:101::fffe"
             "address_family": "ipv6"
@@ -114,8 +114,8 @@ configFiles:
             "route_map_in_v6": "IMPORT-FROM-UPSTREAM-v6"
             "route_map_out": "EXPORT-TO-UPSTREAM"
             "update_source": "fd00:101::22"
-          "router_id": "10.101.254.22"
-          "router_id_v6": "fd00:101:fe::22"
+          "router_id": "10.101.253.22"
+          "router_id_v6": "fd00:101:fd::22"
           "update_source": "fd00:101::22"
       "network":
         "interface_mtu": 1450

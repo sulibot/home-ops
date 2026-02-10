@@ -8,19 +8,19 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.11"
+    - "localAddress": "10.101.254.11"
       "name": "frr-local-ipv4"
       "peerASN": 4210101011
-      "peerAddress": "10.101.254.11"
+      "peerAddress": "10.101.253.11"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::11"
+    - "localAddress": "fd00:101:fe::11"
       "name": "frr-local-ipv6"
       "peerASN": 4210101011
-      "peerAddress": "fd00:101:fe::11"
+      "peerAddress": "fd00:101:fd::11"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.11"
+    "routerID": "10.101.254.11"
 
 ---
 "apiVersion": "cilium.io/v2"
@@ -33,19 +33,19 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.12"
+    - "localAddress": "10.101.254.12"
       "name": "frr-local-ipv4"
       "peerASN": 4210101012
-      "peerAddress": "10.101.254.12"
+      "peerAddress": "10.101.253.12"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::12"
+    - "localAddress": "fd00:101:fe::12"
       "name": "frr-local-ipv6"
       "peerASN": 4210101012
-      "peerAddress": "fd00:101:fe::12"
+      "peerAddress": "fd00:101:fd::12"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.12"
+    "routerID": "10.101.254.12"
 
 ---
 "apiVersion": "cilium.io/v2"
@@ -58,19 +58,19 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.13"
+    - "localAddress": "10.101.254.13"
       "name": "frr-local-ipv4"
       "peerASN": 4210101013
-      "peerAddress": "10.101.254.13"
+      "peerAddress": "10.101.253.13"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::13"
+    - "localAddress": "fd00:101:fe::13"
       "name": "frr-local-ipv6"
       "peerASN": 4210101013
-      "peerAddress": "fd00:101:fe::13"
+      "peerAddress": "fd00:101:fd::13"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.13"
+    "routerID": "10.101.254.13"
 
 ---
 "apiVersion": "cilium.io/v2"
@@ -83,19 +83,19 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.21"
+    - "localAddress": "10.101.254.21"
       "name": "frr-local-ipv4"
       "peerASN": 4210101021
-      "peerAddress": "10.101.254.21"
+      "peerAddress": "10.101.253.21"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::21"
+    - "localAddress": "fd00:101:fe::21"
       "name": "frr-local-ipv6"
       "peerASN": 4210101021
-      "peerAddress": "fd00:101:fe::21"
+      "peerAddress": "fd00:101:fd::21"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.21"
+    "routerID": "10.101.254.21"
 
 ---
 "apiVersion": "cilium.io/v2"
@@ -108,19 +108,19 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.22"
+    - "localAddress": "10.101.254.22"
       "name": "frr-local-ipv4"
       "peerASN": 4210101022
-      "peerAddress": "10.101.254.22"
+      "peerAddress": "10.101.253.22"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::22"
+    - "localAddress": "fd00:101:fe::22"
       "name": "frr-local-ipv6"
       "peerASN": 4210101022
-      "peerAddress": "fd00:101:fe::22"
+      "peerAddress": "fd00:101:fd::22"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.22"
+    "routerID": "10.101.254.22"
 
 ---
 "apiVersion": "cilium.io/v2"
@@ -133,16 +133,16 @@
     "localPort": 1790
     "name": "local-frr"
     "peers":
-    - "localAddress": "10.101.253.23"
+    - "localAddress": "10.101.254.23"
       "name": "frr-local-ipv4"
       "peerASN": 4210101023
-      "peerAddress": "10.101.254.23"
+      "peerAddress": "10.101.253.23"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fd::23"
+    - "localAddress": "fd00:101:fe::23"
       "name": "frr-local-ipv6"
       "peerASN": 4210101023
-      "peerAddress": "fd00:101:fe::23"
+      "peerAddress": "fd00:101:fd::23"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
-    "routerID": "10.101.253.23"
+    "routerID": "10.101.254.23"
