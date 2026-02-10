@@ -35,7 +35,7 @@ machine:
     image: ghcr.io/sulibot/talos-frr-installer:v1.12.1
     extensions:
       - image: ghcr.io/siderolabs/i915:20251125-v1.12.1@sha256:fb89c85a04ecb85abaec9d400e03a1628bf68aef3580e98f340cbe8920a6e4ed
-      - image: ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7
+      - image: ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:0d65067d646273f9c33962165250e3800dfed1d6a2e35073805e16b2acd3a46c
       - image: ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4
       - image: ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00
       - image: ghcr.io/siderolabs/bird2:2.17.1@sha256:cb6be4d7655ebbd3e3420e02e0af197491889c7ce55e71c18869c10742b5a091
