@@ -11,6 +11,8 @@ metadata:
     critical: "true"
 spec:
   dependsOn:
+    - name: cert-manager-helm-repo
+      namespace: flux-system
     - name: external-secrets
       namespace: flux-system
   interval: 15m
