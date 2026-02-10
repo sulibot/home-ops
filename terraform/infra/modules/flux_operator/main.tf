@@ -10,9 +10,9 @@ resource "helm_release" "flux_operator" {
   version    = var.flux_operator_version
 
   create_namespace = true
-  wait             = true
-  wait_for_jobs    = true
-  timeout          = 600  # Increased from 300 to allow more time for operator readiness
+  wait             = false  # Don't wait - flux-instance stage will handle readiness checks
+  wait_for_jobs    = false
+  timeout          = 600
 
   # Cleanup on failure to prevent stuck resources
   cleanup_on_fail = true
