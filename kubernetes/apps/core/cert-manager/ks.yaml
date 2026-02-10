@@ -14,7 +14,7 @@ spec:
     - name: external-secrets
       namespace: flux-system
   interval: 15m
-  path: ./kubernetes/apps/core/cert-manager/app
+  path: ./kubernetes/apps/core/cert-manager/combined
   prune: true
   sourceRef:
     kind: GitRepository
@@ -29,29 +29,3 @@ spec:
       kind: HelmRelease
       name: cert-manager
       namespace: cert-manager
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: cert-manager-issuers
-  namespace: flux-system
-  labels:
-    layer: "core"
-    component: cert-manager
-    critical: "true"
-spec:
-  dependsOn:
-    - name: cert-manager
-      namespace: flux-system
-  interval: 15m
-  path: ./kubernetes/apps/core/cert-manager/issuers
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-    namespace: flux-system
-  targetNamespace: cert-manager
-  wait: true
-  timeout: 2m
-  retryInterval: 30s
