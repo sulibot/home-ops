@@ -25,10 +25,7 @@ locals {
     { for k, v in local.control_plane_nodes : k => merge(v, {
       machine_type = "controlplane"
       node_suffix  = v.ip_suffix
-      # FRR identity IP (on dummy0) - FRR uses fd and 253
-      loopback_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
-      # Cilium BGP identity IP (on dummy0) - Cilium uses fe and 254
+      # Cilium/bird2 shared loopback (on dummy0) - uses fe and 254
       cilium_bgp_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
@@ -37,10 +34,7 @@ locals {
     { for k, v in local.worker_nodes : k => merge(v, {
       machine_type = "worker"
       node_suffix  = v.ip_suffix
-      # FRR identity IP (on dummy0) - FRR uses fd and 253
-      loopback_ipv6 = format("fd00:%d:fd::%d", var.cluster_id, v.ip_suffix)
-      loopback_ipv4 = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
-      # Cilium BGP identity IP (on dummy0) - Cilium uses fe and 254
+      # Cilium/bird2 shared loopback (on dummy0) - uses fe and 254
       cilium_bgp_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
@@ -368,323 +362,97 @@ EOF
 # Generate per-node FRR config YAML for the extension
 # Split into separate locals blocks to avoid circular dependencies with Talos provider 0.10.0+
 locals {
-  cilium_allowed_prefixes = {
-    ipv4 = [for prefix in var.bgp_cilium_allowed_prefixes.ipv4 : prefix if prefix != ""]
-    ipv6 = [for prefix in var.bgp_cilium_allowed_prefixes.ipv6 : prefix if prefix != ""]
-  }
-  frr_config_yamls = {
-    for node_name, node in local.all_nodes : node_name => yamlencode({
-      bgp = {
-        cilium = {
-          local_asn  = node.frr_asn             # FRR's ASN
-          remote_asn = local.cilium_asn_cluster # Cilium's ASN (eBGP)
-          peering = {
-            # FRR listens on port 179 (default), Cilium connects TO FRR on port 179
-            # Template uses .local as the FRR "neighbor" address (the peer to accept connections from)
-            ipv4 = {
-              local  = node.cilium_bgp_ipv4  # Cilium's source IP (.254) — rendered as "neighbor" in FRR
-              remote = node.loopback_ipv4    # FRR's own IP (.253) — not used by template
-              prefix = 32
-            }
-            ipv6 = {
-              local  = node.cilium_bgp_ipv6  # Cilium's source IP (fe::) — rendered as "neighbor" in FRR
-              remote = node.loopback_ipv6    # FRR's own IP (fd::) — not used by template
-              prefix = 128
-            }
-          }
-          export_loopbacks = false
-          allowed_prefixes = local.cilium_allowed_prefixes
-        }
-        upstream = {
-          local_asn           = node.frr_asn
-          router_id           = "10.${var.cluster_id}.253.${node.node_suffix}"  # FRR uses 253
-          router_id_v6        = "fd00:${var.cluster_id}:fd::${node.node_suffix}"  # FRR uses fd
-          update_source       = node.public_ipv6
-          advertise_loopbacks = var.bgp_advertise_loopbacks
-          loopbacks = {
-            ipv4 = node.loopback_ipv4  # FRR uses 253
-            ipv6 = node.loopback_ipv6  # FRR uses fd
-          }
-          loopback_addresses = {
-            ipv4 = [
-              node.loopback_ipv4,    # FRR uses 253
-              node.cilium_bgp_ipv4,  # Cilium uses 254
-            ]
-            ipv6 = [
-              node.loopback_ipv6,    # FRR uses fd - FIRST
-              node.cilium_bgp_ipv6,  # Cilium uses fe
-            ]
-          }
-          peers = [
-            {
-              address                     = "fd00:${var.cluster_id}::fffe"
-              remote_asn                  = var.bgp_remote_asn
-              description                 = "PVE ULA Anycast Gateway"
-              update_source               = node.public_ipv6
-              address_family              = "ipv6"
-              capability_extended_nexthop = true
-              next_hop_self               = true
-              route_map_in_v4             = "IMPORT-FROM-UPSTREAM-v4"
-              route_map_in_v6             = "IMPORT-FROM-UPSTREAM-v6"
-              route_map_out               = "EXPORT-TO-UPSTREAM"
-            }
-          ]
-        }
+  # Generate per-node bird2 configuration files
+  bird2_config_confs = {
+    for node_name, node in local.all_nodes : node_name => <<-EOT
+      # bird2 BGP daemon configuration
+      # Router ID uses the shared Cilium/bird2 loopback (.254)
+      router id ${node.cilium_bgp_ipv4};
+
+      # Logging
+      log syslog all;
+
+      # Device protocol - learns about network interfaces
+      protocol device {
+        scan time 10;
       }
-      network = {
-        interface_mtu = 1450
-        veth_names = {
-          frr_side    = "veth-frr"
-          cilium_side = "veth-cilium"
-        }
+
+      # Direct protocol - imports directly connected routes
+      protocol direct {
+        interface "dummy0", "lo";
+        ipv4;
+        ipv6;
       }
-      bfd = {
-        profiles = {
-          normal = {
-            detect_multiplier = 3
-            receive_interval  = 300
-            transmit_interval = 300
-          }
-        }
-        cilium_peering = {
-          enabled = false
-          profile = "normal"
-        }
+
+      # Kernel protocol for IPv4 - imports/exports routes from/to kernel
+      protocol kernel {
+        ipv4 {
+          import none;
+          export filter {
+            # Don't export routes learned from Cilium or loopback back to kernel
+            if proto = "cilium" then reject;
+            if proto = "loopback" then reject;
+            accept;
+          };
+        };
+        merge paths on;
       }
-      route_filters = {
-        prefix_lists = {
-          ipv4 = {
-            "CILIUM-LB-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.loadbalancers_ipv4
-                  le     = 32
-                }
-              ]
-            }
-            "CILIUM-POD-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.pod_cidr_ipv4
-                  le     = 32
-                }
-              ]
-            }
-            "DEFAULT-ONLY-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "0.0.0.0/0"
-                }
-              ]
-            }
-            "LOOPBACK-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "10.${var.cluster_id}.254.0/24"
-                  le     = 32
-                }
-              ]
-            }
-            "LOOPBACK-self-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "10.${var.cluster_id}.254.0/24"
-                  le     = 32
-                },
-                {
-                  seq    = 20
-                  action = "permit"
-                  prefix = "10.${var.cluster_id}.253.0/24"
-                  le     = 32
-                },
-                {
-                  seq    = 30
-                  action = "permit"
-                  prefix = "10.${var.cluster_id}.250.0/24"
-                  le     = 32
-                }
-              ]
-            }
-            "CILIUM-ALL-v4" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "0.0.0.0/0"
-                  le     = 32
-                }
-              ]
-            }
-          }
-          ipv6 = {
-            "CILIUM-LB-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.loadbalancers_ipv6
-                  le     = 128
-                }
-              ]
-            }
-            "CILIUM-POD-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = var.pod_cidr_ipv6
-                  le     = 128
-                }
-              ]
-            }
-            "CILIUM-ALL-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "::/0"
-                  le     = 128
-                }
-              ]
-            }
-            "DEFAULT-ONLY-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "::/0"
-                }
-              ]
-            }
-            "LOOPBACK-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "fd00:${var.cluster_id}:fe::/48"
-                  le     = 128
-                }
-              ]
-            }
-            "LOOPBACK-self-v6" = {
-              rules = [
-                {
-                  seq    = 10
-                  action = "permit"
-                  prefix = "fd00:${var.cluster_id}:fe::/112"
-                  le     = 128
-                },
-                {
-                  seq    = 20
-                  action = "permit"
-                  prefix = "fd00:${var.cluster_id}:fd::/112"
-                  le     = 128
-                },
-                {
-                  seq    = 30
-                  action = "permit"
-                  prefix = "fd00:${var.cluster_id}:250::/112"
-                  le     = 128
-                }
-              ]
-            }
-          }
-        }
-        route_maps = {
-          "IMPORT-FROM-UPSTREAM-v4" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                # Trust upstream PVE completely - accept any routes
-                # This allows learning real routes across the network for learning purposes
-              }
-            ]
-          }
-          "IMPORT-FROM-UPSTREAM-v6" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                # Trust upstream PVE completely - accept any routes
-                # This allows learning real routes across the network for learning purposes
-              }
-            ]
-          }
-          "IMPORT-FROM-CILIUM-v4" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                # Trust Cilium completely - no prefix-list filtering
-                # Still set next-hop for proper routing
-                set = {
-                  ip_next_hop = "10.${var.cluster_id}.0.254"
-                }
-              }
-            ]
-          }
-          "IMPORT-FROM-CILIUM-v6" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                # Trust Cilium completely - no prefix-list filtering
-                # Still set next-hop for proper routing
-                set = {
-                  ipv6_next_hop = "fd00:${var.cluster_id}::fffe"
-                }
-              }
-            ]
-          }
-          "EXPORT-TO-UPSTREAM" = {
-            rules = [
-              {
-                seq    = 10
-                action = "permit"
-                # Export everything from loopback interface (lo)
-                match = {
-                  interface = "lo"
-                }
-              },
-              {
-                seq    = 20
-                action = "permit"
-                # Export dummy0 interface for IPv4 routes
-                match = {
-                  interface = "dummy0"
-                }
-              },
-              {
-                seq    = 25
-                action = "permit"
-                # Explicit IPv6 loopback export (FRR + Cilium)
-                # Workaround for FRR not properly exporting secondary IPv6 addresses from dummy0
-                match = {
-                  ipv6_prefix_list = "LOOPBACK-self-v6"
-                }
-              },
-              {
-                seq    = 90
-                action = "permit"
-                # Export anything else we're redistributing
-                # This catches pod CIDRs and any other connected routes
-              }
-            ]
-          }
-        }
+
+      # Kernel protocol for IPv6
+      protocol kernel {
+        ipv6 {
+          import none;
+          export filter {
+            # Don't export routes learned from Cilium or loopback back to kernel
+            if proto = "cilium" then reject;
+            if proto = "loopback" then reject;
+            accept;
+          };
+        };
+        merge paths on;
       }
-    })
+
+      # BGP - Cilium Peering via localhost
+      # bird2 listens on 179 (default), Cilium connects from localhost
+      protocol bgp cilium {
+        description "Cilium BGP Control Plane";
+        passive on;
+        multihop 2;
+        local as ${node.frr_asn};
+        neighbor 127.0.0.1 as ${local.cilium_asn_cluster};
+
+        ipv4 {
+          import all;
+          export none;  # One-way: Cilium → bird2
+        };
+
+        ipv6 {
+          import all;
+          export none;  # One-way: Cilium → bird2
+        };
+      }
+
+      # BGP - Upstream Peering (same as FRR - ULA addresses)
+      protocol bgp upstream {
+        description "PVE ULA Anycast Gateway";
+        local as ${node.frr_asn};
+        source address ${node.public_ipv6};  # Use node's public IPv6 (fd00:101::X)
+        neighbor fd00:${var.cluster_id}::fffe as ${var.bgp_remote_asn};
+
+        ipv4 {
+          import all;
+          export all;
+          next hop self;
+        };
+
+        ipv6 {
+          import all;
+          export all;
+          next hop self;
+          extended next hop on;  # MP-BGP over IPv6 for IPv4 routes
+        };
+      }
+    EOT
   }
 }
 
@@ -699,28 +467,19 @@ locals {
       spec = {
         bgpInstances = [
           {
-            name      = "local-frr"
-            localPort = 1790 # Listen on 1790 to avoid conflict with FRR on 179; actively connects to FRR peerAddress on 179
+            name      = "local-bird2"
+            localPort = 1790 # Listen on 1790 to avoid conflict with bird2 on 179; actively connects to bird2 via localhost
             localASN  = local.cilium_asn_cluster
-            # Use Cilium BGP IP for router ID (10.101.253.x)
+            # Use Cilium BGP IP for router ID
             routerID = node.cilium_bgp_ipv4
             peers = [
               {
-                name         = "frr-local-ipv4"
+                name         = "bird2-local"
                 peerASN      = node.frr_asn
-                peerAddress  = node.loopback_ipv4     # Connect TO FRR at .253 IPv4 (port 179)
-                localAddress = node.cilium_bgp_ipv4   # Connect FROM Cilium IP .254 IPv4
+                peerAddress  = "127.0.0.1"     # Connect TO bird2 via localhost (port 179)
+                localAddress = "127.0.0.1"     # Connect FROM localhost
                 peerConfigRef = {
-                  name = "frr-local-mpbgp"
-                }
-              },
-              {
-                name         = "frr-local-ipv6"
-                peerASN      = node.frr_asn
-                peerAddress  = node.loopback_ipv6     # Connect TO FRR at fd IPv6 (port 179)
-                localAddress = node.cilium_bgp_ipv6   # Connect FROM Cilium IP fe IPv6
-                peerConfigRef = {
-                  name = "frr-local-mpbgp"
+                  name = "frr-local-mpbgp"     # Reuse existing peer config
                 }
               }
             ]
@@ -733,14 +492,12 @@ locals {
 
 # Pre-render extension service configs per node for use in config patches
 # This is required for Talos provider 0.10.0+ which validates config patches early
-# Separate locals block to ensure frr_config_yamls is fully evaluated first
+# Separate locals block to ensure bird2_config_confs is fully evaluated first
 locals {
   extension_service_configs = {
-    for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/extension-service-config.yaml.tpl", {
-      frr_config_yaml = local.frr_config_yamls[node_name]
-      hostname        = node.hostname
-      enable_bfd      = var.bgp_enable_bfd
-      frr_template    = var.frr_template_path != "" ? file(var.frr_template_path) : ""
+    for node_name, node in local.all_nodes : node_name => templatefile("${path.module}/bird2-extension-service-config.yaml.tpl", {
+      bird2_config_conf = local.bird2_config_confs[node_name]
+      hostname          = node.hostname
     })
   }
 }
@@ -755,13 +512,13 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch and FRR ExtensionServiceConfig
+      # Per-node network patch and bird2 ExtensionServiceConfig
       # Using heredoc to create proper multi-document YAML for Talos config_patch
       # Per-Node Configuration Patch (Multi-Document YAML)
       #
       # This patch contains TWO YAML documents separated by '---':
       # 1. Machine config patch (nodeLabels, network, kubelet, kernel)
-      # 2. ExtensionServiceConfig patch (FRR BGP daemon configuration)
+      # 2. ExtensionServiceConfig patch (bird2 BGP daemon configuration)
       #
       # Both documents are per-node and both update safely via patch/ stage.
       #
@@ -834,13 +591,11 @@ ${yamlencode({
                   } : null
                 },
                 {
-                  # Per-node: unique loopback addresses for BGP identity
+                  # Per-node: unique loopback address for Cilium/bird2 BGP identity
                   interface = "dummy0"
                   addresses = [
-                    "${node.cilium_bgp_ipv6}/128",  # Cilium uses fe - FIRST for nodeIP
-                    "${node.loopback_ipv6}/128",    # FRR uses fd
-                    "${node.cilium_bgp_ipv4}/32",   # Cilium uses 254 - FIRST for nodeIP
-                    "${node.loopback_ipv4}/32",     # FRR uses 253
+                    "${node.cilium_bgp_ipv6}/128",  # Cilium/bird2 fe - FIRST for nodeIP
+                    "${node.cilium_bgp_ipv4}/32",   # Cilium/bird2 254
                   ]
                 }
                 ], node.machine_type == "worker" ? [

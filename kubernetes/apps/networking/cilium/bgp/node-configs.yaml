@@ -6,18 +6,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.11"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101011
-      "peerAddress": "10.101.253.11"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::11"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101011
-      "peerAddress": "fd00:101:fd::11"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.11"
@@ -31,18 +25,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.12"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101012
-      "peerAddress": "10.101.253.12"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::12"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101012
-      "peerAddress": "fd00:101:fd::12"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.12"
@@ -56,18 +44,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.13"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101013
-      "peerAddress": "10.101.253.13"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::13"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101013
-      "peerAddress": "fd00:101:fd::13"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.13"
@@ -81,18 +63,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.21"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101021
-      "peerAddress": "10.101.253.21"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::21"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101021
-      "peerAddress": "fd00:101:fd::21"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.21"
@@ -106,18 +82,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.22"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101022
-      "peerAddress": "10.101.253.22"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::22"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101022
-      "peerAddress": "fd00:101:fd::22"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.22"
@@ -131,18 +101,12 @@
   "bgpInstances":
   - "localASN": 4220101000
     "localPort": 1790
-    "name": "local-frr"
+    "name": "local-bird2"
     "peers":
-    - "localAddress": "10.101.254.23"
-      "name": "frr-local-ipv4"
+    - "localAddress": "127.0.0.1"
+      "name": "bird2-local"
       "peerASN": 4210101023
-      "peerAddress": "10.101.253.23"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    - "localAddress": "fd00:101:fe::23"
-      "name": "frr-local-ipv6"
-      "peerASN": 4210101023
-      "peerAddress": "fd00:101:fd::23"
+      "peerAddress": "127.0.0.1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.23"
