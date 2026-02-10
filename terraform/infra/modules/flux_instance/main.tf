@@ -394,13 +394,97 @@ resource "null_resource" "preinstall_external_secrets" {
   }
 }
 
-# Step 6: Resume flux-system and clean up canary (atomic operation)
-resource "null_resource" "resume_and_cleanup" {
+# Step 5.6: Preinstall cert-manager with values from Git
+resource "null_resource" "preinstall_cert_manager" {
   depends_on = [null_resource.preinstall_external_secrets]
 
   # Trigger recreation when preinstall_external_secrets changes
   triggers = {
     preinstall_id = null_resource.preinstall_external_secrets.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if cert-manager needs preinstallation..."
+
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment cert-manager -n cert-manager >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n cert-manager -l owner=helm,name=cert-manager >/dev/null 2>&1; then
+          echo "  Found existing cert-manager - labeling for Helm adoption..."
+
+          for resource in \
+            "deployment/cert-manager" \
+            "deployment/cert-manager-cainjector" \
+            "deployment/cert-manager-webhook" \
+            "serviceaccount/cert-manager" \
+            "serviceaccount/cert-manager-cainjector" \
+            "serviceaccount/cert-manager-webhook" \
+            "service/cert-manager" \
+            "service/cert-manager-webhook"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n cert-manager \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ cert-manager labeled for Helm adoption"
+        else
+          echo "✓ cert-manager already Helm-managed"
+        fi
+      else
+        echo "  Installing cert-manager..."
+
+        # Create namespace
+        kubectl --kubeconfig="$KUBECONFIG" create namespace cert-manager \
+          --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version from HelmRelease (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.chart.spec.version' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml)
+
+        # Extract repo URL from HelmRepository
+        REPO_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/helm-repo/helmrepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
+          > /tmp/cert-manager-values.yaml
+
+        # Add the Helm repository
+        helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
+        helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
+
+        # Install using same config as Flux will use
+        # Note: CRDs are included via crds.enabled=true in values
+        helm --kubeconfig="$KUBECONFIG" upgrade --install cert-manager \
+          cert-manager-temp/cert-manager \
+          --version $CHART_VERSION \
+          --namespace cert-manager \
+          --values /tmp/cert-manager-values.yaml \
+          --wait --timeout 5m
+
+        # Clean up temp repo
+        helm --kubeconfig="$KUBECONFIG" repo remove cert-manager-temp || true
+        rm -f /tmp/cert-manager-values.yaml
+
+        echo "✓ cert-manager installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 6: Resume flux-system and clean up canary (atomic operation)
+resource "null_resource" "resume_and_cleanup" {
+  depends_on = [null_resource.preinstall_cert_manager]
+
+  # Trigger recreation when preinstall_cert_manager changes
+  triggers = {
+    preinstall_id = null_resource.preinstall_cert_manager.id
   }
 
   provisioner "local-exec" {
