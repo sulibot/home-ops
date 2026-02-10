@@ -12,6 +12,8 @@ spec:
   timeout: 10m
   maxHistory: 3
   install:
+    # Replace existing resources installed by Terraform bootstrap
+    replace: true
     remediation:
       retries: 5
     timeout: 10m

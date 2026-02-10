@@ -320,13 +320,87 @@ resource "null_resource" "adopt_cilium" {
   }
 }
 
-# Step 6: Resume flux-system and clean up canary (atomic operation)
-resource "null_resource" "resume_and_cleanup" {
+# Step 5.5: Preinstall external-secrets operator with values from Git
+resource "null_resource" "preinstall_external_secrets" {
   depends_on = [null_resource.adopt_cilium]
 
   # Trigger recreation when adopt_cilium changes
   triggers = {
     adopt_id = null_resource.adopt_cilium.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if external-secrets operator needs preinstallation..."
+
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment external-secrets -n external-secrets >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n external-secrets -l owner=helm,name=external-secrets >/dev/null 2>&1; then
+          echo "  Found existing external-secrets - labeling for Helm adoption..."
+
+          for resource in \
+            "deployment/external-secrets" \
+            "deployment/external-secrets-cert-controller" \
+            "deployment/external-secrets-webhook" \
+            "serviceaccount/external-secrets" \
+            "serviceaccount/external-secrets-cert-controller" \
+            "serviceaccount/external-secrets-webhook" \
+            "service/external-secrets-webhook"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n external-secrets \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ external-secrets labeled for Helm adoption"
+        else
+          echo "✓ external-secrets already Helm-managed"
+        fi
+      else
+        echo "  Installing external-secrets operator..."
+
+        # Create namespace
+        kubectl --kubeconfig="$KUBECONFIG" create namespace external-secrets \
+          --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version and URL from Git repo (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.ref.tag' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
+        CHART_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
+          > /tmp/external-secrets-values.yaml
+
+        # Install using same config as Flux will use
+        helm --kubeconfig="$KUBECONFIG" upgrade --install external-secrets \
+          $CHART_URL \
+          --version $CHART_VERSION \
+          --namespace external-secrets \
+          --values /tmp/external-secrets-values.yaml \
+          --wait --timeout 5m
+
+        rm -f /tmp/external-secrets-values.yaml
+
+        echo "✓ external-secrets installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 6: Resume flux-system and clean up canary (atomic operation)
+resource "null_resource" "resume_and_cleanup" {
+  depends_on = [null_resource.preinstall_external_secrets]
+
+  # Trigger recreation when preinstall_external_secrets changes
+  triggers = {
+    preinstall_id = null_resource.preinstall_external_secrets.id
   }
 
   provisioner "local-exec" {
