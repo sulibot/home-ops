@@ -653,7 +653,6 @@ locals {
                 seq    = 10
                 action = "permit"
                 # Export everything from loopback interface (lo)
-                # This includes: FRR loopbacks (.254.x), Cilium loopbacks (.253.x), and LB IPs (.250.x)
                 match = {
                   interface = "lo"
                 }
@@ -661,9 +660,18 @@ locals {
               {
                 seq    = 20
                 action = "permit"
-                # Export dummy0 interface (if used)
+                # Export dummy0 interface for IPv4 routes
                 match = {
                   interface = "dummy0"
+                }
+              },
+              {
+                seq    = 25
+                action = "permit"
+                # Explicit IPv6 loopback export (FRR + Cilium)
+                # Workaround for FRR not properly exporting secondary IPv6 addresses from dummy0
+                match = {
+                  ipv6_prefix_list = "LOOPBACK-self-v6"
                 }
               },
               {

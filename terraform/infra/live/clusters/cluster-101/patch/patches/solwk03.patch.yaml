@@ -39,7 +39,6 @@ machine:
       - 10.255.0.53
   nodeLabels:
     bgp.frr.asn: "4210101023"
-    patch-test.home-ops.io/timestamp: "2026-02-09"
     topology.kubernetes.io/region: home-lab
     topology.kubernetes.io/zone: cluster-101
 ---
@@ -101,8 +100,8 @@ configFiles:
             "description": "PVE ULA Anycast Gateway"
             "next_hop_self": true
             "remote_asn": 4200001000
-            "route_map_in_v4": "IMPORT-DEFAULT-v4"
-            "route_map_in_v6": "IMPORT-DEFAULT-v6"
+            "route_map_in_v4": "IMPORT-FROM-UPSTREAM-v4"
+            "route_map_in_v6": "IMPORT-FROM-UPSTREAM-v6"
             "route_map_out": "EXPORT-TO-UPSTREAM"
             "update_source": "fd00:101::23"
           "router_id": "10.101.254.23"
@@ -208,75 +207,38 @@ configFiles:
             "rules":
             - "action": "permit"
               "match":
-                "prefix_list": "CILIUM-LB-v4"
-              "seq": 10
-            - "action": "permit"
-              "match":
-                "prefix_list": "CILIUM-POD-v4"
-              "seq": 11
-            - "action": "permit"
-              "match":
-                "prefix_list": "LOOPBACK-self-v4"
-              "seq": 12
-            - "action": "permit"
-              "match":
-                "address_family": "ipv6"
-                "prefix_list": "CILIUM-LB-v6"
-              "seq": 15
-            - "action": "permit"
-              "match":
-                "address_family": "ipv6"
-                "prefix_list": "CILIUM-POD-v6"
-              "seq": 16
-            - "action": "permit"
-              "match":
-                "address_family": "ipv6"
-                "prefix_list": "LOOPBACK-self-v6"
-              "seq": 17
-            - "action": "permit"
-              "match":
                 "interface": "lo"
-              "seq": 20
+              "seq": 10
             - "action": "permit"
               "match":
                 "interface": "dummy0"
+              "seq": 20
+            - "action": "permit"
+              "match":
+                "ipv6_prefix_list": "LOOPBACK-self-v6"
               "seq": 25
-          "IMPORT-DEFAULT-v4":
-            "rules":
             - "action": "permit"
-              "match":
-                "address_family": "ipv4"
-                "prefix_list": "DEFAULT-ONLY-v4"
-              "seq": 10
-            - "action": "deny"
-              "seq": 90
-          "IMPORT-DEFAULT-v6":
-            "rules":
-            - "action": "permit"
-              "match":
-                "address_family": "ipv6"
-                "prefix_list": "DEFAULT-ONLY-v6"
-              "seq": 10
-            - "action": "deny"
               "seq": 90
           "IMPORT-FROM-CILIUM-v4":
             "rules":
             - "action": "permit"
-              "match":
-                "address_family": "ipv4"
-                "prefix_list": "CILIUM-ALL-v4"
               "seq": 10
               "set":
                 "ip_next_hop": "10.101.0.254"
           "IMPORT-FROM-CILIUM-v6":
             "rules":
             - "action": "permit"
-              "match":
-                "address_family": "ipv6"
-                "prefix_list": "CILIUM-ALL-v6"
               "seq": 10
               "set":
                 "ipv6_next_hop": "fd00:101::fffe"
+          "IMPORT-FROM-UPSTREAM-v4":
+            "rules":
+            - "action": "permit"
+              "seq": 10
+          "IMPORT-FROM-UPSTREAM-v6":
+            "rules":
+            - "action": "permit"
+              "seq": 10
     mountPath: /usr/local/etc/frr/config.yaml
   - content: |
       zebra=true
