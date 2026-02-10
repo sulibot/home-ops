@@ -154,9 +154,9 @@ resource "null_resource" "wait_flux_controllers" {
       set -e
       echo "Waiting for flux-operator to create Flux controllers..."
 
-      # First, wait for flux-operator to create the deployments (up to 5 minutes)
-      # This accounts for: pod scheduling delays, image pulls, and operator startup
-      TIMEOUT=300
+      # First, wait for flux-operator to create the deployments (up to 7 minutes)
+      # This accounts for: Cilium readiness wait, pod scheduling delays, image pulls, and operator startup
+      TIMEOUT=420
       ELAPSED=0
       while [ $ELAPSED -lt $TIMEOUT ]; do
         if kubectl --kubeconfig="$KUBECONFIG" get deployment helm-controller -n flux-system >/dev/null 2>&1; then
@@ -181,7 +181,7 @@ resource "null_resource" "wait_flux_controllers" {
         kubectl --kubeconfig="$KUBECONFIG" wait deployment $controller \
           -n flux-system \
           --for=condition=Available \
-          --timeout=300s
+          --timeout=420s
       done
 
       echo "✓ All Flux controllers are ready"

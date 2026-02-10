@@ -20,3 +20,21 @@ variable "region" {
   type        = string
   default     = ""
 }
+
+variable "wait_for_cilium" {
+  description = "Wait for Cilium CNI to be ready before deploying flux-operator (prevents crashloop)"
+  type        = bool
+  default     = true
+}
+
+variable "cilium_wait_timeout" {
+  description = "Maximum time to wait for Cilium to be ready (seconds)"
+  type        = number
+  default     = 300
+}
+
+variable "startup_probe_failure_threshold" {
+  description = "Startup probe failure threshold for flux-operator (prevents restart loops)"
+  type        = number
+  default     = 60
+}
