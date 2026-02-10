@@ -34,5 +34,7 @@ spec:
     webhook:
       replicaCount: 2
       failurePolicy: Ignore
+      validatingWebhookConfiguration:
+        failurePolicy: Ignore
       serviceMonitor:
         enabled: true
