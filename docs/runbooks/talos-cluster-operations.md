@@ -12,11 +12,13 @@
 
 ## Configuration Stages
 
-### Overview: Four-Stage Workflow
+### Overview: Six-Stage Workflow
 
 ```
-secrets → compute → config → apply/patch/bootstrap
+secrets → compute → config → apply/patch → bootstrap → flux-operator → flux-instance
 ```
+
+**Note**: For initial cluster setup, the full workflow includes Flux deployment after Kubernetes bootstrap.
 
 ### Stage 1: Secrets (One-time)
 **Directory**: `terraform/infra/live/clusters/cluster-101/secrets/`
@@ -146,6 +148,131 @@ Both update safely via this stage.
 
 ---
 
+### Stage 4: Bootstrap (One-Time Kubernetes Bootstrap)
+**Directory**: `terraform/infra/live/clusters/cluster-101/bootstrap/`
+
+**Purpose**: Bootstrap Kubernetes cluster (etcd + control plane)
+
+**When to run**:
+- ⚠️ **One-time only** - Initial cluster creation
+- ⚠️ **Never run on existing cluster** - Will try to re-bootstrap etcd
+
+**Command**:
+```bash
+cd terraform/infra/live/clusters/cluster-101/bootstrap
+terragrunt apply
+```
+
+**What it does**:
+- Bootstraps etcd on first control plane node
+- Waits for etcd to be healthy
+- Generates kubeconfig
+- Merges kubeconfig to `~/.kube/config`
+
+**Outputs**:
+- `kubeconfig` - Kubernetes admin kubeconfig
+- `cluster_ready` - Boolean indicating cluster is bootstrapped
+
+---
+
+### Stage 5: Flux Operator (GitOps Foundation)
+**Directory**: `terraform/infra/live/clusters/cluster-101/flux-operator/`
+
+**Purpose**: Deploy Flux Operator to manage Flux lifecycle
+
+**When to run**:
+- After initial bootstrap
+- When upgrading Flux Operator version
+
+**Command**:
+```bash
+cd terraform/infra/live/clusters/cluster-101/flux-operator
+terragrunt apply
+```
+
+**What it does**:
+- Installs Flux Operator via Helm
+- Creates flux-system namespace
+- Prepares cluster for Flux instance deployment
+
+**Depends on**: `bootstrap/` stage completion
+
+---
+
+### Stage 6: Flux Instance (GitOps Deployment)
+**Directory**: `terraform/infra/live/clusters/cluster-101/flux-instance/`
+
+**Purpose**: Deploy Flux instance and sync GitOps repository
+
+**When to run**:
+- After flux-operator deployment
+- When updating Flux configuration (git repo, branch, path)
+
+**Command**:
+```bash
+cd terraform/infra/live/clusters/cluster-101/flux-instance
+terragrunt apply
+```
+
+**What it does**:
+- Creates Flux instance custom resource
+- Configures git repository sync (GitHub)
+- Sets up SOPS decryption with age key
+- Deploys all Kubernetes applications via GitOps
+- Resumes flux-system (unfreezes after testing)
+
+**Outputs**:
+- `flux_ready` - Boolean indicating Flux is operational
+- `sync_path` - Git repository path being synced
+
+**Post-deployment**: All apps (cert-manager, Ceph, etc.) deploy automatically via Flux
+
+---
+
+### Initial Cluster Bootstrap Workflow
+
+For a new cluster from scratch:
+
+```bash
+# 1. Generate secrets (one-time)
+cd terraform/infra/live/clusters/cluster-101/secrets
+terragrunt apply
+
+# 2. Create VMs
+cd ../compute
+terragrunt apply
+
+# 3. Generate machine configs
+cd ../config
+terragrunt apply
+
+# 4. Apply configs to nodes
+cd ../apply
+terragrunt apply
+
+# 5. Bootstrap Kubernetes
+cd ../bootstrap
+terragrunt apply
+
+# 6. Deploy Flux Operator
+cd ../flux-operator
+terragrunt apply
+
+# 7. Deploy Flux Instance (starts GitOps)
+cd ../flux-instance
+terragrunt apply
+
+# 8. Verify Flux sync
+kubectl get kustomizations -n flux-system
+kubectl get pods -A
+
+# All applications now deploy automatically via Flux!
+```
+
+**Automation Note**: Steps 5-7 (bootstrap → flux-operator → flux-instance) should ideally be automated via a script or `terragrunt run-all`. Currently requires manual execution in sequence.
+
+---
+
 ## Common Operations
 
 ### 1. Update Node Labels
@@ -174,31 +301,32 @@ kubectl get nodes --show-labels | grep gpu
 
 ---
 
-### 2. Change FRR BGP Configuration
+### 2. Change Bird2 BGP Configuration
 
 **Scenario**: Update BGP peers or route filters
 
 **Steps**:
 ```bash
-# 1. Edit FRR config in talos_config module
+# 1. Edit Bird2 config in talos_config module
 vim terraform/infra/modules/talos_config/main.tf
-# Modify frr_config_yamls local (lines 375-780)
+# Modify bird2_config_confs local (lines 366-456)
 
 # 2. Regenerate configs
 cd terraform/infra/live/clusters/cluster-101/config
 terragrunt apply
 
-# 3. Apply patch (FRR config is in ExtensionServiceConfig patch)
+# 3. Apply patch (Bird2 config is in ExtensionServiceConfig patch)
 cd ../patch
 terragrunt apply
 
 # 4. Verify BGP sessions
-kubectl exec -n kube-system ds/cilium -- cilium bgp peers
+kubectl get ciliumbgpnodeconfigs -o jsonpath='{.items[*].status.bgpInstances[*].peers[*].peeringState}'
+# Should show: established established established...
 ```
 
 **Stage used**: `patch/` ✅
 
-**Note**: FRR configuration is part of the ExtensionServiceConfig document in config_patch, so it updates via patch stage.
+**Note**: Bird2 configuration is part of the ExtensionServiceConfig document in config_patch, so it updates via patch stage.
 
 ---
 
@@ -507,89 +635,99 @@ talosctl get members
 
 **Symptoms**:
 ```bash
-kubectl exec -n kube-system ds/cilium -- cilium bgp peers
-# Shows "not established" or missing peers
+kubectl get ciliumbgpnodeconfigs -o yaml
+# peeringState shows "idle" or "active" instead of "established"
 ```
 
 **Debug Steps**:
 ```bash
-# 1. Check FRR is running
+# 1. Check Bird2 is running
 talosctl -n solwk01 services
-# Look for ext-frr service
+# Look for ext-bird2 service
 
-# 2. Check FRR logs
-talosctl -n solwk01 logs ext-frr
+# 2. Check Bird2 logs
+talosctl -n solwk01 logs ext-bird2
 
-# 3. Check FRR config was applied
-talosctl -n solwk01 read /usr/local/etc/frr/config.yaml
+# 3. Check Bird2 config was applied
+talosctl -n solwk01 read /usr/local/etc/bird.conf
 
-# 4. Check BGP neighbors in FRR
-talosctl -n solwk01 shell
-vtysh -c 'show bgp summary'
-vtysh -c 'show bgp neighbors'
-
-# 5. Check Cilium BGP config
-kubectl get ciliumbgppeeringpolicies -o yaml
+# 4. Check Cilium BGP config and peering status
 kubectl get ciliumbgpnodeconfigs -o yaml
+# Check status.bgpInstances[].peers[].peeringState
+
+# 5. Verify localhost peering
+# Bird2 listens on 127.0.0.1:179
+# Cilium connects to 127.0.0.1:1790 (Bird2 port)
 ```
 
 **Common Causes**:
-- FRR config not updated (use `patch/` stage)
-- Wrong ASN in FRR config
-- Firewall blocking port 179
-- Cilium not configured for BGP peering
+- Bird2 config not updated (use `patch/` stage)
+- Wrong ASN in Bird2 config
+- Cilium BGP node config mismatch
+- Bird2 service not started
 
 **Solution**:
 ```bash
-# Update FRR config via patch
+# Update Bird2 config via patch
 cd terraform/infra/live/clusters/cluster-101/config
 terragrunt apply
 cd ../patch
 terragrunt apply
 
-# Verify FRR restarted
-talosctl -n solwk01 services ext-frr
+# Verify Bird2 restarted
+talosctl -n solwk01 services ext-bird2
+
+# Check BGP session status
+kubectl get ciliumbgpnodeconfig solwk01 -o jsonpath='{.status.bgpInstances[0].peers[0].peeringState}'
+# Should show: established
 ```
 
 ---
 
-### Problem 3: FRR Extension Not Running
+### Problem 3: Bird2 Extension Not Running
 
 **Symptoms**:
 ```bash
 talosctl -n solwk01 services
-# ext-frr shows "stopped" or missing
+# ext-bird2 shows "stopped" or missing
 ```
 
 **Debug Steps**:
 ```bash
 # 1. Check ExtensionServiceConfig
-talosctl -n solwk01 get machineconfig -o yaml | grep -A 50 ExtensionServiceConfig
+talosctl -n solwk01 get machineconfig -o yaml | grep -A 20 "kind: ExtensionServiceConfig"
 
-# 2. Check FRR files exist
-talosctl -n solwk01 read /usr/local/etc/frr/config.yaml
-talosctl -n solwk01 read /usr/local/etc/frr/daemons
+# 2. Check Bird2 config file exists
+talosctl -n solwk01 read /usr/local/etc/bird.conf
 
 # 3. Check extension installed
 talosctl -n solwk01 get extensions
-# Look for frr extension
+# Look for bird2 extension
 
 # 4. Check logs
-talosctl -n solwk01 logs ext-frr
+talosctl -n solwk01 logs ext-bird2
 ```
 
 **Solution**:
 ```bash
-# Ensure FRR extension is in system_extensions
-vim terraform/infra/modules/talos_config/variables.tf
-# Check system_extensions includes FRR
+# Ensure Bird2 extension is in install_custom_extensions
+vim terraform/infra/live/common/install-schematic.hcl
+# Check install_custom_extensions includes bird2
 
-# Regenerate and re-apply
-cd terraform/infra/live/clusters/cluster-101/config
+# Rebuild artifacts and recreate VMs (extension in boot ISO)
+cd terraform/infra/live/artifacts
+terragrunt run-all apply
+
+# Recreate VMs with new ISO
+cd ../clusters/cluster-101/compute
 terragrunt apply
-cd ../apply  # Need apply to update base extensions
+
+# Bootstrap with new extension
+cd ../bootstrap
 terragrunt apply
 ```
+
+**Note**: Extensions are baked into the boot ISO, so changing extensions requires VM recreation.
 
 ---
 
@@ -809,11 +947,12 @@ for node in solcp{01..03} solwk{01..03}; do
 done
 
 # ✓ BGP sessions established
-kubectl exec -n kube-system ds/cilium -- cilium bgp peers
+kubectl get ciliumbgpnodeconfigs -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.status.bgpInstances[0].peers[0].peeringState}{"\n"}{end}'
+# Should show "established" for all nodes
 
-# ✓ FRR running
+# ✓ Bird2 running
 for node in solcp{01..03} solwk{01..03}; do
-  talosctl -n $node services ext-frr
+  talosctl -n $node services ext-bird2
 done
 
 # ✓ Node labels updated
@@ -845,13 +984,14 @@ talosctl -n solcp01,solcp02,solcp03 service etcd status
 kubectl get pods -n kube-system | grep cilium
 kubectl exec -n kube-system ds/cilium -- cilium status
 
-# ✓ BGP peering established
-kubectl exec -n kube-system ds/cilium -- cilium bgp peers
+# ✓ BGP peering established (Cilium <-> Bird2 localhost peering)
+kubectl get ciliumbgpnodeconfigs -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.status.bgpInstances[0].peers[0].peeringState}{"\n"}{end}'
+# All should show "established"
 
-# ✓ FRR running on all nodes
+# ✓ Bird2 running on all nodes
 for node in solcp{01..03} solwk{01..03}; do
   echo "=== $node ==="
-  talosctl -n $node services ext-frr
+  talosctl -n $node services ext-bird2
 done
 
 # ✓ Workloads can schedule
@@ -930,13 +1070,15 @@ talosctl health
 # Get node config
 talosctl get machineconfig -o yaml
 
-# Check BGP sessions
-kubectl exec -n kube-system ds/cilium -- cilium bgp peers
+# Check BGP sessions (Cilium <-> Bird2 via localhost)
+kubectl get ciliumbgpnodeconfigs -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.status.bgpInstances[0].peers[0].peeringState}{"\n"}{end}'
 
-# Check FRR status
-talosctl -n <node> services ext-frr
-talosctl -n <node> shell
-vtysh -c 'show bgp summary'
+# Check Bird2 status
+talosctl -n <node> services ext-bird2
+talosctl -n <node> logs ext-bird2
+
+# Check Bird2 config
+talosctl -n <node> read /usr/local/etc/bird.conf
 ```
 
 ---
@@ -954,12 +1096,32 @@ The `config_patch` output contains **TWO YAML documents** separated by `---`:
    - kernel (GPU modules if enabled)
 
 2. **ExtensionServiceConfig Patch**:
-   - FRR BGP daemon configuration
+   - Bird2 BGP daemon configuration (`/usr/local/etc/bird.conf`)
    - Per-node BGP peers, ASN, route filters
-   - Daemons config (zebra, bgpd, staticd, bfdd)
-   - vtysh config with hostname
+   - Router ID configuration
+   - BGP protocols: `cilium` (passive localhost peer) and `upstream` (external peer)
 
 Both documents are per-node and both update safely via `patch/` stage.
+
+### Bird2 BGP Architecture
+
+**Localhost Peering Model**:
+- Bird2 listens on `0.0.0.0:179` (standard BGP port)
+- Cilium connects TO Bird2 via `127.0.0.1:1790`
+- Single loopback architecture: `fe/254` addresses only
+- Per-node ASNs for Bird2 (e.g., `4210101021`)
+- Cluster-wide Cilium ASN (`4220101000`)
+
+**BGP Sessions**:
+1. **Cilium ↔ Bird2** (localhost):
+   - Cilium as active peer on port 1790
+   - Bird2 as passive peer
+   - Exchange LoadBalancer IP routes
+
+2. **Bird2 ↔ Upstream** (external):
+   - Bird2 peers with network gateway
+   - Advertises cluster routes upstream
+   - Receives default routes
 
 ### Config Organization
 
@@ -987,4 +1149,6 @@ Both documents are per-node and both update safely via `patch/` stage.
 
 **Last Updated**: 2026-02-09
 **Cluster**: cluster-101
-**Talos Version**: v1.9+ (adjust for your version)
+**Talos Version**: v1.12.1
+**BGP Daemon**: Bird2 v2.17.1 (replaced FRR)
+**Flux**: Deployed via flux-operator + flux-instance
