@@ -61,6 +61,8 @@ spec:
       app:
         forceRename: "{{ .Release.Name }}"
         primary: true
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies: [IPv6, IPv4]
         ports:
           http:
             port: *port
