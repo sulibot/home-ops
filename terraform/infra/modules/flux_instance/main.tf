@@ -137,12 +137,38 @@ resource "null_resource" "preinstall_onepassword" {
   }
 }
 
-# Preinstall cert-manager (certificate management for ingress/webhooks)
-resource "null_resource" "preinstall_cert_manager" {
+# Preinstall Gateway API CRDs (required by cert-manager)
+resource "null_resource" "preinstall_gateway_api_crds" {
   depends_on = [null_resource.preinstall_onepassword]
 
   triggers = {
     onepassword_id = null_resource.preinstall_onepassword.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing Gateway API CRDs..."
+
+      # Apply Gateway API CRDs from Git repo
+      kubectl --kubeconfig="$KUBECONFIG" apply -f \
+        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
+
+      echo "✓ Gateway API CRDs installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall cert-manager (certificate management for ingress/webhooks)
+resource "null_resource" "preinstall_cert_manager" {
+  depends_on = [null_resource.preinstall_gateway_api_crds]
+
+  triggers = {
+    gateway_api_id = null_resource.preinstall_gateway_api_crds.id
   }
 
   provisioner "local-exec" {
@@ -166,10 +192,6 @@ resource "null_resource" "preinstall_cert_manager" {
       yq eval '.spec.values' \
         ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
         > /tmp/cert-manager-values.yaml
-
-      # Disable Gateway API during bootstrap (CRDs not installed yet)
-      # Flux will re-enable it when it adopts cert-manager
-      yq eval -i '.config.enableGatewayAPI = false' /tmp/cert-manager-values.yaml
 
       # Add Helm repository
       helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
