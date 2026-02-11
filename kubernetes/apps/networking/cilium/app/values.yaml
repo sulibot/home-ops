@@ -52,8 +52,8 @@ endpointRoutes:
   enabled: false
 
 # Native routing CIDRs - must match cluster-pool IPAM configuration above
-ipv4NativeRoutingCIDR: 10.101.224.0/20
-ipv6NativeRoutingCIDR: 2600:1700:ab1a:500d::/64  # GUA - shared /64 across all nodes and pods
+ipv4NativeRoutingCIDR: 0.0.0.0/0
+ipv6NativeRoutingCIDR: "::/0"
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
