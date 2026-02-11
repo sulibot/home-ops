@@ -65,10 +65,11 @@ resource "null_resource" "preinstall_spegel" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
 
-      # Extract values from HelmRelease
+      # Extract values from HelmRelease and disable ServiceMonitor (CRD not yet installed)
       yq eval '.spec.values' \
         ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
         > /tmp/spegel-values.yaml
+      yq eval -i '.serviceMonitor.enabled = false' /tmp/spegel-values.yaml
 
       # Install chart
       helm --kubeconfig="$KUBECONFIG" upgrade --install spegel \
@@ -280,10 +281,11 @@ resource "null_resource" "preinstall_snapshot_controller" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
 
-      # Extract values from HelmRelease
+      # Extract values from HelmRelease and disable ServiceMonitor (CRD not yet installed)
       yq eval '.spec.values' \
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/helmrelease.yaml \
         > /tmp/snapshot-controller-values.yaml
+      yq eval -i '.controller.serviceMonitor.create = false' /tmp/snapshot-controller-values.yaml
 
       # Install chart
       helm --kubeconfig="$KUBECONFIG" upgrade --install snapshot-controller \
