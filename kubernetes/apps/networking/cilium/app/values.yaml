@@ -12,11 +12,12 @@ k8sServicePort: 7445
 # Replace kube-proxy with Cilium
 kubeProxyReplacement: true
 
-# Socket-based load balancing - restrict to host namespace only
-# Required for Istio Ambient mesh compatibility
-# This prevents interference with Istio's traffic redirection
+# Socket-based load balancing - ENABLED for all pods
+# CRITICAL: Must be enabled for ClusterIP to work with hostLegacyRouting
+# Socket LB intercepts connect() syscalls before packets are created
 socketLB:
-  hostNamespaceOnly: false
+  enabled: true              # Enable socket-level load balancing
+  hostNamespaceOnly: false   # Apply to all namespaces, not just host
 
 # Enable dual-stack with IPv6 first
 ipv4:
