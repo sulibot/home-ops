@@ -45,12 +45,55 @@ resource "null_resource" "patch_kubernetes_service" {
   }
 }
 
-# Preinstall external-secrets operator (required for 1Password and other secret management)
-resource "null_resource" "preinstall_external_secrets" {
+# Preinstall spegel (P2P container image distribution) - FIRST APP
+# Installed early to enable faster image pulls for subsequent apps
+resource "null_resource" "preinstall_spegel" {
   depends_on = [null_resource.patch_kubernetes_service]
 
   triggers = {
     patch_id = null_resource.patch_kubernetes_service.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing spegel..."
+
+      # Extract chart version and URL from Git repo
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
+
+      # Extract values from HelmRelease
+      yq eval '.spec.values' \
+        ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
+        > /tmp/spegel-values.yaml
+
+      # Install chart
+      helm --kubeconfig="$KUBECONFIG" upgrade --install spegel \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace kube-system \
+        --values /tmp/spegel-values.yaml \
+        --wait --timeout 5m
+
+      rm -f /tmp/spegel-values.yaml
+      echo "✓ spegel installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall external-secrets operator (required for 1Password and other secret management)
+resource "null_resource" "preinstall_external_secrets" {
+  depends_on = [null_resource.preinstall_spegel]
+
+  triggers = {
+    spegel_id = null_resource.preinstall_spegel.id
   }
 
   provisioner "local-exec" {
@@ -218,54 +261,12 @@ resource "null_resource" "preinstall_cert_manager" {
   }
 }
 
-# Preinstall spegel (P2P container image distribution)
-resource "null_resource" "preinstall_spegel" {
+# Preinstall snapshot-controller (CSI volume snapshots)
+resource "null_resource" "preinstall_snapshot_controller" {
   depends_on = [null_resource.preinstall_cert_manager]
 
   triggers = {
     cert_manager_id = null_resource.preinstall_cert_manager.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing spegel..."
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
-        > /tmp/spegel-values.yaml
-
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install spegel \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --values /tmp/spegel-values.yaml \
-        --wait --timeout 5m
-
-      rm -f /tmp/spegel-values.yaml
-      echo "✓ spegel installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall snapshot-controller (CSI volume snapshots)
-resource "null_resource" "preinstall_snapshot_controller" {
-  depends_on = [null_resource.preinstall_spegel]
-
-  triggers = {
-    spegel_id = null_resource.preinstall_spegel.id
   }
 
   provisioner "local-exec" {
@@ -294,6 +295,52 @@ resource "null_resource" "preinstall_snapshot_controller" {
 
       rm -f /tmp/snapshot-controller-values.yaml
       echo "✓ snapshot-controller installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall volsync (volume backup/restore for persistent storage)
+resource "null_resource" "preinstall_volsync" {
+  depends_on = [null_resource.preinstall_snapshot_controller]
+
+  triggers = {
+    snapshot_controller_id = null_resource.preinstall_snapshot_controller.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing volsync..."
+
+      # Create namespace
+      kubectl --kubeconfig="$KUBECONFIG" create namespace volsync-system \
+        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Extract chart version and URL from Git repo
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/data/volsync/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/data/volsync/app/ocirepository.yaml)
+
+      # Extract values from HelmRelease
+      yq eval '.spec.values' \
+        ${var.repo_root}/kubernetes/apps/data/volsync/app/helmrelease.yaml \
+        > /tmp/volsync-values.yaml
+
+      # Install chart (manageCRDs: true in values)
+      helm --kubeconfig="$KUBECONFIG" upgrade --install volsync \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace volsync-system \
+        --values /tmp/volsync-values.yaml \
+        --wait --timeout 10m
+
+      rm -f /tmp/volsync-values.yaml
+      echo "✓ volsync installed"
     EOT
 
     environment = {
@@ -404,7 +451,7 @@ resource "kubernetes_manifest" "flux_instance" {
     }
   }
 
-  depends_on = [null_resource.preinstall_snapshot_controller]
+  depends_on = [null_resource.preinstall_volsync]
 }
 
 # Wait for Flux controllers to be ready
