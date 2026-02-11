@@ -93,12 +93,13 @@ resource "null_resource" "preinstall_prometheus_crds" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/observability-stack/kube-prometheus-stack/app/ocirepository.yaml)
 
-      # Extract and apply only CRDs from the chart
+      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
       helm template kube-prometheus-stack-crds \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace observability \
         --include-crds \
+        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
 
       echo "✓ kube-prometheus-stack CRDs installed (ServiceMonitor, PodMonitor, etc.)"
@@ -129,12 +130,13 @@ resource "null_resource" "preinstall_keda_crds" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/observability-stack/keda/app/ocirepository.yaml)
 
-      # Extract and apply only CRDs from the chart
+      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
       helm template keda-crds \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace keda \
         --include-crds \
+        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
 
       echo "✓ KEDA CRDs installed"
@@ -165,12 +167,13 @@ resource "null_resource" "preinstall_grafana_crds" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/observability-stack/grafana/app/ocirepository.yaml)
 
-      # Extract and apply only CRDs from the chart
+      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
       helm template grafana-operator-crds \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace grafana \
         --include-crds \
+        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
 
       echo "✓ Grafana Operator CRDs installed"
@@ -201,12 +204,13 @@ resource "null_resource" "preinstall_snapshot_crds" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
 
-      # Extract and apply only CRDs from the chart
+      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
       helm template snapshot-controller-crds \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace kube-system \
         --include-crds \
+        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
 
       echo "✓ Snapshot Controller CRDs installed (VolumeSnapshot, VolumeSnapshotClass, etc.)"
