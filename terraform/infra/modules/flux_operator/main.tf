@@ -23,9 +23,19 @@ resource "null_resource" "wait_cilium_ready" {
       echo "  ✓ Cilium DaemonSet exists"
 
       # Wait for Cilium pods to be scheduled (kubectl wait fails with "no matching resources" if zero pods exist)
+      # Pods may not be scheduled if nodes haven't registered yet or have taints Cilium can't tolerate
       echo "  Waiting for Cilium pods to be scheduled..."
-      timeout 120 bash -c '
+      timeout 300 bash -c '
+        DIAG_DONE=0
+        COUNT=0
         until kubectl --kubeconfig="$KUBECONFIG" get pods -l k8s-app=cilium -n kube-system --no-headers 2>/dev/null | grep -q .; do
+          COUNT=$((COUNT + 1))
+          if [ "$COUNT" -eq 12 ] && [ "$DIAG_DONE" -eq 0 ]; then
+            echo "    [diag] No Cilium pods after 60s - node/DS state:"
+            kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide 2>/dev/null || echo "      (kubectl get nodes failed)"
+            kubectl --kubeconfig="$KUBECONFIG" get ds cilium -n kube-system -o wide 2>/dev/null || echo "      (kubectl get ds failed)"
+            DIAG_DONE=1
+          fi
           echo "    ⏳ Waiting for Cilium pods to be scheduled..."
           sleep 5
         done
