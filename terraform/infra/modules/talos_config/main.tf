@@ -263,6 +263,13 @@ data "talos_machine_configuration" "controlplane" {
             "fd00:${var.cluster_id}:fe::/64",
             "fd00:${var.cluster_id}::/64"
           ] # Force etcd to use loopback IPs
+          # Explicitly define initial cluster members so all control planes know about each other
+          # This prevents learner promotion timing issues where only 1/3 nodes join
+          initialClusterState = "new"
+          initialCluster = join(",", [
+            for name, node in local.control_plane_nodes :
+            format("%s=https://[%s]:2380", node.hostname, node.public_ipv6)
+          ])
         }
         # Install Gateway API CRDs and Cilium CNI via inline manifests
         # Gateway API CRDs must be installed first (if enabled in Cilium config)
