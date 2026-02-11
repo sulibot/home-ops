@@ -45,13 +45,188 @@ resource "null_resource" "patch_kubernetes_service" {
   }
 }
 
-# Preinstall spegel (P2P container image distribution) - FIRST APP
-# Installed early to enable faster image pulls for subsequent apps
-resource "null_resource" "preinstall_spegel" {
+########## PHASE 1: PREINSTALL CRDs ##########
+# Install CRDs first so ServiceMonitor/PodMonitor/etc are available for all apps
+
+# Preinstall Gateway API CRDs (required by cert-manager and Cilium Gateway)
+resource "null_resource" "preinstall_gateway_api_crds" {
   depends_on = [null_resource.patch_kubernetes_service]
 
   triggers = {
     patch_id = null_resource.patch_kubernetes_service.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing Gateway API CRDs..."
+
+      # Apply Gateway API CRDs from Git repo
+      kubectl --kubeconfig="$KUBECONFIG" apply -f \
+        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
+
+      echo "✓ Gateway API CRDs installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall kube-prometheus-stack CRDs (ServiceMonitor, PodMonitor, PrometheusRule, etc.)
+resource "null_resource" "preinstall_prometheus_crds" {
+  depends_on = [null_resource.preinstall_gateway_api_crds]
+
+  triggers = {
+    gateway_api_id = null_resource.preinstall_gateway_api_crds.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing kube-prometheus-stack CRDs..."
+
+      # Extract chart version and URL
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/kube-prometheus-stack/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/kube-prometheus-stack/app/ocirepository.yaml)
+
+      # Extract and apply only CRDs from the chart
+      helm template kube-prometheus-stack-crds \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace observability \
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
+
+      echo "✓ kube-prometheus-stack CRDs installed (ServiceMonitor, PodMonitor, etc.)"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall KEDA CRDs (ScaledObject, ScaledJob, TriggerAuthentication, etc.)
+resource "null_resource" "preinstall_keda_crds" {
+  depends_on = [null_resource.preinstall_prometheus_crds]
+
+  triggers = {
+    prometheus_crds_id = null_resource.preinstall_prometheus_crds.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing KEDA CRDs..."
+
+      # Extract chart version and URL
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/keda/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/keda/app/ocirepository.yaml)
+
+      # Extract and apply only CRDs from the chart
+      helm template keda-crds \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace keda \
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
+
+      echo "✓ KEDA CRDs installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall Grafana Operator CRDs (GrafanaDashboard, GrafanaDataSource, GrafanaFolder, etc.)
+resource "null_resource" "preinstall_grafana_crds" {
+  depends_on = [null_resource.preinstall_keda_crds]
+
+  triggers = {
+    keda_crds_id = null_resource.preinstall_keda_crds.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing Grafana Operator CRDs..."
+
+      # Extract chart version and URL
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/grafana/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/observability-stack/grafana/app/ocirepository.yaml)
+
+      # Extract and apply only CRDs from the chart
+      helm template grafana-operator-crds \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace grafana \
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
+
+      echo "✓ Grafana Operator CRDs installed"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Preinstall Snapshot Controller CRDs (VolumeSnapshot, VolumeSnapshotClass, VolumeSnapshotContent)
+resource "null_resource" "preinstall_snapshot_crds" {
+  depends_on = [null_resource.preinstall_grafana_crds]
+
+  triggers = {
+    grafana_crds_id = null_resource.preinstall_grafana_crds.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Installing Snapshot Controller CRDs..."
+
+      # Extract chart version and URL
+      CHART_VERSION=$(yq eval '.spec.ref.tag' \
+        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
+      CHART_URL=$(yq eval '.spec.url' \
+        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
+
+      # Extract and apply only CRDs from the chart
+      helm template snapshot-controller-crds \
+        $CHART_URL \
+        --version $CHART_VERSION \
+        --namespace kube-system \
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
+
+      echo "✓ Snapshot Controller CRDs installed (VolumeSnapshot, VolumeSnapshotClass, etc.)"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+########## PHASE 2: PREINSTALL APPS ##########
+
+# Preinstall spegel (P2P container image distribution) - FIRST APP
+# Installed early to enable faster image pulls for subsequent apps
+resource "null_resource" "preinstall_spegel" {
+  depends_on = [null_resource.preinstall_snapshot_crds]
+
+  triggers = {
+    snapshot_crds_id = null_resource.preinstall_snapshot_crds.id
   }
 
   provisioner "local-exec" {
@@ -65,11 +240,10 @@ resource "null_resource" "preinstall_spegel" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
 
-      # Extract values from HelmRelease and disable ServiceMonitor (CRD not yet installed)
+      # Extract values from HelmRelease (Prometheus CRDs already installed)
       yq eval '.spec.values' \
         ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
         > /tmp/spegel-values.yaml
-      yq eval -i '.serviceMonitor.enabled = false' /tmp/spegel-values.yaml
 
       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
       helm template spegel \
@@ -199,38 +373,12 @@ resource "null_resource" "preinstall_onepassword" {
   }
 }
 
-# Preinstall Gateway API CRDs (required by cert-manager)
-resource "null_resource" "preinstall_gateway_api_crds" {
+# Preinstall cert-manager (certificate management for ingress/webhooks)
+resource "null_resource" "preinstall_cert_manager" {
   depends_on = [null_resource.preinstall_onepassword]
 
   triggers = {
     onepassword_id = null_resource.preinstall_onepassword.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing Gateway API CRDs..."
-
-      # Apply Gateway API CRDs from Git repo
-      kubectl --kubeconfig="$KUBECONFIG" apply -f \
-        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
-
-      echo "✓ Gateway API CRDs installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall cert-manager (certificate management for ingress/webhooks)
-resource "null_resource" "preinstall_cert_manager" {
-  depends_on = [null_resource.preinstall_gateway_api_crds]
-
-  triggers = {
-    gateway_api_id = null_resource.preinstall_gateway_api_crds.id
   }
 
   provisioner "local-exec" {
@@ -306,11 +454,10 @@ resource "null_resource" "preinstall_snapshot_controller" {
       CHART_URL=$(yq eval '.spec.url' \
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
 
-      # Extract values from HelmRelease and disable ServiceMonitor (CRD not yet installed)
+      # Extract values from HelmRelease (Prometheus CRDs already installed)
       yq eval '.spec.values' \
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/helmrelease.yaml \
         > /tmp/snapshot-controller-values.yaml
-      yq eval -i '.controller.serviceMonitor.create = false' /tmp/snapshot-controller-values.yaml
 
       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
       helm template snapshot-controller \
