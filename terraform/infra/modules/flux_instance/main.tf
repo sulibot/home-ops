@@ -167,6 +167,10 @@ resource "null_resource" "preinstall_cert_manager" {
         ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
         > /tmp/cert-manager-values.yaml
 
+      # Disable Gateway API during bootstrap (CRDs not installed yet)
+      # Flux will re-enable it when it adopts cert-manager
+      yq eval -i '.config.enableGatewayAPI = false' /tmp/cert-manager-values.yaml
+
       # Add Helm repository
       helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
       helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
