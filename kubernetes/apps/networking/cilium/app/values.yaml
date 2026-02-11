@@ -28,7 +28,7 @@ ipv6:
 # While pod-to-pod uses native routing (no masquerade), ClusterIPs are virtual
 # and need masquerading for kube-proxy replacement to function with BPF
 enableIPv4Masquerade: false  # Keep false - will remove IPv4 eventually
-enableIPv6Masquerade: false  # Disabled: Upstream router handles return paths via BGP
+enableIPv6Masquerade: true   # Enabled: Masquerade ULA Pod traffic to GUA Internet
 
 # IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
 # The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
@@ -51,15 +51,15 @@ directRoutingSkipUnreachable: true  # Skip unreachable routes - rely on BGP for 
 endpointRoutes:
   enabled: false
 
-# Native routing CIDRs - must match cluster-pool IPAM configuration above
-ipv4NativeRoutingCIDR: 0.0.0.0/0
-ipv6NativeRoutingCIDR: "::/0"
+# Native routing CIDRs - ULA for intra-cluster native routing
+ipv4NativeRoutingCIDR: 10.101.224.0/20      # IPv4 Pod CIDR (RFC 1918)
+ipv6NativeRoutingCIDR: fd00:101:224::/60    # IPv6 ULA Pod CIDR (RFC 4193)
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  # Must be FALSE when both IPv4/IPv6 masquerading are disabled to prevent crash
-  masquerade: false
+  # Re-enable BPF masquerade now that IPv6 masquerading is enabled
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -93,8 +93,8 @@ ingressController:
   loadbalancerMode: shared
 
 # Define IP pools for LoadBalancer services
-# Note: Pods share the same /64 as nodes for IPv6 (2600:1700:ab1a:500d::/64)
-# LB pool uses separate ULA range (fd00:101:250::/112) for internal-only services
+# Note: Pods use ULA range (fd00:101:224::/60) separate from node IPs (fd00:101::11, etc.)
+# LB pool uses separate ULA range (fd00:101:250::/112) for LoadBalancer services
 loadBalancer:
   algorithm: maglev
   # Mode is controlled by bpf.lbMode (snat) with per-service annotation override
