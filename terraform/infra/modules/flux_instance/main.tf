@@ -71,16 +71,22 @@ resource "null_resource" "preinstall_spegel" {
         > /tmp/spegel-values.yaml
       yq eval -i '.serviceMonitor.enabled = false' /tmp/spegel-values.yaml
 
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install spegel \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      helm template spegel \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace kube-system \
         --values /tmp/spegel-values.yaml \
-        --wait --timeout 5m
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for spegel DaemonSet to be ready
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=spegel \
+        -n kube-system \
+        --timeout=300s
 
       rm -f /tmp/spegel-values.yaml
-      echo "✓ spegel installed"
+      echo "✓ spegel installed and ready"
     EOT
 
     environment = {
@@ -117,16 +123,22 @@ resource "null_resource" "preinstall_external_secrets" {
         ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
         > /tmp/external-secrets-values.yaml
 
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install external-secrets \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      helm template external-secrets \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/external-secrets-values.yaml \
-        --wait --timeout 5m
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for external-secrets pods to be ready
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=external-secrets \
+        -n external-secrets \
+        --timeout=300s
 
       rm -f /tmp/external-secrets-values.yaml
-      echo "✓ external-secrets installed"
+      echo "✓ external-secrets installed and ready"
     EOT
 
     environment = {
@@ -163,16 +175,22 @@ resource "null_resource" "preinstall_onepassword" {
         ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
         > /tmp/onepassword-values.yaml
 
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install onepassword \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      helm template onepassword \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/onepassword-values.yaml \
-        --wait --timeout 5m
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for 1Password Connect pods to be ready
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=connect \
+        -n external-secrets \
+        --timeout=300s
 
       rm -f /tmp/onepassword-values.yaml
-      echo "✓ 1Password Connect installed"
+      echo "✓ 1Password Connect installed and ready"
     EOT
 
     environment = {
@@ -238,22 +256,29 @@ resource "null_resource" "preinstall_cert_manager" {
         > /tmp/cert-manager-values.yaml
 
       # Add Helm repository
-      helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
-      helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
+      helm repo add cert-manager-temp $REPO_URL
+      helm repo update cert-manager-temp
 
-      # Install chart (CRDs included via crds.enabled=true in values)
-      # Note: 10m timeout needed for webhook CA certificate generation
-      helm --kubeconfig="$KUBECONFIG" upgrade --install cert-manager \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      # CRDs included via crds.enabled=true in values
+      helm template cert-manager \
         cert-manager-temp/cert-manager \
         --version $CHART_VERSION \
         --namespace cert-manager \
         --values /tmp/cert-manager-values.yaml \
-        --wait --timeout 10m
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for cert-manager webhook to be ready (critical for certificate issuance)
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=webhook \
+        -n cert-manager \
+        --timeout=600s
 
       # Clean up
-      helm --kubeconfig="$KUBECONFIG" repo remove cert-manager-temp || true
+      helm repo remove cert-manager-temp || true
       rm -f /tmp/cert-manager-values.yaml
-      echo "✓ cert-manager installed"
+      echo "✓ cert-manager installed and ready"
     EOT
 
     environment = {
@@ -287,16 +312,22 @@ resource "null_resource" "preinstall_snapshot_controller" {
         > /tmp/snapshot-controller-values.yaml
       yq eval -i '.controller.serviceMonitor.create = false' /tmp/snapshot-controller-values.yaml
 
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install snapshot-controller \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      helm template snapshot-controller \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace kube-system \
         --values /tmp/snapshot-controller-values.yaml \
-        --wait --timeout 5m
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for snapshot-controller pods to be ready
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=snapshot-controller \
+        -n kube-system \
+        --timeout=300s
 
       rm -f /tmp/snapshot-controller-values.yaml
-      echo "✓ snapshot-controller installed"
+      echo "✓ snapshot-controller installed and ready"
     EOT
 
     environment = {
@@ -333,16 +364,24 @@ resource "null_resource" "preinstall_volsync" {
         ${var.repo_root}/kubernetes/apps/data/volsync/app/helmrelease.yaml \
         > /tmp/volsync-values.yaml
 
-      # Install chart (manageCRDs: true in values)
-      helm --kubeconfig="$KUBECONFIG" upgrade --install volsync \
+      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      # manageCRDs: true in values will include CRDs
+      helm template volsync \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace volsync-system \
         --values /tmp/volsync-values.yaml \
-        --wait --timeout 10m
+        --include-crds \
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+      # Wait for volsync pods to be ready
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+        -l app.kubernetes.io/name=volsync \
+        -n volsync-system \
+        --timeout=600s
 
       rm -f /tmp/volsync-values.yaml
-      echo "✓ volsync installed"
+      echo "✓ volsync installed and ready"
     EOT
 
     environment = {
