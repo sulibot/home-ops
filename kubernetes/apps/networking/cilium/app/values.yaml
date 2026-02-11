@@ -12,12 +12,12 @@ k8sServicePort: 7445
 # Replace kube-proxy with Cilium
 kubeProxyReplacement: true
 
-# Socket-based load balancing - ENABLED for all pods
-# CRITICAL: Must be enabled for ClusterIP to work with hostLegacyRouting
-# Socket LB intercepts connect() syscalls before packets are created
+# Socket-based load balancing - host namespace only
+# Setting hostNamespaceOnly: true fixes libp2p compatibility (Spegel) and connection tracking races
+# Pod traffic uses standard TC-BPF datapath (robust, fully compatible)
 socketLB:
   enabled: true              # Enable socket-level load balancing
-  hostNamespaceOnly: false   # Apply to all namespaces, not just host
+  hostNamespaceOnly: true    # Restrict to host namespace (fixes networking issues)
 
 # Enable dual-stack with IPv6 first
 ipv4:
@@ -57,10 +57,10 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
 ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + Nodes)
 
 # BPF configuration optimized for Talos + Istio Ambient
-# forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
+# forwardKubeDNSToHost is DISABLED in Talos machine config (Direct Mode)
 bpf:
-  # Use iptables for masquerading to avoid conflicts with hostLegacyRouting
-  masquerade: false
+  # Enable BPF masquerading
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -69,9 +69,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use legacy routing for host-bound traffic to support Talos forwardKubeDNSToHost
-  # Required for compatibility with link-local address 169.254.116.108
-  hostLegacyRouting: true
+  # Enable BPF host routing
+  hostLegacyRouting: false
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
