@@ -364,7 +364,7 @@ resource "null_resource" "preinstall_onepassword" {
 
       # Wait for 1Password Connect pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=connect \
+        -l app.kubernetes.io/name=onepassword \
         -n external-secrets \
         --timeout=300s
 
