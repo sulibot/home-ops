@@ -92,7 +92,7 @@ locals {
     kubePrism = { enabled = true, port = 7445 }
     hostDNS = {
       enabled              = true # Required for Talos Helm controller
-      forwardKubeDNSToHost = true # Enable with Cilium hostLegacyRouting for proper DNS integration
+      forwardKubeDNSToHost = false # Disabled for Cilium BPF Host Routing (Direct Mode)
     }
   }
 
@@ -143,46 +143,6 @@ locals {
       {
         name     = "cilium-bgp-node-configs"
         contents = local.cilium_bgp_node_configs_yaml
-      },
-      {
-        name = "coredns-config"
-        contents = yamlencode({
-          apiVersion = "v1"
-          kind       = "ConfigMap"
-          metadata = {
-            name      = "coredns"
-            namespace = "kube-system"
-          }
-          data = {
-            Corefile = <<-EOT
-              .:53 {
-                  errors
-                  health {
-                      lameduck 5s
-                  }
-                  ready
-                  log . {
-                      class error
-                  }
-                  prometheus :9153
-                  kubernetes cluster.local in-addr.arpa ip6.arpa {
-                      pods insecure
-                      fallthrough in-addr.arpa ip6.arpa
-                      ttl 30
-                  }
-                  forward . 169.254.116.108 {
-                     max_concurrent 1000
-                  }
-                  cache 30 {
-                      denial 9984 30
-                  }
-                  loop
-                  reload
-                  loadbalance
-              }
-            EOT
-          }
-        })
       }
     ]
   )

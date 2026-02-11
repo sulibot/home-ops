@@ -52,6 +52,10 @@ directRoutingSkipUnreachable: true  # Skip unreachable routes - rely on BGP for 
 endpointRoutes:
   enabled: false
 
+# Explicitly set MTU to match the underlying VXLAN network (1450)
+# This prevents packet drops during TLS handshakes (Spegel/libp2p) in Direct Routing mode
+mtu: 1450
+
 # Native routing CIDRs - ULA for intra-cluster native routing
 ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
 ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + Nodes)
@@ -74,7 +78,13 @@ bpf:
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
-  enabled: false
+  enabled: true
+  config:
+    # Explicitly prevent masquerading for ULA and IPv4 internal ranges
+    # This ensures BPF masquerading respects these boundaries even in edge cases
+    nonMasqueradeCIDRs:
+      - 10.101.0.0/16
+      - fd00:101::/48
 
 # BGP Control Plane enabled; Cilium only peers to local FRR for LB VIP origination
 bgpControlPlane:

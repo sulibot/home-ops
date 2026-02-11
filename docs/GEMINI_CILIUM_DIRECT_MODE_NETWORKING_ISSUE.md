@@ -347,15 +347,111 @@ bpf:
   hostLegacyRouting: false
 ```
 
-## Request for Gemini
+## UPDATE: Socket LB Fix Did NOT Resolve the Issue
 
-Please analyze this networking issue and provide:
+### Actions Taken (Based on Previous Gemini Recommendation)
 
-1. **Root cause analysis**: What exactly is breaking the networking?
-2. **Configuration recommendations**: What specific Cilium settings should be changed?
-3. **Verification approach**: How to validate fixes work without breaking other functionality?
-4. **Alternative solutions**: If proposed changes are incorrect, what should we do instead?
-5. **Upstream compatibility**: Are these issues known in Cilium + Talos + IPv6 ULA environments?
+1. **Changed Socket LB scope**:
+   ```yaml
+   socketLB:
+     enabled: true
+     hostNamespaceOnly: true  # Changed from false
+   ```
+
+2. **Verified configuration applied**:
+   ```bash
+   $ kubectl exec -n kube-system ds/cilium -- cilium status --verbose | grep "Socket LB"
+   Socket LB:            Enabled
+   Socket LB Coverage:   Hostns-only  ✅
+
+   $ kubectl get configmap -n kube-system cilium-config -o yaml | grep bpf-lb-sock
+   bpf-lb-sock: "true"
+   bpf-lb-sock-hostns-only: "true"  ✅
+   ```
+
+3. **Restarted all Spegel pods** for clean connections with new config
+
+### Results: FAILED - Same Error Persists
+
+**Spegel P2P mesh still completely broken** with identical errors:
+
+```json
+{"time":"2026-02-11T22:42:59.449820225Z","level":"ERROR","msg":"could not get peer id","logger":"p2p","err":"failed to dial: failed to dial 92B: all dials failed\n  * [/ip6/fd00:101:224:2::824b/tcp/5001] failed to negotiate security protocol: context deadline exceeded"}
+
+{"time":"2026-02-11T22:43:04.446067367Z","level":"ERROR","msg":"could not get peer id","err":"failed to dial: context deadline exceeded"}
+
+{"time":"2026-02-11T22:43:09.479825492Z","level":"ERROR","msg":"could not get peer id","err":"failed to dial: failed to dial 92B: all dials failed\n  * [/ip6/fd00:101:224::753b/tcp/5001] dial backoff\n  * [/ip6/fd00:101:224:2::824b/tcp/5001] dial backoff\n  * [/ip6/fd00:101:224:3::90e3/tcp/5001] dial backoff"}
+```
+
+**Fresh pod IPs being dialed** (not stale connections):
+- fd00:101:224::753b (solcp01)
+- fd00:101:224:2::824b (solwk03)
+- fd00:101:224:3::90e3 (solcp03)
+- fd00:101:224:4::c48d (solcp02)
+- fd00:101:224:5::db4b (solwk01)
+
+**Pod status**: 4/6 pods show "1/1 Running" but logs confirm 0/6 have working P2P connections
+
+### Additional Testing
+
+**Attempted to disable IPv6 masquerading**:
+```bash
+kubectl patch configmap cilium-config -n kube-system --type merge -p '{"data":{"enable-ipv6-masquerade":"false"}}'
+```
+
+**Result**: Cilium pods immediately crashed (CrashLoopBackOff)
+- **Conclusion**: IPv6 masquerading is REQUIRED for cluster functionality
+- Reverted to `enable-ipv6-masquerade: "true"`
+
+### Current Configuration State
+
+```yaml
+# Verified current Cilium ConfigMap settings:
+bpf-lb-sock: "true"
+bpf-lb-sock-hostns-only: "true"        # ✅ Fixed per Gemini recommendation
+enable-bpf-masquerade: "true"
+enable-ipv4-masquerade: "false"
+enable-ipv6-masquerade: "true"         # ✅ Must stay enabled (Cilium crashes without it)
+enable-host-legacy-routing: "false"    # Direct mode
+```
+
+### Observations
+
+1. **Socket LB change did NOT fix the issue** - Spegel still cannot establish libp2p connections
+2. **Error pattern identical** - "failed to negotiate security protocol: context deadline exceeded"
+3. **IPv6 masquerading cannot be disabled** - Breaks Cilium entirely
+4. **Pod-to-pod TCP on port 5001 consistently fails** - All connection attempts timeout during TLS handshake
+5. **Other services work fine** - cert-manager, external-secrets (eventually), onepassword all functional
+
+## REVISED Request for Gemini
+
+The initial recommendation to set `socketLB.hostNamespaceOnly: true` has been implemented but **did NOT resolve the Spegel P2P mesh issue**. The problem appears deeper than Socket LB alone.
+
+Please provide:
+
+1. **Re-analyze root cause**: Socket LB wasn't the issue. What else could cause libp2p TLS handshake timeouts on pod-to-pod IPv6 ULA connections?
+
+2. **IPv6 ULA + BPF interactions**: Are there known issues with:
+   - Cilium BPF masquerading (`enable-bpf-masquerade: true`) + IPv6 ULA pod-to-pod traffic?
+   - `enable-ipv6-masquerade: true` affecting internal pod-to-pod connections despite `ipv6NativeRoutingCIDR`?
+   - BPF connection tracking corrupting libp2p protocol state?
+
+3. **Alternative configurations**: What other Cilium settings might affect libp2p/TLS protocols:
+   - `bpf.lbMode: snat` vs `hybrid` vs `dsr`
+   - Connection tracking timeout settings
+   - BPF map sizes or MTU issues
+   - IPv6 BIGTCP or other IPv6-specific features
+
+4. **Spegel-specific compatibility**: Is Spegel + Cilium direct mode + IPv6 ULA a known incompatible combination?
+
+5. **Diagnostic commands**: What additional Cilium debugging can identify why TLS handshakes timeout on TCP 5001?
+
+### Critical Context
+
+- **Networking was broken in BOTH hybrid AND direct modes** (not just direct mode)
+- **Socket LB change applied successfully but didn't fix the issue**
+- **IPv6 masquerading is required** (cluster breaks without it)
+- **Other protocols work** (HTTPS to ClusterIP, pod-to-pod on other ports)
 
 ## Additional Context
 
@@ -380,8 +476,39 @@ Please analyze this networking issue and provide:
 
 This suggests the root cause is likely one of the settings that was enabled in BOTH hybrid and direct mode, rather than the `hostLegacyRouting` setting itself.
 
+## Specific Questions
+
+1. **Why does libp2p TLS handshake timeout** even with Socket LB restricted to host namespace?
+   - Is BPF masquerading rewriting packets before TLS negotiation completes?
+   - Could IPv6 ULA connections be treated differently than expected?
+
+2. **What is the interaction between**:
+   - `enable-ipv6-masquerade: true`
+   - `ipv6NativeRoutingCIDR: fd00:101::/48`
+   - Pod-to-pod connections within `fd00:101:224::/60`
+
+   Should pod-to-pod connections within the native routing CIDR be masqueraded? Or is there a bug?
+
+3. **Could the issue be**:
+   - MTU/fragmentation (libp2p TLS handshake packets being dropped)? (Confirmed: Cluster runs on VXLAN with 1450 MTU)
+   - Connection tracking timeouts too aggressive?
+   - BPF program ordering (masquerade before service translation)?
+   - IPv6 extension headers being stripped?
+
+4. **Is there a Cilium setting to**:
+   - Bypass BPF processing for specific ports (like 5001)?
+   - Disable connection tracking for pod-to-pod ULA traffic?
+   - Use DSR mode for pod-to-pod instead of SNAT?
+
+5. **Should we consider**:
+   - Disabling Spegel entirely (it's optional, just an optimization)
+   - Using a different registry mirror solution
+   - Reporting this as a Cilium + libp2p compatibility bug
+
 ## References
 
 - Cilium Direct Routing Mode: https://docs.cilium.io/en/stable/network/concepts/routing/#direct-routing-mode
 - Cilium Socket-Based Load Balancing: https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/#socket-loadbalancer-bypass-in-pod-namespace
 - Spegel Architecture: https://github.com/spegel-org/spegel (libp2p-based P2P registry mirror)
+- Cilium BPF Masquerading: https://docs.cilium.io/en/stable/network/concepts/masquerading/
+- libp2p TLS Spec: https://github.com/libp2p/specs/blob/master/tls/tls.md
