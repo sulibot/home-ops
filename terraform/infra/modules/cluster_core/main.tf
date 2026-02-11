@@ -559,7 +559,7 @@ resource "null_resource" "proxmox_vrf_pings" {
 
       echo "Running VRF ping checks on $SSH_HOST for ${self.triggers.host}..."
 
-      ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
+      ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
         set -euo pipefail
         VRF="${var.proxmox_ping_vrf}"
         RETRIES="${var.proxmox_ping_retries}"

@@ -47,6 +47,12 @@ variable "disk_size" {
   default     = "60G"
 }
 
+variable "proxmox_ssh_private_key_path" {
+  type        = string
+  description = "Path to SSH private key for Proxmox host access (bypasses agent)"
+  default     = "~/.ssh/id_ed25519"
+}
+
 locals {
   # Check if image file exists
   image_exists = fileexists(var.talos_image_path)
@@ -64,14 +70,14 @@ resource "null_resource" "create_template" {
   # Upload image to Proxmox node
   provisioner "local-exec" {
     command = <<-EOT
-      scp -o StrictHostKeyChecking=no "${var.talos_image_path}" root@${var.proxmox_node}:/tmp/${basename(var.talos_image_path)}
+      scp -i "${pathexpand(var.proxmox_ssh_private_key_path)}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "${var.talos_image_path}" root@${var.proxmox_node}:/tmp/${basename(var.talos_image_path)}
     EOT
   }
 
   # Create VM and import disk
   provisioner "local-exec" {
     command = <<-EOT
-      ssh -o StrictHostKeyChecking=no root@${var.proxmox_node} <<'ENDSSH'
+      ssh -i "${pathexpand(var.proxmox_ssh_private_key_path)}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new root@${var.proxmox_node} <<'ENDSSH'
         # Remove existing VM/template if it exists
         if qm status ${var.template_vmid} >/dev/null 2>&1; then
           qm destroy ${var.template_vmid} || true
@@ -112,7 +118,7 @@ resource "null_resource" "create_template" {
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
-      ssh -o StrictHostKeyChecking=no root@${self.triggers.template_name} "qm destroy ${self.triggers.template_vmid} || true" || true
+      ssh -i "${pathexpand("~/.ssh/id_ed25519")}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new root@${self.triggers.template_name} "qm destroy ${self.triggers.template_vmid} || true" || true
     EOT
   }
 }
