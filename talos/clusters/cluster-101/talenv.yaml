@@ -66,7 +66,7 @@ nodes:
     publicIPv6: fd00:101::23
     publicMTU: 1450
 pods_ipv4: 10.101.224.0/20
-pods_ipv6: 2600:1700:ab1a:500d::/64
+pods_ipv6: fd00:101:224::/60
 public_gateway_ipv4: 10.101.0.254
 public_gateway_ipv6: fe80::101:fffe
 services_ipv4: 10.101.96.0/24

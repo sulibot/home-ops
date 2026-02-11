@@ -52,8 +52,8 @@ endpointRoutes:
   enabled: false
 
 # Native routing CIDRs - ULA for intra-cluster native routing
-ipv4NativeRoutingCIDR: 10.101.224.0/20      # IPv4 Pod CIDR (RFC 1918)
-ipv6NativeRoutingCIDR: fd00:101:224::/60    # IPv6 ULA Pod CIDR (RFC 4193)
+ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
+ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + Nodes)
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
