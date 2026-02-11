@@ -198,12 +198,13 @@ resource "null_resource" "preinstall_cert_manager" {
       helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
 
       # Install chart (CRDs included via crds.enabled=true in values)
+      # Note: 10m timeout needed for webhook CA certificate generation
       helm --kubeconfig="$KUBECONFIG" upgrade --install cert-manager \
         cert-manager-temp/cert-manager \
         --version $CHART_VERSION \
         --namespace cert-manager \
         --values /tmp/cert-manager-values.yaml \
-        --wait --timeout 5m
+        --wait --timeout 10m
 
       # Clean up
       helm --kubeconfig="$KUBECONFIG" repo remove cert-manager-temp || true
