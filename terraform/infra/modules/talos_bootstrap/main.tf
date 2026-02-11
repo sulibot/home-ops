@@ -74,10 +74,26 @@ EOF
         sleep 10
       done
 
+      # Wait for etcd cluster to fully form with all members
+      # This is critical for reliable bootstrap - etcd must have all 3 members before
+      # API servers can register properly. Learner promotion can take 5-10 minutes.
+      EXPECTED_CP_COUNT=${length(var.control_plane_nodes)}
+      echo "⏳ Waiting for etcd cluster to form with all $EXPECTED_CP_COUNT members..."
+      for i in {1..120}; do
+        ETCD_MEMBER_COUNT=$(talosctl -n ${local.first_cp_node.ipv6} etcd members 2>/dev/null | grep -c "false$" || echo "0")
+        if [ "$ETCD_MEMBER_COUNT" -ge "$EXPECTED_CP_COUNT" ]; then
+          echo "✓ All $EXPECTED_CP_COUNT etcd members joined (learner promotion complete)"
+          break
+        fi
+        if [ $((i % 12)) -eq 0 ]; then
+          echo "  ... $ETCD_MEMBER_COUNT/$EXPECTED_CP_COUNT etcd members ready, waiting for learner promotion..."
+        fi
+        sleep 5
+      done
+
       # Wait for all control plane API servers to be registered in kubernetes service endpoints
       # This prevents issues where pods can't reach ClusterIP if they're scheduled on a CP node
       # whose API server hasn't joined yet
-      EXPECTED_CP_COUNT=${length(var.control_plane_nodes)}
       echo "⏳ Waiting for all $EXPECTED_CP_COUNT control plane API servers to join kubernetes service..."
       for i in {1..60}; do
         CP_ENDPOINT_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get endpoints kubernetes -n default -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | wc -w | tr -d ' ')
