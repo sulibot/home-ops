@@ -223,12 +223,13 @@ locals {
 
   # Kubernetes Network CIDRs (derived from cluster_id)
   # Aligned with IP addressing documentation:
-  # - Pod CIDR: 10.<TID>.224.0/20 and GUA (if available) or fd00:<TID>:224::/60 (ULA fallback)
+  # - Pod CIDR: 10.<TID>.224.0/20 and fd00:<TID>:224::/60 (ULA always - GUA causes ClusterIP routing failure)
   # - Service CIDR: 10.<TID>.96.0/24 and fd00:<TID>:96::/108
   # - LoadBalancer VIP Pool: 10.<TID>.250.0/24 and fd00:<TID>:250::/112
+  # Note: Pod internet access uses masquerading (ULA → GUA SNAT on node egress)
   k8s_network_config = {
     pods_ipv4          = format("10.%d.224.0/20", var.cluster_id)
-    pods_ipv6          = var.ip_config.public.gua_ipv6_prefix != "" ? var.ip_config.public.gua_ipv6_prefix : format("fd00:%d:224::/60", var.cluster_id)
+    pods_ipv6          = format("fd00:%d:224::/60", var.cluster_id)
     services_ipv4      = format("10.%d.96.0/24", var.cluster_id)
     services_ipv6      = format("fd00:%d:96::/108", var.cluster_id)
     loadbalancers_ipv4 = format("10.%d.250.0/24", var.cluster_id)

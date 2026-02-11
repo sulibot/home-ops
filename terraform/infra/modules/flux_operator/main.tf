@@ -12,8 +12,9 @@ resource "null_resource" "wait_cilium_ready" {
       echo "Waiting for Cilium CNI to be ready before deploying flux-operator..."
 
       # Wait for Cilium DaemonSet to exist (created by Talos inline manifests)
+      # Fresh bootstrap takes >2 minutes before inline manifests are applied
       echo "  Checking for Cilium DaemonSet..."
-      timeout 120 bash -c '
+      timeout 300 bash -c '
         until kubectl --kubeconfig="$KUBECONFIG" get daemonset cilium -n kube-system >/dev/null 2>&1; do
           echo "    ⏳ Waiting for Cilium DaemonSet to be created..."
           sleep 5
