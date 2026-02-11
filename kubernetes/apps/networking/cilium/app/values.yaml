@@ -61,10 +61,10 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
 ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + Nodes)
 
 # BPF configuration optimized for Talos + Istio Ambient
-# forwardKubeDNSToHost is DISABLED in Talos machine config (Direct Mode)
+# forwardKubeDNSToHost is DISABLED in Talos machine config
 bpf:
   # Enable BPF masquerading
-  masquerade: true
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -73,8 +73,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Enable BPF host routing
-  hostLegacyRouting: false
+  # Use legacy routing for host-bound traffic (required for stability/compatibility)
+  hostLegacyRouting: true
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
