@@ -528,7 +528,7 @@ resource "null_resource" "preinstall_volsync" {
 
       # Wait for volsync pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=volsync \
+        -l app.kubernetes.io/name=volsync-perfectra1n \
         -n volsync-system \
         --timeout=600s
 
