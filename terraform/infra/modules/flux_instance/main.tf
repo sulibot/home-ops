@@ -257,11 +257,11 @@ resource "null_resource" "preinstall_spegel" {
         --values /tmp/spegel-values.yaml \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
-      # Wait for spegel DaemonSet to be ready
+      # Wait for spegel DaemonSet to be ready (longer timeout for P2P initialization)
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
         -l app.kubernetes.io/name=spegel \
         -n kube-system \
-        --timeout=300s
+        --timeout=600s
 
       rm -f /tmp/spegel-values.yaml
       echo "✓ spegel installed and ready"
