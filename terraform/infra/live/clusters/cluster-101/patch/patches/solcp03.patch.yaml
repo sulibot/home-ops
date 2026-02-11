@@ -1,3 +1,7 @@
+cluster:
+  etcd:
+    advertisedSubnets:
+      - fd00:101::13/128
 machine:
   kubelet:
     nodeIP:

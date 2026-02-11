@@ -259,12 +259,9 @@ data "talos_machine_configuration" "controlplane" {
           certSANs = local.api_server_cert_sans
         }
         etcd = {
-          advertisedSubnets = [
-            "fd00:${var.cluster_id}:fe::/64",
-            "fd00:${var.cluster_id}::/64"
-          ] # Force etcd to use loopback IPs
           # Explicitly define initial cluster members via extraArgs so all control planes know about each other
           # This prevents learner promotion timing issues where only 1/3 nodes join
+          # Per-node advertisedSubnets with /128 ensures only static IPv6 is used (not SLAAC)
           extraArgs = {
             "initial-cluster-state" = "new"
             "initial-cluster" = join(",", [
@@ -653,6 +650,13 @@ ${yamlencode({
             }
           } : {}
         )
+        # Per-node etcd configuration (control plane only)
+        cluster = node.machine_type == "controlplane" ? {
+          etcd = {
+            # Advertise only this node's specific IPv6 address (not SLAAC)
+            advertisedSubnets = ["${node.public_ipv6}/128"]
+          }
+        } : {}
       })}
 ---
 ${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
