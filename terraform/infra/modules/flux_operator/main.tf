@@ -21,6 +21,16 @@ resource "null_resource" "wait_cilium_ready" {
       '
       echo "  ✓ Cilium DaemonSet exists"
 
+      # Wait for Cilium pods to be scheduled (kubectl wait fails with "no matching resources" if zero pods exist)
+      echo "  Waiting for Cilium pods to be scheduled..."
+      timeout 120 bash -c '
+        until kubectl --kubeconfig="$KUBECONFIG" get pods -l k8s-app=cilium -n kube-system --no-headers 2>/dev/null | grep -q .; do
+          echo "    ⏳ Waiting for Cilium pods to be scheduled..."
+          sleep 5
+        done
+      '
+      echo "  ✓ Cilium pods scheduled"
+
       # Wait for Cilium pods to be ready (handles image pull delays)
       echo "  Waiting for Cilium pods to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait \
