@@ -68,15 +68,30 @@ EOF
         if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | grep -q .; then
           NODE_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
           echo "✓ Kubernetes API is healthy! ($NODE_COUNT node(s) registered)"
-          rm -f "$KUBECONFIG_FILE"
-          rm -f "$TALOSCONFIG_FILE"
-          exit 0
+          break
         fi
         echo "  ... attempt $i/60, retrying in 10s (waiting for nodes to register)"
         sleep 10
       done
 
-      echo "❌ Cluster health check timed out after 10 minutes. Aborting."
+      # Wait for all control plane API servers to be registered in kubernetes service endpoints
+      # This prevents issues where pods can't reach ClusterIP if they're scheduled on a CP node
+      # whose API server hasn't joined yet
+      EXPECTED_CP_COUNT=${length(var.control_plane_nodes)}
+      echo "⏳ Waiting for all $EXPECTED_CP_COUNT control plane API servers to join kubernetes service..."
+      for i in {1..60}; do
+        CP_ENDPOINT_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get endpoints kubernetes -n default -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | wc -w | tr -d ' ')
+        if [ "$CP_ENDPOINT_COUNT" -ge "$EXPECTED_CP_COUNT" ]; then
+          echo "✓ All $EXPECTED_CP_COUNT control plane API servers registered in kubernetes service"
+          rm -f "$KUBECONFIG_FILE"
+          rm -f "$TALOSCONFIG_FILE"
+          exit 0
+        fi
+        echo "  ... $CP_ENDPOINT_COUNT/$EXPECTED_CP_COUNT endpoints ready, retrying in 5s"
+        sleep 5
+      done
+
+      echo "❌ Control plane endpoint registration timed out after 5 minutes. Aborting."
       rm -f "$KUBECONFIG_FILE"
       rm -f "$TALOSCONFIG_FILE"
       exit 1
