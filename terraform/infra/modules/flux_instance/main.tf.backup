@@ -1,9 +1,6 @@
-# Flux Instance Module - REORGANIZED
-# Phase 1: Preinstall critical apps BEFORE Flux starts
-# Phase 2: Deploy Flux (it will adopt the preinstalled apps via SSA Replace)
-# Phase 3: Post-bootstrap verification and cleanup
-
-########## PHASE 1: PRE-FLUX SETUP ##########
+# Flux Instance Module
+# Creates FluxInstance CR after flux-operator is ready
+# This is Phase 2 of the two-phase Flux deployment
 
 # Create SOPS AGE secret for decrypting secrets
 resource "kubernetes_secret_v1" "sops_age" {
@@ -21,264 +18,7 @@ resource "kubernetes_secret_v1" "sops_age" {
   type = "Opaque"
 }
 
-# Patch kubernetes.default service to dual-stack for IPv4 fallback
-# This fixes Cilium IPv6 ClusterIP routing issues that cause timeouts
-# Must be applied BEFORE any apps try to reach the API server
-resource "null_resource" "patch_kubernetes_service" {
-  depends_on = [kubernetes_secret_v1.sops_age]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Patching kubernetes.default service to dual-stack..."
-
-      kubectl --kubeconfig="$KUBECONFIG" patch service kubernetes -n default \
-        --type=merge \
-        -p '{"spec":{"ipFamilyPolicy":"PreferDualStack","ipFamilies":["IPv6","IPv4"]}}'
-
-      echo "✓ kubernetes.default service configured as dual-stack"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall external-secrets operator (required for 1Password and other secret management)
-resource "null_resource" "preinstall_external_secrets" {
-  depends_on = [null_resource.patch_kubernetes_service]
-
-  triggers = {
-    patch_id = null_resource.patch_kubernetes_service.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing external-secrets operator..."
-
-      # Create namespace
-      kubectl --kubeconfig="$KUBECONFIG" create namespace external-secrets \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
-
-      # Extract chart version and URL from Git repo (zero drift!)
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
-        > /tmp/external-secrets-values.yaml
-
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install external-secrets \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace external-secrets \
-        --values /tmp/external-secrets-values.yaml \
-        --wait --timeout 5m
-
-      rm -f /tmp/external-secrets-values.yaml
-      echo "✓ external-secrets installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall 1Password Connect (secrets backend for external-secrets)
-resource "null_resource" "preinstall_onepassword" {
-  depends_on = [null_resource.preinstall_external_secrets]
-
-  triggers = {
-    external_secrets_id = null_resource.preinstall_external_secrets.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing 1Password Connect..."
-
-      # Decrypt and apply the SOPS-encrypted credentials secret
-      sops -d ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/credentials.json-secret.sops.yaml | \
-        kubectl --kubeconfig="$KUBECONFIG" apply -f -
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
-        > /tmp/onepassword-values.yaml
-
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install onepassword \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace external-secrets \
-        --values /tmp/onepassword-values.yaml \
-        --wait --timeout 5m
-
-      rm -f /tmp/onepassword-values.yaml
-      echo "✓ 1Password Connect installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall cert-manager (certificate management for ingress/webhooks)
-resource "null_resource" "preinstall_cert_manager" {
-  depends_on = [null_resource.preinstall_onepassword]
-
-  triggers = {
-    onepassword_id = null_resource.preinstall_onepassword.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing cert-manager..."
-
-      # Create namespace
-      kubectl --kubeconfig="$KUBECONFIG" create namespace cert-manager \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
-
-      # Extract chart version from HelmRelease
-      CHART_VERSION=$(yq eval '.spec.chart.spec.version' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml)
-
-      # Extract repo URL from HelmRepository
-      REPO_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/helm-repo/helmrepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
-        > /tmp/cert-manager-values.yaml
-
-      # Add Helm repository
-      helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
-      helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
-
-      # Install chart (CRDs included via crds.enabled=true in values)
-      helm --kubeconfig="$KUBECONFIG" upgrade --install cert-manager \
-        cert-manager-temp/cert-manager \
-        --version $CHART_VERSION \
-        --namespace cert-manager \
-        --values /tmp/cert-manager-values.yaml \
-        --wait --timeout 5m
-
-      # Clean up
-      helm --kubeconfig="$KUBECONFIG" repo remove cert-manager-temp || true
-      rm -f /tmp/cert-manager-values.yaml
-      echo "✓ cert-manager installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall spegel (P2P container image distribution)
-resource "null_resource" "preinstall_spegel" {
-  depends_on = [null_resource.preinstall_cert_manager]
-
-  triggers = {
-    cert_manager_id = null_resource.preinstall_cert_manager.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing spegel..."
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
-        > /tmp/spegel-values.yaml
-
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install spegel \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --values /tmp/spegel-values.yaml \
-        --wait --timeout 5m
-
-      rm -f /tmp/spegel-values.yaml
-      echo "✓ spegel installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall snapshot-controller (CSI volume snapshots)
-resource "null_resource" "preinstall_snapshot_controller" {
-  depends_on = [null_resource.preinstall_spegel]
-
-  triggers = {
-    spegel_id = null_resource.preinstall_spegel.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing snapshot-controller..."
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/helmrelease.yaml \
-        > /tmp/snapshot-controller-values.yaml
-
-      # Install chart
-      helm --kubeconfig="$KUBECONFIG" upgrade --install snapshot-controller \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --values /tmp/snapshot-controller-values.yaml \
-        --wait --timeout 5m
-
-      rm -f /tmp/snapshot-controller-values.yaml
-      echo "✓ snapshot-controller installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-########## PHASE 2: DEPLOY FLUX ##########
-
 # Create FluxInstance to configure what Flux syncs
-# Flux will adopt the preinstalled apps via SSA Replace annotation
 resource "kubernetes_manifest" "flux_instance" {
   manifest = {
     apiVersion = "fluxcd.controlplane.io/v1"
@@ -377,19 +117,45 @@ resource "kubernetes_manifest" "flux_instance" {
     }
   }
 
-  depends_on = [null_resource.preinstall_snapshot_controller]
+  depends_on = [kubernetes_secret_v1.sops_age]
+}
+
+# Patch kubernetes.default service to dual-stack for IPv4 fallback
+# This fixes Cilium IPv6 ClusterIP routing issues that cause timeouts
+# Must be applied BEFORE flux-operator starts, as operator needs API connectivity
+resource "null_resource" "patch_kubernetes_service" {
+  depends_on = [kubernetes_manifest.flux_instance]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Patching kubernetes.default service to dual-stack..."
+
+      kubectl --kubeconfig="$KUBECONFIG" patch service kubernetes -n default \
+        --type=merge \
+        -p '{"spec":{"ipFamilyPolicy":"PreferDualStack","ipFamilies":["IPv6","IPv4"]}}'
+
+      echo "✓ kubernetes.default service configured as dual-stack"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
 }
 
 # Wait for Flux controllers to be ready
+# Uses kubectl wait for simplicity and reliability
 resource "null_resource" "wait_flux_controllers" {
-  depends_on = [kubernetes_manifest.flux_instance]
+  depends_on = [null_resource.patch_kubernetes_service]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       echo "Waiting for flux-operator to create Flux controllers..."
 
-      # Wait for flux-operator to create the deployments (up to 7 minutes)
+      # First, wait for flux-operator to create the deployments (up to 7 minutes)
+      # This accounts for: Cilium readiness wait, pod scheduling delays, image pulls, and operator startup
       TIMEOUT=420
       ELAPSED=0
       while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -427,12 +193,11 @@ resource "null_resource" "wait_flux_controllers" {
   }
 }
 
-########## PHASE 3: POST-BOOTSTRAP VERIFICATION AND CLEANUP ##########
-
 # Step 1: Suspend flux-system to prevent apps from deploying before helm cache is ready
 resource "null_resource" "suspend_flux_system" {
   depends_on = [null_resource.wait_flux_controllers]
 
+  # Trigger recreation when FluxInstance changes
   triggers = {
     flux_instance_id = kubernetes_manifest.flux_instance.object.metadata.uid
   }
@@ -464,9 +229,11 @@ resource "null_resource" "suspend_flux_system" {
 }
 
 # Step 2 & 3: Deploy canary HelmRepository and HelmRelease for testing helm-controller cache
+# Using kubectl apply instead of kubernetes_manifest to avoid CRD validation issues during plan
 resource "null_resource" "deploy_canary" {
   depends_on = [null_resource.suspend_flux_system]
 
+  # Trigger recreation when suspend_flux_system changes
   triggers = {
     suspend_id = null_resource.suspend_flux_system.id
   }
@@ -532,9 +299,11 @@ EOF
 }
 
 # Step 4: Wait for canary to prove helm-controller cache is ready
+# Falls back to time-based wait if canary fails
 resource "null_resource" "wait_helm_cache_ready" {
   depends_on = [null_resource.deploy_canary]
 
+  # Trigger recreation when deploy_canary changes
   triggers = {
     canary_id = null_resource.deploy_canary.id
   }
@@ -572,6 +341,7 @@ resource "null_resource" "wait_helm_cache_ready" {
 resource "null_resource" "adopt_cilium" {
   depends_on = [null_resource.wait_helm_cache_ready]
 
+  # Trigger recreation when wait_helm_cache_ready changes
   triggers = {
     wait_id = null_resource.wait_helm_cache_ready.id
   }
@@ -588,6 +358,7 @@ resource "null_resource" "adopt_cilium" {
           echo "  Found Talos-installed Cilium - adopting into Helm..."
 
           # Label critical Cilium resources so Helm can adopt them
+          # This tells Helm: "these resources are yours to manage now"
           for resource in \
             "daemonset/cilium" \
             "daemonset/cilium-envoy" \
@@ -617,10 +388,11 @@ resource "null_resource" "adopt_cilium" {
   }
 }
 
-# Step 6: Resume flux-system and clean up canary
-resource "null_resource" "resume_and_cleanup" {
+# Step 5.5: Preinstall external-secrets operator with values from Git
+resource "null_resource" "preinstall_external_secrets" {
   depends_on = [null_resource.adopt_cilium]
 
+  # Trigger recreation when adopt_cilium changes
   triggers = {
     adopt_id = null_resource.adopt_cilium.id
   }
@@ -628,14 +400,244 @@ resource "null_resource" "resume_and_cleanup" {
   provisioner "local-exec" {
     command = <<-EOT
       set -e
+      echo "Checking if external-secrets operator needs preinstallation..."
 
-      # Resume flux-system (Flux will now adopt the preinstalled apps)
-      echo "Resuming flux-system (helm cache is ready, apps are preinstalled)..."
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment external-secrets -n external-secrets >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n external-secrets -l owner=helm,name=external-secrets >/dev/null 2>&1; then
+          echo "  Found existing external-secrets - labeling for Helm adoption..."
+
+          for resource in \
+            "deployment/external-secrets" \
+            "deployment/external-secrets-cert-controller" \
+            "deployment/external-secrets-webhook" \
+            "serviceaccount/external-secrets" \
+            "serviceaccount/external-secrets-cert-controller" \
+            "serviceaccount/external-secrets-webhook" \
+            "service/external-secrets-webhook"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n external-secrets \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ external-secrets labeled for Helm adoption"
+        else
+          echo "✓ external-secrets already Helm-managed"
+        fi
+      else
+        echo "  Installing external-secrets operator..."
+
+        # Create namespace
+        kubectl --kubeconfig="$KUBECONFIG" create namespace external-secrets \
+          --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version and URL from Git repo (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.ref.tag' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
+        CHART_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
+          > /tmp/external-secrets-values.yaml
+
+        # Install using same config as Flux will use
+        helm --kubeconfig="$KUBECONFIG" upgrade --install external-secrets \
+          $CHART_URL \
+          --version $CHART_VERSION \
+          --namespace external-secrets \
+          --values /tmp/external-secrets-values.yaml \
+          --wait --timeout 5m
+
+        rm -f /tmp/external-secrets-values.yaml
+
+        echo "✓ external-secrets installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 5.5.5: Preinstall 1Password Connect with values from Git
+resource "null_resource" "preinstall_onepassword" {
+  depends_on = [null_resource.preinstall_external_secrets]
+
+  # Trigger recreation when preinstall_external_secrets changes
+  triggers = {
+    external_secrets_id = null_resource.preinstall_external_secrets.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if 1Password Connect needs preinstallation..."
+
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment onepassword -n external-secrets >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n external-secrets -l owner=helm,name=onepassword >/dev/null 2>&1; then
+          echo "  Found existing 1Password Connect - labeling for Helm adoption..."
+
+          # Label resources for Helm adoption
+          for resource in \
+            "deployment/onepassword" \
+            "service/onepassword" \
+            "serviceaccount/onepassword"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n external-secrets \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ 1Password Connect labeled for Helm adoption"
+        else
+          echo "✓ 1Password Connect already Helm-managed"
+        fi
+      else
+        echo "  Installing 1Password Connect..."
+
+        # Decrypt and apply the SOPS-encrypted secret
+        echo "  Decrypting and applying onepassword credentials secret..."
+        sops -d ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/credentials.json-secret.sops.yaml | \
+          kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version and URL from Git repo (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.ref.tag' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
+        CHART_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
+          > /tmp/onepassword-values.yaml
+
+        # Install using same config as Flux will use
+        helm --kubeconfig="$KUBECONFIG" upgrade --install onepassword \
+          $CHART_URL \
+          --version $CHART_VERSION \
+          --namespace external-secrets \
+          --values /tmp/onepassword-values.yaml \
+          --wait --timeout 5m
+
+        rm -f /tmp/onepassword-values.yaml
+
+        echo "✓ 1Password Connect installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 5.6: Preinstall cert-manager with values from Git
+resource "null_resource" "preinstall_cert_manager" {
+  depends_on = [null_resource.preinstall_onepassword]
+
+  # Trigger recreation when preinstall_onepassword changes
+  triggers = {
+    preinstall_id = null_resource.preinstall_onepassword.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if cert-manager needs preinstallation..."
+
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment cert-manager -n cert-manager >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n cert-manager -l owner=helm,name=cert-manager >/dev/null 2>&1; then
+          echo "  Found existing cert-manager - labeling for Helm adoption..."
+
+          for resource in \
+            "deployment/cert-manager" \
+            "deployment/cert-manager-cainjector" \
+            "deployment/cert-manager-webhook" \
+            "serviceaccount/cert-manager" \
+            "serviceaccount/cert-manager-cainjector" \
+            "serviceaccount/cert-manager-webhook" \
+            "service/cert-manager" \
+            "service/cert-manager-webhook"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n cert-manager \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ cert-manager labeled for Helm adoption"
+        else
+          echo "✓ cert-manager already Helm-managed"
+        fi
+      else
+        echo "  Installing cert-manager..."
+
+        # Create namespace
+        kubectl --kubeconfig="$KUBECONFIG" create namespace cert-manager \
+          --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version from HelmRelease (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.chart.spec.version' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml)
+
+        # Extract repo URL from HelmRepository
+        REPO_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/helm-repo/helmrepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
+          > /tmp/cert-manager-values.yaml
+
+        # Add the Helm repository
+        helm --kubeconfig="$KUBECONFIG" repo add cert-manager-temp $REPO_URL
+        helm --kubeconfig="$KUBECONFIG" repo update cert-manager-temp
+
+        # Install using same config as Flux will use
+        # Note: CRDs are included via crds.enabled=true in values
+        helm --kubeconfig="$KUBECONFIG" upgrade --install cert-manager \
+          cert-manager-temp/cert-manager \
+          --version $CHART_VERSION \
+          --namespace cert-manager \
+          --values /tmp/cert-manager-values.yaml \
+          --wait --timeout 5m
+
+        # Clean up temp repo
+        helm --kubeconfig="$KUBECONFIG" repo remove cert-manager-temp || true
+        rm -f /tmp/cert-manager-values.yaml
+
+        echo "✓ cert-manager installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 6: Resume flux-system and clean up canary (atomic operation)
+resource "null_resource" "resume_and_cleanup" {
+  depends_on = [null_resource.preinstall_cert_manager]
+
+  # Trigger recreation when preinstall_cert_manager changes
+  triggers = {
+    preinstall_id = null_resource.preinstall_cert_manager.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+
+      # Resume flux-system first (most critical operation)
+      echo "Resuming flux-system (helm cache is ready)..."
       kubectl --kubeconfig="$KUBECONFIG" patch kustomization flux-system -n flux-system \
         --type=merge -p '{"spec":{"suspend":false}}'
-      echo "✓ flux-system resumed - Flux will adopt preinstalled apps via SSA Replace"
+      echo "✓ flux-system resumed - apps will now deploy"
 
-      # Clean up canary (best effort)
+      # Clean up canary (best effort - don't fail if this errors)
       echo "Cleaning up cache test canary..."
       kubectl --kubeconfig="$KUBECONFIG" delete helmrelease flux-cache-canary -n flux-system --ignore-not-found=true || true
       kubectl --kubeconfig="$KUBECONFIG" delete helmrepository podinfo -n flux-system --ignore-not-found=true || true
