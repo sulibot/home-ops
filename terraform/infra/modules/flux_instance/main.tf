@@ -462,13 +462,85 @@ resource "null_resource" "preinstall_external_secrets" {
   }
 }
 
-# Step 5.6: Preinstall cert-manager with values from Git
-resource "null_resource" "preinstall_cert_manager" {
+# Step 5.5.5: Preinstall 1Password Connect with values from Git
+resource "null_resource" "preinstall_onepassword" {
   depends_on = [null_resource.preinstall_external_secrets]
 
   # Trigger recreation when preinstall_external_secrets changes
   triggers = {
-    preinstall_id = null_resource.preinstall_external_secrets.id
+    external_secrets_id = null_resource.preinstall_external_secrets.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      echo "Checking if 1Password Connect needs preinstallation..."
+
+      # Check if already installed
+      if kubectl --kubeconfig="$KUBECONFIG" get deployment onepassword -n external-secrets >/dev/null 2>&1; then
+        # Check if Helm-managed
+        if ! kubectl --kubeconfig="$KUBECONFIG" get secret -n external-secrets -l owner=helm,name=onepassword >/dev/null 2>&1; then
+          echo "  Found existing 1Password Connect - labeling for Helm adoption..."
+
+          # Label resources for Helm adoption
+          for resource in \
+            "deployment/onepassword" \
+            "service/onepassword" \
+            "serviceaccount/onepassword"; do
+            kubectl --kubeconfig="$KUBECONFIG" label $resource -n external-secrets \
+              app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+          done
+
+          echo "✓ 1Password Connect labeled for Helm adoption"
+        else
+          echo "✓ 1Password Connect already Helm-managed"
+        fi
+      else
+        echo "  Installing 1Password Connect..."
+
+        # Decrypt and apply the SOPS-encrypted secret
+        echo "  Decrypting and applying onepassword credentials secret..."
+        sops -d ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/credentials.json-secret.sops.yaml | \
+          kubectl --kubeconfig="$KUBECONFIG" apply -f -
+
+        # Extract chart version and URL from Git repo (zero drift!)
+        CHART_VERSION=$(yq eval '.spec.ref.tag' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
+        CHART_URL=$(yq eval '.spec.url' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
+
+        # Extract values from HelmRelease to ensure zero drift
+        yq eval '.spec.values' \
+          ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
+          > /tmp/onepassword-values.yaml
+
+        # Install using same config as Flux will use
+        helm --kubeconfig="$KUBECONFIG" upgrade --install onepassword \
+          $CHART_URL \
+          --version $CHART_VERSION \
+          --namespace external-secrets \
+          --values /tmp/onepassword-values.yaml \
+          --wait --timeout 5m
+
+        rm -f /tmp/onepassword-values.yaml
+
+        echo "✓ 1Password Connect installed (Flux will adopt on next sync)"
+      fi
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
+# Step 5.6: Preinstall cert-manager with values from Git
+resource "null_resource" "preinstall_cert_manager" {
+  depends_on = [null_resource.preinstall_onepassword]
+
+  # Trigger recreation when preinstall_onepassword changes
+  triggers = {
+    preinstall_id = null_resource.preinstall_onepassword.id
   }
 
   provisioner "local-exec" {
