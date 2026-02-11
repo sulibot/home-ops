@@ -255,7 +255,7 @@ resource "null_resource" "preinstall_spegel" {
         --version $CHART_VERSION \
         --namespace kube-system \
         --values /tmp/spegel-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for spegel DaemonSet to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -288,7 +288,7 @@ resource "null_resource" "preinstall_external_secrets" {
 
       # Create namespace
       kubectl --kubeconfig="$KUBECONFIG" create namespace external-secrets \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Extract chart version and URL from Git repo (zero drift!)
       CHART_VERSION=$(yq eval '.spec.ref.tag' \
@@ -302,12 +302,13 @@ resource "null_resource" "preinstall_external_secrets" {
         > /tmp/external-secrets-values.yaml
 
       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+      # Use --server-side to handle large CRD annotations
       helm template external-secrets \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/external-secrets-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for external-secrets pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -359,7 +360,7 @@ resource "null_resource" "preinstall_onepassword" {
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/onepassword-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for 1Password Connect pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -392,7 +393,7 @@ resource "null_resource" "preinstall_cert_manager" {
 
       # Create namespace
       kubectl --kubeconfig="$KUBECONFIG" create namespace cert-manager \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Extract chart version from HelmRelease
       CHART_VERSION=$(yq eval '.spec.chart.spec.version' \
@@ -419,7 +420,7 @@ resource "null_resource" "preinstall_cert_manager" {
         --namespace cert-manager \
         --values /tmp/cert-manager-values.yaml \
         --include-crds \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for cert-manager webhook to be ready (critical for certificate issuance)
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -469,7 +470,7 @@ resource "null_resource" "preinstall_snapshot_controller" {
         --version $CHART_VERSION \
         --namespace kube-system \
         --values /tmp/snapshot-controller-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for snapshot-controller pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -502,7 +503,7 @@ resource "null_resource" "preinstall_volsync" {
 
       # Create namespace
       kubectl --kubeconfig="$KUBECONFIG" create namespace volsync-system \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Extract chart version and URL from Git repo
       CHART_VERSION=$(yq eval '.spec.ref.tag' \
@@ -523,7 +524,7 @@ resource "null_resource" "preinstall_volsync" {
         --namespace volsync-system \
         --values /tmp/volsync-values.yaml \
         --include-crds \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
       # Wait for volsync pods to be ready
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
@@ -743,7 +744,7 @@ resource "null_resource" "deploy_canary" {
       echo "Deploying canary HelmRepository and HelmRelease..."
 
       # Create HelmRepository
-      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -761,7 +762,7 @@ EOF
       sleep 2
 
       # Create HelmRelease
-      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+      cat <<EOF | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
