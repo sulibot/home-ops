@@ -555,11 +555,13 @@ resource "null_resource" "proxmox_vrf_pings" {
       SSH_HOST="${self.triggers.ssh_host}"
       SSH_USER="${self.triggers.ssh_user}"
       SSH_PORT="${self.triggers.ssh_port}"
-      SSH_KEY="${pathexpand(self.triggers.ssh_key)}"
+      # Use $HOME for shell expansion instead of Terraform's pathexpand to get absolute path
+      SSH_KEY="$HOME/.ssh/id_ed25519"
 
       echo "Running VRF ping checks on $SSH_HOST for ${self.triggers.host}..."
 
-      ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
+      # IdentityAgent=none prevents SSH agent usage, forcing direct key file read
+      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
         set -euo pipefail
         VRF="${var.proxmox_ping_vrf}"
         RETRIES="${var.proxmox_ping_retries}"

@@ -60,16 +60,19 @@ EOF
         sleep 5
       done
 
-      # Wait for the Kubernetes API to be responsive via kubectl
-      echo "⏳ Waiting for Kubernetes API server to respond..."
+      # Wait for the Kubernetes API to be responsive AND at least 1 node to register
+      # Note: `kubectl get nodes >/dev/null 2>&1` exits 0 even with 0 nodes (empty list).
+      # We must check for at least one node row to avoid proceeding before kubelets join.
+      echo "⏳ Waiting for Kubernetes API server and node registration..."
       for i in {1..60}; do
-        if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes >/dev/null 2>&1; then
-          echo "✓ Kubernetes API is healthy!"
+        if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | grep -q .; then
+          NODE_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          echo "✓ Kubernetes API is healthy! ($NODE_COUNT node(s) registered)"
           rm -f "$KUBECONFIG_FILE"
           rm -f "$TALOSCONFIG_FILE"
           exit 0
         fi
-        echo "  ... attempt $i/60, retrying in 10s"
+        echo "  ... attempt $i/60, retrying in 10s (waiting for nodes to register)"
         sleep 10
       done
 
