@@ -16,7 +16,7 @@ kubeProxyReplacement: true
 # Required for Istio Ambient mesh compatibility
 # This prevents interference with Istio's traffic redirection
 socketLB:
-  hostNamespaceOnly: true
+  hostNamespaceOnly: false
 
 # Enable dual-stack with IPv6 first
 ipv4:
@@ -58,8 +58,8 @@ ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + No
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Option 1)
 bpf:
-  # Re-enable BPF masquerade now that IPv6 masquerading is enabled
-  masquerade: true
+  # Use iptables for masquerading to avoid conflicts with hostLegacyRouting
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
