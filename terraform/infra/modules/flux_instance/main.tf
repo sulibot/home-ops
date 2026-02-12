@@ -311,7 +311,27 @@ resource "null_resource" "preinstall_external_secrets" {
         --values /tmp/external-secrets-values.yaml \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
+      # Wait for external-secrets pods to exist (server-side apply is async)
+      echo "Waiting for external-secrets pods to be created..."
+      TIMEOUT=60
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=external-secrets -n external-secrets 2>/dev/null | grep -q external-secrets; then
+          echo "  ✓ external-secrets pods exist"
+          break
+        fi
+        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+      done
+
+      if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "  ⚠ Timeout waiting for external-secrets pods to be created"
+        exit 1
+      fi
+
       # Wait for external-secrets pods to be ready
+      echo "Waiting for external-secrets pods to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
         -l app.kubernetes.io/name=external-secrets \
         -n external-secrets \
@@ -363,7 +383,27 @@ resource "null_resource" "preinstall_onepassword" {
         --values /tmp/onepassword-values.yaml \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
+      # Wait for 1Password Connect pods to exist (server-side apply is async)
+      echo "Waiting for 1Password Connect pods to be created..."
+      TIMEOUT=60
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=onepassword -n external-secrets 2>/dev/null | grep -q onepassword; then
+          echo "  ✓ 1Password Connect pods exist"
+          break
+        fi
+        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+      done
+
+      if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "  ⚠ Timeout waiting for 1Password Connect pods to be created"
+        exit 1
+      fi
+
       # Wait for 1Password Connect pods to be ready
+      echo "Waiting for 1Password Connect pods to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
         -l app.kubernetes.io/name=onepassword \
         -n external-secrets \
@@ -423,7 +463,27 @@ resource "null_resource" "preinstall_cert_manager" {
         --include-crds \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
+      # Wait for cert-manager webhook pods to exist (server-side apply is async)
+      echo "Waiting for cert-manager webhook pods to be created..."
+      TIMEOUT=60
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=webhook -n cert-manager 2>/dev/null | grep -q webhook; then
+          echo "  ✓ cert-manager webhook pods exist"
+          break
+        fi
+        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+      done
+
+      if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "  ⚠ Timeout waiting for cert-manager webhook pods to be created"
+        exit 1
+      fi
+
       # Wait for cert-manager webhook to be ready (critical for certificate issuance)
+      echo "Waiting for cert-manager webhook to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
         -l app.kubernetes.io/name=webhook \
         -n cert-manager \
@@ -473,7 +533,27 @@ resource "null_resource" "preinstall_snapshot_controller" {
         --values /tmp/snapshot-controller-values.yaml \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
+      # Wait for snapshot-controller pods to exist (server-side apply is async)
+      echo "Waiting for snapshot-controller pods to be created..."
+      TIMEOUT=60
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=snapshot-controller -n kube-system 2>/dev/null | grep -q snapshot-controller; then
+          echo "  ✓ snapshot-controller pods exist"
+          break
+        fi
+        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+      done
+
+      if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "  ⚠ Timeout waiting for snapshot-controller pods to be created"
+        exit 1
+      fi
+
       # Wait for snapshot-controller pods to be ready
+      echo "Waiting for snapshot-controller pods to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
         -l app.kubernetes.io/name=snapshot-controller \
         -n kube-system \
