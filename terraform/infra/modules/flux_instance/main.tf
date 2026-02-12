@@ -519,14 +519,30 @@ resource "null_resource" "preinstall_volsync" {
 
       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
       # manageCRDs: true in values will include CRDs
-      # NOTE: Not using --server-side because it fails to persist namespace-scoped resources
+      # Split into CRDs and non-CRDs to handle annotation size limits:
+      # - CRDs are too large for kubectl.kubernetes.io/last-applied-configuration annotation
+      # - Apply CRDs with --server-side (no annotation)
+      # - Apply other resources with regular kubectl apply
+
+      echo "Templating volsync chart..."
       helm template volsync \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace volsync-system \
         --values /tmp/volsync-values.yaml \
-        --include-crds \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+        --include-crds > /tmp/volsync-manifests.yaml
+
+      echo "Splitting CRDs from other resources..."
+      # Extract CRDs (kind: CustomResourceDefinition)
+      yq eval 'select(.kind == "CustomResourceDefinition")' /tmp/volsync-manifests.yaml > /tmp/volsync-crds.yaml
+      # Extract non-CRDs
+      yq eval 'select(.kind != "CustomResourceDefinition")' /tmp/volsync-manifests.yaml > /tmp/volsync-resources.yaml
+
+      echo "Applying volsync CRDs with server-side apply..."
+      kubectl --kubeconfig="$KUBECONFIG" apply --server-side --force-conflicts -f /tmp/volsync-crds.yaml
+
+      echo "Applying volsync resources (non-CRDs)..."
+      kubectl --kubeconfig="$KUBECONFIG" apply -n volsync-system -f /tmp/volsync-resources.yaml
 
       # Wait for volsync deployment to exist (server-side apply is async)
       echo "Waiting for volsync deployment to be created..."
@@ -554,7 +570,7 @@ resource "null_resource" "preinstall_volsync" {
         --for=condition=Available \
         --timeout=300s
 
-      rm -f /tmp/volsync-values.yaml
+      rm -f /tmp/volsync-values.yaml /tmp/volsync-manifests.yaml /tmp/volsync-crds.yaml /tmp/volsync-resources.yaml
       echo "✓ volsync installed and ready"
     EOT
 
