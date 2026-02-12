@@ -224,61 +224,62 @@ resource "null_resource" "preinstall_snapshot_crds" {
 
 ########## PHASE 2: PREINSTALL APPS ##########
 
-# Preinstall spegel (P2P container image distribution) - FIRST APP
-# Installed early to enable faster image pulls for subsequent apps
-resource "null_resource" "preinstall_spegel" {
+# Preinstall spegel (P2P container image distribution) - DISABLED
+# Spegel is incompatible with Cilium BPF + IPv6 ULA networking (libp2p TLS handshake timeouts)
+# Removed to unblock Terraform bootstrap - can investigate alternatives later
+# resource "null_resource" "preinstall_spegel" {
+#   depends_on = [null_resource.preinstall_snapshot_crds]
+#
+#   triggers = {
+#     snapshot_crds_id = null_resource.preinstall_snapshot_crds.id
+#   }
+#
+#   provisioner "local-exec" {
+#     command = <<-EOT
+#       set -e
+#       echo "Installing spegel..."
+#
+#       # Extract chart version and URL from Git repo
+#       CHART_VERSION=$(yq eval '.spec.ref.tag' \
+#         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
+#       CHART_URL=$(yq eval '.spec.url' \
+#         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
+#
+#       # Extract values from HelmRelease (Prometheus CRDs already installed)
+#       yq eval '.spec.values' \
+#         ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
+#         > /tmp/spegel-values.yaml
+#
+#       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
+#       helm template spegel \
+#         $CHART_URL \
+#         --version $CHART_VERSION \
+#         --namespace kube-system \
+#         --values /tmp/spegel-values.yaml \
+#         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
+#
+#       # Wait for spegel DaemonSet to be ready (longer timeout for P2P initialization)
+#       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
+#         -l app.kubernetes.io/name=spegel \
+#         -n kube-system \
+#         --timeout=600s
+#
+#       rm -f /tmp/spegel-values.yaml
+#       echo "✓ spegel installed and ready"
+#     EOT
+#
+#     environment = {
+#       KUBECONFIG = var.kubeconfig_path
+#     }
+#   }
+# }
+
+# Preinstall external-secrets operator (required for 1Password and other secret management)
+resource "null_resource" "preinstall_external_secrets" {
   depends_on = [null_resource.preinstall_snapshot_crds]
 
   triggers = {
     snapshot_crds_id = null_resource.preinstall_snapshot_crds.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing spegel..."
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease (Prometheus CRDs already installed)
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
-        > /tmp/spegel-values.yaml
-
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      helm template spegel \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --values /tmp/spegel-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Wait for spegel DaemonSet to be ready (longer timeout for P2P initialization)
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=spegel \
-        -n kube-system \
-        --timeout=600s
-
-      rm -f /tmp/spegel-values.yaml
-      echo "✓ spegel installed and ready"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall external-secrets operator (required for 1Password and other secret management)
-resource "null_resource" "preinstall_external_secrets" {
-  depends_on = [null_resource.preinstall_spegel]
-
-  triggers = {
-    spegel_id = null_resource.preinstall_spegel.id
   }
 
   provisioner "local-exec" {
