@@ -22,7 +22,7 @@
 - name: Start container
   community.docker.docker_container:
     name: mssql-test
-    image: "mcr.microsoft.com/mssql/server:2019-latest"
+    image: "mcr.microsoft.com/mssql/server:2025-latest"
     env:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "{{ mssql_login_password }}"
