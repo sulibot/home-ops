@@ -527,7 +527,27 @@ resource "null_resource" "preinstall_volsync" {
         --include-crds \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
+      # Wait for volsync deployment to exist (server-side apply is async)
+      echo "Waiting for volsync deployment to be created..."
+      TIMEOUT=60
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get deployment volsync -n volsync-system >/dev/null 2>&1; then
+          echo "  ✓ volsync deployment exists"
+          break
+        fi
+        echo "  ⏳ Waiting for deployment to be created... ($ELAPSED/$TIMEOUT seconds)"
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+      done
+
+      if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "  ⚠ Timeout waiting for volsync deployment to be created"
+        exit 1
+      fi
+
       # Wait for volsync deployment to be available
+      echo "Waiting for volsync deployment to be available..."
       kubectl --kubeconfig="$KUBECONFIG" wait deployment volsync \
         -n volsync-system \
         --for=condition=Available \
