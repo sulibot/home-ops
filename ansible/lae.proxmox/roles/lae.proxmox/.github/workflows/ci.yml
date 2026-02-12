@@ -42,7 +42,7 @@ jobs:
   vagrant-deploy:
     needs: ["changes"]
     if: ${{ needs.changes.outputs.role == 'true' || github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt install nfs-kernel-server
