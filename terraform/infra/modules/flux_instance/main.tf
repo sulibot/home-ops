@@ -519,13 +519,14 @@ resource "null_resource" "preinstall_volsync" {
 
       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
       # manageCRDs: true in values will include CRDs
+      # NOTE: Not using --server-side because it fails to persist namespace-scoped resources
       helm template volsync \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace volsync-system \
         --values /tmp/volsync-values.yaml \
         --include-crds \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
+        | kubectl --kubeconfig="$KUBECONFIG" apply -f -
 
       # Wait for volsync deployment to exist (server-side apply is async)
       echo "Waiting for volsync deployment to be created..."
