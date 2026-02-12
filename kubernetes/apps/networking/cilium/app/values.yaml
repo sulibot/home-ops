@@ -61,7 +61,7 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
 ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + Nodes)
 
 # BPF configuration optimized for Talos + Istio Ambient
-# forwardKubeDNSToHost is DISABLED in Talos machine config
+# forwardKubeDNSToHost is ENABLED in Talos machine config (Legacy Mode)
 bpf:
   # Enable BPF masquerading
   masquerade: false
@@ -78,13 +78,7 @@ bpf:
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
-  enabled: true
-  config:
-    # Explicitly prevent masquerading for ULA and IPv4 internal ranges
-    # This ensures BPF masquerading respects these boundaries even in edge cases
-    nonMasqueradeCIDRs:
-      - 10.101.0.0/16
-      - fd00:101::/48
+  enabled: false
 
 # BGP Control Plane enabled; Cilium only peers to local FRR for LB VIP origination
 bgpControlPlane:

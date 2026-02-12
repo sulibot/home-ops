@@ -92,7 +92,7 @@ locals {
     kubePrism = { enabled = true, port = 7445 }
     hostDNS = {
       enabled              = true # Required for Talos Helm controller
-      forwardKubeDNSToHost = false # Disabled for Cilium BPF Host Routing (Direct Mode)
+      forwardKubeDNSToHost = true # Enabled (Compatible with Cilium Legacy Host Routing)
     }
   }
 
