@@ -10,4 +10,4 @@ resources:
   - ./intel-gpu-resource-driver/ks.yaml
   - ./metrics-server/ks.yaml
   - ./reloader/ks.yaml
-  - ./spegel/ks.yaml
+  # - ./spegel/ks.yaml  # Disabled - incompatible with Cilium BPF + IPv6 ULA
