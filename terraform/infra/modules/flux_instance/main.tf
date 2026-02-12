@@ -527,11 +527,11 @@ resource "null_resource" "preinstall_volsync" {
         --include-crds \
         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
 
-      # Wait for volsync pods to be ready
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=volsync-perfectra1n \
+      # Wait for volsync deployment to be available
+      kubectl --kubeconfig="$KUBECONFIG" wait deployment volsync \
         -n volsync-system \
-        --timeout=600s
+        --for=condition=Available \
+        --timeout=300s
 
       rm -f /tmp/volsync-values.yaml
       echo "✓ volsync installed and ready"
