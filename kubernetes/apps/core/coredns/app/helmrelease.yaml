@@ -47,6 +47,7 @@ spec:
           - name: kubernetes
             parameters: cluster.local in-addr.arpa ip6.arpa
             configBlock: |-
+              endpoint https://10.101.96.1:443
               pods verified
               fallthrough in-addr.arpa ip6.arpa
           - name: autopath
