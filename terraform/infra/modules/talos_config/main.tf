@@ -344,10 +344,14 @@ locals {
       }
 
       # Direct protocol - imports directly connected routes
-      protocol direct {
-        interface "dummy0", "lo";
-        ipv4;
-        ipv6;
+      protocol direct direct_routes {
+        interface "dummy0", "lo", "ens18";
+        ipv4 {
+          import all;
+        };
+        ipv6 {
+          import all;
+        };
       }
 
       # Kernel protocol for IPv4 - imports/exports routes from/to kernel
@@ -378,6 +382,11 @@ locals {
         merge paths on;
       }
 
+      # BFD protocol
+      protocol bfd {
+        interface "*" { multiplier 3; interval 300 ms; };
+      }
+
       # BGP - Cilium Peering via localhost
       # bird2 listens on 179 (default), Cilium connects from localhost
       protocol bgp cilium {
@@ -385,17 +394,17 @@ locals {
         passive on;
         multihop 2;
         local as ${node.frr_asn};
-        neighbor 127.0.0.1 as ${local.cilium_asn_cluster};
+        neighbor ::1 as ${local.cilium_asn_cluster};
 
         ipv4 {
           import all;
           export none;  # One-way: Cilium → bird2
+          extended next hop on;  # MP-BGP: IPv4 routes over IPv6 session
         };
 
         ipv6 {
           import all;
           export none;  # One-way: Cilium → bird2
-          extended next hop on;  # Cilium sends IPv6 routes with IPv4 next hop
         };
       }
 
@@ -405,18 +414,41 @@ locals {
         local as ${node.frr_asn};
         source address ${node.public_ipv6};  # Use node's public IPv6 (fd00:101::X)
         neighbor fd00:${var.cluster_id}::fffe as ${var.bgp_remote_asn};
+        bfd on;
 
         ipv4 {
           import all;
-          export all;
+          export filter {
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            if proto = "direct_routes" then {
+              bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
+              accept;
+            }
+            # Pass through other routes (e.g. from Cilium)
+            accept;
+          };
           next hop self;
+          extended next hop on;
         };
 
         ipv6 {
-          import all;
-          export all;
+          import filter {
+            # Reject the local node subnet - nodes use direct kernel routes
+            # Importing this from gateway creates lower-metric route that breaks Cilium
+            if net = fd00:${var.cluster_id}::/64 then reject;
+            accept;
+          };
+          export filter {
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            if proto = "direct_routes" then {
+              bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
+              accept;
+            }
+            # Pass through other routes (e.g. from Cilium)
+            accept;
+          };
           next hop self;
-          extended next hop on;  # MP-BGP over IPv6 for IPv4 routes
+          missing lladdr ignore;  # Allow exporting routes without link-local addresses
         };
       }
     EOT
@@ -443,8 +475,8 @@ locals {
               {
                 name         = "bird2-local"
                 peerASN      = node.frr_asn
-                peerAddress  = "127.0.0.1"     # Connect TO bird2 via localhost (port 179)
-                localAddress = "127.0.0.1"     # Connect FROM localhost
+                peerAddress  = "::1"           # Connect TO bird2 via localhost (port 179)
+                localAddress = "::1"           # Connect FROM localhost
                 peerConfigRef = {
                   name = "frr-local-mpbgp"     # Reuse existing peer config
                 }
@@ -469,6 +501,133 @@ locals {
   }
 }
 
+# Helper: Calculate per-node machine config patches (separated from extension config)
+locals {
+  node_config_patches = {
+    for node_name, node in local.all_nodes : node_name => {
+      machine = merge(
+        {
+          nodeLabels = merge(
+            {
+              # Templated cluster-wide labels (same pattern for all nodes)
+              "topology.kubernetes.io/region" = var.region
+              "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
+              # Per-node label (unique per node)
+              "bgp.frr.asn"                   = tostring(node.frr_asn)
+            },
+            # Add GPU label if GPU passthrough is enabled for this node
+            try(node.gpu_passthrough.enabled, false) ? {
+              "gpu.passthrough.enabled" = "true"
+              "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
+              "gpu.pci.address"         = replace(try(node.gpu_passthrough.pci_address, ""), ":", "-")
+            } : {},
+            # Add USB label if USB devices are passed through to this node
+            try(length(node.usb), 0) > 0 ? {
+              "usb-zigbee"     = "true"
+              "home-assistant" = "true"
+            } : {}
+          )
+          network = {
+            # Per-node: unique hostname for each node
+            hostname = node.hostname
+            interfaces = concat([
+              {
+                interface = var.bgp_interface
+                # Templated cluster standard: All nodes use same MTU for VXLAN
+                # Change via apply/ stage when updating cluster-wide
+                mtu = 1450 # Reduced for VXLAN overhead (SDN)
+                # Per-node: unique IP addresses for each node
+                addresses = concat(
+                  var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [], # GUA: 2600:1700:ab1a:500e::11/64
+                  [
+                    "${node.public_ipv6}/64", # ULA: fd00:101::11/64
+                    "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
+                  ]
+                )
+                # Templated cluster standard: Default route pattern uses cluster_id
+                # Change via apply/ stage when updating gateway pattern cluster-wide
+                routes = [
+                  # IPv4: static route (no RA for IPv4) - will be overridden by BGP
+                  {
+                    network = "0.0.0.0/0"
+                    gateway = "10.${var.cluster_id}.0.254"
+                    metric  = 2048
+                  },
+                  # IPv6: default route via global unicast anycast gateway
+                  {
+                    network = "::/0"
+                    gateway = "fe80::${var.cluster_id}:fffe"
+                    metric  = 150
+                  },
+                ]
+                vip = node.machine_type == "controlplane" ? {
+                  ip = var.vip_ipv6
+                } : null
+              },
+              {
+                # Per-node: unique loopback address for Cilium/bird2 BGP identity
+                interface = "dummy0"
+                addresses = [
+                  "${node.cilium_bgp_ipv6}/128", # Cilium/bird2 fe - FIRST for nodeIP
+                  "${node.cilium_bgp_ipv4}/32",  # Cilium/bird2 254
+                ]
+              }
+              ], node.machine_type == "worker" ? [
+              {
+                # Templated role-wide standard: All workers have same VLAN config
+                # Change via apply/ stage when updating VLAN IDs cluster-wide
+                interface = "ens19"
+                dhcp      = false
+                mtu       = 1500
+                vlans = [
+                  {
+                    vlanId = 30
+                    mtu    = 1500
+                  },
+                  {
+                    vlanId = 31
+                    mtu    = 1500
+                  }
+                ]
+              }
+            ] : [])
+            # Templated cluster standard: All nodes use same DNS servers
+            # Change via apply/ stage when updating DNS servers cluster-wide
+            nameservers = var.dns_servers
+          }
+          kubelet = {
+            nodeIP = {
+              validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
+            }
+          }
+        },
+        # Add GPU kernel module configuration if GPU passthrough is enabled
+        # This is merged INTO the machine block to avoid shallow merge overwriting nodeLabels
+        try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
+          kernel = {
+            modules = [
+              {
+                name = try(node.gpu_passthrough.driver, "i915")
+                parameters = [
+                  for k, v in try(node.gpu_passthrough.driver_params, {}) :
+                  "${k}=${v}"
+                ]
+              }
+            ]
+          }
+        } : {}
+      )
+      # Per-node etcd configuration (control plane only)
+      cluster = node.machine_type == "controlplane" ? {
+        etcd = {
+          # Advertise only this node's specific IPv6 address (not SLAAC)
+          advertisedSubnets = ["${node.public_ipv6}/128"]
+        }
+      } : {}
+    }
+  }
+}
+
 # Generate machine configs with per-node patches
 locals {
   machine_configs = {
@@ -479,149 +638,16 @@ locals {
         data.talos_machine_configuration.controlplane.machine_configuration :
         data.talos_machine_configuration.worker.machine_configuration
       )
-      # Per-node network patch and bird2 ExtensionServiceConfig
-      # Using heredoc to create proper multi-document YAML for Talos config_patch
-      # Per-Node Configuration Patch (Multi-Document YAML)
-      #
-      # This patch contains TWO YAML documents separated by '---':
-      # 1. Machine config patch (nodeLabels, network, kubelet, kernel)
-      # 2. ExtensionServiceConfig patch (bird2 BGP daemon configuration)
-      #
-      # Both documents are per-node and both update safely via patch/ stage.
-      #
-      # Config Organization:
-      # - TRULY PER-NODE: hostname, IPs, node-specific labels → Use patch/ stage
-      # - TEMPLATED CLUSTER STANDARDS: MTU, DNS, route patterns → Use apply/ stage when changing cluster-wide
-      #
-      # Decision Rule: "Does this change require re-templating for ALL nodes?"
-      # - YES (MTU, DNS, VLANs) → Edit here, then use apply/ stage
-      # - NO (single node's IP/label) → Edit here, then use patch/ stage
+
+      # New fields for cleaner separation
+      machine_config_patch = yamlencode(local.node_config_patches[node_name])
+      extension_config     = local.extension_service_configs[node_name]
+
+      # Legacy combined field for backward compatibility with apply/ stage
       config_patch = <<-EOT
-${yamlencode({
-        machine = merge(
-          {
-            nodeLabels = merge(
-              {
-                # Templated cluster-wide labels (same pattern for all nodes)
-                "topology.kubernetes.io/region" = var.region
-                "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
-                # Per-node label (unique per node)
-                "bgp.frr.asn"                   = tostring(node.frr_asn)
-              },
-              # Add GPU label if GPU passthrough is enabled for this node
-              try(node.gpu_passthrough.enabled, false) ? {
-                "gpu.passthrough.enabled" = "true"
-                "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
-                "gpu.pci.address"         = replace(try(node.gpu_passthrough.pci_address, ""), ":", "-")
-              } : {},
-              # Add USB label if USB devices are passed through to this node
-              try(length(node.usb), 0) > 0 ? {
-                "usb-zigbee"        = "true"
-                "home-assistant"    = "true"
-              } : {}
-            )
-            network = {
-              # Per-node: unique hostname for each node
-              hostname = node.hostname
-              interfaces = concat([
-                {
-                  interface = var.bgp_interface
-                  # Templated cluster standard: All nodes use same MTU for VXLAN
-                  # Change via apply/ stage when updating cluster-wide
-                  mtu       = 1450 # Reduced for VXLAN overhead (SDN)
-                  # Per-node: unique IP addresses for each node
-                  addresses = concat(
-                    var.gua_prefix != "" ? ["${trimsuffix(var.gua_prefix, "::/64")}::${node.node_suffix}/64"] : [], # GUA: 2600:1700:ab1a:500e::11/64
-                    [
-                      "${node.public_ipv6}/64", # ULA: fd00:101::11/64
-                      "${node.public_ipv4}/24", # IPv4: 10.0.101.11/24
-                    ]
-                  )
-                  # Templated cluster standard: Default route pattern uses cluster_id
-                  # Change via apply/ stage when updating gateway pattern cluster-wide
-                  routes = [
-                    # IPv4: static route (no RA for IPv4) - will be overridden by BGP
-                    {
-                      network = "0.0.0.0/0"
-                      gateway = "10.${var.cluster_id}.0.254"
-                      metric  = 2048
-                    },
-                    # IPv6: default route via global unicast anycast gateway
-                    {
-                      network = "::/0"
-                      gateway = "fe80::${var.cluster_id}:fffe"
-                      metric  = 150
-                    },
-                  ]
-                  vip = node.machine_type == "controlplane" ? {
-                    ip = var.vip_ipv6
-                  } : null
-                },
-                {
-                  # Per-node: unique loopback address for Cilium/bird2 BGP identity
-                  interface = "dummy0"
-                  addresses = [
-                    "${node.cilium_bgp_ipv6}/128",  # Cilium/bird2 fe - FIRST for nodeIP
-                    "${node.cilium_bgp_ipv4}/32",   # Cilium/bird2 254
-                  ]
-                }
-                ], node.machine_type == "worker" ? [
-                {
-                  # Templated role-wide standard: All workers have same VLAN config
-                  # Change via apply/ stage when updating VLAN IDs cluster-wide
-                  interface = "ens19"
-                  dhcp      = false
-                  mtu       = 1500
-                  vlans = [
-                    {
-                      vlanId = 30
-                      mtu    = 1500
-                    },
-                    {
-                      vlanId = 31
-                      mtu    = 1500
-                    }
-                  ]
-                }
-              ] : [])
-              # Templated cluster standard: All nodes use same DNS servers
-              # Change via apply/ stage when updating DNS servers cluster-wide
-              nameservers = var.dns_servers
-            }
-            kubelet = {
-              nodeIP = {
-                validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
-              }
-            }
-          },
-          # Add GPU kernel module configuration if GPU passthrough is enabled
-          # This is merged INTO the machine block to avoid shallow merge overwriting nodeLabels
-          try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {
-            kernel = {
-              modules = [
-                {
-                  name = try(node.gpu_passthrough.driver, "i915")
-                  parameters = [
-                    for k, v in try(node.gpu_passthrough.driver_params, {}) :
-                    "${k}=${v}"
-                  ]
-                }
-              ]
-            }
-          } : {}
-        )
-        # Per-node etcd configuration (control plane only)
-        cluster = node.machine_type == "controlplane" ? {
-          etcd = {
-            # Advertise only this node's specific IPv6 address (not SLAAC)
-            advertisedSubnets = ["${node.public_ipv6}/128"]
-          }
-        } : {}
-      })}
+${yamlencode(local.node_config_patches[node_name])}
 ---
 ${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
-${"# Per-node FRR configuration (peers, ASN, route filters)"}
-${"# Updates safely via patch/ stage along with machine config above"}
 ${local.extension_service_configs[node_name]}
 EOT
 }
@@ -632,10 +658,10 @@ EOT
 data "talos_client_configuration" "cluster" {
   cluster_name         = var.cluster_name
   client_configuration = local.client_configuration
-  endpoints            = [for node in local.control_plane_nodes : node.public_ipv6]
+  endpoints            = [for node in local.control_plane_nodes : node.public_ipv4]
   nodes = concat(
-    [for node in local.control_plane_nodes : node.public_ipv6],
-    [for node in local.worker_nodes : node.public_ipv6]
+    [for node in local.control_plane_nodes : node.public_ipv4],
+    [for node in local.worker_nodes : node.public_ipv4]
   )
 }
 

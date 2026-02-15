@@ -1,215 +1,434 @@
-{# Variable Mapping #}
-{% set node_id    = (inventory_hostname | regex_replace('^pve0?', '') | int) %}
-{% set infra_ip4  = "10.255.0." ~ node_id %}
-{% set infra_ip6  = "fd00:0:0:ffff::" ~ node_id %}
-{% set pipe_global = "fd00:255:254:" ~ node_id ~ "::1" %}
-{% set pipe_vrf    = "fd00:255:254:" ~ node_id ~ "::0" %}
-{% set vrf_router_id = "10.255.255." ~ ((node_id - 1) * 4 + 2) %}
-{% set HAS_MESH   = inventory_hostname in ['pve01','pve02','pve03'] %}
+{# =====================================================================
+  /etc/frr/frr.conf  (Jinja2 template)
 
-{% if HAS_MESH %}
-! FRR 10.5 - Datacenter Framework
-! Optimized for 25G Mesh + EVPN + Cross-Connect Peering
-!
-frr version 10.5
+  Goal:
+    - VRF "{{ VRF_NAME }}" learns K8s pod/VIP routes from VMs (dynamic neighbors)
+    - PVE exports selected VRF routes to GLOBAL (and later iBGP mesh / EDGE)
+
+  FIXES IN THIS REV:
+    1) Correct EDGE peer-group usage:
+       - peer-groups must be named (EDGE4/EDGE6)
+       - neighbors must be the actual IPs ({{ EDGE_V4 }} / {{ EDGE_V6 }})
+       This aligns with the intended running-config form. :contentReference[oaicite:3]{index=3}
+
+    2) Ensure VMs have an OUT policy:
+       - RM_VMS_OUT_V6 exists and is applied outbound
+       - avoids "Outbound updates discarded due to missing policy" when policy is enforced.
+       :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5}
+===================================================================== #}
+
+{# -----------------------------
+   Variable Mapping
+----------------------------- #}
+{% set node_id        = (inventory_hostname | regex_replace('^pve0?', '') | int) %}
+{% set infra_ip4      = "10.255.0." ~ node_id %}
+{% set infra_ip6      = "fd00:0:0:ffff::" ~ node_id %}
+{% set pipe_global    = "fd00:255:254:" ~ node_id ~ "::1" %}
+{% set pipe_vrf       = "fd00:255:254:" ~ node_id ~ "::0" %}
+{% set vrf_router_id  = "10.255.255." ~ ((node_id - 1) * 4 + 2) %}
+
+{# --- Site / fabric knobs --- #}
+{% set LOCAL_AS       = local_as       | default("4200001000") %}
+{% set EDGE_AS        = edge_as        | default("4200000000") %}
+{% set EDGE_V4        = edge_v4        | default("10.255.0.254") %}
+{% set EDGE_V6        = edge_v6        | default("fd00:0:0:ffff::fffe") %}
+
+{# VRF name/table #}
+{% set VRF_NAME       = vrf_name       | default("vrf_evpnz1") %}
+
+{# Tenant prefix lists (adjust as needed) #}
+{% set TENANT_V4_LIST = tenant_v4_list | default(["10.100.0.0/24","10.101.0.0/24","10.102.0.0/24","10.103.0.0/24"]) %}
+{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/48","fd00:101::/48","fd00:102::/48","fd00:103::/48"]) %}
+{% set TENANT_LOOPBACK_V6_LIST = tenant_loopback_v6_list | default(["fd00:100:fe::/64","fd00:101:fe::/64","fd00:102:fe::/64","fd00:103:fe::/64"]) %}
+{% set TENANT_GUA_V6_LIST = tenant_gua_v6_list | default(["2600:1700:ab1a:500e::/64","2600:1700:ab1a:500d::/64","2600:1700:ab1a:500c::/64","2600:1700:ab1a:500b::/64"]) %}
+
+{# K8s route policy (cluster-specific) #}
+{% set K8S_PODS_V6    = k8s_pods_v6    | default("fd00:101:224::/60") %}
+{% set K8S_VIPS_V6_A  = k8s_vips_v6_a  | default("fd00:101:253::/112") %}
+{% set K8S_VIPS_V6_B  = k8s_vips_v6_b  | default("fd00:101:254::/112") %}
+{% set K8S_LOOPBACKS_V6 = k8s_loopbacks_v6 | default("fd00:101:fe::/64") %}
+
+{# VMs listen range for dynamic neighbors #}
+{% set VMS_LISTEN_V6  = vms_listen_v6  | default("fd00:101::/64") %}
+
+{# =====================================================================
+   Global FRR plumbing
+===================================================================== #}
+frr version 10.5.1
 frr defaults datacenter
 hostname {{ inventory_hostname }}
+log syslog informational
 service integrated-vtysh-config
 !
-! -----------------------------------------------------------------------------
-! PREFIX LISTS
-! -----------------------------------------------------------------------------
+ip forwarding
+ipv6 forwarding
+!
+bfd
+ profile EDGE_BFD
+  minimum-ttl 1
+  transmit-interval 300
+  receive-interval 300
+  detect-multiplier 3
+ !
+!
+{% if VRF_NAME %}
+vrf {{ VRF_NAME }}
+exit-vrf
+{% endif %}
+!
+
+{# =====================================================================
+   Prefix-lists
+===================================================================== #}
+
 ip prefix-list PL_DEFAULT_V4 seq 5 permit 0.0.0.0/0
+!
 ipv6 prefix-list PL_DEFAULT_V6 seq 5 permit ::/0
 !
-! Infrastructure loopbacks (BGP Peer IDs)
-ip prefix-list PL_INFRA_V4 seq 5 permit 10.255.0.0/16 le 32
 ipv6 prefix-list PL_INFRA_V6 seq 5 permit fd00:0:0:ffff::/64 le 128
+ipv6 prefix-list PL_SVCS_V6  seq 5 permit fc00:20::/48 le 128
 !
-! Ceph / Services (OSPF advertised for resilience)
-ipv6 prefix-list PL_SVCS_V6 seq 5 permit fc00:20::/48 le 128
+
+{# --- Tenants --- #}
+{# Simple "all tenants" v4 (override if you want per-tenant granularity) #}
+ip prefix-list PL_TENANT_V4 seq 10 permit 10.100.0.0/14 le 32
 !
-! Tenant VM/Pod/Loopback ranges
-ip prefix-list PL_TENANT_V4 seq 5 permit 10.0.0.0/16 ge 24 le 32
-ip prefix-list PL_TENANT_V4 seq 10 permit 10.100.0.0/14 ge 24 le 32
-!
-! ULA Tenant Ranges (Generated via loop)
-{% for id in range(100, 104) %}
-ipv6 prefix-list PL_TENANT_V6 seq {{ loop.index * 5 }} permit fd00:{{ id }}::/64 le 128
+{% for p in TENANT_V6_LIST %}
+ipv6 prefix-list PL_TENANT_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} le 128
+{% endfor %}
+{% for p in TENANT_LOOPBACK_V6_LIST %}
+ipv6 prefix-list PL_TENANT_V6 seq {{ 100 + loop.index0*10 }} permit {{ p }} ge 128 le 128
 {% endfor %}
 !
-! Cluster pod + LB pools (explicit ranges)
-ipv6 prefix-list PL_TENANT_V6 seq 25 permit fd00:101:224::/60 le 128
-ipv6 prefix-list PL_TENANT_V6 seq 30 permit fd00:101:250::/112 le 128
-ipv6 prefix-list PL_TENANT_V6 seq 35 permit fd00:101:fe::/112 le 128
-ipv6 prefix-list PL_TENANT_V6 seq 40 permit fd00:101:254::/112 le 128
+{% for p in TENANT_GUA_V6_LIST %}
+ipv6 prefix-list PL_TENANT_GUA_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} le 128
+{% endfor %}
 !
-! GUA Tenant Ranges (AT&T Fiber Residential Block)
-! Permitting broader block to handle dynamic PD rotation
-ipv6 prefix-list PL_TENANT_V6 seq 100 permit 2600:1700::/28 le 128
+
+{# --- K8s --- #}
+ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} le 64
+ipv6 prefix-list PL_K8S_VIPS_V6 seq 5 permit {{ K8S_VIPS_V6_A }} le 128
+ipv6 prefix-list PL_K8S_VIPS_V6 seq 15 permit {{ K8S_VIPS_V6_B }} le 128
+ipv6 prefix-list PL_K8S_LOOPBACKS_V6 seq 5 permit {{ K8S_LOOPBACKS_V6 }} le 128
 !
-! -----------------------------------------------------------------------------
-! ROUTE MAPS
-! -----------------------------------------------------------------------------
-! Underlay: Export Loopbacks and Ceph Services into OSPF
-route-map RM_OSPF_EXPORT permit 10
- match ip address prefix-list PL_INFRA_V4
- match ipv6 address prefix-list PL_INFRA_V6
+{# VM next-hop filter - only advertise VIPs when next-hop is VM-side (owner PVE) #}
+ipv6 prefix-list PL_VM_NH_V6 seq 10 permit fd00:101::/64 le 128
 !
-route-map RM_OSPF_EXPORT permit 20
- match ipv6 address prefix-list PL_SVCS_V6
+
+{# =====================================================================
+   BGP Community Lists (for scalable policy)
+===================================================================== #}
 !
-! Edge Export: Force Next-Hop to local PVE identity for MikroTik
-route-map RM_EDGE_EXPORT permit 10
+bgp large-community-list standard CL_TENANT_ROUTES permit {{ LOCAL_AS }}:0:101
+bgp large-community-list standard CL_K8S_INTERNAL permit {{ LOCAL_AS }}:0:100
+bgp large-community-list standard CL_K8S_PUBLIC   permit {{ LOCAL_AS }}:0:200
+bgp large-community-list standard CL_IBGP_LEARNED permit {{ LOCAL_AS }}:0:900
+bgp large-community-list standard CL_K8S_PUBLIC_AND_IBGP permit {{ LOCAL_AS }}:0:200 {{ LOCAL_AS }}:0:900
+!
+
+{# =====================================================================
+   Route-maps
+===================================================================== #}
+
+{# --- iBGP Inbound Policy (Tag routes learned via iBGP) --- #}
+route-map RM_IBGP_IN permit 10
+ set large-community {{ LOCAL_AS }}:0:900 additive
+exit
+!
+{# --- Edge export policy (what GLOBAL advertises to RouterOS EDGE) --- #}
+route-map RM_EDGE_EXPORT_V4 deny 5
+ match large-community CL_K8S_PUBLIC_AND_IBGP
+exit
+!
+route-map RM_EDGE_EXPORT_V4 permit 10
  match ip address prefix-list PL_TENANT_V4
- set ip next-hop {{ infra_ip4 }}
+exit
 !
-route-map RM_EDGE_EXPORT permit 20
+route-map RM_EDGE_EXPORT_V4 permit 20
+ match large-community CL_K8S_PUBLIC
+exit
+!
+route-map RM_EDGE_EXPORT_V6 deny 5
+ match large-community CL_K8S_PUBLIC_AND_IBGP
+exit
+!
+route-map RM_EDGE_EXPORT_V6 permit 10
  match ipv6 address prefix-list PL_TENANT_V6
- set ipv6 next-hop global {{ infra_ip6 }}
+exit
 !
-! Leak Down: Global -> VRF (Default Route + Ceph Services)
-route-map RM_GLOBAL_TO_VRF permit 10
+route-map RM_EDGE_EXPORT_V6 permit 15
+ match ipv6 address prefix-list PL_TENANT_GUA_V6
+exit
+!
+route-map RM_EDGE_EXPORT_V6 permit 20
+ match large-community CL_K8S_PUBLIC
+ match ipv6 next-hop prefix-list PL_VM_NH_V6
+exit
+!
+
+{# --- VRF<->GLOBAL leak policy stubs (kept for later expansion) --- #}
+route-map RM_GLOBAL_TO_VRF_V4 permit 10
  match ip address prefix-list PL_DEFAULT_V4
-route-map RM_GLOBAL_TO_VRF permit 20
+exit
+!
+route-map RM_GLOBAL_TO_VRF_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
-route-map RM_GLOBAL_TO_VRF permit 30
+exit
+!
+route-map RM_GLOBAL_TO_VRF_V6 permit 20
  match ipv6 address prefix-list PL_SVCS_V6
+exit
 !
-! Leak Up: VRF -> Global (Tenant routes only)
-route-map RM_VRF_TO_GLOBAL permit 10
+route-map RM_VRF_TO_GLOBAL_V4 permit 10
  match ip address prefix-list PL_TENANT_V4
-route-map RM_VRF_TO_GLOBAL permit 20
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V4 permit 20
+ match large-community CL_K8S_PUBLIC
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V4 permit 25
+ match large-community CL_K8S_INTERNAL
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V4 deny 999
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V6 permit 10
  match ipv6 address prefix-list PL_TENANT_V6
+exit
 !
-! -----------------------------------------------------------------------------
-! NEXT-HOP TRACKING - Allow BGP to use default route for next-hop resolution
-! -----------------------------------------------------------------------------
-ip nht resolve-via-default
-ipv6 nht resolve-via-default
+route-map RM_VRF_TO_GLOBAL_V6 permit 12
+ match large-community CL_TENANT_ROUTES
+exit
 !
-! -----------------------------------------------------------------------------
-! UNDERLAY (OSPF / OSPF6) - The 25G Fabric
-! -----------------------------------------------------------------------------
-router ospf
- ospf router-id {{ infra_ip4 }}
- redistribute connected route-map RM_OSPF_EXPORT
+route-map RM_VRF_TO_GLOBAL_V6 permit 15
+ match ipv6 address prefix-list PL_TENANT_GUA_V6
+exit
 !
-! OSPF Interface Costs (Primary: mesh=10, Backup: vmbr0.10=1000)
-{% for link in mesh_links[inventory_hostname] %}
-interface {{ link.iface }}
+route-map RM_VRF_TO_GLOBAL_V6 permit 20
+ match large-community CL_K8S_PUBLIC
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V6 permit 25
+ match large-community CL_K8S_INTERNAL
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V6 deny 999
+exit
+!
+
+{# --- VMS inbound policy (what we ACCEPT from the K8s VMs into VRF) --- #}
+{# "Guard Rail" Logic: Accept anything in the Tenant Block if it has a valid Community tag #}
+{# This allows the VM to declare "Public" vs "Internal" intent without PVE config changes #}
+route-map RM_VMS_IN_V6 permit 10
+ match ipv6 address prefix-list PL_TENANT_V6
+exit
+!
+route-map RM_VMS_IN_V6 permit 15
+ match ipv6 address prefix-list PL_TENANT_GUA_V6
+exit
+!
+route-map RM_VMS_IN_V6 permit 20
+ match ipv6 address prefix-list PL_K8S_LOOPBACKS_V6
+exit
+!
+route-map RM_VMS_IN_V6 deny 999
+exit
+!
+
+{# --- VMS inbound policy (IPv4) --- #}
+route-map RM_VMS_IN_V4 permit 10
+ match ip address prefix-list PL_TENANT_V4
+exit
+!
+route-map RM_VMS_IN_V4 deny 999
+exit
+!
+
+{# --- VMS outbound policy (IPv4) --- #}
+route-map RM_VMS_OUT_V4 permit 10
+ match ip address prefix-list PL_DEFAULT_V4
+exit
+!
+route-map RM_VMS_OUT_V4 deny 999
+exit
+!
+
+{# --- VMS outbound policy (REQUIRED when policy is enforced) --- #}
+route-map RM_VMS_OUT_V6 permit 10
+ match ipv6 address prefix-list PL_DEFAULT_V6
+exit
+!
+route-map RM_VMS_OUT_V6 permit 20
+ match ipv6 address prefix-list PL_SVCS_V6
+exit
+!
+route-map RM_VMS_OUT_V6 deny 999
+exit
+!
+
+{# =====================================================================
+   OSPF - Underlay (Ring + Shared L2)
+   Global interface blocks with both IPv4 and IPv6 OSPF settings
+===================================================================== #}
+interface enp1s0f0np0
  ip ospf area 0.0.0.0
+ ip ospf network point-to-point
  ip ospf cost 10
+ no ip ospf passive
  ipv6 ospf6 area 0.0.0.0
+ ipv6 ospf6 network point-to-point
  ipv6 ospf6 cost 10
+exit
 !
-{% endfor %}
+interface enp1s0f1np1
+ ip ospf area 0.0.0.0
+ ip ospf network point-to-point
+ ip ospf cost 10
+ no ip ospf passive
+ ipv6 ospf6 area 0.0.0.0
+ ipv6 ospf6 network point-to-point
+ ipv6 ospf6 cost 10
+exit
+!
 interface vmbr0.10
  ip ospf area 0.0.0.0
+ ip ospf network broadcast
  ip ospf cost 1000
+ no ip ospf passive
  ipv6 ospf6 area 0.0.0.0
+ ipv6 ospf6 network broadcast
  ipv6 ospf6 cost 1000
+exit
+!
+interface lo
+ ip ospf area 0.0.0.0
+ no ip ospf passive
+ ipv6 ospf6 area 0.0.0.0
+exit
 !
 interface lo-infra
+ ip ospf area 0.0.0.0
  ipv6 ospf6 area 0.0.0.0
+exit
 !
 interface lo-svcs
+ ip ospf area 0.0.0.0
  ipv6 ospf6 area 0.0.0.0
+exit
+!
+router ospf
+ ospf router-id {{ infra_ip4 }}
+ passive-interface default
+exit
 !
 router ospf6
  ospf6 router-id {{ infra_ip4 }}
- redistribute connected route-map RM_OSPF_EXPORT
+exit
 !
-! -----------------------------------------------------------------------------
-! BGP GLOBAL (EVPN & Edge Peering)
-! -----------------------------------------------------------------------------
-router bgp 4200001000
+
+{# =====================================================================
+   BGP - GLOBAL (edge-facing)
+===================================================================== #}
+router bgp {{ LOCAL_AS }}
  bgp router-id {{ infra_ip4 }}
  no bgp default ipv4-unicast
+ no bgp network import-check
  bgp bestpath as-path multipath-relax
-2 !
- ! iBGP Mesh: EVPN Transport over 25G Links
- neighbor IBGP_MESH peer-group
- neighbor IBGP_MESH remote-as 4200001000
- neighbor IBGP_MESH update-source lo-infra
-{% for peer_id in [1,2,3] if peer_id != node_id %}
- neighbor fd00:0:0:ffff::{{ peer_id }} peer-group IBGP_MESH
+ bgp graceful-restart
+ !
+ neighbor IBGP peer-group
+ neighbor IBGP remote-as {{ LOCAL_AS }}
+ neighbor IBGP update-source {{ infra_ip6 }}
+ neighbor IBGP bfd
+ neighbor IBGP route-map RM_IBGP_IN in
+ !
+ neighbor EDGE4 peer-group
+ neighbor EDGE4 remote-as {{ EDGE_AS }}
+ neighbor EDGE4 description EDGE_RouterOS_v4
+ neighbor EDGE4 update-source {{ infra_ip4 }}
+ neighbor EDGE4 ebgp-multihop 255
+ neighbor EDGE4 timers 10 30
+ neighbor EDGE4 bfd profile EDGE_BFD
+ neighbor EDGE4 soft-reconfiguration inbound
+ !
+ neighbor EDGE6 peer-group
+ neighbor EDGE6 remote-as {{ EDGE_AS }}
+ neighbor EDGE6 description EDGE_RouterOS_v6
+ neighbor EDGE6 update-source {{ infra_ip6 }}
+ neighbor EDGE6 ebgp-multihop 255
+ neighbor EDGE6 timers 10 30
+ neighbor EDGE6 bfd profile EDGE_BFD
+ neighbor EDGE6 soft-reconfiguration inbound
+ !
+ neighbor {{ EDGE_V4 }} peer-group EDGE4
+ neighbor {{ EDGE_V6 }} peer-group EDGE6
+{% for i in range(1, 4) %}
+{% if i != node_id %}
+ neighbor fd00:0:0:ffff::{{ i }} peer-group IBGP
+{% endif %}
 {% endfor %}
  !
- ! Edge: MikroTik Peering
- neighbor 10.255.0.254 remote-as 4200000000
- neighbor 10.255.0.254 update-source lo-infra
- neighbor 10.255.0.254 ebgp-multihop 2
- neighbor 10.255.0.254 timers 10 30
- neighbor fd00:0:0:ffff::fffe remote-as 4200000000
- neighbor fd00:0:0:ffff::fffe update-source lo-infra
- neighbor fd00:0:0:ffff::fffe ebgp-multihop 2
- neighbor fd00:0:0:ffff::fffe timers 10 30
- !
- ! Cross-Connect Pipe (Global Side)
- neighbor {{ pipe_vrf }} remote-as 4200001000
- neighbor {{ pipe_vrf }} description "INTERNAL_LINK_TO_VRF"
- neighbor {{ pipe_vrf }} capability extended-nexthop
- !
  address-family ipv4 unicast
-  neighbor 10.255.0.254 activate
-  neighbor 10.255.0.254 route-map RM_EDGE_EXPORT out
-  neighbor {{ pipe_vrf }} activate
-  neighbor {{ pipe_vrf }} next-hop-self
-  neighbor {{ pipe_vrf }} route-map RM_VRF_TO_GLOBAL in
-  neighbor {{ pipe_vrf }} route-map RM_GLOBAL_TO_VRF out
-  maximum-paths 4
+  neighbor {{ EDGE_V4 }} activate
+  neighbor IBGP activate
+  neighbor {{ EDGE_V4 }} route-map RM_EDGE_EXPORT_V4 out
+  import vrf {{ VRF_NAME }}
+  import vrf route-map RM_VRF_TO_GLOBAL_V4
  exit-address-family
  !
  address-family ipv6 unicast
-  redistribute connected route-map RM_OSPF_EXPORT
-  redistribute ospf6 route-map RM_OSPF_EXPORT
-  neighbor fd00:0:0:ffff::fffe activate
-  neighbor fd00:0:0:ffff::fffe route-map RM_EDGE_EXPORT out
-  neighbor {{ pipe_vrf }} activate
-  neighbor {{ pipe_vrf }} route-map RM_VRF_TO_GLOBAL in
-  neighbor {{ pipe_vrf }} route-map RM_GLOBAL_TO_VRF out
-  maximum-paths 4
+  neighbor {{ EDGE_V6 }} activate
+  neighbor IBGP activate
+  neighbor IBGP route-map RM_IBGP_IN in
+  neighbor {{ EDGE_V6 }} route-map RM_EDGE_EXPORT_V6 out
+  import vrf {{ VRF_NAME }}
+  import vrf route-map RM_VRF_TO_GLOBAL_V6
  exit-address-family
  !
  address-family l2vpn evpn
-  neighbor IBGP_MESH activate
+  neighbor IBGP activate
   advertise-all-vni
+  advertise-svi-ip
  exit-address-family
+exit
 !
-! -----------------------------------------------------------------------------
-! BGP VRF (Tenant Workloads & Talos)
-! -----------------------------------------------------------------------------
-router bgp 4200001000 vrf vrf_evpnz1
+
+{# =====================================================================
+   BGP - VRF (VM-facing)
+===================================================================== #}
+router bgp {{ LOCAL_AS }} vrf {{ VRF_NAME }}
  bgp router-id {{ vrf_router_id }}
+ no bgp default ipv4-unicast
+ bgp graceful-restart
  !
- ! Dynamic Peering (Talos / VMs)
  neighbor VMS peer-group
  neighbor VMS remote-as external
- neighbor VMS passive
+ neighbor VMS timers 20 60
  neighbor VMS capability extended-nexthop
-{% for id in range(100, 104) %}
- bgp listen range fd00:{{ id }}::/64 peer-group VMS
- bgp listen range fd00:{{ id }}:fe::/64 peer-group VMS
-{% endfor %}
+ neighbor VMS bfd
  !
- ! Cross-Connect Pipe (VRF Side)
- neighbor {{ pipe_global }} remote-as 4200001000
- neighbor {{ pipe_global }} description "INTERNAL_LINK_TO_GLOBAL"
- neighbor {{ pipe_global }} capability extended-nexthop
+ bgp listen range {{ VMS_LISTEN_V6 }} peer-group VMS
  !
  address-family ipv4 unicast
   neighbor VMS activate
-  neighbor {{ pipe_global }} activate
-  neighbor {{ pipe_global }} next-hop-self
+  import vrf default
+  import vrf route-map RM_GLOBAL_TO_VRF_V4
+  neighbor VMS route-map RM_VMS_IN_V4 in
+  neighbor VMS route-map RM_VMS_OUT_V4 out
   redistribute connected
  exit-address-family
  !
  address-family ipv6 unicast
   neighbor VMS activate
-  neighbor {{ pipe_global }} activate
-  neighbor {{ pipe_global }} next-hop-self
+  import vrf default
+  import vrf route-map RM_GLOBAL_TO_VRF_V6
+  neighbor VMS route-map RM_VMS_IN_V6 in
+  neighbor VMS route-map RM_VMS_OUT_V6 out
   redistribute connected
  exit-address-family
+exit
 !
-{% endif %}
+line vty
+!

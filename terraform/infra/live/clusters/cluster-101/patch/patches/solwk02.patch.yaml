@@ -51,9 +51,6 @@ machine:
     topology.kubernetes.io/region: home-lab
     topology.kubernetes.io/zone: cluster-101
 ---
-# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon
-# Per-node FRR configuration (peers, ASN, route filters)
-# Updates safely via patch/ stage along with machine config above
 apiVersion: v1alpha1
 kind: ExtensionServiceConfig
 name: bird2
@@ -62,22 +59,26 @@ configFiles:
       # bird2 BGP daemon configuration
       # Router ID uses the shared Cilium/bird2 loopback (.254)
       router id 10.101.254.22;
-
+      
       # Logging
       log syslog all;
-
+      
       # Device protocol - learns about network interfaces
       protocol device {
         scan time 10;
       }
-
+      
       # Direct protocol - imports directly connected routes
-      protocol direct {
-        interface "dummy0", "lo";
-        ipv4;
-        ipv6;
+      protocol direct direct_routes {
+        interface "dummy0", "lo", "ens18";
+        ipv4 {
+          import all;
+        };
+        ipv6 {
+          import all;
+        };
       }
-
+      
       # Kernel protocol for IPv4 - imports/exports routes from/to kernel
       protocol kernel {
         ipv4 {
@@ -91,7 +92,7 @@ configFiles:
         };
         merge paths on;
       }
-
+      
       # Kernel protocol for IPv6
       protocol kernel {
         ipv6 {
@@ -105,7 +106,12 @@ configFiles:
         };
         merge paths on;
       }
-
+      
+      # BFD protocol
+      protocol bfd {
+        interface "*" { multiplier 3; interval 300 ms; };
+      }
+      
       # BGP - Cilium Peering via localhost
       # bird2 listens on 179 (default), Cilium connects from localhost
       protocol bgp cilium {
@@ -113,38 +119,62 @@ configFiles:
         passive on;
         multihop 2;
         local as 4210101022;
-        neighbor 127.0.0.1 as 4220101000;
-
+        neighbor ::1 as 4220101000;
+      
         ipv4 {
           import all;
           export none;  # One-way: Cilium → bird2
+          extended next hop on;  # MP-BGP: IPv4 routes over IPv6 session
         };
-
+      
         ipv6 {
           import all;
           export none;  # One-way: Cilium → bird2
-          extended next hop on;  # Cilium sends IPv6 routes with IPv4 next hop
         };
       }
-
+      
       # BGP - Upstream Peering (same as FRR - ULA addresses)
       protocol bgp upstream {
         description "PVE ULA Anycast Gateway";
         local as 4210101022;
         source address fd00:101::22;  # Use node's public IPv6 (fd00:101::X)
         neighbor fd00:101::fffe as 4200001000;
-
+        bfd on;
+      
         ipv4 {
           import all;
-          export all;
+          export filter {
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            if proto = "direct_routes" then {
+              bgp_large_community.add((4200001000, 0, 200));
+              accept;
+            }
+            # Pass through other routes (e.g. from Cilium)
+            accept;
+          };
           next hop self;
+          extended next hop on;
         };
-
+      
         ipv6 {
-          import all;
-          export all;
+          import filter {
+            # Reject the local node subnet - nodes use direct kernel routes
+            # Importing this from gateway creates lower-metric route that breaks Cilium
+            if net = fd00:101::/64 then reject;
+            accept;
+          };
+          export filter {
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            if proto = "direct_routes" then {
+              bgp_large_community.add((4200001000, 0, 200));
+              accept;
+            }
+            # Pass through other routes (e.g. from Cilium)
+            accept;
+          };
           next hop self;
-          extended next hop on;  # MP-BGP over IPv6 for IPv4 routes
+          missing lladdr ignore;  # Allow exporting routes without link-local addresses
         };
       }
+      
     mountPath: /usr/local/etc/bird.conf

@@ -16,7 +16,7 @@
 2. [Architecture Overview](#2-architecture-overview)
 3. [Control Plane Design](#3-control-plane-design)
 4. [Infrastructure Layer: Proxmox VE FRR](#4-infrastructure-layer-proxmox-ve-frr)
-5. [Tenant Layer: VM/Talos FRR](#5-tenant-layer-vmtalos-frr)
+5. [Tenant Layer: VM/Talos Bird2](#5-tenant-layer-vmtalos-bird2)
 6. [BGP Peering Architecture](#6-bgp-peering-architecture)
 7. [Route Advertisement and Filtering](#7-route-advertisement-and-filtering)
 8. [Implementation Guide](#8-implementation-guide)
@@ -605,9 +605,9 @@ route-map EXPORT_TO_TALOS permit 40
 
 ---
 
-## 5. Tenant Layer: VM/Talos FRR
+## 5. Tenant Layer: VM/Talos Bird2
 
-### 5.1 VM FRR Requirements
+### 5.1 VM Routing Requirements
 
 **Design Goals:**
 1. Advertise VM loopback address to infrastructure
@@ -616,7 +616,7 @@ route-map EXPORT_TO_TALOS permit 40
 4. No IGP - pure BGP client
 5. Automatically establish BGP on VM first boot
 
-**FRR Version:** 10.5.0 (container image: `ghcr.io/sulibot/frr-talos:v1.0.18`)
+**Daemon:** Bird2 (via Talos System Extension)
 
 ### 5.2 Talos Extension Architecture
 
@@ -629,8 +629,8 @@ route-map EXPORT_TO_TALOS permit 40
 ```yaml
 container:
   mounts:
-    - source: /var/lib/frr           # Host path
-      destination: /etc/frr          # Container path
+    - source: /var/etc/bird          # Host path
+      destination: /usr/local/etc    # Container path
       type: bind
       options: [bind, rw]
 ```
@@ -944,6 +944,24 @@ ipv6 prefix-list TENANT seq 5 permit fd00:101::/64 le 128
 ip prefix-list FILTER seq 99 deny 0.0.0.0/0 le 32
 # Explicit deny-all (matches any IPv4 prefix)
 # Critical for security (prevents leakage)
+```
+
+### 7.4 BGP Large Community Implementation
+
+**Configuration:**
+```bash
+! Define Large Community Lists
+bgp large-community-list standard CL_K8S_INTERNAL permit 4200001000:0:100
+bgp large-community-list standard CL_K8S_PUBLIC   permit 4200001000:0:200
+
+! Match in Route Maps
+route-map RM_EDGE_EXPORT_V6 permit 20
+ match large-community CL_K8S_PUBLIC
+
+! Set in Route Maps (Ingress Classification)
+route-map RM_VMS_IN_V6 permit 10
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+ set large-community 4200001000:0:100
 ```
 
 ---

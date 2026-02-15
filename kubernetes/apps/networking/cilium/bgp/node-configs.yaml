@@ -8,10 +8,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101011
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.11"
@@ -27,10 +27,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101012
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.12"
@@ -46,10 +46,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101013
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.13"
@@ -65,10 +65,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101021
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.21"
@@ -84,10 +84,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101022
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.22"
@@ -103,10 +103,10 @@
     "localPort": 1790
     "name": "local-bird2"
     "peers":
-    - "localAddress": "127.0.0.1"
+    - "localAddress": "::1"
       "name": "bird2-local"
       "peerASN": 4210101023
-      "peerAddress": "127.0.0.1"
+      "peerAddress": "::1"
       "peerConfigRef":
         "name": "frr-local-mpbgp"
     "routerID": "10.101.254.23"

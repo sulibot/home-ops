@@ -61,15 +61,16 @@ resource "null_resource" "wait_cilium_ready" {
         --timeout=120s
 
       # Verify Cilium has correct routing configuration (from Git repo values.yaml)
-      # This ensures ClusterIP services work before flux-operator starts
+      # direct-routing-skip-unreachable must be false when auto-direct-node-routes is false
+      # This is required for BGP-based routing with Cilium
       echo "  Verifying Cilium routing configuration..."
       CURRENT_SKIP=$(kubectl --kubeconfig="$KUBECONFIG" get configmap cilium-config -n kube-system -o jsonpath='{.data.direct-routing-skip-unreachable}')
-      if [ "$CURRENT_SKIP" != "true" ]; then
-        echo "    ⚠ Cilium missing directRoutingSkipUnreachable fix, patching..."
-        kubectl --kubeconfig="$KUBECONFIG" patch configmap cilium-config -n kube-system --type=merge -p '{"data":{"direct-routing-skip-unreachable":"true"}}'
+      if [ "$CURRENT_SKIP" = "true" ]; then
+        echo "    ⚠ Cilium has incorrect directRoutingSkipUnreachable setting, patching..."
+        kubectl --kubeconfig="$KUBECONFIG" patch configmap cilium-config -n kube-system --type=merge -p '{"data":{"direct-routing-skip-unreachable":"false"}}'
         kubectl --kubeconfig="$KUBECONFIG" rollout restart ds/cilium -n kube-system
         kubectl --kubeconfig="$KUBECONFIG" rollout status ds/cilium -n kube-system --timeout=120s
-        echo "    ✓ Cilium restarted with routing fix"
+        echo "    ✓ Cilium restarted with correct routing configuration"
       else
         echo "    ✓ Cilium routing configuration correct"
       fi

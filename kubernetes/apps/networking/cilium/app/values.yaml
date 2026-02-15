@@ -44,8 +44,8 @@ k8s:
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
 routingMode: native
-# Enable autoDirectNodeRoutes so nodes learn each other's pod CIDRs
-autoDirectNodeRoutes: true
+# Disable autoDirectNodeRoutes so inter-node pod routing follows BGP-learned routes
+autoDirectNodeRoutes: false
 directRoutingSkipUnreachable: false  # Install routes to all nodes
 # Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
 # This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
@@ -64,7 +64,7 @@ ipv6NativeRoutingCIDR: fd00:101::/48        # Entire Cluster IPv6 ULA (Pods + No
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Legacy Mode)
 bpf:
   # Enable BPF masquerading
-  masquerade: false
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true

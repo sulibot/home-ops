@@ -2,6 +2,19 @@
 {% set public   = (public_interfaces[inventory_hostname] | default({})) %}
 {% set HAS_MESH = inventory_hostname in ['pve01','pve02','pve03'] %}
 
+{# -----------------------------------------------------------------------------
+   VRF PIPE SETTINGS (Proxmox SDN "xvrf_*" / "xvrfp_*" veth pair)
+   - Proxmox already assigns IPv6 /127 on these links.
+   - We add IPv4 /31 so BGP v4 between GLOBAL <-> VRF can come up.
+   - Address scheme:
+       VRF  side: 10.255.254.(2*node_id)/31
+       GLOB side: 10.255.254.(2*node_id+1)/31
+   - Zone name should match your SDN zone (default: evpnz1)
+----------------------------------------------------------------------------- #}
+{% set vrf_zone = (vrf_zone | default('evpnz1')) %}
+{% set pipe_v4_vrf  = "10.255.254." ~ (2 * node_id) %}
+{% set pipe_v4_glob = "10.255.254." ~ (2 * node_id + 1) %}
+
 # ==============================================================================
 # PROXMOX VE NETWORK CONFIGURATION - DC STANDARD
 # ==============================================================================
@@ -12,7 +25,7 @@ iface lo inet loopback
 # ------------------------------------------------------------------------------
 # 1. PHYSICAL UPLINKS & BONDING
 # ------------------------------------------------------------------------------
-{% for slave in public.slaves %}
+{% for slave in (public.slaves | default([])) %}
 auto {{ slave }}
 iface {{ slave }} inet manual
 {% endfor %}
@@ -20,7 +33,7 @@ iface {{ slave }} inet manual
 auto bond0
 iface bond0 inet manual
     bond-mode {{ public.mode | default('802.3ad') }}
-    bond-slaves {{ public.slaves | join(' ') }}
+    bond-slaves {{ (public.slaves | default([])) | join(' ') }}
     bond-miimon 100
     bond-xmit-hash-policy layer2+3
 {% if public.primary is defined %}
@@ -73,7 +86,9 @@ iface vmbr0.10 inet6 static
     # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=1 || true
     # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=1 || true
 
+# ------------------------------------------------------------------------------
 # Generic Workload / Ceph Transport (VLAN 200)
+# ------------------------------------------------------------------------------
 auto vmbr0.200
 iface vmbr0.200 inet static
     address 10.200.0.{{ node_id }}/24
@@ -141,5 +156,26 @@ iface lo-svcs inet manual
     up ip -6 addr add fc00:20::{{ node_id }}/128 dev lo-svcs
     up ip -6 addr add fc00:21::{{ node_id }}/128 dev lo-svcs
 {% endif %}
+
+# ------------------------------------------------------------------------------
+# 4. GLOBAL <-> VRF "PIPE" (Proxmox SDN creates links; we add IPv4 /31)
+# ------------------------------------------------------------------------------
+# Proxmox SDN creates:
+#   - xvrf_{{ vrf_zone }}  (global side)
+#   - xvrfp_{{ vrf_zone }} (VRF side)
+# IPv6 /127 is managed by Proxmox SDN; we only add IPv4 /31 here.
+
+auto xvrf_{{ vrf_zone }}
+iface xvrf_{{ vrf_zone }} inet manual
+    # Global side of pipe (odd address) - MUST share the same /31 with VRF side
+    post-up   ip addr add {{ pipe_v4_glob }}/31 dev $IFACE 2>/dev/null || true
+    pre-down  ip addr del {{ pipe_v4_glob }}/31 dev $IFACE 2>/dev/null || true
+
+auto xvrfp_{{ vrf_zone }}
+iface xvrfp_{{ vrf_zone }} inet manual
+    # VRF side of pipe (even address)
+    post-up   ip link set dev $IFACE master vrf_{{ vrf_zone }} 2>/dev/null || true
+    post-up   ip addr add {{ pipe_v4_vrf }}/31 dev $IFACE 2>/dev/null || true
+    pre-down  ip addr del {{ pipe_v4_vrf }}/31 dev $IFACE 2>/dev/null || true
 
 source /etc/network/interfaces.d/*

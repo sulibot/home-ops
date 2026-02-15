@@ -119,9 +119,8 @@ resource "talos_machine_configuration_apply" "nodes" {
     replace(var.machine_configs[each.key].config_patch, "$$", "$")
   ]
 
-  # Apply configs via IPv6 ULA (should work once we fix the addressing)
-  # Falls back to IPv4 if IPv6 not available
-  endpoint = var.all_node_ips[each.key].ipv6 != "" ? var.all_node_ips[each.key].ipv6 : var.all_node_ips[each.key].ipv4
+  # Apply configs via IPv4 (IPv6 ULA is in VRF and not reachable from workstation)
+  endpoint = var.all_node_ips[each.key].ipv4
 
   # Wait for health check before applying
   depends_on = [null_resource.wait_for_nodes]

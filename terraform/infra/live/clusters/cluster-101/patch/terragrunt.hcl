@@ -9,7 +9,7 @@ include "root" {
 
 locals {
   cluster_config   = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
-  talosconfig_path = "${get_repo_root()}/terraform/infra/live/clusters/cluster-101/talosconfig"
+  talosconfig_path = "${get_repo_root()}/talos/clusters/cluster-101/talosconfig"
 }
 
 # Dependency on config stage (generates machine configs)
@@ -54,11 +54,15 @@ terraform {
             echo "  ✓ Generated configs/$NODE.yaml (base)"
           done
 
-          # Generate config patches
-          echo "$CONFIG_JSON" | jq -r 'to_entries[] | [.key, .value.config_patch] | @tsv' | \
-          while IFS=$'\t' read -r NODE PATCH; do
+          # Generate combined machine config patches (machine config + extension config)
+          echo "$CONFIG_JSON" | jq -r 'to_entries[] | [.key, .value.machine_config_patch, .value.extension_config] | @tsv' | \
+          while IFS=$'\t' read -r NODE PATCH EXT; do
+            # Write machine config patch
             printf '%b' "$PATCH" | yq eval -P '.' - > "$PATCH_DIR/patches/$NODE.patch.yaml"
-            echo "  ✓ Generated patches/$NODE.patch.yaml (patch)"
+            # Append document separator and extension config
+            echo "---" >> "$PATCH_DIR/patches/$NODE.patch.yaml"
+            printf '%b' "$EXT" >> "$PATCH_DIR/patches/$NODE.patch.yaml"
+            echo "  ✓ Generated patches/$NODE.patch.yaml (machine config + extension)"
           done
         fi
       EOT
@@ -76,7 +80,7 @@ terraform {
         REPO_ROOT="${get_repo_root()}"
         PATCH_DIR="$REPO_ROOT/terraform/infra/live/clusters/cluster-101/patch"
         CONFIG_DIR="$REPO_ROOT/terraform/infra/live/clusters/cluster-101/config"
-        TALOSCONFIG="$REPO_ROOT/terraform/infra/live/clusters/cluster-101/talosconfig"
+        TALOSCONFIG="$REPO_ROOT/talos/clusters/cluster-101/talosconfig"
 
         export TALOSCONFIG
 
@@ -95,10 +99,11 @@ terraform {
               echo ""
               echo "Applying config to node: $NODE ($NODE_IP)"
 
+              # Apply combined machine config + extension config patch
               if talosctl apply-config --nodes "$NODE_IP" --file "$PATCH_DIR/configs/$NODE.yaml" --config-patch @"$PATCH_DIR/patches/$NODE.patch.yaml" --mode no-reboot 2>&1; then
-                echo "  ✅ Successfully applied config to $NODE"
+                echo "    ✅ Machine config + extension config applied"
               else
-                echo "  ⚠️  Failed to apply config to $NODE (continuing...)"
+                echo "    ⚠️ Failed to apply config (continuing...)"
               fi
             fi
           done

@@ -11,6 +11,8 @@ output "machine_configs" {
       machine_type          = config.machine_type
       machine_configuration = replace(config.machine_configuration, "$", "$$")
       config_patch          = replace(config.config_patch, "$", "$$")
+      machine_config_patch  = replace(config.machine_config_patch, "$", "$$")
+      extension_config      = config.extension_config
     }
   }
   sensitive = true

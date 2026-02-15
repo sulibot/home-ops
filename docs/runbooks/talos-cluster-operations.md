@@ -1111,6 +1111,7 @@ Both documents are per-node and both update safely via `patch/` stage.
 - Single loopback architecture: `fe/254` addresses only
 - Per-node ASNs for Bird2 (e.g., `4210101021`)
 - Cluster-wide Cilium ASN (`4220101000`)
+- **BGP Large Communities**: Used for route tagging (RFC 8092) to support 32-bit ASNs.
 
 **BGP Sessions**:
 1. **Cilium ↔ Bird2** (localhost):
