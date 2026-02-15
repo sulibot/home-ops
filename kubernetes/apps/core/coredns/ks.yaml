@@ -5,21 +5,17 @@ kind: Kustomization
 metadata:
   name: coredns
   namespace: flux-system
-  labels:
-    layer: "core"
-    component: core-service
-    critical: "true"
 spec:
+  targetNamespace: kube-system
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: coredns
   dependsOn:
     - name: cilium
-      namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: 30m
   path: ./kubernetes/apps/core/coredns/app
   prune: true
   sourceRef:
     kind: GitRepository
-    name: flux-system
-    namespace: flux-system
-  targetNamespace: kube-system
-  wait: false
+    name: home-ops
+  wait: true
