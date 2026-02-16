@@ -25,11 +25,11 @@ ipv4:
 ipv6:
   enabled: true
 
-# Masquerade control - IPv6 masquerading required for ClusterIP services
-# While pod-to-pod uses native routing (no masquerade), ClusterIPs are virtual
-# and need masquerading for kube-proxy replacement to function with BPF
-enableIPv4Masquerade: false  # Keep false - will remove IPv4 eventually
-enableIPv6Masquerade: true   # Enabled: Masquerade ULA Pod traffic to GUA Internet
+# Masquerade control
+# Keep IPv4 masquerade disabled for now (IPv6-first environment).
+# IPv6 masquerade is enabled for egress toward non-routable external destinations.
+enableIPv4Masquerade: false
+enableIPv6Masquerade: true
 
 # IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
 # The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
@@ -47,8 +47,8 @@ routingMode: native
 # Disable autoDirectNodeRoutes so inter-node pod routing follows BGP-learned routes
 autoDirectNodeRoutes: false
 directRoutingSkipUnreachable: false  # Install routes to all nodes
-# Disable endpointRoutes so Cilium installs per-node CIDR (/24) routes instead of per-endpoint (/32) routes
-# This allows FRR to redistribute these /24 routes via BGP instead of individual pod IPs
+# Disable endpoint routes so datapath uses node-level pod CIDR routing
+# (aligned with Kubernetes IPAM + BGP route distribution).
 endpointRoutes:
   enabled: false
 
@@ -56,9 +56,11 @@ endpointRoutes:
 # This prevents packet drops during TLS handshakes (Spegel/libp2p) in Direct Routing mode
 mtu: 1450
 
-# Native routing CIDRs - ULA for intra-cluster native routing
-ipv4NativeRoutingCIDR: 10.101.0.0/16        # Entire Cluster IPv4 (Pods + Nodes)
-ipv6NativeRoutingCIDR: fd00:101:224::/60        # Entire Cluster IPv6 ULA (Pods + Nodes)
+# Native routing CIDRs
+# These should cover routable pod address space in the underlay.
+# Do not include Service CIDRs (ClusterIP VIPs are virtual LB addresses).
+ipv4NativeRoutingCIDR: 10.101.0.0/16
+ipv6NativeRoutingCIDR: fd00:101:224::/60
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Legacy Mode)
@@ -68,8 +70,8 @@ bpf:
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
-  # Enable external ClusterIP access to handle LoadBalancer IPs
-  lbExternalClusterIP: true
+  # Keep ClusterIP internal-only; expose services via LoadBalancer/Ingress/Gateway instead.
+  lbExternalClusterIP: false
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
@@ -105,7 +107,7 @@ loadBalancer:
 
 # Operator settings
 operator:
-  replicas: 1
+  replicas: 2
 
 # Hubble observability
 hubble:
