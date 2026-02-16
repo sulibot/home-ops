@@ -66,28 +66,26 @@ configFiles:
       }
       
       # Kernel protocol for IPv4 - imports/exports routes from/to kernel
-      protocol kernel {
+      protocol kernel kernel_v4 {
         ipv4 {
           import none;
           export filter {
-            # Don't export routes learned from Cilium or loopback back to kernel
-            if proto = "cilium" then reject;
-            if proto = "loopback" then reject;
-            accept;
+            # Only export routes learned from upstream (FRR) to kernel
+            if proto = "upstream" then accept;
+            reject;
           };
         };
         merge paths on;
       }
       
       # Kernel protocol for IPv6
-      protocol kernel {
+      protocol kernel kernel_v6 {
         ipv6 {
           import none;
           export filter {
-            # Don't export routes learned from Cilium or loopback back to kernel
-            if proto = "cilium" then reject;
-            if proto = "loopback" then reject;
-            accept;
+            # Only export routes learned from upstream (FRR) to kernel
+            if proto = "upstream" then accept;
+            reject;
           };
         };
         merge paths on;
