@@ -1,0 +1,27 @@
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/i915
+      - siderolabs/qemu-guest-agent
+      - siderolabs/crun
+      - siderolabs/ctr
+      - siderolabs/bird2
+  extraKernelArgs:
+    - console=ttyS0,115200
+    - -init_on_alloc
+    - -init_on_free
+    - -selinux
+    - apparmor=0
+    - i915.force_probe=!*
+    - xe.force_probe=*
+    - xe.enable_display=0
+    - init_on_alloc=0
+    - init_on_free=0
+    - intel_iommu=on
+    - iommu=pt
+    - mitigations=off
+    - module_blacklist=igc
+    - module.sig_enforce=0
+    - security=none
+    - sysctl.kernel.kexec_load_disabled=1
+    - talos.auditd.disabled=1

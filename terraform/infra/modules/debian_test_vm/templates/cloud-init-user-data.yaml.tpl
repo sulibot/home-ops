@@ -32,8 +32,7 @@ package_update: true
 package_upgrade: true
 
 packages:
-  - frr
-  - frr-pythontools
+  - bird2
   - gobgpd
   - qemu-guest-agent
   - curl
@@ -62,171 +61,165 @@ write_files:
     owner: root:root
     permissions: '0644'
 
-  - path: /etc/frr/daemons
-    content: |
-      zebra=yes
-      bgpd=yes
-      bgpd_options=" -p 1790"
-      ospfd=no
-      ospf6d=no
-      ripd=no
-      ripngd=no
-      isisd=no
-      pimd=no
-      ldpd=no
-      nhrpd=no
-      eigrpd=no
-      babeld=no
-      sharpd=no
-      pbrd=no
-      bfdd=yes
-      fabricd=no
-      vrrpd=no
-      pathd=no
-    owner: root:root
-    permissions: '0640'
-
 %{ if frr_enabled && frr_config != null ~}
-  - path: /etc/frr/frr.conf
+  - path: /etc/bird/bird.conf
     content: |
-      ! FRR Configuration for ${hostname} (TALOS PATTERN - Host netns, loopback peering)
-      frr version 10.2
-      frr defaults datacenter
-      hostname ${hostname}
-      log syslog informational
-      service integrated-vtysh-config
-      !
-      bfd
-       profile normal
-        detect-multiplier 3
-        receive-interval 300
-        transmit-interval 300
-       exit
-      exit
-      !
-      ! Prefix lists for Cilium routes
-      ip prefix-list CILIUM-ALL-v4 seq 10 permit 0.0.0.0/0 le 32
-      ipv6 prefix-list CILIUM-ALL-v6 seq 10 permit ::/0 le 128
-      !
-      ! Route maps for Cilium import (accept all Cilium routes)
-      route-map IMPORT-FROM-CILIUM-v4 permit 10
-       match ip address prefix-list CILIUM-ALL-v4
-       set ip next-hop ${network.ipv4_gateway}
-      exit
-      !
-      route-map IMPORT-FROM-CILIUM-v6 permit 10
-       match ipv6 address prefix-list CILIUM-ALL-v6
-       set ipv6 next-hop global ${network.ipv6_gateway}
-      exit
-      !
-      ! Upstream route filtering
-      ip prefix-list DEFAULT-ONLY-v4 seq 10 permit 0.0.0.0/0
-      ipv6 prefix-list DEFAULT-ONLY-v6 seq 10 permit ::/0
-      !
-      route-map IMPORT-DEFAULT-v4 permit 10
-       match ip address prefix-list DEFAULT-ONLY-v4
-      exit
-      route-map IMPORT-DEFAULT-v4 deny 90
-      exit
-      !
-      route-map IMPORT-DEFAULT-v6 permit 10
-       match ipv6 address prefix-list DEFAULT-ONLY-v6
-      exit
-      route-map IMPORT-DEFAULT-v6 deny 90
-      exit
-      !
-%{ if loopback != null ~}
-      ! Loopback prefix-lists (FRR IP + GoBGP IP + LoadBalancer IPs)
-      ip prefix-list LOOPBACK-v4 seq 10 permit ${loopback.ipv4}/32
-      ip prefix-list LOOPBACK-v4 seq 20 permit ${replace(loopback.ipv4, "254.", "253.")}/32
-      ip prefix-list LOOPBACK-v4 seq 30 permit ${replace(loopback.ipv4, "254.", "250.")}/32
-      ipv6 prefix-list LOOPBACK-v6 seq 10 permit ${loopback.ipv6}/128
-      ipv6 prefix-list LOOPBACK-v6 seq 20 permit ${replace(loopback.ipv6, "fe::", "fd::")}/128
-      ipv6 prefix-list LOOPBACK-v6 seq 30 permit ${replace(loopback.ipv6, "fe::", "250::")}/128
-%{ endif ~}
-      !
-      route-map LOOPBACKS-v4 permit 10
-       match ip address prefix-list LOOPBACK-v4
-      exit
-      !
-      route-map LOOPBACKS-v6 permit 10
-       match ipv6 address prefix-list LOOPBACK-v6
-      exit
-      !
-      router bgp ${frr_config.local_asn}
-       bgp router-id ${frr_config.router_id}
-       no bgp ebgp-requires-policy
-       no bgp default ipv4-unicast
-       bgp bestpath as-path multipath-relax
-       timers bgp 10 30
-       ! FRR listens on port 1790, GoBGP connects TO FRR
-       !
-       ! Cilium peer-group (GoBGP connects to FRR:1790)
-       neighbor CILIUM peer-group
-       neighbor CILIUM remote-as ${frr_config.local_asn + 10000000}
-       neighbor CILIUM description Cilium-BGP-Control-Plane
-       !
-       ! Dynamic neighbors - accept GoBGP connections from dummy0 IPs
-       bgp listen range ${replace(loopback.ipv4, "254.", "253.")}/32 peer-group CILIUM
-       bgp listen range ${replace(loopback.ipv6, "fe::", "fd::")}/128 peer-group CILIUM
-       !
-       ! Upstream neighbor (PVE gateway) - bind to FRR loopback
-       neighbor ${frr_config.upstream_peer} remote-as ${frr_config.upstream_asn}
-       neighbor ${frr_config.upstream_peer} description PVE-ULA-Gateway
-       neighbor ${frr_config.upstream_peer} capability extended-nexthop
-       neighbor ${frr_config.upstream_peer} bfd profile normal
-       neighbor ${frr_config.upstream_peer} update-source ${loopback.ipv6}
-       !
-       address-family ipv4 unicast
-        neighbor CILIUM activate
-        neighbor CILIUM route-map IMPORT-FROM-CILIUM-v4 in
-        neighbor ${frr_config.upstream_peer} activate
-        neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v4 in
-        redistribute connected route-map LOOPBACKS-v4
-       exit-address-family
-       !
-       address-family ipv6 unicast
-        neighbor CILIUM activate
-        neighbor CILIUM route-map IMPORT-FROM-CILIUM-v6 in
-        neighbor CILIUM capability extended-nexthop
-        neighbor ${frr_config.upstream_peer} activate
-        neighbor ${frr_config.upstream_peer} route-map IMPORT-DEFAULT-v6 in
-        redistribute connected route-map LOOPBACKS-v6
-       exit-address-family
-      exit
-      !
-      line vty
-      !
+      # bird2 BGP daemon configuration for ${hostname}
+      # Router ID uses the loopback (.254)
+      router id ${frr_config.router_id};
+
+      # Logging
+      log syslog all;
+
+      # Device protocol - learns about network interfaces
+      protocol device {
+        scan time 10;
+      }
+
+      # Direct protocol - imports directly connected routes
+      protocol direct {
+        interface "dummy0", "lo";
+        ipv4;
+        ipv6;
+      }
+
+      # Kernel protocol for IPv4 - exports routes learned from upstream to kernel
+      protocol kernel kernel_v4 {
+        ipv4 {
+          import none;
+          export filter {
+            if proto = "upstream" then accept;
+            reject;
+          };
+        };
+        merge paths on;
+      }
+
+      # Kernel protocol for IPv6 - exports routes learned from upstream to kernel
+      protocol kernel kernel_v6 {
+        ipv6 {
+          import none;
+          export filter {
+            if proto = "upstream" then accept;
+            reject;
+          };
+        };
+        merge paths on;
+      }
+
+      # BFD protocol
+      protocol bfd {
+        interface "*" { multiplier 3; interval 300 ms; };
+      }
+
+      # BGP - GoBGP Cilium Simulation via localhost
+      # bird2 is passive, GoBGP connects from ::1 (matching production Cilium pattern)
+      protocol bgp cilium_sim {
+        description "GoBGP Cilium Simulation";
+        passive on;
+        multihop 2;
+        local as ${frr_config.local_asn};
+        neighbor ::1 as ${frr_config.local_asn + 10000000};
+
+        ipv4 {
+          import all;
+          export none;  # One-way: GoBGP -> bird2 (matches production)
+          extended next hop on;
+        };
+
+        ipv6 {
+          import all;
+          export none;
+        };
+      }
+
+      # BGP - Upstream Peering (PVE ULA Anycast Gateway / FRR)
+      protocol bgp upstream {
+        description "PVE ULA Anycast Gateway";
+        local as ${frr_config.local_asn};
+        source address ${network.ipv6_address};
+        neighbor ${frr_config.upstream_peer} as ${frr_config.upstream_asn};
+        bfd on;
+
+        ipv4 {
+          import all;
+          export filter {
+            # Tag routes from GoBGP (simulates Cilium) with Internal community
+            if from = cilium_sim then {
+              bgp_large_community.add((${frr_config.upstream_asn}, 0, 100));  # CL_K8S_INTERNAL
+              accept;
+            }
+            # Tag Loopbacks (protocol direct) as Public community
+            if from = direct1 then {
+              bgp_large_community.add((${frr_config.upstream_asn}, 0, 200));  # CL_K8S_PUBLIC
+              accept;
+            }
+            accept;
+          };
+          next hop self;
+          extended next hop on;
+        };
+
+        ipv6 {
+          import filter {
+            # Reject the local node subnet - nodes use direct kernel routes
+            if net ~ ${join(":", slice(split(":", network.ipv6_address), 0, 2))}::/64 then reject;
+            accept;
+          };
+          export filter {
+            # Tag routes from GoBGP (simulates Cilium) with Internal community
+            if from = cilium_sim then {
+              bgp_large_community.add((${frr_config.upstream_asn}, 0, 100));  # CL_K8S_INTERNAL
+              accept;
+            }
+            # Tag Loopbacks (protocol direct) as Public community
+            if from = direct1 then {
+              bgp_large_community.add((${frr_config.upstream_asn}, 0, 200));  # CL_K8S_PUBLIC
+              accept;
+            }
+            accept;
+          };
+          next hop self;
+        };
+      }
     owner: root:root
-    permissions: '0640'
+    permissions: '0644'
 
   - path: /etc/gobgpd-cilium.conf
     content: |
       [global.config]
         as = ${frr_config.local_asn + 10000000}
-        router-id = "${replace(loopback.ipv4, "254.", "253.")}"
-        local-address-list = ["${replace(loopback.ipv4, "254.", "253.")}", "${replace(loopback.ipv6, "fe::", "fd::")}"]
+        router-id = "${frr_config.router_id}"
+        local-address-list = ["::1"]
         port = -1
 
-      # GoBGP connects TO FRR at port 1790 (active peering)
+      # GoBGP connects TO bird2 at port 179 from ::1 (matches production Cilium pattern)
 
       [[neighbors]]
         [neighbors.config]
-          neighbor-address = "${loopback.ipv4}"
+          neighbor-address = "::1"
           peer-as = ${frr_config.local_asn}
         [neighbors.transport.config]
-          local-address = "${replace(loopback.ipv4, "254.", "253.")}"
-          remote-port = 1790
+          local-address = "::1"
+          remote-port = 179
 
-      [[neighbors]]
-        [neighbors.config]
-          neighbor-address = "${loopback.ipv6}"
-          peer-as = ${frr_config.local_asn}
-        [neighbors.transport.config]
-          local-address = "${replace(loopback.ipv6, "fe::", "fd::")}"
-          remote-port = 1790
+      # Define large communities (matching production)
+      [[defined-sets.bgp-defined-sets.community-sets]]
+        community-set-name = "CL_K8S_INTERNAL"
+        community-list = ["${frr_config.upstream_asn}:0:100"]
 
-      # Advertise LoadBalancer IPs (simulates Cilium behavior)
+      [[defined-sets.bgp-defined-sets.community-sets]]
+        community-set-name = "CL_K8S_PUBLIC"
+        community-list = ["${frr_config.upstream_asn}:0:200"]
+
+      # Pod CIDR prefixes (simulates Cilium pod CIDR advertisements)
+      # Use IPv6 addressing matching production: fd00:XXX:224:YY::/64
+      [[defined-sets.prefix-sets]]
+        prefix-set-name = "pod-cidrs"
+        [[defined-sets.prefix-sets.prefix-list]]
+          ip-prefix = "${replace(loopback.ipv6, ":fe::", ":224:")}::/64"
+
+      # LoadBalancer IP prefixes (simulates Cilium LB-IPAM)
       [[defined-sets.prefix-sets]]
         prefix-set-name = "lb-ipv4"
         [[defined-sets.prefix-sets.prefix-list]]
@@ -235,10 +228,24 @@ write_files:
       [[defined-sets.prefix-sets]]
         prefix-set-name = "lb-ipv6"
         [[defined-sets.prefix-sets.prefix-list]]
-          ip-prefix = "${replace(loopback.ipv6, "fe::", "250::")}/128"
+          ip-prefix = "${replace(loopback.ipv6, ":fe::", ":254::")}/128"
 
       [[policy-definitions]]
-        name = "advertise-lb"
+        name = "advertise-routes"
+        # Pod CIDRs with Internal community
+        [[policy-definitions.statements]]
+          name = "accept-pod-cidrs"
+          [policy-definitions.statements.conditions.match-prefix-set]
+            prefix-set = "pod-cidrs"
+            match-set-options = "any"
+          [policy-definitions.statements.actions]
+            route-disposition = "accept-route"
+            [policy-definitions.statements.actions.bgp-actions.set-community]
+              options = "add"
+              [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+                communities-list = ["${frr_config.upstream_asn}:0:100"]
+
+        # LoadBalancer IPs with Public community
         [[policy-definitions.statements]]
           name = "accept-lb-ipv4"
           [policy-definitions.statements.conditions.match-prefix-set]
@@ -246,6 +253,10 @@ write_files:
             match-set-options = "any"
           [policy-definitions.statements.actions]
             route-disposition = "accept-route"
+            [policy-definitions.statements.actions.bgp-actions.set-community]
+              options = "add"
+              [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+                communities-list = ["${frr_config.upstream_asn}:0:200"]
 
         [[policy-definitions.statements]]
           name = "accept-lb-ipv6"
@@ -254,22 +265,43 @@ write_files:
             match-set-options = "any"
           [policy-definitions.statements.actions]
             route-disposition = "accept-route"
+            [policy-definitions.statements.actions.bgp-actions.set-community]
+              options = "add"
+              [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+                communities-list = ["${frr_config.upstream_asn}:0:200"]
 
       [global.apply-policy.config]
-        export-policy-list = ["advertise-lb"]
+        export-policy-list = ["advertise-routes"]
     owner: root:root
     permissions: '0644'
+
+  - path: /usr/local/bin/inject-gobgp-routes.sh
+    content: |
+      #!/bin/bash
+      # Wait for GoBGP to be ready
+      sleep 10
+      # Inject pod CIDR and LoadBalancer routes into GoBGP RIB (simulates Cilium)
+      while true; do
+        gobgp global rib add -a ipv6 ${replace(loopback.ipv6, ":fe::", ":224:")}::/64 nexthop ${loopback.ipv6} 2>/dev/null && \
+        gobgp global rib add -a ipv4 ${replace(loopback.ipv4, "254.", "250.")}/32 nexthop ${frr_config.router_id} 2>/dev/null && \
+        gobgp global rib add -a ipv6 ${replace(loopback.ipv6, ":fe::", ":254::")}/128 nexthop ${loopback.ipv6} 2>/dev/null && \
+        break
+        sleep 5
+      done
+    owner: root:root
+    permissions: '0755'
 
   - path: /etc/systemd/system/gobgpd-cilium.service
     content: |
       [Unit]
-      Description=GoBGP daemon (simulates Cilium BGP in host netns)
-      After=frr.service
-      Requires=frr.service
+      Description=GoBGP daemon (simulates Cilium BGP)
+      After=bird.service
+      Requires=bird.service
 
       [Service]
       Type=simple
       ExecStart=/usr/bin/gobgpd -f /etc/gobgpd-cilium.conf --disable-stdlog --syslog yes
+      ExecStartPost=/usr/local/bin/inject-gobgp-routes.sh
       Restart=on-failure
       RestartSec=5
 
@@ -278,67 +310,42 @@ write_files:
     owner: root:root
     permissions: '0644'
 
-  - path: /etc/systemd/system/gobgp-inject-lb.service
-    content: |
-      [Unit]
-      Description=Inject LoadBalancer routes into GoBGP (simulates Cilium)
-      After=gobgpd-cilium.service
-      Requires=gobgpd-cilium.service
-
-      [Service]
-      Type=oneshot
-      ExecStartPre=/bin/sleep 3
-      ExecStart=/usr/bin/gobgp global rib add -a ipv4 ${replace(loopback.ipv4, "254.", "250.")}/32 nexthop ${replace(loopback.ipv4, "254.", "253.")}
-      ExecStart=/usr/bin/gobgp global rib add -a ipv6 ${replace(loopback.ipv6, "fe::", "250::")}/128 nexthop ${replace(loopback.ipv6, "fe::", "fd::")}
-      RemainAfterExit=yes
-
-      [Install]
-      WantedBy=multi-user.target
-    owner: root:root
-    permissions: '0644'
 %{ endif ~}
 
 runcmd:
   - sysctl -p /etc/sysctl.d/99-evpn-notify.conf
 
 %{ if loopback != null ~}
-  # Create dummy interface for loopback addresses
+  # Create dummy interface for loopback addresses (bird2 BGP router-id)
   - ip link add dummy0 type dummy
   - ip link set dummy0 up
 
-  # FRR Host ID IP on dummy0 (.254 - k8s node IP)
+  # bird2 router-id IP on dummy0 (.254 - matches node IP pattern)
   - ip addr add ${loopback.ipv4}/32 dev dummy0
   - ip addr add ${loopback.ipv6}/128 dev dummy0
 
-  # GoBGP/Cilium IP on dummy0 (.253)
-  - ip addr add ${replace(loopback.ipv4, "254.", "253.")}/32 dev dummy0
-  - ip addr add ${replace(loopback.ipv6, "fe::", "fd::")}/128 dev dummy0
-
-  # LoadBalancer IPs on dummy0 (.250 - simulates Cilium LB-IPAM)
+  # LoadBalancer IPs on dummy0 (.254 range - simulates Cilium LB-IPAM)
   - ip addr add ${replace(loopback.ipv4, "254.", "250.")}/32 dev dummy0
-  - ip addr add ${replace(loopback.ipv6, "fe::", "250::")}/128 dev dummy0
+  - ip addr add ${replace(loopback.ipv6, ":fe::", ":254::")}/128 dev dummy0
 %{ endif ~}
 
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
 
 %{ if frr_enabled && frr_config != null ~}
-  - systemctl enable frr
-  - systemctl start frr
+  - systemctl enable bird
+  - systemctl start bird
   - sleep 5
   - systemctl daemon-reload
   - systemctl enable gobgpd-cilium
   - systemctl start gobgpd-cilium
-  - sleep 3
-  - systemctl enable gobgp-inject-lb
-  - systemctl start gobgp-inject-lb
-  - sleep 2
-  - echo "=== FRR BGP Summary ===" && vtysh -c "show bgp summary" || true
+  - sleep 5
+  - echo "=== bird2 BGP Status ===" && birdc show protocols all || true
   - echo "=== GoBGP Neighbor ===" && gobgp neighbor || true
   - echo "=== GoBGP Advertised Routes (IPv4) ===" && gobgp global rib -a ipv4 || true
   - echo "=== GoBGP Advertised Routes (IPv6) ===" && gobgp global rib -a ipv6 || true
-  - echo "=== FRR Routes from Cilium (IPv4) ===" && vtysh -c "show bgp ipv4 unicast neighbors ${replace(loopback.ipv4, "254.", "253.")} received-routes" || true
-  - echo "=== FRR Routes from Cilium (IPv6) ===" && vtysh -c "show bgp ipv6 unicast neighbors ${replace(loopback.ipv6, "fe::", "fd::")} received-routes" || true
+  - echo "=== bird2 Routes from GoBGP ===" && birdc show route protocol cilium_sim || true
+  - echo "=== Kernel Routes ===" && ip -6 route show || true
 %{ endif ~}
 
-final_message: "Debian FRR test VM ${hostname} ready (Talos pattern, host netns) after $UPTIME seconds"
+final_message: "Debian bird2 test VM ${hostname} ready (matches production Talos pattern) after $UPTIME seconds"

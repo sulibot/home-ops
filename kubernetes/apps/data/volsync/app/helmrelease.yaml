@@ -39,6 +39,11 @@ spec:
     # TODO: Disable after restores complete
     mutatingAdmissionPolicy:
       enabled: true
+    service:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+        - IPv6
+        - IPv4
     metrics:
       disableAuth: true
     podSecurityContext:

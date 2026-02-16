@@ -2,22 +2,8 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-dependency "image" {
-  config_path = "../../artifacts/registry"
-
-  mock_outputs = {
-    talos_image_file_ids = {
-      "pve01" = "resources:iso/mock-talos-image.iso"
-      "pve02" = "resources:iso/mock-talos-image.iso"
-      "pve03" = "resources:iso/mock-talos-image.iso"
-    }
-    talos_image_file_name  = "mock-talos-image.iso"
-    talos_image_id         = "mock-schematic-id"
-    talos_version          = "v1.12.1"
-    kubernetes_version     = "1.34.1"
-  }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
-}
+# Debian VMs don't need Talos image dependency
+# dependency "image" removed
 
 locals {
   # Read centralized infrastructure configurations
@@ -84,7 +70,6 @@ terraform {
   required_providers {
     proxmox = { source = "bpg/proxmox", version = "~> 0.89.0" }
     sops    = { source = "carlpett/sops", version = "~> 1.3.0" }
-    talos   = { source = "siderolabs/talos", version = "~> 0.9.0" }
   }
 }
 
@@ -96,7 +81,7 @@ variable "region" {
 
 %{ for name, vm in local.test_vms ~}
 module "${name}" {
-  source = "../../../modules/talos_test_vm"
+  source = "../../../modules/debian_test_vm"
 
   vm_name = "${name}"
   vm_id   = ${vm.vm_id}
@@ -134,35 +119,21 @@ module "${name}" {
     "${local.network_infra.dns_servers.ipv4}"
   ]
 
-  bgp_config = {
+  frr_config = {
+    enabled       = true
     local_asn     = ${local.bgp_asn_base + local.tenant_id * 1000 + vm.ip_suffix}
     router_id     = "10.${local.tenant_id}.254.${vm.ip_suffix}"
     upstream_peer = "fd00:${local.tenant_id}::fffe"
     upstream_asn  = ${local.bgp_remote_asn}
   }
-
-  # Talos image and configuration
-  talos_image_file_id = "${dependency.image.outputs.talos_image_file_ids[vm.node_name]}"
-  talos_version       = "${dependency.image.outputs.talos_version}"
-  kubernetes_version  = "${dependency.image.outputs.kubernetes_version}"
-
-  # System extensions (same as production cluster)
-  system_extensions = ${jsonencode(concat(
-    local.install_schematic.install_system_extensions,
-    local.install_schematic.install_custom_extensions
-  ))}
-
-  kernel_args = ${jsonencode(local.install_schematic.install_kernel_args)}
 }
 
 output "${name}_info" {
   value = {
-    vm_id          = module.${name}.vm_id
-    vm_name        = module.${name}.vm_name
-    ipv4_address   = module.${name}.ipv4_address
-    ipv6_address   = module.${name}.ipv6_address
-    bgp_asn        = module.${name}.bgp_asn
-    talosctl_cmd   = module.${name}.talosctl_command
+    vm_id        = module.${name}.vm_id
+    vm_name      = module.${name}.vm_name
+    ipv4_address = module.${name}.ipv4_address
+    ipv6_address = module.${name}.ipv6_address
   }
 }
 

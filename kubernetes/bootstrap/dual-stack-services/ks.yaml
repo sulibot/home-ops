@@ -7,6 +7,13 @@ metadata:
   name: dual-stack-services
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: cert-manager
+      namespace: flux-system
+    - name: external-secrets
+      namespace: flux-system
+    - name: onepassword
+      namespace: flux-system
   interval: 15m
   retryInterval: 1m
   path: ./kubernetes/bootstrap/dual-stack-services

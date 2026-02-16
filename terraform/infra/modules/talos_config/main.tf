@@ -359,6 +359,9 @@ locals {
         ipv4 {
           import none;
           export filter {
+            # Never install Kubernetes Service CIDR routes in kernel.
+            # ClusterIP is virtual and must be handled by Cilium eBPF service LB.
+            if net ~ [10.${var.cluster_id}.96.0/24{24,32}] then reject;
             # Only export routes learned from upstream (FRR) to kernel
             if proto = "upstream" then accept;
             reject;
@@ -372,6 +375,9 @@ locals {
         ipv6 {
           import none;
           export filter {
+            # Never install Kubernetes Service CIDR routes in kernel.
+            # ClusterIP is virtual and must be handled by Cilium eBPF service LB.
+            if net ~ [fd00:${var.cluster_id}:96::/112{112,128}] then reject;
             # Only export routes learned from upstream (FRR) to kernel
             if proto = "upstream" then accept;
             reject;
@@ -415,7 +421,11 @@ locals {
         bfd on;
 
         ipv4 {
-          import all;
+          import filter {
+            # Do not learn Kubernetes Service CIDR from upstream.
+            if net ~ [10.${var.cluster_id}.96.0/24{24,32}] then reject;
+            accept;
+          };
           export filter {
             # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
             if proto = "direct_routes" then {
@@ -434,6 +444,8 @@ locals {
             # Reject the local node subnet - nodes use direct kernel routes
             # Importing this from gateway creates lower-metric route that breaks Cilium
             if net = fd00:${var.cluster_id}::/64 then reject;
+            # Do not learn Kubernetes Service CIDR from upstream.
+            if net ~ [fd00:${var.cluster_id}:96::/112{112,128}] then reject;
             accept;
           };
           export filter {

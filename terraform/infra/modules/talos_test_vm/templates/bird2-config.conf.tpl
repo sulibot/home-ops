@@ -18,24 +18,26 @@ protocol direct {
 }
 
 # Kernel protocol for IPv4 - imports/exports routes from/to kernel
-protocol kernel {
+# Matches production: only exports routes learned from upstream (FRR)
+protocol kernel kernel_v4 {
   ipv4 {
     import none;
     export filter {
-      if proto = "cilium_sim" then reject;
-      accept;
+      if proto = "upstream" then accept;
+      reject;
     };
   };
   merge paths on;
 }
 
 # Kernel protocol for IPv6
-protocol kernel {
+# Matches production: only exports routes learned from upstream (FRR)
+protocol kernel kernel_v6 {
   ipv6 {
     import none;
     export filter {
-      if proto = "cilium_sim" then reject;
-      accept;
+      if proto = "upstream" then accept;
+      reject;
     };
   };
   merge paths on;
@@ -78,9 +80,14 @@ protocol bgp upstream {
   ipv4 {
     import all;
     export filter {
+      # Tag routes from GoBGP (simulates Cilium) with Internal community
+      if proto = "cilium_sim" then {
+        bgp_large_community.add((${upstream_asn}, 0, 100));  # CL_K8S_INTERNAL
+        accept;
+      }
       # Tag Loopbacks (protocol direct) as Public (Community :200) so PVE exports them to Edge
       if proto = "direct" then {
-        bgp_large_community.add((${upstream_asn}, 0, 200));
+        bgp_large_community.add((${upstream_asn}, 0, 200));  # CL_K8S_PUBLIC
         accept;
       }
       accept;
@@ -96,8 +103,14 @@ protocol bgp upstream {
       accept;
     };
     export filter {
+      # Tag routes from GoBGP (simulates Cilium) with Internal community
+      if proto = "cilium_sim" then {
+        bgp_large_community.add((${upstream_asn}, 0, 100));  # CL_K8S_INTERNAL
+        accept;
+      }
+      # Tag Loopbacks (protocol direct) as Public community
       if proto = "direct" then {
-        bgp_large_community.add((${upstream_asn}, 0, 200));
+        bgp_large_community.add((${upstream_asn}, 0, 200));  # CL_K8S_PUBLIC
         accept;
       }
       accept;

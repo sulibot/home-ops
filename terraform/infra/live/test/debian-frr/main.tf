@@ -5,7 +5,6 @@ terraform {
   required_providers {
     proxmox = { source = "bpg/proxmox", version = "~> 0.89.0" }
     sops    = { source = "carlpett/sops", version = "~> 1.3.0" }
-    talos   = { source = "siderolabs/talos", version = "~> 0.9.0" }
   }
 }
 
@@ -16,7 +15,7 @@ variable "region" {
 }
 
 module "debtest01" {
-  source = "../../../modules/talos_test_vm"
+  source = "../../../modules/debian_test_vm"
 
   vm_name = "debtest01"
   vm_id   = 10141
@@ -54,22 +53,13 @@ module "debtest01" {
     "10.255.0.53"
   ]
 
-  bgp_config = {
+  frr_config = {
+    enabled       = true
     local_asn     = 4210101041
     router_id     = "10.101.254.41"
     upstream_peer = "fd00:101::fffe"
     upstream_asn  = 4200001000
   }
-
-  # Talos image and configuration
-  talos_image_file_id = "resources:iso/talos-frr-v1.12.1-nocloud-amd64.iso"
-  talos_version       = "v1.12.1"
-  kubernetes_version  = "1.34.1"
-
-  # System extensions (same as production cluster)
-  system_extensions = ["ghcr.io/siderolabs/i915:20251125-v1.12.1@sha256:fb89c85a04ecb85abaec9d400e03a1628bf68aef3580e98f340cbe8920a6e4ed", "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7", "ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4", "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00", "ghcr.io/siderolabs/bird2:2.17.1@sha256:cb6be4d7655ebbd3e3420e02e0af197491889c7ce55e71c18869c10742b5a091"]
-
-  kernel_args = ["console=ttyS0,115200", "-init_on_alloc", "-init_on_free", "-selinux", "apparmor=0", "i915.disable_display=1", "i915.force_probe=*", "init_on_alloc=0", "init_on_free=0", "intel_iommu=on", "iommu=pt", "mitigations=off", "module_blacklist=igc", "security=none", "sysctl.kernel.kexec_load_disabled=1", "talos.auditd.disabled=1"]
 }
 
 output "debtest01_info" {
@@ -78,13 +68,11 @@ output "debtest01_info" {
     vm_name      = module.debtest01.vm_name
     ipv4_address = module.debtest01.ipv4_address
     ipv6_address = module.debtest01.ipv6_address
-    bgp_asn      = module.debtest01.bgp_asn
-    talosctl_cmd = module.debtest01.talosctl_command
   }
 }
 
 module "debtest02" {
-  source = "../../../modules/talos_test_vm"
+  source = "../../../modules/debian_test_vm"
 
   vm_name = "debtest02"
   vm_id   = 10142
@@ -122,22 +110,13 @@ module "debtest02" {
     "10.255.0.53"
   ]
 
-  bgp_config = {
+  frr_config = {
+    enabled       = true
     local_asn     = 4210101042
     router_id     = "10.101.254.42"
     upstream_peer = "fd00:101::fffe"
     upstream_asn  = 4200001000
   }
-
-  # Talos image and configuration
-  talos_image_file_id = "resources:iso/talos-frr-v1.12.1-nocloud-amd64.iso"
-  talos_version       = "v1.12.1"
-  kubernetes_version  = "1.34.1"
-
-  # System extensions (same as production cluster)
-  system_extensions = ["ghcr.io/siderolabs/i915:20251125-v1.12.1@sha256:fb89c85a04ecb85abaec9d400e03a1628bf68aef3580e98f340cbe8920a6e4ed", "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7", "ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4", "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00", "ghcr.io/siderolabs/bird2:2.17.1@sha256:cb6be4d7655ebbd3e3420e02e0af197491889c7ce55e71c18869c10742b5a091"]
-
-  kernel_args = ["console=ttyS0,115200", "-init_on_alloc", "-init_on_free", "-selinux", "apparmor=0", "i915.disable_display=1", "i915.force_probe=*", "init_on_alloc=0", "init_on_free=0", "intel_iommu=on", "iommu=pt", "mitigations=off", "module_blacklist=igc", "security=none", "sysctl.kernel.kexec_load_disabled=1", "talos.auditd.disabled=1"]
 }
 
 output "debtest02_info" {
@@ -146,8 +125,6 @@ output "debtest02_info" {
     vm_name      = module.debtest02.vm_name
     ipv4_address = module.debtest02.ipv4_address
     ipv6_address = module.debtest02.ipv6_address
-    bgp_asn      = module.debtest02.bgp_asn
-    talosctl_cmd = module.debtest02.talosctl_command
   }
 }
 

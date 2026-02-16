@@ -1,7 +1,7 @@
 ---
 # CiliumBGPPeerConfig for local Bird2 peering
 # Uses MP-BGP over IPv6 localhost (::1) to exchange both IPv4 and IPv6 routes
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
   name: frr-local-mpbgp
@@ -25,7 +25,7 @@ spec:
         advertise: "bgp"
 ---
 # Advertise LoadBalancer Services
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: loadbalancer-services
@@ -48,7 +48,7 @@ spec:
         large: ["4200001000:0:200"] # Public
 ---
 # Advertise Pod CIDRs (Optional/Internal)
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: pod-cidr

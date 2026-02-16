@@ -16,15 +16,15 @@ locals {
     "-init_on_free",         # Less security, faster performance
     "-selinux",              # Less security, faster performance
     "apparmor=0",            # Less security, faster performance
-    "i915.disable_display=1",  # Disable display subsystem for compute-only (Plex transcoding)
-    # "i915.enable_guc=0",     # Disable GuC firmware loading (fixes VM boot hang) - Commented out to allow per-node override
-    "i915.force_probe=*",    # Force enable all Intel iGPU support (including Alder Lake)
+    # Xe driver for SR-IOV VF support (official Siderolabs extension)
+    "xe.force_probe=4680",   # Enable Xe for Alder Lake-S GT1 VF (from Proxmox SR-IOV)
     "init_on_alloc=0",       # Less security, faster performance
     "init_on_free=0",        # Less security, faster performance
     "intel_iommu=on",        # PCI Passthrough
     "iommu=pt",              # PCI Passthrough
     "mitigations=off",       # Less security, faster performance
     "module_blacklist=igc",  # Disable onboard NIC
+    "module.sig_enforce=0",  # Allow unsigned kernel modules (keeping for flexibility)
     "security=none",         # Less security, faster performance
     "sysctl.kernel.kexec_load_disabled=1",  # Meteor Lake CPU & Intel iGPU
     "talos.auditd.disabled=1",  # Less security, faster performanceu.ol80
@@ -34,7 +34,7 @@ locals {
   # Official Siderolabs extensions with pinned digests
   # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.12.1 - | tar x -O image-digests
   install_system_extensions = [
-    "ghcr.io/siderolabs/i915:20251125-v1.12.1@sha256:fb89c85a04ecb85abaec9d400e03a1628bf68aef3580e98f340cbe8920a6e4ed",
+    "ghcr.io/siderolabs/xe:20251125-v1.12.1@sha256:140b26f49849da24889f93c491154b20fb108cee67e738b5dd422e28fb9bad64",
     "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7",
     "ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4",
     "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00",

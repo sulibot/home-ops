@@ -7,6 +7,12 @@ locals {
   lb_ipv4 = replace(var.loopback.ipv4, ".254.", ".250.")
   lb_ipv6 = replace(var.loopback.ipv6, ":fe::", ":250::")
 
+  # Pod CIDR simulation (matches production cluster pattern)
+  # Extract last octet from loopback IPv4 (e.g., 10.101.254.41 -> 41)
+  # Pod CIDR: fd00:101:224:<node_id>::/64 (matches production fd00:101:224::/60)
+  node_id = split(".", var.loopback.ipv4)[3]
+  pod_cidr_v6 = "${local.cluster_id}:224:${local.node_id}::/64"
+
   # Extract the ULA prefix from the node IPv6 (e.g., fd00:101::41 -> fd00:101)
   cluster_id = split("::", var.network.ipv6_address)[0]
 
@@ -48,6 +54,21 @@ locals {
         local-address = "::1"
         remote-port = 179
 
+    # Define large communities (matching production)
+    [[defined-sets.bgp-defined-sets.community-sets]]
+      community-set-name = "CL_K8S_INTERNAL"
+      community-list = ["${var.bgp_config.upstream_asn}:0:100"]
+
+    [[defined-sets.bgp-defined-sets.community-sets]]
+      community-set-name = "CL_K8S_PUBLIC"
+      community-list = ["${var.bgp_config.upstream_asn}:0:200"]
+
+    # Advertise Pod CIDRs (simulates Cilium pod CIDR advertisements)
+    [[defined-sets.prefix-sets]]
+      prefix-set-name = "pod-cidrs"
+      [[defined-sets.prefix-sets.prefix-list]]
+        ip-prefix = "${local.pod_cidr_v6}"
+
     # Advertise LoadBalancer IPs (simulates Cilium LB-IPAM behavior)
     [[defined-sets.prefix-sets]]
       prefix-set-name = "lb-ipv4"
@@ -60,7 +81,21 @@ locals {
         ip-prefix = "${local.lb_ipv6}/128"
 
     [[policy-definitions]]
-      name = "advertise-lb"
+      name = "advertise-routes"
+      # Pod CIDRs with Internal community
+      [[policy-definitions.statements]]
+        name = "accept-pod-cidrs"
+        [policy-definitions.statements.conditions.match-prefix-set]
+          prefix-set = "pod-cidrs"
+          match-set-options = "any"
+        [policy-definitions.statements.actions]
+          route-disposition = "accept-route"
+          [policy-definitions.statements.actions.bgp-actions.set-community]
+            options = "add"
+            [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+              communities-list = ["${var.bgp_config.upstream_asn}:0:100"]
+
+      # LoadBalancer IPs with Public community
       [[policy-definitions.statements]]
         name = "accept-lb-ipv4"
         [policy-definitions.statements.conditions.match-prefix-set]
@@ -68,6 +103,10 @@ locals {
           match-set-options = "any"
         [policy-definitions.statements.actions]
           route-disposition = "accept-route"
+          [policy-definitions.statements.actions.bgp-actions.set-community]
+            options = "add"
+            [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+              communities-list = ["${var.bgp_config.upstream_asn}:0:200"]
 
       [[policy-definitions.statements]]
         name = "accept-lb-ipv6"
@@ -76,19 +115,27 @@ locals {
           match-set-options = "any"
         [policy-definitions.statements.actions]
           route-disposition = "accept-route"
+          [policy-definitions.statements.actions.bgp-actions.set-community]
+            options = "add"
+            [policy-definitions.statements.actions.bgp-actions.set-community.set-community-method]
+              communities-list = ["${var.bgp_config.upstream_asn}:0:200"]
 
     [global.apply-policy.config]
-      export-policy-list = ["advertise-lb"]
+      export-policy-list = ["advertise-routes"]
   EOT
 
-  # GoBGP LB route injection script
+  # GoBGP route injection script
   # Nexthop is the node loopback (BIRD2's router-id) so PVE can route back
+  # Simulates Cilium advertising both pod CIDRs and LoadBalancer IPs
   gobgp_inject_script = <<-EOT
     #!/bin/sh
     # Wait for GoBGP to be ready
     sleep 10
-    # Inject LoadBalancer routes into GoBGP RIB (simulates Cilium LB-IPAM)
+    # Inject routes into GoBGP RIB (simulates Cilium pod CIDR + LB-IPAM)
     while true; do
+      # Pod CIDR advertisement (matches production Cilium behavior)
+      gobgp global rib add -a ipv6 ${local.pod_cidr_v6} nexthop ${var.loopback.ipv6} 2>/dev/null && \
+      # LoadBalancer IP advertisements
       gobgp global rib add -a ipv4 ${local.lb_ipv4}/32 nexthop ${var.bgp_config.router_id} 2>/dev/null && \
       gobgp global rib add -a ipv6 ${local.lb_ipv6}/128 nexthop ${var.loopback.ipv6} 2>/dev/null && \
       break
@@ -391,18 +438,18 @@ data "talos_machine_configuration" "this" {
             op          = "create"
             path        = "/etc/gobgpd/cilium.conf"
             content     = local.gobgp_config
-            permissions = "0644"
+            permissions = 420  # 0644
           },
           {
             op          = "create"
             path        = "/etc/gobgpd/scripts/inject-lb-routes.sh"
             content     = local.gobgp_inject_script
-            permissions = "0755"
+            permissions = 493  # 0755
           },
         ]
         # GoBGP static pod (simulates Cilium BGP control plane)
         pods = [
-          yamlencode(local.gobgp_pod)
+          local.gobgp_pod
         ]
       }
       cluster = {

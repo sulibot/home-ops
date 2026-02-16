@@ -11,18 +11,6 @@ spec:
     - IPv6
     - IPv4
 ---
-# Patch volsync-metrics service to dual-stack
-apiVersion: v1
-kind: Service
-metadata:
-  name: volsync-metrics
-  namespace: volsync-system
-spec:
-  ipFamilyPolicy: PreferDualStack
-  ipFamilies:
-    - IPv6
-    - IPv4
----
 # Patch external-secrets-webhook service to dual-stack
 apiVersion: v1
 kind: Service
