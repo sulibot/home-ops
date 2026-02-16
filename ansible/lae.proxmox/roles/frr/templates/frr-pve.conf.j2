@@ -179,6 +179,11 @@ route-map RM_GLOBAL_TO_VRF_V6 permit 20
  match ipv6 address prefix-list PL_SVCS_V6
 exit
 !
+route-map RM_GLOBAL_TO_VRF_V6 permit 30
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+ match large-community CL_K8S_INTERNAL
+exit
+!
 route-map RM_VRF_TO_GLOBAL_V4 permit 10
  match ip address prefix-list PL_TENANT_V4
 exit
@@ -225,6 +230,15 @@ route-map RM_VMS_IN_V6 permit 10
  match ipv6 address prefix-list PL_TENANT_V6
 exit
 !
+route-map RM_VMS_IN_V6 permit 5
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+ match large-community CL_K8S_INTERNAL
+exit
+!
+route-map RM_VMS_IN_V6 deny 6
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+exit
+!
 route-map RM_VMS_IN_V6 permit 15
  match ipv6 address prefix-list PL_TENANT_GUA_V6
 exit
@@ -262,6 +276,11 @@ exit
 !
 route-map RM_VMS_OUT_V6 permit 20
  match ipv6 address prefix-list PL_SVCS_V6
+exit
+!
+route-map RM_VMS_OUT_V6 permit 30
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+ match large-community CL_K8S_INTERNAL
 exit
 !
 route-map RM_VMS_OUT_V6 deny 999

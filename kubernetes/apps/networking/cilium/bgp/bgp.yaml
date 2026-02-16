@@ -13,6 +13,10 @@ spec:
         addresses:
           - LoadBalancerIP
       selector: {}
+      attributes:
+        communities:
+          large:
+            - "4200001000:0:200" # CL_K8S_PUBLIC
 
 ---
 # Cilium BGP advertises Pod CIDRs to local FRR for upstream routing
@@ -25,6 +29,10 @@ metadata:
 spec:
   advertisements:
     - advertisementType: "PodCIDR"
+      attributes:
+        communities:
+          large:
+            - "4200001000:0:100" # CL_K8S_INTERNAL
 
 ---
 # MP-BGP Peer Configuration
@@ -56,4 +64,3 @@ spec:
             values:
               - cilium-lb
               - cilium-pod
-
