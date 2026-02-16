@@ -47,6 +47,8 @@
 {% set K8S_VIPS_V6_A  = k8s_vips_v6_a  | default("fd00:101:253::/112") %}
 {% set K8S_VIPS_V6_B  = k8s_vips_v6_b  | default("fd00:101:254::/112") %}
 {% set K8S_LOOPBACKS_V6 = k8s_loopbacks_v6 | default("fd00:101:fe::/64") %}
+{% set K8S_SERVICES_V4 = k8s_services_v4 | default("10.101.96.0/24") %}
+{% set K8S_SERVICES_V6 = k8s_services_v6 | default("fd00:101:96::/112") %}
 
 {# VMs listen range for dynamic neighbors #}
 {% set VMS_LISTEN_V6  = vms_listen_v6  | default("fd00:101::/64") %}
@@ -110,6 +112,8 @@ ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} le 64
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 5 permit {{ K8S_VIPS_V6_A }} le 128
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 15 permit {{ K8S_VIPS_V6_B }} le 128
 ipv6 prefix-list PL_K8S_LOOPBACKS_V6 seq 5 permit {{ K8S_LOOPBACKS_V6 }} le 128
+ip prefix-list PL_K8S_SERVICES_V4 seq 5 permit {{ K8S_SERVICES_V4 }} le 32
+ipv6 prefix-list PL_K8S_SERVICES_V6 seq 5 permit {{ K8S_SERVICES_V6 }} le 128
 !
 {# VM next-hop filter - only advertise VIPs when next-hop is VM-side (owner PVE) #}
 ipv6 prefix-list PL_VM_NH_V6 seq 10 permit fd00:101::/64 le 128
@@ -171,8 +175,16 @@ route-map RM_GLOBAL_TO_VRF_V4 permit 10
  match ip address prefix-list PL_DEFAULT_V4
 exit
 !
+route-map RM_GLOBAL_TO_VRF_V4 deny 5
+ match ip address prefix-list PL_K8S_SERVICES_V4
+exit
+!
 route-map RM_GLOBAL_TO_VRF_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
+exit
+!
+route-map RM_GLOBAL_TO_VRF_V6 deny 5
+ match ipv6 address prefix-list PL_K8S_SERVICES_V6
 exit
 !
 route-map RM_GLOBAL_TO_VRF_V6 permit 20
@@ -230,6 +242,10 @@ route-map RM_VMS_IN_V6 permit 10
  match ipv6 address prefix-list PL_TENANT_V6
 exit
 !
+route-map RM_VMS_IN_V6 deny 4
+ match ipv6 address prefix-list PL_K8S_SERVICES_V6
+exit
+!
 route-map RM_VMS_IN_V6 permit 5
  match ipv6 address prefix-list PL_K8S_PODS_V6
  match large-community CL_K8S_INTERNAL
@@ -256,6 +272,10 @@ route-map RM_VMS_IN_V4 permit 10
  match ip address prefix-list PL_TENANT_V4
 exit
 !
+route-map RM_VMS_IN_V4 deny 5
+ match ip address prefix-list PL_K8S_SERVICES_V4
+exit
+!
 route-map RM_VMS_IN_V4 deny 999
 exit
 !
@@ -265,6 +285,10 @@ route-map RM_VMS_OUT_V4 permit 10
  match ip address prefix-list PL_DEFAULT_V4
 exit
 !
+route-map RM_VMS_OUT_V4 deny 5
+ match ip address prefix-list PL_K8S_SERVICES_V4
+exit
+!
 route-map RM_VMS_OUT_V4 deny 999
 exit
 !
@@ -272,6 +296,10 @@ exit
 {# --- VMS outbound policy (REQUIRED when policy is enforced) --- #}
 route-map RM_VMS_OUT_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
+exit
+!
+route-map RM_VMS_OUT_V6 deny 5
+ match ipv6 address prefix-list PL_K8S_SERVICES_V6
 exit
 !
 route-map RM_VMS_OUT_V6 permit 20
