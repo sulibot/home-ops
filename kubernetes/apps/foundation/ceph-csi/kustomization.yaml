@@ -43,9 +43,3 @@ resources:
   - ./shared-storage/app/csi-cephfs-content-pv-retain.yaml
   - ./shared-storage/app/csi-cephfs-content-pvc.yaml
 
-patches:
-  # CephFS Provisioner Deployment Patch
-  - path: ./cephfs/app/deployment-patch.yaml
-    target:
-      kind: Deployment
-      name: ceph-csi-cephfs-provisioner
