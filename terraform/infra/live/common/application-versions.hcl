@@ -1,7 +1,7 @@
 locals {
   # Application/platform versions beyond base Talos/K8s
   applications = {
-    cilium_version = "1.18.6"
+    cilium_version = "1.19.0"  # Latest feature release (Feb 2025) - 2934+ commits, 1010+ contributors
     flux_version   = "2.7.5"  # Latest stable - includes healthCheckExprs support
   }
 
