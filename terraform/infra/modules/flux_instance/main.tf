@@ -63,7 +63,7 @@ resource "null_resource" "preinstall_gateway_api_crds" {
 
       # Apply Gateway API CRDs from Git repo
       kubectl --kubeconfig="$KUBECONFIG" apply -f \
-        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.3.0-experimental.yaml
+        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.4.0-experimental.yaml
 
       echo "✓ Gateway API CRDs installed"
     EOT
