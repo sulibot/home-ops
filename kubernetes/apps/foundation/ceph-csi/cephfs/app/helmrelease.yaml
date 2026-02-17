@@ -30,6 +30,56 @@ spec:
             remediateLastFailure: true
             strategy: rollback
         timeout: 10m
+    postRenderers:
+        - kustomize:
+            patches:
+                - patch: |
+                      apiVersion: apps/v1
+                      kind: Deployment
+                      metadata:
+                          name: ceph-csi-cephfs-provisioner
+                          namespace: ceph-csi
+                      spec:
+                          template:
+                              spec:
+                                  containers:
+                                      - name: csi-cephfsplugin
+                                        args:
+                                            - --nodeid=$(NODE_ID)
+                                            - --type=cephfs
+                                            - --controllerserver=true
+                                            - --endpoint=$(CSI_ENDPOINT)
+                                            - --v=5
+                                            - --drivername=$(DRIVER_NAME)
+                                            - --pidlimit=-1
+                                            - --operationtimeout=30s
+                                            - --setmetadata=true
+                                            - --automaxprocs=true
+                                            - --logslowopinterval=30s
+                                            - --disable-cephfs-snapshot=true
+                - patch: |
+                      apiVersion: apps/v1
+                      kind: DaemonSet
+                      metadata:
+                          name: ceph-csi-cephfs-nodeplugin
+                          namespace: ceph-csi
+                      spec:
+                          template:
+                              spec:
+                                  containers:
+                                      - name: csi-cephfsplugin
+                                        args:
+                                            - --nodeid=$(NODE_ID)
+                                            - --type=cephfs
+                                            - --endpoint=$(CSI_ENDPOINT)
+                                            - --v=5
+                                            - --drivername=$(DRIVER_NAME)
+                                            - --pidlimit=-1
+                                            - --forcecephkernelclient=false
+                                            - --operationtimeout=30s
+                                            - --setmetadata=true
+                                            - --automaxprocs=true
+                                            - --logslowopinterval=30s
     values:
         externallyManagedConfigmap: true
         csiConfig:
@@ -40,11 +90,6 @@ spec:
                 - '[fc00:20::3]:6789'
               cephFS:
                 subvolumeGroup: csi
-              # FIX: Add client-side timeouts to prevent indefinite hangs in librados.
-              # These values will be added to the driver's ceph.conf.
-              rados_osd_op_timeout: "15"
-              rados_mon_op_timeout: "15"
-              client_mount_timeout: "20"
         logLevel: 5
         provisioner:
             enableHostNetwork: true
