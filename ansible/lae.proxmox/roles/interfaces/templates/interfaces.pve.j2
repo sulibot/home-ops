@@ -160,6 +160,10 @@ iface lo-svcs inet manual
     post-up ip -6 rule add pref {{ 110 + loop.index0 }} from fc00:20::{{ node_id }}/128 to {{ p }} lookup 1001 2>/dev/null || true
     pre-down ip -6 rule del pref {{ 110 + loop.index0 }} 2>/dev/null || true
 {% endfor %}
+    post-up ip -6 route replace local fc00:20::{{ node_id }}/128 table 1001 dev lo-svcs 2>/dev/null || true
+    post-up ip -6 route replace local fc00:21::{{ node_id }}/128 table 1001 dev lo-svcs 2>/dev/null || true
+    pre-down ip -6 route del local fc00:20::{{ node_id }}/128 table 1001 dev lo-svcs 2>/dev/null || true
+    pre-down ip -6 route del local fc00:21::{{ node_id }}/128 table 1001 dev lo-svcs 2>/dev/null || true
 {% endif %}
 
 # ------------------------------------------------------------------------------
