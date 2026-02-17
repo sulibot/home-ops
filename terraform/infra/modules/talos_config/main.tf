@@ -208,26 +208,6 @@ data "talos_machine_configuration" "controlplane" {
         sysctls  = local.common_sysctls
         features = local.common_features
         kubelet  = {}
-        registries = {
-          mirrors = {
-            "docker.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "ghcr.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "registry.k8s.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "quay.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-          }
-        }
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
@@ -321,26 +301,6 @@ data "talos_machine_configuration" "worker" {
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
-        }
-        registries = {
-          mirrors = {
-            "docker.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "ghcr.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "registry.k8s.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-            "quay.io" = {
-              endpoints    = ["http://localhost:29999"]
-              overridePath = true
-            }
-          }
         }
         files = concat(
           [
