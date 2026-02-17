@@ -91,6 +91,15 @@
     - net.ipv6.conf.default.accept_redirects
   tags: frr
 
+- name: Enable l3mdev socket accept for VRF cross-delivery
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_l3mdev_accept
+    value: '1'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
 # ============================================================================
 # BACKUP CURRENT CONFIGURATION
 # ============================================================================
