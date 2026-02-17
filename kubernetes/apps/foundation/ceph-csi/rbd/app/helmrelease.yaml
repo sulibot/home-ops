@@ -36,12 +36,10 @@ spec:
         provisioner:
             enableHostNetwork: true
             httpMetrics:
-                enabled: true
-                containerPort: 8082
+                enabled: false
         nodeplugin:
             httpMetrics:
-                enabled: true
-                containerPort: 8082
+                enabled: false
         secret:
             create: false
             name: csi-ceph-admin-secret
