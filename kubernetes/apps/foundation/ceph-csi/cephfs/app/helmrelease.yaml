@@ -75,7 +75,6 @@ spec:
                                             - --v=5
                                             - --drivername=$(DRIVER_NAME)
                                             - --pidlimit=-1
-                                            - --forcecephkernelclient=false
                                             - --operationtimeout=30s
                                             - --setmetadata=true
                                             - --automaxprocs=true
