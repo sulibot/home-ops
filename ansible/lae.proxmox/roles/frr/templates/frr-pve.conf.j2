@@ -315,6 +315,22 @@ route-map RM_VMS_OUT_V6 deny 999
 exit
 !
 
+{# --- Controlled redistribution of Ceph service routes into GLOBAL BGP IPv6 --- #}
+route-map RM_CONNECTED_TO_BGP_V6 permit 10
+ match ipv6 address prefix-list PL_SVCS_V6
+exit
+!
+route-map RM_CONNECTED_TO_BGP_V6 deny 999
+exit
+!
+route-map RM_OSPF6_TO_BGP_V6 permit 10
+ match ipv6 address prefix-list PL_SVCS_V6
+exit
+!
+route-map RM_OSPF6_TO_BGP_V6 deny 999
+exit
+!
+
 {# =====================================================================
    OSPF - Underlay (Ring + Shared L2)
    Global interface blocks with both IPv4 and IPv6 OSPF settings
@@ -391,26 +407,17 @@ router bgp {{ LOCAL_AS }}
  neighbor IBGP bfd
  neighbor IBGP route-map RM_IBGP_IN in
  !
- neighbor EDGE4 peer-group
- neighbor EDGE4 remote-as {{ EDGE_AS }}
- neighbor EDGE4 description EDGE_RouterOS_v4
- neighbor EDGE4 update-source {{ infra_ip4 }}
- neighbor EDGE4 ebgp-multihop 255
- neighbor EDGE4 timers 10 30
- neighbor EDGE4 bfd profile EDGE_BFD
- neighbor EDGE4 soft-reconfiguration inbound
+ neighbor EDGE peer-group
+ neighbor EDGE remote-as {{ EDGE_AS }}
+ neighbor EDGE description EDGE_RouterOS_MP-BGP
+ neighbor EDGE update-source {{ infra_ip6 }}
+ neighbor EDGE ebgp-multihop 255
+ neighbor EDGE timers 10 30
+ neighbor EDGE bfd profile EDGE_BFD
+ neighbor EDGE capability extended-nexthop
+ neighbor EDGE soft-reconfiguration inbound
  !
- neighbor EDGE6 peer-group
- neighbor EDGE6 remote-as {{ EDGE_AS }}
- neighbor EDGE6 description EDGE_RouterOS_v6
- neighbor EDGE6 update-source {{ infra_ip6 }}
- neighbor EDGE6 ebgp-multihop 255
- neighbor EDGE6 timers 10 30
- neighbor EDGE6 bfd profile EDGE_BFD
- neighbor EDGE6 soft-reconfiguration inbound
- !
- neighbor {{ EDGE_V4 }} peer-group EDGE4
- neighbor {{ EDGE_V6 }} peer-group EDGE6
+ neighbor {{ EDGE_V6 }} peer-group EDGE
 {% for i in range(1, 4) %}
 {% if i != node_id %}
  neighbor fd00:0:0:ffff::{{ i }} peer-group IBGP
@@ -418,9 +425,9 @@ router bgp {{ LOCAL_AS }}
 {% endfor %}
  !
  address-family ipv4 unicast
-  neighbor {{ EDGE_V4 }} activate
+  neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
-  neighbor {{ EDGE_V4 }} route-map RM_EDGE_EXPORT_V4 out
+  neighbor EDGE route-map RM_EDGE_EXPORT_V4 out
   import vrf {{ VRF_NAME }}
   import vrf route-map RM_VRF_TO_GLOBAL_V4
  exit-address-family
@@ -429,7 +436,9 @@ router bgp {{ LOCAL_AS }}
   neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
   neighbor IBGP route-map RM_IBGP_IN in
-  neighbor {{ EDGE_V6 }} route-map RM_EDGE_EXPORT_V6 out
+  neighbor EDGE route-map RM_EDGE_EXPORT_V6 out
+  redistribute connected route-map RM_CONNECTED_TO_BGP_V6
+  redistribute ospf6 route-map RM_OSPF6_TO_BGP_V6
   import vrf {{ VRF_NAME }}
   import vrf route-map RM_VRF_TO_GLOBAL_V6
  exit-address-family
