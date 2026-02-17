@@ -10,6 +10,6 @@ locals {
     flux_git_repository    = "https://github.com/sulibot/home-ops.git"
     flux_git_branch        = "main"
     flux_version           = "2.7.5"  # Latest stable - includes healthCheckExprs support
-    flux_operator_version  = "0.38.1"  # Latest version (Dec 2025) - supports Flux v2.7.5+
+    flux_operator_version  = "0.41.1"  # Latest version (Feb 2026) - supports Flux v2.7.5+
   }
 }
