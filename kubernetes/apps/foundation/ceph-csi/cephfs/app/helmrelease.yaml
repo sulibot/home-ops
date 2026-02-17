@@ -8,26 +8,26 @@ spec:
     chart:
         spec:
             chart: ceph-csi-cephfs
-            version: 3.15.0
+            version: 3.16.1
             sourceRef:
                 kind: HelmRepository
                 name: ceph-csi
                 namespace: flux-system
-    interval: 10m  # Shorter interval for faster recovery
+    interval: 10m
     timeout: 10m
     maxHistory: 3
     install:
         crds: CreateReplace
         remediation:
-            retries: 5  # More retries for install
-            remediateLastFailure: true  # Uninstall and retry on failure
+            retries: 5
+            remediateLastFailure: true
         timeout: 10m
     upgrade:
         crds: CreateReplace
         cleanupOnFail: true
         remediation:
-            retries: 5  # More retries for upgrade
-            remediateLastFailure: true  # Rollback and retry on failure
+            retries: 5
+            remediateLastFailure: true
             strategy: rollback
         timeout: 10m
     values:
