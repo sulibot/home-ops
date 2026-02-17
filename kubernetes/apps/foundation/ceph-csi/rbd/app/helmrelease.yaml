@@ -32,17 +32,9 @@ spec:
         timeout: 10m
     values:
         externallyManagedConfigmap: true
-        csiConfig:
-            - clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
-              monitors:
-                - '[fc00:20::1]:6789'
-                - '[fc00:20::2]:6789'
-                - '[fc00:20::3]:6789'
-              rbd:
-                radosNamespace: ""
         logLevel: 5
         provisioner:
-            enableHostNetwork: false
+            enableHostNetwork: true
             httpMetrics:
                 enabled: true
                 containerPort: 8082

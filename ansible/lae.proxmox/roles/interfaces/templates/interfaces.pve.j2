@@ -14,6 +14,7 @@
 {% set vrf_zone = (vrf_zone | default('evpnz1')) %}
 {% set pipe_v4_vrf  = "10.255.254." ~ (2 * node_id) %}
 {% set pipe_v4_glob = "10.255.254." ~ (2 * node_id + 1) %}
+{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/48","fd00:101::/48","fd00:102::/48","fd00:103::/48"]) %}
 
 # ==============================================================================
 # PROXMOX VE NETWORK CONFIGURATION - DC STANDARD
@@ -155,6 +156,10 @@ iface lo-svcs inet manual
     pre-up ip link add lo-svcs type dummy 2>/dev/null || true
     up ip -6 addr add fc00:20::{{ node_id }}/128 dev lo-svcs
     up ip -6 addr add fc00:21::{{ node_id }}/128 dev lo-svcs
+{% for p in TENANT_V6_LIST %}
+    post-up ip -6 rule add pref {{ 110 + loop.index0 }} from fc00:20::{{ node_id }}/128 to {{ p }} lookup 1001 2>/dev/null || true
+    pre-down ip -6 rule del pref {{ 110 + loop.index0 }} 2>/dev/null || true
+{% endfor %}
 {% endif %}
 
 # ------------------------------------------------------------------------------
