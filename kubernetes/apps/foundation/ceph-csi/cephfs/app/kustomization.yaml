@@ -14,3 +14,7 @@ patches:
     target:
       kind: Deployment
       name: ceph-csi-cephfs-provisioner
+  - path: nodeplugin-patch.yaml
+    target:
+      kind: DaemonSet
+      name: ceph-csi-cephfs-nodeplugin

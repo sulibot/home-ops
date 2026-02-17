@@ -1,8 +1,8 @@
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: ceph-csi-cephfs-provisioner
+  name: ceph-csi-cephfs-nodeplugin
   namespace: ceph-csi
 spec:
   template:
@@ -12,14 +12,15 @@ spec:
           args:
             - --nodeid=$(NODE_ID)
             - --type=cephfs
-            - --controllerserver=true
             - --endpoint=$(CSI_ENDPOINT)
             - --v=5
             - --drivername=$(DRIVER_NAME)
             - --pidlimit=-1
-            # FIX: Add a CSI-level operation timeout to prevent hung goroutines.
+            # FIX: Force FUSE mounter - avoids kernel CephFS client IMA hashing bug on Talos
+            # and prevents indefinite mount() syscall hangs during MDS session storms.
+            - --forcecephkernelclient=false
+            # FIX: CSI-level operation timeout to bound hung goroutines.
             - --operationtimeout=30s
             - --setmetadata=true
             - --automaxprocs=true
             - --logslowopinterval=30s
-            - --disable-cephfs-snapshot=true

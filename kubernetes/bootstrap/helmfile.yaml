@@ -4,6 +4,7 @@
 #
 # Components installed:
 # - Cilium CNI (networking required for Flux pods)
+# - Spegel (P2P image distribution mirror)
 #
 # Usage:
 #   helmfile apply
@@ -36,3 +37,19 @@ releases:
           - "-n"
           - "kube-system"
           - "--timeout=5m"
+
+  - name: spegel
+    namespace: kube-system
+    chart: oci://ghcr.io/spegel-org/helm-charts/spegel
+    version: 0.4.0
+    needs:
+      - kube-system/cilium
+    wait: true
+    timeout: 120
+    values:
+      - spegel:
+          containerdSock: /run/containerd/containerd.sock
+          containerdRegistryConfigPath: /etc/cri/conf.d/hosts
+        service:
+          registry:
+            hostPort: 29999
