@@ -35,7 +35,13 @@ spec:
               capabilities: {drop: ["ALL"]}
             env:
               TZ: America/Los_Angeles
+            resources:
+              claims:
+                - name: gpu
     defaultPodOptions:
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: emby
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

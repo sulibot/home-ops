@@ -63,12 +63,10 @@ spec:
               readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             resources:
-#              claims:
-#                - name: gpu
+              claims:
+                - name: gpu
               requests:
                 cpu: 100m
-#              limits:
-#                memory: 4Gi # Reduced from 6Gi due to worker node capacity
     defaultPodOptions:
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
@@ -84,9 +82,9 @@ spec:
               "ips": ["10.31.0.250/24", "fd00:31::250/64"]
             }
           ]
-#      resourceClaims:
-#        - name: gpu
-#          resourceClaimTemplateName: plex
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: plex
       # Schedule on worker nodes only (nodes without control-plane role)
       affinity:
         nodeAffinity:
