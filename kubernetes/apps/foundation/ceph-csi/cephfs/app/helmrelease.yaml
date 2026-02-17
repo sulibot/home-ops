@@ -52,7 +52,6 @@ spec:
                                             - --v=5
                                             - --drivername=$(DRIVER_NAME)
                                             - --pidlimit=-1
-                                            - --operationtimeout=30s
                                             - --setmetadata=true
                                             - --automaxprocs=true
                                             - --logslowopinterval=30s
@@ -75,7 +74,6 @@ spec:
                                             - --v=5
                                             - --drivername=$(DRIVER_NAME)
                                             - --pidlimit=-1
-                                            - --operationtimeout=30s
                                             - --setmetadata=true
                                             - --automaxprocs=true
                                             - --logslowopinterval=30s
