@@ -25,10 +25,11 @@ ipv6:
   enabled: true
 
 # Masquerade control
-# Enable IPv4 masquerade to ensure egress connectivity (e.g. for Flux).
-# IPv6 masquerade is enabled for egress toward non-routable external destinations.
+# Enable IPv4 masquerade for egress traffic outside native routing CIDR
+# Disable IPv6 masquerade since pod CIDRs (fd00:101::/48) are fully routable via BGP
+# BPF masquerade with hostLegacyRouting=true was still masquerading pod-to-pod traffic
 enableIPv4Masquerade: true
-enableIPv6Masquerade: true
+enableIPv6Masquerade: false
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
 # Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6
@@ -66,8 +67,9 @@ ipv6NativeRoutingCIDR: fd00:101::/48
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
 bpf:
-  # Disable BPF masquerading when using hostLegacyRouting (avoids netfilter conflicts)
-  masquerade: false
+  # BPF masquerading - smart enough to skip native routing CIDRs
+  # Must be enabled to prevent iptables SNAT from rewriting pod source IPs on cross-node traffic
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
