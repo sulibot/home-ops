@@ -66,8 +66,8 @@ ipv6NativeRoutingCIDR: fd00:101::/48
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
 bpf:
-  # Enable BPF masquerading
-  masquerade: true
+  # Disable BPF masquerading when using hostLegacyRouting (avoids netfilter conflicts)
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -76,8 +76,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use BPF host routing (Direct Routing) for best performance
-  hostLegacyRouting: false
+  # Use legacy routing to fix IPv6 cross-node routing issues (bpf_fib_lookup failure)
+  hostLegacyRouting: true
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:
