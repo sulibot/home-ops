@@ -78,8 +78,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use legacy routing - BPF host routing (false) had issues with IPv6 cross-node
-  hostLegacyRouting: true
+  # Use BPF host routing for better performance (testing without IPv6 masquerade)
+  hostLegacyRouting: false
 
 # Disable ip-masq-agent - not needed with IPv6 masquerade disabled
 ipMasqAgent:
