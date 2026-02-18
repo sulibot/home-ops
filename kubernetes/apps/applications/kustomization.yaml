@@ -16,12 +16,14 @@ resources:
   - ./home-assistant/ks.yaml
   - ./immich/ks.yaml
 #  - ./jellyseerr/ks.yaml  # Replaced by seerr
+  - ./karakeep/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
   - ./mosquitto/ks.yaml
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
 #  - ./overseerr/ks.yaml  # Replaced by seerr
+  - ./paperless/ks.yaml
   - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml

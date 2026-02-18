@@ -1,0 +1,16 @@
+---
+# Bootstrap PVC — apply once on first deploy before VolSync takes over.
+# kubectl apply -f manual-pvc-paperless-config.yaml
+# Do NOT add this to kustomization.yaml; VolSync manages the PVC lifecycle.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-config
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 15Gi
+  storageClassName: csi-cephfs-config-sc
