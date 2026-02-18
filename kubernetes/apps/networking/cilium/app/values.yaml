@@ -60,7 +60,7 @@ mtu: 1450
 # These should cover routable pod address space in the underlay.
 # Do not include Service CIDRs (ClusterIP VIPs are virtual LB addresses).
 ipv4NativeRoutingCIDR: 10.101.0.0/16
-ipv6NativeRoutingCIDR: fd00:101:224::/60
+ipv6NativeRoutingCIDR: fd00:101::/48
 
 # BPF configuration optimized for Talos + Istio Ambient
 # forwardKubeDNSToHost is ENABLED in Talos machine config (Legacy Mode)
