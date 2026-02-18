@@ -16,8 +16,7 @@ kubeProxyReplacement: true
 # Setting hostNamespaceOnly: true fixes libp2p compatibility (Spegel) and connection tracking races
 # Pod traffic uses standard TC-BPF datapath (robust, fully compatible)
 socketLB:
-  enabled: true              # Enable socket-level load balancing
-  hostNamespaceOnly: true    # Restrict to host namespace (fixes networking issues)
+  enabled: false             # Disable socket-level load balancing to resolve libp2p/Spegel issues
 
 # Enable dual-stack with IPv6 first
 ipv4:
@@ -63,10 +62,10 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16
 ipv6NativeRoutingCIDR: fd00:101::/48
 
 # BPF configuration optimized for Talos + Istio Ambient
-# forwardKubeDNSToHost is ENABLED in Talos machine config (Legacy Mode)
+# forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
 bpf:
   # Enable BPF masquerading
-  masquerade: false
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -75,8 +74,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use legacy routing for host-bound traffic (required for stability/compatibility)
-  hostLegacyRouting: true
+  # Use BPF host routing (Direct Routing) for best performance
+  hostLegacyRouting: false
 
 # Disable ip-masq-agent - using native routing (no masquerading)
 ipMasqAgent:

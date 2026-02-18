@@ -1,15 +1,23 @@
 ---
-# CiliumBGPClusterConfig - Top-level BGP configuration for the cluster
-# This enables BGP peering using per-node configurations
+# CiliumBGPClusterConfig - Top-level BGP v2 configuration for the cluster.
+# Cilium will generate CiliumBGPNodeConfig objects from this template.
 apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
   name: cluster-101-bgp
 spec:
   bgpInstances:
-    - name: local-frr
+    - name: local-bird2
       localASN: 4220101000
-      localPort: 1790
+      # Do not set localPort unless inbound BGP sessions to Cilium are required.
+      peers:
+        - name: bird2-local
+          peerAddress: ::1
+          # peerASN 0 disables ASN validation and learns from OPEN.
+          # Useful when each node peers with a different local FRR/BIRD ASN.
+          peerASN: 0
+          peerConfigRef:
+            name: frr-local-mpbgp
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux  # Apply to all Linux nodes

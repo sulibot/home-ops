@@ -1,112 +1,79 @@
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp01"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101011
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.11"
+---
+# Per-node overrides for Cilium-generated CiliumBGPNodeConfig objects.
+# Name must match the Kubernetes Node name exactly.
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp01
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.11"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp02"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101012
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.12"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp02
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.12"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solcp03"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101013
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.13"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solcp03
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.13"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk01"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101021
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.21"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk01
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.21"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk02"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101022
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.22"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk02
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.22"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"
 
 ---
-"apiVersion": "cilium.io/v2"
-"kind": "CiliumBGPNodeConfig"
-"metadata":
-  "name": "solwk03"
-"spec":
-  "bgpInstances":
-  - "localASN": 4220101000
-    "localPort": 1790
-    "name": "local-bird2"
-    "peers":
-    - "localAddress": "::1"
-      "name": "bird2-local"
-      "peerASN": 4210101023
-      "peerAddress": "::1"
-      "peerConfigRef":
-        "name": "frr-local-mpbgp"
-    "routerID": "10.101.254.23"
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfigOverride
+metadata:
+  name: solwk03
+spec:
+  bgpInstances:
+    - name: local-bird2
+      routerID: "10.101.254.23"
+      peers:
+        - name: bird2-local
+          localAddress: "::1"

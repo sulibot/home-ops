@@ -47,8 +47,8 @@
 {% set K8S_VIPS_V6_A  = k8s_vips_v6_a  | default("fd00:101:253::/112") %}
 {% set K8S_VIPS_V6_B  = k8s_vips_v6_b  | default("fd00:101:254::/112") %}
 {% set K8S_LOOPBACKS_V6 = k8s_loopbacks_v6 | default("fd00:101:fe::/64") %}
-{% set K8S_SERVICES_V4 = k8s_services_v4 | default("10.101.96.0/24") %}
-{% set K8S_SERVICES_V6 = k8s_services_v6 | default("fd00:101:96::/112") %}
+{% set K8S_SERVICES_V4 = k8s_services_v4 | default("10.101.96.0/20") %}
+{% set K8S_SERVICES_V6 = k8s_services_v6 | default("fd00:101:96::/108") %}
 
 {# VMs listen range for dynamic neighbors #}
 {% set VMS_LISTEN_V6  = vms_listen_v6  | default("fd00:101::/64") %}
@@ -170,24 +170,24 @@ route-map RM_EDGE_EXPORT_V6 permit 20
 exit
 !
 
-{# --- VRF<->GLOBAL leak policy stubs (kept for later expansion) --- #}
-route-map RM_GLOBAL_TO_VRF_V4 permit 10
- match ip address prefix-list PL_DEFAULT_V4
-exit
-!
+{# --- VRF<->GLOBAL leak policy --- #}
 route-map RM_GLOBAL_TO_VRF_V4 deny 5
  match ip address prefix-list PL_K8S_SERVICES_V4
 exit
 !
-route-map RM_GLOBAL_TO_VRF_V6 permit 10
- match ipv6 address prefix-list PL_DEFAULT_V6
+route-map RM_GLOBAL_TO_VRF_V4 permit 10
+ match ip address prefix-list PL_DEFAULT_V4
 exit
 !
 route-map RM_GLOBAL_TO_VRF_V6 deny 5
  match ipv6 address prefix-list PL_K8S_SERVICES_V6
 exit
 !
-route-map RM_GLOBAL_TO_VRF_V6 permit 20
+route-map RM_GLOBAL_TO_VRF_V6 permit 10
+ match ipv6 address prefix-list PL_DEFAULT_V6
+exit
+!
+route-map RM_GLOBAL_TO_VRF_V6 permit 15
  match ipv6 address prefix-list PL_SVCS_V6
 exit
 !
@@ -237,13 +237,14 @@ exit
 
 {# --- VMS inbound policy (what we ACCEPT from the K8s VMs into VRF) --- #}
 {# "Guard Rail" Logic: Accept anything in the Tenant Block if it has a valid Community tag #}
-{# This allows the VM to declare "Public" vs "Internal" intent without PVE config changes #}
-route-map RM_VMS_IN_V6 permit 10
- match ipv6 address prefix-list PL_TENANT_V6
-exit
-!
+{# This allows the VM to declare "Public" vs "Internal" intent without PVE config changes. #}
+{# Deny service CIDRs first to prevent them from leaking from VMs. #}
 route-map RM_VMS_IN_V6 deny 4
  match ipv6 address prefix-list PL_K8S_SERVICES_V6
+exit
+!
+route-map RM_VMS_IN_V6 permit 10
+ match ipv6 address prefix-list PL_TENANT_V6
 exit
 !
 route-map RM_VMS_IN_V6 permit 5
@@ -268,38 +269,37 @@ exit
 !
 
 {# --- VMS inbound policy (IPv4) --- #}
-route-map RM_VMS_IN_V4 permit 10
- match ip address prefix-list PL_TENANT_V4
-exit
-!
 route-map RM_VMS_IN_V4 deny 5
  match ip address prefix-list PL_K8S_SERVICES_V4
+exit
+!
+route-map RM_VMS_IN_V4 permit 10
+ match ip address prefix-list PL_TENANT_V4
 exit
 !
 route-map RM_VMS_IN_V4 deny 999
 exit
 !
 
-{# --- VMS outbound policy (IPv4) --- #}
-route-map RM_VMS_OUT_V4 permit 10
- match ip address prefix-list PL_DEFAULT_V4
-exit
-!
+{# --- VMS outbound policy (what we ADVERTISE to K8s VMs from VRF) --- #}
 route-map RM_VMS_OUT_V4 deny 5
  match ip address prefix-list PL_K8S_SERVICES_V4
+exit
+!
+route-map RM_VMS_OUT_V4 permit 10
+ match ip address prefix-list PL_DEFAULT_V4
 exit
 !
 route-map RM_VMS_OUT_V4 deny 999
 exit
 !
 
-{# --- VMS outbound policy (REQUIRED when policy is enforced) --- #}
-route-map RM_VMS_OUT_V6 permit 10
- match ipv6 address prefix-list PL_DEFAULT_V6
-exit
-!
 route-map RM_VMS_OUT_V6 deny 5
  match ipv6 address prefix-list PL_K8S_SERVICES_V6
+exit
+!
+route-map RM_VMS_OUT_V6 permit 10
+ match ipv6 address prefix-list PL_DEFAULT_V6
 exit
 !
 route-map RM_VMS_OUT_V6 permit 20
