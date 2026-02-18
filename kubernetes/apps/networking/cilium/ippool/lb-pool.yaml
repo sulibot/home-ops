@@ -12,7 +12,7 @@
 ---
 # Dual-stack pool for general LoadBalancer services
 # Contains both IPv4 and IPv6 blocks for dual-stack support
-apiVersion: cilium.io/v2alpha1
+apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: cluster-101-pool

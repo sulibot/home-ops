@@ -14,7 +14,7 @@ spec:
   chart:
     spec:
       chart: cilium
-      version: 1.18.x  # Auto-update within 1.18 series
+      version: 1.19.x  # Auto-update within 1.19 series
       sourceRef:
         kind: HelmRepository
         name: cilium
