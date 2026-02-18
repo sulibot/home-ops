@@ -3,7 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: kopia-config
-  namespace: data
+  namespace: volsync-system
 spec:
   accessModes:
     - ReadWriteOnce
