@@ -76,6 +76,13 @@ spec:
 
     valkey:
       enabled: true
+      persistence:
+        data:
+          enabled: true
+          type: persistentVolumeClaim
+          size: 2Gi
+          storageClass: csi-cephfs-config-sc
+          accessMode: ReadWriteOnce
 
     server:
       enabled: true
