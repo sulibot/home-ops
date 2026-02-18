@@ -25,6 +25,9 @@ parameters:
   # Prefix for config volumes
   volumeNamePrefix: "sol-config-csi-vol-"
 
+  # Force ceph-fuse (userspace) instead of kernel client (Talos doesn't have ceph kernel module)
+  mounter: fuse
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 #volumeBindingMode: WaitForFirstConsumer
