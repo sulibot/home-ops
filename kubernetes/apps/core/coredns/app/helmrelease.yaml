@@ -47,13 +47,15 @@ spec:
           - name: kubernetes
             parameters: cluster.local in-addr.arpa ip6.arpa
             configBlock: |-
-              endpoint https://10.101.96.1:443
               pods verified
               fallthrough in-addr.arpa ip6.arpa
+              # By default, CoreDNS will use the in-cluster service account and
+              # KUBERNETES_SERVICE_HOST/PORT env vars to connect to the API server.
+              # Hardcoding an IP is brittle and unnecessary.
           - name: autopath
             parameters: "@kubernetes"
           - name: forward
-            parameters: . 169.254.116.108
+            parameters: . /etc/resolv.conf
             configBlock: |-
               max_concurrent 1000
           - name: cache
