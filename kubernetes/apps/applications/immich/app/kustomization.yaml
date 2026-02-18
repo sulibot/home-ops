@@ -3,5 +3,4 @@ kind: Kustomization
 #components:
 #  - ../../../../../components/volsync
 resources:
-  - ocirepository.yaml
   - helmrelease.yaml

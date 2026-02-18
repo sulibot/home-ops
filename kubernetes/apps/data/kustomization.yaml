@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ./cloudnative-pg/helm-repo/ks.yaml
   - ./cloudnative-pg/ks.yaml
+  - ./postgres-vectorchord/ks.yaml
   - ./kopia/ks.yaml
   - ./redis/ks.yaml
   - ./volsync/ks.yaml
