@@ -113,13 +113,21 @@ configFiles:
       
         ipv4 {
           import all;
-          export none;  # One-way: Cilium → bird2
+          export filter {
+            # Export routes learned from upstream FRR back to Cilium
+            if proto = "upstream" then accept;
+            reject;
+          };
           extended next hop on;  # MP-BGP: IPv4 routes over IPv6 session
         };
       
         ipv6 {
           import all;
-          export none;  # One-way: Cilium → bird2
+          export filter {
+            # Export routes learned from upstream FRR back to Cilium
+            if proto = "upstream" then accept;
+            reject;
+          };
         };
       }
       
