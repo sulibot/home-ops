@@ -30,9 +30,9 @@ ipv6:
 enableIPv4Masquerade: false
 enableIPv6Masquerade: true
 
-# IPAM mode - kubernetes with per-node /80 IPv6 allocations (standard)
-# The /64 is subdivided into /80 subnets per node (281 trillion IPs each)
-# Allows 65,536 nodes max - node-cidr-mask-size-ipv6 configured in Talos
+# IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
+# Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6
+# and /24 for IPv4.
 ipam:
   mode: kubernetes
 
