@@ -24,4 +24,3 @@ spec:
       "fsName": "backups"
       "staticVolume": "true"
       "rootPath": "/volumes/csi/backup-csi-vol-841e604c-1dd5-4a09-8763-84e672d78c4e/379629f2-f4b6-47f2-b9fd-be507bebab2b"
-      "mounter": "fuse"

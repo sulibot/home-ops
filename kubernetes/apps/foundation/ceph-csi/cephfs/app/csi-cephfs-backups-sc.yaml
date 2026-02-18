@@ -28,9 +28,6 @@ parameters:
   # Prefix for backup volumes
   volumeNamePrefix: "backup-csi-vol-"
 
-  # Force ceph-fuse (userspace) instead of kernel client (Talos doesn't have ceph kernel module)
-  mounter: fuse
-
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
