@@ -25,9 +25,9 @@ ipv6:
   enabled: true
 
 # Masquerade control
-# Keep IPv4 masquerade disabled for now (IPv6-first environment).
+# Enable IPv4 masquerade to ensure egress connectivity (e.g. for Flux).
 # IPv6 masquerade is enabled for egress toward non-routable external destinations.
-enableIPv4Masquerade: false
+enableIPv4Masquerade: true
 enableIPv6Masquerade: true
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
@@ -128,7 +128,7 @@ hubble:
 
 # DNS Proxy for performance and visibility
 dnsProxy:
-  enabled: false
+  enabled: true
   enableDNSCompression: false # Recommended for performance
 
 # Install CNI plugin
