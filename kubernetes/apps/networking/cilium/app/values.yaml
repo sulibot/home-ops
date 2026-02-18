@@ -126,6 +126,11 @@ hubble:
       - icmp
       - http
 
+# DNS Proxy for performance and visibility
+dnsProxy:
+  enabled: false
+  enableDNSCompression: false # Recommended for performance
+
 # Install CNI plugin
 cni:
   install: true

@@ -435,12 +435,21 @@ locals {
             accept;
           };
           export filter {
-            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200)
             if proto = "direct_routes" then {
               bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
               accept;
             }
-            # Pass through other routes (e.g. from Cilium)
+            # Tag Pod CIDRs (from Cilium) as Internal (Community :100)
+            # This is CRITICAL for FRR to accept the pod routes via RM_VMS_IN_V4/6
+            if proto = "cilium" then {
+              if net ~ [10.${var.cluster_id}.0.0/16] then {
+                bgp_large_community.add((${var.bgp_remote_asn}, 0, 100));
+                accept;
+              }
+            }
+            # Pass through other routes (e.g., LoadBalancer VIPs from Cilium)
+            # These are accepted by FRR without a community tag.
             accept;
           };
           next hop self;
@@ -457,12 +466,19 @@ locals {
             accept;
           };
           export filter {
-            # Tag Loopbacks (protocol direct_routes) as Public (Community :200) so PVE exports them to Edge
+            # Tag Loopbacks (protocol direct_routes) as Public (Community :200)
             if proto = "direct_routes" then {
               bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
               accept;
             }
-            # Pass through other routes (e.g. from Cilium)
+            # Tag Pod CIDRs (from Cilium) as Internal (Community :100)
+            # This is CRITICAL for FRR to accept the pod routes via RM_VMS_IN_V6
+            if proto = "cilium" then {
+              if net ~ [fd00:${var.cluster_id}::/48] then {
+                bgp_large_community.add((${var.bgp_remote_asn}, 0, 100));
+                accept;
+              }
+            }
             accept;
           };
           next hop self;
