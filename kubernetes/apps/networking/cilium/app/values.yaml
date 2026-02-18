@@ -43,8 +43,10 @@ k8s:
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
 routingMode: native
-# Disable autoDirectNodeRoutes so inter-node pod routing follows BGP-learned routes
-autoDirectNodeRoutes: false
+# Enable autoDirectNodeRoutes to allow Cilium to manage pod-to-pod routes.
+# Disabling this requires a fully functional external BGP setup for pod routes, which is currently not working.
+# This is the primary cause of pod-to-service timeouts (e.g., to kube-apiserver).
+autoDirectNodeRoutes: true
 directRoutingSkipUnreachable: false  # Install routes to all nodes
 # Disable endpoint routes so datapath uses node-level pod CIDR routing
 # (aligned with Kubernetes IPAM + BGP route distribution).
