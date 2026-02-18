@@ -27,7 +27,7 @@ ipv6:
 # Masquerade control
 # Enable IPv4 masquerade for egress traffic outside native routing CIDR
 # Disable IPv6 masquerade since pod CIDRs (fd00:101::/48) are fully routable via BGP
-# BPF masquerade with hostLegacyRouting=true was still masquerading pod-to-pod traffic
+# With hostLegacyRouting=true, even BPF masquerade was rewriting pod-to-pod IPv6 source IPs
 enableIPv4Masquerade: true
 enableIPv6Masquerade: false
 
@@ -78,10 +78,10 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use legacy routing to fix IPv6 cross-node routing issues (bpf_fib_lookup failure)
+  # Use legacy routing - BPF host routing (false) had issues with IPv6 cross-node
   hostLegacyRouting: true
 
-# Disable ip-masq-agent - using native routing (no masquerading)
+# Disable ip-masq-agent - not needed with IPv6 masquerade disabled
 ipMasqAgent:
   enabled: false
 
