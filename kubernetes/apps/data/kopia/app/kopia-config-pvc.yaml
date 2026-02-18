@@ -6,7 +6,7 @@ metadata:
   namespace: volsync-system
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: csi-cephfs-config-sc
   resources:
     requests:
