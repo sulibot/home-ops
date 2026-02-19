@@ -29,7 +29,7 @@ ipv6:
 # Disable IPv6 masquerade since pod CIDRs (fd00:101::/48) are fully routable via BGP
 # With hostLegacyRouting=true, even BPF masquerade was rewriting pod-to-pod IPv6 source IPs
 enableIPv4Masquerade: true
-enableIPv6Masquerade: false
+enableIPv6Masquerade: true
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
 # Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6
