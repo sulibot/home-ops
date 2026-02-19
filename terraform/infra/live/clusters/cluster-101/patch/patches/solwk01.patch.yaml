@@ -2,11 +2,8 @@ cluster: {}
 machine:
   kernel:
     modules:
-      - name: i915
-        parameters:
-          - enable_display=0
-          - enable_guc=3
-          - force_probe=*
+      - name: xe
+        parameters: []
   kubelet:
     nodeIP:
       validSubnets:
@@ -45,7 +42,7 @@ machine:
       - 10.255.0.53
   nodeLabels:
     bgp.frr.asn: "4210101021"
-    gpu.driver: i915
+    gpu.driver: xe
     gpu.passthrough.enabled: "true"
     gpu.pci.address: 0000-00-02.1
     topology.kubernetes.io/region: home-lab

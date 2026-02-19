@@ -16,6 +16,49 @@ spec:
     multus:
       resources:
         requests:
-          cpu: 10m
+          cpu: 200m
+          memory: 100Mi
         limits:
-          memory: 512Mi
+          cpu: 300m
+          memory: 150Mi
+  postRenderers:
+    - kustomize:
+        patches:
+          # Fix volume mount path for Talos compatibility
+          # Change /run/netns to /var/run/netns to prevent pod creation failures
+          - target:
+              kind: DaemonSet
+              name: kube-multus-ds
+            patch: |-
+              apiVersion: apps/v1
+              kind: DaemonSet
+              metadata:
+                name: kube-multus-ds
+              spec:
+                template:
+                  spec:
+                    volumes:
+                      - name: host-run-netns
+                        hostPath:
+                          path: /var/run/netns
+          # Add command override to install-multus-binary init container
+          # Mitigates race conditions after node reboots
+          - target:
+              kind: DaemonSet
+              name: kube-multus-ds
+            patch: |-
+              apiVersion: apps/v1
+              kind: DaemonSet
+              metadata:
+                name: kube-multus-ds
+              spec:
+                template:
+                  spec:
+                    initContainers:
+                      - name: install-multus-binary
+                        command:
+                          - "/usr/src/multus-cni/bin/install_multus"
+                          - "-d"
+                          - "/host/opt/cni/bin"
+                          - "-t"
+                          - "thick"
