@@ -453,41 +453,17 @@ resource "null_resource" "preinstall_cert_manager" {
       helm repo add cert-manager-temp $REPO_URL
       helm repo update cert-manager-temp
 
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      # CRDs included via crds.enabled=true in values
-      helm template cert-manager \
+      # Install cert-manager as a proper Helm release so Flux can adopt it with
+      # a fast helm upgrade instead of a slow helm install from scratch.
+      # CRDs are auto-installed from the chart's crds/ directory.
+      helm upgrade --install cert-manager \
         cert-manager-temp/cert-manager \
         --version $CHART_VERSION \
         --namespace cert-manager \
         --values /tmp/cert-manager-values.yaml \
-        --include-crds \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Wait for cert-manager webhook pods to exist (server-side apply is async)
-      echo "Waiting for cert-manager webhook pods to be created..."
-      TIMEOUT=60
-      ELAPSED=0
-      while [ $ELAPSED -lt $TIMEOUT ]; do
-        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=webhook -n cert-manager 2>/dev/null | grep -q webhook; then
-          echo "  ✓ cert-manager webhook pods exist"
-          break
-        fi
-        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-      done
-
-      if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "  ⚠ Timeout waiting for cert-manager webhook pods to be created"
-        exit 1
-      fi
-
-      # Wait for cert-manager webhook to be ready (critical for certificate issuance)
-      echo "Waiting for cert-manager webhook to be ready..."
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=webhook \
-        -n cert-manager \
-        --timeout=600s
+        --kubeconfig="$KUBECONFIG" \
+        --wait \
+        --timeout 10m
 
       # Clean up
       helm repo remove cert-manager-temp || true

@@ -39,22 +39,9 @@
     - { name: 'net/ipv4/ip_forward',                 value: '1' }
     - { name: 'net/ipv6/conf/all/forwarding',        value: '1' }
     - { name: 'net/ipv6/conf/default/forwarding',    value: '1' }
-    - { name: 'net/ipv6/conf/lo/forwarding',         value: '1' }
-
-    # --- ARP Behavior (IPv4) - Global permissive ---
-    - { name: 'net/ipv4/conf/all/arp_ignore',        value: '0' }
-    - { name: 'net/ipv4/conf/default/arp_ignore',    value: '0' }
-    - { name: 'net/ipv4/conf/all/arp_filter',        value: '0' }
-    - { name: 'net/ipv4/conf/default/arp_filter',    value: '0' }
-    - { name: 'net/ipv4/conf/all/arp_announce',      value: '2' }
-    - { name: 'net/ipv4/conf/default/arp_announce',  value: '2' }
-
-    # --- Neighbor (IPv6) - Global ---
-    - { name: 'net/ipv6/conf/all/proxy_ndp',         value: '0' }
-    - { name: 'net/ipv6/conf/default/proxy_ndp',     value: '0' }
 
     # --- Reverse Path Filtering (IPv4) ---
-    # Loose globally; we turn OFF per anycast VLAN
+    # Disable globally for EVPN/VRF asymmetric return paths.
     - { name: 'net/ipv4/conf/all/rp_filter',         value: '0' }
     - { name: 'net/ipv4/conf/default/rp_filter',     value: '0' }
 
@@ -65,9 +52,6 @@
     - { name: 'net/ipv4/conf/default/send_redirects',   value: '0' }
     - { name: 'net/ipv6/conf/all/accept_redirects',     value: '0' }
     - { name: 'net/ipv6/conf/default/accept_redirects', value: '0' }
-
-    # --- DAD on loopback anycast /128s ---
-    - { name: 'net/ipv6/conf/lo/accept_dad',         value: '0' }
 
 # ============================================================================
 # xvrf Cross-Connect Configuration

@@ -75,22 +75,6 @@
   changed_when: false
   tags: frr
 
-- name: Disable ICMP redirects to prevent routing cache pollution
-  ansible.posix.sysctl:
-    name: "{{ item }}"
-    value: '0'
-    state: present
-    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
-    reload: true
-  loop:
-    - net.ipv4.conf.all.accept_redirects
-    - net.ipv4.conf.default.accept_redirects
-    - net.ipv4.conf.all.send_redirects
-    - net.ipv4.conf.default.send_redirects
-    - net.ipv6.conf.all.accept_redirects
-    - net.ipv6.conf.default.accept_redirects
-  tags: frr
-
 - name: Enable l3mdev socket accept for VRF cross-delivery
   ansible.posix.sysctl:
     name: net.ipv4.tcp_l3mdev_accept
