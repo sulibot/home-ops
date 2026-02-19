@@ -3,16 +3,16 @@
 
 locals {
   # Talos versions
-  talos_version      = "v1.12.1"  # Fixes CephFS kernel 6.12 deadlock bug
+  talos_version      = "v1.12.4"  # Fixes BPF verifier kernel bug (6.18.4)
   talos_platform     = "nocloud"
   talos_architecture = "amd64"
 
   # System extensions version (can lag Talos releases).
-  # Align extensions with Talos v1.12.1
-  extension_version = "v1.12.1"
+  # Align extensions with Talos v1.12.4
+  extension_version = "v1.12.4"
 
   # Kubernetes version (managed by Talos)
-  kubernetes_version = "1.34.1"  # Current K8s version for Talos v1.12.1
+  kubernetes_version = "1.34.1"  # Current K8s version for Talos v1.12.4
 
   # Terraform provider versions
   provider_versions = {
