@@ -996,6 +996,20 @@ resource "null_resource" "resume_and_cleanup" {
         --type=merge -p '{"spec":{"suspend":false}}'
       echo "✓ flux-system resumed - Flux will adopt preinstalled apps via SSA Replace"
 
+      # Force immediate reconciliation of pre-installed app kustomizations so Flux
+      # adopts them now instead of waiting for the default poll interval (~5m).
+      echo "Triggering immediate reconciliation of pre-installed apps..."
+      FLUX_KUBECONFIG="$KUBECONFIG"
+      for KS in external-secrets onepassword cert-manager snapshot-controller volsync; do
+        echo "  Reconciling kustomization/$KS..."
+        flux reconcile kustomization $KS -n flux-system \
+          --kubeconfig="$FLUX_KUBECONFIG" \
+          --with-source \
+          --timeout=5m 2>/dev/null || \
+        echo "  ⚠ Could not reconcile $KS (may not exist yet, Flux will pick it up on next poll)"
+      done
+      echo "✓ Pre-installed apps queued for immediate adoption"
+
       # Clean up canary (best effort)
       echo "Cleaning up cache test canary..."
       kubectl --kubeconfig="$KUBECONFIG" delete helmrelease flux-cache-canary -n flux-system --ignore-not-found=true || true
