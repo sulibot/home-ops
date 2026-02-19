@@ -302,40 +302,17 @@ resource "null_resource" "preinstall_external_secrets" {
         ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
         > /tmp/external-secrets-values.yaml
 
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      # Use --server-side to handle large CRD annotations
-      helm template external-secrets \
+      # Install as a proper Helm release so Flux can adopt with fast upgrade.
+      # Critically, this ensures Helm owns all service port fields from the start,
+      # preventing SSA field ownership conflicts on the webhook service (port 443).
+      helm upgrade --install external-secrets \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/external-secrets-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Wait for external-secrets pods to exist (server-side apply is async)
-      echo "Waiting for external-secrets pods to be created..."
-      TIMEOUT=60
-      ELAPSED=0
-      while [ $ELAPSED -lt $TIMEOUT ]; do
-        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=external-secrets -n external-secrets 2>/dev/null | grep -q external-secrets; then
-          echo "  ✓ external-secrets pods exist"
-          break
-        fi
-        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-      done
-
-      if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "  ⚠ Timeout waiting for external-secrets pods to be created"
-        exit 1
-      fi
-
-      # Wait for external-secrets pods to be ready
-      echo "Waiting for external-secrets pods to be ready..."
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=external-secrets \
-        -n external-secrets \
-        --timeout=300s
+        --kubeconfig="$KUBECONFIG" \
+        --wait \
+        --timeout 10m
 
       rm -f /tmp/external-secrets-values.yaml
       echo "✓ external-secrets installed and ready"
@@ -375,39 +352,15 @@ resource "null_resource" "preinstall_onepassword" {
         ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
         > /tmp/onepassword-values.yaml
 
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      helm template onepassword \
+      # Install as a proper Helm release so Flux can adopt with fast upgrade.
+      helm upgrade --install onepassword \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace external-secrets \
         --values /tmp/onepassword-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Wait for 1Password Connect pods to exist (server-side apply is async)
-      echo "Waiting for 1Password Connect pods to be created..."
-      TIMEOUT=60
-      ELAPSED=0
-      while [ $ELAPSED -lt $TIMEOUT ]; do
-        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=onepassword -n external-secrets 2>/dev/null | grep -q onepassword; then
-          echo "  ✓ 1Password Connect pods exist"
-          break
-        fi
-        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-      done
-
-      if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "  ⚠ Timeout waiting for 1Password Connect pods to be created"
-        exit 1
-      fi
-
-      # Wait for 1Password Connect pods to be ready
-      echo "Waiting for 1Password Connect pods to be ready..."
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=onepassword \
-        -n external-secrets \
-        --timeout=300s
+        --kubeconfig="$KUBECONFIG" \
+        --wait \
+        --timeout 10m
 
       rm -f /tmp/onepassword-values.yaml
       echo "✓ 1Password Connect installed and ready"
@@ -501,39 +454,15 @@ resource "null_resource" "preinstall_snapshot_controller" {
         ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/helmrelease.yaml \
         > /tmp/snapshot-controller-values.yaml
 
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      helm template snapshot-controller \
+      # Install as a proper Helm release so Flux can adopt with fast upgrade.
+      helm upgrade --install snapshot-controller \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace kube-system \
         --values /tmp/snapshot-controller-values.yaml \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Wait for snapshot-controller pods to exist (server-side apply is async)
-      echo "Waiting for snapshot-controller pods to be created..."
-      TIMEOUT=60
-      ELAPSED=0
-      while [ $ELAPSED -lt $TIMEOUT ]; do
-        if kubectl --kubeconfig="$KUBECONFIG" get pods -l app.kubernetes.io/name=snapshot-controller -n kube-system 2>/dev/null | grep -q snapshot-controller; then
-          echo "  ✓ snapshot-controller pods exist"
-          break
-        fi
-        echo "  ⏳ Waiting for pods to be created... ($ELAPSED/$TIMEOUT seconds)"
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-      done
-
-      if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "  ⚠ Timeout waiting for snapshot-controller pods to be created"
-        exit 1
-      fi
-
-      # Wait for snapshot-controller pods to be ready
-      echo "Waiting for snapshot-controller pods to be ready..."
-      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-        -l app.kubernetes.io/name=snapshot-controller \
-        -n kube-system \
-        --timeout=300s
+        --kubeconfig="$KUBECONFIG" \
+        --wait \
+        --timeout 10m
 
       rm -f /tmp/snapshot-controller-values.yaml
       echo "✓ snapshot-controller installed and ready"
@@ -573,60 +502,18 @@ resource "null_resource" "preinstall_volsync" {
         ${var.repo_root}/kubernetes/apps/data/volsync/app/helmrelease.yaml \
         > /tmp/volsync-values.yaml
 
-      # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-      # manageCRDs: true in values will include CRDs
-      # Split into CRDs and non-CRDs to handle annotation size limits:
-      # - CRDs are too large for kubectl.kubernetes.io/last-applied-configuration annotation
-      # - Apply CRDs with --server-side (no annotation)
-      # - Apply other resources with regular kubectl apply
-
-      echo "Templating volsync chart..."
-      helm template volsync \
+      # Install as a proper Helm release so Flux can adopt with fast upgrade.
+      # helm handles CRDs natively - no need for the CRD-splitting workaround.
+      helm upgrade --install volsync \
         $CHART_URL \
         --version $CHART_VERSION \
         --namespace volsync-system \
         --values /tmp/volsync-values.yaml \
-        --include-crds > /tmp/volsync-manifests.yaml
+        --kubeconfig="$KUBECONFIG" \
+        --wait \
+        --timeout 10m
 
-      echo "Splitting CRDs from other resources..."
-      # Extract CRDs (kind: CustomResourceDefinition)
-      yq eval 'select(.kind == "CustomResourceDefinition")' /tmp/volsync-manifests.yaml > /tmp/volsync-crds.yaml
-      # Extract non-CRDs
-      yq eval 'select(.kind != "CustomResourceDefinition")' /tmp/volsync-manifests.yaml > /tmp/volsync-resources.yaml
-
-      echo "Applying volsync CRDs with server-side apply..."
-      kubectl --kubeconfig="$KUBECONFIG" apply --server-side --force-conflicts -f /tmp/volsync-crds.yaml
-
-      echo "Applying volsync resources (non-CRDs)..."
-      kubectl --kubeconfig="$KUBECONFIG" apply -n volsync-system -f /tmp/volsync-resources.yaml
-
-      # Wait for volsync deployment to exist (server-side apply is async)
-      echo "Waiting for volsync deployment to be created..."
-      TIMEOUT=60
-      ELAPSED=0
-      while [ $ELAPSED -lt $TIMEOUT ]; do
-        if kubectl --kubeconfig="$KUBECONFIG" get deployment volsync -n volsync-system >/dev/null 2>&1; then
-          echo "  ✓ volsync deployment exists"
-          break
-        fi
-        echo "  ⏳ Waiting for deployment to be created... ($ELAPSED/$TIMEOUT seconds)"
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-      done
-
-      if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "  ⚠ Timeout waiting for volsync deployment to be created"
-        exit 1
-      fi
-
-      # Wait for volsync deployment to be available
-      echo "Waiting for volsync deployment to be available..."
-      kubectl --kubeconfig="$KUBECONFIG" wait deployment volsync \
-        -n volsync-system \
-        --for=condition=Available \
-        --timeout=300s
-
-      rm -f /tmp/volsync-values.yaml /tmp/volsync-manifests.yaml /tmp/volsync-crds.yaml /tmp/volsync-resources.yaml
+      rm -f /tmp/volsync-values.yaml
       echo "✓ volsync installed and ready"
     EOT
 
