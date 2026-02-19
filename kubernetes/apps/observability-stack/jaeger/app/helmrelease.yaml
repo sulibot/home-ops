@@ -25,6 +25,13 @@ spec:
       retries: 3
       strategy: rollback
   values:
+    # Legacy jaeger chart key: disable provisioned datastore subcharts.
+    # Keep this even with storage.type=memory so Cassandra is never created.
+    provisionDataStore:
+      cassandra: false
+      elasticsearch: false
+      kafka: false
+
     # Deploy Jaeger all-in-one for simplicity (single pod)
     allInOne:
       enabled: true
@@ -78,7 +85,7 @@ spec:
     storage:
       type: memory
 
-    # Explicitly disable Cassandra
+    # Explicitly disable Cassandra (legacy + current value styles)
     cassandra:
       enabled: false
 
