@@ -25,19 +25,16 @@ locals {
   hardware_mappings = read_terragrunt_config(find_in_parent_folders("common/proxmox_hardware_mappings/terragrunt.hcl")).locals
 
   # GPU Configuration to apply to all worker nodes
-  # Requires Proxmox kernel 6.17.4-2-pve (or 6.14.8-2-pve) with i915-sriov-dkms
-  # Kernel 6.17.2-2-pve has VFIO_MAP_DMA regression - avoid that version
+  # Uses Xe driver (official Siderolabs extension) for newer Intel GPUs with SR-IOV
+  # Kernel arg xe.force_probe=4680 is set in install-schematic.hcl for Alder Lake-S GT1 VF
   gpu_config = {
     enabled     = true
     mapping     = "intel-igpu-vf1"
     pcie        = true
     rombar      = false
-    driver      = "i915"
-    driver_params = {
-      "enable_display" = "0"      # Disable display for compute-only (headless GPU)
-      "enable_guc"     = "3"      # Enable GuC/HuC firmware for compute execution
-      "force_probe"    = "*"      # Force driver to probe all Intel iGPUs (including Alderlake)
-    }
+    driver      = "xe"
+    # No driver_params needed - xe.force_probe kernel arg handles GPU initialization
+    driver_params = {}
   }
 
   # USB configuration for a specific worker node (disabled)

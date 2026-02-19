@@ -552,7 +552,7 @@ locals {
             # Add GPU label if GPU passthrough is enabled for this node
             try(node.gpu_passthrough.enabled, false) ? {
               "gpu.passthrough.enabled" = "true"
-              "gpu.driver"              = try(node.gpu_passthrough.driver, "i915")
+              "gpu.driver"              = try(node.gpu_passthrough.driver, "xe")
               "gpu.pci.address"         = replace(try(node.gpu_passthrough.pci_address, ""), ":", "-")
             } : {},
             # Add USB label if USB devices are passed through to this node
@@ -641,7 +641,7 @@ locals {
           kernel = {
             modules = [
               {
-                name = try(node.gpu_passthrough.driver, "i915")
+                name = try(node.gpu_passthrough.driver, "xe")
                 parameters = [
                   for k, v in try(node.gpu_passthrough.driver_params, {}) :
                   "${k}=${v}"

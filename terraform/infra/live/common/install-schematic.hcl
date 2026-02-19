@@ -30,22 +30,28 @@ locals {
     "talos.auditd.disabled=1",  # Less security, faster performanceu.ol80
   ]
 
-  # Install extensions for Talos v1.12.1
-  # Official Siderolabs extensions with pinned digests
+  # All official Siderolabs extensions with pinned digests
   # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.12.1 - | tar x -O image-digests
   install_system_extensions = [
     "ghcr.io/siderolabs/xe:20251125-v1.12.1@sha256:140b26f49849da24889f93c491154b20fb108cee67e738b5dd422e28fb9bad64",
     "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:b2843f69e3cd31ba813c1164f290ebbfddd239d53b3a0eeb19eb2f91fec6fed7",
     "ghcr.io/siderolabs/crun:1.26@sha256:5910e8e068a557afd727344649e0e6738ba53267c4339213924d4349567fe8d4",
     "ghcr.io/siderolabs/ctr:v2.1.5@sha256:67337f841b2ad13fbf43990e735bc9e61deafb91ab5d4fde42392b49f58cbe00",
+    # bird2 BGP daemon for simplified BGP configuration - replaces custom FRR extension
+    "ghcr.io/siderolabs/bird2:2.17.1@sha256:cb6be4d7655ebbd3e3420e02e0af197491889c7ce55e71c18869c10742b5a091",
   ]
 
-  # bird2 extension - Official Siderolabs extension
-  # bird2 v2.17.1 BGP daemon for simplified BGP configuration with better link-local support
-  # Replaces FRR for cleaner localhost peering with Cilium
-  # Official extension from: https://github.com/siderolabs/extensions/pkgs/container/bird2
-  # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.12.1 - | tar x -O image-digests | grep bird2
-  install_custom_extensions = [
-    "ghcr.io/siderolabs/bird2:2.17.1@sha256:cb6be4d7655ebbd3e3420e02e0af197491889c7ce55e71c18869c10742b5a091",
+  # No custom extensions - all extensions are now official Siderolabs extensions
+  install_custom_extensions = []
+
+  # Extension names for Talos Image Factory schematic API
+  # Format: siderolabs/extension-name (no version, no digest)
+  # See: https://www.talos.dev/v1.11/learn-more/image-factory/
+  install_factory_extensions = [
+    "siderolabs/xe",
+    "siderolabs/qemu-guest-agent",
+    "siderolabs/crun",
+    "siderolabs/ctr",
+    "siderolabs/bird2",
   ]
 }

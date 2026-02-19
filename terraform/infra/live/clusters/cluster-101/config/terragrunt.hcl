@@ -55,12 +55,12 @@ dependency "secrets" {
   mock_outputs_allowed_terraform_commands = ["init", "validate", "destroy"]
 }
 
-# Custom installer with FRR extension (built in artifacts/images)
-dependency "custom_installer" {
-  config_path = "../../../artifacts/images"
+# Talos Image Factory schematic (replaces custom image building)
+dependency "schematic" {
+  config_path = "../../../artifacts/schematic"
 
   mock_outputs = {
-    installer_image = "ghcr.io/sulibot/talos-frr-installer:v1.11.5"
+    schematic_id = "mock-schematic-id"
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
@@ -268,8 +268,9 @@ inputs = {
   service_cidr_ipv4 = dependency.nodes.outputs.k8s_network_config.services_ipv4
   loadbalancers_ipv4 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4
   loadbalancers_ipv6 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6
-  # Use custom installer with FRR extension from shared artifacts
-  installer_image = dependency.custom_installer.outputs.installer_image
+  # Use Talos Image Factory installer (all extensions are now official)
+  # Format: factory.talos.dev/installer/<schematic-id>:<version>
+  installer_image = "factory.talos.dev/installer/${dependency.schematic.outputs.schematic_id}:${local.versions.talos_version}"
 
   # DNS servers from centralized infrastructure config
   dns_servers = [
