@@ -50,8 +50,8 @@ spec:
     enabled: true
     restartTimeSeconds: 120
   transport:
-    # Local FRR/BIRD listens on TCP 1790.
-    peerPort: 1790
+    # Local bird2 listens on TCP 179 (default BGP port).
+    peerPort: 179
   families:
     # IPv4 Unicast - Advertises both LoadBalancer IPs AND Pod CIDRs
     - afi: ipv4
