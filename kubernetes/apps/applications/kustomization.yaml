@@ -9,7 +9,7 @@ resources:
   - ./autobrr/ks.yaml
   - ./bookshelf/ks.yaml
 #  - ./cross-seed/ks.yaml  # Disabled: qBittorrent authentication failing (401)
-  - ./emby/ks.yaml
+#  - ./emby/ks.yaml
   - ./filebrowser/ks.yaml
   - ./fusion/ks.yaml
   - ./go2rtc/ks.yaml
