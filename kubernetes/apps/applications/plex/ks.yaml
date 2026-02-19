@@ -17,6 +17,8 @@ spec:
   dependsOn:
     - name: external-secrets
       namespace: flux-system
+    - name: onepassword
+      namespace: flux-system
     # Temporarily disabled until Intel GPU host stack is ready
     # - name: intel-gpu-resource-driver
     #   namespace: kube-system
