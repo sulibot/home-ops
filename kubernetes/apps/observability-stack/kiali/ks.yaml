@@ -15,8 +15,8 @@ spec:
       namespace: flux-system
     - name: jaeger
       namespace: flux-system
-    - name: istio
-      namespace: flux-system
+    # - name: istio
+    #   namespace: flux-system
     - name: kube-prometheus-stack
       namespace: flux-system
   interval: 15m

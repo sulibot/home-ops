@@ -7,8 +7,8 @@ resources:
   - ./cilium/ks.yaml
   - ./cilium/gateway/ks.yaml
   - ./multus/ks.yaml
-  - ./istio/helm-repo/ks.yaml
-  - ./istio/ks.yaml
-  - ./istio/policies/ks.yaml
-  - ./istio/namespace-config/ks.yaml
-  - ./istio/waypoints/ks.yaml
+  # - ./istio/helm-repo/ks.yaml
+  # - ./istio/ks.yaml
+  # - ./istio/policies/ks.yaml
+  # - ./istio/namespace-config/ks.yaml
+  # - ./istio/waypoints/ks.yaml

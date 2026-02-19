@@ -26,8 +26,7 @@ ipv6:
 
 # Masquerade control
 # Enable IPv4 masquerade for egress traffic outside native routing CIDR
-# Disable IPv6 masquerade since pod CIDRs (fd00:101::/48) are fully routable via BGP
-# With hostLegacyRouting=true, even BPF masquerade was rewriting pod-to-pod IPv6 source IPs
+# Enable IPv6 masquerade for IPv6 egress/NAT handling.
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
 
@@ -64,7 +63,10 @@ mtu: 1450
 ipv4NativeRoutingCIDR: 10.101.0.0/16
 ipv6NativeRoutingCIDR: fd00:101::/48
 
-# BPF configuration optimized for Talos + Istio Ambient
+daemon:
+  enableSourceIPVerification: true
+
+# BPF configuration for Talos dual-stack
 # forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
 bpf:
   # BPF masquerading - smart enough to skip native routing CIDRs
@@ -78,10 +80,10 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use BPF host routing for better performance (testing without IPv6 masquerade)
+  # Use BPF host routing for performance.
   hostLegacyRouting: false
 
-# Disable ip-masq-agent - not needed with IPv6 masquerade disabled
+# Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
   enabled: false
 
@@ -136,7 +138,7 @@ dnsProxy:
 # Install CNI plugin
 cni:
   install: true
-  # Allow Istio CNI to coexist (required for Istio Ambient mesh)
+  # Keep compatible with Multus additional network attachments.
   exclusive: false
 
 # Talos-specific settings

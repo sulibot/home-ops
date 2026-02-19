@@ -13,8 +13,8 @@ spec:
   dependsOn:
     - name: jaeger-helm-repo
       namespace: flux-system
-    - name: istio
-      namespace: flux-system
+    # - name: istio
+    #   namespace: flux-system
   interval: 15m
   retryInterval: 1m
   path: ./kubernetes/apps/observability-stack/jaeger/app
