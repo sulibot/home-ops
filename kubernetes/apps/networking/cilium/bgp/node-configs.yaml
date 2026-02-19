@@ -5,7 +5,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
@@ -24,7 +23,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
@@ -43,7 +41,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
@@ -62,7 +59,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
@@ -81,7 +77,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
@@ -100,7 +95,6 @@
 "spec":
   "bgpInstances":
   - "localASN": 4220101000
-    "localPort": 1790
     "name": "local-bird2"
     "peers":
     - "localAddress": "::1"
