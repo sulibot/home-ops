@@ -37,6 +37,7 @@ locals {
   proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
   network_infra = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
   ipv6_prefixes = read_terragrunt_config(find_in_parent_folders("common/ipv6-prefixes.hcl")).locals
+  versions      = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
 
   # Define role-based hardware defaults
   control_plane_defaults = {
@@ -126,8 +127,9 @@ inputs = merge(
 
     # Use shared artifacts from dependency
     talos_image_file_id = dependency.image.outputs.talos_image_file_ids[local.proxmox_infra.proxmox_nodes[0]]
-    talos_version       = dependency.image.outputs.talos_version
-    kubernetes_version  = dependency.image.outputs.kubernetes_version
+    # Get versions from centralized versions.hcl (not from image build)
+    talos_version       = local.versions.talos_version
+    kubernetes_version  = local.versions.kubernetes_version
     ip_config = {
       mesh = {
         ipv6_prefix  = "fc00:${local.cluster_config.cluster_id}::"

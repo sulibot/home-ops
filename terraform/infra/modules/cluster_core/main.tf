@@ -605,14 +605,10 @@ output "node_ips" {
       gpu_passthrough = try(node.gpu_passthrough, null) != null ? {
         enabled       = true
         pci_address   = node.gpu_passthrough.pci_address
-        # Auto-detect driver from PCI address or default to i915 for Intel
-        # talos_config module will use this to look up the correct driver config
-        driver        = try(node.gpu_passthrough.driver, "i915")
-        driver_params = try(node.gpu_passthrough.driver_params, {
-          "enable_display" = "0"
-          "enable_guc"     = "3"
-          "force_probe"    = "*"  # Universal Intel GPU probe
-        })
+        # Use Xe driver (official Siderolabs extension) for newer Intel GPUs
+        # xe.force_probe kernel arg (set in install-schematic.hcl) handles GPU init
+        driver        = try(node.gpu_passthrough.driver, "xe")
+        driver_params = try(node.gpu_passthrough.driver_params, {})
       } : null
     }
   }
