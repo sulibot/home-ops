@@ -107,6 +107,13 @@ resource "helm_release" "flux_operator" {
   # even after Cilium is ready (e.g., brief DNS resolution delays)
   values = [
     yamlencode({
+      # Explicitly enable RBAC (default: true, but made explicit so a partial/failed
+      # install doesn't silently leave flux-operator without its ClusterRoleBinding)
+      rbac = {
+        create            = true  # ClusterRoleBinding: flux-operator → cluster-admin
+        createAggregation = true  # view/edit/admin access to ResourceSet APIs
+      }
+
       # Startup probe for flux-operator deployment
       startupProbe = {
         httpGet = {
