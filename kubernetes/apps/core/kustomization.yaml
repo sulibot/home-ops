@@ -10,4 +10,5 @@ resources:
   - ./intel-gpu-resource-driver/ks.yaml
   - ./metrics-server/ks.yaml
   - ./reloader/ks.yaml
+  - ./spegel/ks.yaml  # TEMPORARY TEST: Validate Spegel still incompatible with Cilium BPF + IPv6 ULA
 
