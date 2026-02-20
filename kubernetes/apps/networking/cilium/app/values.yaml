@@ -64,7 +64,7 @@ ipv4NativeRoutingCIDR: 10.101.0.0/16
 ipv6NativeRoutingCIDR: fd00:101::/48
 
 daemon:
-  enableSourceIPVerification: true
+  enableSourceIPVerification: false
 
 # BPF configuration for Talos dual-stack
 # forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
