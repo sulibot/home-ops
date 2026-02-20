@@ -60,6 +60,7 @@ declare -A APP_CONFIGS=(
   ["coredns"]="kubernetes/apps/core/coredns/app"
   ["external-secrets"]="kubernetes/apps/foundation/external-secrets/external-secrets/app"
   ["kopia"]="kubernetes/apps/data/kopia/app"
+  ["multus"]="kubernetes/apps/networking/multus/app"
   ["snapshot-controller"]="kubernetes/apps/kube-system/snapshot-controller/app"
   ["volsync"]="kubernetes/apps/data/volsync/app"
   ["kube-prometheus-stack"]="kubernetes/apps/observability-stack/kube-prometheus-stack/app"
