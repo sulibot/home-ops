@@ -44,6 +44,7 @@
 
 {# K8s route policy (cluster-specific) #}
 {% set K8S_PODS_V6    = k8s_pods_v6    | default("fd00:101:224::/60") %}
+{% set K8S_PODS_V4    = k8s_pods_v4    | default("10.101.224.0/20") %}
 {% set K8S_VIPS_V6_A  = k8s_vips_v6_a  | default("fd00:101:253::/112") %}
 {% set K8S_VIPS_V6_B  = k8s_vips_v6_b  | default("fd00:101:254::/112") %}
 {% set K8S_LOOPBACKS_V6 = k8s_loopbacks_v6 | default("fd00:101:fe::/64") %}
@@ -109,6 +110,7 @@ ipv6 prefix-list PL_TENANT_GUA_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} l
 
 {# --- K8s --- #}
 ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} le 64
+ip prefix-list PL_K8S_PODS_V4 seq 5 permit {{ K8S_PODS_V4 }} le 24
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 5 permit {{ K8S_VIPS_V6_A }} le 128
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 15 permit {{ K8S_VIPS_V6_B }} le 128
 ipv6 prefix-list PL_K8S_LOOPBACKS_V6 seq 5 permit {{ K8S_LOOPBACKS_V6 }} le 128
@@ -145,6 +147,11 @@ route-map RM_EDGE_EXPORT_V4 deny 5
 exit
 !
 route-map RM_EDGE_EXPORT_V4 permit 10
+ match ip address prefix-list PL_K8S_PODS_V4
+ match large-community CL_K8S_INTERNAL
+exit
+!
+route-map RM_EDGE_EXPORT_V4 permit 15
  match ip address prefix-list PL_TENANT_V4
 exit
 !
@@ -157,6 +164,11 @@ route-map RM_EDGE_EXPORT_V6 deny 5
 exit
 !
 route-map RM_EDGE_EXPORT_V6 permit 10
+ match ipv6 address prefix-list PL_K8S_PODS_V6
+ match large-community CL_K8S_INTERNAL
+exit
+!
+route-map RM_EDGE_EXPORT_V6 permit 12
  match ipv6 address prefix-list PL_TENANT_V6
 exit
 !
