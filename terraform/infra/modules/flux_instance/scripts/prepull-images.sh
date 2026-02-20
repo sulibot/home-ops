@@ -2,28 +2,112 @@
 # Pre-pull critical container images to all nodes before Flux bootstrap
 # This dramatically speeds up initial pod startup (60s → 1s for large images)
 #
-# Strategy: Use helm template to extract actual image references from Flux configs,
-# then create a temporary DaemonSet that runs sleep containers with those images.
+# Strategy:
+# 1. Parse Flux HelmRelease/OCIRepository configs to get actual versions
+# 2. Use helm template to extract container image references
+# 3. Create temporary DaemonSet that pulls all images in parallel
 
 set -euo pipefail
 
 KUBECONFIG="${1:?KUBECONFIG path required}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
 echo "=== Image Pre-Pull for Flux Bootstrap ==="
 
-# Critical charts to pre-pull (extracted from Flux HelmRelease/OCIRepository configs)
-declare -A CHARTS=(
-  # Chart name: repo_type:repo_url:chart:version
-  ["ceph-csi-cephfs"]="helm:https://ceph.github.io/csi-charts:ceph-csi-cephfs:3.16.1"
-  ["ceph-csi-rbd"]="helm:https://ceph.github.io/csi-charts:ceph-csi-rbd:3.16.1"
-  ["cilium"]="helm:https://helm.cilium.io:cilium:1.19.1"
-  ["cert-manager"]="helm:https://charts.jetstack.io:cert-manager:v1.19.1"
-  ["external-secrets"]="oci:ghcr.io/external-secrets/charts:external-secrets:0.20.3"
-  ["snapshot-controller"]="oci:ghcr.io/piraeusdatastore/helm-charts:snapshot-controller:4.1.1"
-  ["volsync"]="oci:ghcr.io/home-operations/charts-mirror:volsync-perfectra1n:0.17.14"
-  ["kube-prometheus-stack"]="oci:ghcr.io/prometheus-community/charts:kube-prometheus-stack:79.12.0"
+# Check required dependencies
+for cmd in kubectl helm yq jq; do
+  if ! command -v "$cmd" &> /dev/null; then
+    echo "  ✗ Error: $cmd is required but not installed"
+    exit 1
+  fi
+done
+
+echo "Reading chart versions from Flux configs..."
+echo "  Repository root: ${REPO_ROOT}"
+
+# Helper: Extract version from HelmRelease YAML
+get_helm_version() {
+  local file="$1"
+  yq eval '.spec.chart.spec.version' "$file" 2>/dev/null || echo ""
+}
+
+# Helper: Extract repo URL from HelmRepository
+get_helm_repo_url() {
+  local repo_name="$1"
+  local repo_file="${REPO_ROOT}/kubernetes/flux/repositories/helm/${repo_name}.yaml"
+  [[ -f "$repo_file" ]] && yq eval '.spec.url' "$repo_file" 2>/dev/null || echo ""
+}
+
+# Helper: Extract version from OCIRepository YAML
+get_oci_version() {
+  local file="$1"
+  yq eval '.spec.ref.tag' "$file" 2>/dev/null || echo ""
+}
+
+# Helper: Extract URL from OCIRepository
+get_oci_url() {
+  local file="$1"
+  yq eval '.spec.url' "$file" 2>/dev/null | sed 's|^oci://||'
+}
+
+# Critical apps to pre-pull (paths relative to repo root)
+declare -A APP_CONFIGS=(
+  ["ceph-csi-cephfs"]="kubernetes/apps/foundation/ceph-csi/cephfs/app"
+  ["ceph-csi-rbd"]="kubernetes/apps/foundation/ceph-csi/rbd/app"
+  ["cilium"]="kubernetes/apps/networking/cilium/app"
+  ["cert-manager"]="kubernetes/apps/core/cert-manager/app"
+  ["external-secrets"]="kubernetes/apps/foundation/external-secrets/external-secrets/app"
+  ["snapshot-controller"]="kubernetes/apps/kube-system/snapshot-controller/app"
+  ["volsync"]="kubernetes/apps/data/volsync/app"
+  ["kube-prometheus-stack"]="kubernetes/apps/observability-stack/kube-prometheus-stack/app"
 )
+
+# Known Helm repository URLs (for apps using HelmRepository sourceRef)
+declare -A HELM_REPOS=(
+  ["ceph-csi"]="https://ceph.github.io/csi-charts"
+  ["cilium"]="https://helm.cilium.io"
+  ["cert-manager"]="https://charts.jetstack.io"
+)
+
+# Build CHARTS array dynamically from Flux configs
+declare -A CHARTS
+for app_name in "${!APP_CONFIGS[@]}"; do
+  app_path="${REPO_ROOT}/${APP_CONFIGS[$app_name]}"
+  helmrelease="${app_path}/helmrelease.yaml"
+  ocirepository="${app_path}/ocirepository.yaml"
+
+  if [[ -f "$ocirepository" ]]; then
+    # OCI-based chart (external-secrets, volsync, kube-prometheus-stack, snapshot-controller)
+    version=$(get_oci_version "$ocirepository")
+    url=$(get_oci_url "$ocirepository")
+    chart_name=$(yq eval '.metadata.name' "$ocirepository" 2>/dev/null)
+
+    if [[ -n "$version" && -n "$url" ]]; then
+      CHARTS["$app_name"]="oci:${url}:${chart_name}:${version}"
+      echo "  ✓ ${app_name}: OCI ${chart_name}:${version}"
+    fi
+  elif [[ -f "$helmrelease" ]]; then
+    # Traditional Helm repository (ceph-csi, cilium, cert-manager)
+    version=$(get_helm_version "$helmrelease")
+    chart_name=$(yq eval '.spec.chart.spec.chart' "$helmrelease" 2>/dev/null)
+    repo_ref=$(yq eval '.spec.chart.spec.sourceRef.name' "$helmrelease" 2>/dev/null)
+    repo_url="${HELM_REPOS[$repo_ref]:-}"
+
+    if [[ -n "$version" && -n "$chart_name" && -n "$repo_url" ]]; then
+      CHARTS["$app_name"]="helm:${repo_url}:${chart_name}:${version}"
+      echo "  ✓ ${app_name}: ${chart_name}:${version}"
+    fi
+  fi
+done
+
+if [[ ${#CHARTS[@]} -eq 0 ]]; then
+  echo "  ⚠ No charts found - check Flux config paths"
+  exit 1
+fi
+
+echo "  Found ${#CHARTS[@]} charts to process"
+echo ""
 
 # Extract all unique image references from helm charts
 extract_images() {
