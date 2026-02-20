@@ -10,5 +10,7 @@ resources:
   - ./intel-gpu-resource-driver/ks.yaml
   - ./metrics-server/ks.yaml
   - ./reloader/ks.yaml
-  - ./spegel/ks.yaml  # TEMPORARY TEST: Validate Spegel still incompatible with Cilium BPF + IPv6 ULA
+  # Spegel disabled: libp2p P2P connections fail over IPv6 ULA with Cilium BPF
+  # Error: "failed to dial: all dials failed [/ip6/fd00:101:224::*/tcp/5001] dial backoff/connection refused"
+  # Alternative: DaemonSet-based image pre-pull (terraform/infra/modules/flux_instance/scripts/prepull-images.sh)
 
