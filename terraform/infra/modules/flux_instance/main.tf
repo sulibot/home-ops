@@ -45,6 +45,26 @@ resource "null_resource" "patch_kubernetes_service" {
   }
 }
 
+# Pre-pull critical container images to all nodes
+# This dramatically speeds up initial pod startup (60s → 1s for large images)
+# Images are extracted from Flux HelmRelease/OCIRepository configs via helm template
+resource "null_resource" "prepull_images" {
+  depends_on = [null_resource.patch_kubernetes_service]
+
+  triggers = {
+    # Re-run if script changes
+    script_hash = filesha256("${path.module}/scripts/prepull-images.sh")
+  }
+
+  provisioner "local-exec" {
+    command = "bash ${path.module}/scripts/prepull-images.sh \"$KUBECONFIG\""
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+}
+
 ########## PHASE 1: PREINSTALL CRDs ##########
 # Install CRDs first so ServiceMonitor/PodMonitor/etc are available for all apps
 
@@ -635,7 +655,9 @@ resource "kubernetes_manifest" "flux_instance" {
     }
   }
 
-  depends_on = [null_resource.preinstall_volsync]
+  # Wait for image pre-pull to complete before deploying Flux
+  # This ensures all critical images are cached, speeding up pod startup
+  depends_on = [null_resource.prepull_images]
 }
 
 # Wait for Flux controllers to be ready
