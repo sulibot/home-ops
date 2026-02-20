@@ -191,9 +191,14 @@ EOF
 
 # Add each image as a regular container (runs in PARALLEL for maximum speed)
 container_index=0
+echo "DEBUG: UNIQUE_IMAGES array contains:" >&2
+printf '  - %s\n' "${UNIQUE_IMAGES[@]}" >&2
+
 for image in "${UNIQUE_IMAGES[@]}"; do
+  echo "DEBUG: Processing image: $image" >&2
   # Sanitize image name for container name (replace special chars with dashes)
   container_name="pull-$(echo "$image" | sed 's|[^a-zA-Z0-9]|-|g' | cut -c1-50)"
+  echo "DEBUG: Container name: ${container_name}-${container_index}" >&2
 
   cat >> /tmp/image-prepull-daemonset.yaml <<EOF
       - name: ${container_name}-${container_index}
