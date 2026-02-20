@@ -85,7 +85,6 @@ bpf:
   # routing (by setting hostLegacyRouting: true) aligns the datapath with this,
   # preventing a conflict that causes incorrect IPv6 SNAT.
   hostLegacyRouting: true
-.
 # Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
   enabled: false
