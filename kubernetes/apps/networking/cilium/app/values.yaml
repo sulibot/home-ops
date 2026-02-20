@@ -71,7 +71,7 @@ daemon:
 bpf:
   # BPF masquerading - smart enough to skip native routing CIDRs
   # Must be enabled to prevent iptables SNAT from rewriting pod source IPs on cross-node traffic
-  masquerade: true
+  masquerade: false
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -84,7 +84,7 @@ bpf:
   # table is being used for pod-to-pod routes. Disabling the modern BPF host
   # routing (by setting hostLegacyRouting: true) aligns the datapath with this,
   # preventing a conflict that causes incorrect IPv6 SNAT.
-  hostLegacyRouting: true
+  hostLegacyRouting: false
 # Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
   enabled: false
