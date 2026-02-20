@@ -217,7 +217,12 @@ EOF
 
 # Apply DaemonSet
 echo "Step 3: Applying DaemonSet to cluster..."
-kubectl --kubeconfig="$KUBECONFIG" apply -f /tmp/image-prepull-daemonset.yaml
+if ! kubectl --kubeconfig="$KUBECONFIG" apply -f /tmp/image-prepull-daemonset.yaml; then
+  echo "  ✗ Error: Failed to apply DaemonSet"
+  echo "  Generated YAML:"
+  cat /tmp/image-prepull-daemonset.yaml
+  exit 1
+fi
 
 # Wait for DaemonSet pods to be running on all nodes (all images pulled in parallel)
 echo "Step 4: Waiting for images to be pulled on all nodes..."
