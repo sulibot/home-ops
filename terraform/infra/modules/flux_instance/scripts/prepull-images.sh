@@ -84,7 +84,7 @@ for app_name in "${!APP_CONFIGS[@]}"; do
     chart_name=$(yq eval '.metadata.name' "$ocirepository" 2>/dev/null)
 
     if [[ -n "$version" && -n "$url" ]]; then
-      CHARTS["$app_name"]="oci:${url}:${chart_name}:${version}"
+      CHARTS["$app_name"]="oci|${url}|${chart_name}|${version}"
       echo "  ✓ ${app_name}: OCI ${chart_name}:${version}"
     fi
   elif [[ -f "$helmrelease" ]]; then
@@ -95,7 +95,7 @@ for app_name in "${!APP_CONFIGS[@]}"; do
     repo_url="${HELM_REPOS[$repo_ref]:-}"
 
     if [[ -n "$version" && -n "$chart_name" && -n "$repo_url" ]]; then
-      CHARTS["$app_name"]="helm:${repo_url}:${chart_name}:${version}"
+      CHARTS["$app_name"]="helm|${repo_url}|${chart_name}|${version}"
       echo "  ✓ ${app_name}: ${chart_name}:${version}"
     fi
   fi
@@ -114,7 +114,7 @@ extract_images() {
   local chart_name="$1"
   local repo_info="${CHARTS[$chart_name]}"
 
-  IFS=':' read -r repo_type repo_url chart version <<< "$repo_info"
+  IFS='|' read -r repo_type repo_url chart version <<< "$repo_info"
 
   echo "  Extracting images from $chart_name (${version})..." >&2
   echo "    DEBUG: repo_info='$repo_info'" >&2
