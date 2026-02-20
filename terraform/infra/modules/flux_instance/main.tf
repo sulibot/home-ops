@@ -50,6 +50,7 @@ resource "null_resource" "patch_kubernetes_service" {
 
 # Preinstall Gateway API CRDs (required by cert-manager and Cilium Gateway)
 resource "null_resource" "preinstall_gateway_api_crds" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.patch_kubernetes_service]
 
   triggers = {
@@ -76,6 +77,7 @@ resource "null_resource" "preinstall_gateway_api_crds" {
 
 # Preinstall kube-prometheus-stack CRDs (ServiceMonitor, PodMonitor, PrometheusRule, etc.)
 resource "null_resource" "preinstall_prometheus_crds" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_gateway_api_crds]
 
   triggers = {
@@ -113,6 +115,7 @@ resource "null_resource" "preinstall_prometheus_crds" {
 
 # Preinstall KEDA CRDs (ScaledObject, ScaledJob, TriggerAuthentication, etc.)
 resource "null_resource" "preinstall_keda_crds" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_prometheus_crds]
 
   triggers = {
@@ -150,6 +153,7 @@ resource "null_resource" "preinstall_keda_crds" {
 
 # Preinstall Grafana Operator CRDs (GrafanaDashboard, GrafanaDataSource, GrafanaFolder, etc.)
 resource "null_resource" "preinstall_grafana_crds" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_keda_crds]
 
   triggers = {
@@ -187,6 +191,7 @@ resource "null_resource" "preinstall_grafana_crds" {
 
 # Preinstall Snapshot Controller CRDs (VolumeSnapshot, VolumeSnapshotClass, VolumeSnapshotContent)
 resource "null_resource" "preinstall_snapshot_crds" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_grafana_crds]
 
   triggers = {
@@ -276,6 +281,7 @@ resource "null_resource" "preinstall_snapshot_crds" {
 
 # Preinstall external-secrets operator (required for 1Password and other secret management)
 resource "null_resource" "preinstall_external_secrets" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_snapshot_crds]
 
   triggers = {
@@ -326,6 +332,7 @@ resource "null_resource" "preinstall_external_secrets" {
 
 # Preinstall 1Password Connect (secrets backend for external-secrets)
 resource "null_resource" "preinstall_onepassword" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_external_secrets]
 
   triggers = {
@@ -374,6 +381,7 @@ resource "null_resource" "preinstall_onepassword" {
 
 # Preinstall cert-manager (certificate management for ingress/webhooks)
 resource "null_resource" "preinstall_cert_manager" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_onepassword]
 
   triggers = {
@@ -432,6 +440,7 @@ resource "null_resource" "preinstall_cert_manager" {
 
 # Preinstall snapshot-controller (CSI volume snapshots)
 resource "null_resource" "preinstall_snapshot_controller" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_cert_manager]
 
   triggers = {
@@ -476,6 +485,7 @@ resource "null_resource" "preinstall_snapshot_controller" {
 
 # Preinstall volsync (volume backup/restore for persistent storage)
 resource "null_resource" "preinstall_volsync" {
+  count      = 0 # DISABLED for now
   depends_on = [null_resource.preinstall_snapshot_controller]
 
   triggers = {
@@ -567,8 +577,8 @@ resource "kubernetes_manifest" "flux_instance" {
               }
               patch = yamlencode([
                 {
-                  op    = "add"
-                  path  = "/spec/decryption"
+                  op   = "add"
+                  path = "/spec/decryption"
                   value = {
                     provider = "sops"
                     secretRef = {
@@ -583,7 +593,7 @@ resource "kubernetes_manifest" "flux_instance" {
             # Fix 1: Increase liveness probe delay to prevent restart loops
             {
               target = {
-                kind = "Deployment"
+                kind          = "Deployment"
                 labelSelector = "app.kubernetes.io/part-of=flux"
               }
               patch = yamlencode([
@@ -602,18 +612,18 @@ resource "kubernetes_manifest" "flux_instance" {
               }
               patch = yamlencode([
                 {
-                  op    = "add"
-                  path  = "/spec/ingress/0/ports/-"
+                  op   = "add"
+                  path = "/spec/ingress/0/ports/-"
                   value = {
-                    port = 9090
+                    port     = 9090
                     protocol = "TCP"
                   }
                 },
                 {
-                  op    = "add"
-                  path  = "/spec/ingress/0/ports/-"
+                  op   = "add"
+                  path = "/spec/ingress/0/ports/-"
                   value = {
-                    port = 9440
+                    port     = 9440
                     protocol = "TCP"
                   }
                 }

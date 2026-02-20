@@ -1,0 +1,79 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicybinding-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-mover-jitter
+  labels:
+    kustomize.toolkit.fluxcd.io/name: volsync
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+spec:
+  policyName: volsync-mover-jitter
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-mover-jitter
+  labels:
+    kustomize.toolkit.fluxcd.io/name: volsync
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - jobs
+    namespaceSelector: {}
+    objectSelector: {}
+  matchConditions:
+    - name: has-volsync-job-name-prefix
+      expression: >-
+        object.metadata.name.startsWith("volsync-src-") || object.metadata.name.startsWith("volsync-dst-")
+    - name: has-volsync-created-by-labels
+      expression: >-
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+    - name: jitter-container-does-not-exist
+      expression: >-
+        !has(object.spec.template.spec.initContainers) ||
+        !object.spec.template.spec.initContainers.exists(c, c.name == "jitter")
+  failurePolicy: Ignore  # Changed from Fail - won't block pods if policy fails
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: |-
+          has(object.spec.template.spec.initContainers) ?
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/initContainers/-",
+              value: Object.spec.template.spec.initContainers{
+                name: "jitter",
+                image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
+                imagePullPolicy: "IfNotPresent",
+                command: ["sh", "-c", "sleep $(shuf -i 0-60 -n 1)"]
+              }
+            }
+          ]
+          :
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/initContainers",
+              value: [
+                Object.spec.template.spec.initContainers{
+                  name: "jitter",
+                  image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
+                  imagePullPolicy: "IfNotPresent",
+                  command: ["sh", "-c", "sleep $(shuf -i 0-60 -n 1)"]
+                }
+              ]
+            }
+          ]
