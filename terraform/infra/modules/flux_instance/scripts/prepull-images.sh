@@ -57,6 +57,7 @@ declare -A APP_CONFIGS=(
   ["ceph-csi-rbd"]="kubernetes/apps/foundation/ceph-csi/rbd/app"
   ["cilium"]="kubernetes/apps/networking/cilium/app"
   ["cert-manager"]="kubernetes/apps/core/cert-manager/app"
+  ["coredns"]="kubernetes/apps/core/coredns/app"
   ["external-secrets"]="kubernetes/apps/foundation/external-secrets/external-secrets/app"
   ["snapshot-controller"]="kubernetes/apps/kube-system/snapshot-controller/app"
   ["volsync"]="kubernetes/apps/data/volsync/app"
