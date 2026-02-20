@@ -65,7 +65,7 @@ UNIQUE_IMAGES=($(printf '%s\n' "${ALL_IMAGES[@]}" | sort -u | grep -E '^[a-zA-Z0
 echo "  Found ${#UNIQUE_IMAGES[@]} unique images to pre-pull"
 
 # Generate DaemonSet manifest
-echo "Step 2: Creating image pre-pull DaemonSet..."
+echo "Step 2: Creating image pre-pull DaemonSet (${#UNIQUE_IMAGES[@]} images in parallel)..."
 cat > /tmp/image-prepull-daemonset.yaml <<EOF
 apiVersion: apps/v1
 kind: DaemonSet
@@ -84,10 +84,10 @@ spec:
       labels:
         app: image-prepull
     spec:
-      initContainers:
+      containers:
 EOF
 
-# Add each image as an init container (runs sequentially, ensuring all images pulled)
+# Add each image as a regular container (runs in PARALLEL for maximum speed)
 container_index=0
 for image in "${UNIQUE_IMAGES[@]}"; do
   # Sanitize image name for container name (replace special chars with dashes)
@@ -96,7 +96,7 @@ for image in "${UNIQUE_IMAGES[@]}"; do
   cat >> /tmp/image-prepull-daemonset.yaml <<EOF
       - name: ${container_name}-${container_index}
         image: ${image}
-        command: ["/bin/sh", "-c", "echo 'Cached: ${image}' && exit 0"]
+        command: ["/bin/sh", "-c", "echo 'Cached: ${image}'; sleep 3600"]
         resources:
           limits:
             cpu: 100m
@@ -108,19 +108,7 @@ EOF
   ((container_index++))
 done
 
-# Main container just sleeps (keeps DaemonSet alive)
 cat >> /tmp/image-prepull-daemonset.yaml <<EOF
-      containers:
-      - name: sleep
-        image: busybox:1.37.0
-        command: ["/bin/sh", "-c", "sleep 3600"]
-        resources:
-          limits:
-            cpu: 10m
-            memory: 32Mi
-          requests:
-            cpu: 1m
-            memory: 16Mi
       tolerations:
       - operator: Exists  # Run on all nodes including control plane
 EOF
@@ -129,34 +117,41 @@ EOF
 echo "Step 3: Applying DaemonSet to cluster..."
 kubectl --kubeconfig="$KUBECONFIG" apply -f /tmp/image-prepull-daemonset.yaml
 
-# Wait for DaemonSet to be ready on all nodes
+# Wait for DaemonSet pods to be running on all nodes (all images pulled in parallel)
 echo "Step 4: Waiting for images to be pulled on all nodes..."
-echo "  This may take 5-10 minutes depending on network speed and number of images"
+echo "  Pulling ${#UNIQUE_IMAGES[@]} images in parallel - this may take 2-5 minutes"
 
 # Get number of nodes
 NODE_COUNT=$(kubectl --kubeconfig="$KUBECONFIG" get nodes --no-headers | wc -l | tr -d ' ')
 echo "  Target: ${NODE_COUNT} nodes"
 
-# Wait for all DaemonSet pods to complete init (images pulled)
+# Wait for all DaemonSet pods to have all containers running (images pulled)
 TIMEOUT=600  # 10 minutes
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-  READY=$(kubectl --kubeconfig="$KUBECONFIG" get daemonset image-prepull -n kube-system \
-    -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+  # Count pods where ALL containers are running (not just ready)
+  READY=$(kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -l app=image-prepull \
+    -o json 2>/dev/null | jq -r '[.items[] | select(.status.phase == "Running") |
+    select(all(.status.containerStatuses[]; .state.running != null))] | length' || echo "0")
 
   if [[ "$READY" -eq "$NODE_COUNT" ]]; then
-    echo "  ✓ All ${NODE_COUNT} nodes have cached images"
+    echo "  ✓ All ${NODE_COUNT} nodes have cached ${#UNIQUE_IMAGES[@]} images"
     break
   fi
 
-  echo "  Progress: ${READY}/${NODE_COUNT} nodes ready..."
+  # Show detailed progress
+  PULLING=$(kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -l app=image-prepull \
+    -o json 2>/dev/null | jq -r '[.items[] | .status.containerStatuses[]? |
+    select(.state.waiting.reason == "ContainerCreating" or .state.waiting.reason == "ErrImagePull")] | length' || echo "0")
+
+  echo "  Progress: ${READY}/${NODE_COUNT} nodes ready (${PULLING} containers still pulling images)..."
   sleep 10
   ((ELAPSED+=10))
 done
 
 if [[ $ELAPSED -ge $TIMEOUT ]]; then
   echo "  ⚠ Timeout waiting for DaemonSet (some images may not be cached)"
-  kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -l app=image-prepull
+  kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -l app=image-prepull -o wide
 else
   echo "Step 5: Cleaning up DaemonSet..."
   kubectl --kubeconfig="$KUBECONFIG" delete daemonset image-prepull -n kube-system --wait=false
