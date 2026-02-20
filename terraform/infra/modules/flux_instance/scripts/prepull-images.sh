@@ -197,7 +197,8 @@ for image in "${UNIQUE_IMAGES[@]}"; do
   cat >> /tmp/image-prepull-daemonset.yaml <<EOF
       - name: ${container_name}-${container_index}
         image: ${image}
-        command: ["/bin/sh", "-c", "echo 'Cached: ${image}'; sleep 3600"]
+        imagePullPolicy: Always
+        command: ["sh", "-c", "exit 0"]
         resources:
           limits:
             cpu: 100m
