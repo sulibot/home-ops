@@ -57,10 +57,11 @@ resource "null_resource" "prepull_images" {
   }
 
   provisioner "local-exec" {
-    command = "bash ${path.module}/scripts/prepull-images.sh \"$KUBECONFIG\""
+    command = "bash ${path.module}/scripts/prepull-images.sh \"$KUBECONFIG\" \"$REPO_ROOT\""
 
     environment = {
       KUBECONFIG = var.kubeconfig_path
+      REPO_ROOT  = var.repo_root
     }
   }
 }
