@@ -17,6 +17,11 @@ spec:
   # --- Kopia restore configuration ----------------------------------------
   kopia:
     repository: "${APP}-volsync-secret"
+    # Cross-namespace repository access:
+    # The "kopia" PVC must exist in the SAME namespace as this ReplicationDestination.
+    # All namespaces share the same CephFS repository by binding PVCs to static PVs
+    # that reference the same volumeHandle (created in volsync-system namespace).
+    repositoryPVC: "kopia"
     sourceIdentity:
       sourceName: "${APP}-src"  # Must match ReplicationSource name (not just app name)
       sourceNamespace: "${NAMESPACE:-default}"  # Namespace where ReplicationSource exists
