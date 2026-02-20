@@ -116,7 +116,7 @@ extract_images() {
 
   IFS=':' read -r repo_type repo_url chart version <<< "$repo_info"
 
-  echo "  Extracting images from $chart_name (${version})..."
+  echo "  Extracting images from $chart_name (${version})..." >&2
 
   if [[ "$repo_type" == "helm" ]]; then
     # Traditional Helm repository
@@ -124,13 +124,19 @@ extract_images() {
       --repo "$repo_url" \
       --version "$version" \
       --set installCRDs=false \
-      2>/dev/null | grep -oE 'image:\s*.+' | awk '{print $2}' | tr -d '"' | sort -u
+      2>&1 | grep -oE 'image:\s*.+' | awk '{print $2}' | tr -d '"' | sort -u || {
+      echo "  ⚠ Warning: Failed to extract images from $chart_name" >&2
+      return 0
+    }
   elif [[ "$repo_type" == "oci" ]]; then
     # OCI registry
     helm template "$chart_name" "oci://${repo_url}/${chart}" \
       --version "$version" \
       --set installCRDs=false \
-      2>/dev/null | grep -oE 'image:\s*.+' | awk '{print $2}' | tr -d '"' | sort -u
+      2>&1 | grep -oE 'image:\s*.+' | awk '{print $2}' | tr -d '"' | sort -u || {
+      echo "  ⚠ Warning: Failed to extract images from $chart_name" >&2
+      return 0
+    }
   fi
 }
 
@@ -140,11 +146,21 @@ ALL_IMAGES=()
 for chart in "${!CHARTS[@]}"; do
   while IFS= read -r image; do
     [[ -n "$image" ]] && ALL_IMAGES+=("$image")
-  done < <(extract_images "$chart" || echo "")
+  done < <(extract_images "$chart" || true)
 done
 
 # Remove duplicates and filter out invalid entries
-UNIQUE_IMAGES=($(printf '%s\n' "${ALL_IMAGES[@]}" | sort -u | grep -E '^[a-zA-Z0-9]'))
+if [[ ${#ALL_IMAGES[@]} -eq 0 ]]; then
+  echo "  ✗ Error: No images found in Flux configs"
+  exit 1
+fi
+
+UNIQUE_IMAGES=($(printf '%s\n' "${ALL_IMAGES[@]}" | sort -u | grep -E '^[a-zA-Z0-9./]'))
+
+if [[ ${#UNIQUE_IMAGES[@]} -eq 0 ]]; then
+  echo "  ✗ Error: No valid images after filtering"
+  exit 1
+fi
 
 echo "  Found ${#UNIQUE_IMAGES[@]} unique images to pre-pull"
 
