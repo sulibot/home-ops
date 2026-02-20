@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup SOPS Age key
         run: |
@@ -197,7 +197,7 @@ jobs:
 
       - name: Upload Talos configs as artifacts
         if: github.event.inputs.action == 'apply'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: talos-configs-cluster-${{ github.event.inputs.cluster_id }}
           path: |
