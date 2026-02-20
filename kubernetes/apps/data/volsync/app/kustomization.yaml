@@ -7,5 +7,5 @@ resources:
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   # - ./mutatingadmissionpolicy-jitter.yaml  # DISABLED: Causes pods to hang in PodInitializing
-  - ./mutatingadmissionpolicy-restore.yaml
+  # - ./mutatingadmissionpolicy-restore.yaml  # DISABLED: Causes duplicate kopia PVC mounts (volsync already has repository-pvc)
   # Note: grafanadashboard and prometheusrule removed to break circular dependency with kube-prometheus-stack
