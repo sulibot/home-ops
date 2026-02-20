@@ -25,10 +25,10 @@ ipv6:
   enabled: true
 
 # Masquerade control
-# Enable IPv4 masquerade for egress traffic outside native routing CIDR
-# Enable IPv6 masquerade for IPv6 egress/NAT handling.
+# Keep IPv4 masquerade enabled for internet egress.
+# Disable IPv6 masquerade in-cluster and perform NAT66 only at the edge router.
 enableIPv4Masquerade: true
-enableIPv6Masquerade: true
+enableIPv6Masquerade: false
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
 # Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6
@@ -69,9 +69,8 @@ daemon:
 # BPF configuration for Talos dual-stack
 # forwardKubeDNSToHost must be DISABLED in Talos machine config for Direct Routing
 bpf:
-  # BPF masquerading - smart enough to skip native routing CIDRs
-  # Must be enabled to prevent iptables SNAT from rewriting pod source IPs on cross-node traffic
-  masquerade: false
+  # Use BPF masquerading datapath (for IPv4 egress here). IPv6 masquerade is disabled above.
+  masquerade: true
   # LB mode: SNAT by default, allow per-service DSR/hybrid via annotations
   lbMode: snat
   lbModeAnnotation: true
@@ -80,10 +79,7 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use legacy host routing. With autoDirectNodeRoutes: true, the kernel routing
-  # table is being used for pod-to-pod routes. Disabling the modern BPF host
-  # routing (by setting hostLegacyRouting: true) aligns the datapath with this,
-  # preventing a conflict that causes incorrect IPv6 SNAT.
+  # Keep BPF host routing enabled.
   hostLegacyRouting: false
 # Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
