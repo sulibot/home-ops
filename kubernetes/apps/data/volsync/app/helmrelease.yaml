@@ -34,9 +34,8 @@ spec:
     rsync-tls: *image
     syncthing: *image
     manageCRDs: true
-    # Temporarily enable MutatingAdmissionPolicy for restores to work
-    # Note: This causes backup jobs to hang, but restores need the repository PVC mounted
-    # TODO: Disable after restores complete
+    # MutatingAdmissionPolicy mounts kopia PVC for restore jobs (volsync-dst-*)
+    # Policy correctly excludes backup jobs (volsync-src-*) which already have repository-pvc mounted
     mutatingAdmissionPolicy:
       enabled: true
     service:
