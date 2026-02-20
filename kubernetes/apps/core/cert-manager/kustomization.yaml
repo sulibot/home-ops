@@ -6,5 +6,3 @@ resources:
   - helm-repo/helmrepository.yaml
   - app/helmrelease.yaml
   - app/externalsecret.yaml
-  - issuers/letsencrypt-production.yaml
-  - issuers/letsencrypt-staging.yaml
