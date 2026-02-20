@@ -80,9 +80,12 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use BPF host routing for performance.
-  hostLegacyRouting: false
-
+  # Use legacy host routing. With autoDirectNodeRoutes: true, the kernel routing
+  # table is being used for pod-to-pod routes. Disabling the modern BPF host
+  # routing (by setting hostLegacyRouting: true) aligns the datapath with this,
+  # preventing a conflict that causes incorrect IPv6 SNAT.
+  hostLegacyRouting: true
+.
 # Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
   enabled: false
