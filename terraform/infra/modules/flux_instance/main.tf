@@ -139,7 +139,7 @@ resource "null_resource" "preinstall_keda_crds" {
   depends_on = [null_resource.preinstall_prometheus_crds]
 
   triggers = {
-    prometheus_crds_id = null_resource.preinstall_prometheus_crds.id
+    prometheus_crds_id = try(null_resource.preinstall_prometheus_crds[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -177,7 +177,7 @@ resource "null_resource" "preinstall_grafana_crds" {
   depends_on = [null_resource.preinstall_keda_crds]
 
   triggers = {
-    keda_crds_id = null_resource.preinstall_keda_crds.id
+    keda_crds_id = try(null_resource.preinstall_keda_crds[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -215,7 +215,7 @@ resource "null_resource" "preinstall_snapshot_crds" {
   depends_on = [null_resource.preinstall_grafana_crds]
 
   triggers = {
-    grafana_crds_id = null_resource.preinstall_grafana_crds.id
+    grafana_crds_id = try(null_resource.preinstall_grafana_crds[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -305,7 +305,7 @@ resource "null_resource" "preinstall_external_secrets" {
   depends_on = [null_resource.preinstall_snapshot_crds]
 
   triggers = {
-    snapshot_crds_id = null_resource.preinstall_snapshot_crds.id
+    snapshot_crds_id = try(null_resource.preinstall_snapshot_crds[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -356,7 +356,7 @@ resource "null_resource" "preinstall_onepassword" {
   depends_on = [null_resource.preinstall_external_secrets]
 
   triggers = {
-    external_secrets_id = null_resource.preinstall_external_secrets.id
+    external_secrets_id = try(null_resource.preinstall_external_secrets[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -405,7 +405,7 @@ resource "null_resource" "preinstall_cert_manager" {
   depends_on = [null_resource.preinstall_onepassword]
 
   triggers = {
-    onepassword_id = null_resource.preinstall_onepassword.id
+    onepassword_id = try(null_resource.preinstall_onepassword[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -464,7 +464,7 @@ resource "null_resource" "preinstall_snapshot_controller" {
   depends_on = [null_resource.preinstall_cert_manager]
 
   triggers = {
-    cert_manager_id = null_resource.preinstall_cert_manager.id
+    cert_manager_id = try(null_resource.preinstall_cert_manager[0].id, null)
   }
 
   provisioner "local-exec" {
@@ -509,7 +509,7 @@ resource "null_resource" "preinstall_volsync" {
   depends_on = [null_resource.preinstall_snapshot_controller]
 
   triggers = {
-    snapshot_controller_id = null_resource.preinstall_snapshot_controller.id
+    snapshot_controller_id = try(null_resource.preinstall_snapshot_controller[0].id, null)
   }
 
   provisioner "local-exec" {
