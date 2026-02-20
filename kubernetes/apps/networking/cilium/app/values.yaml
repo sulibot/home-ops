@@ -80,8 +80,8 @@ bpf:
   # Map tuning for performance
   mapDynamicSizeRatio: 0.005
   preallocateMaps: true
-  # Use kernel routing for IPv6 gateway compatibility (BPF FIB lookup broken in kernel 6.18).
-  hostLegacyRouting: true
+  # Use BPF host routing for performance.
+  hostLegacyRouting: false
 
 # Disable ip-masq-agent (Cilium handles masquerading).
 ipMasqAgent:
