@@ -28,3 +28,19 @@ spec:
   targetNamespace: kube-system
   wait: false
   timeout: 10m
+  healthChecks:
+    # Verify Cilium agent is running on all nodes
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: cilium
+      namespace: kube-system
+    # Verify Cilium operator is ready
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cilium-operator
+      namespace: kube-system
+    # Verify Envoy for Gateway API is ready
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: cilium-envoy
+      namespace: kube-system
