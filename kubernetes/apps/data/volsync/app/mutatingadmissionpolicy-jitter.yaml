@@ -35,45 +35,28 @@ spec:
   matchConditions:
     - name: has-volsync-job-name-prefix
       expression: >-
-        object.metadata.name.startsWith("volsync-src-") || object.metadata.name.startsWith("volsync-dst-")
+        object.metadata.name.startsWith("volsync-src-")
     - name: has-volsync-created-by-labels
       expression: >-
         object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
-    - name: jitter-container-does-not-exist
-      expression: >-
-        !has(object.spec.template.spec.initContainers) ||
-        !object.spec.template.spec.initContainers.exists(c, c.name == "jitter")
-  failurePolicy: Ignore  # Changed from Fail - won't block pods if policy fails
+  failurePolicy: Fail
   reinvocationPolicy: IfNeeded
   mutations:
     - patchType: JSONPatch
       jsonPatch:
-        expression: |-
-          has(object.spec.template.spec.initContainers) ?
+        expression: >-
           [
             JSONPatch{
-              op: "add",
-              path: "/spec/template/spec/initContainers/-",
+              op: "add", path: "/spec/template/spec/initContainers",
+              value: []
+            },
+            JSONPatch{
+              op: "add", path: "/spec/template/spec/initContainers/-",
               value: Object.spec.template.spec.initContainers{
                 name: "jitter",
                 image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
                 imagePullPolicy: "IfNotPresent",
                 command: ["sh", "-c", "sleep $(shuf -i 0-60 -n 1)"]
               }
-            }
-          ]
-          :
-          [
-            JSONPatch{
-              op: "add",
-              path: "/spec/template/spec/initContainers",
-              value: [
-                Object.spec.template.spec.initContainers{
-                  name: "jitter",
-                  image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
-                  imagePullPolicy: "IfNotPresent",
-                  command: ["sh", "-c", "sleep $(shuf -i 0-60 -n 1)"]
-                }
-              ]
             }
           ]
