@@ -117,6 +117,8 @@ extract_images() {
   IFS=':' read -r repo_type repo_url chart version <<< "$repo_info"
 
   echo "  Extracting images from $chart_name (${version})..." >&2
+  echo "    DEBUG: repo_info='$repo_info'" >&2
+  echo "    DEBUG: repo_type='$repo_type', repo_url='$repo_url', chart='$chart', version='$version'" >&2
 
   if [[ "$repo_type" == "helm" ]]; then
     # Traditional Helm repository
