@@ -101,7 +101,7 @@ resource "null_resource" "preinstall_prometheus_crds" {
   depends_on = [null_resource.preinstall_gateway_api_crds]
 
   triggers = {
-    gateway_api_id = null_resource.preinstall_gateway_api_crds.id
+    gateway_api_id = try(null_resource.preinstall_gateway_api_crds[0].id, null)
   }
 
   provisioner "local-exec" {
