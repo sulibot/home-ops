@@ -6,7 +6,7 @@ metadata:
   name: ceph-csi
   namespace: flux-system
   labels:
-    layer: "foundation"
+    tier: "0-foundation"
     component: storage
     critical: "true"
 spec:
@@ -14,21 +14,33 @@ spec:
     - name: flux-system
       namespace: flux-system
   interval: 15m
-  retryInterval: 1m  # Increased retry interval to give helm-controller more time
-  timeout: 10m       # Allow longer for initial reconciliation
+  retryInterval: 1m
+  timeout: 10m
   path: ./kubernetes/apps/tier-0-foundation/ceph-csi
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  wait: false
+  wait: true         # BLOCKING: Ensure CSI drivers are ready before storage-dependent apps
   decryption:
     provider: sops
     secretRef:
       name: sops-age
   healthChecks:
-    - apiVersion: v1
-      kind: Secret
-      name: sops-age
-      namespace: flux-system
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: csi-cephfsplugin
+      namespace: ceph-csi
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: csi-rbdplugin
+      namespace: ceph-csi
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: csi-cephfsplugin-provisioner
+      namespace: ceph-csi
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: csi-rbdplugin-provisioner
+      namespace: ceph-csi

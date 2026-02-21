@@ -8,7 +8,7 @@ metadata:
   name: cilium
   namespace: flux-system
   labels:
-    layer: "networking"
+    tier: "0-foundation"
     component: cni
     critical: "true"
 spec:

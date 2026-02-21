@@ -6,7 +6,7 @@ metadata:
   name: onepassword
   namespace: flux-system
   labels:
-    layer: "foundation"
+    tier: "0-foundation"
     component: secrets
     critical: "true"
 spec:

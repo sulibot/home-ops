@@ -8,7 +8,7 @@ metadata:
   annotations:
     kustomize.toolkit.fluxcd.io/ssa: Replace
   labels:
-    layer: "crds"
+    tier: "0-foundation"
     component: crds
     critical: "true"
 spec:

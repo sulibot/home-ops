@@ -6,7 +6,7 @@ metadata:
   name: cilium-gateway
   namespace: flux-system
   labels:
-    layer: "network-services"
+    tier: "0-foundation"
     component: network-service
     critical: "false"
 spec:

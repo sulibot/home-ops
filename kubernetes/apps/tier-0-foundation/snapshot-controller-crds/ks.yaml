@@ -5,7 +5,7 @@ metadata:
   name: snapshot-controller-crds
   namespace: flux-system
   labels:
-    layer: "crds"
+    tier: "0-foundation"
     component: crds
     critical: "true"
 spec:
