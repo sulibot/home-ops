@@ -4,7 +4,9 @@ resources:
 - gotk-components.yaml
 - gotk-sync.yaml
 patches:
-  # Increase kustomize-controller concurrency for faster reconciliation
+  # Increase kustomize-controller concurrency for faster reconciliation.
+  # --concurrent=20 handles ~85 Kustomizations without saturating the API server.
+  # Dynamic concurrency during bootstrap would require the Flux operator FluxInstance CRD.
   - patch: |
       apiVersion: apps/v1
       kind: Deployment
@@ -22,8 +24,30 @@ patches:
               - --log-level=info
               - --log-encoding=json
               - --enable-leader-election
-              - --concurrent=10
+              - --concurrent=20
               - --requeue-dependency=5s
     target:
       kind: Deployment
       name: kustomize-controller
+  # Increase helm-controller concurrency for parallel HelmRelease deployments
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: helm-controller
+        namespace: flux-system
+      spec:
+        template:
+          spec:
+            containers:
+            - name: manager
+              args:
+              - --events-addr=http://notification-controller.$(RUNTIME_NAMESPACE).svc.cluster.local./
+              - --watch-all-namespaces=true
+              - --log-level=info
+              - --log-encoding=json
+              - --enable-leader-election
+              - --concurrent=10
+    target:
+      kind: Deployment
+      name: helm-controller

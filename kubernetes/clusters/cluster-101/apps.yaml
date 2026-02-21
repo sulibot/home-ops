@@ -8,9 +8,9 @@ metadata:
 spec:
   dependsOn:
     - name: flux-system
-  interval: 10m
-  retryInterval: 30s  # Retry every 30 seconds on failure
-  timeout: 5m         # Fail after 5 minutes of retries
+  interval: 1m
+  retryInterval: 15s
+  timeout: 5m
   path: ./kubernetes/clusters/cluster-101/apps
   prune: false
   sourceRef:
@@ -21,3 +21,8 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+        optional: true  # Missing during bootstrap — ks.yaml defaults apply
