@@ -1,4 +1,5 @@
 resources:
+  - namespace.yaml
   - externalsecret.yaml
   - cilium-gatewayclassconfig.yaml
   - gatewayclass-cilium.yaml

@@ -8,24 +8,17 @@ spec:
   maxHistory: 3
   install:
     remediation:
-      retries: 5
+      retries: -1
     timeout: 10m
   upgrade:
     cleanupOnFail: true
     remediation:
-      retries: 5
+      retries: 3
       strategy: rollback
     timeout: 10m
   chartRef:
     kind: OCIRepository
     name: overseerr
-  install:
-    remediation:
-      retries: -1
-  upgrade:
-    cleanupOnFail: true
-    remediation:
-      retries: 3
   values:
     controllers:
       overseerr:

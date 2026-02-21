@@ -40,7 +40,8 @@ resources:
   # Observability
   - ./kube-prometheus-stack/ks.yaml
   - ./kube-prometheus-stack/rules/ks.yaml
-  - ./kube-prometheus-stack/volsync/ks.yaml
+  # prometheus volsync disabled (broken replicationsource.yaml, volsync not needed for metrics)
+  # - ./kube-prometheus-stack/volsync/ks.yaml
   - ../tier-0-foundation/external-secrets/external-secrets/dashboard/ks.yaml   # Tier 1: depends on grafana-instance
   - ./victoria-logs/ks.yaml
   - ./fluent-bit/ks.yaml
