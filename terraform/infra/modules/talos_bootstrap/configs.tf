@@ -1,27 +1,29 @@
 # Write kubeconfig and talosconfig directly to home directory
 
-# Write kubeconfig to temp file and merge to ~/.kube/config
+# Merge kubeconfig into ~/.kube/config using the file already written by local_sensitive_file.kubeconfig.
+# This avoids a second live talosctl API call (which can fail if talosconfig context is stale)
+# and uses kubectl's --flatten merge which replaces existing entries with the same name (no duplicates).
 resource "null_resource" "kubeconfig" {
   triggers = {
+    # Re-run whenever the kubeconfig content changes (new cluster certs after re-bootstrap)
     kubeconfig = sha256(talos_cluster_kubeconfig.cluster.kubeconfig_raw)
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      # Use talosctl to fetch and merge kubeconfig - it handles everything properly
-      # Must specify a node since talosconfig has multiple nodes configured
-      FIRST_NODE=$(talosctl config info -o json 2>/dev/null | jq -r '.endpoints[0]' || echo "")
-      if [ -n "$FIRST_NODE" ]; then
-        talosctl -n "$FIRST_NODE" kubeconfig --force
-      else
-        echo "⚠ Warning: Could not determine talos endpoint, skipping kubeconfig"
-        exit 1
-      fi
-      echo "✓ Kubeconfig merged to ~/.kube/config"
+      set -e
+      SRC="${var.repo_root}/talos/clusters/cluster-${var.cluster_id}/kubeconfig"
+      DST="$HOME/.kube/config"
+      mkdir -p "$HOME/.kube"
+      # Merge: new context replaces existing same-named entry, no duplicates
+      KUBECONFIG="$SRC:$DST" kubectl config view --flatten > "$DST.new"
+      mv "$DST.new" "$DST"
+      chmod 0600 "$DST"
+      echo "✓ Kubeconfig merged to ~/.kube/config (context: sol)"
     EOT
   }
 
-  depends_on = [null_resource.talosconfig]
+  depends_on = [local_sensitive_file.kubeconfig]
 }
 
 # Write talosconfig to temp file and merge to ~/.talos/config
