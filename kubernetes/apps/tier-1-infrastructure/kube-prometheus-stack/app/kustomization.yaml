@@ -6,4 +6,4 @@ resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
-  - ./prometheusrule-pods.yaml
+  # prometheusrule-pods.yaml moved to rules/ (requires PrometheusRule CRD from kps HelmRelease)

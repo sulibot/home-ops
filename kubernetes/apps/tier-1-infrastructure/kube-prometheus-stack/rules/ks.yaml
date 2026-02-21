@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kube-prometheus-stack-rules
+  namespace: flux-system
+  labels:
+    tier: "1-infrastructure"
+    component: observability
+spec:
+  # PrometheusRule CRD is installed by kube-prometheus-stack HelmRelease.
+  # This must run after kps is deployed, otherwise dry-run validation fails.
+  dependsOn:
+    - name: kube-prometheus-stack
+      namespace: flux-system
+  interval: ${TIER1_INTERVAL:=15m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  path: ./kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/rules
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: observability
+  wait: false
