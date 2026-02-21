@@ -11,8 +11,8 @@ metadata:
 spec:
   dependsOn:
     - name: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER0_INTERVAL:=15m}
+  retryInterval: ${TIER0_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-0-foundation/snapshot-controller-crds
   prune: false
   sourceRef:

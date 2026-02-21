@@ -1,5 +1,4 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -12,8 +11,8 @@ spec:
   dependsOn:
     - name: tier-0-foundation
       namespace: flux-system
-  interval: 1m       # AGGRESSIVE: Fast reconciliation during bootstrap
-  retryInterval: 20s # Quick retries on failure
+  interval: ${TIER1_INTERVAL:=10m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=1m}
   timeout: 10m
   wait: false        # NON-BLOCKING: Allow parallel deployment with Tier 2
   prune: true
@@ -22,6 +21,11 @@ spec:
     name: flux-system
     namespace: flux-system
   path: ./kubernetes/apps/tier-1-infrastructure
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+        optional: true
   healthChecks:
     # Ensure critical infrastructure HelmReleases are ready
     - apiVersion: helm.toolkit.fluxcd.io/v2

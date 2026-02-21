@@ -2,32 +2,18 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# NOTE: This file is NOT used by Flux directly.
+# Flux reconciles kubernetes/clusters/cluster-101/apps/kustomization.yaml,
+# which references the three tier ks.yaml files:
+#   - kubernetes/apps/tier-0-foundation/ks.yaml
+#   - kubernetes/apps/tier-1-infrastructure/ks.yaml
+#   - kubernetes/apps/tier-2-applications/ks.yaml
+#
+# Each tier ks.yaml is a Flux Kustomization that points to its own directory,
+# which has its own kustomization.yaml listing the individual app ks.yaml files.
+#
+# This file exists only for local tooling (e.g. 'kubectl kustomize' dry-runs).
 resources:
-  # CRDs (install first)
-  - ./crds
-
-  # Network (CNI)
-  - ./networking
-
-  # Foundation (secrets, storage)
-  - ./foundation
-
-  # Core Services
-  - ./core
-
-  # Network Services
-  - ./network-services
-
-  # Observability
-  - ./observability-stack
-
-  # Data (databases, backup)
-  - ./data
-
-  # Applications
-  - ./applications
-
-  # Legacy directories (to be migrated or removed)
-  - ./security
-  - ./kube-system
-  - ./observability
+  - ./tier-0-foundation
+  - ./tier-1-infrastructure
+  - ./tier-2-applications

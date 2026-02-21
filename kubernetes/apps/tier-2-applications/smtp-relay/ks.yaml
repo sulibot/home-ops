@@ -13,8 +13,8 @@ spec:
   dependsOn:
     - name: external-secrets
       namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/smtp-relay/app
   prune: true
   sourceRef:

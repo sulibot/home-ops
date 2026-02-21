@@ -10,8 +10,8 @@ metadata:
     component: application
     critical: "false"
 spec:
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/app
   prune: true
   sourceRef:
@@ -38,8 +38,8 @@ spec:
     - name: actions-runner-controller
     - name: ceph-csi
       namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/runners
   prune: true
   sourceRef:

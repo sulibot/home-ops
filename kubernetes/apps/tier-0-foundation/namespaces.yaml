@@ -1,0 +1,13 @@
+---
+# The 'default' namespace exists as a Kubernetes built-in, but we need to ensure it
+# has the correct annotations/labels before tier-2 apps and VolSync try to use it.
+# Managed in tier-0 so it's ready before tier-1 (cloudnative-pg/redis) and tier-2 apps.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled   # Never let Flux delete the default namespace
+    volsync.backube/privileged-movers: "true"      # Allow VolSync privileged movers (needed for PVC restores)
+  labels:
+    resource.kubernetes.io/admin-access: "true"   # Permit admin-level RBAC access

@@ -10,8 +10,8 @@ metadata:
     component: observability
     critical: "false"
 spec:
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER1_INTERVAL:=15m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-1-infrastructure/kromgo/app
   prune: true
   sourceRef:

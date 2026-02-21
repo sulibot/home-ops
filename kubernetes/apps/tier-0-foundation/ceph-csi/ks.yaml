@@ -1,5 +1,4 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -13,8 +12,8 @@ spec:
   dependsOn:
     - name: flux-system
       namespace: flux-system
-  interval: 15m
-  retryInterval: 1m
+  interval: ${TIER0_INTERVAL:=15m}
+  retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
   timeout: 10m
   path: ./kubernetes/apps/tier-0-foundation/ceph-csi
   prune: true

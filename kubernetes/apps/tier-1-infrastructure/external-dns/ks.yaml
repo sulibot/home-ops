@@ -15,8 +15,8 @@ spec:
       namespace: flux-system
     - name: external-secrets
       namespace: flux-system
-  interval: 5m
-  retryInterval: 30s
+  interval: ${TIER1_INTERVAL:=5m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-1-infrastructure/external-dns/app
   prune: true
   sourceRef:

@@ -12,7 +12,7 @@ spec:
       app.kubernetes.io/name: coredns
   dependsOn:
     - name: cilium
-  interval: 30m
+  interval: ${TIER1_INTERVAL:=30m}
   path: ./kubernetes/apps/tier-1-infrastructure/coredns/app
   prune: true
   sourceRef:

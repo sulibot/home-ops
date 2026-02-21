@@ -1,5 +1,4 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -14,8 +13,8 @@ metadata:
 spec:
   dependsOn:
     - name: flux-system
-  interval: 10m
-  retryInterval: 30s
+  interval: ${TIER0_INTERVAL:=10m}
+  retryInterval: ${TIER0_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-0-foundation/gateway-api-crds
   prune: false
   sourceRef:

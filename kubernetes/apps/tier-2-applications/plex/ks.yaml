@@ -27,8 +27,8 @@ spec:
     # Temporarily disabled for manual restore
     # - name: volsync
     #   namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/plex/app
   postBuild:
     substitute:
@@ -61,8 +61,8 @@ spec:
   dependsOn:
     - name: volsync
       namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/plex/tools
   prune: true
   sourceRef:

@@ -5,7 +5,7 @@ metadata:
   name: jaeger-helm-repo
   namespace: flux-system
 spec:
-  interval: 1h
+  interval: ${TIER1_INTERVAL:=1h}
   path: ./kubernetes/apps/tier-1-infrastructure/jaeger/helm-repo
   prune: true
   sourceRef:

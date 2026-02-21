@@ -9,7 +9,7 @@ metadata:
     layer: "applications"
     component: storage
 spec:
-  interval: 15m
+  interval: ${TIER2_INTERVAL:=15m}
   path: ./kubernetes/apps/tier-2-applications/volsync-repository-pvc/app
   prune: true
   sourceRef:

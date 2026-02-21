@@ -19,6 +19,6 @@ spec:
     kind: GitRepository
     name: flux-system
   wait: false
-  interval: 1h
-  retryInterval: 1m
+  interval: ${TIER1_INTERVAL:=1h}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=1m}
   timeout: 5m

@@ -19,8 +19,8 @@ spec:
     #   namespace: flux-system
     - name: kube-prometheus-stack
       namespace: flux-system
-  interval: 15m
-  retryInterval: 1m
+  interval: ${TIER1_INTERVAL:=15m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=1m}
   path: ./kubernetes/apps/tier-1-infrastructure/kiali/app
   prune: true
   sourceRef:

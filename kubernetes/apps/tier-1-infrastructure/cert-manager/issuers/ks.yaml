@@ -13,7 +13,7 @@ spec:
   dependsOn:
     - name: cert-manager
       namespace: flux-system
-  interval: 15m
+  interval: ${TIER1_INTERVAL:=15m}
   path: ./kubernetes/apps/tier-1-infrastructure/cert-manager/issuers
   prune: true
   sourceRef:
@@ -22,4 +22,4 @@ spec:
     namespace: flux-system
   wait: true
   timeout: 5m
-  retryInterval: 30s
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
