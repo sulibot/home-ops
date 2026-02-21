@@ -6,7 +6,7 @@ metadata:
   name: cilium-gateway
   namespace: flux-system
   labels:
-    tier: "0-foundation"
+    tier: "1-infrastructure"
     component: network-service
     critical: "false"
 spec:
@@ -15,8 +15,8 @@ spec:
       namespace: flux-system
     - name: cert-manager-issuers
       namespace: flux-system
-  interval: 15m
-  retryInterval: 30s
+  interval: ${TIER1_INTERVAL:=15m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-0-foundation/cilium/gateway
   prune: true
   sourceRef:
