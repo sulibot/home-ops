@@ -5,6 +5,9 @@ metadata:
   name: snapshot-controller
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: snapshot-controller-crds
+      namespace: flux-system
   interval: ${TIER0_INTERVAL:=15m}
   retryInterval: ${TIER0_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-0-foundation/snapshot-controller/app

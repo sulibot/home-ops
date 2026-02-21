@@ -12,6 +12,8 @@ spec:
   dependsOn:
     - name: flux-system
       namespace: flux-system
+    - name: snapshot-controller
+      namespace: flux-system
   interval: ${TIER0_INTERVAL:=15m}
   retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
   timeout: 10m
