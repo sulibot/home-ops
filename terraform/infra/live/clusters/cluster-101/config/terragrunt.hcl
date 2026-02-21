@@ -203,7 +203,7 @@ terraform {
       set -e
       cd ${get_terragrunt_dir()}
       terragrunt output -raw cilium_bgp_node_configs_yaml > \
-        ${get_repo_root()}/kubernetes/apps/networking/cilium/bgp/node-configs.yaml
+        ${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/bgp/node-configs.yaml
       echo "✓ Exported Cilium BGP node configs"
     EOT
     ]
@@ -229,9 +229,9 @@ locals {
 
 inputs = {
   # Cilium config file paths (single source of truth from Flux directory)
-  cilium_values_path     = "${get_repo_root()}/kubernetes/apps/networking/cilium/app/values.yaml"
-  cilium_bgp_config_path = "${get_repo_root()}/kubernetes/apps/networking/cilium/bgp/bgp.yaml"
-  cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/networking/cilium/ippool/lb-pool.yaml"
+  cilium_values_path     = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/app/values.yaml"
+  cilium_bgp_config_path = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/bgp/bgp.yaml"
+  cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/ippool/lb-pool.yaml"
 
   # FRR extension template (mounted into container to override baked-in version)
   frr_template_path = "${get_repo_root()}/FRR/frr-talos-extension/frr.conf.j2"
