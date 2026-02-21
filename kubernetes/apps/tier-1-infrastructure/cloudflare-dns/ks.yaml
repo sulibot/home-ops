@@ -25,7 +25,7 @@ spec:
       name: dnsendpoints.externaldns.k8s.io
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/network-services/cloudflare-dns/app
+  path: ./kubernetes/apps/tier-1-infrastructure/cloudflare-dns/app
   prune: true
   sourceRef:
     kind: GitRepository

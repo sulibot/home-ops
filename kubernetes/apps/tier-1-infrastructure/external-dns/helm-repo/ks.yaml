@@ -10,7 +10,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/network-services/external-dns/helm-repo
+  path: ./kubernetes/apps/tier-1-infrastructure/external-dns/helm-repo
   prune: true
   sourceRef:
     kind: GitRepository

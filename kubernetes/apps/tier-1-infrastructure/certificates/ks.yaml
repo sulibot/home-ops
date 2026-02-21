@@ -17,7 +17,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/network-services/certificates/combined
+  path: ./kubernetes/apps/tier-1-infrastructure/certificates/combined
   prune: true
   sourceRef:
     kind: GitRepository

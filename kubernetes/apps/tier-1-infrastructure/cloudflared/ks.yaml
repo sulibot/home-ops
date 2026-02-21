@@ -17,7 +17,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/network-services/cloudflared/app
+  path: ./kubernetes/apps/tier-1-infrastructure/cloudflared/app
   prune: true
   sourceRef:
     kind: GitRepository

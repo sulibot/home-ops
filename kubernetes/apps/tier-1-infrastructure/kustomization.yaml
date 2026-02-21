@@ -43,3 +43,11 @@ resources:
   - ./gatus/ks.yaml
   - ./smartctl-exporter/ks.yaml
   - ./kromgo/ks.yaml
+
+  # from network-services
+  - ./cloudflare-dns/ks.yaml
+  - ./cloudflare-tunnel/ks.yaml
+  - ./echo/ks.yaml
+
+  # Observability namespace + storage
+  - ./observability-namespace/
