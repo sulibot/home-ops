@@ -447,6 +447,7 @@ router bgp {{ LOCAL_AS }}
  address-family ipv6 unicast
   neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
+  neighbor IBGP next-hop-self
   neighbor IBGP route-map RM_IBGP_IN in
   neighbor EDGE route-map RM_EDGE_EXPORT_V6 out
   redistribute connected route-map RM_CONNECTED_TO_BGP_V6
