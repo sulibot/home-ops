@@ -27,7 +27,8 @@ resources:
 
   # Drivers
   - ./intel-gpu-resource-driver/ks.yaml
-  - ./spegel/ks.yaml
+  # spegel disabled
+  # - ./spegel/ks.yaml
 
   # Data services
   - ./volsync/ks.yaml
