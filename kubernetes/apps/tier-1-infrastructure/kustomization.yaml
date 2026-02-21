@@ -47,10 +47,12 @@ resources:
   - ./victoria-logs/ks.yaml
   - ./fluent-bit/ks.yaml
   - ./grafana/ks.yaml
-  - ./jaeger/helm-repo/ks.yaml
-  - ./jaeger/ks.yaml
-  - ./kiali/helm-repo/ks.yaml
-  - ./kiali/ks.yaml
+  # jaeger disabled - requires Istio for full functionality
+  # - ./jaeger/helm-repo/ks.yaml
+  # - ./jaeger/ks.yaml
+  # kiali disabled - requires Istio service mesh
+  # - ./kiali/helm-repo/ks.yaml
+  # - ./kiali/ks.yaml
   - ./keda/ks.yaml
 
   # Additional observability
