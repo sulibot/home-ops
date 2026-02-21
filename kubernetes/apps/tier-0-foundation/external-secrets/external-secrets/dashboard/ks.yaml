@@ -6,8 +6,8 @@ metadata:
   name: external-secrets-dashboard
   namespace: flux-system
   labels:
-    tier: "0-foundation"
-    component: secrets
+    tier: "1-infrastructure"
+    component: observability
     critical: "false"
 spec:
   dependsOn:
