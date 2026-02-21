@@ -9,6 +9,9 @@ resources:
   - ./gateway-api-crds/ks.yaml
   - ./snapshot-controller-crds/ks.yaml
   # CNI second - cluster won't work without networking
+  # helm-repo deploys as its own Kustomization (targetNamespace: flux-system) so the
+  # HelmRepository lands in flux-system, not kube-system (cilium ks.yaml targetNamespace)
+  - ./cilium/helm-repo/ks.yaml
   - ./cilium/ks.yaml
   # Secrets third - most apps need secrets
   - ./external-secrets/  # Has its own kustomization.yaml
