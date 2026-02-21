@@ -9,7 +9,7 @@ resources:
   - ../../../apps/tier-1-infrastructure/ks.yaml
   - ../../../apps/tier-2-applications/ks.yaml
 
-  # Dual-stack services
-  - ../../../bootstrap/dual-stack-services/ks.yaml
+  # dual-stack-services disabled
+  # - ../../../bootstrap/dual-stack-services/ks.yaml
 
 patches:
