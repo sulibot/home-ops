@@ -34,7 +34,8 @@ resources:
   - ./cloudnative-pg/helm-repo/ks.yaml
   - ./cloudnative-pg/ks.yaml
   - ./postgres-vectorchord/ks.yaml
-  - ./redis/ks.yaml
+  # redis disabled
+  # - ./redis/ks.yaml
 
   # Observability
   - ./kube-prometheus-stack/ks.yaml
