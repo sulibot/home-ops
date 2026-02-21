@@ -17,6 +17,24 @@ locals {
     advertise_loopbacks = true        # Advertise node loopbacks
   }
 
+  # OCI pull-through registry cache (Zot, VLAN 200, pve02)
+  # All registries use the same endpoint with overridePath=true so containerd
+  # passes the full /v2/<registry>/image path through to Zot for namespace routing.
+  registry_mirrors = {
+    endpoint = "http://[fd00:200::51]:5000"
+    registries = [
+      "docker.io",
+      "ghcr.io",
+      "gcr.io",
+      "mirror.gcr.io",
+      "registry.k8s.io",
+      "quay.io",
+      "lscr.io",
+      "public.ecr.aws",
+      "factory.talos.dev",
+    ]
+  }
+
   # SDN configuration
   sdn = {
     zone_id                    = "evpnz1"

@@ -281,6 +281,9 @@ inputs = {
   # NTP servers from centralized infrastructure config
   ntp_servers = local.network_infra.ntp_servers
 
+  # OCI pull-through registry cache (single source of truth in network-infrastructure.hcl)
+  registry_mirrors = local.network_infra.registry_mirrors
+
   # IPv6 GUA (Global Unicast Address) for internet reachability
   # Uses delegated prefix per vnet to avoid ULA-only egress.
   gua_prefix  = local.ipv6_prefixes.delegated_prefixes["vnet${local.cluster_config.cluster_id}"]

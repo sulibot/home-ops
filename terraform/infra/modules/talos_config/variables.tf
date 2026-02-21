@@ -264,6 +264,15 @@ locals {
   }
 }
 
+variable "registry_mirrors" {
+  description = "OCI registry pull-through cache. endpoint = Zot URL; registries = list of upstream registries. Each registry gets a RegistryMirrorConfig with overridePath=true so containerd routes /v2/<registry>/... through Zot namespace."
+  type = object({
+    endpoint   = string
+    registries = list(string)
+  })
+  default = null
+}
+
 variable "machine_secrets" {
   description = "Existing Talos machine secrets to reuse; when set, secrets are not regenerated"
   type        = any

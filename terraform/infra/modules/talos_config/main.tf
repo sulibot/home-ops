@@ -147,6 +147,25 @@ locals {
     ]
   )
 
+  # Registry mirrors patch using machine.registries.mirrors (supported by Talos provider).
+  # overridePath=true: containerd sends the full /v2/<registry>/image path to Zot,
+  # which uses the registry prefix for namespace routing to the correct upstream.
+  registry_mirror_patches = var.registry_mirrors != null ? [
+    yamlencode({
+      machine = {
+        registries = {
+          mirrors = {
+            for registry in var.registry_mirrors.registries :
+            registry => {
+              endpoints    = [var.registry_mirrors.endpoint]
+              overridePath = true
+            }
+          }
+        }
+      }
+    })
+  ] : []
+
   reuse_machine_secrets          = var.machine_secrets != null && var.client_configuration != null
   generated_machine_secrets      = try(talos_machine_secrets.cluster[0].machine_secrets, null)
   generated_client_configuration = try(talos_machine_secrets.cluster[0].client_configuration, null)
@@ -189,7 +208,7 @@ data "talos_machine_configuration" "controlplane" {
   docs     = false
   examples = false
 
-  config_patches = [
+  config_patches = concat([
     yamlencode({
       machine = {
         install = {
@@ -259,8 +278,8 @@ data "talos_machine_configuration" "controlplane" {
           }
         }
       }
-    })
-  ]
+    }),
+  ], local.registry_mirror_patches)
 }
 
 # Generate worker machine configuration
@@ -276,7 +295,7 @@ data "talos_machine_configuration" "worker" {
   docs     = false
   examples = false
 
-  config_patches = [
+  config_patches = concat([
     yamlencode({
       machine = {
         install = {
@@ -321,8 +340,8 @@ EOF
           disabled = true # Cilium kube-proxy replacement
         }
       }
-    })
-  ]
+    }),
+  ], local.registry_mirror_patches)
 }
 
 # Generate per-node FRR config YAML for the extension
