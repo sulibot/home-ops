@@ -17,6 +17,7 @@ resources:
   - ./immich/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./karakeep/ks.yaml
+  - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
   - ./mosquitto/ks.yaml

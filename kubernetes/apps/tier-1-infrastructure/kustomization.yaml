@@ -17,6 +17,10 @@ resources:
   - ./cloudflared/ks.yaml
   - ./certificates/ks.yaml
 
+  # Drivers
+  - ./intel-gpu-resource-driver/ks.yaml
+  - ./spegel/ks.yaml
+
   # Data services
   - ./volsync/ks.yaml
   - ./cloudnative-pg/ks.yaml
@@ -31,3 +35,11 @@ resources:
   - ./jaeger/ks.yaml
   - ./kiali/ks.yaml
   - ./keda/ks.yaml
+
+  # Additional observability
+  - ./snmp-exporter/ks.yaml
+  - ./silence-operator/ks.yaml
+  - ./blackbox-exporter/ks.yaml
+  - ./gatus/ks.yaml
+  - ./smartctl-exporter/ks.yaml
+  - ./kromgo/ks.yaml

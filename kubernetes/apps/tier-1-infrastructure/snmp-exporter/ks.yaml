@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: kromgo
+  name: snmp-exporter
   namespace: flux-system
   labels:
     layer: "observability"
@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/kromgo/app
+  path: ./kubernetes/apps/tier-1-infrastructure/snmp-exporter/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -20,7 +20,7 @@ spec:
       namespace: kube-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/core/intel-gpu-resource-driver/app
+  path: ./kubernetes/apps/tier-1-infrastructure/intel-gpu-resource-driver/app
   prune: true
   sourceRef:
     kind: GitRepository

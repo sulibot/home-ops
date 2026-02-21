@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/silence-operator/app
+  path: ./kubernetes/apps/tier-1-infrastructure/silence-operator/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -36,7 +36,7 @@ spec:
     - name: silence-operator
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/silence-operator/silences
+  path: ./kubernetes/apps/tier-1-infrastructure/silence-operator/silences
   prune: true
   sourceRef:
     kind: GitRepository

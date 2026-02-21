@@ -12,3 +12,4 @@ resources:
   - ./external-secrets/  # Has its own kustomization.yaml
   # Storage fourth - apps need persistent volumes
   - ./ceph-csi/ks.yaml
+  - ./snapshot-controller/ks.yaml
