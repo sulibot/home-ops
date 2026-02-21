@@ -32,7 +32,7 @@ spec:
   #     failed: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'False')
   #     current: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True')
   interval: 15m
-  path: ./kubernetes/apps/foundation/external-secrets/onepassword/app
+  path: ./kubernetes/apps/tier-0-foundation/external-secrets/onepassword/app
   prune: true
   sourceRef:
     kind: GitRepository

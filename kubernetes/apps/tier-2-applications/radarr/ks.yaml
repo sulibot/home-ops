@@ -22,7 +22,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/radarr/app
+  path: ./kubernetes/apps/tier-2-applications/radarr/app
   postBuild:
     substitute:
       APP: radarr

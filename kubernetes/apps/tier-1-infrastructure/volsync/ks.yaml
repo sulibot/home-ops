@@ -15,7 +15,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/data/volsync/app
+  path: ./kubernetes/apps/tier-1-infrastructure/volsync/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -46,7 +46,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/data/volsync/maintenance
+  path: ./kubernetes/apps/tier-1-infrastructure/volsync/maintenance
   prune: true
   sourceRef:
     kind: GitRepository

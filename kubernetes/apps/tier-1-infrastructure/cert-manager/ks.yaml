@@ -6,7 +6,7 @@ metadata:
   name: cert-manager
   namespace: flux-system
   labels:
-    layer: "core"
+    tier: "1-infrastructure"
     component: cert-manager
     critical: "true"
 spec:
@@ -14,7 +14,7 @@ spec:
     - name: external-secrets
       namespace: flux-system
   interval: 15m
-  path: ./kubernetes/apps/core/cert-manager
+  path: ./kubernetes/apps/tier-1-infrastructure/cert-manager
   prune: true
   sourceRef:
     kind: GitRepository

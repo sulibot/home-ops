@@ -16,7 +16,7 @@ spec:
   interval: 15m
   retryInterval: 1m  # Increased retry interval to give helm-controller more time
   timeout: 10m       # Allow longer for initial reconciliation
-  path: ./kubernetes/apps/foundation/ceph-csi
+  path: ./kubernetes/apps/tier-0-foundation/ceph-csi
   prune: true
   sourceRef:
     kind: GitRepository

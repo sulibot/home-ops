@@ -15,7 +15,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/grafana/app
+  path: ./kubernetes/apps/tier-1-infrastructure/grafana/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -47,7 +47,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/grafana/instance
+  path: ./kubernetes/apps/tier-1-infrastructure/grafana/instance
   postBuild:
     substitute:
       APP: grafana

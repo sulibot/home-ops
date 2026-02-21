@@ -21,7 +21,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 1m
-  path: ./kubernetes/apps/observability-stack/kiali/app
+  path: ./kubernetes/apps/tier-1-infrastructure/kiali/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/actions-runner-controller/app
+  path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -40,7 +40,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/actions-runner-controller/runners
+  path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/runners
   prune: true
   sourceRef:
     kind: GitRepository

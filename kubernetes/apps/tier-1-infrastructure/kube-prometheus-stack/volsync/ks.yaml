@@ -13,7 +13,7 @@ spec:
   dependsOn:
     - name: volsync
     - name: kube-prometheus-stack
-  path: ./kubernetes/apps/observability-stack/kube-prometheus-stack/volsync
+  path: ./kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/volsync
   prune: true
   sourceRef:
     kind: GitRepository

@@ -24,7 +24,7 @@ spec:
     #   namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/kube-prometheus-stack/app
+  path: ./kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/app
   # postBuild:
   #   substitute:
   #     APP: prometheus

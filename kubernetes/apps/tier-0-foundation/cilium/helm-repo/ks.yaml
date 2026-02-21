@@ -10,7 +10,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/networking/cilium/helm-repo
+  path: ./kubernetes/apps/tier-0-foundation/cilium/helm-repo
   prune: true
   sourceRef:
     kind: GitRepository

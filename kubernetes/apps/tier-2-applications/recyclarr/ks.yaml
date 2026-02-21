@@ -23,7 +23,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/recyclarr/app
+  path: ./kubernetes/apps/tier-2-applications/recyclarr/app
   postBuild:
     substitute:
       APP: recyclarr

@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./kubernetes/apps/observability-stack/kiali/helm-repo
+  path: ./kubernetes/apps/tier-1-infrastructure/kiali/helm-repo
   prune: true
   sourceRef:
     kind: GitRepository

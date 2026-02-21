@@ -17,7 +17,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/notifier/app
+  path: ./kubernetes/apps/tier-2-applications/notifier/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -22,7 +22,7 @@ spec:
     #   namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/observability-stack/victoria-logs/app
+  path: ./kubernetes/apps/tier-1-infrastructure/victoria-logs/app
   # postBuild:
   #   substitute:
   #     APP: victoria-logs

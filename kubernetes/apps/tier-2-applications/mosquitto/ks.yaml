@@ -19,7 +19,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/mosquitto/app
+  path: ./kubernetes/apps/tier-2-applications/mosquitto/app
   postBuild:
     substitute:
       APP: mosquitto

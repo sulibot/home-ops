@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/go2rtc/app
+  path: ./kubernetes/apps/tier-2-applications/go2rtc/app
   prune: true
   sourceRef:
     kind: GitRepository

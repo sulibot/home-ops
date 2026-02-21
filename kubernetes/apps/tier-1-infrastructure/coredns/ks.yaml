@@ -13,7 +13,7 @@ spec:
   dependsOn:
     - name: cilium
   interval: 30m
-  path: ./kubernetes/apps/core/coredns/app
+  path: ./kubernetes/apps/tier-1-infrastructure/coredns/app
   prune: true
   sourceRef:
     kind: GitRepository

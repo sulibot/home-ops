@@ -17,7 +17,7 @@ spec:
     #   namespace: flux-system
   interval: 15m
   retryInterval: 1m
-  path: ./kubernetes/apps/observability-stack/jaeger/app
+  path: ./kubernetes/apps/tier-1-infrastructure/jaeger/app
   prune: true
   sourceRef:
     kind: GitRepository

@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  path: ./kubernetes/apps/observability-stack/jaeger/helm-repo
+  path: ./kubernetes/apps/tier-1-infrastructure/jaeger/helm-repo
   prune: true
   sourceRef:
     kind: GitRepository

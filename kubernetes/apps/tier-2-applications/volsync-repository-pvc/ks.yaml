@@ -10,7 +10,7 @@ metadata:
     component: storage
 spec:
   interval: 15m
-  path: ./kubernetes/apps/applications/volsync-repository-pvc/app
+  path: ./kubernetes/apps/tier-2-applications/volsync-repository-pvc/app
   prune: true
   sourceRef:
     kind: GitRepository

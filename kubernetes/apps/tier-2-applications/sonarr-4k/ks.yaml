@@ -22,7 +22,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/sonarr-4k/app
+  path: ./kubernetes/apps/tier-2-applications/sonarr-4k/app
   postBuild:
     substitute:
       APP: sonarr-4k

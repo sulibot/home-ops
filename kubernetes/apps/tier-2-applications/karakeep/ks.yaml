@@ -21,7 +21,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/karakeep/app
+  path: ./kubernetes/apps/tier-2-applications/karakeep/app
   postBuild:
     substitute:
       APP: karakeep

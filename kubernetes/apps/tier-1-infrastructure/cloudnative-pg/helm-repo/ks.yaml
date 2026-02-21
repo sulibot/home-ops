@@ -8,7 +8,7 @@ metadata:
 spec:
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/data/cloudnative-pg/helm-repo
+  path: ./kubernetes/apps/tier-1-infrastructure/cloudnative-pg/helm-repo
   prune: true
   sourceRef:
     kind: GitRepository

@@ -23,7 +23,7 @@ spec:
       name: network-attachment-definitions.k8s.cni.cncf.io
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/networking/multus/app
+  path: ./kubernetes/apps/tier-1-infrastructure/multus/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -46,7 +46,7 @@ spec:
     - name: multus
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/networking/multus/networks
+  path: ./kubernetes/apps/tier-1-infrastructure/multus/networks
   prune: true
   sourceRef:
     kind: GitRepository

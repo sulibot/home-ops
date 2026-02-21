@@ -21,7 +21,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/cross-seed/app
+  path: ./kubernetes/apps/tier-2-applications/cross-seed/app
   postBuild:
     substitute:
       APP: cross-seed

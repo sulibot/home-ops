@@ -23,7 +23,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/zigbee/app
+  path: ./kubernetes/apps/tier-2-applications/zigbee/app
   postBuild:
     substitute:
       APP: zigbee

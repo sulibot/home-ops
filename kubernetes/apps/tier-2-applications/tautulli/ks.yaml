@@ -24,7 +24,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/applications/tautulli/app
+  path: ./kubernetes/apps/tier-2-applications/tautulli/app
   postBuild:
     substitute:
       APP: tautulli

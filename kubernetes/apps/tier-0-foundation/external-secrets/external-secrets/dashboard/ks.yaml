@@ -14,7 +14,7 @@ spec:
     - name: grafana-instance
       namespace: flux-system
   interval: 15m
-  path: ./kubernetes/apps/foundation/external-secrets/external-secrets/dashboard
+  path: ./kubernetes/apps/tier-0-foundation/external-secrets/external-secrets/dashboard
   prune: true
   sourceRef:
     kind: GitRepository

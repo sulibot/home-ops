@@ -6,3 +6,5 @@ resources:
   - helm-repo/helmrepository.yaml
   - app/helmrelease.yaml
   - app/externalsecret.yaml
+  # Issuers deployed after cert-manager is ready (dependsOn cert-manager)
+  - issuers/ks.yaml

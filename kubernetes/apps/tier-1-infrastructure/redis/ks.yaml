@@ -24,7 +24,7 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/data/redis/app
+  path: ./kubernetes/apps/tier-1-infrastructure/redis/app
   postBuild:
     substitute:
       APP: redis
