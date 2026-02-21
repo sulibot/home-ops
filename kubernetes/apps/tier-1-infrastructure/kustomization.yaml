@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Core infrastructure
+  - ./cert-manager/ks.yaml
+  - ./metrics-server/ks.yaml
+  - ./reloader/ks.yaml
+  - ./descheduler/ks.yaml
+  - ./coredns/ks.yaml
+
+  # Networking
+  - ./multus/ks.yaml
+  - ./istio/ks.yaml
+  - ./external-dns/ks.yaml
+  - ./cloudflared/ks.yaml
+  - ./certificates/ks.yaml
+
+  # Data services
+  - ./volsync/ks.yaml
+  - ./cloudnative-pg/ks.yaml
+  - ./postgres-vectorchord/ks.yaml
+  - ./redis/ks.yaml
+
+  # Observability
+  - ./kube-prometheus-stack/ks.yaml
+  - ./victoria-logs/ks.yaml
+  - ./fluent-bit/ks.yaml
+  - ./grafana/ks.yaml
+  - ./jaeger/ks.yaml
+  - ./kiali/ks.yaml
+  - ./keda/ks.yaml

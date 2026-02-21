@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # CRDs must be first
+  - ./gateway-api-crds/ks.yaml
+  - ./snapshot-controller-crds/ks.yaml
+  # CNI second - cluster won't work without networking
+  - ./cilium/ks.yaml
+  # Secrets third - most apps need secrets
+  - ./external-secrets/  # Has its own kustomization.yaml
+  # Storage fourth - apps need persistent volumes
+  - ./ceph-csi/ks.yaml

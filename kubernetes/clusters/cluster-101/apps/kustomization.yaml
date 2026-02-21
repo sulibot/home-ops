@@ -4,7 +4,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../apps
+  # Three-tier bootstrap model for fast deployment
+  - ../../../apps/tier-0-foundation/ks.yaml
+  - ../../../apps/tier-1-infrastructure/ks.yaml
+  - ../../../apps/tier-2-applications/ks.yaml
+
+  # Dual-stack services
   - ../../../bootstrap/dual-stack-services/ks.yaml
 
 patches:

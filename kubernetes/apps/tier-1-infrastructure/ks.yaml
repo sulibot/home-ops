@@ -1,0 +1,34 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tier-1-infrastructure
+  namespace: flux-system
+  labels:
+    tier: "1-infrastructure"
+    critical: "true"
+spec:
+  dependsOn:
+    - name: tier-0-foundation
+      namespace: flux-system
+  interval: 1m       # AGGRESSIVE: Fast reconciliation during bootstrap
+  retryInterval: 20s # Quick retries on failure
+  timeout: 10m
+  wait: false        # NON-BLOCKING: Allow parallel deployment with Tier 2
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  path: ./kubernetes/apps/tier-1-infrastructure
+  healthChecks:
+    # Ensure critical infrastructure HelmReleases are ready
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: cert-manager
+      namespace: cert-manager
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: volsync
+      namespace: volsync

@@ -52,18 +52,26 @@ get_oci_url() {
 }
 
 # Critical apps to pre-pull (paths relative to repo root)
+# Updated for tier-based structure
 declare -A APP_CONFIGS=(
-  ["ceph-csi-cephfs"]="kubernetes/apps/foundation/ceph-csi/cephfs/app"
-  ["ceph-csi-rbd"]="kubernetes/apps/foundation/ceph-csi/rbd/app"
-  ["cilium"]="kubernetes/apps/networking/cilium/app"
-  ["cert-manager"]="kubernetes/apps/core/cert-manager/app"
-  ["coredns"]="kubernetes/apps/core/coredns/app"
-  ["external-secrets"]="kubernetes/apps/foundation/external-secrets/external-secrets/app"
-  ["kopia"]="kubernetes/apps/data/kopia/app"
-  ["multus"]="kubernetes/apps/networking/multus/app"
-  ["snapshot-controller"]="kubernetes/apps/kube-system/snapshot-controller/app"
-  ["volsync"]="kubernetes/apps/data/volsync/app"
-  ["kube-prometheus-stack"]="kubernetes/apps/observability-stack/kube-prometheus-stack/app"
+  # Tier 0: Foundation (critical for cluster operation)
+  ["ceph-csi-cephfs"]="kubernetes/apps/tier-0-foundation/ceph-csi/cephfs/app"
+  ["ceph-csi-rbd"]="kubernetes/apps/tier-0-foundation/ceph-csi/rbd/app"
+  ["cilium"]="kubernetes/apps/tier-0-foundation/cilium/app"
+  ["external-secrets"]="kubernetes/apps/tier-0-foundation/external-secrets/external-secrets/app"
+  ["snapshot-controller"]="kubernetes/apps/tier-0-foundation/snapshot-controller/app"
+
+  # Tier 1: Infrastructure (cluster services)
+  ["cert-manager"]="kubernetes/apps/tier-1-infrastructure/cert-manager/app"
+  ["coredns"]="kubernetes/apps/tier-1-infrastructure/coredns/app"
+  ["multus"]="kubernetes/apps/tier-1-infrastructure/multus/app"
+  ["volsync"]="kubernetes/apps/tier-1-infrastructure/volsync/app"
+  ["kube-prometheus-stack"]="kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/app"
+
+  # Tier 2: Must-have applications (critical user apps)
+  ["plex"]="kubernetes/apps/tier-2-applications/plex/app"
+  ["home-assistant"]="kubernetes/apps/tier-2-applications/home-assistant/app"
+  ["immich"]="kubernetes/apps/tier-2-applications/immich/app"
 )
 
 # Known Helm repository URLs (for apps using HelmRepository sourceRef)
