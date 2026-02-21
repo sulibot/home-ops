@@ -9,10 +9,6 @@ terraform {
   backend "local" {}
 
   required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.25.0"
-    }
     null = {
       source  = "hashicorp/null"
       version = ">= 3.0"
@@ -78,27 +74,12 @@ EOF
 }
 
 ########## STEP 1: CHECK TIER 0 (FOUNDATION) ##########
-
-data "kubernetes_resource" "tier_0_foundation" {
-  api_version = "kustomize.toolkit.fluxcd.io/v1"
-  kind        = "Kustomization"
-
-  metadata {
-    name      = "tier-0-foundation"
-    namespace = "flux-system"
-  }
-}
+# Uses kubectl directly — data "kubernetes_resource" returns null for non-existent
+# resources and OpenTofu treats that as a fatal error on a fresh cluster.
 
 resource "null_resource" "check_tier_0" {
   triggers = {
-    # Re-check if tier status changes
-    tier_0_ready = try(
-      [for c in data.kubernetes_resource.tier_0_foundation.object.status.conditions :
-        c.status if c.type == "Ready"
-      ][0],
-      "Unknown"
-    )
-    always_run = timestamp() # Always check, but won't force re-create
+    always_run = timestamp()
   }
 
   provisioner "local-exec" {
@@ -106,12 +87,10 @@ resource "null_resource" "check_tier_0" {
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "📦 TIER 0 (Foundation) Status"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Ready: ${try(
-        [for c in data.kubernetes_resource.tier_0_foundation.object.status.conditions :
-          c.status if c.type == "Ready"
-        ][0],
-        "Unknown"
-      )}"
+      READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
+        get kustomization tier-0-foundation -n flux-system \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
+      echo "Ready: $${READY:-Unknown}"
       echo ""
       echo "Apps included:"
       echo "  • gateway-api-crds"
@@ -124,30 +103,14 @@ resource "null_resource" "check_tier_0" {
 
     interpreter = ["bash", "-c"]
   }
+
+  depends_on = [null_resource.create_bootstrap_configmap]
 }
 
 ########## STEP 2: CHECK TIER 1 (INFRASTRUCTURE) ##########
 
-data "kubernetes_resource" "tier_1_infrastructure" {
-  api_version = "kustomize.toolkit.fluxcd.io/v1"
-  kind        = "Kustomization"
-
-  metadata {
-    name      = "tier-1-infrastructure"
-    namespace = "flux-system"
-  }
-
-  depends_on = [null_resource.check_tier_0]
-}
-
 resource "null_resource" "check_tier_1" {
   triggers = {
-    tier_1_ready = try(
-      [for c in data.kubernetes_resource.tier_1_infrastructure.object.status.conditions :
-        c.status if c.type == "Ready"
-      ][0],
-      "Unknown"
-    )
     tier_0_complete = null_resource.check_tier_0.id
   }
 
@@ -156,12 +119,10 @@ resource "null_resource" "check_tier_1" {
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "🏗️  TIER 1 (Infrastructure) Status"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Ready: ${try(
-        [for c in data.kubernetes_resource.tier_1_infrastructure.object.status.conditions :
-          c.status if c.type == "Ready"
-        ][0],
-        "Unknown"
-      )}"
+      READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
+        get kustomization tier-1-infrastructure -n flux-system \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
+      echo "Ready: $${READY:-Unknown}"
       echo ""
       echo "Apps included: 21 infrastructure services"
       echo "  • cert-manager, volsync, metrics-server"
@@ -173,8 +134,6 @@ resource "null_resource" "check_tier_1" {
 
     interpreter = ["bash", "-c"]
   }
-
-  depends_on = [data.kubernetes_resource.tier_1_infrastructure]
 }
 
 ########## STEP 3: WAIT FOR BOOTSTRAP COMPLETE ##########

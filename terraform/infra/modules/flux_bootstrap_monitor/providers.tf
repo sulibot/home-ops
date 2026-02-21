@@ -1,3 +1,1 @@
-provider "kubernetes" {
-  config_path = var.kubeconfig_path
-}
+# No provider configuration needed — all kubectl calls use local-exec with --kubeconfig flag.
