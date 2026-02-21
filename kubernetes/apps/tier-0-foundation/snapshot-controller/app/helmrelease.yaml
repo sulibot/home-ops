@@ -14,4 +14,4 @@ spec:
   values:
     controller:
       serviceMonitor:
-        create: true
+        create: false   # ServiceMonitor CRD is in Tier 1 (kube-prometheus-stack); not available at Tier 0
