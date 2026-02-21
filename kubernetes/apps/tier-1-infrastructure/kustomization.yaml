@@ -13,11 +13,12 @@ resources:
 
   # Networking
   - ./multus/ks.yaml
-  - ./istio/helm-repo/ks.yaml
-  - ./istio/ks.yaml
-  - ./istio/namespace-config/ks.yaml
-  - ./istio/waypoints/ks.yaml
-  - ./istio/policies/ks.yaml
+  # istio disabled - commented out
+  # - ./istio/helm-repo/ks.yaml
+  # - ./istio/ks.yaml
+  # - ./istio/namespace-config/ks.yaml
+  # - ./istio/waypoints/ks.yaml
+  # - ./istio/policies/ks.yaml
   - ../tier-0-foundation/cilium/gateway/ks.yaml
   - ./external-dns/helm-repo/ks.yaml
   - ./external-dns/ks.yaml
