@@ -10,6 +10,7 @@ metadata:
   namespace: default
 spec:
   schedule: "0 2 * * *"  # Daily at 2am
+  immediate: true         # Also run a backup immediately on first creation (bootstrap)
   backupOwnerReference: self
   cluster:
     name: postgres-vectorchord
