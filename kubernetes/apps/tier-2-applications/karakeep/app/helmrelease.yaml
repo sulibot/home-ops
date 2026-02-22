@@ -90,6 +90,7 @@ spec:
               - --disable-dev-shm-usage
               - "--remote-debugging-address=::"
               - --remote-debugging-port=9222
+              - --remote-debugging-allow-origins=*
               - --hide-scrollbars
             securityContext:
               capabilities:
