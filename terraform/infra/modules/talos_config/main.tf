@@ -244,8 +244,9 @@ data "talos_machine_configuration" "controlplane" {
           extraArgs = {
             "initial-cluster-state" = "new"
             "initial-cluster" = join(",", [
-              for name, node in local.control_plane_nodes :
+              for name, node in local.all_nodes :
               format("%s=https://[%s]:2380", node.hostname, node.cilium_bgp_ipv6)
+              if node.machine_type == "controlplane"
             ])
           }
         }
