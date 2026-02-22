@@ -88,3 +88,7 @@ spec:
 
     machine-learning:
       enabled: true
+      persistence:
+        cache:
+          type: persistentVolumeClaim
+          existingClaim: immich-config
