@@ -302,18 +302,18 @@ resource "null_resource" "wait_bootstrap_complete" {
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "⏳ WAITING FOR BOOTSTRAP COMPLETE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Timeout: 15 minutes (900 seconds)"
+      echo "Timeout: 45 minutes (2700 seconds)"
       echo ""
 
       START_TIME=$(date +%s)
-      TIMEOUT_SECONDS=900
+      TIMEOUT_SECONDS=2700
 
       check_timeout() {
         CURRENT_TIME=$(date +%s)
         ELAPSED=$((CURRENT_TIME - START_TIME))
         if [ $ELAPSED -ge $TIMEOUT_SECONDS ]; then
           echo ""
-          echo "❌ TIMEOUT: Bootstrap exceeded 15 minutes"
+          echo "❌ TIMEOUT: Bootstrap exceeded 45 minutes"
           echo "   Current status may indicate issues"
           exit 1
         fi
