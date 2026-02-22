@@ -1,4 +1,7 @@
 locals {
+  # Base domain for all infrastructure FQDNs
+  base_domain = "sulibot.com"
+
   # DNS configuration (centralized infrastructure)
   dns_servers = {
     ipv6 = "fd00:0:0:ffff::53"
@@ -11,10 +14,20 @@ locals {
   # BGP configuration
   bgp = {
     asn_base            = 4210000000  # Base ASN for cluster ASN calculation
-    remote_asn          = 4200001000  # RouterOS BGP ASN
+    remote_asn          = 4200001000  # PVE FRR AS (what cluster nodes peer with upstream)
     interface           = "ens18"     # Primary interface for BGP peering
     enable_bfd          = true        # BFD for fast failover
     advertise_loopbacks = true        # Advertise node loopbacks
+  }
+
+  # RouterOS edge router — values extracted from live device 2026-02-22
+  routeros = {
+    local_asn      = 4200000000              # RouterOS eBGP AS ("EDGE_AS" in FRR templates)
+    router_id      = "10.255.0.254"          # BGP router-id (infra loopback IPv4)
+    loopback_ipv4  = "10.255.0.254"          # ROS infra loopback IPv4
+    loopback_ipv6  = "fd00:0:0:ffff::fffe"   # ROS infra loopback IPv6
+    pve_range_ipv6 = "fd00:0:0:ffff::/64"    # PVE infra loopback range (BGP listen range)
+    pve_asn        = 4200001000              # PVE FRR AS (remote AS from ROS perspective)
   }
 
   # OCI pull-through registry cache (Zot, VLAN 200, pve02)

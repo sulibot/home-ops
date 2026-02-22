@@ -117,6 +117,63 @@ provider "proxmox" {
 EOF
 }
 
+generate "routeros_provider" {
+  path      = "routeros_provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+    provider "routeros" {
+      hosturl  = data.sops_file.proxmox.data["routeros_hosturl"]
+      username = data.sops_file.proxmox.data["routeros_username"]
+      password = data.sops_file.proxmox.data["routeros_password"]
+      insecure = true
+    }
+  EOF
+}
+
+generate "dns" {
+  path      = "dns_nodes.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+    # Loopback records — {name}.${local.network_infra.base_domain} → loopback IPs (BGP-routed)
+    resource "routeros_ip_dns_record" "node_loopback_aaaa" {
+      for_each = { for node in var.nodes : node.name => node }
+      name    = "$${each.key}.${local.network_infra.base_domain}"
+      type    = "AAAA"
+      address = "fd00:${local.cluster_config.cluster_id}:fe::$${each.value.ip_suffix}"
+      ttl     = "5m"
+      comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
+    }
+
+    resource "routeros_ip_dns_record" "node_loopback_a" {
+      for_each = { for node in var.nodes : node.name => node }
+      name    = "$${each.key}.${local.network_infra.base_domain}"
+      type    = "A"
+      address = "10.${local.cluster_config.cluster_id}.254.$${each.value.ip_suffix}"
+      ttl     = "5m"
+      comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
+    }
+
+    # Interface records — {name}-int.${local.network_infra.base_domain} → public VLAN IPs
+    resource "routeros_ip_dns_record" "node_int_aaaa" {
+      for_each = { for node in var.nodes : node.name => node }
+      name    = "$${each.key}-int.${local.network_infra.base_domain}"
+      type    = "AAAA"
+      address = "$${var.ip_config.public.ipv6_prefix}$${each.value.ip_suffix}"
+      ttl     = "5m"
+      comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
+    }
+
+    resource "routeros_ip_dns_record" "node_int_a" {
+      for_each = { for node in var.nodes : node.name => node }
+      name    = "$${each.key}-int.${local.network_infra.base_domain}"
+      type    = "A"
+      address = "$${var.ip_config.public.ipv4_prefix}$${each.value.ip_suffix}"
+      ttl     = "5m"
+      comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
+    }
+  EOF
+}
+
 inputs = merge(
   {
     # Cluster identification
