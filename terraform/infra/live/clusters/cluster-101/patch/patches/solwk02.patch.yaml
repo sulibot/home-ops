@@ -7,7 +7,7 @@ machine:
   kubelet:
     nodeIP:
       validSubnets:
-        - fd00:101::22/128
+        - fd00:101:fe::22/128
   network:
     hostname: solwk02
     interfaces:

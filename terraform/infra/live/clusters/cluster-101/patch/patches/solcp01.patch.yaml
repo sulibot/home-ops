@@ -1,12 +1,12 @@
 cluster:
   etcd:
     advertisedSubnets:
-      - fd00:101::11/128
+      - fd00:101:fe::11/128
 machine:
   kubelet:
     nodeIP:
       validSubnets:
-        - fd00:101::11/128
+        - fd00:101:fe::11/128
   network:
     hostname: solcp01
     interfaces:

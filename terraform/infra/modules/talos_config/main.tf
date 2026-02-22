@@ -240,12 +240,12 @@ data "talos_machine_configuration" "controlplane" {
         etcd = {
           # Explicitly define initial cluster members via extraArgs so all control planes know about each other
           # This prevents learner promotion timing issues where only 1/3 nodes join
-          # Per-node advertisedSubnets with /128 ensures only static IPv6 is used (not SLAAC)
+          # Uses loopback IPv6 to match advertisedSubnets — bird2 establishes BGP before etcd starts
           extraArgs = {
             "initial-cluster-state" = "new"
             "initial-cluster" = join(",", [
               for name, node in local.control_plane_nodes :
-              format("%s=https://[%s]:2380", node.hostname, node.public_ipv6)
+              format("%s=https://[%s]:2380", node.hostname, node.cilium_bgp_ipv6)
             ])
           }
         }
@@ -650,7 +650,7 @@ locals {
           }
           kubelet = {
             nodeIP = {
-              validSubnets = ["fd00:${var.cluster_id}::${node.node_suffix}/128"]
+              validSubnets = ["fd00:${var.cluster_id}:fe::${node.node_suffix}/128"]
             }
           }
         },
@@ -674,7 +674,7 @@ locals {
       cluster = node.machine_type == "controlplane" ? {
         etcd = {
           # Advertise only this node's specific IPv6 address (not SLAAC)
-          advertisedSubnets = ["${node.public_ipv6}/128"]
+          advertisedSubnets = ["${node.cilium_bgp_ipv6}/128"]
         }
       } : {}
     }
