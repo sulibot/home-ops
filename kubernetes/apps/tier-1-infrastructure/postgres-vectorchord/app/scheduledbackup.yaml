@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
+# CNPG-native scheduled VolumeSnapshot backup.
+# Uses online: true so CNPG coordinates a checkpoint with PostgreSQL before
+# snapping the RBD volume - application-consistent, not just crash-consistent.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-vectorchord-backup
+  namespace: default
+spec:
+  schedule: "0 2 * * *"  # Daily at 2am
+  backupOwnerReference: self
+  cluster:
+    name: postgres-vectorchord
+  method: volumeSnapshot
+  online: true
+  onlineConfiguration:
+    immediateCheckpoint: true  # Checkpoint before snapshot for consistency
+    waitForArchive: false       # No WAL archiving configured

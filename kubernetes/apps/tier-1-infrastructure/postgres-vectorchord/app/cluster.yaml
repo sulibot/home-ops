@@ -17,6 +17,14 @@ spec:
     shared_preload_libraries:
       - "vchord.so"
 
+  # --- Backup configuration (VolumeSnapshot via scheduledbackup.yaml) ----------
+  backup:
+    retentionPolicy: "14d"  # Keep 14 days of daily snapshots
+    volumeSnapshot:
+      className: csi-rbd-rbd-vm-snapclass
+      snapshotOwnerReference: cluster  # Snapshots owned by cluster; pruned on cluster deletion
+
+  # --- Normal bootstrap (fresh cluster) ----------------------------------------
   bootstrap:
     initdb:
       database: immich
@@ -24,6 +32,24 @@ spec:
       postInitApplicationSQL:
         - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
         - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
+
+  # --- Disaster recovery bootstrap (uncomment to restore from snapshot) --------
+  # 1. Find the snapshot to restore from:
+  #      kubectl get volumesnapshot -n default -l cnpg.io/cluster=postgres-vectorchord \
+  #        --sort-by=.metadata.creationTimestamp
+  # 2. Delete the cluster (CNPG will delete postgres-vectorchord-1 PVC with it):
+  #      kubectl delete cluster postgres-vectorchord -n default
+  # 3. Comment out bootstrap.initdb above, uncomment bootstrap.recovery below,
+  #    set the snapshot name, commit and push.
+  # 4. Flux applies → CNPG creates a new PVC from the snapshot and recovers.
+  # 5. Re-comment bootstrap.recovery, recomment bootstrap.initdb, push to git.
+  # bootstrap:
+  #   recovery:
+  #     volumeSnapshots:
+  #       storage:
+  #         name: <snapshot-name>   # from kubectl get volumesnapshot above
+  #         kind: VolumeSnapshot
+  #         apiGroup: snapshot.storage.k8s.io
 
   storage:
     size: 20Gi
