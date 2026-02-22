@@ -51,6 +51,14 @@ spec:
   #         kind: VolumeSnapshot
   #         apiGroup: snapshot.storage.k8s.io
 
+  managed:
+    roles:
+      - name: firefly
+        login: true
+        ensure: present
+        passwordSecret:
+          name: firefly-pg-password
+
   storage:
     size: 20Gi
     storageClass: csi-rbd-rbd-vm-sc-retain
