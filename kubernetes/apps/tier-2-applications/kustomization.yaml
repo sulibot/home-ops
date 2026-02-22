@@ -16,6 +16,7 @@ resources:
   - ./fusion/ks.yaml
   - ./go2rtc/ks.yaml
   - ./home-assistant/ks.yaml
+  - ./immich/helm-repo/ks.yaml
   - ./immich/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./karakeep/ks.yaml
