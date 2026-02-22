@@ -1,0 +1,25 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: firefly
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: firefly
+  owner: firefly
+  ensure: present
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Role
+metadata:
+  name: firefly
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  ensure: present
+  login: true
+  passwordSecret:
+    name: firefly-pg-password

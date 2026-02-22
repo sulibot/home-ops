@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valkey-defaults
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+data:
+  values.yaml: |
+    controllers:
+      valkey:
+        type: statefulset
+        containers:
+          valkey:
+            image:
+              repository: ghcr.io/valkey-io/valkey
+              tag: 8.1.1
+            command: [/scripts/start.sh]
+            env:
+              VALKEY_PASSWORD_FILE: /secret/valkey-password
+              VALKEY_PORT: 6379
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+                ephemeral-storage: 50Mi
+              limits:
+                ephemeral-storage: 2Gi
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+              capabilities: {drop: [ALL]}
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: [/scripts/liveness.sh]
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: [/scripts/readiness.sh]
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: [/scripts/liveness.sh]
+                  failureThreshold: 60
+                  periodSeconds: 5
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile: {type: RuntimeDefault}
+
+    persistence:
+      data:
+        type: persistentVolumeClaim
+        accessMode: ReadWriteOnce
+        size: 1Gi
+      secret:
+        type: secret
+        identifier: valkey
+        globalMounts:
+          - path: /secret
+      config:
+        type: configMap
+        identifier: config
+        globalMounts:
+          - path: /etc/valkey
+      scripts:
+        type: configMap
+        identifier: scripts
+        defaultMode: 0o550
+        globalMounts:
+          - path: /scripts
+
+    service:
+      valkey:
+        controller: valkey
+        ports:
+          valkey:
+            port: 6379
+
+    configMaps:
+      config:
+        data:
+          valkey.conf: |
+            appendonly yes
+            save ""
+      scripts:
+        data:
+          start.sh: |
+            #!/bin/sh
+            [ -f "$VALKEY_PASSWORD_FILE" ] && export VALKEY_PASSWORD="$(cat "$VALKEY_PASSWORD_FILE")"
+            exec valkey-server \
+              /etc/valkey/valkey.conf \
+              --port "$VALKEY_PORT" \
+              --requirepass "$VALKEY_PASSWORD" \
+              --primaryauth "$VALKEY_PASSWORD" \
+              "$@" $VALKEY_EXTRA_FLAGS
+          ping.sh: |
+            #!/bin/sh
+            [ -f "$VALKEY_PASSWORD_FILE" ] && export VALKEY_PASSWORD="$(cat "$VALKEY_PASSWORD_FILE")"
+            [ -n "$VALKEY_PASSWORD" ] && export REDISCLI_AUTH="$VALKEY_PASSWORD"
+            exec valkey-cli -h localhost -p "$VALKEY_PORT" ping
+          liveness.sh: |
+            #!/bin/sh
+            response="$(/scripts/ping.sh)"
+            responseFirstWord=$(echo "$response" | head -n1 | awk '{print $1;}')
+            if [ "$response" != "PONG" ] && [ "$responseFirstWord" != "LOADING" ] && [ "$responseFirstWord" != "MASTERDOWN" ]; then
+              echo "$response"
+              exit 1
+            fi
+          readiness.sh: |
+            #!/bin/sh
+            response="$(/scripts/ping.sh)"
+            if [ "$response" != "PONG" ]; then
+              echo "$response"
+              exit 1
+            fi

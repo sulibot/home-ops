@@ -1,0 +1,172 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: firefly
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: firefly
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      app:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: fireflyiii/core
+              tag: version-6.2.18
+            env:
+              TZ: America/Los_Angeles
+              APP_ENV: local
+              APP_URL: https://firefly.sulibot.com
+              TRUSTED_PROXIES: "**"
+              DEFAULT_LANGUAGE: en_US
+              DEFAULT_LOCALE: equal
+              # Database (postgres-vectorchord shared cluster)
+              DB_CONNECTION: pgsql
+              DB_HOST: postgres-vectorchord-rw.default.svc.cluster.local
+              DB_PORT: "5432"
+              DB_DATABASE: firefly
+              DB_USERNAME: firefly
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: firefly-pg-password
+                    key: password
+              # Cache / Session
+              CACHE_DRIVER: redis
+              SESSION_DRIVER: redis
+              REDIS_HOST: firefly-valkey.default.svc.cluster.local
+              REDIS_PORT: "6379"
+              # App secrets
+              APP_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: firefly-secret
+                    key: APP_KEY
+              STATIC_CRON_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: firefly-secret
+                    key: STATIC_CRON_TOKEN
+              # Mail (log only; configure SMTP here when ready)
+              MAIL_MAILER: log
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+
+      valkey:
+        containers:
+          valkey:
+            image:
+              repository: ghcr.io/valkey-io/valkey
+              tag: 8.1.1
+            args: [--save, "", --appendonly, "no"]
+            probes:
+              liveness: &valkey-probe
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: [valkey-cli, ping]
+              readiness: *valkey-probe
+            resources:
+              requests:
+                cpu: 5m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+
+      cron:
+        type: cronjob
+        cronjob:
+          schedule: "0 */3 * * *"
+          timeZone: America/Los_Angeles
+          backoffLimit: 0
+          successfulJobsHistory: 1
+          failedJobsHistory: 1
+        containers:
+          app:
+            image:
+              repository: curlimages/curl
+              tag: 8.12.0
+            command:
+              - /bin/sh
+              - -c
+              - "curl --silent --show-error --fail http://firefly-app.default.svc.cluster.local:8080/api/v1/cron/${STATIC_CRON_TOKEN}"
+            env:
+              STATIC_CRON_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: firefly-secret
+                    key: STATIC_CRON_TOKEN
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: [ALL]
+
+    service:
+      app:
+        controller: app
+        ports:
+          http:
+            port: 8080
+      valkey:
+        controller: valkey
+        ports:
+          valkey:
+            port: 6379
+
+    route:
+      app:
+        hostnames:
+          - firefly.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: http
+
+    persistence:
+      data:
+        existingClaim: firefly-config
+        globalMounts:
+          - path: /var/www/html/storage/upload
