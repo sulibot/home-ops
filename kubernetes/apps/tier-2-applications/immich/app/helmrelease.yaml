@@ -49,8 +49,8 @@ spec:
           containers:
             main:
               env:
-                # Override chart default short-name with FQDN for IPv6-only cluster DNS resolution
-                REDIS_HOSTNAME: immich-valkey.default.svc.cluster.local
+                # Use dual-stack service so Node.js/c-ares resolves via IPv4 A record
+                REDIS_HOSTNAME: immich-valkey-dual.default.svc.cluster.local
                 IMMICH_MACHINE_LEARNING_URL: http://immich-machine-learning.default.svc.cluster.local:3003
                 DB_HOSTNAME:
                   valueFrom:
@@ -85,9 +85,6 @@ spec:
 
     valkey:
       enabled: true
-      service:
-        valkey:
-          ipFamilyPolicy: PreferDualStack
 
     machine-learning:
       enabled: true

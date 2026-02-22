@@ -1,0 +1,21 @@
+---
+# Dual-stack Service for the Helm-managed immich-valkey Deployment.
+# The Helm chart creates immich-valkey as IPv6-only SingleStack which Node.js/c-ares
+# cannot resolve. This service has the same selector and exposes a dual-stack ClusterIP
+# so Node.js gets an IPv4 address via DNS.
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-valkey-dual
+  namespace: default
+spec:
+  ipFamilyPolicy: PreferDualStack
+  selector:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: immich
+    app.kubernetes.io/name: valkey
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+      protocol: TCP
