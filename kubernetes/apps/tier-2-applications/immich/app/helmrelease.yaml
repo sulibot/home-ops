@@ -28,33 +28,10 @@ spec:
       strategy: rollback
     timeout: 10m
   values:
-    controllers:
-      main:
-        containers:
-          main:
-            env:
-              DB_HOSTNAME:
-                valueFrom:
-                  secretKeyRef:
-                    name: postgres-vectorchord-app
-                    key: host
-              DB_USERNAME:
-                valueFrom:
-                  secretKeyRef:
-                    name: postgres-vectorchord-app
-                    key: user
-              DB_PASSWORD:
-                valueFrom:
-                  secretKeyRef:
-                    name: postgres-vectorchord-app
-                    key: password
-              DB_DATABASE_NAME:
-                valueFrom:
-                  secretKeyRef:
-                    name: postgres-vectorchord-app
-                    key: dbname
-
     immich:
+      persistence:
+        library:
+          existingClaim: csi-cephfs-content-pvc
       configuration:
         storageTemplate:
           enabled: true
@@ -65,27 +42,33 @@ spec:
       metrics:
         enabled: false
 
-    persistence:
-      library:
-        enabled: true
-        type: persistentVolumeClaim
-        existingClaim: csi-cephfs-content-pvc
-        globalMounts:
-          - path: /usr/src/app/upload
-            subPath: media/photos
-
-    valkey:
-      enabled: true
-      persistence:
-        data:
-          enabled: true
-          type: persistentVolumeClaim
-          size: 2Gi
-          storageClass: csi-cephfs-config-sc
-          accessMode: ReadWriteOnce
-
     server:
       enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              env:
+                DB_HOSTNAME:
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-vectorchord-app
+                      key: host
+                DB_USERNAME:
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-vectorchord-app
+                      key: user
+                DB_PASSWORD:
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-vectorchord-app
+                      key: password
+                DB_DATABASE_NAME:
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-vectorchord-app
+                      key: dbname
       route:
         main:
           hostnames:
@@ -96,6 +79,16 @@ spec:
           rules:
             - backendRefs:
                 - identifier: main
+
+    valkey:
+      enabled: true
+      persistence:
+        data:
+          enabled: true
+          type: persistentVolumeClaim
+          size: 2Gi
+          storageClass: csi-cephfs-config-sc
+          accessMode: ReadWriteOnce
 
     machine-learning:
       enabled: true
