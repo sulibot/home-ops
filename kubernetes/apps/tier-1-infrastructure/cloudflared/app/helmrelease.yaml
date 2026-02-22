@@ -14,7 +14,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: cloudflare
-        namespace: network
+        namespace: flux-system
       version: 0.3.2
   postRenderers:
     - kustomize:
