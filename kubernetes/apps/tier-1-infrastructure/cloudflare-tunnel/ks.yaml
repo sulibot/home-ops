@@ -44,6 +44,8 @@ spec:
       namespace: flux-system
     - name: cloudflare-tunnel-secret
       namespace: flux-system
+    - name: external-dns
+      namespace: flux-system
   interval: ${TIER1_INTERVAL:=15m}
   retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-1-infrastructure/cloudflare-tunnel/app

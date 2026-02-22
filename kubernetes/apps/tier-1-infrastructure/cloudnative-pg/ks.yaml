@@ -24,4 +24,9 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: default
-  wait: false
+  wait: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cnpg-cloudnative-pg
+      namespace: default

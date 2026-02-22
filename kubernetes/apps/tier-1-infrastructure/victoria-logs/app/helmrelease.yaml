@@ -26,26 +26,12 @@ spec:
         enabled: true
         storageClassName: csi-cephfs-config-sc
         size: 20Gi
-      readinessProbe:
-        exec:
-          command:
-            - /bin/sh
-            - -ec
-            - wget -q -T 3 -O - http://127.0.0.1:9428/health >/dev/null
-        initialDelaySeconds: 10
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 6
-      livenessProbe:
-        exec:
-          command:
-            - /bin/sh
-            - -ec
-            - wget -q -T 3 -O - http://127.0.0.1:9428/health >/dev/null
-        initialDelaySeconds: 30
-        periodSeconds: 30
-        timeoutSeconds: 5
-        failureThreshold: 10
+      # Bind to IPv6 so kubelet probes (using pod's IPv6 address) succeed
+      extraArgs:
+        httpListenAddr: "[::]:9428"
+      # Dual-stack service so fluent-bit's c-ares can resolve via IPv4 A record
+      service:
+        ipFamilyPolicy: PreferDualStack
       route:
         enabled: true
         hostnames:
