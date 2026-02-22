@@ -6,7 +6,7 @@ metadata:
   namespace: default
 spec:
   instances: 1
-  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-1.1.0
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
 
   # Increase delays for IPv6 networking latency
   startDelay: 30
