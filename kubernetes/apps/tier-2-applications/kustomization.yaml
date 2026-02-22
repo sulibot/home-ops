@@ -21,7 +21,8 @@ resources:
   - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
-  - ./mosquitto/ks.yaml
+  # mosquitto disabled
+  # - ./mosquitto/ks.yaml
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
   - ./overseerr/ks.yaml

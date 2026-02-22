@@ -136,6 +136,151 @@ resource "null_resource" "check_tier_1" {
   }
 }
 
+########## STEP 2.5: CNPG AUTOMATIC RESTORE ##########
+# Checks for an existing VolumeSnapshot from a previous ScheduledBackup.
+# If one is found the cluster is a rebuild (disaster recovery), not a fresh install:
+#   1. Suspend the postgres-vectorchord Flux kustomization so Flux doesn't fight us
+#   2. Delete the CNPG Cluster (takes its PVC with it — data dir is empty anyway)
+#   3. Apply a recovery cluster spec pointing at the latest snapshot
+#   4. Wait for the cluster to reach Running state
+#   5. Resume the kustomization — CNPG ignores spec.bootstrap changes once
+#      the data directory already exists, so Flux reverting to initdb is harmless.
+# On a fresh install there are no snapshots, so this is a no-op.
+
+resource "null_resource" "cnpg_restore" {
+  triggers = {
+    tier_1_complete = null_resource.check_tier_1.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      KC="kubectl --kubeconfig=${var.kubeconfig_path}"
+
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "🐘 CNPG AUTOMATIC RESTORE CHECK"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      # Wait for CNPG operator to be running (CRDs registered)
+      echo "Waiting for CNPG operator..."
+      for i in $(seq 1 30); do
+        if $KC get crd scheduledbackups.postgresql.cnpg.io &>/dev/null; then
+          echo "  ✅ CNPG operator ready"
+          break
+        fi
+        echo "  ⏳ Attempt $i/30 — waiting for CNPG CRDs..."
+        sleep 10
+        if [ $i -eq 30 ]; then echo "  ⚠️  CNPG not ready after 5m — skipping restore check"; exit 0; fi
+      done
+
+      # Find the most recent VolumeSnapshot from a previous ScheduledBackup
+      SNAPSHOT=$($KC get volumesnapshot -n default \
+        -l cnpg.io/cluster=postgres-vectorchord \
+        --sort-by=.metadata.creationTimestamp \
+        -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
+
+      if [ -z "$SNAPSHOT" ]; then
+        echo "  ℹ️  No CNPG snapshots found — fresh install, skipping restore"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        exit 0
+      fi
+
+      echo "  📸 Found snapshot: $SNAPSHOT"
+
+      # Check if the cluster is already running with data (not a fresh empty DB)
+      CLUSTER_PHASE=$($KC get cluster postgres-vectorchord -n default \
+        -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+
+      if [ "$CLUSTER_PHASE" = "Cluster in healthy state" ]; then
+        echo "  ✅ Cluster already healthy — checking if data exists..."
+        # If cluster is healthy and has been running, no restore needed
+        ROW_COUNT=$($KC exec -n default postgres-vectorchord-1 -- \
+          psql -U postgres -d immich -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname='public';" \
+          -t 2>/dev/null | tr -d ' ' || echo "0")
+        if [ "$ROW_COUNT" -gt "0" ] 2>/dev/null; then
+          echo "  ✅ Database has data — skipping restore"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 0
+        fi
+      fi
+
+      echo ""
+      echo "  🔄 Snapshot found + cluster is new — performing automatic restore"
+      echo "     Snapshot: $SNAPSHOT"
+      echo ""
+
+      # 1. Suspend Flux kustomization to prevent it reverting our recovery spec
+      echo "  1/5 Suspending postgres-vectorchord Flux kustomization..."
+      $KC patch kustomization postgres-vectorchord -n flux-system \
+        --type=merge -p '{"spec":{"suspend":true}}'
+
+      # 2. Delete the CNPG Cluster (and its empty PVC)
+      echo "  2/5 Deleting existing CNPG Cluster..."
+      $KC delete cluster postgres-vectorchord -n default --ignore-not-found --wait=true
+      $KC delete pvc postgres-vectorchord-1 -n default --ignore-not-found --wait=true
+
+      # 3. Apply recovery cluster spec pointing at the snapshot
+      echo "  3/5 Applying recovery cluster from snapshot: $SNAPSHOT"
+      $KC apply -f - <<YAML
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-vectorchord
+  namespace: default
+spec:
+  instances: 1
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-1.1.0
+  startDelay: 30
+  stopDelay: 30
+  switchoverDelay: 60
+  postgresql:
+    shared_preload_libraries:
+      - "vchord.so"
+  bootstrap:
+    recovery:
+      volumeSnapshots:
+        storage:
+          name: $SNAPSHOT
+          kind: VolumeSnapshot
+          apiGroup: snapshot.storage.k8s.io
+  storage:
+    size: 20Gi
+    storageClass: csi-rbd-rbd-vm-sc-retain
+YAML
+
+      # 4. Wait for cluster to reach healthy state (up to 10 minutes)
+      echo "  4/5 Waiting for cluster recovery (up to 10m)..."
+      for i in $(seq 1 60); do
+        PHASE=$($KC get cluster postgres-vectorchord -n default \
+          -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        echo "      [$i/60] Phase: $${PHASE:-Pending}"
+        if echo "$PHASE" | grep -qi "healthy"; then
+          echo "  ✅ Cluster recovered successfully"
+          break
+        fi
+        sleep 10
+        if [ $i -eq 60 ]; then
+          echo "  ⚠️  Recovery timed out after 10m — check cluster manually"
+          # Still resume Flux so the system isn't left in a broken state
+        fi
+      done
+
+      # 5. Resume Flux kustomization — CNPG ignores spec.bootstrap once data dir exists
+      echo "  5/5 Resuming postgres-vectorchord Flux kustomization..."
+      $KC patch kustomization postgres-vectorchord -n flux-system \
+        --type=merge -p '{"spec":{"suspend":false}}'
+
+      echo ""
+      echo "✅ CNPG RESTORE COMPLETE"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    EOT
+
+    interpreter = ["bash", "-c"]
+  }
+
+  depends_on = [null_resource.check_tier_1]
+}
+
 ########## STEP 3: WAIT FOR BOOTSTRAP COMPLETE ##########
 # Critical app readiness is checked via kubectl polling inside the provisioner.
 # We do NOT use data "kubernetes_resource" for HelmReleases here because those
@@ -145,8 +290,9 @@ resource "null_resource" "check_tier_1" {
 resource "null_resource" "wait_bootstrap_complete" {
   triggers = {
     # Only re-run if tier checks change
-    tier_0_ready = null_resource.check_tier_0.id
-    tier_1_ready = null_resource.check_tier_1.id
+    tier_0_ready    = null_resource.check_tier_0.id
+    tier_1_ready    = null_resource.check_tier_1.id
+    cnpg_restore_id = null_resource.cnpg_restore.id
   }
 
   provisioner "local-exec" {
@@ -245,7 +391,7 @@ resource "null_resource" "wait_bootstrap_complete" {
     interpreter = ["bash", "-c"]
   }
 
-  depends_on = [null_resource.check_tier_1]
+  depends_on = [null_resource.cnpg_restore]
 }
 
 ########## STEP 4: DELETE BOOTSTRAP ConfigMap (REVERT TO DEFAULTS) ##########
