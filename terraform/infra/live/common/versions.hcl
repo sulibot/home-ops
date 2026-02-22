@@ -23,6 +23,7 @@ locals {
     kubernetes = "~> 3.0.0"
     kubectl    = "~> 1.14.0"
     time       = "~> 0.13.1"
+    routeros   = "~> 1.86.3"
   }
 
   # Application versions

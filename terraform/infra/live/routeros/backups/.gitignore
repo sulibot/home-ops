@@ -1,0 +1,3 @@
+# RouterOS backups — excluded from git (may contain sensitive config)
+*
+!.gitignore
