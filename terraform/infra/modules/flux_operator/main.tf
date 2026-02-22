@@ -43,12 +43,13 @@ resource "null_resource" "wait_cilium_ready" {
       echo "  ✓ Cilium pods scheduled"
 
       # Wait for Cilium pods to be ready (handles image pull delays)
+      # First bootstrap can take 8-10+ minutes if images are not pre-pulled (257MB image)
       echo "  Waiting for Cilium pods to be ready..."
       kubectl --kubeconfig="$KUBECONFIG" wait \
         --for=condition=Ready \
         pods -l k8s-app=cilium \
         -n kube-system \
-        --timeout=300s
+        --timeout=900s
 
       echo "  ✓ Cilium pods are ready"
 
@@ -58,7 +59,7 @@ resource "null_resource" "wait_cilium_ready" {
         --for=condition=Available \
         deployment cilium-operator \
         -n kube-system \
-        --timeout=120s
+        --timeout=300s
 
       # Verify Cilium has correct routing configuration (from Git repo values.yaml)
       # direct-routing-skip-unreachable must be false when auto-direct-node-routes is false
