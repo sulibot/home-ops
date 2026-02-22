@@ -1,29 +1,16 @@
 output "tier_0_ready" {
-  description = "Tier 0 (Foundation) ready status"
-  value = try(
-    [for c in data.kubernetes_resource.tier_0_foundation.object.status.conditions :
-      c.status if c.type == "Ready"
-    ][0],
-    "Unknown"
-  )
+  description = "Tier 0 (Foundation) check completed (status logged inside provisioner)"
+  value       = null_resource.check_tier_0.id != "" ? "Checked" : "Unknown"
 }
 
 output "tier_1_ready" {
-  description = "Tier 1 (Infrastructure) ready status"
-  value = try(
-    [for c in data.kubernetes_resource.tier_1_infrastructure.object.status.conditions :
-      c.status if c.type == "Ready"
-    ][0],
-    "Unknown"
-  )
+  description = "Tier 1 (Infrastructure) check completed (status logged inside provisioner)"
+  value       = null_resource.check_tier_1.id != "" ? "Checked" : "Unknown"
 }
 
 output "bootstrap_complete" {
-  description = "Whether bootstrap has completed (tiers ready; critical app checks run inside provisioner)"
-  value = (
-    try([for c in data.kubernetes_resource.tier_0_foundation.object.status.conditions : c.status if c.type == "Ready"][0], "") == "True" &&
-    try([for c in data.kubernetes_resource.tier_1_infrastructure.object.status.conditions : c.status if c.type == "Ready"][0], "") == "True"
-  )
+  description = "Bootstrap wait completed successfully (tiers ready; checked inside wait_bootstrap_complete provisioner)"
+  value       = null_resource.wait_bootstrap_complete.id != ""
 }
 
 output "bootstrap_override_removed" {
