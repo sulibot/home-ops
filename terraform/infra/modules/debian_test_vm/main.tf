@@ -1,6 +1,6 @@
 terraform {
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.89.0" }
+    proxmox = { source = "bpg/proxmox", version = "~> 0.96.0" }
     null    = { source = "hashicorp/null", version = "~> 3.0" }
     sops    = { source = "carlpett/sops", version = "~> 1.3.0" }
   }
