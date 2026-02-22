@@ -42,7 +42,7 @@ spec:
               tag: 0.30.0@sha256:2724d4a9a6d13a7fa3babf53b9245767aae56c34f06042a8463ee983c6b41caf
             env:
               TZ: America/Los_Angeles
-              BROWSER_WEB_URL: http://karakeep-chrome.default.svc.cluster.local:9222
+              BROWSER_WEB_URL: http://localhost:9222
               CRAWLER_DOWNLOAD_BANNER_IMAGE: "true"
               CRAWLER_ENABLE_ADBLOCKER: "true"
               CRAWLER_STORE_SCREENSHOT: "true"
@@ -74,10 +74,7 @@ spec:
                 cpu: 10m
               limits:
                 memory: 1Gi
-
-      chrome:
-        containers:
-          app:
+          chrome:
             image:
               repository: gcr.io/zenika-hub/alpine-chrome
               tag: 124@sha256:1a0046448e0bb6c275c88f86e01faf0de62b02ec8572901256ada0a8c08be23f
@@ -88,9 +85,7 @@ spec:
               - --no-sandbox
               - --disable-gpu
               - --disable-dev-shm-usage
-              - "--remote-debugging-address=::"
               - --remote-debugging-port=9222
-              - --remote-debugging-allow-origins=*
               - --hide-scrollbars
             securityContext:
               capabilities:
@@ -149,11 +144,6 @@ spec:
         ports:
           http:
             port: 3000
-      chrome:
-        controller: chrome
-        ports:
-          http:
-            port: 9222
       meilisearch:
         controller: meilisearch
         ports:
