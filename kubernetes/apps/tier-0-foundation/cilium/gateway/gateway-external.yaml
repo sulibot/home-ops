@@ -7,7 +7,7 @@ metadata:
     cilium.io/gateway: "true"
     bgp-advertise: "true"
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
+    cert-manager.io/cluster-issuer: letsencrypt-staging  # TEMPORARY: LE production rate-limited until 2026-02-23 03:38 UTC
 spec:
   gatewayClassName: cilium
   addresses:
