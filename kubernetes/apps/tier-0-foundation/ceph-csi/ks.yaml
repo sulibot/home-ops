@@ -12,7 +12,7 @@ spec:
   dependsOn:
     - name: flux-system
       namespace: flux-system
-    - name: snapshot-controller
+    - name: snapshot-controller-crds  # Only need CRDs for VolumeSnapshotClass, not the controller itself
       namespace: flux-system
   interval: ${TIER0_INTERVAL:=15m}
   retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
