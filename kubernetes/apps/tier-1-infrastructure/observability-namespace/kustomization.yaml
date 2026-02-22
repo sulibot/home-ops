@@ -8,3 +8,4 @@ resources:
   - ./namespace.yaml
   - ./_namespace/csi-cephfs-content-pv-observability-retain.yaml
   - ./_namespace/csi-cephfs-content-pvc-observability.yaml
+  - ./_namespace/kopia-repository-pv-observability.yaml

@@ -1,0 +1,43 @@
+---
+# Static PV for observability/kopia - mounts the same CephFS subvolume as kopia-repository-pv
+# (volsync-system/kopia) so that VolSync restore/backup jobs in observability namespace can
+# access the actual kopia repository. Must use staticVolume + rootPath to mount the correct
+# subdirectory (not the subvolume root).
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolume.json
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kopia-repository-pv-observability
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: csi-cephfs-backups-sc
+  csi:
+    driver: cephfs.csi.ceph.com
+    nodeStageSecretRef:
+      name: csi-ceph-admin-secret
+      namespace: ceph-csi
+    volumeAttributes:
+      clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
+      fsName: backups
+      rootPath: /volumes/csi/backup-csi-vol-841e604c-1dd5-4a09-8763-84e672d78c4e/379629f2-f4b6-47f2-b9fd-be507bebab2b
+      staticVolume: "true"
+    volumeHandle: kopia-repository-pv-observability
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kopia
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-backups-sc
+  volumeName: kopia-repository-pv-observability
+  resources:
+    requests:
+      storage: 200Gi

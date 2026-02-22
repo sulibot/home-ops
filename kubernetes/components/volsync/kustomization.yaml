@@ -4,8 +4,11 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - ./externalsecret.yaml
-  # kopia PVC needed per-namespace for VolSync restore jobs to mount the backup repository
-  - ./kopia-repository-pvc.yaml
+  # kopia PVC is NOT created by this component - it must be pre-provisioned per-namespace as a
+  # static PV/PVC pointing to the actual kopia repository CephFS subvolume. See:
+  #   default:       kubernetes/apps/tier-2-applications/volsync-repository-pvc/
+  #   observability: kubernetes/apps/tier-1-infrastructure/observability-namespace/_namespace/
+  # - ./kopia-repository-pvc.yaml
   - ./pvc.yaml
   - ./replicationdestination.yaml
   - ./replicationsource.yaml
