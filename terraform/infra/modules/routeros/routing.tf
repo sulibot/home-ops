@@ -7,4 +7,5 @@ resource "routeros_routing_filter_rule" "rules" {
   disabled = each.value.disabled
 }
 
-# routeros_routing_bfd_configuration is not available in provider v1.86.3 — Phase 3.
+# routeros_routing_bfd_configuration: provider v1.99.0 validates addresses as
+# plain IPs but RouterOS BFD uses CIDR notation — provider bug, skip for now.

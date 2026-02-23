@@ -187,8 +187,7 @@ variable "routing_filter_rules" {
 variable "bfd_configurations" {
   description = "BFD session configurations."
   type = list(object({
-    addresses  = string
-    comment    = optional(string, "")
+    addresses  = set(string)
     disabled   = optional(bool, false)
     min_rx     = optional(string, "300ms")
     min_tx     = optional(string, "300ms")

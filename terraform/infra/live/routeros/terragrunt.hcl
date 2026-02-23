@@ -312,7 +312,8 @@ inputs = {
     { chain = "OSPF_OUT", rule = "if (dst==10.255.0.254/32) {accept}" },
   ]
 
-  # BFD configurations: routeros_routing_bfd_configuration not in provider v1.86.3 — Phase 3.
+  # BFD configurations: provider v1.99.0 validates addresses as plain IPs but
+  # RouterOS BFD uses CIDR notation — provider bug, unmanageable for now.
 
   # ── DNS (static infra records only) ─────────────────────────────────────────
   # Only records with ttl=5m are managed here.
