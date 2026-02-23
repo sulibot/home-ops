@@ -55,6 +55,9 @@ spec:
     prometheus:
       rules:
         enabled: true
+    blueprints:
+      configMaps:
+        - authentik-blueprints
     server:
       replicas: 1
       ingress:
