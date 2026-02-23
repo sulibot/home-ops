@@ -155,6 +155,165 @@ inputs = {
     },
   ]
 
+  # ── INTERFACE LISTS ──────────────────────────────────────────────────────────
+  # Skip builtins: all, none, dynamic, static (IDs *2000000-*2000003).
+  interface_lists = ["WAN", "LAN"]
+
+  interface_list_members = [
+    { list = "WAN", interface = "wan[ether1]"  },
+    { list = "LAN", interface = "br-fabric"    },
+    { list = "LAN", interface = "pve03[ether4]"},
+    { list = "LAN", interface = "vlan10"       },
+    { list = "LAN", interface = "vlan30"       },
+    { list = "LAN", interface = "vlan31"       },
+    { list = "LAN", interface = "pve01[ether2]"},
+    { list = "LAN", interface = "lo"           },
+    { list = "LAN", interface = "pve02[ether3]"},
+    { list = "LAN", interface = "pve04[ether5]"},
+    { list = "LAN", interface = "vlan200"      },
+    { list = "LAN", interface = "vlan1"        },
+    { list = "LAN", interface = "lo_dns"       },
+    { list = "LAN", interface = "wifi[ether6]" },
+  ]
+
+  # ── DNS GLOBAL SETTINGS ──────────────────────────────────────────────────────
+  # Singleton — import ID "0". External-dns managed records (ttl=0s) are never touched.
+  dns_settings = {
+    allow_remote_requests  = true
+    cache_max_ttl          = "1d"
+    max_concurrent_queries = 200
+    # set deduplicates — device shows "lo,lo" but provider normalises to unique members
+    mdns_repeat_ifaces     = ["vlan30", "vlan200", "lo"]
+    query_server_timeout   = "3s"
+    query_total_timeout    = "15s"
+    servers                = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
+  }
+
+  # ── SYSTEM ────────────────────────────────────────────────────────────────────
+  system = {
+    identity             = "router"
+    timezone             = "America/Los_Angeles"
+    ntp_servers          = ["time.google.com", "time.cloudflare.com"]
+    ntp_server_enabled   = true
+    ntp_server_manycast  = true
+    ntp_server_multicast = true
+  }
+
+  # ── IP / IPv6 SETTINGS ───────────────────────────────────────────────────────
+  ip_settings = {
+    icmp_rate_limit      = 100
+    max_neighbor_entries = 16384
+    send_redirects       = false
+    tcp_syncookies       = true
+  }
+
+  ipv6_settings = {
+    accept_redirects             = "no"
+    accept_router_advertisements = "no"
+    max_neighbor_entries         = 8192
+  }
+
+  # ── IP SERVICES ───────────────────────────────────────────────────────────────
+  # Static (non-dynamic) services only. Import by service name (e.g. "ssh").
+  ip_services = [
+    { name = "ftp",     port = 21,   disabled = true  },
+    { name = "ssh",     port = 22,   address  = "10.0.0.0/8,fd00::/8" },
+    { name = "telnet",  port = 23,   disabled = true  },
+    { name = "www",     port = 80,   address  = "0.0.0.0/0" },
+    { name = "www-ssl", port = 443,  address  = "10.0.0.0/8,fd00::/8", certificate = "ssl-web-management" },
+    { name = "winbox",  port = 8291, address  = "10.0.0.0/8,fd00::/8" },
+    { name = "api",     port = 8728, disabled = true  },
+    { name = "api-ssl", port = 8729, disabled = true  },
+  ]
+
+  # ── IPv6 FIREWALL ADDRESS LISTS ───────────────────────────────────────────────
+  ipv6_address_lists = [
+    { list = "no_forward_ipv6", address = "fe80::/10",       comment = "defconf: RFC6890 Linked-Scoped Unicast" },
+    { list = "no_forward_ipv6", address = "ff00::/8",        comment = "defconf: multicast" },
+    { list = "NAT66-ULA",       address = "fd00:100::/48",   comment = "NAT66 ULA aggregate" },
+    { list = "NAT66-ULA",       address = "fd00:101::/48",   comment = "NAT66 ULA aggregate" },
+    { list = "NAT66-ULA",       address = "fd00:102::/48",   comment = "NAT66 ULA aggregate" },
+    { list = "NAT66-ULA",       address = "fd00:103::/48",   comment = "NAT66 ULA aggregate" },
+  ]
+
+  # ── IPv6 FIREWALL FILTER RULES ────────────────────────────────────────────────
+  # Rule 0 on device is dynamic fasttrack6 counter (D flag) — skipped.
+  # Device indices 1-30 → TF keys 0-29.
+  ipv6_firewall_filter_rules = [
+    # 0 (*1E) — log rules for observability (no comment field, log-prefix only)
+    { chain = "forward", action = "log",                  src_address  = "fd00:101::/64",               log_prefix = "VM_OUT"       },
+    # 1 (*1F)
+    { chain = "forward", action = "log",                  src_address  = "2600:1700:ab1a:500e::/64",    log_prefix = "VM_GUA_OUT"   },
+    # 2 (*1D)
+    { chain = "forward", action = "log",                  dst_address  = "fd00:101::6/128",             log_prefix = "TEST_TO_VM"   },
+    # 3 (*1B)
+    { chain = "forward", action = "log",                  src_address  = "2600:1700:ab1a:500e::/64",    log_prefix = "TENANT_FWD"   },
+    # 4 (*1C)
+    { chain = "forward", action = "log",                  dst_address  = "2600:1700:ab1a:500e::/64",    log_prefix = "TENANT_REPLY" },
+    # 5 (*16)
+    { chain = "forward", action = "fasttrack-connection", connection_state = "established,related",     comment = "IPv6 fasttrack for performance" },
+    # 6 (*1)
+    { chain = "input",   action = "accept",               protocol = "icmpv6",                          comment = "defconf: accept ICMPv6 after RAW" },
+    # 7 (*18)
+    { chain = "forward", action = "accept",               connection_state = "established,related,untracked", comment = "Accept established IPv6" },
+    # 8 (*2)
+    { chain = "input",   action = "accept",               connection_state = "established,related,untracked", comment = "defconf: accept established,related,untracked" },
+    # 9 (*3)
+    { chain = "input",   action = "accept",               protocol = "udp", dst_port = "33434-33534",   comment = "defconf: accept UDP traceroute" },
+    # 10 (*4)
+    { chain = "input",   action = "accept",               protocol = "udp", src_address = "fe80::/10", dst_port = "546", comment = "defconf: accept DHCPv6-Client prefix delegation." },
+    # 11 (*5)
+    { chain = "input",   action = "accept",               protocol = "udp", dst_port = "500,4500",      comment = "defconf: accept IKE" },
+    # 12 (*6)
+    { chain = "input",   action = "accept",               protocol = "ipsec-ah",                        comment = "defconf: accept IPSec AH" },
+    # 13 (*7)
+    { chain = "input",   action = "accept",               protocol = "ipsec-esp",                       comment = "defconf: accept IPSec ESP" },
+    # 14 (*8)
+    { chain = "input",   action = "drop",                 in_interface_list = "!LAN",                   comment = "defconf: drop all not coming from LAN" },
+    # 15 (*9)
+    { chain = "forward", action = "accept",               connection_state = "established,related,untracked", comment = "defconf: accept established,related,untracked" },
+    # 16 (*A)
+    { chain = "forward", action = "drop",                 connection_state = "invalid",                 comment = "defconf: drop invalid" },
+    # 17 (*B)
+    { chain = "forward", action = "drop",                 src_address_list = "no_forward_ipv6",         comment = "defconf: drop bad forward IPs" },
+    # 18 (*C)
+    { chain = "forward", action = "drop",                 dst_address_list = "no_forward_ipv6",         comment = "defconf: drop bad forward IPs" },
+    # 19 (*D)
+    { chain = "forward", action = "drop",                 protocol = "icmpv6", hop_limit = "equal:1",   comment = "defconf: rfc4890 drop hop-limit=1" },
+    # 20 (*E)
+    { chain = "forward", action = "accept",               protocol = "icmpv6",                          comment = "defconf: accept ICMPv6 after RAW" },
+    # 21 (*F)
+    { chain = "forward", action = "accept",               protocol = "139",                             comment = "defconf: accept HIP" },
+    # 22 (*10)
+    { chain = "forward", action = "accept",               protocol = "udp", dst_port = "500,4500",      comment = "defconf: accept IKE" },
+    # 23 (*11)
+    { chain = "forward", action = "accept",               protocol = "ipsec-ah",                        comment = "defconf: accept AH" },
+    # 24 (*12)
+    { chain = "forward", action = "accept",               protocol = "ipsec-esp",                       comment = "defconf: accept ESP" },
+    # 25 (*13)
+    { chain = "forward", action = "accept",               ipsec_policy = "in,ipsec",                    comment = "defconf: accept all that matches IPSec policy" },
+    # 26 (*15)
+    { chain = "forward", action = "accept",               src_address = "fd00:10::/64",                 comment = "Allow PVE management network" },
+    # 27 (*14)
+    { chain = "forward", action = "drop",                 in_interface_list = "!LAN",                   comment = "defconf: drop everything else not coming from LAN" },
+    # 28 (*19)
+    { chain = "forward", action = "drop",                 connection_state = "invalid",                 comment = "Drop invalid IPv6" },
+    # 29 (*1A)
+    { chain = "input",   action = "drop",                 src_address = "::/128",                       comment = "Drop unspecified IPv6" },
+  ]
+
+  # ── ROUTING FILTER RULES ──────────────────────────────────────────────────────
+  routing_filter_rules = [
+    { chain = "bgp-out",  rule = "if (dst==0.0.0.0/0) { accept; }",       comment = "Advertise IPv4 default to PVE" },
+    { chain = "bgp-out",  rule = "if (dst==::/0) { accept; }",            comment = "Advertise IPv6 default to PVE" },
+    { chain = "FROM-VM",  rule = "if (dst in 10.255.101.0/24) { accept; }" },
+    { chain = "TO-VM6",   rule = "if (dst == ::/0) { accept; }" },
+    { chain = "TO-VM",    rule = "if (dst == 0.0.0.0/0) { accept; }" },
+    { chain = "OSPF_OUT", rule = "if (dst==10.255.0.254/32) {accept}" },
+  ]
+
+  # BFD configurations: routeros_routing_bfd_configuration not in provider v1.86.3 — Phase 3.
+
   # ── DNS (static infra records only) ─────────────────────────────────────────
   # Only records with ttl=5m are managed here.
   # Records with ttl=0s are owned by Kubernetes external-dns — do NOT add them.

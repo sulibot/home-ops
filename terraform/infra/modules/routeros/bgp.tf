@@ -13,9 +13,9 @@
 # /routing/bgp/template — use routeros_routing_bgp_template accordingly.
 
 resource "routeros_routing_bgp_template" "pve_fabric" {
-  name      = var.bgp.instance_name
-  as        = tostring(var.bgp.local_asn)
-  router_id = var.bgp.router_id
+  name = var.bgp.instance_name
+  as   = tostring(var.bgp.local_asn)
+  # router_id not supported on ROS 7.20.1 — omit; uses global router-id
 }
 
 resource "routeros_routing_bgp_connection" "edge" {
