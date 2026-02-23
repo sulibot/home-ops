@@ -6,6 +6,7 @@ resources:
   - ./actions-runner-controller/ks.yaml
   - ./actual/ks.yaml
   - ./atuin/ks.yaml
+  - ./authentik/ks.yaml
   - ./autobrr/ks.yaml
   - ./bookshelf/ks.yaml
   # cross-seed disabled
@@ -36,7 +37,8 @@ resources:
   - ./radarr-4k/ks.yaml
   - ./radarr/ks.yaml
   - ./recyclarr/ks.yaml
-  - ./sabnzbd/ks.yaml
+  # sabnzbd disabled
+  # - ./sabnzbd/ks.yaml
   - ./seerr/ks.yaml
   # slskd disabled
   # - ./slskd/ks.yaml

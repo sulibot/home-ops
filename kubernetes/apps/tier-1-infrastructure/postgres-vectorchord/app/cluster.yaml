@@ -53,6 +53,11 @@ spec:
 
   managed:
     roles:
+      - name: authentik
+        login: true
+        ensure: present
+        passwordSecret:
+          name: authentik-pg-password
       - name: firefly
         login: true
         ensure: present

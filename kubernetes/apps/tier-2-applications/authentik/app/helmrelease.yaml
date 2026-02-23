@@ -1,0 +1,67 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app authentik
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: *app
+      version: "2025.12.4"
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+    timeout: 10m
+  maxHistory: 3
+  values:
+    global:
+      podAnnotations:
+        reloader.stakater.com/auto: "true"
+      deploymentStrategy:
+        type: RollingUpdate
+      envFrom:
+        - secretRef:
+            name: authentik-secret
+    authentik:
+      log_level: info
+      postgresql:
+        port: 5432
+        name: ""
+        user: ""
+        password: ""
+      redis:
+        host: ""
+        password: ""
+    postgresql:
+      enabled: false
+    redis:
+      enabled: true
+      master:
+        persistence:
+          enabled: false
+    prometheus:
+      rules:
+        enabled: true
+    server:
+      replicas: 1
+      ingress:
+        enabled: false
+      metrics:
+        enabled: true
+        serviceMonitor:
+          enabled: true
+    worker:
+      replicas: 1

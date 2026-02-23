@@ -22,8 +22,9 @@ resources:
   - ../tier-0-foundation/cilium/gateway/ks.yaml
   - ./external-dns/helm-repo/ks.yaml
   - ./external-dns/ks.yaml
-  - ./cloudflared/helm-repo/ks.yaml
-  - ./cloudflared/ks.yaml
+  # cloudflared disabled - legacy credentials-file format, migrated to cloudflare-tunnel
+  # - ./cloudflared/helm-repo/ks.yaml
+  # - ./cloudflared/ks.yaml
   - ./certificates/ks.yaml
 
   # Drivers

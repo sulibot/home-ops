@@ -1,6 +1,0 @@
-resources:
-  - helmrelease.yaml
-configMapGenerator:
-  - name: authentik-values
-    files:
-      - values.yaml
