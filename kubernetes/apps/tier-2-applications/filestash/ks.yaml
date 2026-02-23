@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: immich
+  name: filestash
   namespace: flux-system
   labels:
     layer: "applications"
@@ -12,25 +12,18 @@ metadata:
 spec:
   components:
     - ../../../../components/volsync
-
   dependsOn:
-    - name: external-secrets
-      namespace: flux-system
-    - name: immich-helm-repo
-      namespace: flux-system
-    - name: postgres-vectorchord
-      namespace: flux-system
     - name: ceph-csi
       namespace: flux-system
     - name: volsync
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
-  path: ./kubernetes/apps/tier-2-applications/immich/app
+  path: ./kubernetes/apps/tier-2-applications/filestash/app
   postBuild:
     substitute:
-      APP: immich
-      VOLSYNC_CAPACITY: 15Gi
+      APP: filestash
+      VOLSYNC_CAPACITY: 1Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
       VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass

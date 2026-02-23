@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebrowser-config
+data:
+  config.yaml: |
+    auth:
+      methods:
+        password:
+          enabled: true
+        proxy:
+          enabled: true
+          header: "X-authentik-email"

@@ -27,3 +27,130 @@ data:
           additional_scopes: "email profile"
           user_matching_mode: identifier
           user_path_template: "goauthentik.io/sources/%(slug)s"
+  immich-provider.yaml: |
+    version: 1
+    metadata:
+      name: Immich OIDC Provider
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: immich
+        attrs:
+          name: immich
+          client_id: !Env IMMICH_OIDC_CLIENT_ID
+          client_secret: !Env IMMICH_OIDC_CLIENT_SECRET
+          redirect_uris:
+            - url: "https://immich.sulibot.com/auth/login"
+              matching_mode: strict
+            - url: "https://immich.sulibot.com/api/oauth/mobile-redirect"
+              matching_mode: strict
+            - url: "app.immich:/"
+              matching_mode: strict
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: global
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: immich
+        attrs:
+          name: Immich
+          slug: immich
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, immich]]
+          meta_launch_url: "https://immich.sulibot.com"
+          policy_engine_mode: any
+  cloudflare-access.yaml: |
+    version: 1
+    metadata:
+      name: Cloudflare Access OIDC
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: cloudflare-access
+        attrs:
+          name: cloudflare-access
+          client_id: !Env CF_ACCESS_CLIENT_ID
+          client_secret: !Env CF_ACCESS_CLIENT_SECRET
+          redirect_uris:
+            - url: !Env CF_ACCESS_CALLBACK_URL
+              matching_mode: strict
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: global
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: cloudflare-access
+        attrs:
+          name: Cloudflare Access
+          slug: cloudflare-access
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudflare-access]]
+          policy_engine_mode: any
+  proxy-providers.yaml: |
+    version: 1
+    metadata:
+      name: Proxy Providers
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      # Kubernetes service connection (in-cluster, used by the outpost)
+      - model: authentik_outposts.kubernetesserviceconnection
+        state: present
+        identifiers:
+          name: local-k8s
+        attrs:
+          name: local-k8s
+          local: true
+          verify_ssl: true
+      # Filebrowser proxy provider (full proxy mode → injects X-authentik-email)
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        identifiers:
+          name: filebrowser-proxy
+        attrs:
+          name: filebrowser-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: "https://filebrowser.sulibot.com"
+          internal_host: "http://filebrowser.default.svc.cluster.local:80"
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: filebrowser
+        attrs:
+          name: Filebrowser
+          slug: filebrowser
+          provider: !Find [authentik_providers_proxy.proxyprovider, [name, filebrowser-proxy]]
+          meta_launch_url: "https://filebrowser.sulibot.com"
+          policy_engine_mode: any
+      # Proxy outpost — Authentik will manage the Kubernetes deployment
+      - model: authentik_outposts.outpost
+        state: present
+        identifiers:
+          name: proxy-outpost
+        attrs:
+          name: proxy-outpost
+          type: proxy
+          service_connection: !Find [authentik_outposts.kubernetesserviceconnection, [name, local-k8s]]
+          providers:
+            - !Find [authentik_providers_proxy.proxyprovider, [name, filebrowser-proxy]]
+          config:
+            authentik_host: "https://auth.sulibot.com"
+            log_level: info
+            kubernetes_replicas: 1
+            kubernetes_namespace: default
+            kubernetes_service_type: ClusterIP

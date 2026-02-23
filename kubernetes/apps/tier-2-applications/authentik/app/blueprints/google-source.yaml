@@ -1,0 +1,27 @@
+version: 1
+metadata:
+  name: Google OAuth Source
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  - model: authentik_sources_oauth.oauthsource
+    state: present
+    identifiers:
+      slug: google
+    attrs:
+      name: Google
+      slug: google
+      enabled: true
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+      provider_type: google
+      consumer_key: !Env GOOGLE_CLIENT_ID
+      consumer_secret: !Env GOOGLE_CLIENT_SECRET
+      access_token_url: "https://oauth2.googleapis.com/token"
+      authorization_url: "https://accounts.google.com/o/oauth2/auth"
+      profile_url: "https://www.googleapis.com/oauth2/v3/userinfo"
+      oidc_jwks_url: "https://www.googleapis.com/oauth2/v3/certs"
+      oidc_jwks: {}
+      additional_scopes: "email profile"
+      user_matching_mode: identifier
+      user_path_template: "goauthentik.io/sources/%(slug)s"

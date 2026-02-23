@@ -3,11 +3,11 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: qui
+  name: filestash
 spec:
   chartRef:
     kind: OCIRepository
-    name: qui
+    name: filestash
   interval: 1h
   timeout: 10m
   maxHistory: 3
@@ -23,19 +23,17 @@ spec:
     timeout: 10m
   values:
     controllers:
-      qui:
+      filestash:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: ghcr.io/autobrr/qui
-              tag: v1.5.0@sha256:393055be10e7b11b893f665c02b936cf50529ed1dbd6166ad1177bf36e1a68cb
+              repository: docker.io/machines/filestash
+              tag: latest
             env:
-              QUI__HOST: "0.0.0.0"
-              QUI__PORT: &port 80
-              QUI__LOG_LEVEL: INFO
               TZ: America/Los_Angeles
+              APPLICATION_URL: "https://filestash.sulibot.com"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -45,43 +43,60 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /health
-                    port: *port
-                  initialDelaySeconds: 0
-                  periodSeconds: 10
-                  timeoutSeconds: 1
+                    path: /
+                    port: &port 8334
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
                   failureThreshold: 3
               readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
             resources:
               requests:
                 cpu: 10m
               limits:
-                memory: 512Mi
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+                memory: 256Mi
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
+        runAsNonRoot: false # filestash runs as root
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
     service:
       app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         ports:
           http:
             port: *port
     route:
       app:
         hostnames:
-          - "{{ .Release.Name }}.sulibot.com"
+          - filestash.sulibot.com
         parentRefs:
-          - name: gateway-internal
+          - name: gateway-tunnel
             namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
     persistence:
-      config:
-        enabled: true      
+      state:
         existingClaim: "{{ .Release.Name }}-config"
-
+        globalMounts:
+          - path: /app/data/state
+      content:
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /srv/data
+            subPath: data
+      tmp:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /tmp

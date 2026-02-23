@@ -95,7 +95,7 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
-          - name: gateway-external
+          - name: gateway-internal
             namespace: network
     persistence:
       config:

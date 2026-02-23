@@ -87,7 +87,7 @@ spec:
           - "{{ .Release.Name }}.sulibot.com"
           - status.sulibot.com
         parentRefs:
-          - name: gateway-external
+          - name: gateway-internal
             namespace: network
     rbac:
       roles:

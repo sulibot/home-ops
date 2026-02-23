@@ -85,7 +85,7 @@ spec:
           - "{{ .Release.Name }}.sulibot.com"
           - requests.sulibot.com
         parentRefs:
-          - name: gateway-external
+          - name: gateway-tunnel
             namespace: network
     persistence:
       config:

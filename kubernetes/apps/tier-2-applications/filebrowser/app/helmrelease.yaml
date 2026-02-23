@@ -44,9 +44,8 @@ spec:
                 value: /data
               - name: FILEBROWSER_DATABASE
                 value: /config/database.db
-              # If later you create a config.yaml in /config and want to use it:
-              # - name: FILEBROWSER_CONFIG
-              #   value: "/config/config.yaml"
+              - name: FILEBROWSER_CONFIG
+                value: "/config/config.yaml"
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -76,7 +75,7 @@ spec:
         hostnames:
           - filebrowser.sulibot.com
         parentRefs:
-          - name: gateway-internal
+          - name: gateway-tunnel
             namespace: network
         rules:
           - backendRefs:
@@ -111,3 +110,12 @@ spec:
         medium: Memory
         globalMounts:
           - path: /tmp
+
+      config-yaml:
+        type: configMap
+        name: filebrowser-config
+        defaultMode: 0644
+        globalMounts:
+          - path: /config/config.yaml
+            subPath: config.yaml
+            readOnly: true

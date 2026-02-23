@@ -153,19 +153,19 @@ generate "dns" {
       comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
     }
 
-    # Interface records — {name}-int.${local.network_infra.base_domain} → public VLAN IPs
-    resource "routeros_ip_dns_record" "node_int_aaaa" {
+    # Interface records — {name}-if.${local.network_infra.base_domain} → public VLAN IPs
+    resource "routeros_ip_dns_record" "node_if_aaaa" {
       for_each = { for node in var.nodes : node.name => node }
-      name    = "$${each.key}-int.${local.network_infra.base_domain}"
+      name    = "$${each.key}-if.${local.network_infra.base_domain}"
       type    = "AAAA"
       address = "$${var.ip_config.public.ipv6_prefix}$${each.value.ip_suffix}"
       ttl     = "5m"
       comment = "managed by terraform cluster-${local.cluster_config.cluster_id} compute"
     }
 
-    resource "routeros_ip_dns_record" "node_int_a" {
+    resource "routeros_ip_dns_record" "node_if_a" {
       for_each = { for node in var.nodes : node.name => node }
-      name    = "$${each.key}-int.${local.network_infra.base_domain}"
+      name    = "$${each.key}-if.${local.network_infra.base_domain}"
       type    = "A"
       address = "$${var.ip_config.public.ipv4_prefix}$${each.value.ip_suffix}"
       ttl     = "5m"

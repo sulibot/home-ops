@@ -1,0 +1,44 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-tunnel
+  namespace: network
+  labels:
+    cilium.io/gateway: "true"
+    bgp-advertise: "true"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: 10.101.250.11
+    - type: IPAddress
+      value: fd00:101:250::11
+  infrastructure:
+    labels:
+      advertise: loadbalancer
+      bgp-advertise: "true"
+  listeners:
+    - name: sulibot-https
+      hostname: sulibot.com
+      port: 443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: sulibot-com-tls
+    - name: sulibot-wildcard-https
+      hostname: "*.sulibot.com"
+      port: 443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: sulibot-com-tls

@@ -8,7 +8,7 @@ spec:
   hostnames:
     - auth.sulibot.com
   parentRefs:
-    - name: gateway-internal
+    - name: gateway-tunnel
       namespace: network
   rules:
     - backendRefs:

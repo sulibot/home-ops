@@ -1,0 +1,36 @@
+version: 1
+metadata:
+  name: Cloudflare Access OIDC
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  # OIDC provider that Cloudflare Access uses to authenticate against Authentik.
+  # After setup, configure Cloudflare Zero Trust → Settings → Authentication → Add IdP → OIDC
+  # with issuer: https://auth.sulibot.com/application/o/cloudflare-access/
+  - model: authentik_providers_oauth2.oauth2provider
+    state: present
+    identifiers:
+      name: cloudflare-access
+    attrs:
+      name: cloudflare-access
+      client_id: !Env CF_ACCESS_CLIENT_ID
+      client_secret: !Env CF_ACCESS_CLIENT_SECRET
+      redirect_uris:
+        - url: !Env CF_ACCESS_CALLBACK_URL
+          matching_mode: strict
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+      sub_mode: hashed_user_id
+      include_claims_in_id_token: true
+      issuer_mode: global
+
+  - model: authentik_core.application
+    state: present
+    identifiers:
+      slug: cloudflare-access
+    attrs:
+      name: Cloudflare Access
+      slug: cloudflare-access
+      provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudflare-access]]
+      policy_engine_mode: any

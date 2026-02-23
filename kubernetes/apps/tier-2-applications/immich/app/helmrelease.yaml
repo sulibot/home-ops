@@ -27,6 +27,10 @@ spec:
       retries: 5
       strategy: rollback
     timeout: 10m
+  # clientId and clientSecret come from the immich-oidc Secret (created by ExternalSecret)
+  valuesFrom:
+    - kind: Secret
+      name: immich-oidc
   values:
     immich:
       persistence:
@@ -39,6 +43,15 @@ spec:
         trash:
           days: 30
           enabled: false
+        oauth:
+          enabled: true
+          issuerUrl: "https://auth.sulibot.com/application/o/immich/"
+          scope: "openid email profile"
+          signingAlgorithm: RS256
+          storageLabelClaim: preferred_username
+          autoRegister: true
+          autoLaunch: false
+          buttonText: "Login with Authentik"
       metrics:
         enabled: false
 
@@ -77,7 +90,7 @@ spec:
           hostnames:
             - immich.sulibot.com
           parentRefs:
-            - name: gateway-internal
+            - name: gateway-tunnel
               namespace: network
           rules:
             - backendRefs:

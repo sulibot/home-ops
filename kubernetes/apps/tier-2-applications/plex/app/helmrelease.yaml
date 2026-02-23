@@ -122,7 +122,7 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
         parentRefs:
-          - name: gateway-external
+          - name: gateway-tunnel
             namespace: network
         rules:
           - # Ref: https://forums.plex.tv/t/external-srt-subtitles-are-not-working-w-reverse-proxy/886540

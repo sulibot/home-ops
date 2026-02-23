@@ -1,0 +1,29 @@
+---
+# Allows the Authentik worker (serviceAccount: authentik) to manage the
+# proxy outpost Deployment + Service + Secret that it creates in the default namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: authentik-outpost-manager
+  namespace: default
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: authentik-outpost-manager
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: authentik-outpost-manager
+subjects:
+  - kind: ServiceAccount
+    name: authentik
+    namespace: default
