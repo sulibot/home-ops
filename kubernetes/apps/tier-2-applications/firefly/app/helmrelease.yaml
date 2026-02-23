@@ -65,10 +65,9 @@ spec:
                   secretKeyRef:
                     name: firefly-secret
                     key: STATIC_CRON_TOKEN
-              # CF Access injects Cf-Access-Authenticated-User-Email for all authenticated requests;
-              # TRUSTED_PROXIES: "**" above ensures Firefly trusts the upstream proxy headers.
+              # Authentik proxy outpost injects X-Authentik-Email for authenticated requests
               AUTHENTICATION_GUARD: remote_user_guard
-              AUTHENTICATION_GUARD_HEADER: HTTP_CF_ACCESS_AUTHENTICATED_USER_EMAIL
+              AUTHENTICATION_GUARD_HEADER: HTTP_X_AUTHENTIK_EMAIL
               # Mail (log only; configure SMTP here when ready)
               MAIL_MAILER: log
             probes:
@@ -166,8 +165,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - identifier: app
-                port: http
+              - name: authentik-outpost
+                port: 9000
 
     persistence:
       data:

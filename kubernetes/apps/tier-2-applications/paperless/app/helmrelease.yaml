@@ -51,6 +51,16 @@ spec:
               PAPERLESS_OCR_LANGUAGE: eng
               # Redis sidecar
               PAPERLESS_REDIS: redis://paperless-redis.default.svc.cluster.local:6379
+              # OIDC via Authentik (Google SSO) — auto-creates accounts on first login
+              PAPERLESS_APPS: "allauth.socialaccount.providers.openid_connect"
+              PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
+              PAPERLESS_ACCOUNT_ALLOW_SIGNUPS: "false"
+              PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
+              PAPERLESS_SOCIALACCOUNT_PROVIDERS:
+                valueFrom:
+                  secretKeyRef:
+                    name: paperless-oidc
+                    key: PAPERLESS_SOCIALACCOUNT_PROVIDERS
               # Secrets
               PAPERLESS_SECRET_KEY:
                 valueFrom:

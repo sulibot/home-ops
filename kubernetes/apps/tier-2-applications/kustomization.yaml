@@ -7,6 +7,7 @@ resources:
   - ./actual/ks.yaml
   - ./atuin/ks.yaml
   - ./authentik/ks.yaml
+  - ./authentik-outpost/ks.yaml
   - ./autobrr/ks.yaml
   - ./bookshelf/ks.yaml
   # cross-seed disabled

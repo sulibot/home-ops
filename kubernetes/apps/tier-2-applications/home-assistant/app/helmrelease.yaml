@@ -86,6 +86,10 @@ spec:
         parentRefs:
           - name: gateway-internal
             namespace: network
+        rules:
+          - backendRefs:
+              - name: authentik-outpost
+                port: 9000
     persistence:
       config:
         enabled: true

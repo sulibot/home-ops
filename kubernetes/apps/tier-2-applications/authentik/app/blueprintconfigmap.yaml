@@ -98,6 +98,108 @@ data:
           slug: cloudflare-access
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudflare-access]]
           policy_engine_mode: any
+  karakeep-provider.yaml: |
+    version: 1
+    metadata:
+      name: Karakeep OIDC Provider
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: karakeep
+        attrs:
+          name: karakeep
+          client_id: !Env KARAKEEP_OIDC_CLIENT_ID
+          client_secret: !Env KARAKEEP_OIDC_CLIENT_SECRET
+          redirect_uris:
+            - url: "https://karakeep.sulibot.com/api/auth/callback/custom"
+              matching_mode: strict
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: global
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: karakeep
+        attrs:
+          name: Karakeep
+          slug: karakeep
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, karakeep]]
+          meta_launch_url: "https://karakeep.sulibot.com"
+          policy_engine_mode: any
+  paperless-provider.yaml: |
+    version: 1
+    metadata:
+      name: Paperless OIDC Provider
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: paperless
+        attrs:
+          name: paperless
+          client_id: !Env PAPERLESS_OIDC_CLIENT_ID
+          client_secret: !Env PAPERLESS_OIDC_CLIENT_SECRET
+          redirect_uris:
+            - url: "https://paperless.sulibot.com/accounts/oidc/authentik/login/callback/"
+              matching_mode: strict
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: global
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: paperless
+        attrs:
+          name: Paperless
+          slug: paperless
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, paperless]]
+          meta_launch_url: "https://paperless.sulibot.com"
+          policy_engine_mode: any
+  actual-provider.yaml: |
+    version: 1
+    metadata:
+      name: Actual Budget OIDC Provider
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: actual
+        attrs:
+          name: actual
+          client_id: !Env ACTUAL_OIDC_CLIENT_ID
+          client_secret: !Env ACTUAL_OIDC_CLIENT_SECRET
+          redirect_uris:
+            - url: "https://actual.sulibot.com/openid/callback"
+              matching_mode: strict
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: global
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: actual
+        attrs:
+          name: Actual Budget
+          slug: actual
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, actual]]
+          meta_launch_url: "https://actual.sulibot.com"
+          policy_engine_mode: any
   proxy-providers.yaml: |
     version: 1
     metadata:
@@ -105,16 +207,27 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
-      # Kubernetes service connection (in-cluster, used by the outpost)
-      - model: authentik_outposts.kubernetesserviceconnection
+      # Service account for the self-managed proxy outpost deployment
+      - model: authentik_core.user
         state: present
         identifiers:
-          name: local-k8s
+          username: outpost-svc
         attrs:
-          name: local-k8s
-          local: true
-          verify_ssl: true
-      # Filebrowser proxy provider (full proxy mode → injects X-authentik-email)
+          username: outpost-svc
+          name: Proxy Outpost Service Account
+          type: service_account
+          path: goauthentik.io/serviceaccounts
+      # API token — key injected from 1Password so outpost deployment can reference it
+      - model: authentik_core.token
+        state: present
+        identifiers:
+          identifier: outpost-api-token
+        attrs:
+          user: !Find [authentik_core.user, [username, outpost-svc]]
+          intent: api
+          expiring: false
+          key: !Env OUTPOST_TOKEN
+      # Filebrowser — full proxy mode, injects X-Authentik-Email (read by config.yaml)
       - model: authentik_providers_proxy.proxyprovider
         state: present
         identifiers:
@@ -137,7 +250,53 @@ data:
           provider: !Find [authentik_providers_proxy.proxyprovider, [name, filebrowser-proxy]]
           meta_launch_url: "https://filebrowser.sulibot.com"
           policy_engine_mode: any
-      # Proxy outpost — Authentik will manage the Kubernetes deployment
+      # Firefly — full proxy mode, injects X-Authentik-Email for remote_user_guard
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        identifiers:
+          name: firefly-proxy
+        attrs:
+          name: firefly-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: "https://firefly.sulibot.com"
+          internal_host: "http://firefly-app.default.svc.cluster.local:8080"
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: firefly
+        attrs:
+          name: Firefly
+          slug: firefly
+          provider: !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
+          meta_launch_url: "https://firefly.sulibot.com"
+          policy_engine_mode: any
+      # Home Assistant — full proxy mode, auth gated by Authentik/Google
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        identifiers:
+          name: home-assistant-proxy
+        attrs:
+          name: home-assistant-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: "https://home-assistant.sulibot.com"
+          internal_host: "http://home-assistant.default.svc.cluster.local:8123"
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: home-assistant
+        attrs:
+          name: Home Assistant
+          slug: home-assistant
+          provider: !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
+          meta_launch_url: "https://home-assistant.sulibot.com"
+          policy_engine_mode: any
+      # Proxy outpost — self-managed K8s deployment, no service_connection needed
       - model: authentik_outposts.outpost
         state: present
         identifiers:
@@ -145,12 +304,10 @@ data:
         attrs:
           name: proxy-outpost
           type: proxy
-          service_connection: !Find [authentik_outposts.kubernetesserviceconnection, [name, local-k8s]]
           providers:
             - !Find [authentik_providers_proxy.proxyprovider, [name, filebrowser-proxy]]
+            - !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
+            - !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
           config:
             authentik_host: "https://auth.sulibot.com"
             log_level: info
-            kubernetes_replicas: 1
-            kubernetes_namespace: default
-            kubernetes_service_type: ClusterIP

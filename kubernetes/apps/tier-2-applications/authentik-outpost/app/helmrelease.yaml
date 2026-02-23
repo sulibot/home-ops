@@ -1,0 +1,60 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik-outpost
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: authentik-outpost
+  interval: 1h
+  timeout: 5m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    controllers:
+      authentik-outpost:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/goauthentik/proxy
+              tag: 2025.12.4
+            env:
+              # Use internal cluster service for outpost→Authentik communication
+              AUTHENTIK_HOST: "http://authentik-server.default.svc.cluster.local"
+              AUTHENTIK_INSECURE: "false"
+            envFrom:
+              - secretRef:
+                  name: authentik-outpost-secret
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 256Mi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+    service:
+      app:
+        forceRename: authentik-outpost
+        ports:
+          http:
+            port: 9000
+          metrics:
+            port: 9300

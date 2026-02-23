@@ -130,6 +130,13 @@ and are auto-instantiated on Authentik startup via the `authentik-blueprints` Co
 | `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
 | `IMMICH_OIDC_CLIENT_ID` | OAuth2 client ID for Immich provider (e.g. `immich`) |
 | `IMMICH_OIDC_CLIENT_SECRET` | OAuth2 client secret for Immich provider |
+| `KARAKEEP_OIDC_CLIENT_ID` | OAuth2 client ID for Karakeep (e.g. `karakeep`) |
+| `KARAKEEP_OIDC_CLIENT_SECRET` | OAuth2 client secret for Karakeep (random) |
+| `PAPERLESS_OIDC_CLIENT_ID` | OAuth2 client ID for Paperless (e.g. `paperless`) |
+| `PAPERLESS_OIDC_CLIENT_SECRET` | OAuth2 client secret for Paperless (random) |
+| `ACTUAL_OIDC_CLIENT_ID` | OAuth2 client ID for Actual Budget (e.g. `actual`) |
+| `ACTUAL_OIDC_CLIENT_SECRET` | OAuth2 client secret for Actual Budget (random) |
+| `OUTPOST_TOKEN` | API token for proxy outpost deployment (random, 40+ chars) |
 | `CF_ACCESS_CLIENT_ID` | OAuth2 client ID for Cloudflare Access provider |
 | `CF_ACCESS_CLIENT_SECRET` | OAuth2 client secret for Cloudflare Access provider |
 | `CF_ACCESS_CALLBACK_URL` | `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback` |
@@ -140,25 +147,39 @@ and are auto-instantiated on Authentik startup via the `authentik-blueprints` Co
 
 ### Native OIDC (Authentik as issuer)
 
-These apps initiate their own OIDC login flow pointing at Authentik.
+These apps initiate their own OIDC login flow pointing at Authentik. Accounts are
+auto-created on first Google login.
 
 | App | Issuer URL | Notes |
 |-----|-----------|-------|
-| Immich | `https://auth.sulibot.com/application/o/immich/` | Configured via `valuesFrom: immich-oidc` Secret in HelmRelease |
-| Paperless-ngx | `https://auth.sulibot.com/application/o/paperless/` | To be configured |
-| Karakeep | `https://auth.sulibot.com/application/o/karakeep/` | To be configured |
-| Home Assistant | `https://auth.sulibot.com/application/o/home-assistant/` | To be configured |
-| Actual Budget | `https://auth.sulibot.com/application/o/actual/` | To be configured |
+| Immich | `https://auth.sulibot.com/application/o/immich/` | ✅ `valuesFrom: immich-oidc` Secret |
+| Paperless-ngx | `https://auth.sulibot.com/application/o/paperless/` | ✅ `PAPERLESS_SOCIALACCOUNT_PROVIDERS` via `paperless-oidc` Secret |
+| Karakeep | `https://auth.sulibot.com/application/o/karakeep/` | ✅ `OAUTH_WELLKNOWN_URL` + `karakeep-oidc` Secret |
+| Actual Budget | `https://auth.sulibot.com/application/o/actual/` | ✅ `ACTUAL_OPENID_*` via `actual-oidc` Secret |
 
-### Header auth (trusted proxy header)
+### Proxy Outpost auth (Authentik proxy in front of app)
 
-These apps do not support OIDC but accept a trusted header to identify the user.
-Requires an Authentik Proxy Outpost deployed in front of the app.
+These apps sit behind `authentik-outpost` (deployed in `default` ns, port 9000).
+Authentik handles Google SSO before any request reaches the app. HTTPRoutes for
+these apps send traffic to `authentik-outpost:9000` instead of directly to the app.
 
-| App | Header | Guard setting |
-|-----|--------|--------------|
-| Firefly III | `HTTP_X_AUTHENTIK_EMAIL` | `AUTHENTICATION_GUARD=remote_user_guard` (currently commented — requires outpost first) |
-| Filebrowser | `X-Webauth-User` | `FILEBROWSER_NOAUTH=true` |
+| App | Mode | Notes |
+|-----|------|-------|
+| Firefly III | Header auth | `AUTHENTICATION_GUARD=remote_user_guard`, reads `HTTP_X_AUTHENTIK_EMAIL` |
+| Filebrowser | Header auth | `proxy.header: X-authentik-email` in config.yaml |
+| Home Assistant | Proxy gate | Auth gated by Authentik. HA shows its own login after — see note. |
+
+**Home Assistant seamless SSO** (one-time manual step in `/config/configuration.yaml`):
+```yaml
+homeassistant:
+  auth_providers:
+    - type: trusted_networks
+      trusted_networks:
+        - fd00:42::/32   # cluster pod CIDR (IPv6)
+        - 10.0.0.0/8     # cluster pod CIDR (IPv4)
+      allow_bypass_login: true
+    - type: homeassistant
+```
 
 ### CF Access header auth (external only, no Authentik needed)
 
@@ -201,8 +222,13 @@ Relevant files:
       1Password item (Kubernetes vault)
 - [x] Configure Cloudflare Access applications (immich, firefly, filebrowser, filestash, auth) — policy: allow sulibot@gmail.com via Google
 - [x] Configure Google as identity provider in Cloudflare Zero Trust
-- [ ] Configure Authentik OIDC for Paperless-ngx, Karakeep, Home Assistant, Actual Budget
-      (blueprints + app helmrelease updates)
-- [ ] Deploy Authentik Proxy Outpost for Firefly III and Filebrowser (enables header auth)
+- [x] Add `KARAKEEP_OIDC_CLIENT_ID/SECRET`, `PAPERLESS_OIDC_CLIENT_ID/SECRET`,
+      `ACTUAL_OIDC_CLIENT_ID/SECRET`, `OUTPOST_TOKEN` to the `authentik` 1Password item
+- [x] Configure Authentik OIDC for Paperless-ngx, Karakeep, Actual Budget
+      (blueprints + ExternalSecrets + app helmrelease updates)
+- [x] Deploy Authentik Proxy Outpost for Firefly III, Filebrowser, Home Assistant
+      (self-managed HelmRelease; HTTPRoutes point to `authentik-outpost:9000`)
 - [x] Switch `cert-manager.io/cluster-issuer` to `letsencrypt-production` on both gateways
 - [x] Remove `noTLSVerify: true` from cloudflare-tunnel config
+- [ ] **Manual (HA)**: Add `trusted_networks` auth_provider to `/config/configuration.yaml`
+      so Authentik proxy headers bypass the HA login screen (see Home Assistant section above)

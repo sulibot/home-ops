@@ -47,8 +47,22 @@ spec:
               CRAWLER_ENABLE_ADBLOCKER: "true"
               CRAWLER_STORE_SCREENSHOT: "true"
               DATA_DIR: /data
-              DISABLE_SIGNUPS: "true"
               DISABLE_NEW_RELEASE_CHECK: "true"
+              # OAuth via Authentik (Google SSO) — auto-creates accounts on first login
+              OAUTH_WELLKNOWN_URL: "https://auth.sulibot.com/application/o/karakeep/.well-known/openid-configuration"
+              OAUTH_PROVIDER_NAME: "Authentik (Google)"
+              OAUTH_SCOPE: "openid email profile"
+              OAUTH_ALLOW_DANGEROUS_EMAIL_ACCOUNT_LINKING: "true"
+              OAUTH_CLIENT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: karakeep-oidc
+                    key: OAUTH_CLIENT_ID
+              OAUTH_CLIENT_SECRET:
+                valueFrom:
+                  secretKeyRef:
+                    name: karakeep-oidc
+                    key: OAUTH_CLIENT_SECRET
               COREPACK_INTEGRITY_KEYS: "0"
               MEILI_ADDR: http://karakeep-meilisearch.default.svc.cluster.local:7700
               MEILI_MASTER_KEY:
