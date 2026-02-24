@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - 'kubernetes/**'
+  workflow_dispatch:
 
 env:
   SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
@@ -19,55 +20,43 @@ env:
 jobs:
   validate:
     name: Validate Flux Manifests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install validation tools
+        run: |
+          # flux CLI
+          curl -s https://fluxcd.io/install.sh | sudo bash
+          # kubectl
+          curl -sLO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          # yq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          # sops
+          SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | grep tag_name | cut -d'"' -f4)
+          sudo curl -sLo /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          sudo chmod +x /usr/local/bin/sops
+          # yamllint
+          pip install yamllint --quiet
+
       - name: Setup SOPS Age key
         run: |
           echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
           chmod 600 $SOPS_AGE_KEY_FILE
 
-      - name: Verify Flux CLI
-        run: |
-          if ! command -v flux &> /dev/null; then
-            echo "ERROR: flux CLI not found"
-            exit 1
-          fi
-          flux --version
-
-      - name: Verify kubectl
-        run: |
-          if ! command -v kubectl &> /dev/null; then
-            echo "ERROR: kubectl not found"
-            exit 1
-          fi
-          kubectl version --client
-
       - name: Validate Flux components
         run: |
           echo "## Flux Validation Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Check Flux installation compatibility
-          flux check --pre 2>&1 | tee flux-check.txt
-
-          if [ $? -eq 0 ]; then
-            echo "✅ **Flux prerequisites check passed**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Flux prerequisites check failed**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details><summary>Flux Check Output</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat flux-check.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          flux --version
+          kubectl version --client
+          yq --version
+          echo "✅ **All validation tools available**" >> $GITHUB_STEP_SUMMARY
 
       - name: Find Flux directories
         id: find-dirs

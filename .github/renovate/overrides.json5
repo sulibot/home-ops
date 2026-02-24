@@ -13,5 +13,29 @@
       matchPackageNames: ["/factory\\.talos\\.dev/"],
       overridePackageName: "ghcr.io/siderolabs/installer",
     },
+    {
+      description: "Disable Kubernetes updates (requires coordinated Talos + k8s upgrade)",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "/kube-apiserver/",
+        "/kube-controller-manager/",
+        "/kube-proxy/",
+        "/kube-scheduler/",
+        "/kubelet/",
+      ],
+      enabled: false,
+    },
+    {
+      description: "Disable Talos updates (requires factory image rebuild + machineconfig changes)",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/ghcr\\.io\\/siderolabs\\/installer/"],
+      enabled: false,
+    },
+    {
+      description: "Disable Rook-Ceph updates (storage layer; must follow upgrade guide, no version skipping)",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/rook-ceph/"],
+      enabled: false,
+    },
   ],
 }

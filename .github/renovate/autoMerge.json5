@@ -42,6 +42,15 @@
       ignoreTests: true,
     },
     {
+      description: "Auto-merge patch container updates",
+      matchDatasources: ["docker"],
+      automerge: true,
+      automergeType: "branch",
+      matchUpdateTypes: ["patch"],
+      minimumReleaseAge: "3 days",
+      ignoreTests: true,
+    },
+    {
       description: "Auto-merge GitHub Releases",
       matchDatasources: ["github-releases"],
       automerge: true,
