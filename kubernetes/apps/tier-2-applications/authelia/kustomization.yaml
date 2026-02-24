@@ -1,6 +1,0 @@
-resources:
-  - helmrelease.yaml
-configMapGenerator:
-  - name: authelia-values
-    files:
-      - values.yaml

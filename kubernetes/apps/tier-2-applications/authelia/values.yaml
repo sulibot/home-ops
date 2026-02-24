@@ -1,5 +1,0 @@
-# Authelia Helm chart values
-secret:
-  jwtSecret: "YOUR_JWT_SECRET"
-  sessionSecret: "YOUR_SESSION_SECRET"
-  storageEncryptionKey: "YOUR_STORAGE_ENCRYPTION_KEY"
