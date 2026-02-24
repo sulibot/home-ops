@@ -1,0 +1,26 @@
+[Unit]
+Description=MinIO Object Storage
+Documentation=https://min.io/docs/minio/linux/index.html
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=minio-user
+Group=minio-user
+EnvironmentFile=/etc/default/minio
+ExecStart=/usr/local/bin/minio server $MINIO_VOLUMES --console-address ":9001"
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Harden the service
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/data/minio
+
+[Install]
+WantedBy=multi-user.target

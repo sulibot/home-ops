@@ -17,12 +17,37 @@ spec:
     shared_preload_libraries:
       - "vchord.so"
 
-  # --- Backup configuration (VolumeSnapshot via scheduledbackup.yaml) ----------
+  # --- Backup configuration ---------------------------------------------------
+  # Dual strategy: VolumeSnapshot (fast local) + barman/S3 (off-cluster PITR)
   backup:
-    retentionPolicy: "14d"  # Keep 14 days of daily snapshots
+    retentionPolicy: "14d"
+
+    # Fast local recovery via Ceph RBD snapshot (survives cluster deletion because
+    # snapshotOwnerReference: backup means VolumeSnapshots are owned by Backup CRs,
+    # not the Cluster — Backup CRs are owned by ScheduledBackup, not Cluster).
     volumeSnapshot:
       className: csi-rbd-rbd-vm-snapclass
-      snapshotOwnerReference: backup  # Snapshots survive cluster deletion (owned by Backup CR, not Cluster)
+      snapshotOwnerReference: backup
+
+    # Off-cluster WAL archiving to external MinIO LXC (VLAN 200, fd00:200::52).
+    # WAL segments are archived continuously. ScheduledBackup triggers base backups.
+    # Credentials come from cnpg-barman-s3 Secret (created by ExternalSecret from 1Password).
+    barmanObjectStore:
+      endpointURL: "http://[fd00:200::52]:9000"
+      destinationPath: "s3://cnpg-backups/postgres-vectorchord"
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-barman-s3
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-barman-s3
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+        maxParallel: 4
+      data:
+        compression: gzip
+        jobs: 2
 
   # --- Normal bootstrap (fresh cluster) ----------------------------------------
   bootstrap:
@@ -33,17 +58,25 @@ spec:
         - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
         - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
 
-  # --- Disaster recovery bootstrap (uncomment to restore from snapshot) --------
-  # NOTE: snapshotOwnerReference: snapshot means VolumeSnapshots SURVIVE cluster deletion.
-  # 1. Find the snapshot to restore from (snapshots persist across cluster rebuilds):
-  #      kubectl get volumesnapshot -n default -l cnpg.io/cluster=postgres-vectorchord \
-  #        --sort-by=.metadata.creationTimestamp
-  # 2. Delete the cluster (PVC is deleted, but snapshots are preserved):
-  #      kubectl delete cluster postgres-vectorchord -n default
-  # 3. Comment out bootstrap.initdb above, uncomment bootstrap.recovery below,
-  #    set the snapshot name, commit and push.
-  # 4. Flux applies → CNPG creates a new PVC from the snapshot and recovers.
-  # 5. Re-comment bootstrap.recovery, uncomment bootstrap.initdb, push to git.
+  # --- Disaster recovery bootstrap (two paths) ---------------------------------
+  #
+  # PATH A — barman/WAL recovery (preferred; automatic, no snapshot name needed):
+  #   Requires: barmanObjectStore WAL archive in MinIO must have at least one base backup.
+  #   1. Delete the cluster:  kubectl delete cluster postgres-vectorchord -n default
+  #   2. Comment out bootstrap.initdb above, uncomment bootstrap.recovery (barman) below.
+  #   3. Commit and push — Flux applies → CNPG fetches latest base backup + replays WAL.
+  #   4. Optionally revert bootstrap to initdb (not required once PVC exists + PG running).
+  #
+  # bootstrap:
+  #   recovery:
+  #     source: postgres-vectorchord   # references externalClusters entry below
+  #     # Omit recoveryTarget to recover to the latest available point in time
+  #
+  # PATH B — VolumeSnapshot recovery (fast; requires specifying a snapshot name):
+  #   1. Find snapshot: kubectl get volumesnapshot -n default \
+  #        -l cnpg.io/cluster=postgres-vectorchord --sort-by=.metadata.creationTimestamp
+  #   2. Delete the cluster, set the snapshot name below, uncomment, push.
+  #
   # bootstrap:
   #   recovery:
   #     volumeSnapshots:
@@ -51,6 +84,21 @@ spec:
   #         name: <snapshot-name>   # from kubectl get volumesnapshot above
   #         kind: VolumeSnapshot
   #         apiGroup: snapshot.storage.k8s.io
+
+  # Always-present externalClusters for barman recovery (no effect during normal ops).
+  # Activated by switching bootstrap to recovery.source: postgres-vectorchord above.
+  externalClusters:
+    - name: postgres-vectorchord
+      barmanObjectStore:
+        endpointURL: "http://[fd00:200::52]:9000"
+        destinationPath: "s3://cnpg-backups/postgres-vectorchord"
+        s3Credentials:
+          accessKeyId:
+            name: cnpg-barman-s3
+            key: ACCESS_KEY_ID
+          secretAccessKey:
+            name: cnpg-barman-s3
+            key: ACCESS_SECRET_KEY
 
   managed:
     roles:
