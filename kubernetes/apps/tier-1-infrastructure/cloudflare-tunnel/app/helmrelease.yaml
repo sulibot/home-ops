@@ -26,9 +26,6 @@ spec:
               TUNNEL_METRICS: "[::]:8080"
               TUNNEL_POST_QUANTUM: true # disable when using http2
               TUNNEL_TRANSPORT_PROTOCOL: quic # http2
-            envFrom:
-              - secretRef:
-                  name: "{{ .Release.Name }}-secret"
             args:
               - tunnel
               - --config
@@ -74,6 +71,7 @@ spec:
       config:
         data:
           config.yaml: |-
+            credentials-file: /etc/cloudflared/credentials.json
             ingress:
               - hostname: "*.sulibot.com"
                 originRequest:
@@ -87,3 +85,9 @@ spec:
         globalMounts:
           - path: /etc/cloudflared/config.yaml
             subPath: config.yaml
+      credentials:
+        type: secret
+        name: cloudflare-tunnel-secret
+        globalMounts:
+          - path: /etc/cloudflared/credentials.json
+            subPath: credentials.json
