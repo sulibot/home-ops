@@ -55,6 +55,10 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
         identifiers:
@@ -89,6 +93,10 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
         identifiers:
@@ -122,6 +130,10 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
         identifiers:
@@ -156,6 +168,10 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
         identifiers:
@@ -190,6 +206,10 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
         identifiers:
