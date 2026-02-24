@@ -24,6 +24,7 @@ locals {
     kubectl    = "~> 1.14.0"
     time       = "~> 0.13.1"
     routeros   = "~> 1.99.0"
+    cloudflare = "~> 4.0"
   }
 
   # Application versions
