@@ -23,9 +23,9 @@ spec:
     waitForArchive: true        # Wait for WAL archiving to MinIO before marking complete
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
-# barman base backup schedule. WAL archiving to MinIO is continuous/automatic
-# (triggered per-WAL by CNPG); this only schedules full base backups that anchor
-# point-in-time recovery windows.
+# barman base backup schedule via barman-cloud plugin. WAL archiving to MinIO is
+# continuous/automatic (triggered per-WAL by CNPG); this only schedules full base
+# backups that anchor point-in-time recovery windows.
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
@@ -37,4 +37,6 @@ spec:
   backupOwnerReference: self
   cluster:
     name: postgres-vectorchord
-  method: barmanObjectStore
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

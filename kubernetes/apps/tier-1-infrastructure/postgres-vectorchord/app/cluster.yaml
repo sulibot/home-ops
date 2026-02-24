@@ -18,10 +18,9 @@ spec:
       - "vchord.so"
 
   # --- Backup configuration ---------------------------------------------------
-  # Dual strategy: VolumeSnapshot (fast local) + barman/S3 (off-cluster PITR)
+  # Dual strategy: VolumeSnapshot (fast local) + barman-cloud plugin (off-cluster PITR)
+  # retentionPolicy and barman config live in the ObjectStore CR (objectstore.yaml).
   backup:
-    retentionPolicy: "14d"
-
     # Fast local recovery via Ceph RBD snapshot (survives cluster deletion because
     # snapshotOwnerReference: backup means VolumeSnapshots are owned by Backup CRs,
     # not the Cluster — Backup CRs are owned by ScheduledBackup, not Cluster).
@@ -29,25 +28,14 @@ spec:
       className: csi-rbd-rbd-vm-snapclass
       snapshotOwnerReference: backup
 
-    # Off-cluster WAL archiving to external MinIO LXC (VLAN 200, fd00:200::52).
-    # WAL segments are archived continuously. ScheduledBackup triggers base backups.
-    # Credentials come from cnpg-barman-s3 Secret (created by ExternalSecret from 1Password).
-    barmanObjectStore:
-      endpointURL: "http://minio.sulibot.com:9000"
-      destinationPath: "s3://cnpg-backups/postgres-vectorchord"
-      s3Credentials:
-        accessKeyId:
-          name: cnpg-barman-s3
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: cnpg-barman-s3
-          key: ACCESS_SECRET_KEY
-      wal:
-        compression: gzip
-        maxParallel: 4
-      data:
-        compression: gzip
-        jobs: 2
+  # --- Barman Cloud Plugin ---------------------------------------------------
+  # Off-cluster WAL archiving via plugin (replaces deprecated barmanObjectStore).
+  # Plugin runs as a sidecar; ObjectStore CR holds credentials + MinIO config.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-vectorchord-backup
 
   # --- Normal bootstrap (fresh cluster) ----------------------------------------
   bootstrap:
@@ -89,16 +77,10 @@ spec:
   # Activated by switching bootstrap to recovery.source: postgres-vectorchord above.
   externalClusters:
     - name: postgres-vectorchord
-      barmanObjectStore:
-        endpointURL: "http://minio.sulibot.com:9000"
-        destinationPath: "s3://cnpg-backups/postgres-vectorchord"
-        s3Credentials:
-          accessKeyId:
-            name: cnpg-barman-s3
-            key: ACCESS_KEY_ID
-          secretAccessKey:
-            name: cnpg-barman-s3
-            key: ACCESS_SECRET_KEY
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: postgres-vectorchord-backup
 
   managed:
     roles:

@@ -1,3 +1,4 @@
 resources:
   - helmrelease.yaml
+  - helmrelease-plugin-barman-cloud.yaml
 
