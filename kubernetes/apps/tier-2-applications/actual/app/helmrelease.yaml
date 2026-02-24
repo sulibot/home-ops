@@ -38,7 +38,7 @@ spec:
               ACTUAL_OPENID_DISCOVERY_URL: "https://auth.sulibot.com/application/o/actual/.well-known/openid-configuration"
               ACTUAL_OPENID_SERVER_HOSTNAME: "https://actual.sulibot.com"
               ACTUAL_OPENID_AUTH_METHOD: "openid"
-              ACTUAL_USER_CREATION_MODE: "openid"
+              ACTUAL_USER_CREATION_MODE: "login"
               ACTUAL_OPENID_CLIENT_ID:
                 valueFrom:
                   secretKeyRef:
@@ -52,7 +52,12 @@ spec:
             probes:
               liveness:
                 enabled: true
+                custom: true
                 spec:
+                  httpGet:
+                    host: 127.0.0.1
+                    path: /
+                    port: *port
                   periodSeconds: 30
                   timeoutSeconds: 5
                   failureThreshold: 5
@@ -61,6 +66,7 @@ spec:
                 custom: true
                 spec:
                   httpGet:
+                    host: 127.0.0.1
                     path: /
                     port: *port
                   periodSeconds: 10
@@ -68,7 +74,12 @@ spec:
                   failureThreshold: 5
               startup:
                 enabled: true
+                custom: true
                 spec:
+                  httpGet:
+                    host: 127.0.0.1
+                    path: /
+                    port: *port
                   failureThreshold: 30
                   periodSeconds: 10
             resources:
