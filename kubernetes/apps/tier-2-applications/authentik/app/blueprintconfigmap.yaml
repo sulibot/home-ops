@@ -32,6 +32,7 @@ data:
         identifiers:
           name: default-authentication-identification
         attrs:
+          user_fields: []
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
   immich-provider.yaml: |
