@@ -22,6 +22,19 @@ spec:
       retries: 3
       strategy: rollback
     timeout: 10m
+  # Patch the CRD to add repositoryPVC field (not yet in upstream schema)
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: CustomResourceDefinition
+              name: replicationsources.volsync.backube
+            patch: |
+              - op: add
+                path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/kopia/properties/repositoryPVC
+                value:
+                  description: "RepositoryPVC is the name of an existing PVC to use as the Kopia repository storage"
+                  type: string
   values:
     fullnameOverride: volsync # Required for volsync-perfectra1n fork
     image: &image
