@@ -27,6 +27,13 @@ data:
           additional_scopes: "email profile"
           user_matching_mode: identifier
           user_path_template: "goauthentik.io/sources/%(slug)s"
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: default-authentication-identification
+        attrs:
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
   immich-provider.yaml: |
     version: 1
     metadata:
