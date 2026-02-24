@@ -24,4 +24,17 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: default
-  wait: false
+  wait: true
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgres-vectorchord
+      namespace: default
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      name: authentik
+      namespace: default
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      name: firefly
+      namespace: default
