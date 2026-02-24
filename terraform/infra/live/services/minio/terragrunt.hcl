@@ -259,7 +259,7 @@ output "minio01_info" {
 }
 
 output "minio_s3_endpoint" {
-  value = "http://[fd00:200::52]:9000"
+  value = "http://minio.sulibot.com:9000"
 }
 
 output "minio_console_url" {

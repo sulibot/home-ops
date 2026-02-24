@@ -323,6 +323,9 @@ inputs = {
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
     { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m" },
+    # MinIO S3 object storage LXC (VLAN 200, pve02)
+    { name = "minio.sulibot.com", type = "AAAA", address = "fd00:200::52", ttl = "5m" },
+    { name = "minio.sulibot.com", type = "A",    address = "10.200.0.52",  ttl = "5m" },
     # IPv4 A records — currently disabled on device, kept here for completeness
     { name = "pve01.sulibot.com", type = "A", address = "10.10.0.1", ttl = "5m", disabled = true },
     { name = "pve02.sulibot.com", type = "A", address = "10.10.0.2", ttl = "5m", disabled = true },

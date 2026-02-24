@@ -33,7 +33,7 @@ spec:
     # WAL segments are archived continuously. ScheduledBackup triggers base backups.
     # Credentials come from cnpg-barman-s3 Secret (created by ExternalSecret from 1Password).
     barmanObjectStore:
-      endpointURL: "http://[fd00:200::52]:9000"
+      endpointURL: "http://minio.sulibot.com:9000"
       destinationPath: "s3://cnpg-backups/postgres-vectorchord"
       s3Credentials:
         accessKeyId:
@@ -90,7 +90,7 @@ spec:
   externalClusters:
     - name: postgres-vectorchord
       barmanObjectStore:
-        endpointURL: "http://[fd00:200::52]:9000"
+        endpointURL: "http://minio.sulibot.com:9000"
         destinationPath: "s3://cnpg-backups/postgres-vectorchord"
         s3Credentials:
           accessKeyId:
