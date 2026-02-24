@@ -22,7 +22,7 @@ spec:
     retentionPolicy: "14d"  # Keep 14 days of daily snapshots
     volumeSnapshot:
       className: csi-rbd-rbd-vm-snapclass
-      snapshotOwnerReference: snapshot  # Snapshots survive cluster deletion (NOT owned by cluster)
+      snapshotOwnerReference: backup  # Snapshots survive cluster deletion (owned by Backup CR, not Cluster)
 
   # --- Normal bootstrap (fresh cluster) ----------------------------------------
   bootstrap:
