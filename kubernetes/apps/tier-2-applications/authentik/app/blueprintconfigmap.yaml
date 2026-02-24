@@ -54,7 +54,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
-          issuer_mode: global
+          issuer_mode: per_provider
       - model: authentik_core.application
         state: present
         identifiers:
@@ -88,7 +88,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
-          issuer_mode: global
+          issuer_mode: per_provider
       - model: authentik_core.application
         state: present
         identifiers:
@@ -121,7 +121,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
-          issuer_mode: global
+          issuer_mode: per_provider
       - model: authentik_core.application
         state: present
         identifiers:
@@ -155,7 +155,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
-          issuer_mode: global
+          issuer_mode: per_provider
       - model: authentik_core.application
         state: present
         identifiers:
@@ -189,7 +189,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
-          issuer_mode: global
+          issuer_mode: per_provider
       - model: authentik_core.application
         state: present
         identifiers:
