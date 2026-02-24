@@ -67,27 +67,12 @@ spec:
       app:
         endpoints:
           - port: http
-    configMaps:
-      config:
-        data:
-          config.yaml: |-
-            credentials-file: /etc/cloudflared/credentials.json
-            ingress:
-              - hostname: "*.sulibot.com"
-                originRequest:
-                  http2Origin: true
-                service: https://cilium-gateway-gateway-tunnel.network.svc.cluster.local:443
-              - service: http_status:404
     persistence:
-      config-file:
-        type: configMap
-        identifier: config
-        globalMounts:
-          - path: /etc/cloudflared/config.yaml
-            subPath: config.yaml
-      credentials:
+      tunnel-config:
         type: secret
         name: cloudflare-tunnel-secret
         globalMounts:
+          - path: /etc/cloudflared/config.yaml
+            subPath: config.yaml
           - path: /etc/cloudflared/credentials.json
             subPath: credentials.json
