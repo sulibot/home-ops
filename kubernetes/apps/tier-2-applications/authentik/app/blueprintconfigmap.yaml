@@ -20,13 +20,56 @@ data:
           slug: google
           enabled: true
           authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
-          enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+          enrollment_flow: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
           provider_type: google
           consumer_key: !Env GOOGLE_CLIENT_ID
           consumer_secret: !Env GOOGLE_CLIENT_SECRET
           additional_scopes: "email profile"
           user_matching_mode: identifier
           user_path_template: "goauthentik.io/sources/%(slug)s"
+      # Silent enrollment flow: write user + login, no username prompt
+      - model: authentik_flows.flow
+        state: present
+        identifiers:
+          slug: source-enrollment-silent
+        attrs:
+          name: Source Enrollment (Silent)
+          slug: source-enrollment-silent
+          title: "Setting up your account..."
+          designation: enrollment
+      - model: authentik_stages_user_write.userwritestage
+        state: present
+        identifiers:
+          name: source-enrollment-silent-write
+        attrs:
+          name: source-enrollment-silent-write
+          create_users_as_inactive: false
+      - model: authentik_stages_user_login.userloginstage
+        state: present
+        identifiers:
+          name: source-enrollment-silent-login
+        attrs:
+          name: source-enrollment-silent-login
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+          stage: !Find [authentik_stages_user_write.userwritestage, [name, source-enrollment-silent-write]]
+          order: 10
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+          stage: !Find [authentik_stages_user_write.userwritestage, [name, source-enrollment-silent-write]]
+          order: 10
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, source-enrollment-silent-login]]
+          order: 20
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, source-enrollment-silent-login]]
+          order: 20
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
