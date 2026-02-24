@@ -16,11 +16,8 @@ TimeoutStartSec=120
 LimitNOFILE=65536
 LimitNPROC=4096
 
-# Harden the service
+# ProtectSystem/PrivateTmp require Linux namespaces — not available inside LXC
 NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ReadWritePaths=/data/minio
 
 [Install]
 WantedBy=multi-user.target
