@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: ghcr.io/goauthentik/proxy
-              tag: 2025.12.4
+              tag: 2026.2.0
             env:
               # Use internal cluster service for outpost→Authentik communication
               AUTHENTIK_HOST: "http://authentik-server.default.svc.cluster.local"
