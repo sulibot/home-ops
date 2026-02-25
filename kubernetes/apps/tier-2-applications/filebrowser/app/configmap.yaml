@@ -5,6 +5,10 @@ metadata:
   name: filebrowser-config
 data:
   config.yaml: |
+    server:
+      sources:
+        - path: /data
+          name: Data
     auth:
       methods:
         password:
