@@ -29,9 +29,6 @@ spec:
             image:
               repository: ghcr.io/home-operations/nzbget
               tag: 26.0.0@sha256:a60b71e46cb01b41874c0b8028f661e9e3a958b20402a7403517ca6f9d95976f
-            envFrom:
-              - secretRef:
-                  name: nzbget-secret
             env:
               NZBGET__CONTROLIP: "::"
             command:
@@ -41,19 +38,14 @@ spec:
                 set -x
                 CONFIG_FILE="/config/nzbget.conf"
                 echo "=== Init container starting ==="
-                echo "ControlIP env: '$${NZBGET__CONTROLIP}'"
-                echo "ControlUsername env: '$${NZBGET__CONTROLUSERNAME}'"
 
                 if [ -f "$CONFIG_FILE" ]; then
                   echo "Config file exists, size: $(wc -l < $CONFIG_FILE) lines"
-                  echo "Before update:"
-                  grep "^ControlIP=" "$CONFIG_FILE" || echo "ControlIP not found"
-                  grep "^ControlUsername=" "$CONFIG_FILE" || echo "ControlUsername not found"
 
                   # Update config - use $$ to escape for Helm
                   sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlUsername=.*@ControlUsername=@" "$CONFIG_FILE"
+                  sed -i "s@^ControlPassword=.*@ControlPassword=@" "$CONFIG_FILE"
                   sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
 
                   echo "After update:"
@@ -72,9 +64,6 @@ spec:
               NZBGET__PORT: &port 80
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
-            envFrom:
-              - secretRef:
-                  name: nzbget-secret
             probes:
               liveness:
                 enabled: true
@@ -89,9 +78,6 @@ spec:
                   httpGet:
                     path: /jsonrpc/status
                     port: 80
-                    httpHeaders:
-                      - name: Authorization
-                        value: Basic bnpiZ2V0OnRlZ2J6bjY3ODk=
                   periodSeconds: 10
                   timeoutSeconds: 5
                   failureThreshold: 5
@@ -102,9 +88,6 @@ spec:
                   httpGet:
                     path: /
                     port: 80
-                    httpHeaders:
-                      - name: Authorization
-                        value: Basic bnpiZ2V0OnRlZ2J6bjY3ODk=
                   failureThreshold: 30
                   periodSeconds: 10
             securityContext:
