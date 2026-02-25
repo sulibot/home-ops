@@ -11,23 +11,7 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
-      - model: authentik_sources_oauth.oauthsource
-        state: present
-        identifiers:
-          slug: google
-        attrs:
-          name: Google
-          slug: google
-          enabled: true
-          authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
-          enrollment_flow: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
-          provider_type: google
-          consumer_key: !Env GOOGLE_CLIENT_ID
-          consumer_secret: !Env GOOGLE_CLIENT_SECRET
-          additional_scopes: "email profile"
-          user_matching_mode: identifier
-          user_path_template: "goauthentik.io/sources/%(slug)s"
-      # Silent enrollment flow: write user + login, no username prompt
+      # Silent enrollment flow must be created BEFORE the source references it
       - model: authentik_flows.flow
         state: present
         identifiers:
@@ -70,6 +54,23 @@ data:
           target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, source-enrollment-silent-login]]
           order: 20
+      # Source defined after flow so !Find [source-enrollment-silent] resolves correctly
+      - model: authentik_sources_oauth.oauthsource
+        state: present
+        identifiers:
+          slug: google
+        attrs:
+          name: Google
+          slug: google
+          enabled: true
+          authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+          enrollment_flow: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+          provider_type: google
+          consumer_key: !Env GOOGLE_CLIENT_ID
+          consumer_secret: !Env GOOGLE_CLIENT_SECRET
+          additional_scopes: "email profile"
+          user_matching_mode: identifier
+          user_path_template: "goauthentik.io/sources/%(slug)s"
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
