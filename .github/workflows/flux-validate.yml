@@ -83,6 +83,13 @@ jobs:
               continue
             fi
 
+            # Skip flux-system bootstrap files (gotk-components, CRD installs) — these require
+            # Flux CRDs to be present and cannot be validated without a live cluster
+            if [[ "$file" == */flux-system/gotk-* ]] || [[ "$file" == */flux-system/canary.yaml ]]; then
+              echo "⏭️ Skipping flux-system bootstrap file: $file"
+              continue
+            fi
+
             # Validate with kubectl dry-run
             if kubectl apply --dry-run=client -f "$file" &>/dev/null; then
               echo "✅ Valid: $file"
