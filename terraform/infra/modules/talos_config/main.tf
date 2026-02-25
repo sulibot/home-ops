@@ -582,8 +582,9 @@ locals {
             } : {}
           )
           network = {
-            # Per-node: unique hostname for each node
-            hostname = node.hostname
+            # hostname is set via HostnameConfig document below (not here)
+            # machine.network.hostname conflicts with HostnameConfig auto-generated
+            # by Talos provider v0.10.x — removed to fix "static hostname already set"
             interfaces = concat([
               {
                 interface = var.bgp_interface
@@ -687,10 +688,18 @@ locals {
   machine_configs = {
     for node_name, node in local.all_nodes : node_name => {
       machine_type = node.machine_type
-      machine_configuration = tostring(
-        node.machine_type == "controlplane" ?
-        data.talos_machine_configuration.controlplane.machine_configuration :
-        data.talos_machine_configuration.worker.machine_configuration
+      # Strip the auto-generated HostnameConfig{auto:stable} that Talos provider v0.10.x
+      # injects into the base machine_configuration. The per-node config_patch below adds
+      # a HostnameConfig{hostname:...} instead; keeping both causes Talos to merge them,
+      # resulting in {auto:stable, hostname:...} which fails validation.
+      machine_configuration = replace(
+        tostring(
+          node.machine_type == "controlplane" ?
+          data.talos_machine_configuration.controlplane.machine_configuration :
+          data.talos_machine_configuration.worker.machine_configuration
+        ),
+        "---\napiVersion: v1alpha1\nkind: HostnameConfig\nauto: stable\n",
+        ""
       )
 
       # New fields for cleaner separation
@@ -701,7 +710,12 @@ locals {
       config_patch = <<-EOT
 ${yamlencode(local.node_config_patches[node_name])}
 ---
-${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
+# HostnameConfig: per-node static hostname (Talos provider v0.10.x uses separate doc)
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: ${node.hostname}
+---
+${"# YAML Document 3: ExtensionServiceConfig for FRR BGP daemon"}
 ${local.extension_service_configs[node_name]}
 EOT
 }
