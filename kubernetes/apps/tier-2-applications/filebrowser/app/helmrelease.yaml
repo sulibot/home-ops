@@ -40,8 +40,6 @@ spec:
                 value: "::"  # listen on IPv4/IPv6
               - name: FILEBROWSER_ROOT
                 value: /data
-              - name: FILEBROWSER_DATABASE
-                value: /config/database.db
               - name: FILEBROWSER_CONFIG
                 value: "/config/config.yaml"
             envFrom:

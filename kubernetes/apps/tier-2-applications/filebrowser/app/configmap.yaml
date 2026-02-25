@@ -6,6 +6,7 @@ metadata:
 data:
   config.yaml: |
     server:
+      database: /config/database.db
       sources:
         - path: /data
           name: Data
@@ -16,3 +17,4 @@ data:
         proxy:
           enabled: true
           header: "X-authentik-email"
+          createUser: true
