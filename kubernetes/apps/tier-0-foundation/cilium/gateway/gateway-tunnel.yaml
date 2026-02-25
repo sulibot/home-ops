@@ -42,19 +42,3 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
-    # HTTP listeners on port 80 — used by cloudflared (cluster-internal origin connection)
-    # Avoids Cilium BPF TLS SNI reassembly issue with large Go/curl TLS ClientHellos
-    - name: sulibot-http
-      hostname: sulibot.com
-      port: 80
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: sulibot-wildcard-http
-      hostname: "*.sulibot.com"
-      port: 80
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: All
