@@ -137,15 +137,17 @@ resource "null_resource" "check_tier_1" {
 }
 
 ########## STEP 2.5: CNPG AUTOMATIC RESTORE ##########
-# Checks for an existing VolumeSnapshot from a previous ScheduledBackup.
-# If one is found the cluster is a rebuild (disaster recovery), not a fresh install:
+# Checks for available backups (barman-cloud WAL or VolumeSnapshot).
+# If found, the cluster is a rebuild (disaster recovery), not a fresh install:
 #   1. Suspend the postgres-vectorchord Flux kustomization so Flux doesn't fight us
 #   2. Delete the CNPG Cluster (takes its PVC with it — data dir is empty anyway)
-#   3. Apply a recovery cluster spec pointing at the latest snapshot
-#   4. Wait for the cluster to reach Running state
-#   5. Resume the kustomization — CNPG ignores spec.bootstrap changes once
-#      the data directory already exists, so Flux reverting to initdb is harmless.
-# On a fresh install there are no snapshots, so this is a no-op.
+#   3. Apply a recovery cluster spec (barman-cloud WAL preferred, snapshot fallback)
+#   4. Wait for the cluster to reach healthy state
+#   5. Normalize bootstrap: patch server from recovery → initdb BEFORE resuming Flux
+#      (required: Flux dry-run 3-way merge of server:recovery + git:initdb produces both
+#       methods simultaneously, which the CNPG webhook rejects as invalid)
+#   6. Resume the kustomization — server bootstrap now matches Git, dry-run passes cleanly
+# On a fresh install there are no backups, so this is a no-op.
 
 resource "null_resource" "cnpg_restore" {
   triggers = {
@@ -161,20 +163,24 @@ resource "null_resource" "cnpg_restore" {
       echo "🐘 CNPG AUTOMATIC RESTORE CHECK"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      # Wait for CNPG operator to be running (CRDs registered).
+      # Wait for CNPG operator to be running (CRDs registered + webhook active).
       # The tier-1 kustomization becomes Ready when resources are *applied*, but the
       # CNPG Helm chart may still be installing (operator pod starting, CRDs registering).
-      # Use a 15-minute timeout to cover slow node scheduling and image pulls.
-      echo "Waiting for CNPG operator (up to 15m)..."
-      for i in $(seq 1 90); do
-        if $KC get crd scheduledbackups.postgresql.cnpg.io &>/dev/null; then
-          echo "  ✅ CNPG operator ready"
-          break
-        fi
-        echo "  ⏳ Attempt $i/90 — waiting for CNPG CRDs..."
-        sleep 10
-        if [ $i -eq 90 ]; then echo "  ⚠️  CNPG not ready after 15m — skipping restore check"; exit 0; fi
-      done
+      # We must wait for the operator pod to be Ready — not just the CRD to exist — because
+      # the CNPG validating webhook (which rejects invalid Cluster specs) runs in the operator.
+      echo "Waiting for CNPG CRDs (up to 10m)..."
+      if ! $KC wait --for=condition=Available crd/clusters.postgresql.cnpg.io \
+          --timeout=600s 2>/dev/null; then
+        echo "  ⚠️  CNPG CRDs not available after 10m — skipping restore check"
+        exit 0
+      fi
+      echo "Waiting for CNPG operator pod (up to 5m)..."
+      if ! $KC wait pods -l app.kubernetes.io/name=cloudnative-pg \
+          -n cnpg-system --for=condition=Ready --timeout=300s 2>/dev/null; then
+        echo "  ⚠️  CNPG operator pod not ready after 5m — skipping restore check"
+        exit 0
+      fi
+      echo "  ✅ CNPG operator ready"
 
       # Check if the cluster is already running with data — if so, no restore needed.
       CLUSTER_PHASE=$($KC get cluster postgres-vectorchord -n default \
@@ -228,17 +234,17 @@ resource "null_resource" "cnpg_restore" {
       echo ""
 
       # 1. Suspend Flux kustomization to prevent it reverting our recovery spec
-      echo "  1/5 Suspending postgres-vectorchord Flux kustomization..."
+      echo "  1/6 Suspending postgres-vectorchord Flux kustomization..."
       $KC patch kustomization postgres-vectorchord -n flux-system \
         --type=merge -p '{"spec":{"suspend":true}}'
 
       # 2. Delete the CNPG Cluster (and its empty PVC)
-      echo "  2/5 Deleting existing CNPG Cluster (if present)..."
+      echo "  2/6 Deleting existing CNPG Cluster (if present)..."
       $KC delete cluster postgres-vectorchord -n default --ignore-not-found --wait=true
       $KC delete pvc postgres-vectorchord-1 -n default --ignore-not-found --wait=true
 
       # 3. Apply recovery cluster spec
-      echo "  3/5 Applying recovery cluster spec (method: $RESTORE_METHOD)"
+      echo "  3/6 Applying recovery cluster spec (method: $RESTORE_METHOD)"
 
       if [ "$RESTORE_METHOD" = "barman" ]; then
         # barman-cloud WAL recovery — requires cnpg-plugin-barman-cloud to be installed.
@@ -316,7 +322,7 @@ YAML
       fi
 
       # 4. Wait for cluster to reach healthy state (up to 15 minutes)
-      echo "  4/5 Waiting for cluster recovery (up to 15m)..."
+      echo "  4/6 Waiting for cluster recovery (up to 15m)..."
       for i in $(seq 1 90); do
         PHASE=$($KC get cluster postgres-vectorchord -n default \
           -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
@@ -332,8 +338,33 @@ YAML
         fi
       done
 
-      # 5. Resume Flux kustomization — CNPG ignores spec.bootstrap once data dir exists
-      echo "  5/5 Resuming postgres-vectorchord Flux kustomization..."
+      # 5. Normalize bootstrap spec: replace recovery → initdb BEFORE resuming Flux.
+      #
+      # WHY THIS IS REQUIRED:
+      # Flux performs a dry-run merge before applying. kubectl's 3-way merge combines:
+      #   - server state: bootstrap.recovery (what we just applied)
+      #   - git state:    bootstrap.initdb   (what's in cluster.yaml)
+      # The merged result contains BOTH methods simultaneously, which the CNPG validating
+      # webhook rejects: "Only one bootstrap method can be specified at a time".
+      # Normalizing the server state to initdb first makes it match Git, so the dry-run
+      # produces no diff and Flux reconciles cleanly.
+      echo "  5/6 Normalizing bootstrap spec (recovery → initdb) to prevent Flux merge conflict..."
+      $KC patch cluster postgres-vectorchord -n default --type=json -p '[
+        {"op":"replace","path":"/spec/bootstrap","value":{
+          "initdb":{
+            "database":"immich",
+            "owner":"immich",
+            "postInitApplicationSQL":[
+              "CREATE EXTENSION IF NOT EXISTS vchord CASCADE;",
+              "CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;"
+            ]
+          }
+        }}
+      ]' && echo "  ✅ Bootstrap normalized to initdb" \
+        || echo "  ⚠️  Bootstrap normalization failed (non-fatal — Flux may need manual reconcile)"
+
+      # 6. Resume Flux kustomization — server bootstrap now matches Git, dry-run will pass
+      echo "  6/6 Resuming postgres-vectorchord Flux kustomization..."
       $KC patch kustomization postgres-vectorchord -n flux-system \
         --type=merge -p '{"spec":{"suspend":false}}'
 
