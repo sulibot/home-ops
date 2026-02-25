@@ -63,7 +63,7 @@ data:
         attrs:
           name: source-enrollment-set-username
           expression: |
-            from authentik.flows.planner import PLAN_CONTEXT_PROMPT
+            from authentik.stages.prompt.stage import PLAN_CONTEXT_PROMPT
             prompt_data = request.context.get(PLAN_CONTEXT_PROMPT, {})
             if not prompt_data.get("username"):
                 prompt_data["username"] = prompt_data.get("email", "")
