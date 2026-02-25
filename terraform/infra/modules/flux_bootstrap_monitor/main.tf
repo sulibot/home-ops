@@ -158,8 +158,8 @@ resource "null_resource" "cnpg_restore" {
   # The script can also be run manually without Terraform:
   #   ./scripts/cnpg-restore.sh --kubeconfig <path>
   provisioner "local-exec" {
-    interpreter = ["bash"]
-    command     = "${path.module}/../../../../scripts/cnpg-restore.sh"
+    interpreter = ["bash", "-c"]
+    command     = "\"$(git -C \"${path.module}\" rev-parse --show-toplevel)\"/scripts/cnpg-restore.sh"
     environment = {
       KUBECONFIG = var.kubeconfig_path
     }
