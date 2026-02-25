@@ -30,8 +30,10 @@ spec:
               repository: ghcr.io/goauthentik/proxy
               tag: 2026.2.0
             env:
-              # Use internal cluster service for outpost→Authentik communication
+              # Internal cluster service for outpost→Authentik API communication
               AUTHENTIK_HOST: "http://authentik-server.default.svc.cluster.local"
+              # External URL used in browser redirects (must be reachable by users)
+              AUTHENTIK_HOST_BROWSER: "https://auth.sulibot.com"
               AUTHENTIK_INSECURE: "false"
             envFrom:
               - secretRef:
