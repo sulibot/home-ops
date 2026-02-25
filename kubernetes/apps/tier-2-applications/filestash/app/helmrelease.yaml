@@ -72,7 +72,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:
@@ -83,7 +84,7 @@ spec:
         rules:
           - backendRefs:
               - identifier: app
-                port: *port
+                port: 80
     persistence:
       state:
         existingClaim: "{{ .Release.Name }}-config"
