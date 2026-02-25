@@ -161,39 +161,27 @@ resource "null_resource" "cnpg_restore" {
       echo "🐘 CNPG AUTOMATIC RESTORE CHECK"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      # Wait for CNPG operator to be running (CRDs registered)
-      echo "Waiting for CNPG operator..."
-      for i in $(seq 1 30); do
+      # Wait for CNPG operator to be running (CRDs registered).
+      # The tier-1 kustomization becomes Ready when resources are *applied*, but the
+      # CNPG Helm chart may still be installing (operator pod starting, CRDs registering).
+      # Use a 15-minute timeout to cover slow node scheduling and image pulls.
+      echo "Waiting for CNPG operator (up to 15m)..."
+      for i in $(seq 1 90); do
         if $KC get crd scheduledbackups.postgresql.cnpg.io &>/dev/null; then
           echo "  ✅ CNPG operator ready"
           break
         fi
-        echo "  ⏳ Attempt $i/30 — waiting for CNPG CRDs..."
+        echo "  ⏳ Attempt $i/90 — waiting for CNPG CRDs..."
         sleep 10
-        if [ $i -eq 30 ]; then echo "  ⚠️  CNPG not ready after 5m — skipping restore check"; exit 0; fi
+        if [ $i -eq 90 ]; then echo "  ⚠️  CNPG not ready after 15m — skipping restore check"; exit 0; fi
       done
 
-      # Find the most recent VolumeSnapshot from a previous ScheduledBackup
-      SNAPSHOT=$($KC get volumesnapshot -n default \
-        -l cnpg.io/cluster=postgres-vectorchord \
-        --sort-by=.metadata.creationTimestamp \
-        -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
-
-      if [ -z "$SNAPSHOT" ]; then
-        echo "  ℹ️  No CNPG snapshots found — fresh install, skipping restore"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        exit 0
-      fi
-
-      echo "  📸 Found snapshot: $SNAPSHOT"
-
-      # Check if the cluster is already running with data (not a fresh empty DB)
+      # Check if the cluster is already running with data — if so, no restore needed.
       CLUSTER_PHASE=$($KC get cluster postgres-vectorchord -n default \
         -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
 
       if [ "$CLUSTER_PHASE" = "Cluster in healthy state" ]; then
-        echo "  ✅ Cluster already healthy — checking if data exists..."
-        # If cluster is healthy and has been running, no restore needed
+        echo "  ✅ Cluster already healthy — checking if data exists in 'immich' db..."
         ROW_COUNT=$($KC exec -n default postgres-vectorchord-1 -- \
           psql -U postgres -d immich -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname='public';" \
           -t 2>/dev/null | tr -d ' ' || echo "0")
@@ -202,11 +190,41 @@ resource "null_resource" "cnpg_restore" {
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           exit 0
         fi
+        echo "  ℹ️  Cluster healthy but database empty — checking for backups to restore"
+      fi
+
+      # ── Determine restore source: prefer barman-cloud WAL, fall back to VolumeSnapshot ──
+      RESTORE_METHOD=""
+
+      # Check barman-cloud ObjectStore for available base backups
+      BARMAN_RECOVERY_POINT=$($KC get objectstore postgres-vectorchord-backup -n default \
+        -o jsonpath='{.status.serverRecoveryWindow.postgres-vectorchord.firstRecoverabilityPoint}' \
+        2>/dev/null || true)
+
+      if [ -n "$BARMAN_RECOVERY_POINT" ]; then
+        RESTORE_METHOD="barman"
+        echo "  📦 barman-cloud backup available (since: $BARMAN_RECOVERY_POINT)"
+      fi
+
+      # Check for VolumeSnapshot from a previous ScheduledBackup (fallback)
+      SNAPSHOT=$($KC get volumesnapshot -n default \
+        -l cnpg.io/cluster=postgres-vectorchord \
+        --sort-by=.metadata.creationTimestamp \
+        -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
+
+      if [ -z "$RESTORE_METHOD" ] && [ -n "$SNAPSHOT" ]; then
+        RESTORE_METHOD="snapshot"
+        echo "  📸 VolumeSnapshot available: $SNAPSHOT"
+      fi
+
+      if [ -z "$RESTORE_METHOD" ]; then
+        echo "  ℹ️  No backups found — fresh install, skipping restore"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        exit 0
       fi
 
       echo ""
-      echo "  🔄 Snapshot found + cluster is new — performing automatic restore"
-      echo "     Snapshot: $SNAPSHOT"
+      echo "  🔄 Performing automatic restore via: $RESTORE_METHOD"
       echo ""
 
       # 1. Suspend Flux kustomization to prevent it reverting our recovery spec
@@ -215,21 +233,30 @@ resource "null_resource" "cnpg_restore" {
         --type=merge -p '{"spec":{"suspend":true}}'
 
       # 2. Delete the CNPG Cluster (and its empty PVC)
-      echo "  2/5 Deleting existing CNPG Cluster..."
+      echo "  2/5 Deleting existing CNPG Cluster (if present)..."
       $KC delete cluster postgres-vectorchord -n default --ignore-not-found --wait=true
       $KC delete pvc postgres-vectorchord-1 -n default --ignore-not-found --wait=true
 
-      # 3. Apply recovery cluster spec pointing at the snapshot
-      echo "  3/5 Applying recovery cluster from snapshot: $SNAPSHOT"
-      $KC apply -f - <<YAML
+      # 3. Apply recovery cluster spec
+      echo "  3/5 Applying recovery cluster spec (method: $RESTORE_METHOD)"
+
+      if [ "$RESTORE_METHOD" = "barman" ]; then
+        # barman-cloud WAL recovery — requires cnpg-plugin-barman-cloud to be installed.
+        # The annotation skips the "Expected empty archive" check (archive has prior WALs).
+        # IMPORTANT: include database/owner so the app secret points to the right database.
+        # Do NOT include plugins.isWALArchiver here — Flux will re-add it after recovery;
+        # CNPG ignores bootstrap once PGDATA exists, so WAL archiving resumes automatically.
+        $KC apply -f - <<YAML
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: postgres-vectorchord
   namespace: default
+  annotations:
+    cnpg.io/skipEmptyWalArchiveCheck: "enabled"
 spec:
   instances: 1
-  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-1.1.0
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
   startDelay: 30
   stopDelay: 30
   switchoverDelay: 60
@@ -238,29 +265,69 @@ spec:
       - "vchord.so"
   bootstrap:
     recovery:
+      source: postgres-vectorchord
+      database: immich
+      owner: immich
+  externalClusters:
+    - name: postgres-vectorchord
+      plugin:
+        enabled: true
+        isWALArchiver: false
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: postgres-vectorchord-backup
+  storage:
+    resizeInUseVolumes: true
+    size: 20Gi
+    storageClass: csi-rbd-rbd-vm-sc-retain
+YAML
+
+      else
+        # VolumeSnapshot recovery (fast local)
+        $KC apply -f - <<YAML
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-vectorchord
+  namespace: default
+spec:
+  instances: 1
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
+  startDelay: 30
+  stopDelay: 30
+  switchoverDelay: 60
+  postgresql:
+    shared_preload_libraries:
+      - "vchord.so"
+  bootstrap:
+    recovery:
+      database: immich
+      owner: immich
       volumeSnapshots:
         storage:
           name: $SNAPSHOT
           kind: VolumeSnapshot
           apiGroup: snapshot.storage.k8s.io
   storage:
+    resizeInUseVolumes: true
     size: 20Gi
     storageClass: csi-rbd-rbd-vm-sc-retain
 YAML
+      fi
 
-      # 4. Wait for cluster to reach healthy state (up to 10 minutes)
-      echo "  4/5 Waiting for cluster recovery (up to 10m)..."
-      for i in $(seq 1 60); do
+      # 4. Wait for cluster to reach healthy state (up to 15 minutes)
+      echo "  4/5 Waiting for cluster recovery (up to 15m)..."
+      for i in $(seq 1 90); do
         PHASE=$($KC get cluster postgres-vectorchord -n default \
           -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-        echo "      [$i/60] Phase: $${PHASE:-Pending}"
+        echo "      [$i/90] Phase: $${PHASE:-Pending}"
         if echo "$PHASE" | grep -qi "healthy"; then
           echo "  ✅ Cluster recovered successfully"
           break
         fi
         sleep 10
-        if [ $i -eq 60 ]; then
-          echo "  ⚠️  Recovery timed out after 10m — check cluster manually"
+        if [ $i -eq 90 ]; then
+          echo "  ⚠️  Recovery timed out after 15m — check cluster manually"
           # Still resume Flux so the system isn't left in a broken state
         fi
       done

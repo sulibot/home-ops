@@ -4,6 +4,11 @@ kind: Cluster
 metadata:
   name: postgres-vectorchord
   namespace: default
+  annotations:
+    # Skip the "Expected empty archive" check when restoring to an existing barman-cloud WAL path.
+    # Without this, the barman-cloud plugin refuses to start on a recovery cluster because the
+    # archive already contains the previous cluster's WALs.
+    cnpg.io/skipEmptyWalArchiveCheck: "enabled"
 spec:
   instances: 1
   imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
@@ -64,6 +69,8 @@ spec:
   # bootstrap:
   #   recovery:
   #     source: postgres-vectorchord   # references externalClusters[].plugin below
+  #     database: immich               # REQUIRED: keeps postgres-vectorchord-app secret pointing to immich db
+  #     owner: immich                  # REQUIRED: otherwise secret defaults to user/db "app"
   #     # Omit recoveryTarget to recover to the latest available point in time.
   #     # To recover to a specific time: recoveryTarget: { targetTime: "2026-02-24 03:00:00" }
   #
