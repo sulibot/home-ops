@@ -54,6 +54,34 @@ data:
           target: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, source-enrollment-silent-login]]
           order: 20
+      # Expression policy to set username from email before UserWriteStage runs
+      # (Google OAuth returns email+name but not username; UserWriteStage requires username)
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        identifiers:
+          name: source-enrollment-set-username
+        attrs:
+          name: source-enrollment-set-username
+          expression: |
+            from authentik.flows.planner import PLAN_CONTEXT_PROMPT
+            prompt_data = request.context.get(PLAN_CONTEXT_PROMPT, {})
+            if not prompt_data.get("username"):
+                prompt_data["username"] = prompt_data.get("email", "")
+                request.context[PLAN_CONTEXT_PROMPT] = prompt_data
+            return True
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, source-enrollment-set-username]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, source-enrollment-silent], [order, 10]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, source-enrollment-set-username]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, source-enrollment-silent], [order, 10]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
       # Source defined after flow so !Find [source-enrollment-silent] resolves correctly
       - model: authentik_sources_oauth.oauthsource
         state: present
