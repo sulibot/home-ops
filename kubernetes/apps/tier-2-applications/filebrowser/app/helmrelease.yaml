@@ -74,8 +74,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - name: authentik-outpost
-                port: 9000
+              - name: filebrowser
+                port: 80
 
     persistence:
       # PVC that will hold database.db (and optionally config.yaml later)
@@ -107,8 +107,8 @@ spec:
           - path: /tmp
 
       config-yaml:
-        type: configMap
-        name: filebrowser-config
+        type: secret
+        name: filebrowser-oidc-config
         defaultMode: 0644
         globalMounts:
           - path: /config/config.yaml
