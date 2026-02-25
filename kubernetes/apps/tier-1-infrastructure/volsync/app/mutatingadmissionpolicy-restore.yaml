@@ -1,7 +1,8 @@
 ---
-# MutatingAdmissionPolicy to mount repository PVC for RESTORE jobs only
-# Only matches volsync-dst-* (restores), NOT volsync-src-* (backups)
-# Backups already have kopia PVC mounted as "repository-pvc" by volsync natively
+# MutatingAdmissionPolicy to mount repository PVC for both backup and restore jobs
+# Matches volsync-dst-* (restores) AND volsync-src-* (backups)
+# repositoryPVC field in perfectra1n/volsync fork does not actually mount the PVC,
+# so this policy handles it for both job types.
 # Using failurePolicy: Ignore to prevent hangs if the policy fails
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingAdmissionPolicyBinding
@@ -27,10 +28,10 @@ spec:
         resources:
           - jobs
   matchConditions:
-    # Match ONLY restore jobs (volsync-dst-*), NOT backup jobs (volsync-src-*)
-    - name: is-restore-job
+    # Match both backup (volsync-src-*) and restore (volsync-dst-*) jobs
+    - name: is-volsync-mover-job
       expression: >-
-        object.metadata.name.startsWith("volsync-dst-")
+        object.metadata.name.startsWith("volsync-dst-") || object.metadata.name.startsWith("volsync-src-")
     - name: has-volsync-created-by-labels
       expression: >-
         object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
