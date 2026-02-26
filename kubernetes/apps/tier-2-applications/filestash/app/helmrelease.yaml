@@ -27,6 +27,34 @@ spec:
       filestash:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          seed-config:
+            image:
+              repository: docker.io/library/busybox
+              tag: "1.36.1"
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+
+                BOOTSTRAP_CONFIG="/bootstrap-config/config.json"
+                LIVE_DIR="/app/data/state/config"
+                LIVE_CONFIG="$LIVE_DIR/config.json"
+                TEMPLATE_DIR="/app/data/state/config-templates"
+                TEMPLATE_CONFIG="$TEMPLATE_DIR/config.json.gitops"
+
+                mkdir -p "$LIVE_DIR" "$TEMPLATE_DIR"
+
+                # Keep a GitOps-rendered copy on the writable volume for reference/recovery.
+                cp -f "$BOOTSTRAP_CONFIG" "$TEMPLATE_CONFIG"
+                chmod 0640 "$TEMPLATE_CONFIG" || true
+
+                # Seed the live config once so Filestash can mutate it at runtime.
+                if [ ! -s "$LIVE_CONFIG" ]; then
+                  cp -f "$BOOTSTRAP_CONFIG" "$LIVE_CONFIG"
+                  chmod 0640 "$LIVE_CONFIG" || true
+                fi
 
         containers:
           app:
@@ -129,14 +157,15 @@ spec:
                 port: 80
 
     persistence:
-      # Safer secret mount: mount the secret as a DIRECTORY, not as a single file path,
-      # so you don’t fight with /app/data/state being a separate PVC mount.
+      # Mount the GitOps-rendered config secret at a bootstrap path. An init container
+      # copies it into the writable Filestash state volume on first boot so Filestash
+      # can update /app/data/state/config at runtime.
       config-json:
         type: secret
         name: "{{ .Release.Name }}-secret"
         defaultMode: 0440
         globalMounts:
-          - path: /app/data/state/config
+          - path: /bootstrap-config
             readOnly: true
 
       # Your CephFS PVC:

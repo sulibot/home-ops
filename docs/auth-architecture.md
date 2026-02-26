@@ -2,37 +2,35 @@
 
 ## Design Principles
 
-### External (internet via Cloudflare Tunnel)
+### External Access (internet via Cloudflare Tunnel)
 
-| App type | Auth method | Notes |
-|----------|-------------|-------|
-| **Multi-user apps** | Google Auth only | CF Access enforces — no other identity accepted |
-| **Single-user apps** (externally exposed) | Google Auth (CF Access) | CF Access gate before reaching the app |
-| **Passthrough apps** (Plex, Seerr, Atuin) | No external auth — own account system | CF Access Bypass policy applied |
+| App type | Authentication model | Notes |
+|----------|----------------------|-------|
+| **Apps behind CF Access** | Google via Cloudflare Access, plus app auth as applicable | Cloudflare Access validates Google identity before any request reaches the cluster. The app may still use Authentik (OIDC/proxy) and/or native app accounts. |
+| **Passthrough apps** (Plex, Seerr/Jellyseerr) | App-owned authentication | Cloudflare Access `Bypass` policy is applied intentionally. |
 
-### Internal (LAN via gateway)
+### Internal Access (LAN via gateway)
 
-| App type | Auth preference | Notes |
-|----------|----------------|-------|
-| **Multi-user apps** | username/email + password · Google Auth via Authentik · Authentik-native account | All three methods available; account auto-created on first login where supported |
-| **Single-user apps** | OIDC → proxy header auth → internal app auth → passthrough | In preference order; no external auth required internally |
-| **Passthrough / minimal apps** | No auth | LAN trust is the boundary |
+| App type | Preferred authentication | Notes |
+|----------|--------------------------|-------|
+| **Authentik-integrated apps** | Native OIDC -> proxy outpost/header auth | Prefer native OIDC when the app supports it; use the Authentik proxy outpost when OIDC is unavailable or impractical. |
+| **Apps with multiple auth modes** | Google via Authentik · Authentik-native account · native app accounts | Keep all relevant options available when useful for collaboration, app-specific roles, service/API access, or break-glass access. |
+| **Passthrough / minimal apps** | None (LAN trust boundary) | LAN trust is the outer boundary for selected internal-only services. |
 
-**Key**: CF Access is the external enforcement layer — it gates Google identity before any request reaches the cluster. Authentik handles all in-cluster identity (Google OAuth redirect + native credentials). The same approved Google accounts work internally without CF Access; the browser handles the Google OAuth redirect directly to Authentik.
+**Key principle**: Cloudflare Access is the external enforcement layer. It gates Google identity before traffic reaches the cluster. Authentik provides in-cluster identity for integrated apps (Google OAuth and Authentik-native credentials). Native app accounts may coexist when the application supports them and they are operationally useful.
 
 ---
 
 ## Overview
 
-Authentication uses **two independent layers** depending on the access path:
+Authentication is applied in **two independent layers**, depending on the access path:
 
-| Path | Gate | Identity Provider |
-|------|------|-------------------|
+| Path | Enforcement gate | Identity provider |
+|------|------------------|-------------------|
 | External (internet) | Cloudflare Access | Google OAuth **directly in Cloudflare** |
-| Internal (LAN) | Authentik (proxy outpost or native OIDC) | Google OAuth via Authentik **or** Authentik-native account |
+| Internal (LAN) | Authentik (proxy outpost or native OIDC), or app-local auth | Google OAuth via Authentik, Authentik-native credentials, and/or app-native auth (depending on app) |
 
-No firewall ports are opened. All external traffic enters via a **Cloudflare Tunnel** — a
-persistent outbound connection from `cloudflared` running in the cluster.
+No firewall ports are opened. All external traffic enters through a **Cloudflare Tunnel** (a persistent outbound connection from `cloudflared` running in-cluster).
 
 ---
 
@@ -41,60 +39,100 @@ persistent outbound connection from `cloudflared` running in the cluster.
 Two Cilium Gateway API gateways are deployed in the `network` namespace:
 
 | Gateway | IP | Purpose |
-|---------|-----|---------|
-| `gateway-tunnel` | `10.101.250.11` | External-facing apps — Cloudflare tunnel **and** LAN |
-| `gateway-internal` | `10.101.250.12` | Internal-only apps — LAN only |
+|---------|----|---------|
+| `gateway-tunnel` | `10.101.250.11` | Externally reachable apps (via Cloudflare Tunnel) and LAN access to those same apps |
+| `gateway-internal` | `10.101.250.12` | Internal-only apps (LAN only) |
 
-Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certificate
-(`*.sulibot.com`). Cloudflared connects to `gateway-tunnel` via its cluster-internal service
-(`cilium-gateway-gateway-tunnel.network.svc.cluster.local:443`).
+Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certificate (`*.sulibot.com`). `cloudflared` connects to `gateway-tunnel` via the cluster service `cilium-gateway-gateway-tunnel.network.svc.cluster.local:443`.
 
-### Apps on gateway-tunnel (external + LAN)
+### Apps on `gateway-tunnel` (external + LAN)
 
 | Hostname | App | Auth pattern |
-|----------|-----|-------------|
-| `auth.sulibot.com` | Authentik | Direct — Authentik login page |
+|----------|-----|--------------|
+| `auth.sulibot.com` | Authentik | Direct Authentik login page (externally gated by CF Access) |
 | `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik |
-| `firefly.sulibot.com` | Firefly III | Proxy outpost → header auth |
-| `filestash.sulibot.com` | Filestash | Filestash own login (admin password) |
+| `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
+| `filestash.sulibot.com` | Filestash | CF Access (Google) externally; Filestash OIDC/OpenID preferred, native plugin auth also supported |
+| `home-assistant.sulibot.com` | Home Assistant | Authentik proxy outpost -> header auth |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
 | `plex.sulibot.com` | Plex | Plex account (CF Access bypass) |
 | `seerr.sulibot.com` | Jellyseerr | Plex/own auth (CF Access bypass) |
 
-### Apps on gateway-internal (LAN only)
+### Apps on `gateway-internal` (LAN only)
 
-Everything else — arr stack, karakeep, paperless, actual, atuin, home-assistant, etc.
+LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
+
+| Hostname | App | Auth pattern |
+|----------|-----|--------------|
+| `actual.sulibot.com` | Actual Budget | Native OIDC via Authentik |
+| `alertmanager.sulibot.com` | Alertmanager | Internal ops endpoint (auth/config varies) |
+| `atuin.sulibot.com` | Atuin | Atuin token / app auth |
+| `autobrr.sulibot.com` | Autobrr | App-local auth |
+| `bookshelf.sulibot.com` | Bookshelf | App-local auth |
+| `emby.sulibot.com` | Emby | Emby account |
+| `echo.sulibot.com` | Echo (test app) | Minimal / no auth (LAN only) |
+| `gatus.sulibot.com` | Gatus | Internal ops endpoint (auth/config varies) |
+| `status.sulibot.com` | Gatus (alias) | Internal ops endpoint (auth/config varies) |
+| `go2rtc.sulibot.com` | go2rtc | App-local auth / LAN trust |
+| `grafana.sulibot.com` | Grafana | Grafana auth (LAN route) |
+| `jaeger.sulibot.com` | Jaeger | Internal ops endpoint (auth/config varies) |
+| `jellyseerr.sulibot.com` | Jellyseerr | Plex/own auth |
+| `requests.sulibot.com` | Jellyseerr (alias) | Plex/own auth |
+| `karakeep.sulibot.com` | Karakeep | Native OIDC via Authentik |
+| `kiali.sulibot.com` | Kiali | Internal ops endpoint (auth/config varies) |
+| `kopia.sulibot.com` | Kopia | App-local auth |
+| `kromgo.sulibot.com` | Kromgo | Internal ops endpoint |
+| `lazylibrarian.sulibot.com` | LazyLibrarian | App-local auth |
+| `lidarr.sulibot.com` | Lidarr | API key / local auth |
+| `nzbget.sulibot.com` | NZBGet | App-local auth |
+| `overseerr.sulibot.com` | Overseerr | Plex/own auth |
+| `paperless.sulibot.com` | Paperless-ngx | Native OIDC via Authentik |
+| `prometheus.sulibot.com` | Prometheus | Internal ops endpoint (auth/config varies) |
+| `prowlarr.sulibot.com` | Prowlarr | API key / local auth |
+| `qbittorrent.sulibot.com` | qBittorrent | App-local auth |
+| `qui.sulibot.com` | Qui | App-local auth / minimal |
+| `radarr.sulibot.com` | Radarr | API key / local auth |
+| `radarr-4k.sulibot.com` | Radarr (4K) | API key / local auth |
+| `sabnzbd.sulibot.com` | SABnzbd | App-local auth |
+| `slskd.sulibot.com` | slskd | App-local auth |
+| `sonarr.sulibot.com` | Sonarr | API key / local auth |
+| `sonarr-4k.sulibot.com` | Sonarr (4K) | API key / local auth |
+| `tautulli.sulibot.com` | Tautulli | App-local auth |
+| `thelounge.sulibot.com` | The Lounge | App-local auth |
+| `victoria-logs.sulibot.com` | VictoriaLogs | Internal ops endpoint |
+| `zigbee.sulibot.com` | Zigbee UI/service | LAN trust / local auth |
+| `zwave.sulibot.com` | Z-Wave UI/service | LAN trust / local auth |
+
+`home-assistant.sulibot.com` is intentionally on `gateway-tunnel`, not `gateway-internal`.
 
 ---
 
 ## Cloudflare Access (External)
 
-### Architecture Decision: CF Access uses Google directly (NOT Authentik as IdP)
+### Architectural Decision: Cloudflare Access uses Google directly (not Authentik as CF IdP)
 
-**Why**: Keeping Authentik behind CF Access means the IdP itself is never exposed to
-unauthenticated internet traffic. Attack surface is limited to Cloudflare's hardened edge.
+**Rationale**: Keeping Authentik behind Cloudflare Access ensures the IdP itself is not exposed to unauthenticated internet traffic. This reduces direct attack surface to Cloudflare's edge.
 
 ```
-Internet → Cloudflare Edge (Google OAuth) → Tunnel → gateway-tunnel → App
-                                                                         ↓ (if OIDC/outpost app)
-                                                              Authentik (Google OAuth internally)
+Internet -> Cloudflare Edge (Google OAuth) -> Tunnel -> gateway-tunnel -> App
+                                                                    ↓ (for OIDC/outpost apps)
+                                                         Authentik (Google/Auth-native internally)
 ```
 
-### How CF Access is configured
+### Cloudflare Access configuration
 
-In Zero Trust → Access → Applications:
+In Zero Trust -> Access -> Applications:
 
 | Application | Hostname(s) | Policy | Notes |
-|-------------|------------|--------|-------|
+|-------------|-------------|--------|-------|
 | `*.sulibot.com` | `*.sulibot.com` | Allow Google (6 approved emails) | Wildcard catch-all |
-| `plex (bypass)` | `plex.sulibot.com` | Bypass | Plex has own account auth |
-| `seerr (bypass)` | `seerr.sulibot.com`, `requests.sulibot.com` | Bypass | Jellyseerr own auth |
-| `atuin (bypass)` | `atuin.sulibot.com` | Bypass | Atuin uses own token auth |
+| `plex (bypass)` | `plex.sulibot.com` | Bypass | Plex uses its own account system |
+| `seerr (bypass)` | `seerr.sulibot.com`, `requests.sulibot.com` | Bypass | Jellyseerr uses Plex/local auth |
+| `atuin (bypass)` | `atuin.sulibot.com` | Bypass | Present for Atuin token auth when/if exposed externally |
 
-**Important**: `auth.sulibot.com` is covered by the wildcard app with Google auth — no
-special bypass needed. CF validates the Google session before the request reaches Authentik.
+**Important**: `auth.sulibot.com` is covered by the wildcard Google policy. No special bypass is required. Cloudflare validates the Google session before the request reaches Authentik.
 
-**Approved Google accounts** (set in Zero Trust → Access → Access Groups):
+**Approved Google accounts** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
 - `bodawee@gmail.com`
 - `sarah.kalas@gmail.com`
@@ -102,7 +140,7 @@ special bypass needed. CF validates the Google session before the request reache
 - `sulaiman.ahmad@gmail.com`
 - `sulibot@gmail.com`
 
-### Cloudflare tunnel config
+### Cloudflare Tunnel configuration
 
 Stored as a Kubernetes Secret (via ExternalSecret from 1Password):
 `kubernetes/apps/tier-1-infrastructure/cloudflare-tunnel/app/externalsecret.yaml`
@@ -112,102 +150,89 @@ ingress:
   - hostname: "*.sulibot.com"
     originRequest:
       http2Origin: true
-      noTLSVerify: true        # required: CF sends HTTPS but cluster cert is self-signed from CF's perspective
-      originServerName: sulibot.com  # TLS SNI must match the wildcard LE cert CN
+      noTLSVerify: true        # CF connects over HTTPS to the gateway, but cannot validate the internal cert chain in this path
+      originServerName: sulibot.com  # SNI must match the wildcard LE cert CN
     service: https://cilium-gateway-gateway-tunnel.network.svc.cluster.local:443
   - service: http_status:404
 ```
 
-> `noTLSVerify: true` is set because the cluster's cert is a real LE cert but the Cloudflare
-> tunnel can't verify it against the tunnel's internal connection. `originServerName` ensures
-> SNI matches so the gateway selects the correct certificate.
+> `noTLSVerify: true` is required on the tunnel's internal origin connection path. `originServerName` ensures SNI matches the wildcard certificate so the gateway serves the correct certificate.
 
 ---
 
 ## Internal (LAN) Access
 
-### LAN DNS Requirements
+### LAN DNS requirements
 
-LAN devices must resolve `*.sulibot.com` subdomains to the correct gateway. Without this,
-DNS falls through to Cloudflare's public resolvers which return Cloudflare anycast IPs,
-causing `CF Error 1003 — Direct IP access not allowed`.
+LAN clients must resolve `*.sulibot.com` to the **local gateway IPs**, not Cloudflare anycast IPs. If DNS falls through to public resolvers, Cloudflare returns `CF Error 1003 (Direct IP access not allowed)`.
 
-**Mikrotik DNS static entries required:**
+**Mikrotik DNS static entries (required overrides for `gateway-tunnel` apps):**
 
-All `gateway-tunnel` apps (accessible externally) must point to `10.101.250.11`:
+All `gateway-tunnel` apps must resolve to `10.101.250.11` on LAN:
 
 ```
-auth.sulibot.com          → 10.101.250.11
-firefly.sulibot.com       → 10.101.250.11
-filebrowser.sulibot.com   → 10.101.250.11
-filestash.sulibot.com     → 10.101.250.11
-immich.sulibot.com        → 10.101.250.11
-plex.sulibot.com          → 10.101.250.11
-seerr.sulibot.com         → 10.101.250.11
+auth.sulibot.com             -> 10.101.250.11
+filebrowser.sulibot.com      -> 10.101.250.11
+firefly.sulibot.com          -> 10.101.250.11
+filestash.sulibot.com        -> 10.101.250.11
+home-assistant.sulibot.com   -> 10.101.250.11
+immich.sulibot.com           -> 10.101.250.11
+plex.sulibot.com             -> 10.101.250.11
+seerr.sulibot.com            -> 10.101.250.11
 ```
 
-All `gateway-internal` apps use `10.101.250.12`. A wildcard `*.sulibot.com → 10.101.250.12`
-covers the default case; specific entries above override for tunnel apps.
+All `gateway-internal` apps use `10.101.250.12`. A wildcard entry (`*.sulibot.com -> 10.101.250.12`) covers the default case; the specific overrides above take precedence for `gateway-tunnel` apps.
 
-ExternalDNS (Mikrotik webhook provider) automatically manages these records from HTTPRoute
-hostnames. Manually-added records without TXT ownership are ignored by ExternalDNS — delete
-them so ExternalDNS can take ownership.
+ExternalDNS (Mikrotik webhook provider) automatically manages these records from `HTTPRoute` hostnames. Manually added records without TXT ownership are ignored by ExternalDNS; delete them so ExternalDNS can recreate and own them.
 
-> On LAN, CF Access is bypassed entirely — requests go straight to the Cilium gateway.
-> Authentik handles authentication directly using Google OAuth (browser → Google → Authentik).
-> Authentik-native accounts (e.g. `admin@sulibot.com`) also work internally without Google.
+> On LAN, Cloudflare Access is bypassed entirely. Requests go directly to the Cilium gateway. Authentik handles Google OAuth and Authentik-native login for integrated apps; app-native accounts remain available where configured.
 
 ---
 
 ## Authentik
 
-Authentik runs at `https://auth.sulibot.com`. It is deployed via:
+Authentik is served at `https://auth.sulibot.com` and deployed from:
 `kubernetes/apps/tier-2-applications/authentik/`
 
-### Authentik Blueprints (GitOps)
+### Authentik blueprints (GitOps)
 
-Blueprints live in `blueprints/` (inline ConfigMap) and are auto-instantiated on Authentik
-worker startup. They are idempotent — safe to re-apply.
+Blueprints are maintained in `blueprints/` (rendered into an inline ConfigMap) and instantiated on Authentik worker startup. They are idempotent and safe to re-apply.
 
 | Blueprint file | Purpose |
 |----------------|---------|
 | `google-source.yaml` | Google OAuth source + silent enrollment flow |
-| `proxy-providers.yaml` | Proxy providers + outpost for firefly, home-assistant |
+| `proxy-providers.yaml` | Proxy providers + outpost registration for Firefly and Home Assistant |
 | `filebrowser-provider.yaml` | OIDC provider for FileBrowser Quantum |
 | `immich-provider.yaml` | OIDC provider for Immich |
 | `karakeep-provider.yaml` | OIDC provider for Karakeep |
 | `paperless-provider.yaml` | OIDC provider for Paperless-ngx |
 | `actual-provider.yaml` | OIDC provider for Actual Budget |
-| `cloudflare-access.yaml` | OIDC provider for Cloudflare Access (legacy — CF now uses Google directly) |
+| `cloudflare-access.yaml` | Legacy CF Access OIDC provider (not used since CF Access now authenticates directly with Google) |
 
-### Silent Enrollment Flow (Google OAuth → Authentik user)
+### Silent enrollment flow (Google OAuth -> Authentik user)
 
-When a user logs in via Google OAuth for the first time, Authentik runs `source-enrollment-silent`:
+On a user's first Google login, Authentik runs `source-enrollment-silent`:
 
-1. **ExpressionPolicy** `source-enrollment-set-username` runs **before** UserWriteStage
-   - Derives `username` from the Google `email` field
-   - Required because Google OAuth returns `email`+`name` but NOT `username`
-   - Import path (Authentik 2025.x+): `from authentik.stages.prompt.stage import PLAN_CONTEXT_PROMPT`
-2. **UserWriteStage** creates the user account
-3. **UserLoginStage** logs them in
+1. `ExpressionPolicy` `source-enrollment-set-username` runs **before** `UserWriteStage`
+- Derives `username` from the Google `email` field
+- Required because Google returns `email` and `name`, but not `username`
+- Authentik 2025.x+ import path: `from authentik.stages.prompt.stage import PLAN_CONTEXT_PROMPT`
+2. `UserWriteStage` creates the Authentik user
+3. `UserLoginStage` signs the user in
 
-**Known gotcha**: `PLAN_CONTEXT_PROMPT` moved from `authentik.flows.planner` to
-`authentik.stages.prompt.stage` in Authentik 2025.x. If the import fails, the enrollment
-fails with `"Aborting write to empty username"` → user sees `"Request has been denied"`.
+**Known gotcha**: `PLAN_CONTEXT_PROMPT` moved from `authentik.flows.planner` to `authentik.stages.prompt.stage` in Authentik 2025.x. If the import path is wrong, enrollment fails with `"Aborting write to empty username"`, and the user sees `"Request has been denied"`.
 
-### Authentication flow (default-authentication-flow)
+### Authentication flow (`default-authentication-flow`)
 
-The identification stage is configured with `user_fields: [username, email]` + `sources: [google]`.
-Users see a combined login page with:
+The identification stage is configured with `user_fields: [username, email]` and `sources: [google]`. Users are presented with a combined login experience:
 
-| Credential type | How to use | Who it's for |
-|---|---|---|
-| **Google ID** | Click "Login with Google" button | All approved Google accounts |
-| **Authentik-native** | Type username or email → password | `admin@sulibot.com`, service accounts, users without Google |
-| **App local account** | N/A for proxy/OIDC patterns — app accounts are created from Authentik identity on first login | Managed by the app after first SSO login |
+| Credential type | How to use | Typical use case |
+|-----------------|------------|------------------|
+| **Google ID** | Click **Login with Google** | Standard human access for approved Google accounts |
+| **Authentik-native account** | Enter username/email + password | Admins, service users, non-Google users, break-glass |
+| **Native app account** | Use the application's own login flow (when enabled) | App-specific collaboration, roles, service/API access, or emergency fallback |
 
-All three paths produce the same result for proxy and OIDC apps: Authentik issues a session/token
-and the app receives the authenticated identity (via injected headers or OIDC claims).
+For Authentik-integrated apps (OIDC or proxy outpost), **Google ID** and **Authentik-native credentials** produce the same SSO outcome: Authentik issues a session/token and the app receives the identity via OIDC claims or injected headers. Native app accounts remain app-specific and may coexist.
 
 ### 1Password secrets (item: `authentik`, vault: Kubernetes)
 
@@ -220,7 +245,7 @@ and the app receives the authenticated identity (via injected headers or OIDC cl
 | `EMAIL__USERNAME` | SMTP username |
 | `EMAIL__PASSWORD` | SMTP password |
 | `EMAIL__FROM` | From address for Authentik emails |
-| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID (for Authentik Google source) |
+| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID (Authentik Google source) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
 | `FILEBROWSER_OIDC_CLIENT_ID` | e.g. `filebrowser` |
 | `FILEBROWSER_OIDC_CLIENT_SECRET` | random |
@@ -232,54 +257,53 @@ and the app receives the authenticated identity (via injected headers or OIDC cl
 | `PAPERLESS_OIDC_CLIENT_SECRET` | random |
 | `ACTUAL_OIDC_CLIENT_ID` | e.g. `actual` |
 | `ACTUAL_OIDC_CLIENT_SECRET` | random |
-| `OUTPOST_TOKEN` | API token for proxy outpost deployment (random 40+ chars) |
-| `CF_ACCESS_CLIENT_ID` | CF Access OIDC client ID (legacy — not used since CF switched to Google directly) |
-| `CF_ACCESS_CLIENT_SECRET` | CF Access OIDC secret (legacy) |
-| `CF_ACCESS_CALLBACK_URL` | CF Access callback URL (legacy) |
+| `OUTPOST_TOKEN` | API token for the Authentik proxy outpost deployment (random 40+ chars) |
+| `CF_ACCESS_CLIENT_ID` | Legacy CF Access OIDC client ID (unused) |
+| `CF_ACCESS_CLIENT_SECRET` | Legacy CF Access OIDC secret (unused) |
+| `CF_ACCESS_CALLBACK_URL` | Legacy CF Access callback URL (unused) |
 
-Also needs from item `cloudnative-pg-superuser`:
-- `POSTGRES_SUPER_PASS` — used by `postgres-init` init container to create the DB
+Also required from item `cloudnative-pg-superuser`:
+- `POSTGRES_SUPER_PASS` (used by the `postgres-init` init container to create the DB)
 
 ---
 
-## App Auth Patterns
+## App Authentication Patterns
 
 ### Pattern 1: Authentik Proxy Outpost (header injection)
 
-Apps: **Firefly III**, **Home Assistant**
+**Apps**: Firefly III, Home Assistant
 
-The HTTPRoute sends ALL traffic to `authentik-outpost:9000` (not directly to the app).
-User accounts are auto-created on first login via header injection.
+The `HTTPRoute` sends all traffic to `authentik-outpost:9000` (not directly to the app). Users authenticate with Authentik, and the outpost forwards the request to the app with identity headers.
 
 ```
-Browser → firefly.sulibot.com
-    → gateway-tunnel
-    → authentik-outpost:9000
-        [no session] → redirect to auth.sulibot.com → Google login → Authentik session created
-                         → callback to firefly.sulibot.com/outpost.goauthentik.io/callback
-        [session valid] → proxy to internal_host with injected headers
-    → App receives X-Authentik-Email, X-Authentik-Username, etc.
+Browser -> firefly.sulibot.com
+    -> gateway-tunnel
+    -> authentik-outpost:9000
+        [no session] -> redirect to auth.sulibot.com -> Google/Auth-native login -> Authentik session
+                        -> callback to firefly.sulibot.com/outpost.goauthentik.io/callback
+        [session valid] -> proxy to internal_host with injected headers
+    -> App receives X-Authentik-Email, X-Authentik-Username, etc.
 ```
 
 **Outpost deployment**: `kubernetes/apps/tier-2-applications/authentik-outpost/`
-**Outpost HelmRelease env vars:**
-- `AUTHENTIK_HOST` — internal API URL: `http://authentik-server.default.svc.cluster.local`
-- `AUTHENTIK_HOST_BROWSER` — browser redirect URL: `https://auth.sulibot.com`
-- `AUTHENTIK_INSECURE` — `false`
-- `AUTHENTIK_TOKEN` — from `authentik-outpost-secret` (ExternalSecret → 1Password `OUTPOST_TOKEN`)
 
-**Proxy providers** (in `proxy-providers.yaml` blueprint):
+**Outpost HelmRelease environment variables**:
+- `AUTHENTIK_HOST` -> internal API URL: `http://authentik-server.default.svc.cluster.local`
+- `AUTHENTIK_HOST_BROWSER` -> browser redirect URL: `https://auth.sulibot.com`
+- `AUTHENTIK_INSECURE` -> `false`
+- `AUTHENTIK_TOKEN` -> from `authentik-outpost-secret` (ExternalSecret -> 1Password `OUTPOST_TOKEN`)
 
-| App | external_host | internal_host |
-|-----|--------------|--------------|
-| firefly-proxy | `https://firefly.sulibot.com` | `http://firefly-app.default.svc.cluster.local:8080` |
-| home-assistant-proxy | `https://home-assistant.sulibot.com` | `http://home-assistant.default.svc.cluster.local:8123` |
+**Proxy providers** (defined in `proxy-providers.yaml`):
 
-**Firefly III header auth**: Reads `HTTP_X_AUTHENTIK_EMAIL` via `AUTHENTICATION_GUARD=remote_user_guard`.
-Auto-creates users on first login.
+| App | `external_host` | `internal_host` |
+|-----|------------------|-----------------|
+| `firefly-proxy` | `https://firefly.sulibot.com` | `http://firefly-app.default.svc.cluster.local:8080` |
+| `home-assistant-proxy` | `https://home-assistant.sulibot.com` | `http://home-assistant.default.svc.cluster.local:8123` |
 
-**Home Assistant**: Shows its own login screen after the outpost auth gate. For seamless SSO,
-add to `/config/configuration.yaml`:
+**Firefly III header auth**: reads `HTTP_X_AUTHENTIK_EMAIL` using `AUTHENTICATION_GUARD=remote_user_guard` and auto-creates users on first login.
+
+**Home Assistant note**: Home Assistant still presents its own login screen after the outpost gate. For a more seamless experience, configure trusted networks in `/config/configuration.yaml`:
+
 ```yaml
 homeassistant:
   auth_providers:
@@ -292,115 +316,118 @@ homeassistant:
 
 ### Pattern 2: Native OIDC (app initiates OIDC against Authentik)
 
-Apps: **FileBrowser Quantum**, **Immich**, **Paperless-ngx**, **Karakeep**, **Actual Budget**
+**Apps**: FileBrowser Quantum, Immich, Paperless-ngx, Karakeep, Actual Budget
 
-The app redirects users to Authentik for login. Users authenticate with Google via Authentik.
-Accounts are auto-created on first login (`createUser: true` or equivalent in each app).
-HTTPRoute points **directly to the app** — no outpost in the path.
+The application redirects the user to Authentik. Users authenticate through Authentik (Google or Authentik-native credentials), and the application receives identity claims via OIDC. The `HTTPRoute` points directly to the app (no outpost in the path).
 
 ```
-Browser → filebrowser.sulibot.com
-    → gateway-tunnel → filebrowser:80
-        [no session] → app redirects to auth.sulibot.com/application/o/filebrowser/authorize/
-                         → Google login → Authentik session → callback to app
-        [session valid] → app serves content
+Browser -> filebrowser.sulibot.com
+    -> gateway-tunnel -> filebrowser:80
+        [no session] -> app redirects to auth.sulibot.com/application/o/filebrowser/authorize/
+                        -> Google/Auth-native login -> Authentik session -> callback to app
+        [session valid] -> app serves content
 ```
 
 | App | Authentik issuer URL | Blueprint | Account auto-create |
-|-----|---------------------|-----------|---------------------|
+|-----|----------------------|-----------|---------------------|
 | FileBrowser Quantum | `https://auth.sulibot.com/application/o/filebrowser/` | `filebrowser-provider.yaml` | `createUser: true` in config.yaml |
 | Immich | `https://auth.sulibot.com/application/o/immich/` | `immich-provider.yaml` | Yes |
 | Paperless-ngx | `https://auth.sulibot.com/application/o/paperless/` | `paperless-provider.yaml` | Yes |
 | Karakeep | `https://auth.sulibot.com/application/o/karakeep/` | `karakeep-provider.yaml` | Yes |
 | Actual Budget | `https://auth.sulibot.com/application/o/actual/` | `actual-provider.yaml` | Yes |
 
-Client ID and secret are injected via ExternalSecret from 1Password into `authentik-secret`,
-then read into the app via the app's own ExternalSecret.
+Client IDs and secrets are injected via ExternalSecret from 1Password into `authentik-secret`, then passed into each app via the app's own ExternalSecret.
 
-### Pattern 3: CF Access bypass + own auth (passthrough)
+### Pattern 3: CF Access bypass + app-owned auth (passthrough)
 
-Apps: **Plex**, **Seerr/Jellyseerr**, **Atuin**
+**Apps**: Plex, Seerr/Jellyseerr
 
-These apps have CF Access Bypass applications in Zero Trust, so they reach the cluster
-without a Google login gate. They use their own authentication:
-- Plex → Plex account
-- Seerr → Plex account or local user
-- Atuin → Atuin token
+These apps have Cloudflare Access `Bypass` policies and therefore reach the cluster without a Cloudflare Google login gate. Authentication is handled by the application:
+- Plex -> Plex account
+- Seerr/Jellyseerr -> Plex account or local user
 
-Account management is entirely within the app. Auto-creation where the app supports it.
+Account lifecycle is app-owned (including auto-creation where supported).
 
-### Pattern 4: Basic auth / API key (LAN only, gateway-internal)
+> Atuin can use this same pattern when exposed externally, but is currently routed on `gateway-internal` in this repo.
 
-Apps: Radarr, Sonarr, qBittorrent, NZBGet, etc.
+### Pattern 4: App-local auth / API key (LAN only, `gateway-internal`)
 
-Accessible only on LAN via `gateway-internal` (10.101.250.12). Not exposed externally.
-Use their own API keys or basic auth. No SSO — LAN trust is the outer boundary.
+**Apps**: Radarr, Sonarr, qBittorrent, NZBGet, and similar tools
 
-### Pattern 5: Filestash (direct, own login)
+These apps are available only on LAN through `gateway-internal` (`10.101.250.12`). They are not exposed externally and typically use API keys, basic auth, or app-local accounts. LAN trust remains the outer boundary.
 
-Filestash is on `gateway-tunnel` (externally accessible via CF Access Google gate) but
-has its own admin login — OIDC is enterprise-only in the AGPL edition.
+### Pattern 5: Filestash (direct app auth; OIDC-capable)
 
-- **External**: CF Access (Google) gates access, then filestash admin login
-- **Internal**: filestash admin login only — no Authentik integration
+Filestash is on `gateway-tunnel`, so external requests are gated first by Cloudflare Access (Google). Authentication inside Filestash is handled by Filestash plugins.
 
-Config is fully GitOps'd via ExternalSecret (1Password `filestash` item):
-- `ADMIN_PASSWORD` — bcrypt hash of admin password
-- `SECRET_KEY` — session encryption key
+**Preferred approach**:
+- Use Filestash OIDC/OpenID (`plg_authenticate_openid`) for interactive users where possible.
+- Keep native app auth plugins available when they better fit collaboration or backend storage access requirements.
 
-Config is templated into `filestash-secret` and mounted read-only at
-`/app/data/state/config/config.json`. Storage backend (CephFS content PVC) is
-pre-configured in config.json as a `local` connection at `/srv/data`.
+Access behavior:
+- **External**: Cloudflare Access (Google) -> Filestash auth (OIDC/OpenID preferred; native plugin auth optional)
+- **Internal**: Filestash auth directly (OIDC/OpenID preferred; local / `htpasswd` / passthrough as needed)
+
+Common Filestash auth plugins:
+- OIDC / OpenID: `plg_authenticate_openid`
+- Local users: `plg_authenticate_local`
+- `htpasswd`: `plg_authenticate_htpasswd`
+- Passthrough: `plg_authenticate_passthrough`
+
+Use plugin selection to match the collaboration model, backend credential model, and break-glass requirements.
+
+Config is GitOps-managed via ExternalSecret (1Password item `filestash`):
+- `ADMIN_PASSWORD` -> bcrypt hash of admin password
+- `SECRET_KEY` -> session encryption key
+
+The rendered config is stored in `filestash-secret` and mounted read-only at `/app/data/state/config/config.json`. The storage backend (CephFS content PVC) is preconfigured in `config.json` as a `local` connection at `/srv/data`.
 
 ---
 
 ## Adding a New App: Checklist
 
-### New app with proxy outpost auth (header injection)
+### New app using the Authentik proxy outpost (header injection)
 
-1. Add the proxy provider + application to `proxy-providers.yaml` blueprint
-2. Add the provider to the outpost's `providers:` list in the same blueprint
-3. In the app's HelmRelease, point the HTTPRoute `backendRefs` to `authentik-outpost:9000`
-4. Configure the app to trust the header (e.g. `AUTHENTICATION_GUARD=remote_user_guard`)
-5. If internal LAN access needed: ExternalDNS handles Mikrotik DNS automatically for gateway-tunnel apps
+1. Add the proxy provider and application to `proxy-providers.yaml`
+2. Add the provider to the outpost `providers:` list in the same blueprint
+3. In the app `HelmRelease`, point `HTTPRoute.backendRefs` to `authentik-outpost:9000`
+4. Configure the app to trust the injected identity header(s) (for example `AUTHENTICATION_GUARD=remote_user_guard`)
+5. If LAN access is required via `gateway-tunnel`, allow ExternalDNS to manage the Mikrotik DNS record
 
-### New app with native OIDC
+### New app using native OIDC
 
-1. Add the OIDC provider + application to a new blueprint file in `blueprints/`
-2. Add the blueprint filename to the ConfigMap in `blueprintconfigmap.yaml`
+1. Add the OIDC provider and application to a blueprint file in `blueprints/`
+2. Add the blueprint filename to `blueprintconfigmap.yaml`
 3. Add `CLIENT_ID` and `CLIENT_SECRET` fields to the `authentik` 1Password item
-4. Add an ExternalSecret for the app that reads those fields
-5. Configure the app's OIDC settings to point to `https://auth.sulibot.com/application/o/<slug>/`
-6. Set `createUser: true` (or equivalent) in the app config for auto-account creation
-7. If accessible externally: ensure `*.sulibot.com` CF Access wildcard covers it (or add bypass)
+4. Add an app ExternalSecret that reads those fields
+5. Configure the app OIDC issuer URL as `https://auth.sulibot.com/application/o/<slug>/`
+6. Enable account auto-creation (`createUser: true` or equivalent), if desired
+7. If externally reachable, ensure the Cloudflare Access wildcard policy applies (or explicitly define a bypass policy)
 
 ---
 
 ## Troubleshooting
 
-### CF Error 1003 "Direct IP access not allowed"
+### CF Error 1003: "Direct IP access not allowed"
 
-**Cause**: LAN DNS is resolving a `gateway-tunnel` hostname to Cloudflare's public IP instead
-of the local gateway IP `10.101.250.11`.
+**Cause**: A LAN client resolves a `gateway-tunnel` hostname to Cloudflare public IPs instead of the local gateway IP `10.101.250.11`.
 
-**Fix**: ExternalDNS should handle this automatically. If ExternalDNS skipped the record
-(e.g. it was manually added without TXT ownership), delete the manual Mikrotik record and
-ExternalDNS will recreate it with proper ownership within seconds.
+**Fix**: ExternalDNS should manage these records automatically. If a record was added manually without TXT ownership, delete it so ExternalDNS can recreate and claim it.
 
-### Authentik "Request has been denied" on first Google login
+### Authentik shows "Request has been denied" on first Google login
 
-**Cause 1**: The enrollment flow's ExpressionPolicy import path is wrong.
-Authentik 2025.x+ uses:
-`from authentik.stages.prompt.stage import PLAN_CONTEXT_PROMPT`
-(old: `from authentik.flows.planner import PLAN_CONTEXT_PROMPT` — fails in 2025.x)
+**Cause 1**: Incorrect import path in the enrollment flow `ExpressionPolicy`
+- Authentik 2025.x+ requires:
+  `from authentik.stages.prompt.stage import PLAN_CONTEXT_PROMPT`
+- Older path (`from authentik.flows.planner import PLAN_CONTEXT_PROMPT`) fails in 2025.x+
 
-**Fix**: Check the `source-enrollment-set-username` ExpressionPolicy in Authentik admin:
-Flows → Policies → `source-enrollment-set-username` → Expression.
+**Fix**: Check the `source-enrollment-set-username` policy expression:
+`Flows -> Policies -> source-enrollment-set-username -> Expression`
 
-**Cause 2**: The `enrollment_flow` on the Google OAuth source is `None`.
-This happens if the blueprint runs before the flow is created (ordering bug).
+**Cause 2**: `enrollment_flow` on the Google OAuth source is `None`
+- This can happen if blueprint ordering creates the source before the flow exists.
 
-**Fix**: In Authentik Django shell:
+**Fix** (Authentik Django shell):
 ```python
 from authentik.sources.oauth.models import OAuthSource
 from authentik.flows.models import Flow
@@ -409,42 +436,45 @@ source.enrollment_flow = Flow.objects.get(slug='source-enrollment-silent')
 source.save()
 ```
 
-### Proxy outpost redirecting to `http://authentik-server.default.svc.cluster.local`
+### Authentik outpost redirects to `http://authentik-server.default.svc.cluster.local`
 
-**Cause**: `AUTHENTIK_HOST_BROWSER` not set on the outpost deployment.
-The outpost uses `AUTHENTIK_HOST` for both internal API calls AND browser redirects.
+**Cause**: `AUTHENTIK_HOST_BROWSER` is not set on the outpost deployment.
 
-**Fix**: Set `AUTHENTIK_HOST_BROWSER: "https://auth.sulibot.com"` in the outpost HelmRelease env.
+**Fix**: Set `AUTHENTIK_HOST_BROWSER: "https://auth.sulibot.com"` in the outpost HelmRelease environment variables.
 
-### FileBrowser Quantum shows login form instead of OIDC redirect
+### FileBrowser Quantum shows the local login form instead of redirecting to OIDC
 
-**Cause 1**: `createUser: false` (default) — user doesn't exist in the DB yet and OIDC
-auto-creation is disabled.
-**Fix**: Ensure `oidc.createUser: true` in the OIDC config section of `config.yaml`.
+**Cause 1**: `createUser: false` (default)
+- The user does not exist yet and OIDC auto-creation is disabled.
 
-**Cause 2**: Database not persisted — DB in ephemeral path.
-The `FILEBROWSER_DATABASE` env var is silently ignored by FileBrowser Quantum.
-**Fix**: Set `server.database: /config/database.db` in config.yaml.
+**Fix**: Set `oidc.createUser: true` in `config.yaml`.
 
-**Cause 3**: OIDC client secret not yet synced from 1Password.
-**Fix**: Check `kubectl get externalsecret filebrowser-oidc -n default` for sync status.
+**Cause 2**: Database is not persisted
+- `FILEBROWSER_DATABASE` is ignored by FileBrowser Quantum.
 
-### Authentik outpost 502 Bad Gateway when serving app
+**Fix**: Set `server.database: /config/database.db` in `config.yaml`.
+
+**Cause 3**: OIDC client secret not synced from 1Password yet
+
+**Fix**: Check sync status:
+`kubectl get externalsecret filebrowser-oidc -n default`
+
+### Authentik outpost returns `502 Bad Gateway`
 
 **Cause**: `internal_host` in the proxy provider points to the wrong port.
 
-**Fix**: Match `internal_host` port to the Kubernetes service port (not the container port).
+**Fix**: Match `internal_host` to the Kubernetes Service port (not the container port).
 
 ---
 
-## Files Reference
+## File Reference
 
 | File | Purpose |
 |------|---------|
-| `kubernetes/apps/tier-1-infrastructure/cloudflare-tunnel/app/externalsecret.yaml` | CF tunnel config (ingress rules, TLS settings) |
+| `kubernetes/apps/tier-1-infrastructure/cloudflare-tunnel/app/externalsecret.yaml` | Cloudflare Tunnel config (ingress rules, TLS settings) |
 | `kubernetes/apps/tier-2-applications/authentik/app/helmrelease.yaml` | Authentik HelmRelease |
-| `kubernetes/apps/tier-2-applications/authentik/app/blueprintconfigmap.yaml` | All Authentik blueprints (ConfigMap) |
-| `kubernetes/apps/tier-2-applications/authentik/app/blueprints/` | Blueprint YAML files |
-| `kubernetes/apps/tier-2-applications/authentik-outpost/app/helmrelease.yaml` | Proxy outpost deployment |
-| `kubernetes/apps/tier-2-applications/filebrowser/app/externalsecret-oidc.yaml` | FileBrowser OIDC config (templated config.yaml from 1Password) |
-| `kubernetes/apps/tier-2-applications/filestash/app/externalsecret.yaml` | Filestash config.json (admin pw + secret key + connections from 1Password) |
+| `kubernetes/apps/tier-2-applications/authentik/app/blueprintconfigmap.yaml` | Authentik blueprint ConfigMap |
+| `kubernetes/apps/tier-2-applications/authentik/app/blueprints/` | Authentik blueprint YAML files |
+| `kubernetes/apps/tier-2-applications/authentik-outpost/app/helmrelease.yaml` | Authentik proxy outpost deployment |
+| `kubernetes/apps/tier-2-applications/filebrowser/app/externalsecret-oidc.yaml` | FileBrowser OIDC config (templated `config.yaml` from 1Password) |
+| `kubernetes/apps/tier-2-applications/filestash/app/externalsecret.yaml` | Filestash `config.json` (admin password, secret key, connections from 1Password) |
