@@ -65,7 +65,9 @@ spec:
                   secretKeyRef:
                     name: firefly-secret
                     key: STATIC_CRON_TOKEN
-              # Authentik proxy outpost injects X-Authentik-Email for authenticated requests
+              # Authentik proxy outpost injects X-Authentik-Email for authenticated requests.
+              # Keep email as the stable identity key (best match for Google-backed identities)
+              # so Firefly can auto-create/map users consistently on first login.
               AUTHENTICATION_GUARD: remote_user_guard
               AUTHENTICATION_GUARD_HEADER: HTTP_X_AUTHENTIK_EMAIL
               # Mail (log only; configure SMTP here when ready)

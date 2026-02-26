@@ -185,7 +185,10 @@ All `gateway-internal` apps use `10.101.250.12`. A wildcard entry (`*.sulibot.co
 
 ExternalDNS (Mikrotik webhook provider) automatically manages these records from `HTTPRoute` hostnames. Manually added records without TXT ownership are ignored by ExternalDNS; delete them so ExternalDNS can recreate and own them.
 
-> On LAN, Cloudflare Access is bypassed entirely. Requests go directly to the Cilium gateway. Authentik handles Google OAuth and Authentik-native login for integrated apps; app-native accounts remain available where configured.
+> On LAN, Cloudflare Access is bypassed entirely. Requests go directly to the Cilium gateway.
+> Authentik-integrated apps may still redirect to Authentik (and then to Google) for OIDC/SSO,
+> but the user typically does not re-enter credentials if the browser already has a valid Google
+> and/or Authentik session. App-native accounts remain available where configured.
 
 ---
 
@@ -300,7 +303,15 @@ Browser -> firefly.sulibot.com
 | `firefly-proxy` | `https://firefly.sulibot.com` | `http://firefly-app.default.svc.cluster.local:8080` |
 | `home-assistant-proxy` | `https://home-assistant.sulibot.com` | `http://home-assistant.default.svc.cluster.local:8123` |
 
-**Firefly III header auth**: reads `HTTP_X_AUTHENTIK_EMAIL` using `AUTHENTICATION_GUARD=remote_user_guard` and auto-creates users on first login.
+**Firefly III header auth**: reads `HTTP_X_AUTHENTIK_EMAIL` using `AUTHENTICATION_GUARD=remote_user_guard`.
+Use Authentik email as the identity key (best match for Google identities) so Firefly can
+auto-create users on first login and map subsequent logins consistently.
+
+**Firefly operational guidance**:
+- Keep `X-Authentik-Email` as the identity header (stable key for Google-backed identities)
+- Keep layered external auth (`CF Access` + Authentik outpost); users typically still enter credentials once because browser sessions are reused
+- Allow Firefly to auto-create users on first login via header auth
+- Maintain a documented break-glass/admin recovery path (DB/local app admin recovery)
 
 **Home Assistant note**: Home Assistant still presents its own login screen after the outpost gate. For a more seamless experience, configure trusted networks in `/config/configuration.yaml`:
 
@@ -338,6 +349,13 @@ Browser -> filebrowser.sulibot.com
 
 Client IDs and secrets are injected via ExternalSecret from 1Password into `authentik-secret`, then passed into each app via the app's own ExternalSecret.
 
+**UX note (single credential entry)**:
+- For externally exposed OIDC apps behind Cloudflare Access (for example Immich or FileBrowser),
+  users may pass through both Cloudflare Access and Authentik/Google redirects.
+- The browser often reuses existing Google/Authentik sessions, so users typically enter
+  credentials only once even though multiple auth checks occur.
+- Prompt frequency depends on Cloudflare Access, Authentik, and Google session state/expiry.
+
 ### Pattern 3: CF Access bypass + app-owned auth (passthrough)
 
 **Apps**: Plex, Seerr/Jellyseerr
@@ -367,6 +385,13 @@ Filestash is on `gateway-tunnel`, so external requests are gated first by Cloudf
 Access behavior:
 - **External**: Cloudflare Access (Google) -> Filestash auth (OIDC/OpenID preferred; native plugin auth optional)
 - **Internal**: Filestash auth directly (OIDC/OpenID preferred; local / `htpasswd` / passthrough as needed)
+
+**UX note (single credential entry)**:
+- Externally, Filestash uses layered auth (Cloudflare Access + Filestash OIDC/OpenID).
+- This can still behave like a single sign-in from the user's perspective: the browser may show
+  brief redirects through Cloudflare Access and Authentik/Google, but credentials are typically
+  entered only once because existing sessions/cookies are reused.
+- Prompt frequency depends on Cloudflare Access, Authentik, and Google session state/expiry.
 
 Common Filestash auth plugins:
 - OIDC / OpenID: `plg_authenticate_openid`
