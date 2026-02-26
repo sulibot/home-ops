@@ -24,6 +24,33 @@ spec:
       filebrowser:
         type: deployment
         replicas: 1
+        initContainers:
+          seed-config:
+            image:
+              repository: docker.io/library/busybox
+              tag: "1.36.1"
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+
+                BOOTSTRAP_CONFIG="/bootstrap-config/config.yaml"
+                LIVE_DIR="/config"
+                LIVE_CONFIG="$LIVE_DIR/config.yaml"
+                TEMPLATE_CONFIG="$LIVE_DIR/config.yaml.gitops"
+
+                mkdir -p "$LIVE_DIR"
+
+                # Keep the rendered GitOps config on the PVC for reference/recovery.
+                cp -f "$BOOTSTRAP_CONFIG" "$TEMPLATE_CONFIG"
+                chmod 0644 "$TEMPLATE_CONFIG" || true
+
+                # Seed the live config once so the app can update it if needed.
+                if [ ! -s "$LIVE_CONFIG" ]; then
+                  cp -f "$BOOTSTRAP_CONFIG" "$LIVE_CONFIG"
+                  chmod 0644 "$LIVE_CONFIG" || true
+                fi
         containers:
           app:
             image:
@@ -111,6 +138,5 @@ spec:
         name: filebrowser-oidc-config
         defaultMode: 0644
         globalMounts:
-          - path: /config/config.yaml
-            subPath: config.yaml
+          - path: /bootstrap-config
             readOnly: true
