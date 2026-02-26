@@ -21,20 +21,59 @@ spec:
       retries: 5
       strategy: rollback
     timeout: 10m
+
   values:
     controllers:
       filestash:
         annotations:
           reloader.stakater.com/auto: "true"
+
         containers:
           app:
             image:
               repository: docker.io/machines/filestash
               tag: latest
+
             env:
               TZ: America/Los_Angeles
-              APPLICATION_URL: "filestash.sulibot.com"
+
+              # IMPORTANT: include scheme so Filestash generates correct absolute URLs/redirects
+              APPLICATION_URL: "https://filestash.sulibot.com"
+
               CANARY: "true"
+
+              # ------------------------------------------------------------
+              # Native backends (S3 / NFS) - FUTURE USE
+              #
+              # For "native backend" usage, you do NOT mount NFS into the pod.
+              # Filestash connects directly to S3/NFS as *storage backends*
+              # configured inside Filestash (typically via UI or config.json).
+              #
+              # If you want to GitOps this, you’d put the S3/NFS connection
+              # definitions into your Filestash config.json secret.
+              #
+              # Optionally, you can pass secrets as env vars and reference
+              # them from config.json if your config supports it.
+              #
+              # S3_ENDPOINT: "https://minio.example.com"
+              # S3_REGION: "us-west-1"
+              # S3_BUCKET: "my-bucket"
+              # S3_ACCESS_KEY_ID:
+              #   valueFrom:
+              #     secretKeyRef:
+              #       name: filestash-s3
+              #       key: accessKey
+              # S3_SECRET_ACCESS_KEY:
+              #   valueFrom:
+              #     secretKeyRef:
+              #       name: filestash-s3
+              #       key: secretKey
+              #
+              # NFS_SERVER: "10.0.0.50"
+              # NFS_EXPORT: "/exports/share"
+              # NFS_VERSION: "4"
+              # ------------------------------------------------------------
+
             probes:
               liveness: &probes
                 enabled: true
@@ -48,20 +87,24 @@ spec:
                   timeoutSeconds: 5
                   failureThreshold: 3
               readiness: *probes
+
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
+
             resources:
               requests:
                 cpu: 10m
               limits:
                 memory: 256Mi
+
     defaultPodOptions:
       securityContext:
         runAsNonRoot: false # filestash runs as root
         runAsUser: 0
         runAsGroup: 0
         fsGroup: 0
+
     service:
       app:
         ipFamilyPolicy: PreferDualStack
@@ -72,6 +115,7 @@ spec:
           http:
             port: 80
             targetPort: *port
+
     route:
       app:
         hostnames:
@@ -83,15 +127,21 @@ spec:
           - backendRefs:
               - identifier: app
                 port: 80
+
     persistence:
+      # Safer secret mount: mount the secret as a DIRECTORY, not as a single file path,
+      # so you don’t fight with /app/data/state being a separate PVC mount.
       config-json:
         type: secret
         name: "{{ .Release.Name }}-secret"
         defaultMode: 0440
         globalMounts:
-          - path: /app/data/state/config/config.json
-            subPath: config.json
+          - path: /app/data/state/config
             readOnly: true
+
+      # Your CephFS PVC:
+      # - /srv/data is what you want to share out (local filesystem path)
+      # - /app/data/state is Filestash state (keep persistent)
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
@@ -100,8 +150,23 @@ spec:
             subPath: data
           - path: /app/data/state
             subPath: filestash-state
+
       tmp:
         type: emptyDir
         medium: Memory
         globalMounts:
           - path: /tmp
+
+      # ------------------------------------------------------------
+      # NFS *mount* style (NOT used for "native backend") - FUTURE USE
+      #
+      # If you ever want K8s to mount NFS into the pod instead of Filestash
+      # connecting directly, you would add something like this (chart-dependent):
+      #
+      # nfs-share:
+      #   type: nfs
+      #   server: 10.0.0.50
+      #   path: /exports/share
+      #   globalMounts:
+      #     - path: /srv/nfs
+      # ------------------------------------------------------------
