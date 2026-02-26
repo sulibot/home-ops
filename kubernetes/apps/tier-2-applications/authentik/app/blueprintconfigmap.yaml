@@ -11,15 +11,16 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
-      # Internal hostname gets a combined login page:
+      # Reusable combined login page pattern:
       # - Google source button
       # - Authentik-native username/email + password
+      # No filtering policy is applied; both options are always available.
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
-          name: sulibot-internal-auth-identification
+          name: sulibot-shared-auth-identification
         attrs:
-          name: sulibot-internal-auth-identification
+          name: sulibot-shared-auth-identification
           user_fields:
             - username
             - email
@@ -38,11 +39,11 @@ data:
         state: present
         identifiers:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-internal-auth-identification]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
         attrs:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-internal-auth-identification]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
       - model: authentik_flows.flowstagebinding
         state: present
