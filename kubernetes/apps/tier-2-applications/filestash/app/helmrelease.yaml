@@ -91,6 +91,20 @@ spec:
                         params["path"] = target_path
                         changed = True
 
+                # Ensure OIDC users land on the preconfigured local backend instead of
+                # being prompted for "Admin Password / Path" after successful login.
+                middleware = live.get("middleware")
+                if not isinstance(middleware, dict):
+                    middleware = {}
+                    live["middleware"] = middleware
+                attr_map = middleware.get("attribute_mapping")
+                if not isinstance(attr_map, dict):
+                    attr_map = {}
+                    middleware["attribute_mapping"] = attr_map
+                if not attr_map.get("related_backend"):
+                    attr_map["related_backend"] = "Data"
+                    changed = True
+
                 if changed:
                     live_path.write_text(json.dumps(live, separators=(",", ":")))
                 PY
