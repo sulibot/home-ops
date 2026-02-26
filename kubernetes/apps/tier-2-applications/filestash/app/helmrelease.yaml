@@ -169,13 +169,13 @@ spec:
             readOnly: true
 
       # Your CephFS PVC:
-      # - /srv/data is what you want to share out (local filesystem path)
+      # - /data is what you want to share out (local filesystem path)
       # - /app/data/state is Filestash state (keep persistent)
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /srv/data
+          - path: /data
             subPath: data
           - path: /app/data/state
             subPath: filestash-state
