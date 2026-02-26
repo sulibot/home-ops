@@ -453,6 +453,30 @@ data:
           provider: !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
           meta_launch_url: "https://home-assistant.sulibot.com"
           policy_engine_mode: any
+      # Home Assistant alias (hass.sulibot.com) — separate proxy provider because
+      # Authentik proxy providers are bound to a single external_host.
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        identifiers:
+          name: hass-proxy
+        attrs:
+          name: hass-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: "https://hass.sulibot.com"
+          internal_host: "http://home-assistant.default.svc.cluster.local:8123"
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: hass
+        attrs:
+          name: Home Assistant (hass alias)
+          slug: hass
+          provider: !Find [authentik_providers_proxy.proxyprovider, [name, hass-proxy]]
+          meta_launch_url: "https://hass.sulibot.com"
+          policy_engine_mode: any
       # Proxy outpost — self-managed K8s deployment, no service_connection needed
       - model: authentik_outposts.outpost
         state: present
@@ -464,6 +488,7 @@ data:
           providers:
             - !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
             - !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
+            - !Find [authentik_providers_proxy.proxyprovider, [name, hass-proxy]]
           config:
             authentik_host: "https://auth.sulibot.com"
             log_level: info
