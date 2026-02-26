@@ -2,16 +2,23 @@
 
 ## Design Principles
 
-| Path | Available identity methods | Account creation |
-|------|---------------------------|-----------------|
-| **External** (internet via CF Tunnel) | Google ID only (CF Access gate) · Passthrough (Plex, Seerr own auth) | Auto-created on first login where supported |
-| **Internal** (LAN via gateway) | Google ID via Authentik · Authentik-native users (e.g. `admin@sulibot.com`) · Passthrough (Plex, Seerr own auth) | Auto-created on first login where supported |
+### External (internet via Cloudflare Tunnel)
 
-**External users must have a Google account in the approved list** (CF Access enforces this before any request reaches the cluster). No other identity method is available externally.
+| App type | Auth method | Notes |
+|----------|-------------|-------|
+| **Multi-user apps** | Google Auth only | CF Access enforces — no other identity accepted |
+| **Single-user apps** (externally exposed) | Google Auth (CF Access) | CF Access gate before reaching the app |
+| **Passthrough apps** (Plex, Seerr, Atuin) | No external auth — own account system | CF Access Bypass policy applied |
 
-**Internal users** get both Google OAuth (via Authentik) and Authentik-native credentials. The same approved Google accounts work internally — CF Access is simply absent, so Authentik handles the Google OAuth redirect directly.
+### Internal (LAN via gateway)
 
-Apps that support multi-user accounts apply their own auth. Single-user or admin-only apps (filestash) expose an admin login; passthrough apps (Plex, Seerr) manage their own accounts independently.
+| App type | Auth preference | Notes |
+|----------|----------------|-------|
+| **Multi-user apps** | username/email + password · Google Auth via Authentik · Authentik-native account | All three methods available; account auto-created on first login where supported |
+| **Single-user apps** | OIDC → proxy header auth → internal app auth → passthrough | In preference order; no external auth required internally |
+| **Passthrough / minimal apps** | No auth | LAN trust is the boundary |
+
+**Key**: CF Access is the external enforcement layer — it gates Google identity before any request reaches the cluster. Authentik handles all in-cluster identity (Google OAuth redirect + native credentials). The same approved Google accounts work internally without CF Access; the browser handles the Google OAuth redirect directly to Authentik.
 
 ---
 
