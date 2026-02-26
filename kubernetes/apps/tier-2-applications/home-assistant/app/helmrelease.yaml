@@ -33,8 +33,12 @@ spec:
               tag: 2026.2.3@sha256:d73c9c53a8562e12211f24fd7303c422051220636972485df291dbec885d8a3d
             env:
               TZ: America/Los_Angeles
+              # Required when Home Assistant is behind the Authentik proxy outpost.
+              HASS_HTTP_USE_X_FORWARDED_FOR: "true"
               HASS_HTTP_TRUSTED_PROXY_1: fd00:69::/64
               HASS_HTTP_TRUSTED_PROXY_2: fd00:42::/64
+              # Current cluster/outpost source range observed in HA logs.
+              HASS_HTTP_TRUSTED_PROXY_3: fd00:101:224::/60
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
