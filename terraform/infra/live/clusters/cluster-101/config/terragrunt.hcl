@@ -228,8 +228,8 @@ locals {
 
 
 inputs = {
-  # Cilium config file paths (single source of truth from Flux directory)
-  cilium_values_path     = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/app/values.yaml"
+  # Cilium BGP/LB config file paths (single source of truth from Flux directory)
+  # Note: Cilium itself is installed via bootstrap helmfile — not as a Talos inline manifest
   cilium_bgp_config_path = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/bgp/bgp.yaml"
   cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/ippool/lb-pool.yaml"
 
@@ -316,9 +316,6 @@ inputs = {
       dependency.nodes.outputs.k8s_network_config.pods_ipv6
     ]
   }
-
-  # Application versions - from centralized config
-  cilium_version = local.app_versions.applications.cilium_version
 
   # GPU driver configuration is now per-node (passed through all_node_ips from cluster_core)
   # The enable_i915 global flag is deprecated in favor of per-node gpu_passthrough config

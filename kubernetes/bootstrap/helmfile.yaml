@@ -1,14 +1,13 @@
 ---
 # Bootstrap Helmfile for cluster-101
-# Installs critical components BEFORE Flux is running
+# Installs Gateway API CRDs then Cilium CNI before Flux is running.
 #
-# Components installed:
-# - Cilium CNI (networking required for Flux pods)
+# Version is passed via CILIUM_VERSION env var (read from the Flux HelmRelease by the
+# Taskfile) so there is no drift between bootstrap and Flux-managed state.
+# Values are read directly from the Flux app directory for the same reason.
 #
-# Usage:
-#   helmfile apply
-#
-# After bootstrap, Flux will adopt these HelmReleases
+# Usage (via Taskfile — do not call directly):
+#   task cluster:bootstrap -- 101
 
 repositories:
   - name: cilium
@@ -18,12 +17,33 @@ releases:
   - name: cilium
     namespace: kube-system
     chart: cilium/cilium
-    version: 1.19.1
+    version: {{ env "CILIUM_VERSION" }}
     values:
-      - ../apps/networking/cilium/app/values.yaml
+      - ../apps/tier-0-foundation/cilium/app/values.yaml
     wait: true
-    timeout: 300
+    timeout: 600
     hooks:
+      # Apply Gateway API CRDs before Cilium so the operator initialises the
+      # gateway controller on first start (avoids the bootstrap race condition).
+      - events: ["presync"]
+        showlogs: true
+        command: "kubectl"
+        args:
+          - "apply"
+          - "--server-side"
+          - "-f"
+          - "../apps/tier-0-foundation/gateway-api-crds/gateway-api-crds-v1.4.1-experimental.yaml"
+      - events: ["presync"]
+        showlogs: true
+        command: "kubectl"
+        args:
+          - "wait"
+          - "--for=condition=established"
+          - "--timeout=60s"
+          - "crd/gatewayclasses.gateway.networking.k8s.io"
+          - "crd/gateways.gateway.networking.k8s.io"
+          - "crd/httproutes.gateway.networking.k8s.io"
+          - "crd/referencegrants.gateway.networking.k8s.io"
       - events: ["postsync"]
         showlogs: true
         command: "kubectl"
@@ -36,4 +56,3 @@ releases:
           - "-n"
           - "kube-system"
           - "--timeout=5m"
-

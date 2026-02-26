@@ -48,15 +48,6 @@ locals {
     try(node.gpu_passthrough.enabled, false)
   ])
 
-  # Read Cilium values from Flux config for inline manifests
-  # Use fileexists() to safely handle file reading - prevents "open : no such file or directory" errors
-  cilium_values_yaml = var.cilium_values_path != "" && try(fileexists(var.cilium_values_path), false) ? file(var.cilium_values_path) : ""
-
-  # Read Gateway API CRDs (required before Cilium if gatewayAPI.enabled: true)
-  gateway_api_crds_path = var.cilium_values_path != "" ? "${dirname(dirname(dirname(var.cilium_values_path)))}/crds/gateway-api-crds/gateway-api-crds-v1.4.0-experimental.yaml" : ""
-  # Use fileexists() to safely handle file reading
-  gateway_api_crds = local.gateway_api_crds_path != "" && try(fileexists(local.gateway_api_crds_path), false) ? file(local.gateway_api_crds_path) : ""
-
   # Read Cilium BGP configs from Flux directory (single source of truth)
   # These are applied as inline manifests so BGP is functional immediately at boot
   cilium_bgp_config_yaml = var.cilium_bgp_config_path != "" && try(fileexists(var.cilium_bgp_config_path), false) ? file(var.cilium_bgp_config_path) : ""
@@ -97,7 +88,7 @@ locals {
   }
 
   common_cluster_network = {
-    cni            = { name = "none" }                              # Cilium installed via inline manifests
+    cni            = { name = "none" }                              # Cilium installed via bootstrap helmfile after CRDs
     podSubnets     = [var.pod_cidr_ipv6, var.pod_cidr_ipv4]         # IPv6 first-class
     serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 first-class, dual-stack enabled
   }
@@ -112,20 +103,8 @@ locals {
   ))
 
   controlplane_inline_manifests = concat(
-    local.gateway_api_crds != "" ? [
-      {
-        name     = "gateway-api-crds"
-        contents = local.gateway_api_crds
-      }
-    ] : [],
-    [
-      {
-        name     = "cilium"
-        contents = data.helm_template.cilium.manifest
-      }
-    ],
     # Cilium BGP configs - read from Flux directory for single source of truth
-    # Applied after Cilium so CRDs are available
+    # Cilium itself is installed via bootstrap helmfile (after Gateway API CRDs) — not as inline manifest
     local.cilium_bgp_config_yaml != "" ? [
       {
         name     = "cilium-bgp-config"
@@ -171,22 +150,6 @@ locals {
   generated_client_configuration = try(talos_machine_secrets.cluster[0].client_configuration, null)
   machine_secrets                = local.reuse_machine_secrets ? var.machine_secrets : local.generated_machine_secrets
   client_configuration           = local.reuse_machine_secrets ? var.client_configuration : local.generated_client_configuration
-}
-
-# Template Cilium Helm chart with values from Flux config
-data "helm_template" "cilium" {
-  name         = "cilium"
-  repository   = "https://helm.cilium.io/"
-  chart        = "cilium"
-  version      = var.cilium_version
-  namespace    = "kube-system"
-  kube_version = var.kubernetes_version
-  skip_crds    = false
-  include_crds = true
-
-  # Only include values if cilium_values_yaml is not empty
-  # This prevents Talos provider 0.10.0 validation errors
-  values = local.cilium_values_yaml != "" ? [local.cilium_values_yaml] : []
 }
 
 # Generate cluster secrets (CA, bootstrap token, etc.)

@@ -1,14 +1,3 @@
-variable "cilium_values_path" {
-  description = "Path to Cilium Helm values file"
-  type        = string
-  default     = ""
-}
-
-variable "cilium_version" {
-  description = "Cilium CNI version to install"
-  type        = string
-}
-
 variable "cilium_bgp_config_path" {
   description = "Path to Cilium BGP config file (peer-config + advertisement)"
   type        = string

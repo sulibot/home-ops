@@ -2,8 +2,8 @@
 # Cilium CNI HelmRelease for cluster-101
 # Managed by Flux after bootstrap
 #
-# This HelmRelease is adopted from the bootstrap installation.
-# Values must match kubernetes/bootstrap/values/cilium.yaml
+# Bootstrap (task cluster:bootstrap) reads spec.chart.spec.version and values.yaml from this
+# directory to install Cilium — single source of truth, no drift between bootstrap and Flux.
 
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -26,7 +26,7 @@ spec:
 
   install:
     crds: CreateReplace
-    # Replace existing resources installed by Talos inline manifests
+    # Replace existing resources installed by bootstrap helm install
     replace: true
     remediation:
       retries: 5

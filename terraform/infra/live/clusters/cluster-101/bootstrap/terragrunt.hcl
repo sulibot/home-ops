@@ -84,6 +84,32 @@ terraform {
 
   # Note: Removed wait_for_nodes hook - the Talos provider handles retries and timeouts
   # when applying configurations. The compute dependency ensures VMs exist before this runs.
+
+  # Install Gateway API CRDs then Cilium CNI after cluster bootstrap.
+  # Version and values are read from the Flux HelmRelease — single source of truth, no drift.
+  after_hook "bootstrap_cilium" {
+    commands = ["apply"]
+    execute = [
+      "bash", "-c",
+      <<-EOT
+        set -euo pipefail
+        REPO_ROOT="${get_repo_root()}"
+        export KUBECONFIG="$REPO_ROOT/talos/clusters/cluster-${local.cluster_config.cluster_id}/kubeconfig"
+
+        if [ ! -f "$KUBECONFIG" ]; then
+          echo "ERROR: kubeconfig not found at $KUBECONFIG" >&2
+          exit 1
+        fi
+
+        # Read Cilium version from the Flux HelmRelease — single source of truth
+        CILIUM_VERSION=$(yq '.spec.chart.spec.version' \
+          "$REPO_ROOT/kubernetes/apps/tier-0-foundation/cilium/app/helmrelease.yaml")
+
+        echo "Installing Gateway API CRDs + Cilium CNI v$CILIUM_VERSION..."
+        CILIUM_VERSION="$CILIUM_VERSION" helmfile -f "$REPO_ROOT/kubernetes/bootstrap/helmfile.yaml" apply
+      EOT
+    ]
+  }
 }
 
 locals {
