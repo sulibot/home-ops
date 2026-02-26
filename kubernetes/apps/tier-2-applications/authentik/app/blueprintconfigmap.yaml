@@ -4,6 +4,97 @@ kind: ConfigMap
 metadata:
   name: authentik-blueprints
 data:
+  host-auth-flows.yaml: |
+    version: 1
+    metadata:
+      name: Host-specific Authentik Login Flows
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      # Internal hostname gets a combined login page:
+      # - Google source button
+      # - Authentik-native username/email + password
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: sulibot-internal-auth-identification
+        attrs:
+          name: sulibot-internal-auth-identification
+          user_fields:
+            - username
+            - email
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
+      - model: authentik_flows.flow
+        state: present
+        identifiers:
+          slug: sulibot-internal-authentication-flow
+        attrs:
+          name: Sulibot Internal Authentication
+          slug: sulibot-internal-authentication-flow
+          title: "Welcome to authentik!"
+          designation: authentication
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-internal-auth-identification]]
+          order: 10
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-internal-auth-identification]]
+          order: 10
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+          order: 20
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+          order: 20
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
+          order: 30
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
+          order: 30
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+          order: 100
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+          order: 100
+      # Host-specific brands pin the intended login UX by hostname.
+      # auth.sulibot.com remains Google-first/Google-only (default auth flow)
+      # auth-internal.sulibot.com uses the combined internal flow above.
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          domain: auth.sulibot.com
+        attrs:
+          domain: auth.sulibot.com
+          default: false
+          branding_title: authentik
+          flow_authentication: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          domain: auth-internal.sulibot.com
+        attrs:
+          domain: auth-internal.sulibot.com
+          default: false
+          branding_title: authentik
+          flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
   google-source.yaml: |
     version: 1
     metadata:
