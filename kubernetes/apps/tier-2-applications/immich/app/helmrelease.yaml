@@ -51,7 +51,7 @@ spec:
           storageLabelClaim: preferred_username
           autoRegister: true
           autoLaunch: false
-          buttonText: "Login with Authentik"
+          buttonText: "Login with Google"
       metrics:
         enabled: false
 
