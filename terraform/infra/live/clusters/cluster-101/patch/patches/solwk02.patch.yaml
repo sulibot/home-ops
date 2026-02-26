@@ -1,5 +1,9 @@
 cluster: {}
 machine:
+  sysctls:
+    net.ipv4.conf.all.send_redirects: "0"
+    net.ipv4.conf.default.send_redirects: "0"
+    net.ipv4.conf.ens18.send_redirects: "0"
   kernel:
     modules:
       - name: xe
