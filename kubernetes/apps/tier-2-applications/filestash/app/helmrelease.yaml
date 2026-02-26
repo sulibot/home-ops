@@ -37,8 +37,8 @@ spec:
             env:
               TZ: America/Los_Angeles
 
-              # IMPORTANT: include scheme so Filestash generates correct absolute URLs/redirects
-              APPLICATION_URL: "https://filestash.sulibot.com"
+              # Filestash expects the hostname here (no scheme).
+              APPLICATION_URL: "filestash.sulibot.com"
 
               CANARY: "true"
 
