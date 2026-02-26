@@ -34,9 +34,7 @@ spec:
             env:
               TZ: America/Los_Angeles
               APPLICATION_URL: "filestash.sulibot.com"
-            envFrom:
-              - secretRef:
-                  name: "{{ .Release.Name }}-secret"
+              CANARY: "true"
             probes:
               liveness: &probes
                 enabled: true
@@ -90,6 +88,14 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /app/data/state
+      config-json:
+        type: secret
+        name: "{{ .Release.Name }}-secret"
+        defaultMode: 0440
+        globalMounts:
+          - path: /app/data/state/config/config.json
+            subPath: config.json
+            readOnly: true
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
