@@ -206,8 +206,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - name: authentik-outpost
-                port: 9000
+              - identifier: app
+                port: 80
 
     persistence:
       # Mount the GitOps-rendered config secret at a bootstrap path. An init container
