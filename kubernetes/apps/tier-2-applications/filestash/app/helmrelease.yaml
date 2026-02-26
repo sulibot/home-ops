@@ -30,8 +30,8 @@ spec:
         initContainers:
           seed-config:
             image:
-              repository: docker.io/library/busybox
-              tag: "1.36.1"
+              repository: docker.io/library/python
+              tag: "3.12-alpine"
             command:
               - /bin/sh
               - -c
@@ -55,6 +55,45 @@ spec:
                   cp -f "$BOOTSTRAP_CONFIG" "$LIVE_CONFIG"
                   chmod 0640 "$LIVE_CONFIG" || true
                 fi
+
+                # Self-heal the common drift case where Filestash rewrites the local
+                # connection and drops params.path, which causes the "Admin Password / Path"
+                # prompt instead of using the preconfigured /data backend.
+                python3 - <<'PY'
+                import json
+                from pathlib import Path
+
+                live_path = Path("/app/data/state/config/config.json")
+                tmpl_path = Path("/app/data/state/config-templates/config.json.gitops")
+
+                live = json.loads(live_path.read_text())
+                tmpl = json.loads(tmpl_path.read_text())
+
+                def desired_path(template):
+                    for conn in template.get("connections", []):
+                        if conn.get("type") == "local":
+                            params = conn.get("params") or {}
+                            if params.get("path"):
+                                return params["path"]
+                    return "/data"
+
+                target_path = desired_path(tmpl)
+                changed = False
+
+                for conn in live.get("connections", []):
+                    if conn.get("type") != "local":
+                        continue
+                    params = conn.get("params")
+                    if not isinstance(params, dict):
+                        params = {}
+                        conn["params"] = params
+                    if not params.get("path"):
+                        params["path"] = target_path
+                        changed = True
+
+                if changed:
+                    live_path.write_text(json.dumps(live, separators=(",", ":")))
+                PY
 
         containers:
           app:
