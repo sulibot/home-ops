@@ -190,11 +190,17 @@ fails with `"Aborting write to empty username"` → user sees `"Request has been
 
 ### Authentication flow (default-authentication-flow)
 
-The default authentication identification stage is configured to **only show Google OAuth**
-(no password fields). `user_fields: []` + `sources: [google]`. This means:
-- Internal LAN users see "Login with Google" → Google OAuth → back to Authentik
-- Authentik-native accounts (e.g. `admin@sulibot.com`) bypass this flow and use Authentik's
-  own credential store — useful for service accounts and admin access without Google dependency
+The identification stage is configured with `user_fields: [username, email]` + `sources: [google]`.
+Users see a combined login page with:
+
+| Credential type | How to use | Who it's for |
+|---|---|---|
+| **Google ID** | Click "Login with Google" button | All approved Google accounts |
+| **Authentik-native** | Type username or email → password | `admin@sulibot.com`, service accounts, users without Google |
+| **App local account** | N/A for proxy/OIDC patterns — app accounts are created from Authentik identity on first login | Managed by the app after first SSO login |
+
+All three paths produce the same result for proxy and OIDC apps: Authentik issues a session/token
+and the app receives the authenticated identity (via injected headers or OIDC claims).
 
 ### 1Password secrets (item: `authentik`, vault: Kubernetes)
 

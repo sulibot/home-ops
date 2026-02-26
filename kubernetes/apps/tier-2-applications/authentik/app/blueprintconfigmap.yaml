@@ -104,7 +104,11 @@ data:
         identifiers:
           name: default-authentication-identification
         attrs:
-          user_fields: []
+          # username + email allow Authentik-native accounts (e.g. admin@sulibot.com)
+          # to log in with username/password alongside the Google OAuth button
+          user_fields:
+            - username
+            - email
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
   immich-provider.yaml: |
