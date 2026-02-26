@@ -84,10 +84,6 @@ spec:
               - identifier: app
                 port: 80
     persistence:
-      state:
-        existingClaim: "{{ .Release.Name }}-config"
-        globalMounts:
-          - path: /app/data/state
       config-json:
         type: secret
         name: "{{ .Release.Name }}-secret"
@@ -102,6 +98,8 @@ spec:
         globalMounts:
           - path: /srv/data
             subPath: data
+          - path: /app/data/state
+            subPath: filestash-state
       tmp:
         type: emptyDir
         medium: Memory
