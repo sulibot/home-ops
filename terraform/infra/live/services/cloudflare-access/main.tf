@@ -46,8 +46,8 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
   config {
     client_id     = data.sops_file.secrets.data["cf_access_client_id"]
     client_secret = data.sops_file.secrets.data["cf_access_client_secret"]
-    auth_url      = "https://auth.sulibot.com/application/o/cloudflare-access/authorize"
-    token_url     = "https://auth.sulibot.com/application/o/cloudflare-access/token"
+    auth_url      = "https://auth.sulibot.com/application/o/authorize/"
+    token_url     = "https://auth.sulibot.com/application/o/token/"
     certs_url     = "https://auth.sulibot.com/application/o/cloudflare-access/jwks/"
     scopes        = ["openid", "email", "profile"]
     claims        = ["email", "preferred_username"]
