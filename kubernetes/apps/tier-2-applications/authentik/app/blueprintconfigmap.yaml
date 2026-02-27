@@ -90,9 +90,16 @@ data:
           domain: auth-internal.sulibot.com
         attrs:
           domain: auth-internal.sulibot.com
-          default: false
+          default: true
           branding_title: authentik
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          domain: authentik-default
+        attrs:
+          domain: authentik-default
+          default: false
   google-source.yaml: |
     version: 1
     metadata:
