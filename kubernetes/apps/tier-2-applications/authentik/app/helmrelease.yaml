@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: *app
-      version: "2025.12.4"
+      version: "2026.2.0"
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
