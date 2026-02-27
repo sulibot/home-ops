@@ -47,12 +47,6 @@ data:
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
       - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
-          order: 20
-      - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
@@ -83,7 +77,7 @@ data:
           domain: auth.sulibot.com
           default: false
           branding_title: authentik
-          flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          flow_authentication: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
       - model: authentik_brands.brand
         state: present
         identifiers:
