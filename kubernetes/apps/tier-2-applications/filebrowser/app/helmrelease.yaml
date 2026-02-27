@@ -46,11 +46,9 @@ spec:
                 cp -f "$BOOTSTRAP_CONFIG" "$TEMPLATE_CONFIG"
                 chmod 0644 "$TEMPLATE_CONFIG" || true
 
-                # Seed the live config once so the app can update it if needed.
-                if [ ! -s "$LIVE_CONFIG" ]; then
-                  cp -f "$BOOTSTRAP_CONFIG" "$LIVE_CONFIG"
-                  chmod 0644 "$LIVE_CONFIG" || true
-                fi
+                # Keep runtime config GitOps-controlled to avoid OIDC drift.
+                cp -f "$BOOTSTRAP_CONFIG" "$LIVE_CONFIG"
+                chmod 0644 "$LIVE_CONFIG" || true
         containers:
           app:
             image:

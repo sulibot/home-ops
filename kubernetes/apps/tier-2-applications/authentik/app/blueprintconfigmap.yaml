@@ -414,6 +414,8 @@ data:
           redirect_uris:
             - url: "https://filebrowser.sulibot.com/api/auth/oidc/callback"
               matching_mode: strict
+            - url: "https://filebrowser.sulibot.com/api/auth/oidc/callback/"
+              matching_mode: strict
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
