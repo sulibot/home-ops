@@ -100,6 +100,17 @@ spec:
           - name: gateway-tunnel
             namespace: network
         rules:
+          - matches:
+              - path:
+                  type: Exact
+                  value: /
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /api/auth/oidc/login
+                  statusCode: 302
           - backendRefs:
               - name: filebrowser
                 port: 80
