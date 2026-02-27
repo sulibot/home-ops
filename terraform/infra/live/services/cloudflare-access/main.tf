@@ -103,6 +103,29 @@ resource "cloudflare_zero_trust_access_policy" "authentik_bypass" {
 }
 
 # ---------------------------------------------------------------------------
+# Bypass — auth-internal.sulibot.com (internal Authentik entrypoint)
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "authentik_internal_bypass" {
+  account_id       = local.account_id
+  name             = "Authentik Internal (bypass)"
+  domain           = "auth-internal.sulibot.com"
+  type             = "self_hosted"
+  session_duration = "24h"
+}
+
+resource "cloudflare_zero_trust_access_policy" "authentik_internal_bypass" {
+  account_id     = local.account_id
+  application_id = cloudflare_zero_trust_access_application.authentik_internal_bypass.id
+  name           = "Bypass"
+  decision       = "bypass"
+  precedence     = 1
+  include {
+    everyone = true
+  }
+}
+
+# ---------------------------------------------------------------------------
 # Bypass — atuin.sulibot.com (CLI sync tool, owns its own auth)
 # ---------------------------------------------------------------------------
 
