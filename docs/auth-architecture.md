@@ -6,7 +6,7 @@
 
 | App type | Authentication model | Notes |
 |----------|----------------------|-------|
-| **Apps behind CF Access** | Google via Cloudflare Access, plus app auth as applicable | Cloudflare Access validates Google identity before any request reaches the cluster. The app may still use Authentik (OIDC/proxy) and/or native app accounts. |
+| **Apps behind CF Access** | Cloudflare Access with Authentik as OIDC IdP | Cloudflare Access is the edge gate. Authentik is used as the IdP for Cloudflare Access, and apps may still use Authentik (OIDC/proxy) and/or native app auth. |
 | **Passthrough apps** (Plex, Seerr/Jellyseerr) | App-owned authentication | Cloudflare Access `Bypass` policy is applied intentionally. |
 
 ### Internal Access (LAN via gateway)
@@ -17,7 +17,7 @@
 | **Apps with multiple auth modes** | Google via Authentik · Authentik-native account · native app accounts | Keep all relevant options available when useful for collaboration, app-specific roles, service/API access, or break-glass access. |
 | **Passthrough / minimal apps** | None (LAN trust boundary) | LAN trust is the outer boundary for selected internal-only services. |
 
-**Key principle**: Cloudflare Access is the external enforcement layer. It gates Google identity before traffic reaches the cluster. Authentik provides in-cluster identity for integrated apps (Google OAuth and Authentik-native credentials). Native app accounts may coexist when the application supports them and they are operationally useful.
+**Key principle**: Cloudflare Access is the external enforcement layer. It gates internet traffic before requests reach the cluster. Authentik provides centralized identity for both edge and in-cluster integrations (Google OAuth and Authentik-native credentials). Native app accounts may coexist when operationally useful.
 
 ---
 
@@ -27,7 +27,7 @@ Authentication is applied in **two independent layers**, depending on the access
 
 | Path | Enforcement gate | Identity provider |
 |------|------------------|-------------------|
-| External (internet) | Cloudflare Access | Google OAuth **directly in Cloudflare** |
+| External (internet) | Cloudflare Access | Authentik OIDC (with Google source and/or Authentik-native login, depending on Authentik flow) |
 | Internal (LAN) | Authentik (proxy outpost or native OIDC), or app-local auth | Google OAuth via Authentik, Authentik-native credentials, and/or app-native auth (depending on app) |
 
 No firewall ports are opened. All external traffic enters through a **Cloudflare Tunnel** (a persistent outbound connection from `cloudflared` running in-cluster).
@@ -49,10 +49,11 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 
 | Hostname | App | Auth pattern |
 |----------|-----|--------------|
-| `auth.sulibot.com` | Authentik | Direct Authentik login page (externally gated by CF Access) |
-| `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik |
+| `auth.sulibot.com` | Authentik | Direct Authentik login page (CF Access bypassed intentionally) |
+| `auth-internal.sulibot.com` | Authentik (internal UX entrypoint) | Direct Authentik login page bound to internal-specific Authentik flow |
+| `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik (local/password login disabled) |
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
-| `filestash.sulibot.com` | Filestash | CF Access (Google) externally; Filestash OIDC/OpenID preferred, native plugin auth also supported |
+| `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
 | `home-assistant.sulibot.com` | Home Assistant | Authentik proxy outpost -> header auth |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
 | `plex.sulibot.com` | Plex | Plex account (CF Access bypass) |
@@ -109,14 +110,14 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 
 ## Cloudflare Access (External)
 
-### Architectural Decision: Cloudflare Access uses Google directly (not Authentik as CF IdP)
+### Architectural Decision: Cloudflare Access uses Authentik as OIDC IdP
 
-**Rationale**: Keeping Authentik behind Cloudflare Access ensures the IdP itself is not exposed to unauthenticated internet traffic. This reduces direct attack surface to Cloudflare's edge.
+**Rationale**: Cloudflare Access remains the edge enforcement point, while Authentik centralizes identity policy and upstream source selection (Google + Authentik-native accounts) for app and edge SSO.
 
 ```
-Internet -> Cloudflare Edge (Google OAuth) -> Tunnel -> gateway-tunnel -> App
-                                                                    ↓ (for OIDC/outpost apps)
-                                                         Authentik (Google/Auth-native internally)
+Internet -> Cloudflare Edge (Access policy) -> Authentik OIDC (as CF IdP) -> Tunnel -> gateway-tunnel -> App
+                                                                                              ↓ (for OIDC/outpost apps)
+                                                                                   Authentik (OIDC/proxy/session)
 ```
 
 ### Cloudflare Access configuration
@@ -125,14 +126,16 @@ In Zero Trust -> Access -> Applications:
 
 | Application | Hostname(s) | Policy | Notes |
 |-------------|-------------|--------|-------|
-| `*.sulibot.com` | `*.sulibot.com` | Allow Google (6 approved emails) | Wildcard catch-all |
+| `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard catch-all |
+| `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
+| `auth-internal (bypass)` | `auth-internal.sulibot.com` | Bypass | Internal Authentik entrypoint and internal-flow brand host |
 | `plex (bypass)` | `plex.sulibot.com` | Bypass | Plex uses its own account system |
 | `seerr (bypass)` | `seerr.sulibot.com`, `requests.sulibot.com` | Bypass | Jellyseerr uses Plex/local auth |
 | `atuin (bypass)` | `atuin.sulibot.com` | Bypass | Present for Atuin token auth when/if exposed externally |
 
-**Important**: `auth.sulibot.com` is covered by the wildcard Google policy. No special bypass is required. Cloudflare validates the Google session before the request reaches Authentik.
+**Important**: `auth.sulibot.com` and `auth-internal.sulibot.com` are intentionally bypassed in Cloudflare Access. All other external apps remain behind the wildcard Access policy unless explicitly bypassed.
 
-**Approved Google accounts** (Zero Trust -> Access -> Access Groups):
+**Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
 - `bodawee@gmail.com`
 - `sarah.kalas@gmail.com`
@@ -172,6 +175,7 @@ All `gateway-tunnel` apps must resolve to `10.101.250.11` on LAN:
 
 ```
 auth.sulibot.com             -> 10.101.250.11
+auth-internal.sulibot.com    -> 10.101.250.11
 filebrowser.sulibot.com      -> 10.101.250.11
 firefly.sulibot.com          -> 10.101.250.11
 filestash.sulibot.com        -> 10.101.250.11
@@ -186,9 +190,7 @@ All `gateway-internal` apps use `10.101.250.12`. A wildcard entry (`*.sulibot.co
 ExternalDNS (Mikrotik webhook provider) automatically manages these records from `HTTPRoute` hostnames. Manually added records without TXT ownership are ignored by ExternalDNS; delete them so ExternalDNS can recreate and own them.
 
 > On LAN, Cloudflare Access is bypassed entirely. Requests go directly to the Cilium gateway.
-> Authentik-integrated apps may still redirect to Authentik (and then to Google) for OIDC/SSO,
-> but the user typically does not re-enter credentials if the browser already has a valid Google
-> and/or Authentik session. App-native accounts remain available where configured.
+> Authentik-integrated apps may still redirect to Authentik for OIDC/SSO; app-native accounts remain available where configured.
 
 ---
 
@@ -210,7 +212,7 @@ Blueprints are maintained in `blueprints/` (rendered into an inline ConfigMap) a
 | `karakeep-provider.yaml` | OIDC provider for Karakeep |
 | `paperless-provider.yaml` | OIDC provider for Paperless-ngx |
 | `actual-provider.yaml` | OIDC provider for Actual Budget |
-| `cloudflare-access.yaml` | Legacy CF Access OIDC provider (not used since CF Access now authenticates directly with Google) |
+| `cloudflare-access.yaml` | Cloudflare Access OIDC provider (actively used; CF IdP is Authentik) |
 
 ### Silent enrollment flow (Google OAuth -> Authentik user)
 
