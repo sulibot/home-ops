@@ -83,7 +83,7 @@ data:
           domain: auth.sulibot.com
           default: false
           branding_title: authentik
-          flow_authentication: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+          flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       - model: authentik_brands.brand
         state: present
         identifiers:
