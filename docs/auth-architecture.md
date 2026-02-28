@@ -273,7 +273,7 @@ Two flow patterns are intentionally separated:
 
 2. `sulibot-internal-authentication-flow`
 - Single-host flow object bound to `auth.sulibot.com`.
-- CF Access OIDC requests (redirect URI includes `cloudflareaccess.com/cdn-cgi/access/callback`) skip identifier and go directly to Google source.
+- CF Access OIDC requests (redirect URI includes `cloudflareaccess.com/cdn-cgi/access/callback`) use a CF-specific identification stage (email field + Google source button).
 - Non-CF requests use identifier-first routing:
   - `@gmail.com` -> Google source stage
   - non-`@gmail.com` -> Authentik password stage

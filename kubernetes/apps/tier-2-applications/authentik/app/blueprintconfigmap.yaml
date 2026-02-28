@@ -12,8 +12,8 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
       # Reusable login flow pattern:
-      # - CF Access OIDC requests: skip identifier form and continue directly to Google source.
-      # - App/OIDC/outpost requests: show identifier-first UX with policy routing:
+      # - CF Access OIDC requests: dedicated identification UI with email field + Google button.
+      # - App/OIDC/outpost requests: identifier-first UX with policy routing:
       #   @gmail.com -> Google source, non-gmail -> Authentik password.
       - model: authentik_stages_identification.identificationstage
         state: present
@@ -27,6 +27,17 @@ data:
           # Single-continue UX: choose next stage via policy (gmail -> Google source,
           # everything else -> local password stage).
           sources: []
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: sulibot-cf-identification
+        attrs:
+          name: sulibot-cf-identification
+          user_fields:
+            - email
+          # CF path exposes explicit Google source button.
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
       - model: authentik_stages_source.sourcestage
         state: present
         identifiers:
@@ -90,7 +101,7 @@ data:
         attrs:
           name: Sulibot Internal Authentication
           slug: sulibot-internal-authentication-flow
-          title: "Welcome to authentik!"
+          title: "Welcome to Sulibot"
           designation: authentication
       - model: authentik_flows.flowstagebinding
         state: present
@@ -102,6 +113,16 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-cf-identification]]
+          order: 11
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-cf-identification]]
+          order: 11
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -145,6 +166,19 @@ data:
           enabled: true
           # Skip identifier stage for CF Access requests so users go straight to Google.
           negate: true
+          timeout: 30
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
+          order: 0
+          enabled: true
+          negate: false
           timeout: 30
       - model: authentik_policies.policybinding
         state: present
