@@ -38,7 +38,7 @@ spec:
                 set -eu
 
                 rm -rf /tmp/hass-oidc-auth
-                git clone --depth 1 --branch 1.2.1 https://github.com/christiaangoossens/hass-oidc-auth.git /tmp/hass-oidc-auth
+                git clone --depth 1 --branch main https://github.com/christiaangoossens/hass-oidc-auth.git /tmp/hass-oidc-auth
 
                 mkdir -p /config/custom_components
                 rm -rf /config/custom_components/hass_oidc_auth
