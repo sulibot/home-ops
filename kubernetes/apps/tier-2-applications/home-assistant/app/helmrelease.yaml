@@ -37,22 +37,18 @@ spec:
               - |
                 set -eu
 
-                PLUGIN_DIR="/tmp/hass-oidc-auth"
-                CONFIG_DIR="/config"
-                BOOTSTRAP_DIR="/bootstrap-config"
+                rm -rf /tmp/hass-oidc-auth
+                git clone --depth 1 --branch 1.2.1 https://github.com/christiaangoossens/hass-oidc-auth.git /tmp/hass-oidc-auth
 
-                rm -rf "${PLUGIN_DIR}"
-                git clone --depth 1 --branch 1.2.1 https://github.com/christiaangoossens/hass-oidc-auth.git "${PLUGIN_DIR}"
-
-                mkdir -p "${CONFIG_DIR}/custom_components"
-                rm -rf "${CONFIG_DIR}/custom_components/hass_oidc_auth"
-                cp -R "${PLUGIN_DIR}/custom_components/hass_oidc_auth" "${CONFIG_DIR}/custom_components/"
+                mkdir -p /config/custom_components
+                rm -rf /config/custom_components/hass_oidc_auth
+                cp -R /tmp/hass-oidc-auth/custom_components/hass_oidc_auth /config/custom_components/
 
                 # Keep Home Assistant OIDC/auth config declarative.
-                cp -f "${BOOTSTRAP_DIR}/configuration.yaml" "${CONFIG_DIR}/configuration.yaml"
-                chmod 0644 "${CONFIG_DIR}/configuration.yaml" || true
+                cp -f /bootstrap-config/configuration.yaml /config/configuration.yaml
+                chmod 0644 /config/configuration.yaml || true
 
-                rm -rf "${PLUGIN_DIR}"
+                rm -rf /tmp/hass-oidc-auth
         containers:
           app:
             image:
