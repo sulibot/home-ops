@@ -63,10 +63,14 @@ data:
           name: sulibot-is-cloudflare-access-request
           expression: |
             uri = ""
-            try:
-                uri = request.build_absolute_uri().strip().lower()
-            except Exception:
-                pass
+            http_request = getattr(request, "http_request", None)
+            if http_request:
+                build_absolute_uri = getattr(http_request, "build_absolute_uri", None)
+                if callable(build_absolute_uri):
+                    try:
+                        uri = (build_absolute_uri() or "").strip().lower()
+                    except Exception:
+                        uri = ""
             query = getattr(request, "GET", {})
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
