@@ -47,7 +47,7 @@ data:
           name: sulibot-cf-identification
           user_fields:
             - email
-          # CF path exposes explicit Google source button.
+          # CF path exposes explicit Google source button only.
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
       - model: authentik_stages_source.sourcestage
@@ -113,7 +113,7 @@ data:
         attrs:
           name: Sulibot Internal Authentication
           slug: sulibot-internal-authentication-flow
-          title: "Welcome to Sulibot"
+          title: "Login to continue to sulibot.com"
           designation: authentication
       - model: authentik_flows.flowstagebinding
         state: present
