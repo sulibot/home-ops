@@ -120,6 +120,45 @@ Internet -> Cloudflare Edge (Access policy) -> Authentik OIDC (as CF IdP) -> Tun
                                                                                    Authentik (OIDC/proxy/session)
 ```
 
+### Recommended layered model (source of truth)
+
+Cloudflare Access is the **internet gate**. Authentik and apps are the **application identity/session layer**.
+
+External path (internet):
+
+1. User opens `https://<app>.sulibot.com`.
+2. Cloudflare Access policy evaluates first (wildcard allow + explicit bypass list).
+3. If no valid CF session exists, Cloudflare redirects to Authentik (configured as CF's OIDC IdP).
+4. Authentik completes login flow and returns OIDC code/token to Cloudflare.
+5. Cloudflare issues Access session (`CF_Authorization`) and allows request forwarding.
+6. Cloudflare Tunnel forwards to `gateway-tunnel` (`10.101.250.11`) in-cluster.
+7. App applies its own auth integration:
+   - Immich/FileBrowser: native OIDC via Authentik
+   - Firefly/Home Assistant: Authentik outpost proxy/header auth
+
+Internal path (LAN):
+
+1. Split DNS resolves hostnames to local gateway IPs.
+2. Traffic goes directly to Cilium gateway and does not traverse Cloudflare edge.
+3. App/AuthentiK flow runs directly (OIDC, outpost header auth, or app-local auth depending on app).
+
+Shared-session caveat:
+
+- CF and each app are separate OIDC clients.
+- They do not share tokens directly.
+- They can share Authentik SSO state when the browser already has a valid Authentik session cookie.
+- Second prompts can still occur if session/cookies expire, hostname/cookie scope differs, or flow policy explicitly requires re-auth.
+
+### Why CF IdP is Authentik (not Google direct)
+
+Using Authentik as CF IdP keeps one identity authority for:
+
+- Google and Authentik-native users
+- app OIDC providers and proxy outpost policies
+- consistent account mapping and lifecycle behavior across apps
+
+Using Google directly in CF can reduce managed surface area, but increases split-identity risk when apps still use Authentik internally (account mismatch, login-method conflicts, callback/redirect edge cases).
+
 ### Cloudflare Access configuration
 
 In Zero Trust -> Access -> Applications:
@@ -227,9 +266,22 @@ On a user's first Google login, Authentik runs `source-enrollment-silent`:
 
 **Known gotcha**: `PLAN_CONTEXT_PROMPT` moved from `authentik.flows.planner` to `authentik.stages.prompt.stage` in Authentik 2025.x. If the import path is wrong, enrollment fails with `"Aborting write to empty username"`, and the user sees `"Request has been denied"`.
 
-### Authentication flow (`default-authentication-flow`)
+### Authentication flow behavior
 
-The identification stage is configured with `user_fields: [username, email]` and `sources: [google]`. Users are presented with a combined login experience:
+Two flow patterns are intentionally separated:
+
+1. `default-authentication-flow`
+- Default identification stage is local/password-oriented (`user_fields: [username, email]`).
+- Google source is not injected here; this avoids unintended dual-button behavior on generic/default routes.
+
+2. `sulibot-internal-authentication-flow`
+- Host-bound flow used for the internal UX entrypoint.
+- Single identifier form is followed by policy routing:
+  - `@gmail.com` -> Google source stage
+  - non-`@gmail.com` -> Authentik password stage
+- This preserves one-entry UX while keeping Google and Authentik-native account support.
+
+Users are therefore offered one of these methods based on flow/policy context:
 
 | Credential type | How to use | Typical use case |
 |-----------------|------------|------------------|
