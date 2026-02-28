@@ -53,6 +53,7 @@ spec:
               OAUTH_PROVIDER_NAME: "Authentik (Google)"
               OAUTH_SCOPE: "openid email profile"
               OAUTH_ALLOW_DANGEROUS_EMAIL_ACCOUNT_LINKING: "true"
+              DISABLE_PASSWORD_AUTH: "true"
               OAUTH_CLIENT_ID:
                 valueFrom:
                   secretKeyRef:
@@ -199,7 +200,7 @@ spec:
         hostnames:
           - karakeep.sulibot.com
         parentRefs:
-          - name: gateway-internal
+          - name: gateway-tunnel
             namespace: network
         rules:
           - backendRefs:

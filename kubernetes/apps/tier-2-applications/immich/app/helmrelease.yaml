@@ -50,7 +50,7 @@ spec:
           signingAlgorithm: RS256
           storageLabelClaim: preferred_username
           autoRegister: true
-          autoLaunch: false
+          autoLaunch: true
           buttonText: "Login with Google"
       metrics:
         enabled: false
