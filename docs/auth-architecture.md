@@ -53,7 +53,7 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik (local/password login disabled) |
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
-| `home-assistant.sulibot.com` | Home Assistant | Authentik proxy outpost -> header auth |
+| `home-assistant.sulibot.com` | Home Assistant | Native OIDC via Authentik (`hass-oidc-auth`) |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
 | `plex.sulibot.com` | Plex | Plex account (CF Access bypass) |
 | `seerr.sulibot.com` | Jellyseerr | Plex/own auth (CF Access bypass) |
@@ -326,7 +326,7 @@ Also required from item `cloudnative-pg-superuser`:
 
 ### Pattern 1: Authentik Proxy Outpost (header injection)
 
-**Apps**: Firefly III, Home Assistant
+**Apps**: Firefly III
 
 The `HTTPRoute` sends all traffic to `authentik-outpost:9000` (not directly to the app). Users authenticate with Authentik, and the outpost forwards the request to the app with identity headers.
 
@@ -353,7 +353,6 @@ Browser -> firefly.sulibot.com
 | App | `external_host` | `internal_host` |
 |-----|------------------|-----------------|
 | `firefly-proxy` | `https://firefly.sulibot.com` | `http://firefly-app.default.svc.cluster.local:8080` |
-| `home-assistant-proxy` | `https://home-assistant.sulibot.com` | `http://home-assistant.default.svc.cluster.local:8123` |
 
 **Firefly III header auth**: reads `HTTP_X_AUTHENTIK_EMAIL` using `AUTHENTICATION_GUARD=remote_user_guard`.
 Use Authentik email as the identity key (best match for Google identities) so Firefly can
@@ -365,21 +364,9 @@ auto-create users on first login and map subsequent logins consistently.
 - Allow Firefly to auto-create users on first login via header auth
 - Maintain a documented break-glass/admin recovery path (DB/local app admin recovery)
 
-**Home Assistant note**: Home Assistant still presents its own login screen after the outpost gate. For a more seamless experience, configure trusted networks in `/config/configuration.yaml`:
-
-```yaml
-homeassistant:
-  auth_providers:
-    - type: trusted_networks
-      trusted_networks:
-        - fd00:42::/32   # cluster pod CIDR (adjust to your pod network)
-      allow_bypass_login: true
-    - type: homeassistant
-```
-
 ### Pattern 2: Native OIDC (app initiates OIDC against Authentik)
 
-**Apps**: FileBrowser Quantum, Immich, Paperless-ngx, Karakeep, Actual Budget
+**Apps**: FileBrowser Quantum, Immich, Home Assistant (`hass-oidc-auth`), Paperless-ngx, Karakeep, Actual Budget
 
 The application redirects the user to Authentik. Users authenticate through Authentik (Google or Authentik-native credentials), and the application receives identity claims via OIDC. The `HTTPRoute` points directly to the app (no outpost in the path).
 
@@ -395,6 +382,7 @@ Browser -> filebrowser.sulibot.com
 |-----|----------------------|-----------|---------------------|
 | FileBrowser Quantum | `https://auth.sulibot.com/application/o/filebrowser/` | `filebrowser-provider.yaml` | `createUser: true` in config.yaml |
 | Immich | `https://auth.sulibot.com/application/o/immich/` | `immich-provider.yaml` | Yes |
+| Home Assistant | `https://auth.sulibot.com/application/o/home-assistant/` | `home-assistant-provider.yaml` | Auto-link supported (`automatic_user_linking`); create-on-first-login not supported by plugin |
 | Paperless-ngx | `https://auth.sulibot.com/application/o/paperless/` | `paperless-provider.yaml` | Yes |
 | Karakeep | `https://auth.sulibot.com/application/o/karakeep/` | `karakeep-provider.yaml` | Yes |
 | Actual Budget | `https://auth.sulibot.com/application/o/actual/` | `actual-provider.yaml` | Yes |

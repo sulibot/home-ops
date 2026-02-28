@@ -26,6 +26,33 @@ spec:
       home-assistant:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          seed-oidc-auth:
+            image:
+              repository: docker.io/alpine/git
+              tag: 2.49.1
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+
+                PLUGIN_DIR="/tmp/hass-oidc-auth"
+                CONFIG_DIR="/config"
+                BOOTSTRAP_DIR="/bootstrap-config"
+
+                rm -rf "${PLUGIN_DIR}"
+                git clone --depth 1 --branch 1.2.1 https://github.com/christiaangoossens/hass-oidc-auth.git "${PLUGIN_DIR}"
+
+                mkdir -p "${CONFIG_DIR}/custom_components"
+                rm -rf "${CONFIG_DIR}/custom_components/hass_oidc_auth"
+                cp -R "${PLUGIN_DIR}/custom_components/hass_oidc_auth" "${CONFIG_DIR}/custom_components/"
+
+                # Keep Home Assistant OIDC/auth config declarative.
+                cp -f "${BOOTSTRAP_DIR}/configuration.yaml" "${CONFIG_DIR}/configuration.yaml"
+                chmod 0644 "${CONFIG_DIR}/configuration.yaml" || true
+
+                rm -rf "${PLUGIN_DIR}"
         containers:
           app:
             image:
@@ -33,11 +60,11 @@ spec:
               tag: 2026.2.3@sha256:d73c9c53a8562e12211f24fd7303c422051220636972485df291dbec885d8a3d
             env:
               TZ: America/Los_Angeles
-              # Required when Home Assistant is behind the Authentik proxy outpost.
+              # Required when Home Assistant is behind Gateway/API proxies.
               HASS_HTTP_USE_X_FORWARDED_FOR: "true"
               HASS_HTTP_TRUSTED_PROXY_1: fd00:69::/64
               HASS_HTTP_TRUSTED_PROXY_2: fd00:42::/64
-              # Current cluster/outpost source range observed in HA logs.
+              # Current cluster proxy source range observed in HA logs.
               HASS_HTTP_TRUSTED_PROXY_3: fd00:101:224::/60
             envFrom:
               - secretRef:
@@ -92,8 +119,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - name: authentik-outpost
-                port: 9000
+              - name: home-assistant
+                port: 8123
     persistence:
       config:
         enabled: true
@@ -105,6 +132,14 @@ spec:
         existingClaim: "{{ .Release.Name }}-config-cache"
         globalMounts:
           - path: /config/.venv
+      bootstrap-config:
+        enabled: true
+        type: secret
+        name: home-assistant-oidc-config
+        defaultMode: 0644
+        globalMounts:
+          - path: /bootstrap-config
+            readOnly: true
       tmp:
         type: emptyDir
       # usb-zigbee:
