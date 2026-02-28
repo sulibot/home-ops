@@ -47,6 +47,10 @@ locals {
   zone_id        = data.sops_file.secrets.data["cloudflare_zone_id"]
   tunnel_id      = data.sops_file.secrets.data["cloudflare_tunnel_id"]
   allowed_emails = split(" ", data.sops_file.secrets.data["cf_access_allowed_emails"])
+  emergency_allowed_emails = [
+    "bcwallace@gmail.com",
+  ]
+  effective_allowed_emails = distinct(concat(local.allowed_emails, local.emergency_allowed_emails))
 }
 
 # ---------------------------------------------------------------------------
@@ -103,7 +107,7 @@ resource "cloudflare_zero_trust_access_policy" "wildcard_allow" {
   decision       = "allow"
   precedence     = 1
   include {
-    email = local.allowed_emails
+    email = local.effective_allowed_emails
   }
 }
 
