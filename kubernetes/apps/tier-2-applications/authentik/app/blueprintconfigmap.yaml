@@ -199,6 +199,7 @@ data:
           user_fields:
             - username
             - email
+          password_stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
   immich-provider.yaml: |
