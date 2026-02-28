@@ -326,8 +326,6 @@ inputs = {
     # MinIO S3 object storage LXC (VLAN 200, pve02)
     { name = "minio.sulibot.com", type = "AAAA", address = "fd00:200::52", ttl = "5m" },
     { name = "minio.sulibot.com", type = "A",    address = "10.200.0.52",  ttl = "5m" },
-    # Internal Authentik entrypoint (LAN DNS override to gateway-tunnel)
-    { name = "auth-internal.sulibot.com", type = "A", address = "10.101.250.11", ttl = "5m" },
     # IPv4 A records — currently disabled on device, kept here for completeness
     { name = "pve01.sulibot.com", type = "A", address = "10.10.0.1", ttl = "5m", disabled = true },
     { name = "pve02.sulibot.com", type = "A", address = "10.10.0.2", ttl = "5m", disabled = true },

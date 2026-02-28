@@ -182,9 +182,9 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
-      # Host-specific brands:
-      # - Both domains use the same flow object.
-      # - CF Access requests on auth.sulibot.com are routed to Google immediately by policy.
+      # Host-specific brand:
+      # - auth.sulibot.com uses the shared flow object.
+      # - CF Access requests are routed to Google immediately by policy.
       # - Non-CF requests keep identifier-first routing for Google vs local password.
       - model: authentik_brands.brand
         state: present
@@ -192,15 +192,6 @@ data:
           domain: auth.sulibot.com
         attrs:
           domain: auth.sulibot.com
-          default: false
-          branding_title: authentik
-          flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-      - model: authentik_brands.brand
-        state: present
-        identifiers:
-          domain: auth-internal.sulibot.com
-        attrs:
-          domain: auth-internal.sulibot.com
           default: true
           branding_title: authentik
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]

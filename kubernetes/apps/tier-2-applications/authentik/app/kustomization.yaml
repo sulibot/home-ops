@@ -9,5 +9,4 @@ resources:
   - ./helmrepository.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
-  - ./httproute-internal.yaml
   - ./rbac.yaml

@@ -50,7 +50,6 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | Hostname | App | Auth pattern |
 |----------|-----|--------------|
 | `auth.sulibot.com` | Authentik | Direct Authentik login page (CF Access bypassed intentionally) |
-| `auth-internal.sulibot.com` | Authentik (internal UX entrypoint) | Direct Authentik login page bound to internal-specific Authentik flow |
 | `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik (local/password login disabled) |
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
@@ -167,12 +166,11 @@ In Zero Trust -> Access -> Applications:
 |-------------|-------------|--------|-------|
 | `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard catch-all |
 | `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
-| `auth-internal (bypass)` | `auth-internal.sulibot.com` | Bypass | Internal Authentik entrypoint and internal-flow brand host |
 | `plex (bypass)` | `plex.sulibot.com` | Bypass | Plex uses its own account system |
 | `seerr (bypass)` | `seerr.sulibot.com`, `requests.sulibot.com` | Bypass | Jellyseerr uses Plex/local auth |
 | `atuin (bypass)` | `atuin.sulibot.com` | Bypass | Present for Atuin token auth when/if exposed externally |
 
-**Important**: `auth.sulibot.com` and `auth-internal.sulibot.com` are intentionally bypassed in Cloudflare Access. All other external apps remain behind the wildcard Access policy unless explicitly bypassed.
+**Important**: `auth.sulibot.com` is intentionally bypassed in Cloudflare Access. All other external apps remain behind the wildcard Access policy unless explicitly bypassed.
 
 **Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
@@ -214,7 +212,6 @@ All `gateway-tunnel` apps must resolve to `10.101.250.11` on LAN:
 
 ```
 auth.sulibot.com             -> 10.101.250.11
-auth-internal.sulibot.com    -> 10.101.250.11
 filebrowser.sulibot.com      -> 10.101.250.11
 firefly.sulibot.com          -> 10.101.250.11
 filestash.sulibot.com        -> 10.101.250.11
@@ -275,7 +272,7 @@ Two flow patterns are intentionally separated:
 - Google source is not injected here; this avoids unintended dual-button behavior on generic/default routes.
 
 2. `sulibot-internal-authentication-flow`
-- Shared flow object used by `auth.sulibot.com` and `auth-internal.sulibot.com`.
+- Single-host flow object bound to `auth.sulibot.com`.
 - CF Access OIDC requests (redirect URI includes `cloudflareaccess.com/cdn-cgi/access/callback`) skip identifier and go directly to Google source.
 - Non-CF requests use identifier-first routing:
   - `@gmail.com` -> Google source stage
