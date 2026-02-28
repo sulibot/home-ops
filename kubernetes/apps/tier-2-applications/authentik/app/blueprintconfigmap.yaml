@@ -56,10 +56,12 @@ data:
             query = getattr(request, "GET", {})
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
+            client_id = (query.get("client_id") or "").strip().lower()
             # Cloudflare Access callback always targets team-domain /cdn-cgi/access/callback.
             return (
                 "cloudflareaccess.com/cdn-cgi/access/callback" in redirect_uri
                 or "cloudflareaccess.com/cdn-cgi/access/callback" in next_url
+                or client_id == "filebrowser"
             )
       - model: authentik_policies_expression.expressionpolicy
         state: present
@@ -71,9 +73,11 @@ data:
             query = getattr(request, "GET", {})
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
+            client_id = (query.get("client_id") or "").strip().lower()
             if (
                 "cloudflareaccess.com/cdn-cgi/access/callback" in redirect_uri
                 or "cloudflareaccess.com/cdn-cgi/access/callback" in next_url
+                or client_id == "filebrowser"
             ):
                 return True
             identifier = ""
