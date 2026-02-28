@@ -11,10 +11,10 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
-      # Reusable combined login page pattern:
-      # - Google source button
-      # - Authentik-native username/email + password
-      # No filtering policy is applied; both options are always available.
+      # Reusable login flow pattern:
+      # - CF Access OIDC requests: skip identifier form and continue directly to Google source.
+      # - App/OIDC/outpost requests: show identifier-first UX with policy routing:
+      #   @gmail.com -> Google source, non-gmail -> Authentik password.
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
@@ -37,10 +37,33 @@ data:
       - model: authentik_policies_expression.expressionpolicy
         state: present
         identifiers:
+          name: sulibot-is-cloudflare-access-request
+        attrs:
+          name: sulibot-is-cloudflare-access-request
+          expression: |
+            query = getattr(request, "GET", {})
+            redirect_uri = (query.get("redirect_uri") or "").strip().lower()
+            next_url = (query.get("next") or "").strip().lower()
+            # Cloudflare Access callback always targets team-domain /cdn-cgi/access/callback.
+            return (
+                "cloudflareaccess.com/cdn-cgi/access/callback" in redirect_uri
+                or "cloudflareaccess.com/cdn-cgi/access/callback" in next_url
+            )
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        identifiers:
           name: sulibot-is-gmail-identifier
         attrs:
           name: sulibot-is-gmail-identifier
           expression: |
+            query = getattr(request, "GET", {})
+            redirect_uri = (query.get("redirect_uri") or "").strip().lower()
+            next_url = (query.get("next") or "").strip().lower()
+            if (
+                "cloudflareaccess.com/cdn-cgi/access/callback" in redirect_uri
+                or "cloudflareaccess.com/cdn-cgi/access/callback" in next_url
+            ):
+                return True
             identifier = ""
             post = getattr(request, "POST", None)
             if post:
@@ -112,6 +135,20 @@ data:
       - model: authentik_policies.policybinding
         state: present
         identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 10]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 10]]
+          order: 0
+          enabled: true
+          # Skip identifier stage for CF Access requests so users go straight to Google.
+          negate: true
+          timeout: 30
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
           policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-gmail-identifier]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 20]]
           order: 0
@@ -145,9 +182,10 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
-      # Host-specific brands pin the intended login UX by hostname.
-      # auth.sulibot.com remains Google-first/Google-only (default auth flow)
-      # auth-internal.sulibot.com uses the combined internal flow above.
+      # Host-specific brands:
+      # - Both domains use the same flow object.
+      # - CF Access requests on auth.sulibot.com are routed to Google immediately by policy.
+      # - Non-CF requests keep identifier-first routing for Google vs local password.
       - model: authentik_brands.brand
         state: present
         identifiers:

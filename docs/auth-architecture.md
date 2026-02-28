@@ -275,11 +275,12 @@ Two flow patterns are intentionally separated:
 - Google source is not injected here; this avoids unintended dual-button behavior on generic/default routes.
 
 2. `sulibot-internal-authentication-flow`
-- Host-bound flow used for the internal UX entrypoint.
-- Single identifier form is followed by policy routing:
+- Shared flow object used by `auth.sulibot.com` and `auth-internal.sulibot.com`.
+- CF Access OIDC requests (redirect URI includes `cloudflareaccess.com/cdn-cgi/access/callback`) skip identifier and go directly to Google source.
+- Non-CF requests use identifier-first routing:
   - `@gmail.com` -> Google source stage
   - non-`@gmail.com` -> Authentik password stage
-- This preserves one-entry UX while keeping Google and Authentik-native account support.
+- This preserves one-entry UX for app flows while making the external CF IdP path Google-first.
 
 Users are therefore offered one of these methods based on flow/policy context:
 
@@ -315,9 +316,9 @@ For Authentik-integrated apps (OIDC or proxy outpost), **Google ID** and **Authe
 | `ACTUAL_OIDC_CLIENT_ID` | e.g. `actual` |
 | `ACTUAL_OIDC_CLIENT_SECRET` | random |
 | `OUTPOST_TOKEN` | API token for the Authentik proxy outpost deployment (random 40+ chars) |
-| `CF_ACCESS_CLIENT_ID` | Legacy CF Access OIDC client ID (unused) |
-| `CF_ACCESS_CLIENT_SECRET` | Legacy CF Access OIDC secret (unused) |
-| `CF_ACCESS_CALLBACK_URL` | Legacy CF Access callback URL (unused) |
+| `CF_ACCESS_CLIENT_ID` | Cloudflare Access OIDC client ID (used by Authentik `cloudflare-access` provider) |
+| `CF_ACCESS_CLIENT_SECRET` | Cloudflare Access OIDC client secret (used by Authentik `cloudflare-access` provider) |
+| `CF_ACCESS_CALLBACK_URL` | Cloudflare Access callback URL (`https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`) |
 
 Also required from item `cloudnative-pg-superuser`:
 - `POSTGRES_SUPER_PASS` (used by the `postgres-init` init container to create the DB)
