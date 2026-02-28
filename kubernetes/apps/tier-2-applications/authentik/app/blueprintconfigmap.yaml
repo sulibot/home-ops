@@ -58,9 +58,9 @@ data:
       - model: authentik_policies_expression.expressionpolicy
         state: present
         identifiers:
-          name: sulibot-google-button-route
+          name: sulibot-is-cloudflare-access-request
         attrs:
-          name: sulibot-google-button-route
+          name: sulibot-is-cloudflare-access-request
           expression: |
             uri = ""
             try:
@@ -171,11 +171,11 @@ data:
       - model: authentik_policies.policybinding
         state: present
         identifiers:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-google-button-route]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
           order: 10
         attrs:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-google-button-route]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
           order: 10
           enabled: true
@@ -184,11 +184,11 @@ data:
       - model: authentik_policies.policybinding
         state: present
         identifiers:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-google-button-route]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 12]]
           order: 10
         attrs:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-google-button-route]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 12]]
           order: 10
           enabled: true
