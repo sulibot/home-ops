@@ -24,9 +24,18 @@ data:
           name: sulibot-internal-auth-identification
 
       # Reusable login flow pattern:
-      # - CF Access OIDC requests: skip identification and go straight to Google source stage.
+      # - CF Access/FileBrowser requests: Google-button-only identification (no email/password fields).
       # - App/OIDC/outpost requests: identifier-first UX with policy routing:
       #   @gmail.com -> Google source, non-gmail -> Authentik password.
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: sulibot-google-button-identification
+        attrs:
+          name: sulibot-google-button-identification
+          user_fields: []
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
@@ -74,12 +83,6 @@ data:
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
             client_id = (query.get("client_id") or "").strip().lower()
-            if (
-                "cloudflareaccess.com/cdn-cgi/access/callback" in redirect_uri
-                or "cloudflareaccess.com/cdn-cgi/access/callback" in next_url
-                or client_id == "filebrowser"
-            ):
-                return True
             identifier = ""
             post = getattr(request, "POST", None)
             if post:
@@ -112,6 +115,16 @@ data:
         state: present
         identifiers:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
+          order: 11
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
+          order: 11
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 12
         attrs:
@@ -148,6 +161,19 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
           order: 30
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
+          order: 10
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-cloudflare-access-request]]
+          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 11]]
+          order: 10
+          enabled: true
+          negate: false
+          timeout: 30
       - model: authentik_policies.policybinding
         state: present
         identifiers:
