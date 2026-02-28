@@ -64,6 +64,7 @@ data:
           expression: |
             uri = ""
             http_request = getattr(request, "http_request", None)
+            query = {}
             if http_request:
                 build_absolute_uri = getattr(http_request, "build_absolute_uri", None)
                 if callable(build_absolute_uri):
@@ -71,7 +72,9 @@ data:
                         uri = (build_absolute_uri() or "").strip().lower()
                     except Exception:
                         uri = ""
-            query = getattr(request, "GET", {})
+                query = getattr(http_request, "GET", {})
+            if not query:
+                query = getattr(request, "GET", {})
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
             client_id = (query.get("client_id") or "").strip().lower()
@@ -90,7 +93,12 @@ data:
         attrs:
           name: sulibot-is-gmail-identifier
           expression: |
-            query = getattr(request, "GET", {})
+            http_request = getattr(request, "http_request", None)
+            query = {}
+            if http_request:
+                query = getattr(http_request, "GET", {})
+            if not query:
+                query = getattr(request, "GET", {})
             redirect_uri = (query.get("redirect_uri") or "").strip().lower()
             next_url = (query.get("next") or "").strip().lower()
             client_id = (query.get("client_id") or "").strip().lower()
