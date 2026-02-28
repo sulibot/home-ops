@@ -45,9 +45,10 @@ data:
           user_fields:
             - username
             - email
-          # Single-continue UX: choose next stage via policy (gmail -> Google source,
-          # everything else -> local password stage).
-          sources: []
+          password_stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
+          show_source_labels: true
       - model: authentik_stages_source.sourcestage
         state: present
         identifiers:
@@ -105,7 +106,7 @@ data:
         attrs:
           name: Sulibot Internal Authentication
           slug: sulibot-internal-authentication-flow
-          title: "Login to continue to sulibot.com"
+          title: "welcome to sulibot"
           designation: authentication
       - model: authentik_flows.flow
         state: present
@@ -114,7 +115,7 @@ data:
         attrs:
           name: Sulibot Cloudflare Authentication
           slug: sulibot-cf-authentication-flow
-          title: "Login to continue to sulibot.com"
+          title: "welcome to sulibot"
           designation: authentication
       - model: authentik_flows.flowstagebinding
         state: absent
@@ -159,12 +160,8 @@ data:
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
       - model: authentik_flows.flowstagebinding
-        state: present
+        state: absent
         identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_source.sourcestage, [name, sulibot-google-source-stage]]
-          order: 20
-        attrs:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_source.sourcestage, [name, sulibot-google-source-stage]]
           order: 20
@@ -179,12 +176,8 @@ data:
           stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
           order: 40
       - model: authentik_flows.flowstagebinding
-        state: present
+        state: absent
         identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
-          order: 30
-        attrs:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
           order: 30
@@ -201,31 +194,17 @@ data:
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 12]]
           order: 10
       - model: authentik_policies.policybinding
-        state: present
+        state: absent
         identifiers:
           policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-gmail-identifier]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 20]]
           order: 0
-        attrs:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-gmail-identifier]]
-          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 20]]
-          order: 0
-          enabled: true
-          negate: false
-          timeout: 30
       - model: authentik_policies.policybinding
-        state: present
+        state: absent
         identifiers:
           policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-gmail-identifier]]
           target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 30]]
           order: 0
-        attrs:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, sulibot-is-gmail-identifier]]
-          target: !Find [authentik_flows.flowstagebinding, [target__slug, sulibot-internal-authentication-flow], [order, 30]]
-          order: 0
-          enabled: true
-          negate: true
-          timeout: 30
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -247,6 +226,25 @@ data:
           domain: auth.sulibot.com
           default: true
           branding_title: authentik
+          branding_custom_css: |
+            /* App login button styling: Halloween orange for local Authentik login. */
+            .pf-c-button.pf-m-primary {
+              background-color: #ff7a00 !important;
+              border-color: #ff7a00 !important;
+              color: #ffffff !important;
+            }
+            .pf-c-button.pf-m-primary:hover,
+            .pf-c-button.pf-m-primary:focus {
+              background-color: #e56d00 !important;
+              border-color: #e56d00 !important;
+            }
+            /* Render flow title like regular copy, not a headline. */
+            .pf-c-login__main .pf-c-title {
+              font-size: 1.2rem !important;
+              font-weight: 400 !important;
+              line-height: 1.4 !important;
+              letter-spacing: 0 !important;
+            }
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       - model: authentik_brands.brand
         state: present
@@ -339,7 +337,7 @@ data:
         identifiers:
           slug: google
         attrs:
-          name: Google
+          name: Login with Google
           slug: google
           enabled: true
           authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
