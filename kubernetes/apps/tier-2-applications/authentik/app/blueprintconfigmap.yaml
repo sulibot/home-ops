@@ -273,14 +273,12 @@ data:
         identifiers:
           name: default-authentication-identification
         attrs:
-          # username + email allow Authentik-native accounts (e.g. admin@sulibot.com)
-          # to log in with username/password alongside the Google OAuth button
+          # Keep default identification stage local-only.
+          # Host-specific flows handle Google routing logic explicitly.
           user_fields:
             - username
             - email
           password_stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
-          sources:
-            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
   immich-provider.yaml: |
     version: 1
     metadata:
