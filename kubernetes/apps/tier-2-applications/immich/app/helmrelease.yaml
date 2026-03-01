@@ -50,10 +50,10 @@ spec:
           signingAlgorithm: RS256
           storageLabelClaim: preferred_username
           autoRegister: true
-          autoLaunch: false
-          buttonText: "Login with Google"
+          autoLaunch: true
+          buttonText: "Login with Authentik"
         passwordLogin:
-          enabled: true
+          enabled: false
         server:
           loginPageMessage: "Login"
       metrics:
