@@ -19,6 +19,7 @@ resources:
   - ./fusion/ks.yaml
   - ./go2rtc/ks.yaml
   - ./home-assistant/ks.yaml
+  - ./homepage/ks.yaml
   - ./immich/helm-repo/ks.yaml
   - ./immich/ks.yaml
   - ./jellyseerr/ks.yaml
@@ -30,8 +31,10 @@ resources:
   # - ./mosquitto/ks.yaml
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
+  - ./ollama/ks.yaml
   - ./overseerr/ks.yaml
   - ./paperless/ks.yaml
+  - ./paperless-gpt/ks.yaml
   - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml
@@ -42,6 +45,7 @@ resources:
   # sabnzbd disabled
   # - ./sabnzbd/ks.yaml
   - ./seerr/ks.yaml
+  - ./shelfmark/ks.yaml
   # slskd disabled
   # - ./slskd/ks.yaml
   - ./smtp-relay/ks.yaml

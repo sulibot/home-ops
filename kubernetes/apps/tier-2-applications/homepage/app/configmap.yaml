@@ -1,0 +1,269 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+data:
+  settings.yaml: |
+    title: sulibot homelab
+    theme: dark
+    color: slate
+    headerStyle: clean
+    statusStyle: dot
+    useEqualHeights: true
+    fiveColumns: false
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: true
+      showSearchSuggestions: true
+      hideVisitURL: true
+    layout:
+      Media:
+        style: column
+        icon: mdi-television-play
+      Downloads:
+        style: column
+        icon: mdi-download-circle
+      Books:
+        style: column
+        icon: mdi-bookshelf
+      Personal:
+        style: column
+        icon: mdi-account
+      AI:
+        style: column
+        icon: mdi-robot
+
+  widgets.yaml: |
+    - search:
+        provider: [google]
+        focus: false
+        target: _blank
+    - kubernetes:
+        cluster:
+          cpu: true
+          memory: true
+          show: true
+          showLabel: true
+        nodes:
+          cpu: true
+          memory: true
+          show: false
+          showLabel: true
+    - datetime:
+        text_size: l
+        format:
+          timeStyle: short
+          dateStyle: short
+          hourCycle: h23
+
+  services.yaml: |
+    - Media:
+        - Plex:
+            href: https://plex.sulibot.com
+            icon: plex.png
+            description: Media Server
+            widget:
+              type: plex
+              url: http://plex.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+        - Emby:
+            href: https://emby.sulibot.com
+            icon: emby.png
+            description: Media Server
+            siteMonitor: https://emby.sulibot.com
+        - Sonarr:
+            href: https://sonarr.sulibot.com
+            icon: sonarr.png
+            description: TV Shows
+            widget:
+              type: sonarr
+              url: http://sonarr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_SONARR_API_KEY}}"
+        - Sonarr 4K:
+            href: https://sonarr-4k.sulibot.com
+            icon: sonarr.png
+            description: 4K TV Shows
+            widget:
+              type: sonarr
+              url: http://sonarr-4k.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_SONARR_4K_API_KEY}}"
+        - Radarr:
+            href: https://radarr.sulibot.com
+            icon: radarr.png
+            description: Movies
+            widget:
+              type: radarr
+              url: http://radarr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_RADARR_API_KEY}}"
+        - Radarr 4K:
+            href: https://radarr-4k.sulibot.com
+            icon: radarr.png
+            description: 4K Movies
+            widget:
+              type: radarr
+              url: http://radarr-4k.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_RADARR_4K_API_KEY}}"
+        - Lidarr:
+            href: https://lidarr.sulibot.com
+            icon: lidarr.png
+            description: Music
+            widget:
+              type: lidarr
+              url: http://lidarr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_LIDARR_API_KEY}}"
+        - Tautulli:
+            href: https://tautulli.sulibot.com
+            icon: tautulli.png
+            description: Plex Stats
+            siteMonitor: https://tautulli.sulibot.com
+
+    - Downloads:
+        - Jellyseerr:
+            href: https://jellyseerr.sulibot.com
+            icon: jellyseerr.png
+            description: Media Requests
+            widget:
+              type: jellyseerr
+              url: http://jellyseerr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_SEERR_API_KEY}}"
+        - Seerr:
+            href: https://seerr.sulibot.com
+            icon: overseerr.png
+            description: Media Requests
+            widget:
+              type: overseerr
+              url: http://seerr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_SEERR_API_KEY}}"
+        - Prowlarr:
+            href: https://prowlarr.sulibot.com
+            icon: prowlarr.png
+            description: Indexer Manager
+            widget:
+              type: prowlarr
+              url: http://prowlarr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
+        - qBittorrent:
+            href: https://qbittorrent.sulibot.com
+            icon: qbittorrent.png
+            description: Torrent Downloader
+            widget:
+              type: qbittorrent
+              url: http://qbittorrent.default.svc.cluster.local
+        - NZBGet:
+            href: https://nzbget.sulibot.com
+            icon: nzbget.png
+            description: Usenet Downloader
+            widget:
+              type: nzbget
+              url: http://nzbget.default.svc.cluster.local
+              username: "{{HOMEPAGE_VAR_NZBGET_USER}}"
+              password: "{{HOMEPAGE_VAR_NZBGET_PASS}}"
+        - Autobrr:
+            href: https://autobrr.sulibot.com
+            icon: autobrr.png
+            description: Torrent Automation
+            siteMonitor: https://autobrr.sulibot.com
+
+    - Books:
+        - Bookshelf:
+            href: https://bookshelf.sulibot.com
+            icon: readarr.png
+            description: Book Manager
+            siteMonitor: https://bookshelf.sulibot.com
+        - Shelfmark:
+            href: https://shelfmark.sulibot.com
+            icon: mdi-headphones
+            description: Audiobook Manager
+            siteMonitor: https://shelfmark.sulibot.com
+        - LazyLibrarian:
+            href: https://lazylibrarian.sulibot.com
+            icon: mdi-book-search
+            description: Book Search
+            siteMonitor: https://lazylibrarian.sulibot.com
+
+    - Personal:
+        - Immich:
+            href: https://immich.sulibot.com
+            icon: immich.png
+            description: Photo Library
+            widget:
+              type: immich
+              url: http://immich-server.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
+              version: 2
+        - Paperless:
+            href: https://paperless.sulibot.com
+            icon: paperless.png
+            description: Document Manager
+            widget:
+              type: paperlessngx
+              url: http://paperless.default.svc.cluster.local:8000
+              key: "5dd123796d7d3b51887fd584ba4fc15ebb7aa03f"
+        - Karakeep:
+            href: https://karakeep.sulibot.com
+            icon: mdi-bookmark
+            description: Bookmarks
+            siteMonitor: https://karakeep.sulibot.com
+        - FileBrowser:
+            href: https://filebrowser.sulibot.com
+            icon: filebrowser.png
+            description: File Manager
+            siteMonitor: https://filebrowser.sulibot.com
+        - Actual:
+            href: https://actual.sulibot.com
+            icon: actual-budget.png
+            description: Budget
+            siteMonitor: https://actual.sulibot.com
+        - Firefly:
+            href: https://firefly.sulibot.com
+            icon: firefly.png
+            description: Finance
+            siteMonitor: https://firefly.sulibot.com
+        - Home Assistant:
+            href: https://home.sulibot.com
+            icon: home-assistant.png
+            description: Home Automation
+            siteMonitor: https://home.sulibot.com
+
+    - AI:
+        - Paperless GPT:
+            href: https://paperless-gpt.sulibot.com
+            icon: paperless.png
+            description: AI Document Processing
+            siteMonitor: https://paperless-gpt.sulibot.com
+        - Ollama:
+            href: https://ollama.sulibot.com
+            icon: ollama.png
+            description: Local LLM
+            widget:
+              type: ollama
+              url: http://ollama.default.svc.cluster.local:11434
+
+  bookmarks.yaml: |
+    - Git:
+        - home-ops:
+            - icon: github.png
+              href: https://github.com/sulibot/home-ops
+        - kubesearch:
+            - icon: kubernetes-dashboard.png
+              href: https://kubesearch.dev/
+    - Cloud:
+        - Cloudflare:
+            - icon: cloudflare.png
+              href: https://dash.cloudflare.com/
+        - 1Password:
+            - icon: 1password.png
+              href: https://my.1password.com/
+    - Communicate:
+        - Discord:
+            - icon: discord.png
+              href: https://discord.com/app
+        - Gmail:
+            - icon: gmail.png
+              href: https://mail.google.com
+
+  docker.yaml: ""
+
+  kubernetes.yaml: |
+    mode: cluster

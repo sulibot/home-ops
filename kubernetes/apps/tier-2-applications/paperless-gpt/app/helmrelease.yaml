@@ -1,0 +1,112 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: paperless-gpt
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: paperless-gpt
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      paperless-gpt:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/icereed/paperless-gpt
+              tag: v0.23.0@sha256:90766d15d541162129d0fa47dad5ffb33a02a0c77cbc4cee9007b24b656ba6ce
+            env:
+              TZ: America/Los_Angeles
+              PAPERLESS_BASE_URL: http://paperless.default.svc.cluster.local:8000
+              PAPERLESS_PUBLIC_URL: https://paperless.sulibot.com
+              LLM_PROVIDER: ollama
+              LLM_MODEL: llama3.2:3b
+              LLM_LANGUAGE: English
+              LLM_API_BASE_URL: http://ollama.default.svc.cluster.local:11434
+              OCR_PROVIDER: llm
+              VISION_LLM_PROVIDER: ollama
+              VISION_LLM_MODEL: moondream:1.8b
+              OCR_LIMIT_PAGES: 5
+              OCR_PROCESS_MODE: image
+              PDF_SKIP_EXISTING_OCR: "false"
+              PDF_OCR_TAGGING: "false"
+              PDF_UPLOAD: "true"
+              PDF_COPY_METADATA: "true"
+              AUTO_GENERATE_TAGS: "false"
+              AUTO_TAG: ai-auto
+              AUTO_OCR_TAG: ai-ocr
+              MANUAL_TAG: ai
+            envFrom:
+              - secretRef:
+                  name: paperless-gpt-secret
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    service:
+      app:
+        controller: paperless-gpt
+        ports:
+          http:
+            port: &port 8080
+
+    route:
+      app:
+        hostnames:
+          - paperless-gpt.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: http
+
+    persistence:
+      data:
+        existingClaim: "{{ .Release.Name }}-config"
+        advancedMounts:
+          paperless-gpt:
+            app:
+              - path: /app/db
+                subPath: db
+              - path: /app/prompts
+                subPath: prompts
+      tmp:
+        type: emptyDir
+        advancedMounts:
+          paperless-gpt:
+            app:
+              - path: /tmp
+                subPath: tmp

@@ -1,0 +1,153 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: shelfmark
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: shelfmark
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      shelfmark:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/calibrain/shelfmark-lite
+              tag: v1.1.2@sha256:8381306cf51990be55b9e57bf4f133d646e57273d91c0e00c47f80e9b27cac93
+            command:
+              - gunicorn
+            args:
+              - --access-logfile=-
+              - --error-logfile=-
+              - --worker-class=geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+              - --workers=1
+              - -t
+              - "300"
+              - -b
+              - 0.0.0.0:8084
+              - shelfmark.main:app
+            env:
+              TZ: America/Los_Angeles
+              FLASK_PORT: &port 8084
+
+              # Audiobookshelf library URL (for display/linking)
+              AUDIOBOOK_LIBRARY_URL: https://bookshelf.sulibot.com
+
+              # Search & download
+              SEARCH_MODE: universal
+              DEFAULT_RELEASE_SOURCE: prowlarr
+
+              # Download destinations (within csi-cephfs-content-pvc)
+              INGEST_DIR: /media/books/import
+              DESTINATION_AUDIOBOOK: /media/books/audiobooks
+
+              # Metadata providers
+              METADATA_PROVIDER: hardcover
+              METADATA_PROVIDER_AUDIOBOOK: hardcover
+              HARDCOVER_ENABLED: "true"
+
+              # Prowlarr integration
+              PROWLARR_ENABLED: "true"
+              PROWLARR_URL: http://prowlarr
+              PROWLARR_TORRENT_CLIENT: qbittorrent
+              QBITTORRENT_URL: http://qbittorrent
+
+              # File organization
+              FILE_ORGANIZATION_AUDIOBOOK: organize
+              TEMPLATE_AUDIOBOOK_ORGANIZE: "{Author}/{Title}/{Author} - {Title} ({PartNumber})"
+              HARDLINK_TORRENTS_AUDIOBOOKS: "true"
+
+            envFrom:
+              - secretRef:
+                  name: shelfmark-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 1Gi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+
+    service:
+      app:
+        controller: shelfmark
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - shelfmark.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: http
+
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /config
+      media:
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /media
+            subPath: data
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+            subPath: tmp
+          - path: /var/log
+            subPath: var-log
