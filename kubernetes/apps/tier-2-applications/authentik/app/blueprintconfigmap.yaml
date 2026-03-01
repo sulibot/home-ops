@@ -31,7 +31,6 @@ data:
         attrs:
           name: sulibot-shared-auth-identification
           user_fields:
-            - username
             - email
           password_stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
           sources:
@@ -87,7 +86,7 @@ data:
         attrs:
           name: Sulibot Internal Authentication
           slug: sulibot-internal-authentication-flow
-          title: "welcome to sulibot"
+          title: ""
           designation: authentication
       - model: authentik_flows.flow
         state: present
@@ -96,7 +95,7 @@ data:
         attrs:
           name: Sulibot Cloudflare Authentication
           slug: sulibot-cf-authentication-flow
-          title: "welcome to sulibot"
+          title: ""
           designation: authentication
       - model: authentik_flows.flowstagebinding
         state: present
@@ -164,23 +163,100 @@ data:
             .pf-c-login * {
               font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important;
             }
-            /* App login button styling: Halloween orange for local Authentik login. */
-            .pf-c-button.pf-m-primary {
-              background-color: #ff7a00 !important;
+            .pf-c-login__main {
+              max-width: 420px !important;
+              width: 100% !important;
+              border-radius: 16px !important;
+              padding: 32px !important;
+              background: #0f1720 !important;
+              box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45) !important;
+            }
+            .pf-c-login__main-header.pf-c-brand {
+              padding-bottom: 8px !important;
+            }
+            .pf-c-login__main-header.pf-c-brand img,
+            .pf-c-login__main-header .pf-c-brand img {
+              width: 175px !important;
+              height: 175px !important;
+              margin-bottom: 8px !important;
+            }
+            .pf-c-login__main .pf-c-title {
+              display: none !important;
+            }
+            .pf-c-login__main-body {
+              margin-top: 8px !important;
+            }
+            .pf-c-form-control {
+              height: 48px !important;
+              border-radius: 12px !important;
+              background: #1f2e42 !important;
+              border: 1px solid #1f2e42 !important;
+              color: #ffffff !important;
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+            .pf-c-form-control:focus {
+              border-color: #6495ed !important;
+              box-shadow: 0 0 0 2px rgba(100, 149, 237, 0.35) !important;
+            }
+            .pf-c-form__label,
+            .pf-c-form__label-required,
+            .pf-c-form__label .pf-c-form__label-required {
+              display: none !important;
+            }
+            .pf-c-divider {
+              margin: 24px 0 !important;
+              border-top-color: rgba(148, 163, 184, 0.45) !important;
+            }
+            /* Google source button */
+            .pf-c-login__main-footer .source-button,
+            .pf-c-login__main-footer .pf-c-button {
+              min-height: 52px !important;
+              border-radius: 999px !important;
+              background: #6495ed !important;
+              border-color: #6495ed !important;
+              color: #ffffff !important;
+              font-weight: 600 !important;
+              font-size: 18px !important;
+            }
+            .pf-c-login__main-footer .source-button:hover,
+            .pf-c-login__main-footer .source-button:focus,
+            .pf-c-login__main-footer .pf-c-button:hover,
+            .pf-c-login__main-footer .pf-c-button:focus {
+              background: #4f7ed5 !important;
+              border-color: #4f7ed5 !important;
+            }
+            /* Local Authentik submit button */
+            .pf-c-login__main-body .pf-c-button.pf-m-primary {
+              min-height: 52px !important;
+              border-radius: 999px !important;
+              background: #ff7a00 !important;
               border-color: #ff7a00 !important;
               color: #ffffff !important;
+              font-weight: 600 !important;
+              font-size: 18px !important;
+              position: relative !important;
             }
-            .pf-c-button.pf-m-primary:hover,
-            .pf-c-button.pf-m-primary:focus {
-              background-color: #e56d00 !important;
+            .pf-c-login__main-body .pf-c-button.pf-m-primary .pf-c-button__text {
+              color: transparent !important;
+              font-size: 0 !important;
+            }
+            .pf-c-login__main-body .pf-c-button.pf-m-primary .pf-c-button__text::after {
+              content: "Login with Authentik";
+              font-size: 18px !important;
+              font-weight: 600 !important;
+              line-height: 1 !important;
+              color: #ffffff !important;
+              position: absolute !important;
+              inset: 0 !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+            .pf-c-login__main-body .pf-c-button.pf-m-primary:hover,
+            .pf-c-login__main-body .pf-c-button.pf-m-primary:focus {
+              background: #e56d00 !important;
               border-color: #e56d00 !important;
-            }
-            /* Render flow title like regular copy, not a headline. */
-            .pf-c-login__main .pf-c-title {
-              font-size: 1.2rem !important;
-              font-weight: 400 !important;
-              line-height: 1.4 !important;
-              letter-spacing: 0 !important;
             }
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       - model: authentik_brands.brand
@@ -317,6 +393,7 @@ data:
               matching_mode: strict
             - url: "app.immich:/"
               matching_mode: strict
+          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
