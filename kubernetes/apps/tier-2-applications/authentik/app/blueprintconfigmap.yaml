@@ -11,18 +11,6 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
-      # Remove legacy flow pieces from pre-migration setups.
-      - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-internal-auth-identification]]
-          order: 10
-      - model: authentik_stages_identification.identificationstage
-        state: absent
-        identifiers:
-          name: sulibot-internal-auth-identification
-
       # Reusable login flow pattern:
       # - CF Access requests use a dedicated Google-button-only flow via provider.authentication_flow.
       # - App/OIDC/outpost requests use identifier-first UX:
@@ -49,13 +37,6 @@ data:
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
           show_source_labels: true
-      - model: authentik_stages_source.sourcestage
-        state: present
-        identifiers:
-          name: sulibot-google-source-stage
-        attrs:
-          name: sulibot-google-source-stage
-          source: !Find [authentik_sources_oauth.oauthsource, [slug, google]]
       - model: authentik_policies_expression.expressionpolicy
         state: present
         identifiers:
@@ -118,12 +99,6 @@ data:
           title: "welcome to sulibot"
           designation: authentication
       - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
-          order: 11
-      - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
@@ -133,12 +108,6 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
-      - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
-          order: 12
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -160,12 +129,6 @@ data:
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
       - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_source.sourcestage, [name, sulibot-google-source-stage]]
-          order: 20
-      - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
@@ -175,12 +138,6 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]]
           order: 40
-      - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
-          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
-          order: 30
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -200,9 +157,13 @@ data:
           domain: auth.sulibot.com
         attrs:
           domain: auth.sulibot.com
-          default: true
           branding_title: authentik
           branding_custom_css: |
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            .pf-c-login,
+            .pf-c-login * {
+              font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important;
+            }
             /* App login button styling: Halloween orange for local Authentik login. */
             .pf-c-button.pf-m-primary {
               background-color: #ff7a00 !important;
@@ -228,7 +189,6 @@ data:
           domain: authentik-default
         attrs:
           domain: authentik-default
-          default: false
   google-source.yaml: |
     version: 1
     metadata:
