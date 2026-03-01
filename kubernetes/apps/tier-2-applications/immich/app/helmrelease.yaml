@@ -52,6 +52,10 @@ spec:
           autoRegister: true
           autoLaunch: false
           buttonText: "Login with Google"
+        passwordLogin:
+          enabled: true
+        server:
+          loginPageMessage: "Login"
       metrics:
         enabled: false
 
