@@ -26,29 +26,6 @@ spec:
       home-assistant:
         annotations:
           reloader.stakater.com/auto: "true"
-        initContainers:
-          seed-oidc-auth:
-            image:
-              repository: docker.io/alpine/git
-              tag: 2.49.1
-            command:
-              - /bin/sh
-              - -c
-              - |
-                set -eu
-
-                rm -rf /tmp/hass-oidc-auth
-                git clone --depth 1 --branch main https://github.com/christiaangoossens/hass-oidc-auth.git /tmp/hass-oidc-auth
-
-                mkdir -p /config/custom_components
-                rm -rf /config/custom_components/hass_oidc_auth
-                cp -R /tmp/hass-oidc-auth/custom_components/hass_oidc_auth /config/custom_components/
-
-                # Keep Home Assistant OIDC/auth config declarative.
-                cp -f /bootstrap-config/configuration.yaml /config/configuration.yaml
-                chmod 0644 /config/configuration.yaml || true
-
-                rm -rf /tmp/hass-oidc-auth
         containers:
           app:
             image:
@@ -128,14 +105,6 @@ spec:
         existingClaim: "{{ .Release.Name }}-config-cache"
         globalMounts:
           - path: /config/.venv
-      bootstrap-config:
-        enabled: true
-        type: secret
-        name: home-assistant-oidc-config
-        defaultMode: 0644
-        globalMounts:
-          - path: /bootstrap-config
-            readOnly: true
       tmp:
         type: emptyDir
       # usb-zigbee:
