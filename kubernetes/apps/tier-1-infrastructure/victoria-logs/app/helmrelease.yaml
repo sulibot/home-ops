@@ -10,13 +10,13 @@ spec:
     name: victoria-logs
   postRenderers:
     - kustomize:
-        patchesJson6902:
+        patches:
           - target:
               group: apps
               version: v1
               kind: StatefulSet
               name: victoria-logs-server
-            patch:
+            patch: |-
               - op: replace
                 path: /spec/template/spec/containers/0/livenessProbe
                 value:
