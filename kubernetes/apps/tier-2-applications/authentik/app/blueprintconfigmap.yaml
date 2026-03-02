@@ -389,9 +389,11 @@ data:
           redirect_uris:
             - url: "https://immich.sulibot.com/auth/login"
               matching_mode: strict
+            - url: "https://immich.sulibot.com/user-settings"
+              matching_mode: strict
             - url: "https://immich.sulibot.com/api/oauth/mobile-redirect"
               matching_mode: strict
-            - url: "app.immich:/"
+            - url: "app.immich:///oauth-callback"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
