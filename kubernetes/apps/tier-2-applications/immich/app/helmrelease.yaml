@@ -96,6 +96,7 @@ spec:
         main:
           hostnames:
             - immich.sulibot.com
+            - immich-app.sulibot.com
           parentRefs:
             - name: gateway-tunnel
               namespace: network

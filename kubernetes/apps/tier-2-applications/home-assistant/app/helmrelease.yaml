@@ -87,6 +87,7 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.sulibot.com"
           - hass.sulibot.com
+          - home-assistant-app.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network

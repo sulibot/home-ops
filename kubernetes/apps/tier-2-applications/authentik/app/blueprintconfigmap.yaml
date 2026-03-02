@@ -393,6 +393,12 @@ data:
               matching_mode: strict
             - url: "https://immich.sulibot.com/api/oauth/mobile-redirect"
               matching_mode: strict
+            - url: "https://immich-app.sulibot.com/auth/login"
+              matching_mode: strict
+            - url: "https://immich-app.sulibot.com/user-settings"
+              matching_mode: strict
+            - url: "https://immich-app.sulibot.com/api/oauth/mobile-redirect"
+              matching_mode: strict
             - url: "app.immich:///oauth-callback"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
