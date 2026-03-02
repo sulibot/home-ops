@@ -35,7 +35,7 @@ spec:
               tag: v1.10.1@sha256:0b596092c0b55fe4c65379a428a3fe90bd192f10d1b07d189a34fe5fabe7eedb
             env:
               TZ: America/Los_Angeles
-              HOMEPAGE_ALLOWED_HOSTS: homepage.sulibot.com
+              HOMEPAGE_ALLOWED_HOSTS: homepage.sulibot.com,dash.sulibot.com
             envFrom:
               - secretRef:
                   name: homepage-secret
@@ -68,6 +68,7 @@ spec:
       app:
         hostnames:
           - homepage.sulibot.com
+          - dash.sulibot.com
         parentRefs:
           - name: gateway-internal
             namespace: network
