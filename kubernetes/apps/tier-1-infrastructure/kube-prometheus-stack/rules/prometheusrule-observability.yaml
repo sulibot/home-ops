@@ -1,0 +1,116 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: observability-platform-rules
+  namespace: observability
+spec:
+  groups:
+    - name: observability.platform
+      interval: 1m
+      rules:
+        - alert: ObservabilityScrapeCoverageLow
+          expr: |
+            (
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"} == 1)
+              /
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"})
+            ) < 0.90
+          for: 15m
+          labels:
+            severity: warning
+            component: observability
+          annotations:
+            summary: "Observability scrape coverage below 90%"
+            description: |
+              Critical observability targets are partially down for at least 15 minutes.
+              This reduces troubleshooting quality and can hide incidents.
+
+              Check failing targets:
+              kubectl get --raw '/api/v1/namespaces/observability/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/targets?state=active' | jq '.data.activeTargets[] | select(.health!="up")'
+
+        - alert: ObservabilityScrapeCoverageCritical
+          expr: |
+            (
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"} == 1)
+              /
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"})
+            ) < 0.70
+          for: 10m
+          labels:
+            severity: critical
+            component: observability
+          annotations:
+            summary: "Observability scrape coverage below 70%"
+            description: |
+              Observability platform is degraded to the point where incident triage will be unreliable.
+              Prioritize restoring Prometheus, Alertmanager, Grafana, VictoriaLogs, and Fluent Bit targets.
+
+        - alert: PrometheusTSDBStorageForecast24h
+          expr: |
+            predict_linear(prometheus_tsdb_storage_blocks_bytes[6h], 24 * 3600)
+            > prometheus_tsdb_retention_limit_bytes
+          for: 15m
+          labels:
+            severity: warning
+            component: observability
+          annotations:
+            summary: "Prometheus TSDB projected to exceed retention storage within 24h"
+            description: |
+              Prometheus storage growth trend predicts retention storage exhaustion within 24 hours.
+              Consider reducing cardinality, increasing retention storage, or reducing retention period.
+
+        - alert: PrometheusTSDBStorageHigh
+          expr: |
+            prometheus_tsdb_storage_blocks_bytes
+            / prometheus_tsdb_retention_limit_bytes > 0.85
+          for: 30m
+          labels:
+            severity: warning
+            component: observability
+          annotations:
+            summary: "Prometheus TSDB storage above 85% of retention limit"
+            description: |
+              Prometheus storage usage is persistently high.
+              Validate retention, scrape interval, and high-cardinality workloads before compaction pressure increases.
+
+        - alert: VictoriaLogsDiskForecast24h
+          expr: |
+            predict_linear((vl_total_disk_space_bytes{path="/storage"} - vl_free_disk_space_bytes{path="/storage"})[6h], 24 * 3600)
+            > (vl_total_disk_space_bytes{path="/storage"} * 0.95)
+          for: 15m
+          labels:
+            severity: warning
+            component: observability
+          annotations:
+            summary: "VictoriaLogs projected to exceed 95% disk usage within 24h"
+            description: |
+              VictoriaLogs storage growth trend indicates disk exhaustion risk in the next 24 hours.
+              Adjust retention and/or increase disk capacity before ingestion is impacted.
+
+        - alert: FluentBitOutputErrors
+          expr: |
+            sum(rate(fluentbit_output_errors_total[10m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: logging
+          annotations:
+            summary: "Fluent Bit output errors detected"
+            description: |
+              Fluent Bit is experiencing output errors for at least 10 minutes.
+              Verify VictoriaLogs endpoint health and Fluent Bit output configuration.
+
+        - alert: FluentBitDroppedRecords
+          expr: |
+            sum(rate(fluentbit_output_dropped_records_total[10m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: logging
+          annotations:
+            summary: "Fluent Bit is dropping log records"
+            description: |
+              Logs are being dropped at the collector, which causes permanent observability data loss.
+              Investigate backpressure, output failures, and storage pressure immediately.

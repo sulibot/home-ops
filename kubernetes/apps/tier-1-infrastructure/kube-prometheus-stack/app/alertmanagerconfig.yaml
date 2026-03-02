@@ -13,6 +13,11 @@ spec:
       - receiver: blackhole
         matchers:
           - name: alertname
+            value: AlertmanagerFailedToSendAlerts|AlertmanagerClusterFailedToSendAlerts
+            matchType: =~
+      - receiver: blackhole
+        matchers:
+          - name: alertname
             value: InfoInhibitor
             matchType: =
       - receiver: buddy-heartbeat
