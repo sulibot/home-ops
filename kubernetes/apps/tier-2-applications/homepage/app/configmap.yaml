@@ -244,6 +244,13 @@ data:
               url: http://ollama.default.svc.cluster.local:11434
 
     - Observability:
+        - Gatus:
+            href: https://status.sulibot.com
+            icon: gatus.png
+            description: Status & Uptime
+            widget:
+              type: gatus
+              url: http://gatus.observability.svc.cluster.local
         - Victoria Logs:
             href: https://victoria-logs.sulibot.com
             icon: victoriametrics.png
