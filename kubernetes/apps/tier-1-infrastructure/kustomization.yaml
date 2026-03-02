@@ -45,7 +45,8 @@ resources:
   - ./kube-prometheus-stack/rules/ks.yaml
   # prometheus volsync disabled (broken replicationsource.yaml, volsync not needed for metrics)
   # - ./kube-prometheus-stack/volsync/ks.yaml
-  - ../tier-0-foundation/external-secrets/external-secrets/dashboard/ks.yaml   # Tier 1: depends on grafana-instance
+  # external-secrets dashboard disabled: referenced configmap is not created by current chart values
+  # - ../tier-0-foundation/external-secrets/external-secrets/dashboard/ks.yaml
   - ./victoria-logs/ks.yaml
   - ./fluent-bit/ks.yaml
   - ./grafana/ks.yaml
