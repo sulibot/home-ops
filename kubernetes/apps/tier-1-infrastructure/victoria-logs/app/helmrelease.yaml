@@ -26,9 +26,10 @@ spec:
         enabled: true
         storageClassName: csi-cephfs-config-sc
         size: 20Gi
-      # Bind to IPv6 so kubelet probes (using pod's IPv6 address) succeed
+      # Use wildcard listen addr (instead of bracketed IPv6) to avoid invalid bind parsing.
+      # This keeps kubelet probes healthy on dual-stack clusters.
       extraArgs:
-        httpListenAddr: "[::]:9428"
+        httpListenAddr: ":9428"
       # Dual-stack service so fluent-bit's c-ares can resolve via IPv4 A record
       service:
         ipFamilyPolicy: PreferDualStack
