@@ -244,6 +244,11 @@ data:
               url: http://ollama.default.svc.cluster.local:11434
 
     - Observability:
+        - Grafana:
+            href: https://grafana.sulibot.com
+            icon: grafana.png
+            description: Dashboards
+            siteMonitor: https://grafana.sulibot.com
         - Gatus:
             href: https://status.sulibot.com
             icon: gatus.png
