@@ -158,25 +158,28 @@ resource "cloudflare_zero_trust_access_policy" "atuin_bypass" {
 }
 
 # ---------------------------------------------------------------------------
-# Bypass — immich.sulibot.com (native iOS/macOS clients expect JSON APIs)
+# Immich app access — require WARP, no device posture checks
 # ---------------------------------------------------------------------------
 
-resource "cloudflare_zero_trust_access_application" "immich_bypass" {
+resource "cloudflare_zero_trust_access_application" "immich_warp" {
   account_id       = local.account_id
-  name             = "Immich (bypass)"
+  name             = "Immich (WARP required)"
   domain           = "immich.sulibot.com"
   type             = "self_hosted"
   session_duration = "24h"
 }
 
-resource "cloudflare_zero_trust_access_policy" "immich_bypass" {
+resource "cloudflare_zero_trust_access_policy" "immich_warp_allow" {
   account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.immich_bypass.id
-  name           = "Bypass"
-  decision       = "bypass"
+  application_id = cloudflare_zero_trust_access_application.immich_warp.id
+  name           = "Allow via WARP"
+  decision       = "allow"
   precedence     = 1
   include {
     everyone = true
+  }
+  require {
+    auth_method = "warp"
   }
 }
 
