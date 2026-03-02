@@ -10,7 +10,7 @@ spec:
       rules:
         - alert: GatusEndpointDown
           expr: |-
-            gatus_results_endpoint_success{group=~"external|services"} == 0
+            gatus_results_endpoint_success{group=~"external|services|core|apps-external|infra-internal"} == 0
           for: 5m
           annotations:
             summary: >-
@@ -18,12 +18,12 @@ spec:
           labels:
             severity: critical
 
-        - alert: GatusEndpointExposed
+        - alert: GatusEndpointWarning
           expr: |-
-            gatus_results_endpoint_success{group="internal"} == 0
+            gatus_results_endpoint_success{group=~"internal|connectivity|buddy"} == 0
           for: 5m
           annotations:
             summary: >-
-              The {{ $labels.name }} endpoint has a public DNS record and is exposed
+              The {{ $labels.name }} endpoint is degraded
           labels:
-            severity: critical
+            severity: warning

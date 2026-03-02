@@ -26,6 +26,161 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
+  - name: Gateway Tunnel (HTTPS)
+    group: core
+    url: https://auth.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: FileBrowser (external)
+    group: apps-external
+    url: https://filebrowser.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Immich (external)
+    group: apps-external
+    url: https://immich.sulibot.com/auth/login
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Paperless (external)
+    group: apps-external
+    url: https://paperless.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Karakeep (external)
+    group: apps-external
+    url: https://karakeep.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Home Assistant (external)
+    group: apps-external
+    url: https://hass.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Firefly (external)
+    group: apps-external
+    url: https://firefly.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Status Page (external)
+    group: apps-external
+    url: https://status.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Authentik (cluster)
+    group: infra-internal
+    url: http://authentik-server.default.svc.cluster.local/-/health/live/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Immich API (cluster)
+    group: infra-internal
+    url: http://immich-server.default.svc.cluster.local:2283/api/server-info/ping
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Paperless (cluster)
+    group: infra-internal
+    url: http://paperless.default.svc.cluster.local:8000/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Karakeep (cluster)
+    group: infra-internal
+    url: http://karakeep.default.svc.cluster.local:3000/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Home Assistant (cluster)
+    group: infra-internal
+    url: http://home-assistant.default.svc.cluster.local:8123/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Firefly (cluster)
+    group: infra-internal
+    url: http://firefly-app.default.svc.cluster.local:8080/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Victoria Logs (cluster)
+    group: infra-internal
+    url: http://victoria-logs-server.observability.svc:9428/health
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Gatus API (cluster)
+    group: infra-internal
+    url: http://gatus.observability.svc/health
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
 metrics: true
 
 storage:
@@ -34,15 +189,13 @@ storage:
   path: ${GATUS_CONFIG_PATH}/gatus.db
 
 ui:
-  title: Status | Gatus
+  title: Status | Sulibot
   header: Status
   logo: https://avatars.githubusercontent.com/u/213795
-  link: https://github.com/onedr0p
+  link: https://github.com/sulibot/home-ops
   buttons:
     - name: Github
-      link: https://github.com/onedr0p
-    - name: Homelab
-      link: https://github.com/onedr0p/home-ops
+      link: https://github.com/sulibot/home-ops
 
 web:
   port: ${GATUS_WEB_PORT}
