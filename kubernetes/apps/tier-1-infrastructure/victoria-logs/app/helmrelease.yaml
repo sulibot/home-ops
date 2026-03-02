@@ -8,6 +8,36 @@ spec:
   chartRef:
     kind: OCIRepository
     name: victoria-logs
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              group: apps
+              version: v1
+              kind: StatefulSet
+              name: victoria-logs-server
+            patch: |-
+              apiVersion: apps/v1
+              kind: StatefulSet
+              metadata:
+                name: victoria-logs-server
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: vlogs
+                        livenessProbe:
+                          exec:
+                            command:
+                              - sh
+                              - -c
+                              - wget -q -O- http://127.0.0.1:9428/health >/dev/null
+                        readinessProbe:
+                          exec:
+                            command:
+                              - sh
+                              - -c
+                              - wget -q -O- http://127.0.0.1:9428/health >/dev/null
   interval: 1h
   timeout: 10m  # Give more time for chart installation during bootstrap
   install:
