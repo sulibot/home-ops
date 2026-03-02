@@ -130,6 +130,29 @@ resource "cloudflare_zero_trust_access_policy" "atuin_bypass" {
 }
 
 # ---------------------------------------------------------------------------
+# Bypass — immich.sulibot.com (native iOS/macOS clients expect JSON APIs)
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "immich_bypass" {
+  account_id       = local.account_id
+  name             = "Immich (bypass)"
+  domain           = "immich.sulibot.com"
+  type             = "self_hosted"
+  session_duration = "24h"
+}
+
+resource "cloudflare_zero_trust_access_policy" "immich_bypass" {
+  account_id     = local.account_id
+  application_id = cloudflare_zero_trust_access_application.immich_bypass.id
+  name           = "Bypass"
+  decision       = "bypass"
+  precedence     = 1
+  include {
+    everyone = true
+  }
+}
+
+# ---------------------------------------------------------------------------
 # 1Password sync — write CF Access credentials to the "authentik" item so
 # the existing Authentik ExternalSecret picks them up automatically
 # ---------------------------------------------------------------------------
