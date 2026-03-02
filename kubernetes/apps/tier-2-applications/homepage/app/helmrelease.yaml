@@ -93,3 +93,7 @@ spec:
             path: /app/config/settings.yaml
           - subPath: widgets.yaml
             path: /app/config/widgets.yaml
+      logs:
+        type: emptyDir
+        globalMounts:
+          - path: /app/config/logs
