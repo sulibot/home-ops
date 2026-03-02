@@ -65,10 +65,11 @@ spec:
       # This keeps kubelet probes healthy on dual-stack clusters.
       extraArgs:
         httpListenAddr: ":9428"
-      # Force IPv4 service/endpoints, since victoria-logs binds IPv4 only in this cluster.
+      # Expose dual-stack service with IPv6 preference for log shippers.
       service:
-        ipFamilyPolicy: SingleStack
+        ipFamilyPolicy: PreferDualStack
         ipFamilies:
+          - IPv6
           - IPv4
       route:
         enabled: true
