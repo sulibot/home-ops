@@ -116,7 +116,7 @@ endpoints:
 
   - name: Immich API (cluster)
     group: infra-internal
-    url: http://immich-server.default.svc.cluster.local:2283/api/server-info/ping
+    url: http://immich-server.default.svc.cluster.local:2283/api/server/ping
     interval: 1m
     client:
       timeout: 5s
@@ -155,13 +155,10 @@ endpoints:
 
   - name: Firefly (cluster)
     group: infra-internal
-    url: http://firefly-app.default.svc.cluster.local:8080/
+    url: tcp://firefly-app.default.svc.cluster.local:8080
     interval: 1m
-    client:
-      timeout: 5s
     conditions:
-      - "[STATUS] >= 200"
-      - "[STATUS] < 500"
+      - "[CONNECTED] == true"
 
   - name: Victoria Logs (cluster)
     group: infra-internal
