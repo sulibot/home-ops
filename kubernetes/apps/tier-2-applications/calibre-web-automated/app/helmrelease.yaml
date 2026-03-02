@@ -35,9 +35,6 @@ spec:
               TZ: America/Los_Angeles
               PUID: "1000"
               PGID: "1000"
-            envFrom:
-              - secretRef:
-                  name: calibre-web-automated-oidc
             probes:
               liveness: &probes
                 enabled: true
