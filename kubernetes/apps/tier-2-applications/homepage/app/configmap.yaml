@@ -265,5 +265,11 @@ data:
 
   docker.yaml: ""
 
+  proxmox.yaml: ""
+
+  custom.css: ""
+
+  custom.js: ""
+
   kubernetes.yaml: |
     mode: cluster
