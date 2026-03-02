@@ -35,13 +35,8 @@ spec:
               TZ: America/Los_Angeles
               PAPERLESS_BASE_URL: http://paperless.default.svc.cluster.local:8000
               PAPERLESS_PUBLIC_URL: https://paperless.sulibot.com
-              LLM_PROVIDER: ollama
-              LLM_MODEL: llama3.2:3b
               LLM_LANGUAGE: English
-              LLM_API_BASE_URL: http://ollama.default.svc.cluster.local:11434
               OCR_PROVIDER: llm
-              VISION_LLM_PROVIDER: ollama
-              VISION_LLM_MODEL: moondream:1.8b
               OCR_LIMIT_PAGES: 5
               OCR_PROCESS_MODE: image
               PDF_SKIP_EXISTING_OCR: "false"
