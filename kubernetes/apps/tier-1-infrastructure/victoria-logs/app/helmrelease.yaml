@@ -10,34 +10,39 @@ spec:
     name: victoria-logs
   postRenderers:
     - kustomize:
-        patches:
+        patchesJson6902:
           - target:
               group: apps
               version: v1
               kind: StatefulSet
               name: victoria-logs-server
-            patch: |-
-              apiVersion: apps/v1
-              kind: StatefulSet
-              metadata:
-                name: victoria-logs-server
-              spec:
-                template:
-                  spec:
-                    containers:
-                      - name: vlogs
-                        livenessProbe:
-                          exec:
-                            command:
-                              - sh
-                              - -c
-                              - wget -q -O- http://127.0.0.1:9428/health >/dev/null
-                        readinessProbe:
-                          exec:
-                            command:
-                              - sh
-                              - -c
-                              - wget -q -O- http://127.0.0.1:9428/health >/dev/null
+            patch:
+              - op: replace
+                path: /spec/template/spec/containers/0/livenessProbe
+                value:
+                  exec:
+                    command:
+                      - sh
+                      - -c
+                      - wget -q -O- http://127.0.0.1:9428/health >/dev/null
+                  failureThreshold: 10
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  successThreshold: 1
+                  timeoutSeconds: 5
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe
+                value:
+                  exec:
+                    command:
+                      - sh
+                      - -c
+                      - wget -q -O- http://127.0.0.1:9428/health >/dev/null
+                  failureThreshold: 3
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                  successThreshold: 1
+                  timeoutSeconds: 5
   interval: 1h
   timeout: 10m  # Give more time for chart installation during bootstrap
   install:
