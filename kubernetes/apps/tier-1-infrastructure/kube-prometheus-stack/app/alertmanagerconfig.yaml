@@ -7,7 +7,7 @@ metadata:
   namespace: observability
 spec:
   route:
-    receiver: pushover
+    receiver: blackhole
     repeatInterval: 12h
     routes:
       - receiver: blackhole
