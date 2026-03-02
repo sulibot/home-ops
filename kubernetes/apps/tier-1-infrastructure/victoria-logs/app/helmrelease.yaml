@@ -65,9 +65,11 @@ spec:
       # This keeps kubelet probes healthy on dual-stack clusters.
       extraArgs:
         httpListenAddr: ":9428"
-      # Dual-stack service so fluent-bit's c-ares can resolve via IPv4 A record
+      # Force IPv4 service/endpoints, since victoria-logs binds IPv4 only in this cluster.
       service:
-        ipFamilyPolicy: PreferDualStack
+        ipFamilyPolicy: SingleStack
+        ipFamilies:
+          - IPv4
       route:
         enabled: true
         hostnames:
