@@ -88,9 +88,7 @@ spec:
         # Alert if Kopia server is down
         - alert: KopiaServerDown
           expr: |
-            up{job="kopia"} == 0
-            or
-            absent(up{job="kopia"})
+            min(up{job="kopia"}) == 0
           for: 5m
           labels:
             severity: critical
@@ -112,7 +110,7 @@ spec:
         # Alert on backup job failures (using Job metrics)
         - alert: VolsyncMoverJobFailed
           expr: |
-            kube_job_status_failed{job_name=~"volsync-.*"} > 0
+            increase(kube_job_status_failed{job_name=~"volsync-.*"}[30m]) > 0
           for: 5m
           labels:
             severity: warning
