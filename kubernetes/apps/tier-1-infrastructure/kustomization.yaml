@@ -68,8 +68,7 @@ resources:
   # - ./kromgo/ks.yaml
 
   # from network-services
-  # cloudflare-dns disabled
-  # - ./cloudflare-dns/ks.yaml
+  - ./cloudflare-dns/ks.yaml
   - ./cloudflare-tunnel/ks.yaml
   - ./echo/ks.yaml
 
