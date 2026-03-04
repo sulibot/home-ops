@@ -116,5 +116,5 @@ spec:
           name: firefly-pg-password
 
   storage:
-    size: 20Gi
+    size: 60Gi
     storageClass: csi-rbd-rbd-vm-sc-retain
