@@ -4,7 +4,8 @@
       "Bash(git stash:*)",
       "Bash(flux bootstrap git --help:*)",
       "Bash(grep:*)",
-      "Bash(gh secret:*)"
+      "Bash(gh secret:*)",
+      "Read(//Users/sulibot/repos/github/home-ops/**)"
     ]
   }
 }
