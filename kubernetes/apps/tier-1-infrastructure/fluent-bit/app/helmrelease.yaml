@@ -77,6 +77,12 @@ spec:
           copy k_namespace_name namespace
           copy k_pod_name pod
 
+        [FILTER]
+          name modify
+          match kubernetes.*
+          condition key_does_not_exist app
+          copy k_container_name app
+
       customParsers: |-
         [PARSER]
           name containerd
