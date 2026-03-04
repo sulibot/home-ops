@@ -1,0 +1,16 @@
+pam: pam
+	comment Linux PAM standard authentication
+
+pve: pve
+	comment Proxmox VE authentication server
+
+openid: {{ proxmox_oidc_realm_name }}
+	comment Kanidm OpenID Connect
+	issuer-url {{ proxmox_oidc_issuer_url }}
+	client-id {{ proxmox_oidc_client_id }}
+{% if proxmox_oidc_client_key | length > 0 %}
+	client-key {{ proxmox_oidc_client_key }}
+{% endif %}
+	username-claim {{ proxmox_oidc_username_claim }}
+	autocreate {{ proxmox_oidc_autocreate }}
+	default {{ proxmox_oidc_default }}

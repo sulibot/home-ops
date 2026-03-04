@@ -51,8 +51,9 @@
 {% set K8S_SERVICES_V4 = k8s_services_v4 | default("10.101.96.0/20") %}
 {% set K8S_SERVICES_V6 = k8s_services_v6 | default("fd00:101:96::/108") %}
 
-{# VMs listen range for dynamic neighbors #}
-{% set VMS_LISTEN_V6  = vms_listen_v6  | default("fd00:101::/64") %}
+{# VMs listen ranges for dynamic neighbors (list-driven for scale) #}
+{% set VMS_LISTEN_V6_LIST = vms_listen_v6_list | default([vms_listen_v6 | default("fd00:100::/56")]) %}
+{% set VMS_LISTEN_V4_LIST = vms_listen_v4_list | default([vms_listen_v4 | default("10.100.0.0/16")]) %}
 
 {# =====================================================================
    Global FRR plumbing
@@ -118,7 +119,8 @@ ip prefix-list PL_K8S_SERVICES_V4 seq 5 permit {{ K8S_SERVICES_V4 }} le 32
 ipv6 prefix-list PL_K8S_SERVICES_V6 seq 5 permit {{ K8S_SERVICES_V6 }} le 128
 !
 {# VM next-hop filter - only advertise VIPs when next-hop is VM-side (owner PVE) #}
-ipv6 prefix-list PL_VM_NH_V6 seq 10 permit fd00:101::/64 le 128
+ipv6 prefix-list PL_VM_NH_V6 seq 10 permit fd00:100::/64 le 128
+ipv6 prefix-list PL_VM_NH_V6 seq 20 permit fd00:101::/64 le 128
 !
 
 {# =====================================================================
@@ -478,7 +480,12 @@ router bgp {{ LOCAL_AS }} vrf {{ VRF_NAME }}
  neighbor VMS capability extended-nexthop
  neighbor VMS bfd
  !
- bgp listen range {{ VMS_LISTEN_V6 }} peer-group VMS
+{% for p in VMS_LISTEN_V4_LIST %}
+ bgp listen range {{ p }} peer-group VMS
+{% endfor %}
+{% for p in VMS_LISTEN_V6_LIST %}
+ bgp listen range {{ p }} peer-group VMS
+{% endfor %}
  !
  address-family ipv4 unicast
   neighbor VMS activate

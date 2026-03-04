@@ -11,4 +11,5 @@
 #    - common
 #    - bootstrap
      - lae.proxmox
+     - proxmox_oidc
 #    - cephfs_from_pools

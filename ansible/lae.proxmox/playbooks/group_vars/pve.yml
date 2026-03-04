@@ -70,7 +70,10 @@ pve_zfs_create_volumes: []
 
 # Datacenter & Authentication (uncomment/adjust as needed)
 # pve_datacenter_cfg: {}
-# pve_domains_cfg: []
+pve_oidc_realm_name: "idm"
+pve_oidc_client_id: "proxmox"
+pve_oidc_client_key: ""
+pve_oidc_issuer_url: "https://idm.sulibot.com/oauth2/openid/proxmox"
 
 # Ceph Cluster Roles & Pools (uncomment/adjust as needed)
 pve_ceph_nodes: "{{ pve_group }}"
@@ -555,6 +558,11 @@ tenant_vnets:
     ipv4_subnet: "10.103.0.0/24"
     ula_prefix: "fd00:103::/64"
     gua_prefix: "2600:1700:ab1a:500b::/64"
+
+# FRR dynamic-neighbor listen ranges are derived from tenant VNets to keep the
+# configuration DRY and automatically include new tenant VLANs.
+vms_listen_v4_list: "{{ tenant_vnets | map(attribute='ipv4_subnet') | list }}"
+vms_listen_v6_list: "{{ tenant_vnets | map(attribute='ula_prefix') | list }}"
 
 # Legacy compatibility - VNet IDs list for templates that still use it
 VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"

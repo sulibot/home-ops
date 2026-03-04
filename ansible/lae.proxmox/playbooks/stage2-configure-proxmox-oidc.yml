@@ -1,0 +1,8 @@
+---
+- name: Configure Proxmox OIDC realm
+  hosts: pve
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: proxmox_oidc

@@ -5,6 +5,8 @@ include "root" {
 locals {
   proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
   network_infra = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
+  lxc_catalog   = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  minio_class   = local.lxc_catalog.services.minio
   credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
   dir           = get_terragrunt_dir()
@@ -12,7 +14,7 @@ locals {
   # DNS servers (interpolated at generation time into main.tf as literals)
   dns_ipv6 = local.network_infra.dns_servers.ipv6
   dns_ipv4 = local.network_infra.dns_servers.ipv4
-  vm_ds    = local.proxmox_infra.storage.vm_datastore
+  vm_ds    = local.minio_class.storage.vm_datastore
   data_ds  = local.proxmox_infra.storage.datastore_id
 }
 
@@ -49,7 +51,7 @@ terraform {
   backend "local" {}
 
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.89.0" }
+    proxmox = { source = "bpg/proxmox", version = "${local.lxc_catalog.lxc_defaults.provider_version}" }
     sops    = { source = "carlpett/sops", version = "~> 1.3.0" }
     null    = { source = "hashicorp/null", version = "~> 3.0" }
   }
@@ -73,14 +75,14 @@ locals {
 # resources:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst
 
 resource "proxmox_virtual_environment_container" "minio01" {
-  vm_id       = 200052
-  node_name   = "pve02"
+  vm_id       = ${local.minio_class.vm_id}
+  node_name   = "${local.minio_class.node_name}"
   description = "MinIO S3 object storage - CNPG barman WAL backups (VLAN 200)"
 
   started = true
 
   operating_system {
-    template_file_id = "resources:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
+    template_file_id = "${local.lxc_catalog.lxc_defaults.template_file_id}"
     type             = "debian"
   }
 
@@ -98,32 +100,32 @@ resource "proxmox_virtual_environment_container" "minio01" {
   }
 
   cpu {
-    cores = 2
+    cores = ${local.minio_class.sizing.cpu_cores}
   }
 
   memory {
-    dedicated = 2048
-    swap      = 512
+    dedicated = ${local.minio_class.sizing.memory_mb}
+    swap      = ${local.minio_class.sizing.swap_mb}
   }
 
   network_interface {
     name     = "eth0"
-    bridge   = "vmbr0"
-    vlan_id  = 200
+    bridge   = "${local.minio_class.network.bridge}"
+    vlan_id  = ${local.minio_class.network.vlan_id}
     firewall = false
   }
 
   initialization {
-    hostname = "minio01"
+    hostname = "${local.minio_class.hostname}"
 
     ip_config {
       ipv4 {
-        address = "10.200.0.52/24"
-        gateway = "10.200.0.254"
+        address = "${local.minio_class.ipv4}"
+        gateway = "${local.minio_class.network.ipv4_gateway}"
       }
       ipv6 {
-        address = "fd00:200::52/64"
-        gateway = "fd00:200::fffe"
+        address = "${local.minio_class.ipv6}"
+        gateway = "${local.minio_class.network.ipv6_gateway}"
       }
     }
 
@@ -159,7 +161,7 @@ resource "null_resource" "minio_provision" {
     type        = "ssh"
     user        = "root"
     private_key = file(pathexpand("~/.ssh/id_ed25519"))
-    host        = "10.200.0.52"
+    host        = "${replace(local.minio_class.ipv4, "/24", "")}"
     timeout     = "5m"
   }
 
@@ -247,8 +249,8 @@ resource "null_resource" "minio_1password_sync" {
 output "minio01_info" {
   value = {
     vm_id        = proxmox_virtual_environment_container.minio01.id
-    ipv4_address = "10.200.0.52"
-    ipv6_address = "fd00:200::52"
+    ipv4_address = "${replace(local.minio_class.ipv4, "/24", "")}"
+    ipv6_address = "${replace(local.minio_class.ipv6, "/64", "")}"
   }
 }
 

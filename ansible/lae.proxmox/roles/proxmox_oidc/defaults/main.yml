@@ -1,0 +1,11 @@
+---
+# Proxmox OpenID realm defaults
+proxmox_oidc_enabled: true
+proxmox_oidc_realm_name: "{{ pve_oidc_realm_name | default('idm') }}"
+proxmox_oidc_client_id: "{{ pve_oidc_client_id | default('proxmox') }}"
+proxmox_oidc_client_key: "{{ pve_oidc_client_key | default('') }}"
+proxmox_oidc_issuer_url: "{{ pve_oidc_issuer_url | default('https://idm.sulibot.com/oauth2/openid/proxmox') }}"
+proxmox_oidc_scope: "openid profile email"
+proxmox_oidc_username_claim: "preferred_username"
+proxmox_oidc_autocreate: 1
+proxmox_oidc_default: 0

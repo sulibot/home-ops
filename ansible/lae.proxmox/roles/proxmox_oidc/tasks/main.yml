@@ -1,0 +1,27 @@
+---
+- name: Skip Proxmox OIDC role when disabled
+  ansible.builtin.meta: end_host
+  when: not (proxmox_oidc_enabled | bool)
+
+- name: Determine cluster init node
+  ansible.builtin.set_fact:
+    proxmox_oidc_init_node: "{{ groups[pve_group][0] }}"
+  when: pve_cluster_enabled | bool
+
+- name: Ensure /etc/pve/domains.cfg exists
+  ansible.builtin.file:
+    path: /etc/pve/domains.cfg
+    state: touch
+  when:
+    - not pve_cluster_enabled | bool or inventory_hostname == proxmox_oidc_init_node
+
+- name: Render Proxmox domains.cfg with OIDC realm
+  ansible.builtin.template:
+    src: domains.cfg.j2
+    dest: /etc/pve/domains.cfg
+    owner: root
+    group: www-data
+    mode: "0640"
+    backup: true
+  when:
+    - not pve_cluster_enabled | bool or inventory_hostname == proxmox_oidc_init_node
