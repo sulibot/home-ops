@@ -23,7 +23,8 @@ resources:
   - ./homepage/ks.yaml
   - ./immich/helm-repo/ks.yaml
   - ./immich/ks.yaml
-  - ./jellyseerr/ks.yaml
+  # jellyseerr disabled
+  # - ./jellyseerr/ks.yaml
   - ./karakeep/ks.yaml
   - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
@@ -53,8 +54,6 @@ resources:
   - ./sonarr-4k/ks.yaml
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
-  # thelounge disabled
-  # - ./thelounge/ks.yaml
   - ./tqm/ks.yaml
   # tuppr disabled
   # - ./tuppr/ks.yaml
