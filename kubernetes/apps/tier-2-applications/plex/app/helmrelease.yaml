@@ -35,10 +35,6 @@ spec:
               TZ: America/Los_Angeles
               PLEX_ADVERTISE_URL: http://10.30.0.250:32400,http://10.101.250.120:32400,https://plex.sulibot.com:443
               PLEX_NO_AUTH_NETWORKS: 10.0.30.0/24,fd00:30::/64
-              # Buffer 5 minutes ahead before throttling (default: 60s)
-              PLEX_PREFERENCE_TranscoderThrottleBuffer: "900"
-              # Keep 10 minutes of past segments (default: 300s) — helps with seeking back
-              PLEX_PREFERENCE_TranscoderPruneBuffer: "600"
               PLEX_CLAIM:
                 valueFrom:
                   secretKeyRef:
