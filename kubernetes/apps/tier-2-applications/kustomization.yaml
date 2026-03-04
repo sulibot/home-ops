@@ -13,7 +13,8 @@ resources:
   - ./calibre-web-automated/ks.yaml
   # cross-seed disabled
   # - ./cross-seed/ks.yaml
-  - ./emby/ks.yaml
+  # emby disabled
+  # - ./emby/ks.yaml
   - ./filebrowser/ks.yaml
   - ./firefly/ks.yaml
   - ./fusion/ks.yaml

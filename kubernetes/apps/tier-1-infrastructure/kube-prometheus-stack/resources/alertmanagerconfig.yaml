@@ -27,6 +27,12 @@ spec:
             value: Watchdog
             matchType: =
       - receiver: pushover
+        continue: true
+        matchers:
+          - name: severity
+            value: critical
+            matchType: =
+      - receiver: email
         matchers:
           - name: severity
             value: critical
@@ -98,3 +104,12 @@ spec:
             name: alertmanager-secret
             key: PUSHOVER_USER_KEY
           urlTitle: View in Alertmanager
+    - name: email
+      emailConfigs:
+        - to: sahmad@sulibot.com,sulibot@sulibot.com
+          from: noreply@sulibot.com
+          smarthost: smtp-relay.default.svc.cluster.local:25
+          requireTLS: false
+          sendResolved: true
+          text: |-
+            {{ template "default.message" . }}
