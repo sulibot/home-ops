@@ -4,6 +4,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: external-dns-rules
+  namespace: network
 spec:
   groups:
     - name: external-dns.rules

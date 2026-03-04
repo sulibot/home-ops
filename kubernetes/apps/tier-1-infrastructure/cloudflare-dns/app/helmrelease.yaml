@@ -4,13 +4,16 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: &app cloudflare-dns
+  namespace: flux-system
 spec:
   chartRef:
     kind: OCIRepository
     name: cloudflare-dns
+    namespace: flux-system
+  targetNamespace: network
   interval: 1h
   values:
-    fullnameOverride: *app
+    fullnameOverride: cloudflare-dns-cf
     provider:
       name: cloudflare
     env:
@@ -27,9 +30,13 @@ spec:
     extraArgs:
       - --cloudflare-dns-records-per-page=1000
       - --cloudflare-proxied
+      - --default-targets=0977043f-80e9-4549-a6f0-0af145a17f27.cfargotunnel.com
+      - --force-default-targets
+      - --managed-record-types=CNAME
+      - --managed-record-types=TXT
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - --gateway-name=gateway-internal
+      - --gateway-name=gateway-tunnel
       - --zone-id-filter=$(CF_ZONE_ID)
     triggerLoopOnEvent: true
     policy: sync

@@ -8,6 +8,7 @@ metadata:
     bgp-advertise: "true"
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/target: 0977043f-80e9-4549-a6f0-0af145a17f27.cfargotunnel.com
 spec:
   gatewayClassName: cilium
   addresses:

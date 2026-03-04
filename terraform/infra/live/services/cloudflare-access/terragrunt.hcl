@@ -46,6 +46,18 @@ locals {
   account_id     = data.sops_file.secrets.data["cloudflare_account_id"]
   zone_id        = data.sops_file.secrets.data["cloudflare_zone_id"]
   tunnel_id      = data.sops_file.secrets.data["cloudflare_tunnel_id"]
+  tunnel_hostnames = [
+    "auth.sulibot.com",
+    "atuin.sulibot.com",
+    "immich.sulibot.com",
+    "immich-app.sulibot.com",
+    "home-assistant.sulibot.com",
+    "home-assistant-app.sulibot.com",
+  ]
+  browser_protected_hostnames = [
+    "immich.sulibot.com",
+    "home-assistant.sulibot.com",
+  ]
   allowed_emails = split(" ", data.sops_file.secrets.data["cf_access_allowed_emails"])
   emergency_allowed_emails = [
     "bcwallace@gmail.com",
@@ -57,11 +69,12 @@ locals {
 # DNS
 # ---------------------------------------------------------------------------
 
-# Wildcard CNAME → Cloudflare Tunnel.
-# One record covers all *.sulibot.com — new apps need no DNS change.
-resource "cloudflare_record" "wildcard_tunnel" {
+# Explicit host CNAMEs → Cloudflare Tunnel.
+resource "cloudflare_record" "tunnel_host" {
+  for_each = toset(local.tunnel_hostnames)
+
   zone_id = local.zone_id
-  name    = "*"
+  name    = each.value
   type    = "CNAME"
   content = "$${local.tunnel_id}.cfargotunnel.com"
   proxied = true
@@ -86,23 +99,24 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# Wildcard application — all *.sulibot.com
-# ---------------------------------------------------------------------------
+# Browser apps protected by Cloudflare Access (explicit hostnames only).
+resource "cloudflare_zero_trust_access_application" "browser_protected" {
+  for_each = toset(local.browser_protected_hostnames)
 
-resource "cloudflare_zero_trust_access_application" "wildcard" {
   account_id                = local.account_id
-  name                      = "sulibot.com (*)"
-  domain                    = "*.sulibot.com"
+  name                      = "$${each.value} (protected)"
+  domain                    = each.value
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = true
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.authentik.id]
 }
 
-resource "cloudflare_zero_trust_access_policy" "wildcard_allow" {
+resource "cloudflare_zero_trust_access_policy" "browser_protected_allow" {
+  for_each = cloudflare_zero_trust_access_application.browser_protected
+
   account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.wildcard.id
+  application_id = each.value.id
   name           = "Allow approved users"
   decision       = "allow"
   precedence     = 1
@@ -235,8 +249,8 @@ resource "null_resource" "cf_access_1password_sync" {
 # Outputs
 # ---------------------------------------------------------------------------
 
-output "wildcard_app_id" {
-  value = cloudflare_zero_trust_access_application.wildcard.id
+output "browser_protected_app_ids" {
+  value = { for k, v in cloudflare_zero_trust_access_application.browser_protected : k => v.id }
 }
 
 output "identity_provider_id" {
