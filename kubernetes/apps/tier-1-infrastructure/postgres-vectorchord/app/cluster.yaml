@@ -114,6 +114,11 @@ spec:
         ensure: present
         passwordSecret:
           name: firefly-pg-password
+      - name: paperless
+        login: true
+        ensure: present
+        passwordSecret:
+          name: paperless-pg-password
 
   storage:
     size: 60Gi

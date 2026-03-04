@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: paperless
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: paperless
+  owner: paperless
+  ensure: present
