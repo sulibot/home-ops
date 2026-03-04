@@ -22,6 +22,10 @@ spec:
           http_listen ::
           http_port {{ .Values.metricsPort }}
           health_check on
+          storage.path /var/log/fluent-bit-buffers/
+          storage.sync normal
+          storage.checksum off
+          storage.backlog.mem_limit 64M
 
       inputs: |-
         [INPUT]
@@ -30,8 +34,12 @@ spec:
           path /var/log/containers/*.log
           parser containerd
           tag kubernetes.*
+          db /var/log/fluent-bit-kube.db
+          db.sync normal
+          mem_buf_limit 64MB
           skip_empty_lines on
           skip_long_lines on
+          storage.type filesystem
 
       filters: |-
         [FILTER]
@@ -64,6 +72,10 @@ spec:
           rename k_labels_app.kubernetes.io/name app
           rename k_labels_app app
           rename k_labels_k8s-app app
+          copy k_container_name container
+          copy k_node_name node
+          copy k_namespace_name namespace
+          copy k_pod_name pod
 
       customParsers: |-
         [PARSER]
@@ -79,10 +91,12 @@ spec:
           match kubernetes.*
           host victoria-logs-server.observability.svc
           port 9428
-          uri /insert/jsonline?_stream_fields=stream,k_namespace_name,k_pod_name,app&_msg_field=log&_time_field=date
+          uri /insert/jsonline?_stream_fields=stream,namespace,pod,container,node,app&_msg_field=log&_time_field=date
           format json_lines
           json_date_format iso8601
           compress gzip
+          workers 2
+          retry_limit false
           log_response_payload false
     dashboards:
       enabled: true
