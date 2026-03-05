@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-vectorchord-recovery-precheck
+  namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: recovery-precheck
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: noop
+          image: bitnami/kubectl:1.33.4
+          command:
+            - /bin/sh
+            - -ec
+            - echo "CNPG_RECOVERY_MODE=false; recovery precheck bypassed in normal mode."

@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
+# CNPG-native scheduled VolumeSnapshot backup.
+# Uses online: true so CNPG coordinates a checkpoint with PostgreSQL before
+# snapping the RBD volume - application-consistent, not just crash-consistent.
+# waitForArchive: true ensures WAL up to the snapshot point is archived before
+# the backup is marked complete.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-vectorchord-snapshot
+  namespace: default
+spec:
+  schedule: "0 2 * * *"  # Daily at 2am
+  immediate: true         # Also run a backup immediately on first creation (bootstrap)
+  # Intentionally omit backupOwnerReference so Backup CRs and snapshots are not
+  # garbage-collected if this ScheduledBackup object is renamed/refactored.
+  cluster:
+    name: postgres-vectorchord
+  method: volumeSnapshot
+  online: true
+  onlineConfiguration:
+    immediateCheckpoint: true  # Checkpoint before snapshot for consistency
+    waitForArchive: true        # Wait for WAL archiving to MinIO before marking complete
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/scheduledbackup_v1.json
+# barman base backup schedule via barman-cloud plugin. WAL archiving to MinIO is
+# continuous/automatic (triggered per-WAL by CNPG); this only schedules full base
+# backups that anchor point-in-time recovery windows.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-vectorchord-barman
+  namespace: default
+spec:
+  schedule: "0 3 * * *"  # Daily at 3am — WAL archiving is continuous; daily base backups keep recovery windows small
+  immediate: true          # Run base backup immediately on creation (bootstrap)
+  # Intentionally omit backupOwnerReference so Backup CRs are retained across
+  # ScheduledBackup object lifecycle changes.
+  cluster:
+    name: postgres-vectorchord
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

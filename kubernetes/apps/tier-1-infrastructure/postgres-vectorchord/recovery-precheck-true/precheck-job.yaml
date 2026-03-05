@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-vectorchord-recovery-precheck
+  namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: recovery-precheck
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: postgres-vectorchord-recovery-precheck
+      restartPolicy: Never
+      containers:
+        - name: precheck
+          image: bitnami/kubectl:1.33.4
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              CLUSTER=postgres-vectorchord
+              NS=default
+
+              pvc_count="$(kubectl -n "${NS}" get pvc -l "cnpg.io/cluster=${CLUSTER}" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+              pod_count="$(kubectl -n "${NS}" get pods -l "cnpg.io/cluster=${CLUSTER}" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+              cluster_count="$(kubectl -n "${NS}" get clusters.postgresql.cnpg.io "${CLUSTER}" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+
+              echo "cluster_count=${cluster_count} pvc_count=${pvc_count} pod_count=${pod_count}"
+
+              if [ "${cluster_count}" -gt 0 ] || [ "${pvc_count}" -gt 0 ] || [ "${pod_count}" -gt 0 ]; then
+                echo "Refusing DR restore: existing cluster/PVC/pods detected."
+                echo "Delete cluster and ensure data PVCs are absent before enabling CNPG_RECOVERY_MODE=true."
+                exit 1
+              fi
+
+              echo "Precheck passed: no existing cluster/PVC/pods found; safe to run recovery bootstrap."

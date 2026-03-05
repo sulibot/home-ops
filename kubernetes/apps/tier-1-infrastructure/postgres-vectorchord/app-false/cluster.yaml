@@ -1,0 +1,125 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-vectorchord
+  namespace: default
+  annotations:
+    # Skip the "Expected empty archive" check when restoring to an existing barman-cloud WAL path.
+    # Without this, the barman-cloud plugin refuses to start on a recovery cluster because the
+    # archive already contains the previous cluster's WALs.
+    cnpg.io/skipEmptyWalArchiveCheck: "enabled"
+spec:
+  instances: 1
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
+
+  # Increase delays for IPv6 networking latency
+  startDelay: 30
+  stopDelay: 30
+  switchoverDelay: 60
+
+  postgresql:
+    shared_preload_libraries:
+      - "vchord.so"
+
+  # --- Backup configuration ---------------------------------------------------
+  # Dual strategy: VolumeSnapshot (fast local) + barman-cloud plugin (off-cluster PITR)
+  # retentionPolicy and barman config live in the ObjectStore CR (objectstore.yaml).
+  backup:
+    # Fast local recovery via Ceph RBD snapshot (survives cluster deletion because
+    # snapshotOwnerReference: backup means VolumeSnapshots are owned by Backup CRs,
+    # not the Cluster — Backup CRs are owned by ScheduledBackup, not Cluster).
+    volumeSnapshot:
+      className: csi-rbd-rbd-vm-snapclass
+      snapshotOwnerReference: backup
+
+  # --- Barman Cloud Plugin ---------------------------------------------------
+  # Off-cluster WAL archiving via plugin (replaces deprecated barmanObjectStore).
+  # Plugin runs as a sidecar; ObjectStore CR holds credentials + MinIO config.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres-vectorchord-backup
+
+  # --- Normal bootstrap (fresh cluster) ----------------------------------------
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
+
+  # --- Disaster recovery bootstrap (two paths) ---------------------------------
+  #
+  # PATH A — barman-cloud plugin WAL recovery (preferred; automatic, no snapshot name needed):
+  #   Prerequisites:
+  #     - Plugin is deployed (cnpg-plugin-barman-cloud HelmRelease healthy)
+  #     - MinIO cnpg-backups/postgres-vectorchord has at least one base backup
+  #       (check: mc ls homelab/cnpg-backups/postgres-vectorchord/wals/)
+  #     - cnpg-barman-s3 Secret exists (ExternalSecret synced from 1Password)
+  #   Steps:
+  #     1. kubectl delete cluster postgres-vectorchord -n default
+  #     2. Comment out bootstrap.initdb above; uncomment bootstrap.recovery below.
+  #     3. Commit and push — Flux applies → plugin fetches latest base backup + replays WAL.
+  #     4. Once PVC exists and PG is running, revert bootstrap to initdb (optional — CNPG
+  #        ignores bootstrap when a data PVC already exists).
+  #
+  # bootstrap:
+  #   recovery:
+  #     source: postgres-vectorchord   # references externalClusters[].plugin below
+  #     database: immich               # REQUIRED: keeps postgres-vectorchord-app secret pointing to immich db
+  #     owner: immich                  # REQUIRED: otherwise secret defaults to user/db "app"
+  #     # Omit recoveryTarget to recover to the latest available point in time.
+  #     # To recover to a specific time: recoveryTarget: { targetTime: "2026-02-24 03:00:00" }
+  #
+  # PATH B — VolumeSnapshot recovery (fast local; requires specifying a snapshot name):
+  #   Prerequisites: at least one VolumeSnapshot with label cnpg.io/cluster=postgres-vectorchord
+  #   Steps:
+  #     1. Find snapshot:
+  #          kubectl get volumesnapshot -n default \
+  #            -l cnpg.io/cluster=postgres-vectorchord \
+  #            --sort-by=.metadata.creationTimestamp
+  #     2. kubectl delete cluster postgres-vectorchord -n default
+  #     3. Set <snapshot-name> below, uncomment bootstrap.recovery, commit and push.
+  #     4. Revert to bootstrap.initdb after cluster is healthy (optional).
+  #
+  # bootstrap:
+  #   recovery:
+  #     volumeSnapshots:
+  #       storage:
+  #         name: <snapshot-name>   # from kubectl get volumesnapshot above
+  #         kind: VolumeSnapshot
+  #         apiGroup: snapshot.storage.k8s.io
+
+  # Always-present — no effect during normal ops.
+  # Activated when bootstrap.recovery.source: postgres-vectorchord is set (PATH A above).
+  externalClusters:
+    - name: postgres-vectorchord
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: postgres-vectorchord-backup
+
+  managed:
+    roles:
+      - name: authentik
+        login: true
+        ensure: present
+        passwordSecret:
+          name: authentik-pg-password
+      - name: firefly
+        login: true
+        ensure: present
+        passwordSecret:
+          name: firefly-pg-password
+      - name: paperless
+        login: true
+        ensure: present
+        passwordSecret:
+          name: paperless-pg-password
+
+  storage:
+    size: 60Gi
+    storageClass: csi-rbd-rbd-vm-sc-retain

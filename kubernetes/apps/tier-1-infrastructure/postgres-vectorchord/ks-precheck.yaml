@@ -1,0 +1,29 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: postgres-vectorchord-recovery-precheck
+  namespace: flux-system
+  labels:
+    layer: "data"
+    component: database
+    critical: "false"
+spec:
+  dependsOn:
+    - name: cloudnative-pg
+      namespace: flux-system
+  interval: ${TIER1_INTERVAL:=15m}
+  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  path: ./kubernetes/apps/tier-1-infrastructure/postgres-vectorchord/recovery-precheck-${CNPG_RECOVERY_MODE:=false}
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: default
+  wait: true
+  healthChecks:
+    - apiVersion: batch/v1
+      kind: Job
+      name: postgres-vectorchord-recovery-precheck
+      namespace: default

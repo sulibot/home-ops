@@ -1,0 +1,141 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-vectorchord-backup-verifier
+  namespace: default
+spec:
+  schedule: "15 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-vectorchord-backup-verifier
+        spec:
+          serviceAccountName: postgres-vectorchord-backup-verifier
+          restartPolicy: OnFailure
+          containers:
+            - name: verifier
+              image: bitnami/kubectl:1.32.2
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+
+                  CLUSTER_NAME="postgres-vectorchord"
+                  NAMESPACE="default"
+                  MAX_AGE_SECONDS="${MAX_AGE_SECONDS:-129600}" # 36h
+                  NOW="$(date -u +%s)"
+
+                  check_cnpg_method() {
+                    method="$1"
+                    newest=0
+                    rows_file="$(mktemp)"
+                    rows="$(kubectl get backups.postgresql.cnpg.io -n "${NAMESPACE}" -l "cnpg.io/cluster=${CLUSTER_NAME}" \
+                      -o jsonpath='{range .items[*]}{.spec.method}{"|"}{.status.phase}{"|"}{.status.stoppedAt}{"\n"}{end}')"
+
+                    [ -z "${rows}" ] && { rm -f "${rows_file}"; return 1; }
+                    printf '%s\n' "${rows}" > "${rows_file}"
+
+                    found=0
+                    while IFS='|' read -r row_method row_phase row_stopped; do
+                      [ -z "${row_method}" ] && continue
+                      [ "${row_method}" = "${method}" ] || continue
+                      [ "${row_phase}" = "completed" ] || continue
+                      ts="$(date -u -d "${row_stopped}" +%s 2>/dev/null || echo 0)"
+                      [ "${ts}" -gt "${newest}" ] && newest="${ts}"
+                      found=1
+                    done < "${rows_file}"
+                    rm -f "${rows_file}"
+
+                    [ "${found}" -eq 1 ] || return 1
+                    age="$((NOW - newest))"
+                    [ "${age}" -le "${MAX_AGE_SECONDS}" ] || return 1
+                    return 0
+                  }
+
+                  check_snapshot_recent() {
+                    newest=0
+                    rows_file="$(mktemp)"
+                    rows="$(kubectl get volumesnapshots.snapshot.storage.k8s.io -n "${NAMESPACE}" -l "cnpg.io/cluster=${CLUSTER_NAME}" \
+                      -o jsonpath='{range .items[*]}{.status.readyToUse}{"|"}{.metadata.creationTimestamp}{"\n"}{end}')"
+
+                    [ -z "${rows}" ] && { rm -f "${rows_file}"; return 1; }
+                    printf '%s\n' "${rows}" > "${rows_file}"
+
+                    while IFS='|' read -r ready created; do
+                      [ "${ready}" = "true" ] || continue
+                      ts="$(date -u -d "${created}" +%s 2>/dev/null || echo 0)"
+                      [ "${ts}" -gt "${newest}" ] && newest="${ts}"
+                    done < "${rows_file}"
+                    rm -f "${rows_file}"
+
+                    [ "${newest}" -gt 0 ] || return 1
+                    age="$((NOW - newest))"
+                    [ "${age}" -le "${MAX_AGE_SECONDS}" ] || return 1
+                    return 0
+                  }
+
+                  errors=0
+                  if ! check_cnpg_method "plugin"; then
+                    echo "ERROR: No recent completed CNPG plugin backup found for ${CLUSTER_NAME}"
+                    errors=$((errors + 1))
+                  fi
+
+                  if ! check_cnpg_method "volumeSnapshot"; then
+                    echo "ERROR: No recent completed CNPG volumeSnapshot backup found for ${CLUSTER_NAME}"
+                    errors=$((errors + 1))
+                  fi
+
+                  if ! check_snapshot_recent; then
+                    echo "ERROR: No recent ready VolumeSnapshot found for ${CLUSTER_NAME}"
+                    errors=$((errors + 1))
+                  fi
+
+                  if [ "${errors}" -gt 0 ]; then
+                    echo "Backup verification failed with ${errors} error(s)"
+                    exit 1
+                  fi
+
+                  echo "Backup verification passed"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-vectorchord-backup-verifier
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-vectorchord-backup-verifier
+  namespace: default
+rules:
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["backups"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-vectorchord-backup-verifier
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: postgres-vectorchord-backup-verifier
+subjects:
+  - kind: ServiceAccount
+    name: postgres-vectorchord-backup-verifier
+    namespace: default

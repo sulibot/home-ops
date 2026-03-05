@@ -11,13 +11,15 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
+    - name: postgres-vectorchord-recovery-precheck
+      namespace: flux-system
     - name: cloudnative-pg
       namespace: flux-system
     - name: ceph-csi
       namespace: flux-system
   interval: ${TIER1_INTERVAL:=15m}
   retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
-  path: ./kubernetes/apps/tier-1-infrastructure/postgres-vectorchord/app
+  path: ./kubernetes/apps/tier-1-infrastructure/postgres-vectorchord/app-${CNPG_RECOVERY_MODE:=false}
   prune: true
   sourceRef:
     kind: GitRepository
