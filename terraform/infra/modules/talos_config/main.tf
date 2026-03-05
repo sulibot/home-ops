@@ -62,7 +62,7 @@ locals {
     var.installer_image != "" ? { image = var.installer_image } : {}
   )
 
-  common_sysctls = {
+  common_sysctls = merge({
     "fs.inotify.max_user_watches"   = "1048576"
     "fs.inotify.max_user_instances" = "8192"
     "fs.file-max"                   = "1000000"
@@ -77,7 +77,9 @@ locals {
     "net.ipv4.conf.all.arp_notify"       = "1"
     "net.ipv4.conf.default.arp_notify"   = "1"
     "net.ipv4.conf.ens18.arp_notify"     = "1"
-  }
+  }, var.enable_node_swap ? {
+    "vm.swappiness" = tostring(var.swap_swappiness)
+  } : {})
 
   common_features = {
     kubePrism = { enabled = true, port = 7445 }
@@ -86,6 +88,38 @@ locals {
       forwardKubeDNSToHost = false # Must be false for Cilium BPF Host Routing (Direct Mode)
     }
   }
+
+  common_kubelet = merge(
+    {},
+    var.enable_node_swap ? {
+      extraArgs = {
+        "feature-gates" = "NodeSwap=true"
+      }
+    } : {},
+    var.enable_node_swap ? {
+      extraConfig = {
+        failSwapOn = false
+        memorySwap = {
+          swapBehavior = var.kubelet_swap_behavior
+        }
+      }
+    } : {}
+  )
+
+  swap_config_patches = var.enable_node_swap ? [
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "SwapVolumeConfig"
+      name       = "swap"
+      provisioning = {
+        diskSelector = {
+          match = "system_disk"
+        }
+        minSize = var.swap_size
+        maxSize = var.swap_size
+      }
+    }),
+  ] : []
 
   common_cluster_network = {
     cni            = { name = "none" }                              # Cilium installed via bootstrap helmfile after CRDs
@@ -189,7 +223,7 @@ data "talos_machine_configuration" "controlplane" {
         }
         sysctls  = local.common_sysctls
         features = local.common_features
-        kubelet  = {}
+        kubelet  = local.common_kubelet
       }
       cluster = {
         allowSchedulingOnControlPlanes = false
@@ -243,7 +277,7 @@ data "talos_machine_configuration" "controlplane" {
         }
       }
     }),
-  ], local.registry_mirror_patches)
+  ], local.swap_config_patches, local.registry_mirror_patches)
 }
 
 # Generate worker machine configuration
@@ -279,12 +313,12 @@ data "talos_machine_configuration" "worker" {
         }
         sysctls  = local.common_sysctls
         features = local.common_features
-        kubelet = {
+        kubelet = merge(local.common_kubelet, {
           clusterDNS = [
             "fd00:${var.cluster_id}:96::a", # IPv6 DNS service IP (10th IP in service CIDR)
             "10.${var.cluster_id}.96.10"    # IPv4 DNS service IP (10th IP in service CIDR)
           ]
-        }
+        })
         files = concat(
           [
             {
@@ -305,7 +339,7 @@ EOF
         }
       }
     }),
-  ], local.registry_mirror_patches)
+  ], local.swap_config_patches, local.registry_mirror_patches)
 }
 
 # Generate per-node FRR config YAML for the extension
@@ -545,9 +579,7 @@ locals {
             } : {}
           )
           network = {
-            # hostname is set via HostnameConfig document below (not here)
-            # machine.network.hostname conflicts with HostnameConfig auto-generated
-            # by Talos provider v0.10.x — removed to fix "static hostname already set"
+            hostname   = node.hostname
             interfaces = concat([
               {
                 interface = var.bgp_interface
@@ -652,9 +684,8 @@ locals {
     for node_name, node in local.all_nodes : node_name => {
       machine_type = node.machine_type
       # Strip the auto-generated HostnameConfig{auto:stable} that Talos provider v0.10.x
-      # injects into the base machine_configuration. The per-node config_patch below adds
-      # a HostnameConfig{hostname:...} instead; keeping both causes Talos to merge them,
-      # resulting in {auto:stable, hostname:...} which fails validation.
+      # injects into the base machine_configuration, to avoid conflict with the
+      # machine.network.hostname set in the per-node patch.
       machine_configuration = replace(
         tostring(
           node.machine_type == "controlplane" ?
@@ -673,12 +704,7 @@ locals {
       config_patch = <<-EOT
 ${yamlencode(local.node_config_patches[node_name])}
 ---
-# HostnameConfig: per-node static hostname (Talos provider v0.10.x uses separate doc)
-apiVersion: v1alpha1
-kind: HostnameConfig
-hostname: ${node.hostname}
----
-${"# YAML Document 3: ExtensionServiceConfig for FRR BGP daemon"}
+${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
 ${local.extension_service_configs[node_name]}
 EOT
 }
