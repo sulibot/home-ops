@@ -29,7 +29,7 @@ locals {
   vnets_config  = read_terragrunt_config(find_in_parent_folders("common/sdn-vnets.hcl")).locals
 
   # Import delegated prefixes and transform to module format
-  ipv6_config      = include.ipv6_prefixes.locals
+  ipv6_config = include.ipv6_prefixes.locals
   delegated_prefixes = {
     for vnet, prefix in local.ipv6_config.delegated_prefixes :
     vnet => {
@@ -76,9 +76,9 @@ EOF
 
 inputs = {
   # Use centralized SDN configuration
-  zone_id           = local.network_infra.sdn.zone_id
-  vrf_vxlan         = local.network_infra.sdn.vrf_vxlan
-  mtu               = local.network_infra.sdn.mtu
+  zone_id                    = local.network_infra.sdn.zone_id
+  vrf_vxlan                  = local.network_infra.sdn.vrf_vxlan
+  mtu                        = local.network_infra.sdn.mtu
   disable_arp_nd_suppression = local.network_infra.sdn.disable_arp_nd_suppression
   advertise_subnets          = local.network_infra.sdn.advertise_subnets
 

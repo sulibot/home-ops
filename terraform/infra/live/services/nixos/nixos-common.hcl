@@ -7,14 +7,14 @@ locals {
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 
   # Proxmox settings (defaults, can be overridden)
-  proxmox_node     = "pve02"
-  datastore_id     = local.proxmox_infra.storage.datastore_id
-  vm_datastore     = local.proxmox_infra.storage.vm_datastore
+  proxmox_node = "pve02"
+  datastore_id = local.proxmox_infra.storage.datastore_id
+  vm_datastore = local.proxmox_infra.storage.vm_datastore
 
   # Network defaults - VLAN 200
-  bridge           = "vmbr0"
-  vlan_id          = 200
-  dns_servers      = [local.network_infra.dns_servers.ipv4, "2001:4860:4860::8888"]
+  bridge      = "vmbr0"
+  vlan_id     = 200
+  dns_servers = [local.network_infra.dns_servers.ipv4, "2001:4860:4860::8888"]
 
   # SSH key
   ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com"

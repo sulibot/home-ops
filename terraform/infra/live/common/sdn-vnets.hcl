@@ -13,9 +13,9 @@ locals {
     ipv4_gateway = "10.${tenant_id}.0.254"
 
     # VXLAN configuration
-    vxlan_id = 10000 + tenant_id  # 10100, 10101, 10102, 10103
+    vxlan_id = 10000 + tenant_id # 10100, 10101, 10102, 10103
 
     # VLAN (for non-SDN deployments)
     vlan_id = tenant_id
-  }}
+  } }
 }

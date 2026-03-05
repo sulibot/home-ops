@@ -5,18 +5,18 @@
 # common/proxmox-infrastructure.hcl
 
 locals {
-  cluster_name   = "sol"  # Human-readable cluster name
-  cluster_id     = 101    # Numeric cluster identifier
-  controlplanes  = 3
-  workers        = 3
+  cluster_name  = "sol" # Human-readable cluster name
+  cluster_id    = 101   # Numeric cluster identifier
+  controlplanes = 3
+  workers       = 3
   network = {
-    bridge_public = "vmbr0"      # Legacy: used when use_sdn = false
-    vlan_public   = 101          # Legacy: used when use_sdn = false
+    bridge_public = "vmbr0" # Legacy: used when use_sdn = false
+    vlan_public   = 101     # Legacy: used when use_sdn = false
     bridge_mesh   = "vnet101"
     vlan_mesh     = 0
-    public_mtu    = 1450         # Legacy: used when use_sdn = false
+    public_mtu    = 1450 # Legacy: used when use_sdn = false
     mesh_mtu      = 8930
-    use_sdn       = true         # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
+    use_sdn       = true # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }
 
   # ---------------------------------------------------------------------------
@@ -28,11 +28,11 @@ locals {
   # Uses Xe driver (official Siderolabs extension) for newer Intel GPUs with SR-IOV
   # Kernel arg xe.force_probe=4680 is set in install-schematic.hcl for Alder Lake-S GT1 VF
   gpu_config = {
-    enabled     = true
-    mapping     = "intel-igpu-vf1"
-    pcie        = true
-    rombar      = false
-    driver      = "xe"
+    enabled = true
+    mapping = "intel-igpu-vf1"
+    pcie    = true
+    rombar  = false
+    driver  = "xe"
     # No driver_params needed - xe.force_probe kernel arg handles GPU initialization
     driver_params = {}
   }
@@ -55,7 +55,7 @@ locals {
       gpu_passthrough = (
         local.gpu_config.enabled &&
         can(local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)])
-      ) ? merge(
+        ) ? merge(
         local.gpu_config,
         {
           pci_address = local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)]

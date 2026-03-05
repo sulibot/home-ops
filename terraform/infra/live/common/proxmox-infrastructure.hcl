@@ -14,7 +14,7 @@ locals {
 
   # Storage configuration
   storage = {
-    datastore_id = "resources"  # For ISO, snippets, cloud-init
-    vm_datastore = "rbd-vm"     # For VM disks (Ceph RBD)
+    datastore_id = "resources" # For ISO, snippets, cloud-init
+    vm_datastore = "rbd-vm"    # For VM disks (Ceph RBD)
   }
 }

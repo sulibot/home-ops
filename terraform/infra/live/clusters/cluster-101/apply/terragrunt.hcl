@@ -14,16 +14,16 @@ dependency "talos_config" {
   config_path = "../config"
 
   mock_outputs = {
-    talosconfig          = "mock"
+    talosconfig = "mock"
     client_configuration = {
       ca_certificate     = "mock-ca"
       client_certificate = "mock-cert"
       client_key         = "mock-key"
     }
-    machine_configs      = {}
-    control_plane_ips    = {}
-    all_node_names       = []
-    all_node_ips         = {}
+    machine_configs   = {}
+    control_plane_ips = {}
+    all_node_names    = []
+    all_node_ips      = {}
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }

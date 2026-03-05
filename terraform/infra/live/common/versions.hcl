@@ -3,7 +3,7 @@
 
 locals {
   # Talos versions
-  talos_version      = "v1.12.4"  # Fixes BPF verifier kernel bug (6.18.4)
+  talos_version      = "v1.12.4" # Fixes BPF verifier kernel bug (6.18.4)
   talos_platform     = "nocloud"
   talos_architecture = "amd64"
 
@@ -12,7 +12,7 @@ locals {
   extension_version = "v1.12.4"
 
   # Kubernetes version (managed by Talos)
-  kubernetes_version = "1.34.1"  # Current K8s version for Talos v1.12.4
+  kubernetes_version = "1.34.1" # Current K8s version for Talos v1.12.4
 
   # Terraform provider versions
   provider_versions = {

@@ -53,7 +53,7 @@ resource "proxmox_virtual_environment_container" "this" {
     for_each = each.value.mount_points
     content {
       volume = mount_point.value.volume
-      size   = mount_point.value.size
+      size   = try(mount_point.value.size, null)
       path   = mount_point.value.path
     }
   }

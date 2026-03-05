@@ -15,7 +15,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: precheck
-          image: bitnami/kubectl:1.33.4
+          image: bitnami/kubectl:1.32.2
           command:
             - /bin/sh
             - -ec

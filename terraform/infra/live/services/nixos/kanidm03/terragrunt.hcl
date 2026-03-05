@@ -52,5 +52,5 @@ inputs = {
 
   tags = ["debian", "kanidm", "identity", "standby"]
 
-  on_boot      = true
+  on_boot = true
 }

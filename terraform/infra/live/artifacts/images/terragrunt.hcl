@@ -28,7 +28,7 @@ inputs = {
 
   # All official Siderolabs extensions (no custom extensions)
   official_extensions = local.install_schematic.install_system_extensions
-  custom_extensions   = local.install_schematic.install_custom_extensions  # Now empty
+  custom_extensions   = local.install_schematic.install_custom_extensions # Now empty
 
   # Kernel arguments
   kernel_args = local.install_schematic.install_kernel_args

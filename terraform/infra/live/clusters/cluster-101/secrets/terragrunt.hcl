@@ -28,8 +28,8 @@ terraform {
 
   # Export and encrypt cluster secrets for reuse
   after_hook "export_secrets" {
-    commands     = ["apply"]
-    execute      = ["bash", "-c", <<-EOT
+    commands = ["apply"]
+    execute = ["bash", "-c", <<-EOT
       set -e
       cd ${get_repo_root()}
       mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}

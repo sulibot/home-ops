@@ -8,26 +8,26 @@ locals {
 
   # Kernel args for production system (metal platform)
   install_kernel_args = [
-    "console=ttyS0,115200",  # Serial console output (VGA is none on GPU passthrough nodes)
+    "console=ttyS0,115200", # Serial console output (VGA is none on GPU passthrough nodes)
     # NOTE: talos.platform is NOT set here — imager --platform metal/nocloud sets it
     # per-image.  Setting it here would override nocloud platform on the boot ISO
     # and break cloud-init (nodes would never get static IPs).
-    "-init_on_alloc",        # Less security, faster performance
-    "-init_on_free",         # Less security, faster performance
-    "-selinux",              # Less security, faster performance
-    "apparmor=0",            # Less security, faster performance
+    "-init_on_alloc", # Less security, faster performance
+    "-init_on_free",  # Less security, faster performance
+    "-selinux",       # Less security, faster performance
+    "apparmor=0",     # Less security, faster performance
     # Xe driver for SR-IOV VF support (official Siderolabs extension)
-    "xe.force_probe=4680",   # Enable Xe for Alder Lake-S GT1 VF (from Proxmox SR-IOV)
-    "init_on_alloc=0",       # Less security, faster performance
-    "init_on_free=0",        # Less security, faster performance
-    "intel_iommu=on",        # PCI Passthrough
-    "iommu=pt",              # PCI Passthrough
-    "mitigations=off",       # Less security, faster performance
-    "module_blacklist=igc",  # Disable onboard NIC
-    "module.sig_enforce=0",  # Allow unsigned kernel modules (keeping for flexibility)
-    "security=none",         # Less security, faster performance
-    "sysctl.kernel.kexec_load_disabled=1",  # Meteor Lake CPU & Intel iGPU
-    "talos.auditd.disabled=1",  # Less security, faster performanceu.ol80
+    "xe.force_probe=4680",                 # Enable Xe for Alder Lake-S GT1 VF (from Proxmox SR-IOV)
+    "init_on_alloc=0",                     # Less security, faster performance
+    "init_on_free=0",                      # Less security, faster performance
+    "intel_iommu=on",                      # PCI Passthrough
+    "iommu=pt",                            # PCI Passthrough
+    "mitigations=off",                     # Less security, faster performance
+    "module_blacklist=igc",                # Disable onboard NIC
+    "module.sig_enforce=0",                # Allow unsigned kernel modules (keeping for flexibility)
+    "security=none",                       # Less security, faster performance
+    "sysctl.kernel.kexec_load_disabled=1", # Meteor Lake CPU & Intel iGPU
+    "talos.auditd.disabled=1",             # Less security, faster performanceu.ol80
   ]
 
   # All official Siderolabs extensions with pinned digests

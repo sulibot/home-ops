@@ -61,6 +61,11 @@ terragrunt apply
 terragrunt apply --all
 ```
 
+Bootstrap safety behavior:
+- `bootstrap/` now auto-skips when `talos/clusters/cluster-101/kubeconfig` already exists.
+- This makes repeat `apply --all` reconciles faster and avoids accidental re-bootstrap attempts.
+- To force bootstrap intentionally: `TALOS_RUN_BOOTSTRAP=true terragrunt apply --all`
+
 ### Updating Running Cluster (Repeatable)
 
 When you need to update machine configs (network, extensions, sysctls, etc.):

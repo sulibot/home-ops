@@ -125,46 +125,6 @@ terraform {
     ]
   }
 
-  # Check if upstream dependencies have been applied
-  before_hook "check_dependencies_applied" {
-    commands = ["apply"]
-    execute = [
-      "bash", "-c",
-      <<-EOT
-        set -e
-
-        echo "Checking if upstream dependencies have been applied..."
-
-        # Navigate to module 4 directory from repo root
-        MODULE_1_DIR="${get_repo_root()}/terraform/infra/live/clusters/cluster-${local.cluster_config.cluster_id}/compute"
-
-        if [ ! -d "$MODULE_1_DIR" ]; then
-          echo "ERROR: Module 4 directory not found at $MODULE_1_DIR"
-          exit 1
-        fi
-
-        cd "$MODULE_1_DIR"
-
-        # Check if module 4 has state (VMs created)
-        if ! terragrunt state list &>/dev/null; then
-          echo "ERROR: Module 4-talos-vms-create has no Terraform state"
-          echo "Please run: terragrunt apply --terragrunt-working-dir ../4-talos-vms-create"
-          exit 1
-        fi
-
-        # Check if module 4 has node_ips output
-        if ! terragrunt output -json node_ips &>/dev/null; then
-          echo "ERROR: Module 4-talos-vms-create has no node_ips output"
-          echo "This indicates VMs may not be fully created"
-          echo "Please run: terragrunt apply --terragrunt-working-dir ../4-talos-vms-create"
-          exit 1
-        fi
-
-        echo "✓ Dependencies validated successfully"
-      EOT
-    ]
-  }
-
   # Automatically export talosconfig after successful apply
   after_hook "export_talosconfig" {
     commands     = ["apply"]
@@ -174,8 +134,8 @@ terraform {
 
   # Export machine configs for troubleshooting (not committed)
   after_hook "export_machine_configs" {
-    commands     = ["apply"]
-    execute      = ["bash", "-c", <<-EOT
+    commands = ["apply"]
+    execute = ["bash", "-c", <<-EOT
       set -e
       cd ${get_repo_root()}
       mkdir -p talos/clusters/cluster-${local.cluster_config.cluster_id}
@@ -198,8 +158,8 @@ terraform {
   }
 
   after_hook "export_cilium_bgp_node_configs" {
-    commands     = ["apply"]
-    execute      = ["bash", "-c", <<-EOT
+    commands = ["apply"]
+    execute = ["bash", "-c", <<-EOT
       set -e
       cd ${get_terragrunt_dir()}
       terragrunt output -raw cilium_bgp_node_configs_yaml > \
@@ -262,10 +222,10 @@ inputs = {
   all_node_ips = dependency.nodes.outputs.node_ips
 
   # Network configuration from nodes module
-  pod_cidr_ipv6     = dependency.nodes.outputs.k8s_network_config.pods_ipv6
-  pod_cidr_ipv4     = dependency.nodes.outputs.k8s_network_config.pods_ipv4
-  service_cidr_ipv6 = dependency.nodes.outputs.k8s_network_config.services_ipv6
-  service_cidr_ipv4 = dependency.nodes.outputs.k8s_network_config.services_ipv4
+  pod_cidr_ipv6      = dependency.nodes.outputs.k8s_network_config.pods_ipv6
+  pod_cidr_ipv4      = dependency.nodes.outputs.k8s_network_config.pods_ipv4
+  service_cidr_ipv6  = dependency.nodes.outputs.k8s_network_config.services_ipv6
+  service_cidr_ipv4  = dependency.nodes.outputs.k8s_network_config.services_ipv4
   loadbalancers_ipv4 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv4
   loadbalancers_ipv6 = dependency.nodes.outputs.k8s_network_config.loadbalancers_ipv6
   # Use Talos Image Factory installer (all extensions are now official)
@@ -296,6 +256,12 @@ inputs = {
     local.install_schematic_config.install_system_extensions,
     local.install_schematic_config.install_custom_extensions
   )
+
+  # Kubernetes node swap (Talos + kubelet)
+  enable_node_swap      = true
+  kubelet_swap_behavior = "LimitedSwap"
+  swap_swappiness       = 10
+  swap_size             = "4GiB"
 
   # Install disk
   install_disk = "/dev/sda"

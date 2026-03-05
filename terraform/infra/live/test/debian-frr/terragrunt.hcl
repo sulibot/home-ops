@@ -7,15 +7,15 @@ include "root" {
 
 locals {
   # Read centralized infrastructure configurations
-  proxmox_infra    = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  network_infra    = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
-  credentials      = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file     = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  proxmox_infra     = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  network_infra     = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
+  credentials       = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file      = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
   install_schematic = read_terragrunt_config(find_in_parent_folders("common/install-schematic.hcl")).locals
 
   # Test environment configuration
   tenant_id      = 101
-  bgp_asn_base   = local.network_infra.bgp.asn_base  # 4210000000
+  bgp_asn_base   = local.network_infra.bgp.asn_base   # 4210000000
   bgp_remote_asn = local.network_infra.bgp.remote_asn # 4200001000
 
   # Test VM definitions
@@ -79,7 +79,7 @@ variable "region" {
   default     = "home-lab"
 }
 
-%{ for name, vm in local.test_vms ~}
+%{for name, vm in local.test_vms~}
 module "${name}" {
   source = "../../../modules/debian_test_vm"
 
@@ -137,6 +137,6 @@ output "${name}_info" {
   }
 }
 
-%{ endfor ~}
+%{endfor~}
 EOF
 }

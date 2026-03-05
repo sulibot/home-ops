@@ -62,19 +62,19 @@ inputs = {
 
   # ── FIREWALL ADDRESS LISTS ───────────────────────────────────────────────────
   address_lists = [
-    { list = "no_forward_ipv4", address = "0.0.0.0/8",       comment = "defconf: RFC6890" },
-    { list = "no_forward_ipv4", address = "169.254.0.0/16",  comment = "defconf: RFC6890" },
-    { list = "no_forward_ipv4", address = "224.0.0.0/4",     comment = "defconf: multicast" },
+    { list = "no_forward_ipv4", address = "0.0.0.0/8", comment = "defconf: RFC6890" },
+    { list = "no_forward_ipv4", address = "169.254.0.0/16", comment = "defconf: RFC6890" },
+    { list = "no_forward_ipv4", address = "224.0.0.0/4", comment = "defconf: multicast" },
     { list = "no_forward_ipv4", address = "255.255.255.255", comment = "defconf: RFC6890" },
   ]
 
   # ── FIREWALL FILTER ──────────────────────────────────────────────────────────
   firewall_filter_rules = [
     {
-      comment          = "defconf: accept ICMP after RAW"
-      chain            = "input"
-      action           = "accept"
-      protocol         = "icmp"
+      comment  = "defconf: accept ICMP after RAW"
+      chain    = "input"
+      action   = "accept"
+      protocol = "icmp"
     },
     {
       comment          = "defconf: accept established,related,untracked"

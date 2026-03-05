@@ -2,6 +2,14 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+locals {
+  cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
+}
+
+# Safety/perf: Skip bootstrap on repeat run-all executions once kubeconfig exists.
+# Set TALOS_RUN_BOOTSTRAP=true to force running bootstrap explicitly.
+skip = get_env("TALOS_RUN_BOOTSTRAP", "false") != "true" && fileexists("${get_repo_root()}/talos/clusters/cluster-${local.cluster_config.cluster_id}/kubeconfig")
+
 dependencies {
   paths = ["../apply"]
 }
@@ -10,17 +18,17 @@ dependency "talos_config" {
   config_path = "../config"
 
   mock_outputs = {
-    talosconfig          = "mock"
+    talosconfig = "mock"
     client_configuration = {
       ca_certificate     = "mock-ca"
       client_certificate = "mock-cert"
       client_key         = "mock-key"
     }
-    cluster_endpoint    = "https://[fd00:101::10]:6443"
-    machine_configs      = {}
-    control_plane_ips    = {}
-    all_node_names       = []
-    all_node_ips         = {}
+    cluster_endpoint  = "https://[fd00:101::10]:6443"
+    machine_configs   = {}
+    control_plane_ips = {}
+    all_node_names    = []
+    all_node_ips      = {}
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
@@ -110,10 +118,6 @@ terraform {
       EOT
     ]
   }
-}
-
-locals {
-  cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
 }
 
 inputs = {

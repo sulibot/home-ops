@@ -5,7 +5,10 @@
       "Bash(flux bootstrap git --help:*)",
       "Bash(grep:*)",
       "Bash(gh secret:*)",
-      "Read(//Users/sulibot/repos/github/home-ops/**)"
+      "Read(//Users/sulibot/repos/github/home-ops/**)",
+      "Bash(# Check thelounge in cluster kubectl get all,pvc,replicationsource,replicationdestination -n default -l app.kubernetes.io/name=thelounge kubectl get pvc -n default)",
+      "WebFetch(domain:support.plex.tv)",
+      "WebFetch(domain:webtools-ng.github.io)"
     ]
   }
 }

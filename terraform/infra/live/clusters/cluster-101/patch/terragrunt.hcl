@@ -71,7 +71,7 @@ terraform {
 
   # Apply machine configs with patches after terraform apply (Terragrunt-native approach)
   after_hook "apply_talos_configs" {
-    commands     = ["apply"]
+    commands = ["apply"]
     execute = [
       "bash", "-c",
       <<-EOT

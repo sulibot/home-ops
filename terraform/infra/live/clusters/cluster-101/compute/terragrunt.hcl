@@ -185,18 +185,18 @@ inputs = merge(
     # Use shared artifacts from dependency
     talos_image_file_id = dependency.image.outputs.talos_image_file_ids[local.proxmox_infra.proxmox_nodes[0]]
     # Get versions from centralized versions.hcl (not from image build)
-    talos_version       = local.versions.talos_version
-    kubernetes_version  = local.versions.kubernetes_version
+    talos_version      = local.versions.talos_version
+    kubernetes_version = local.versions.kubernetes_version
     ip_config = {
       mesh = {
-        ipv6_prefix  = "fc00:${local.cluster_config.cluster_id}::"
-        ipv4_prefix  = "10.10.${local.cluster_config.cluster_id}."
+        ipv6_prefix = "fc00:${local.cluster_config.cluster_id}::"
+        ipv4_prefix = "10.10.${local.cluster_config.cluster_id}."
         #ipv6_gateway = "fc00:${local.cluster_config.cluster_id}::fffe"
         #ipv4_gateway = "10.10.${local.cluster_config.cluster_id}.254"
       }
       public = {
-        ipv6_prefix  = "fd00:${local.cluster_config.cluster_id}::"
-        ipv4_prefix  = "10.${local.cluster_config.cluster_id}.0."
+        ipv6_prefix = "fd00:${local.cluster_config.cluster_id}::"
+        ipv4_prefix = "10.${local.cluster_config.cluster_id}.0."
         # ULA gateway for routing to other ULA subnets (e.g., fd00:0:0:ffff::53)
         ipv6_gateway = "fd00:${local.cluster_config.cluster_id}::fffe"
         ipv4_gateway = "10.${local.cluster_config.cluster_id}.0.254"

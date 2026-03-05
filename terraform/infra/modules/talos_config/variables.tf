@@ -277,3 +277,27 @@ variable "client_configuration" {
   })
   default = null
 }
+
+variable "enable_node_swap" {
+  description = "Enable Kubernetes node swap support in kubelet and provision Talos swap volume."
+  type        = bool
+  default     = false
+}
+
+variable "kubelet_swap_behavior" {
+  description = "Kubelet memorySwap.swapBehavior value when node swap is enabled."
+  type        = string
+  default     = "LimitedSwap"
+}
+
+variable "swap_swappiness" {
+  description = "Linux vm.swappiness sysctl value."
+  type        = number
+  default     = 10
+}
+
+variable "swap_size" {
+  description = "Swap volume size in Talos quantity format (example: 4GiB)."
+  type        = string
+  default     = "4GiB"
+}

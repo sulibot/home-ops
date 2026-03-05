@@ -8,6 +8,7 @@ machine:
       validSubnets:
         - fd00:101:fe::12/128
   network:
+    hostname: solcp02
     interfaces:
       - addresses:
           - 2600:1700:ab1a:500d::12/64

@@ -48,7 +48,7 @@ variable "containers" {
     ssh_public_keys = optional(list(string), [])
     mount_points = optional(list(object({
       volume = string
-      size   = string
+      size   = optional(string)
       path   = string
     })), [])
   }))
