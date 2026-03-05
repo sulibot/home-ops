@@ -21,6 +21,8 @@ spec:
       namespace: flux-system
     - name: volsync
       namespace: flux-system
+    - name: volsync-repository-pvc
+      namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/jellyseerr/app

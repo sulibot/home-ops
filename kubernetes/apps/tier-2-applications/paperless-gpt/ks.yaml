@@ -19,6 +19,8 @@ spec:
       namespace: flux-system
     - name: volsync
       namespace: flux-system
+    - name: volsync-repository-pvc
+      namespace: flux-system
     - name: paperless
       namespace: flux-system
     - name: ollama

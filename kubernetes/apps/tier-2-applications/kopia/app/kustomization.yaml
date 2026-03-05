@@ -11,3 +11,4 @@ resources:
   - ./kopia-init-job.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+  - ./vpa.yaml

@@ -6,3 +6,4 @@ resources:
   - externalsecret-oidc.yaml
   - ocirepository.yaml
   - helmrelease.yaml
+  - vpa.yaml

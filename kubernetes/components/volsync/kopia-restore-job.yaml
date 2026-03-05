@@ -64,20 +64,21 @@ spec:
                 --password="$KOPIA_PASSWORD" \
                 --config-file=/tmp/kopia.config
 
-              # List available snapshots
+              # Validate that at least one snapshot exists for this exact source path.
               echo "[2/4] Finding snapshots for ${APP}..."
-              kopia snapshot list --all --config-file=/tmp/kopia.config | grep "${APP}-src@${NAMESPACE:-default}" || {
-                echo "ERROR: No snapshots found for ${APP}-src@${NAMESPACE:-default}"
+              SOURCE_PATH="${APP}-src@${NAMESPACE:-default}:/data"
+              if ! kopia snapshot list "${SOURCE_PATH}" --all --config-file=/tmp/kopia.config | grep -q "${APP}-src@${NAMESPACE:-default}"; then
+                echo "ERROR: No snapshots found for ${SOURCE_PATH}"
                 echo "Available snapshots:"
                 kopia snapshot list --all --config-file=/tmp/kopia.config
                 exit 1
-              }
+              fi
 
               # Determine snapshot to restore
               SNAPSHOT_ID="${SNAPSHOT_ID:-latest}"
               if [ "$SNAPSHOT_ID" = "latest" ]; then
                 echo "Using latest snapshot..."
-                SNAPSHOT_PATH="${APP}-src@${NAMESPACE:-default}:/data"
+                SNAPSHOT_PATH="${SOURCE_PATH}"
               else
                 echo "Using snapshot ID: $SNAPSHOT_ID"
                 SNAPSHOT_PATH="$SNAPSHOT_ID"

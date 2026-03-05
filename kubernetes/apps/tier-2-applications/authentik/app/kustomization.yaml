@@ -10,3 +10,4 @@ resources:
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./rbac.yaml
+  - ./vpa.yaml

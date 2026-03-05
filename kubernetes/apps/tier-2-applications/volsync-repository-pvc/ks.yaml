@@ -9,12 +9,23 @@ metadata:
     layer: "applications"
     component: storage
 spec:
+  dependsOn:
+    - name: ceph-csi
+      namespace: flux-system
+    - name: volsync
+      namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
+  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-2-applications/volsync-repository-pvc/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  wait: false
+  wait: true
   targetNamespace: default
+  healthChecks:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: kopia
+      namespace: default

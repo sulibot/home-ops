@@ -9,6 +9,6 @@ resources:
   #   default:       kubernetes/apps/tier-2-applications/volsync-repository-pvc/
   #   observability: kubernetes/apps/tier-1-infrastructure/observability-namespace/_namespace/
   # - ./kopia-repository-pvc.yaml
-  - ./pvc.yaml
   - ./replicationdestination.yaml
+  - ./pvc.yaml
   - ./replicationsource.yaml

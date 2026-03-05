@@ -47,8 +47,8 @@ spec:
     rsync-tls: *image
     syncthing: *image
     manageCRDs: true
-    # MutatingAdmissionPolicy mounts kopia PVC for restore jobs (volsync-dst-*)
-    # Policy correctly excludes backup jobs (volsync-src-*) which already have repository-pvc mounted
+    # MutatingAdmissionPolicy mounts kopia PVC for restore (volsync-dst-*)
+    # and backup jobs (volsync-src-*) to keep repository mount behavior consistent.
     mutatingAdmissionPolicy:
       enabled: true
     service:

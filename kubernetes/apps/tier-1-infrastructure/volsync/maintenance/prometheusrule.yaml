@@ -14,7 +14,7 @@ spec:
         - alert: VolsyncRestoreStuck
           expr: |
             count by (namespace, name) (
-              kube_customresource_volsync_replicationdestination_info{trigger_manual="restore-once"}
+              kube_customresource_volsync_replicationdestination_info{trigger_manual=~"restore-.*"}
               * on(namespace, name) group_left()
               (
                 kube_customresource_volsync_replicationdestination_status_condition{type="Synchronizing", status="true"}

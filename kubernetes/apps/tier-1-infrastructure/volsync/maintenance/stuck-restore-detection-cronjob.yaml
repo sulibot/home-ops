@@ -29,7 +29,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: detector
-              image: bitnami/kubectl:latest
+              image: bitnami/kubectl:1.32.2
               imagePullPolicy: IfNotPresent
               env:
                 - name: STUCK_THRESHOLD_MINUTES
@@ -56,11 +56,8 @@ spec:
                   STUCK_COUNT=0
 
                   # Find all ReplicationDestinations with manual trigger and actively synchronizing
-                  kubectl get replicationdestination -A -o json | jq -r '.items[] |
-                    select(.spec.trigger.manual == "restore-once") |
-                    select(.status.conditions[]? | select(.type == "Synchronizing" and .status == "True")) |
-                    "\(.metadata.namespace)|\(.metadata.name)|\(.status.conditions[] | select(.type == "Synchronizing") | .lastTransitionTime)"
-                  ' | while IFS='|' read -r namespace name transition_time; do
+                  while IFS='|' read -r namespace name transition_time; do
+                    [ -z "${namespace}" ] && continue
 
                     # Convert transition time to seconds since epoch
                     TRANSITION_SECONDS=$(date -d "$transition_time" +%s 2>/dev/null || echo 0)
@@ -84,7 +81,7 @@ spec:
                       # Get mover job status
                       MOVER_JOBS=$(kubectl get jobs -n "$namespace" -l "volsync.backube/replication-destination=${name}" --sort-by=.metadata.creationTimestamp -o name | tail -1)
                       if [ -n "$MOVER_JOBS" ]; then
-                        echo "   Latest Job: $(basename $MOVER_JOBS)"
+                        echo "   Latest Job: $(basename "$MOVER_JOBS")"
                       fi
 
                       if [ "$DRY_RUN" = "false" ]; then
@@ -104,7 +101,11 @@ spec:
 
                       echo "───────────────────────────────────────────"
                     fi
-                  done
+                  done < <(kubectl get replicationdestination -A -o json | jq -r '.items[] |
+                    select((.spec.trigger.manual // "") | startswith("restore-")) |
+                    select(.status.conditions[]? | select(.type == "Synchronizing" and .status == "True")) |
+                    "\(.metadata.namespace)|\(.metadata.name)|\(.status.conditions[] | select(.type == "Synchronizing") | .lastTransitionTime)"
+                  ')
 
                   echo ""
                   if [ "$STUCK_COUNT" -eq 0 ]; then

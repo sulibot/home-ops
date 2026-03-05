@@ -35,7 +35,7 @@ spec:
                 - name: KOPIA_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: kopia-secret
+                      name: volsync-maintenance-secret
                       key: KOPIA_PASSWORD
                 - name: KOPIA_CHECK_FOR_UPDATES
                   value: "false"

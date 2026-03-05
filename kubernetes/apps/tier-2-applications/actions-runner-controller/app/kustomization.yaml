@@ -6,3 +6,4 @@ resources:
   - ../namespace.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+  - ./vpa.yaml

@@ -8,4 +8,5 @@ resources:
   - ./grafanadashboard.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+  - ./vpa.yaml
   # prometheusrule-pods.yaml moved to rules/ (requires PrometheusRule CRD from kps HelmRelease)

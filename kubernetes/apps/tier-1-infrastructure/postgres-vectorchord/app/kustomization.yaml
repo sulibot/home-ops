@@ -5,3 +5,4 @@ resources:
   - externalsecret-barman.yaml
   - objectstore.yaml
   - scheduledbackup.yaml
+  - backup-verification-cronjob.yaml

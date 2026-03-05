@@ -34,6 +34,17 @@ All namespaces share a single centralized Kopia backup repository stored in the 
   - `kopia-init-job.yaml`: `--path=/repository/repository`
   - Volsync mover jobs: Automatically configured via MutatingAdmissionPolicy
 
+## Restore Dependency Order (GitOps)
+
+For reliable automatic restore, enforce this order:
+1. `ceph-csi` + `volsync` controllers ready
+2. Namespace `kopia` repository PVC `Bound`
+3. Application Kustomization with VolSync component (`ReplicationDestination` -> PVC with `dataSourceRef` -> `ReplicationSource`)
+
+In this repo:
+- `volsync-repository-pvc/ks.yaml` now uses `dependsOn` + `wait: true` + PVC health check.
+- App Kustomizations that include `components/volsync` should depend on `volsync-repository-pvc`.
+
 ## Enabling Backups in a New Namespace
 
 To enable Volsync backups in a new namespace, you need to create a static PV and PVC that reference the shared CephFS volume.
@@ -120,6 +131,11 @@ metadata:
   name: &app volsync-repository-pvc-<namespace>
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: ceph-csi
+      namespace: flux-system
+    - name: volsync
+      namespace: flux-system
   targetNamespace: <namespace>
   commonMetadata:
     labels:
@@ -129,7 +145,12 @@ spec:
   sourceRef:
     kind: GitRepository
     name: home-kubernetes
-  wait: false
+  wait: true
+  healthChecks:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: kopia
+      namespace: <namespace>
   interval: 30m
   retryInterval: 1m
   timeout: 5m

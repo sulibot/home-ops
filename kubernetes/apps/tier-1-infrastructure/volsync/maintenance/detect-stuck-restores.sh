@@ -3,7 +3,7 @@
 # Detect stuck Volsync ReplicationDestination resources
 #
 # A restore is considered "stuck" if:
-# 1. It has the manual trigger set to "restore-once"
+# 1. It has the manual trigger set to a restore action ("restore-*")
 # 2. The Synchronizing condition is True (actively restoring)
 # 3. It has been in this state for longer than STUCK_THRESHOLD_MINUTES
 #
@@ -32,9 +32,9 @@ echo ""
 CURRENT_TIME=$(date +%s)
 STUCK_COUNT=0
 
-# Find all ReplicationDestinations with manual trigger set to restore-once
+# Find all ReplicationDestinations with manual trigger set to restore-*
 kubectl get replicationdestination -A -o json | jq -r '.items[] |
-  select(.spec.trigger.manual == "restore-once") |
+  select((.spec.trigger.manual // "") | startswith("restore-")) |
   select(.status.conditions[]? | select(.type == "Synchronizing" and .status == "True")) |
   "\(.metadata.namespace)|\(.metadata.name)|\(.status.conditions[] | select(.type == "Synchronizing") | .lastTransitionTime)"
 ' | while IFS='|' read -r namespace name transition_time; do

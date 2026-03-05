@@ -3,8 +3,8 @@
 # CNPG-native scheduled VolumeSnapshot backup.
 # Uses online: true so CNPG coordinates a checkpoint with PostgreSQL before
 # snapping the RBD volume - application-consistent, not just crash-consistent.
-# waitForArchive: true ensures WAL up to the snapshot point is in MinIO before
-# the backup is marked complete (safe to delete earlier backups).
+# waitForArchive: true ensures WAL up to the snapshot point is archived before
+# the backup is marked complete.
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
@@ -13,7 +13,8 @@ metadata:
 spec:
   schedule: "0 2 * * *"  # Daily at 2am
   immediate: true         # Also run a backup immediately on first creation (bootstrap)
-  backupOwnerReference: self
+  # Intentionally omit backupOwnerReference so Backup CRs and snapshots are not
+  # garbage-collected if this ScheduledBackup object is renamed/refactored.
   cluster:
     name: postgres-vectorchord
   method: volumeSnapshot
@@ -34,7 +35,8 @@ metadata:
 spec:
   schedule: "0 3 * * *"  # Daily at 3am — WAL archiving is continuous; daily base backups keep recovery windows small
   immediate: true          # Run base backup immediately on creation (bootstrap)
-  backupOwnerReference: self
+  # Intentionally omit backupOwnerReference so Backup CRs are retained across
+  # ScheduledBackup object lifecycle changes.
   cluster:
     name: postgres-vectorchord
   method: plugin

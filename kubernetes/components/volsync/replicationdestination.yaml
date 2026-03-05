@@ -10,9 +10,10 @@ metadata:
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   # --- Trigger behavior ---------------------------------------------------
-  # Manual restore trigger - test automated PVC restoration
+  # Manual restore trigger for automated PVC population.
+  # Override with VOLSYNC_RESTORE_TRIGGER=restore-again to retrigger via GitOps.
   trigger:
-    manual: restore-once
+    manual: "${VOLSYNC_RESTORE_TRIGGER:=restore-once}"
 
   # --- Kopia restore configuration ----------------------------------------
   kopia:
