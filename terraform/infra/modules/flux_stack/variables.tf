@@ -75,6 +75,12 @@ variable "bootstrap_timeout_seconds" {
   default     = 300
 }
 
+variable "cnpg_new_db" {
+  description = "Allow fresh DB bootstrap when no CNPG backup exists. Default false (restore-required mode)."
+  type        = bool
+  default     = false
+}
+
 variable "region" {
   description = "Deployment region"
   type        = string

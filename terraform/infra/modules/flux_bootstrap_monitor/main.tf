@@ -169,6 +169,7 @@ resource "null_resource" "cnpg_restore" {
     command     = "\"$(git -C \"${path.module}\" rev-parse --show-toplevel)\"/scripts/cnpg-restore.sh"
     environment = {
       KUBECONFIG = var.kubeconfig_path
+      CNPG_NEW_DB = var.cnpg_new_db ? "true" : "false"
     }
   }
 

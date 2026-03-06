@@ -37,6 +37,7 @@ module "bootstrap_monitor" {
 
   kubeconfig_path           = var.kubeconfig_path
   bootstrap_timeout_seconds = var.bootstrap_timeout_seconds
+  cnpg_new_db               = var.cnpg_new_db
   region                    = var.region
 
   depends_on = [module.instance]

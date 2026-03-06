@@ -9,6 +9,7 @@ locals {
 
   cluster_enabled        = try(local.cluster_config.enabled, true)
   bootstrap_mode         = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
+  cnpg_new_db            = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
   app_versions           = local.context.app_versions
   secrets                = yamldecode(sops_decrypt_file("${get_repo_root()}/terraform/infra/live/common/secrets.sops.yaml"))
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
@@ -51,4 +52,5 @@ inputs = {
   repo_root          = get_repo_root()
   kubernetes_api_host = "fd00:${local.tenant_id}::10"
   bootstrap_mode      = local.bootstrap_mode
+  cnpg_new_db         = local.cnpg_new_db
 }

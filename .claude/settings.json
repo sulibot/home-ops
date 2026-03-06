@@ -11,7 +11,8 @@
       "WebFetch(domain:webtools-ng.github.io)",
       "Bash(~/.zshrc:*)",
       "Bash(direnv allow)",
-      "Read(//Users/sulibot/**)"
+      "Read(//Users/sulibot/**)",
+      "Bash(npx --yes renovate --version)"
     ],
     "additionalDirectories": [
       "/Users/sulibot"

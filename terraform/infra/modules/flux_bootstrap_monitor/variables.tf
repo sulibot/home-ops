@@ -15,3 +15,9 @@ variable "bootstrap_timeout_seconds" {
   type        = number
   default     = 300
 }
+
+variable "cnpg_new_db" {
+  description = "Allow fresh DB bootstrap when no CNPG backup is found. Default false (restore-required)."
+  type        = bool
+  default     = false
+}

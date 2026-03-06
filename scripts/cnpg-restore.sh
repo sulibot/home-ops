@@ -23,6 +23,8 @@ set -euo pipefail
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
 KUBECONFIG_PATH="${KUBECONFIG:-$HOME/.kube/config}"
+CNPG_NEW_DB_MODE_RAW="${CNPG_NEW_DB:-false}"
+CNPG_NEW_DB_MODE="$(echo "$CNPG_NEW_DB_MODE_RAW" | tr '[:upper:]' '[:lower:]' | xargs)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +45,11 @@ KC="kubectl --kubeconfig=$KUBECONFIG_PATH"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🐘 CNPG AUTOMATIC RESTORE CHECK"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if [ "$CNPG_NEW_DB_MODE" = "true" ]; then
+  echo "Mode: NEW_DB (fresh DB allowed if no backup exists)"
+else
+  echo "Mode: RESTORE_REQUIRED (default)"
+fi
 
 # ── Wait for CNPG operator ────────────────────────────────────────────────────
 # Must wait for the operator pod to be Ready — not just the CRD to exist —
@@ -120,9 +127,17 @@ if [ -z "$RESTORE_METHOD" ] && [ -n "$SNAPSHOT" ]; then
 fi
 
 if [ -z "$RESTORE_METHOD" ]; then
-  echo "  ℹ️  No backups found — fresh install, skipping restore"
+  if [ "$CNPG_NEW_DB_MODE" = "true" ]; then
+    echo "  ℹ️  No backups found — CNPG_NEW_DB=true, allowing fresh install"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 0
+  fi
+
+  echo "  ❌ No backups found and CNPG_NEW_DB=false"
+  echo "     Refusing fresh DB bootstrap in restore-required mode."
+  echo "     If this is intentional, rerun with CNPG_NEW_DB=true."
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  exit 0
+  exit 1
 fi
 
 echo ""
