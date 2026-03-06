@@ -7,6 +7,8 @@ resources:
   - ./cert-manager/ks.yaml
   - ./cert-manager/issuers/ks.yaml
   - ./metrics-server/ks.yaml
+  - ./vpa/helm-repo/ks.yaml
+  - ./vpa/ks.yaml
   - ./reloader/ks.yaml
   - ./descheduler/ks.yaml
   - ./coredns/ks.yaml
@@ -38,6 +40,10 @@ resources:
   - ./cloudnative-pg/ks.yaml
   - ./postgres-vectorchord/ks-precheck.yaml
   - ./postgres-vectorchord/ks.yaml
+  - ./postgres-vectorchord/ks-ready.yaml
+  - ./secrets-ready/ks.yaml
+  - ./storage-ready/ks.yaml
+  - ./ingress-ready/ks.yaml
 
   # Observability
   - ./kube-prometheus-stack/ks.yaml
