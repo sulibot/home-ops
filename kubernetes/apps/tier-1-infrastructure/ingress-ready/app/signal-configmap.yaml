@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-ready-signal
+  namespace: flux-system
+data:
+  capability: ingress-ready

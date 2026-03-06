@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secrets-ready-signal
+  namespace: flux-system
+data:
+  capability: secrets-ready
