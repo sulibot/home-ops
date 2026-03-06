@@ -3,7 +3,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Core infrastructure
+  # Tier ownership: platform operators and shared infra controllers.
+  # Core infrastructure operators/controllers
   - ./cert-manager/ks.yaml
   - ./cert-manager/issuers/ks.yaml
   - ./metrics-server/ks.yaml
@@ -34,7 +35,7 @@ resources:
   # spegel disabled
   # - ./spegel/ks.yaml
 
-  # Data services
+  # Data services/operators
   - ./volsync/ks.yaml
   - ./cloudnative-pg/helm-repo/ks.yaml
   - ./cloudnative-pg/ks.yaml

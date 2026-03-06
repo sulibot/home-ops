@@ -7,7 +7,7 @@ metadata:
   labels:
     layer: infrastructure
 spec:
-  interval: ${TIER1_INTERVAL:=1h}
+  interval: 1h
   path: ./kubernetes/apps/tier-1-infrastructure/kiali/helm-repo
   prune: true
   sourceRef:

@@ -14,8 +14,8 @@ metadata:
 spec:
   dependsOn:
     - name: flux-system
-  interval: ${TIER0_INTERVAL:=10m}
-  retryInterval: ${TIER0_RETRY_INTERVAL:=30s}
+  interval: 10m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-0-foundation/gateway-api-crds
   prune: false
   sourceRef:

@@ -18,8 +18,8 @@ spec:
       namespace: flux-system
     - name: gateway-api-crds
       namespace: flux-system
-  interval: ${TIER0_INTERVAL:=10m}
-  retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
+  interval: 10m
+  retryInterval: 1m
   path: ./kubernetes/apps/tier-0-foundation/cilium
   prune: true
   sourceRef:

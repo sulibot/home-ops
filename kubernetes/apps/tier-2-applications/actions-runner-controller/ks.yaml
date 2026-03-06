@@ -10,8 +10,8 @@ metadata:
     component: application
     critical: "false"
 spec:
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/app
   prune: true
   sourceRef:
@@ -38,8 +38,8 @@ spec:
     - name: actions-runner-controller
     - name: storage-ready
       namespace: flux-system
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/actions-runner-controller/runners
   prune: true
   sourceRef:

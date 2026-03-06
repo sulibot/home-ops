@@ -34,13 +34,15 @@ locals {
       cpu_cores = 4
       memory_mb = 8192
       disk_gb   = 60
-      swap_disk_gb = 8
+      # Keep 8GiB swap, but provision >8GB disk to avoid binary/decimal size mismatch.
+      swap_disk_gb = 10
     }
     worker = {
       cpu_cores = 6
       memory_mb = 16384
       disk_gb   = 80
-      swap_disk_gb = 8
+      # Keep 8GiB swap, but provision >8GB disk to avoid binary/decimal size mismatch.
+      swap_disk_gb = 10
     }
   }
 

@@ -13,8 +13,8 @@ spec:
   dependsOn:
     - name: external-secrets
       namespace: flux-system
-  interval: ${TIER1_INTERVAL:=15m}
-  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/grafana/app
   prune: true
   sourceRef:
@@ -38,8 +38,8 @@ spec:
   dependsOn:
     - name: grafana
       namespace: flux-system
-  interval: ${TIER1_INTERVAL:=15m}
-  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/grafana/dashboard
   prune: true
   sourceRef:
@@ -71,8 +71,8 @@ spec:
     # volsync-repository-pvc-observability does not exist yet; removed dependency
     # - name: volsync-repository-pvc-observability
     #   namespace: flux-system
-  interval: ${TIER1_INTERVAL:=15m}
-  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/grafana/instance
   postBuild:
     substitute:

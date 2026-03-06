@@ -15,8 +15,8 @@ spec:
       namespace: flux-system
     - name: metrics-server
       namespace: flux-system
-  interval: ${TIER1_INTERVAL:=15m}
-  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/vpa/app
   prune: true
   sourceRef:

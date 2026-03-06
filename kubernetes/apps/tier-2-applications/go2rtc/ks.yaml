@@ -10,8 +10,8 @@ metadata:
     component: application
     critical: "false"
 spec:
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/go2rtc/app
   prune: true
   sourceRef:

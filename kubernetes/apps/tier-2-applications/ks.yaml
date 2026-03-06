@@ -13,8 +13,8 @@ spec:
       namespace: flux-system
       # Note: Does NOT depend on tier-1 - can deploy in parallel
       # Apps will retry until dependencies (secrets, storage) are ready
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=2m}
+  interval: 15m
+  retryInterval: 2m
   timeout: 10m
   wait: false # NON-BLOCKING: Deploy in parallel, retry on failure
   prune: true

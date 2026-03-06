@@ -20,8 +20,8 @@ spec:
       namespace: flux-system
     - name: volsync-repository-pvc
       namespace: flux-system
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/emby/app
   postBuild:
     substitute:

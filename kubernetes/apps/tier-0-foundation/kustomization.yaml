@@ -3,6 +3,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  # Tier ownership: CRD/network/storage operators that must exist before infra/apps.
   # Namespaces first — ensures default namespace has correct annotations before any tier needs it
   - ./namespaces.yaml
   # CRDs must be first
@@ -13,8 +14,8 @@ resources:
   # HelmRepository lands in flux-system, not kube-system (cilium ks.yaml targetNamespace)
   - ./cilium/helm-repo/ks.yaml
   - ./cilium/ks.yaml
-  # Secrets third - most apps need secrets
+  # Secrets operator - most apps need ExternalSecret resolution early
   - ./external-secrets/  # Has its own kustomization.yaml
-  # Storage fourth - apps need persistent volumes
+  # Storage operators and CRD controller
   - ./ceph-csi/ks.yaml
   - ./snapshot-controller/ks.yaml

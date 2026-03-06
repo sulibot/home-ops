@@ -8,8 +8,8 @@ metadata:
   labels:
     layer: applications
 spec:
-  interval: ${TIER2_INTERVAL:=15m}
-  retryInterval: ${TIER2_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/immich/helm-repo
   prune: true
   sourceRef:

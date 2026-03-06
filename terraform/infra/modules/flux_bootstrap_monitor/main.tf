@@ -92,11 +92,76 @@ resource "null_resource" "check_tier_1" {
   }
 }
 
-########## STEP 2: CNPG RESTORE CHECK ##########
+########## STEP 2: WAIT FOR CRD CAPABILITIES ##########
+
+resource "null_resource" "wait_crd_established" {
+  triggers = {
+    tier_1_id       = null_resource.check_tier_1.id
+    kubeconfig_path = var.kubeconfig_path
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📚 WAITING FOR REQUIRED CRDs (Established)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      wait_crd() {
+        local crd="$1"
+        local timeout="$2"
+        local deadline
+        local now
+        echo "  - $crd"
+
+        deadline=$(( $(date +%s) + $${timeout%s} ))
+        while true; do
+          if kubectl --kubeconfig="${var.kubeconfig_path}" get "crd/$${crd}" >/dev/null 2>&1; then
+            break
+          fi
+          now=$(date +%s)
+          if [ "$now" -ge "$deadline" ]; then
+            echo "    ⚠ timeout waiting for CRD to appear: $crd"
+            return 0
+          fi
+          sleep 5
+        done
+
+        if ! kubectl --kubeconfig="${var.kubeconfig_path}" wait \
+          --for=condition=Established \
+          --timeout="$${timeout}" \
+          "crd/$${crd}"; then
+          echo "    ⚠ CRD did not reach Established in time: $crd"
+        fi
+      }
+
+      # Best-effort capability pre-checks for restore workflow.
+      # External Secrets CRDs can lag significantly on first bootstrap;
+      # do not block the whole run on this.
+      wait_crd "clustersecretstores.external-secrets.io" "30s"
+      wait_crd "clusters.postgresql.cnpg.io" "600s"
+
+      # Optional but preferred for snapshot-based CNPG restore fallback.
+      if ! wait_crd "volumesnapshots.snapshot.storage.k8s.io" "180s"; then
+        echo "  ⚠ volumesnapshots.snapshot.storage.k8s.io not Established yet (non-fatal)"
+      fi
+
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "✓ Required CRDs are Established"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    EOT
+
+    interpreter = ["bash", "-c"]
+  }
+
+  depends_on = [null_resource.check_tier_1]
+}
+
+########## STEP 3: CNPG RESTORE CHECK ##########
 
 resource "null_resource" "cnpg_restore" {
   triggers = {
-    tier_1_id = null_resource.check_tier_1.id
+    crd_gate_id = null_resource.wait_crd_established.id
   }
 
   provisioner "local-exec" {
@@ -107,10 +172,10 @@ resource "null_resource" "cnpg_restore" {
     }
   }
 
-  depends_on = [null_resource.check_tier_1]
+  depends_on = [null_resource.wait_crd_established]
 }
 
-########## STEP 3: IN-CLUSTER CAPABILITY GATE JOB ##########
+########## STEP 4: IN-CLUSTER CAPABILITY GATE JOB ##########
 
 resource "null_resource" "wait_bootstrap_complete" {
   triggers = {
@@ -324,7 +389,7 @@ YAML
   depends_on = [null_resource.cnpg_restore]
 }
 
-########## STEP 4: FINAL RECONCILE CASCADE ##########
+########## STEP 5: FINAL RECONCILE CASCADE ##########
 
 resource "null_resource" "final_reconcile_cascade" {
   triggers = {
@@ -338,6 +403,13 @@ resource "null_resource" "final_reconcile_cascade" {
       echo "🔄 FINAL FLUX RECONCILE CASCADE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+      LOCK_NS="flux-system"
+      LOCK_NAME="bootstrap-reconcile-once"
+      if kubectl --kubeconfig="${var.kubeconfig_path}" -n "$LOCK_NS" get configmap "$LOCK_NAME" >/dev/null 2>&1; then
+        echo "↩ Reconcile cascade already performed once; skipping"
+        exit 0
+      fi
+
       TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
       for K in flux-system apps tier-0-foundation tier-1-infrastructure tier-2-applications; do
         if kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization "$K" -n flux-system >/dev/null 2>&1; then
@@ -350,6 +422,17 @@ resource "null_resource" "final_reconcile_cascade" {
           echo "  - $K not found yet (skipped)"
         fi
       done
+
+      kubectl --kubeconfig="${var.kubeconfig_path}" -n "$LOCK_NS" apply -f - <<YAML
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $LOCK_NAME
+  namespace: $LOCK_NS
+data:
+  completedAt: "$TS"
+YAML
+
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "✓ Final reconcile requests submitted"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

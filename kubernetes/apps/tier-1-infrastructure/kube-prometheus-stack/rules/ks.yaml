@@ -15,8 +15,8 @@ spec:
   dependsOn:
     - name: kube-prometheus-stack
       namespace: flux-system
-  interval: ${TIER1_INTERVAL:=15m}
-  retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
+  interval: 15m
+  retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/rules
   prune: true
   sourceRef:
