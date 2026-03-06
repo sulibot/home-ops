@@ -15,13 +15,14 @@ variable "region" {
 }
 
 locals {
-  ssh_public_key  = file(pathexpand("~/.ssh/id_ed25519.pub"))
-  kanidm_domain   = "idm.sulibot.com"
-  kanidm_origin   = "https://idm.sulibot.com"
-  kanidm_vip4     = "10.100.0.60"
-  kanidm_vip6     = "fd00:100::60"
-  kanidm_tls_item = "sulibot-com-tls"
-  kanidm_nodes    = ["10.100.0.61", "10.100.0.62", "10.100.0.63"]
+  ssh_public_key            = file(pathexpand("~/.ssh/id_ed25519.pub"))
+  kanidm_unix_auth_commands = ["mkdir -p /etc/kanidm", "apt-get install -y -qq --no-install-recommends kanidm-unixd-clients \u003e/dev/null 2\u003e\u00261 || apt-get install -y -qq --no-install-recommends kanidm-unixd \u003e/dev/null", "cat \u003e /etc/kanidm/config \u003c\u003c'CFG'\nuri = \"https://idm.sulibot.com\"\nCFG", "cat \u003e /etc/kanidm/unixd \u003c\u003c'CFG'\nversion = \"2\"\n[kanidm]\npam_allowed_login_groups = [\"posix_group\"]\nCFG", "chmod 600 /etc/kanidm/config /etc/kanidm/unixd", "systemctl enable --now kanidm-unixd \u003e/dev/null 2\u003e\u00261 || true", "systemctl enable --now kanidm-unixd-tasks \u003e/dev/null 2\u003e\u00261 || true"]
+  kanidm_domain             = "idm.sulibot.com"
+  kanidm_origin             = "https://idm.sulibot.com"
+  kanidm_vip4               = "10.100.0.60"
+  kanidm_vip6               = "fd00:100::60"
+  kanidm_tls_item           = "sulibot-com-tls"
+  kanidm_nodes              = ["10.100.0.61", "10.100.0.62", "10.100.0.63"]
 
   # One Kanidm LXC per Proxmox node for host-level fault isolation.
   containers = {
@@ -111,7 +112,7 @@ locals {
     }
   }
 
-  kanidm_provision_commands = [
+  kanidm_provision_commands = concat(local.kanidm_unix_auth_commands, [
     "export DEBIAN_FRONTEND=noninteractive",
     "sed -i 's/^hosts:.*/hosts: files dns/' /etc/nsswitch.conf",
     "awk '!/idm01|idm02|idm03/ {print}' /etc/hosts > /etc/hosts.new && cat >> /etc/hosts.new <<'HOSTS'\n10.100.0.61 idm01.sulibot.com idm01\n10.100.0.62 idm02.sulibot.com idm02\n10.100.0.63 idm03.sulibot.com idm03\nfd00:100::61 idm01.sulibot.com idm01\nfd00:100::62 idm02.sulibot.com idm02\nfd00:100::63 idm03.sulibot.com idm03\nHOSTS\nmv /etc/hosts.new /etc/hosts",
@@ -123,7 +124,7 @@ locals {
     "curl -fsSL https://kanidm.github.io/kanidm_ppa/kanidm_ppa.asc | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kanidm_ppa.gpg",
     "echo 'deb [signed-by=/etc/apt/keyrings/kanidm_ppa.gpg] https://kanidm.github.io/kanidm_ppa bookworm stable' > /etc/apt/sources.list.d/kanidm_ppa.list",
     "apt-get update -qq",
-    "apt-get install -y -qq kanidmd kanidm-unixd",
+    "apt-get install -y -qq kanidmd",
     "mkdir -p /etc/kanidm/tls /etc/systemd/system/kanidmd.service.d /etc/systemd/system/caddy.service.d /var/lib/kanidm /var/backups/kanidm/snapshots",
     "cat > /usr/local/sbin/kanidm-write-config.sh <<'SCRIPT'\n#!/usr/bin/env bash\nset -euo pipefail\nIP4=\"$(ip -4 -o addr show dev eth0 scope global | awk '{print $4}' | cut -d/ -f1 | head -n1)\"\ncat > /etc/kanidmd/server.toml <<CFG\nversion = \"2\"\nlog_level = 'debug'\n# Baseline Kanidm config managed by Terraform provisioning.\nbindaddress = '[::]:8443'\nldapbindaddress = '[::]:3636'\ndomain = '${local.kanidm_domain}'\norigin = '${local.kanidm_origin}'\ndb_path = '/var/lib/kanidm/kanidm.db'\nrole = 'WriteReplica'\ntls_chain = '/etc/kanidmd/chain.pem'\ntls_key = '/etc/kanidmd/key.pem'\n[replication]\norigin = \"repl://$IP4:8444\"\nbindaddress = \"[::]:8444\"\nCFG\nSCRIPT",
     "chmod 750 /usr/local/sbin/kanidm-write-config.sh",
@@ -151,7 +152,8 @@ locals {
     "cp /etc/kanidm/tls/tls.crt /etc/kanidmd/chain.pem && cp /etc/kanidm/tls/tls.key /etc/kanidmd/key.pem && chown root:kanidmd /etc/kanidmd/chain.pem /etc/kanidmd/key.pem && chmod 640 /etc/kanidmd/chain.pem /etc/kanidmd/key.pem",
     "id caddy >/dev/null 2>&1 && usermod -a -G kanidmd caddy || true",
     "kanidmd domain rename -c /etc/kanidmd/server.toml || true",
-    "chmod 750 /var/lib/kanidm /etc/kanidm /etc/kanidm/tls",
+    "chmod 750 /var/lib/kanidm /etc/kanidm/tls",
+    "chmod 755 /etc/kanidm",
     "chmod 640 /etc/kanidmd/server.toml /etc/kanidm/tls/tls.crt /etc/kanidm/tls/tls.key",
     "systemctl daemon-reload",
     "systemctl disable --now rsyslog >/dev/null 2>&1 || true",
@@ -166,7 +168,7 @@ locals {
     "systemctl restart caddy",
     "systemctl enable --now kanidm-anycast-health.timer",
     "systemctl enable --now kanidm-backup.timer",
-  ]
+  ])
 }
 
 module "kanidm_lxc" {
@@ -205,9 +207,45 @@ output "kanidm_containers" {
   value = module.kanidm_lxc.containers
 }
 
+# Enforce required LXC feature flags for kanidm-unixd namespace support.
+resource "null_resource" "kanidm_lxc_features" {
+  triggers = {
+    features_rev = "nesting-keyctl-v1"
+    ctids        = "100061,100062,100063"
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-SHELL
+      set -euo pipefail
+      SSH_OPTS="-i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+
+      ensure_features() {
+        local pve="$1"
+        local ctid="$2"
+        local features
+        features="$(timeout 20 ssh $SSH_OPTS root@$pve "pct config $ctid | awk -F': ' '/^features:/{print \\$2}'" || true)"
+        if [[ "$features" == *"nesting=1"* && "$features" == *"keyctl=1"* ]]; then
+          echo "[$pve/$ctid] features already set: $features"
+          return 0
+        fi
+
+        echo "[$pve/$ctid] setting features nesting=1,keyctl=1"
+        timeout 30 ssh $SSH_OPTS root@$pve "pct set $ctid -features nesting=1,keyctl=1"
+        echo "[$pve/$ctid] rebooting container to activate namespace features"
+        timeout 120 ssh $SSH_OPTS root@$pve "pct reboot $ctid --timeout 60 || (pct stop $ctid --timeout 60; pct start $ctid)"
+      }
+
+      ensure_features 10.10.0.1 100061
+      ensure_features 10.10.0.2 100062
+      ensure_features 10.10.0.3 100063
+    SHELL
+  }
+}
+
 # Pull cert-manager/ACME wildcard cert from 1Password and install on each node.
 resource "null_resource" "kanidm_tls_sync" {
-  depends_on = [module.kanidm_lxc]
+  depends_on = [module.kanidm_lxc, null_resource.kanidm_lxc_features]
 
   triggers = {
     tls_item = local.kanidm_tls_item
@@ -323,7 +361,7 @@ resource "null_resource" "kanidm_tls_sync" {
 
 # Sync Kanidm bootstrap metadata to 1Password Kubernetes vault for ESO.
 resource "null_resource" "kanidm_1password_sync" {
-  depends_on = [module.kanidm_lxc, null_resource.kanidm_tls_sync]
+  depends_on = [module.kanidm_lxc, null_resource.kanidm_lxc_features, null_resource.kanidm_tls_sync]
 
   triggers = {
     domain   = "idm.sulibot.com"
@@ -381,7 +419,7 @@ resource "null_resource" "kanidm_1password_sync" {
 
 # Configure full-mesh replication agreements and seed secondaries from node01.
 resource "null_resource" "kanidm_replication_bootstrap" {
-  depends_on = [module.kanidm_lxc, null_resource.kanidm_tls_sync]
+  depends_on = [module.kanidm_lxc, null_resource.kanidm_lxc_features, null_resource.kanidm_tls_sync]
 
   triggers = {
     bootstrap_rev = "repl-bootstrap-v5"
@@ -531,4 +569,3 @@ resource "null_resource" "kanidm_post_deploy_validation" {
     SHELL
   }
 }
-

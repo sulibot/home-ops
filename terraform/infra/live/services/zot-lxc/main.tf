@@ -3,9 +3,10 @@ terraform {
   backend "local" {}
 
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.97.0" }
-    sops    = { source = "carlpett/sops", version = "~> 1.3.0" }
-    null    = { source = "hashicorp/null", version = "~> 3.0" }
+    proxmox  = { source = "bpg/proxmox", version = "~> 0.97.0" }
+    sops     = { source = "carlpett/sops", version = "~> 1.3.0" }
+    null     = { source = "hashicorp/null", version = "~> 3.0" }
+    routeros = { source = "terraform-routeros/routeros", version = "~> 1.99.0" }
   }
 }
 
@@ -26,6 +27,15 @@ variable "zot_admin_password" {
 
 locals {
   ssh_public_key = file(pathexpand("~/.ssh/id_ed25519.pub"))
+  host_domain    = "zot01.sulibot.com"
+  service_domain = "zot.sulibot.com"
+  zot_oidc_discovery_url = try(
+    data.sops_file.secrets.data["kanidm_zot_oidc_discovery_url"],
+    "https://idm.sulibot.com/oauth2/openid/zot/.well-known/openid-configuration"
+  )
+  zot_oidc_client_id     = try(data.sops_file.secrets.data["kanidm_zot_oidc_client_id"], "")
+  zot_oidc_client_secret = try(data.sops_file.secrets.data["kanidm_zot_oidc_client_secret"], "")
+  zot_oidc_enabled       = length(local.zot_oidc_client_id) > 0 && length(local.zot_oidc_client_secret) > 0
 
   containers = {
     zot01 = {
@@ -70,10 +80,7 @@ locals {
     "usermod -d /nonexistent -s /usr/sbin/nologin zot >/dev/null 2>&1 || true",
     "mkdir -p /etc/zot /var/lib/zot",
     "chown -R 1000:1000 /var/lib/zot",
-    "htpasswd -nbBC 10 \"${var.zot_admin_user}\" \"${var.zot_admin_password}\" > /etc/zot/htpasswd",
-    "chown root:zot /etc/zot/htpasswd",
-    "chmod 640 /etc/zot/htpasswd",
-    "cat > /etc/zot/config.json <<'JSON'\n{\n  \"distSpecVersion\": \"1.1.0\",\n  \"storage\": {\n    \"rootDirectory\": \"/var/lib/zot\"\n  },\n  \"http\": {\n    \"address\": \"0.0.0.0\",\n    \"port\": \"5000\",\n    \"auth\": {\n      \"htpasswd\": {\n        \"path\": \"/etc/zot/htpasswd\"\n      }\n    }\n  },\n  \"log\": {\n    \"level\": \"info\"\n  },\n  \"extensions\": {\n    \"ui\": {\n      \"enable\": true\n    },\n    \"search\": {\n      \"enable\": true,\n      \"cve\": {\n        \"updateInterval\": \"24h\"\n      }\n    },\n    \"sync\": {\n      \"enable\": true,\n      \"registries\": [\n        {\"urls\": [\"https://registry-1.docker.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/docker.io\"}]},\n        {\"urls\": [\"https://ghcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/ghcr.io\"}]},\n        {\"urls\": [\"https://gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/gcr.io\"}]},\n        {\"urls\": [\"https://mirror.gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/mirror.gcr.io\"}]},\n        {\"urls\": [\"https://registry.k8s.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/registry.k8s.io\"}]},\n        {\"urls\": [\"https://quay.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/quay.io\"}]},\n        {\"urls\": [\"https://lscr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/lscr.io\"}]},\n        {\"urls\": [\"https://public.ecr.aws\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/public.ecr.aws\"}]},\n        {\"urls\": [\"https://factory.talos.dev\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/factory.talos.dev\"}]}\n      ]\n    }\n  }\n}\nJSON",
+    "if [ \"${local.zot_oidc_enabled}\" = \"true\" ]; then cat > /etc/zot/oidc-credentials.json <<'JSON'\n{\n  \"oidc\": {\n    \"clientid\": \"${local.zot_oidc_client_id}\",\n    \"clientsecret\": \"${local.zot_oidc_client_secret}\"\n  }\n}\nJSON\nchown root:zot /etc/zot/oidc-credentials.json\nchmod 640 /etc/zot/oidc-credentials.json\ncat > /etc/zot/config.json <<'JSON'\n{\n  \"distSpecVersion\": \"1.1.0\",\n  \"storage\": {\n    \"rootDirectory\": \"/var/lib/zot\"\n  },\n  \"http\": {\n    \"address\": \"0.0.0.0\",\n    \"port\": \"5000\",\n    \"externalUrl\": \"https://${local.service_domain}\",\n    \"auth\": {\n      \"openid\": {\n        \"providers\": {\n          \"kanidm\": {\n            \"issuer\": \"${local.zot_oidc_discovery_url}\",\n            \"scopes\": [\"openid\", \"profile\", \"email\", \"groups\"]\n          }\n        }\n      }\n    }\n  },\n  \"log\": {\n    \"level\": \"info\"\n  },\n  \"extensions\": {\n    \"ui\": {\n      \"enable\": true\n    },\n    \"search\": {\n      \"enable\": true,\n      \"cve\": {\n        \"updateInterval\": \"24h\"\n      }\n    },\n    \"sync\": {\n      \"enable\": true,\n      \"registries\": [\n        {\"urls\": [\"https://registry-1.docker.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/docker.io\"}]},\n        {\"urls\": [\"https://ghcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/ghcr.io\"}]},\n        {\"urls\": [\"https://gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/gcr.io\"}]},\n        {\"urls\": [\"https://mirror.gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/mirror.gcr.io\"}]},\n        {\"urls\": [\"https://registry.k8s.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/registry.k8s.io\"}]},\n        {\"urls\": [\"https://quay.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/quay.io\"}]},\n        {\"urls\": [\"https://lscr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/lscr.io\"}]},\n        {\"urls\": [\"https://public.ecr.aws\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/public.ecr.aws\"}]},\n        {\"urls\": [\"https://factory.talos.dev\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/factory.talos.dev\"}]}\n      ]\n    }\n  }\n}\nJSON\nelse\nhtpasswd -nbBC 10 \"${var.zot_admin_user}\" \"${var.zot_admin_password}\" > /etc/zot/htpasswd\nchown root:zot /etc/zot/htpasswd\nchmod 640 /etc/zot/htpasswd\ncat > /etc/zot/config.json <<'JSON'\n{\n  \"distSpecVersion\": \"1.1.0\",\n  \"storage\": {\n    \"rootDirectory\": \"/var/lib/zot\"\n  },\n  \"http\": {\n    \"address\": \"0.0.0.0\",\n    \"port\": \"5000\",\n    \"externalUrl\": \"https://${local.service_domain}\",\n    \"auth\": {\n      \"htpasswd\": {\n        \"path\": \"/etc/zot/htpasswd\"\n      }\n    }\n  },\n  \"log\": {\n    \"level\": \"info\"\n  },\n  \"extensions\": {\n    \"ui\": {\n      \"enable\": true\n    },\n    \"search\": {\n      \"enable\": true,\n      \"cve\": {\n        \"updateInterval\": \"24h\"\n      }\n    },\n    \"sync\": {\n      \"enable\": true,\n      \"registries\": [\n        {\"urls\": [\"https://registry-1.docker.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/docker.io\"}]},\n        {\"urls\": [\"https://ghcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/ghcr.io\"}]},\n        {\"urls\": [\"https://gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/gcr.io\"}]},\n        {\"urls\": [\"https://mirror.gcr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/mirror.gcr.io\"}]},\n        {\"urls\": [\"https://registry.k8s.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/registry.k8s.io\"}]},\n        {\"urls\": [\"https://quay.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/quay.io\"}]},\n        {\"urls\": [\"https://lscr.io\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/lscr.io\"}]},\n        {\"urls\": [\"https://public.ecr.aws\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/public.ecr.aws\"}]},\n        {\"urls\": [\"https://factory.talos.dev\"], \"onDemand\": true, \"tlsVerify\": true, \"content\": [{\"prefix\": \"**\", \"destination\": \"/factory.talos.dev\"}]}\n      ]\n    }\n  }\n}\nJSON\nfi",
     "cat > /etc/systemd/system/zot.service <<'UNIT'\n[Unit]\nDescription=Zot OCI Registry\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/zot serve /etc/zot/config.json\nRestart=on-failure\nRestartSec=5s\nUser=zot\nGroup=zot\nStateDirectory=zot\nRuntimeDirectory=zot\n\n[Install]\nWantedBy=multi-user.target\nUNIT",
     "systemctl daemon-reload",
     "systemctl enable zot",
@@ -118,5 +125,69 @@ output "zot_lxc_containers" {
 }
 
 output "zot_endpoint" {
-  value = "http://10.200.0.51:5000"
+  value = "https://zot.sulibot.com"
+}
+
+resource "null_resource" "zot_caddy_frontend" {
+  depends_on = [module.zot_lxc]
+
+  triggers = {
+    container_id    = module.zot_lxc.containers["zot01"].id
+    service_domain  = local.service_domain
+    cloudflare_hash = sha256(data.sops_file.secrets.data["cloudflare_api_token"])
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = file(pathexpand("~/.ssh/id_ed25519"))
+    host        = "10.200.0.51"
+    timeout     = "10m"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "export DEBIAN_FRONTEND=noninteractive",
+      "apt-get update -qq >/dev/null",
+      "apt-get install -y -qq --no-install-recommends caddy curl openssl >/dev/null",
+      "mkdir -p /etc/caddy/certs /etc/systemd/system/caddy.service.d /root/.acme.sh",
+      "cat > /etc/systemd/system/caddy.service.d/override.conf <<'UNIT'\n[Service]\nPrivateTmp=false\nPrivateDevices=false\nProtectSystem=no\nProtectHome=false\nNoNewPrivileges=false\nUNIT",
+      "if [ ! -x /root/.acme.sh/acme.sh ]; then curl -fsSL https://get.acme.sh | sh -s email=admin@sulibot.com >/dev/null; fi",
+      "export CF_Token='${data.sops_file.secrets.data["cloudflare_api_token"]}'",
+      "/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >/dev/null",
+      "/root/.acme.sh/acme.sh --issue --dns dns_cf -d zot.sulibot.com --keylength ec-256 --force",
+      "/root/.acme.sh/acme.sh --install-cert -d zot.sulibot.com --ecc --fullchain-file /etc/caddy/certs/zot.sulibot.com.crt --key-file /etc/caddy/certs/zot.sulibot.com.key",
+      "chown root:caddy /etc/caddy/certs/zot.sulibot.com.crt /etc/caddy/certs/zot.sulibot.com.key",
+      "chmod 640 /etc/caddy/certs/zot.sulibot.com.crt /etc/caddy/certs/zot.sulibot.com.key",
+      "cat > /etc/caddy/Caddyfile <<'CFG'\n{\n  admin off\n}\n\nzot.sulibot.com {\n  tls /etc/caddy/certs/zot.sulibot.com.crt /etc/caddy/certs/zot.sulibot.com.key\n  reverse_proxy 127.0.0.1:5000\n}\nCFG",
+      "systemctl daemon-reload",
+      "systemctl enable --now caddy",
+      "systemctl restart caddy",
+      "curl -ksS -o /dev/null https://zot.sulibot.com/v2/",
+    ]
+  }
+}
+
+resource "routeros_ip_dns_record" "zot_host_ipv4" {
+  name    = local.host_domain
+  type    = "A"
+  address = "10.200.0.51"
+  ttl     = "5m"
+  comment = "managed by terraform zot-lxc"
+}
+
+resource "routeros_ip_dns_record" "zot_host_ipv6" {
+  name    = local.host_domain
+  type    = "AAAA"
+  address = "fd00:200::51"
+  ttl     = "5m"
+  comment = "managed by terraform zot-lxc"
+}
+
+resource "routeros_ip_dns_record" "zot_service_cname" {
+  name    = local.service_domain
+  type    = "CNAME"
+  cname   = local.host_domain
+  ttl     = "5m"
+  comment = "managed by terraform zot-lxc"
 }

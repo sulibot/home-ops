@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: immich-helm-repo
   namespace: flux-system
+  labels:
+    layer: applications
 spec:
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

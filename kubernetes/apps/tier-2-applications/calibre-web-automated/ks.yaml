@@ -13,9 +13,11 @@ spec:
   components:
     - ../../../../components/volsync
   dependsOn:
+    - name: secrets-ready
+      namespace: flux-system
     - name: onepassword
       namespace: flux-system
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system

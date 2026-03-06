@@ -22,17 +22,73 @@ locals {
   effective_cluster_endpoint = local.cluster_endpoint_host != "" ? local.cluster_endpoint_host : local.first_cp_node.ipv6
 }
 
-# Bootstrap the cluster on the first control plane node
-resource "talos_machine_bootstrap" "cluster" {
-  client_configuration = var.client_configuration
-  node                 = local.first_cp_node.ipv6
-  endpoint             = local.first_cp_node.ipv6
+# Bootstrap the cluster on the first control plane node.
+# Use talosctl directly to make reruns idempotent: if etcd is already bootstrapped,
+# Talos returns AlreadyExists, which we treat as success.
+resource "null_resource" "bootstrap_cluster" {
+  triggers = {
+    first_cp_node = local.first_cp_node.ipv6
+    endpoint      = local.effective_cluster_endpoint
+    talosconfig   = sha256(var.talosconfig)
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+
+      TALOSCONFIG_FILE=$(mktemp)
+      cat > "$TALOSCONFIG_FILE" <<'EOF'
+${var.talosconfig}
+EOF
+      export TALOSCONFIG="$TALOSCONFIG_FILE"
+
+      # Bootstrap can race early node startup (Talos API not yet listening on :50000).
+      # Retry transient connectivity errors for up to 5 minutes.
+      MAX_ATTEMPTS=60
+      SLEEP_SECONDS=5
+      ATTEMPT=1
+
+      while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+        set +e
+        BOOTSTRAP_OUTPUT=$(talosctl bootstrap \
+          --nodes ${local.first_cp_node.ipv6} \
+          --endpoints ${local.first_cp_node.ipv6} 2>&1)
+        BOOTSTRAP_RC=$?
+        set -e
+
+        if [ "$BOOTSTRAP_RC" -eq 0 ]; then
+          echo "✓ Talos bootstrap completed"
+          break
+        fi
+
+        if echo "$BOOTSTRAP_OUTPUT" | grep -qi "AlreadyExists\\|etcd data directory is not empty"; then
+          echo "✓ Talos bootstrap already completed (etcd present), continuing"
+          break
+        fi
+
+        if echo "$BOOTSTRAP_OUTPUT" | grep -qi "connection refused\\|code = Unavailable\\|i/o timeout\\|deadline exceeded"; then
+          if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+            echo "⏳ Talos API not ready for bootstrap (attempt $ATTEMPT/$MAX_ATTEMPTS), retrying in $SLEEP_SECONDS s..."
+            sleep "$SLEEP_SECONDS"
+            ATTEMPT=$((ATTEMPT + 1))
+            continue
+          fi
+        fi
+
+        echo "$BOOTSTRAP_OUTPUT" >&2
+        rm -f "$TALOSCONFIG_FILE"
+        exit "$BOOTSTRAP_RC"
+      done
+
+      rm -f "$TALOSCONFIG_FILE"
+    EOT
+  }
 }
 
 # Smart wait: Poll for cluster health every 10s, up to 5 minutes
 resource "null_resource" "wait_for_etcd" {
   triggers = {
-    bootstrap_id = talos_machine_bootstrap.cluster.id
+    bootstrap_id = null_resource.bootstrap_cluster.id
   }
 
   provisioner "local-exec" {
@@ -125,7 +181,7 @@ EOF
     EOT
   }
 
-  depends_on = [talos_machine_bootstrap.cluster]
+  depends_on = [null_resource.bootstrap_cluster]
 }
 
 # Note: The talos_cluster_health data source is not used because it compares etcd

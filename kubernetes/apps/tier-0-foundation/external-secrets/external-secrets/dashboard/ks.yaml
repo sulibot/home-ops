@@ -9,6 +9,7 @@ metadata:
     tier: "1-infrastructure"
     component: observability
     critical: "false"
+    layer: foundation
 spec:
   dependsOn:
     - name: grafana-instance

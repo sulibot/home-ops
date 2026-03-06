@@ -1,6 +1,6 @@
-# Flux Instance Module - REORGANIZED
-# Phase 1: Preinstall critical apps BEFORE Flux starts
-# Phase 2: Deploy Flux (it will adopt the preinstalled apps via SSA Replace)
+# Flux Instance Module
+# Phase 1: Pre-flux setup
+# Phase 2: Deploy Flux instance
 # Phase 3: Post-bootstrap verification and cleanup
 
 ########## PHASE 1: PRE-FLUX SETUP ##########
@@ -45,486 +45,23 @@ resource "null_resource" "patch_kubernetes_service" {
   }
 }
 
-########## PHASE 1: PREINSTALL CRDs ##########
-# Install CRDs first so ServiceMonitor/PodMonitor/etc are available for all apps
-
-# Preinstall Gateway API CRDs (required by cert-manager and Cilium Gateway)
-resource "null_resource" "preinstall_gateway_api_crds" {
-  count      = 0 # DISABLED for now
+# Wait for Flux operator CRD + namespace to exist before applying FluxInstance.
+resource "null_resource" "wait_fluxinstance_crd" {
   depends_on = [null_resource.patch_kubernetes_service]
 
-  triggers = {
-    patch_id = null_resource.patch_kubernetes_service.id
-  }
-
   provisioner "local-exec" {
     command = <<-EOT
-      set -e
-      echo "Installing Gateway API CRDs..."
-
-      # Apply Gateway API CRDs from Git repo (server-side required for v1.4.0 experimental)
-      kubectl --kubeconfig="$KUBECONFIG" apply --server-side -f \
-        ${var.repo_root}/kubernetes/apps/crds/gateway-api-crds/gateway-api-crds-v1.4.0-experimental.yaml
-
-      echo "✓ Gateway API CRDs installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall kube-prometheus-stack CRDs (ServiceMonitor, PodMonitor, PrometheusRule, etc.)
-resource "null_resource" "preinstall_prometheus_crds" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_gateway_api_crds]
-
-  triggers = {
-    gateway_api_id = try(null_resource.preinstall_gateway_api_crds[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing kube-prometheus-stack CRDs..."
-
-      # Extract chart version and URL
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/kube-prometheus-stack/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/kube-prometheus-stack/app/ocirepository.yaml)
-
-      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
-      helm template kube-prometheus-stack-crds \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace observability \
-        --include-crds \
-        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
-
-      echo "✓ kube-prometheus-stack CRDs installed (ServiceMonitor, PodMonitor, etc.)"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall KEDA CRDs (ScaledObject, ScaledJob, TriggerAuthentication, etc.)
-resource "null_resource" "preinstall_keda_crds" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_prometheus_crds]
-
-  triggers = {
-    prometheus_crds_id = try(null_resource.preinstall_prometheus_crds[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing KEDA CRDs..."
-
-      # Extract chart version and URL
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/keda/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/keda/app/ocirepository.yaml)
-
-      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
-      helm template keda-crds \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace keda \
-        --include-crds \
-        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
-
-      echo "✓ KEDA CRDs installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall Grafana Operator CRDs (GrafanaDashboard, GrafanaDataSource, GrafanaFolder, etc.)
-resource "null_resource" "preinstall_grafana_crds" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_keda_crds]
-
-  triggers = {
-    keda_crds_id = try(null_resource.preinstall_keda_crds[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing Grafana Operator CRDs..."
-
-      # Extract chart version and URL
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/grafana/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/observability-stack/grafana/app/ocirepository.yaml)
-
-      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
-      helm template grafana-operator-crds \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace grafana \
-        --include-crds \
-        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
-
-      echo "✓ Grafana Operator CRDs installed"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall Snapshot Controller CRDs (VolumeSnapshot, VolumeSnapshotClass, VolumeSnapshotContent)
-resource "null_resource" "preinstall_snapshot_crds" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_grafana_crds]
-
-  triggers = {
-    grafana_crds_id = try(null_resource.preinstall_grafana_crds[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing Snapshot Controller CRDs..."
-
-      # Extract chart version and URL
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-
-      # Extract and apply only CRDs from the chart (filter out non-CRD resources)
-      helm template snapshot-controller-crds \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --include-crds \
-        | yq eval 'select(.kind == "CustomResourceDefinition")' - \
-        | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side
-
-      echo "✓ Snapshot Controller CRDs installed (VolumeSnapshot, VolumeSnapshotClass, etc.)"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-########## PHASE 2: PREINSTALL APPS ##########
-
-# Preinstall spegel (P2P container image distribution) - DISABLED
-# Spegel is incompatible with Cilium BPF + IPv6 ULA networking (libp2p TLS handshake timeouts)
-# Removed to unblock Terraform bootstrap - can investigate alternatives later
-# resource "null_resource" "preinstall_spegel" {
-#   depends_on = [null_resource.preinstall_snapshot_crds]
-#
-#   triggers = {
-#     snapshot_crds_id = null_resource.preinstall_snapshot_crds.id
-#   }
-#
-#   provisioner "local-exec" {
-#     command = <<-EOT
-#       set -e
-#       echo "Installing spegel..."
-#
-#       # Extract chart version and URL from Git repo
-#       CHART_VERSION=$(yq eval '.spec.ref.tag' \
-#         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-#       CHART_URL=$(yq eval '.spec.url' \
-#         ${var.repo_root}/kubernetes/apps/core/spegel/app/ocirepository.yaml)
-#
-#       # Extract values from HelmRelease (Prometheus CRDs already installed)
-#       yq eval '.spec.values' \
-#         ${var.repo_root}/kubernetes/apps/core/spegel/app/helmrelease.yaml \
-#         > /tmp/spegel-values.yaml
-#
-#       # Template and apply chart (no Helm release - Flux will adopt via SSA Replace)
-#       helm template spegel \
-#         $CHART_URL \
-#         --version $CHART_VERSION \
-#         --namespace kube-system \
-#         --values /tmp/spegel-values.yaml \
-#         | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-#
-#       # Wait for spegel DaemonSet to be ready (longer timeout for P2P initialization)
-#       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Ready pod \
-#         -l app.kubernetes.io/name=spegel \
-#         -n kube-system \
-#         --timeout=600s
-#
-#       rm -f /tmp/spegel-values.yaml
-#       echo "✓ spegel installed and ready"
-#     EOT
-#
-#     environment = {
-#       KUBECONFIG = var.kubeconfig_path
-#     }
-#   }
-# }
-
-# Preinstall external-secrets operator (required for 1Password and other secret management)
-resource "null_resource" "preinstall_external_secrets" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_snapshot_crds]
-
-  triggers = {
-    snapshot_crds_id = try(null_resource.preinstall_snapshot_crds[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing external-secrets operator..."
-
-      # Create namespace
-      kubectl --kubeconfig="$KUBECONFIG" create namespace external-secrets \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Extract chart version and URL from Git repo (zero drift!)
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/external-secrets/app/helmrelease.yaml \
-        > /tmp/external-secrets-values.yaml
-
-      # Install as a proper Helm release so Flux can adopt with fast upgrade.
-      # Critically, this ensures Helm owns all service port fields from the start,
-      # preventing SSA field ownership conflicts on the webhook service (port 443).
-      helm upgrade --install external-secrets \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace external-secrets \
-        --values /tmp/external-secrets-values.yaml \
-        --kubeconfig="$KUBECONFIG" \
-        --wait \
-        --timeout 10m
-
-      rm -f /tmp/external-secrets-values.yaml
-      echo "✓ external-secrets installed and ready"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall 1Password Connect (secrets backend for external-secrets)
-resource "null_resource" "preinstall_onepassword" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_external_secrets]
-
-  triggers = {
-    external_secrets_id = try(null_resource.preinstall_external_secrets[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing 1Password Connect..."
-
-      # Decrypt and apply the SOPS-encrypted credentials secret
-      sops -d ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/credentials.json-secret.sops.yaml | \
-        kubectl --kubeconfig="$KUBECONFIG" apply -f -
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/foundation/external-secrets/onepassword/app/helmrelease.yaml \
-        > /tmp/onepassword-values.yaml
-
-      # Install as a proper Helm release so Flux can adopt with fast upgrade.
-      helm upgrade --install onepassword \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace external-secrets \
-        --values /tmp/onepassword-values.yaml \
-        --kubeconfig="$KUBECONFIG" \
-        --wait \
-        --timeout 10m
-
-      rm -f /tmp/onepassword-values.yaml
-      echo "✓ 1Password Connect installed and ready"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall cert-manager (certificate management for ingress/webhooks)
-resource "null_resource" "preinstall_cert_manager" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_onepassword]
-
-  triggers = {
-    onepassword_id = try(null_resource.preinstall_onepassword[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing cert-manager..."
-
-      # Create namespace
-      kubectl --kubeconfig="$KUBECONFIG" create namespace cert-manager \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Extract chart version from HelmRelease
-      CHART_VERSION=$(yq eval '.spec.chart.spec.version' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml)
-
-      # Extract repo URL from HelmRepository
-      REPO_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/helm-repo/helmrepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/core/cert-manager/app/helmrelease.yaml \
-        > /tmp/cert-manager-values.yaml
-
-      # Add Helm repository
-      helm repo add cert-manager-temp $REPO_URL
-      helm repo update cert-manager-temp
-
-      # Install cert-manager as a proper Helm release so Flux can adopt it with
-      # a fast helm upgrade instead of a slow helm install from scratch.
-      # CRDs are auto-installed from the chart's crds/ directory.
-      helm upgrade --install cert-manager \
-        cert-manager-temp/cert-manager \
-        --version $CHART_VERSION \
-        --namespace cert-manager \
-        --values /tmp/cert-manager-values.yaml \
-        --kubeconfig="$KUBECONFIG" \
-        --wait \
-        --timeout 10m
-
-      # Clean up
-      helm repo remove cert-manager-temp || true
-      rm -f /tmp/cert-manager-values.yaml
-      echo "✓ cert-manager installed and ready"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall snapshot-controller (CSI volume snapshots)
-resource "null_resource" "preinstall_snapshot_controller" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_cert_manager]
-
-  triggers = {
-    cert_manager_id = try(null_resource.preinstall_cert_manager[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing snapshot-controller..."
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease (Prometheus CRDs already installed)
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/kube-system/snapshot-controller/app/helmrelease.yaml \
-        > /tmp/snapshot-controller-values.yaml
-
-      # Install as a proper Helm release so Flux can adopt with fast upgrade.
-      helm upgrade --install snapshot-controller \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace kube-system \
-        --values /tmp/snapshot-controller-values.yaml \
-        --kubeconfig="$KUBECONFIG" \
-        --wait \
-        --timeout 10m
-
-      rm -f /tmp/snapshot-controller-values.yaml
-      echo "✓ snapshot-controller installed and ready"
-    EOT
-
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-  }
-}
-
-# Preinstall volsync (volume backup/restore for persistent storage)
-resource "null_resource" "preinstall_volsync" {
-  count      = 0 # DISABLED for now
-  depends_on = [null_resource.preinstall_snapshot_controller]
-
-  triggers = {
-    snapshot_controller_id = try(null_resource.preinstall_snapshot_controller[0].id, null)
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      echo "Installing volsync..."
-
-      # Create namespace
-      kubectl --kubeconfig="$KUBECONFIG" create namespace volsync-system \
-        --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
-
-      # Extract chart version and URL from Git repo
-      CHART_VERSION=$(yq eval '.spec.ref.tag' \
-        ${var.repo_root}/kubernetes/apps/data/volsync/app/ocirepository.yaml)
-      CHART_URL=$(yq eval '.spec.url' \
-        ${var.repo_root}/kubernetes/apps/data/volsync/app/ocirepository.yaml)
-
-      # Extract values from HelmRelease
-      yq eval '.spec.values' \
-        ${var.repo_root}/kubernetes/apps/data/volsync/app/helmrelease.yaml \
-        > /tmp/volsync-values.yaml
-
-      # Install as a proper Helm release so Flux can adopt with fast upgrade.
-      # helm handles CRDs natively - no need for the CRD-splitting workaround.
-      helm upgrade --install volsync \
-        $CHART_URL \
-        --version $CHART_VERSION \
-        --namespace volsync-system \
-        --values /tmp/volsync-values.yaml \
-        --kubeconfig="$KUBECONFIG" \
-        --wait \
-        --timeout 10m
-
-      rm -f /tmp/volsync-values.yaml
-      echo "✓ volsync installed and ready"
+      set -euo pipefail
+      echo "Waiting for flux-system namespace..."
+      timeout 300 bash -c '
+        until kubectl --kubeconfig="$KUBECONFIG" get namespace flux-system >/dev/null 2>&1; do
+          sleep 2
+        done
+      '
+      echo "Waiting for FluxInstance CRD..."
+      kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Established \
+        crd/fluxinstances.fluxcd.controlplane.io --timeout=300s
+      echo "✓ Flux namespace and CRD are ready"
     EOT
 
     environment = {
@@ -535,10 +72,8 @@ resource "null_resource" "preinstall_volsync" {
 
 ########## PHASE 2: DEPLOY FLUX ##########
 
-# Create FluxInstance to configure what Flux syncs
-# Flux will adopt the preinstalled apps via SSA Replace annotation
-resource "kubernetes_manifest" "flux_instance" {
-  manifest = {
+locals {
+  flux_instance_manifest = {
     apiVersion = "fluxcd.controlplane.io/v1"
     kind       = "FluxInstance"
     metadata = {
@@ -589,6 +124,32 @@ resource "kubernetes_manifest" "flux_instance" {
               ])
             }
           ] : [],
+          var.kubernetes_api_host != "" ? [
+            {
+              target = {
+                kind          = "Deployment"
+                labelSelector = "app.kubernetes.io/part-of=flux"
+              }
+              patch = yamlencode([
+                {
+                  op   = "add"
+                  path = "/spec/template/spec/containers/0/env/-"
+                  value = {
+                    name  = "KUBERNETES_SERVICE_HOST"
+                    value = var.kubernetes_api_host
+                  }
+                },
+                {
+                  op   = "add"
+                  path = "/spec/template/spec/containers/0/env/-"
+                  value = {
+                    name  = "KUBERNETES_SERVICE_PORT"
+                    value = "6443"
+                  }
+                }
+              ])
+            }
+          ] : [],
           [
             # Fix 1: Increase liveness probe delay to prevent restart loops
             {
@@ -634,22 +195,93 @@ resource "kubernetes_manifest" "flux_instance" {
       }
     }
   }
+}
+
+# Create FluxInstance to configure what Flux syncs.
+# Use kubectl apply to avoid plan-time CRD validation races when operator CRDs
+# are still registering in a fresh cluster.
+resource "null_resource" "flux_instance" {
+  triggers = {
+    manifest_sha = sha256(yamlencode(local.flux_instance_manifest))
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      cat <<'EOF' | kubectl --kubeconfig="$KUBECONFIG" apply -f - --server-side --force-conflicts
+${yamlencode(local.flux_instance_manifest)}
+EOF
+      echo "✓ FluxInstance applied"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
 
   # ZOT registry mirror handles image caching — no pre-pull step needed
-  depends_on = [null_resource.patch_kubernetes_service]
+  depends_on = [null_resource.wait_fluxinstance_crd]
+}
+
+# Patch Flux controllers for bootstrap API reachability in dual-stack environments
+resource "null_resource" "patch_flux_controllers_api" {
+  count      = var.kubernetes_api_host != "" ? 1 : 0
+  depends_on = [null_resource.flux_instance]
+
+  triggers = {
+    kubernetes_api_host = var.kubernetes_api_host
+    flux_instance_id    = null_resource.flux_instance.id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      CONTROLLERS="source-controller kustomize-controller helm-controller notification-controller image-reflector-controller image-automation-controller"
+
+      echo "Patching Flux controllers for API reachability via ${var.kubernetes_api_host}:6443..."
+
+      # Wait up to 7 minutes for controllers to be created
+      TIMEOUT=420
+      ELAPSED=0
+      while [ $ELAPSED -lt $TIMEOUT ]; do
+        if kubectl --kubeconfig="$KUBECONFIG" get deployment helm-controller -n flux-system >/dev/null 2>&1; then
+          break
+        fi
+        sleep 5
+        ELAPSED=$((ELAPSED + 5))
+      done
+
+      for controller in $CONTROLLERS; do
+        if kubectl --kubeconfig="$KUBECONFIG" get deployment "$controller" -n flux-system >/dev/null 2>&1; then
+          kubectl --kubeconfig="$KUBECONFIG" -n flux-system patch deployment "$controller" \
+            --type=merge \
+            -p '{"spec":{"template":{"spec":{"hostNetwork":false,"dnsPolicy":"ClusterFirst"}}}}'
+          kubectl --kubeconfig="$KUBECONFIG" -n flux-system set env deployment/"$controller" \
+            KUBERNETES_SERVICE_HOST='${var.kubernetes_api_host}' \
+            KUBERNETES_SERVICE_PORT='6443' >/dev/null
+        fi
+      done
+
+      echo "✓ Flux controller network patch applied"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
 }
 
 # Wait for Flux controllers to be ready
 resource "null_resource" "wait_flux_controllers" {
-  depends_on = [kubernetes_manifest.flux_instance]
+  depends_on = [null_resource.flux_instance, null_resource.patch_flux_controllers_api]
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       echo "Waiting for flux-operator to create Flux controllers..."
 
-      # Wait for flux-operator to create the deployments (up to 7 minutes)
-      TIMEOUT=420
+      # Wait for flux-operator to create the deployments (up to 2 minutes)
+      TIMEOUT=120
       ELAPSED=0
       while [ $ELAPSED -lt $TIMEOUT ]; do
         if kubectl --kubeconfig="$KUBECONFIG" get deployment helm-controller -n flux-system >/dev/null 2>&1; then
@@ -669,15 +301,23 @@ resource "null_resource" "wait_flux_controllers" {
       echo "Waiting for Flux controllers to be ready..."
 
       # Wait for all critical Flux deployments to be Available
+      FAILED=0
       for controller in helm-controller source-controller kustomize-controller notification-controller; do
         echo "  Waiting for $controller..."
-        kubectl --kubeconfig="$KUBECONFIG" wait deployment $controller \
+        if ! kubectl --kubeconfig="$KUBECONFIG" wait deployment $controller \
           -n flux-system \
           --for=condition=Available \
-          --timeout=420s
+          --timeout=120s; then
+          echo "  ⚠ $controller did not become Available within timeout"
+          FAILED=1
+        fi
       done
 
-      echo "✓ All Flux controllers are ready"
+      if [ "$FAILED" -eq 0 ]; then
+        echo "✓ All Flux controllers are ready"
+      else
+        echo "⚠ Continuing despite Flux controller readiness timeout(s)"
+      fi
     EOT
 
     environment = {
@@ -693,7 +333,7 @@ resource "null_resource" "suspend_flux_system" {
   depends_on = [null_resource.wait_flux_controllers]
 
   triggers = {
-    flux_instance_id = kubernetes_manifest.flux_instance.object.metadata.uid
+    flux_instance_id = null_resource.flux_instance.id
   }
 
   provisioner "local-exec" {

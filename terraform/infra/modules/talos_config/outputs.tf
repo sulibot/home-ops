@@ -18,6 +18,20 @@ output "machine_configs" {
   sensitive = true
 }
 
+output "machine_apply_configs" {
+  description = "Normalized machine apply payload for talos_apply_config module"
+  value = {
+    for node_name, config in local.machine_configs : node_name => {
+      machine_configuration = replace(config.machine_configuration, "$", "$$")
+      config_patches = [
+        replace(config.machine_config_patch, "$", "$$"),
+        replace(config.extension_config, "$", "$$")
+      ]
+    }
+  }
+  sensitive = true
+}
+
 output "cluster_endpoint" {
   description = "Cluster API endpoint"
   value       = var.cluster_endpoint

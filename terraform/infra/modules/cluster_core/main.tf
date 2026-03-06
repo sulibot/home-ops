@@ -92,6 +92,7 @@ variable "vm_defaults" {
     cpu_cores = number
     memory_mb = number
     disk_gb   = number
+    swap_disk_gb = optional(number, 0)
   })
 }
 
@@ -120,6 +121,7 @@ variable "nodes" {
     cpu_cores   = optional(number)
     memory_mb   = optional(number)
     disk_gb     = optional(number)
+    swap_disk_gb = optional(number)
     vlan_public = optional(number)
     vlan_mesh   = optional(number)
     public_mtu  = optional(number)
@@ -419,6 +421,21 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     cache        = "none"
     iothread     = true
     aio          = "io_uring"
+  }
+
+  # Dedicated swap disk so Talos can always provision SwapVolume without competing
+  # with EPHEMERAL growth on the system disk.
+  dynamic "disk" {
+    for_each = coalesce(try(each.value.swap_disk_gb, null), try(var.vm_defaults.swap_disk_gb, null), 0) > 0 ? [1] : []
+    content {
+      datastore_id = var.proxmox.vm_datastore
+      file_format  = "raw"
+      interface    = "scsi1"
+      size         = coalesce(try(each.value.swap_disk_gb, null), var.vm_defaults.swap_disk_gb)
+      cache        = "none"
+      iothread     = true
+      aio          = "io_uring"
+    }
   }
 
   # CD-ROM with Talos nocloud ISO

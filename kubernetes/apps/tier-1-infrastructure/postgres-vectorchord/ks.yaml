@@ -40,3 +40,7 @@ spec:
       kind: Database
       name: firefly
       namespace: default
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      name: paperless
+      namespace: default

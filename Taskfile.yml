@@ -2270,6 +2270,19 @@ tasks:
         echo "HelmReleases:"
         flux get helmreleases -A
 
+  flux:lint-graph:
+    desc: 'Validate Flux dependency graph labels and dependsOn hygiene'
+    summary: |
+      Usage: task flux:lint-graph
+
+      Checks:
+      - required graph labels (`layer`/`tier`)
+      - duplicate `dependsOn` entries
+      - accidental tier-2 serialization on `tier-1-infrastructure`
+      - CRD dependency contracts for `PrometheusRule`, `Probe`, and `GrafanaDashboard`
+    cmds:
+      - ./scripts/lint-flux-graph.sh
+
   flux:logs:
     desc: 'Stream Flux controller logs'
     summary: |

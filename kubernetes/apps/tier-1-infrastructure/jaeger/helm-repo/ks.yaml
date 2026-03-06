@@ -4,6 +4,8 @@ kind: Kustomization
 metadata:
   name: jaeger-helm-repo
   namespace: flux-system
+  labels:
+    layer: infrastructure
 spec:
   interval: ${TIER1_INTERVAL:=1h}
   path: ./kubernetes/apps/tier-1-infrastructure/jaeger/helm-repo

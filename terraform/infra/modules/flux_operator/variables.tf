@@ -38,3 +38,9 @@ variable "startup_probe_failure_threshold" {
   type        = number
   default     = 60
 }
+
+variable "kubernetes_api_host" {
+  description = "Optional explicit Kubernetes API host for flux-operator bootstrap connectivity"
+  type        = string
+  default     = ""
+}

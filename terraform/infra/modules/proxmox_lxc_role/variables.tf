@@ -24,22 +24,22 @@ variable "dns_servers" {
 variable "containers" {
   description = "Container definitions keyed by logical name"
   type = map(object({
-    vm_id           = number
-    node_name       = string
-    hostname        = string
-    description     = string
-    started         = optional(bool, true)
-    tags            = optional(list(string), [])
-    cpu_cores       = number
-    memory_mb       = number
-    swap_mb         = number
-    disk_gb         = number
-    bridge          = string
-    vlan_id         = optional(number)
-    firewall        = optional(bool, false)
+    vm_id       = number
+    node_name   = string
+    hostname    = string
+    description = string
+    started     = optional(bool, true)
+    tags        = optional(list(string), [])
+    cpu_cores   = number
+    memory_mb   = number
+    swap_mb     = number
+    disk_gb     = number
+    bridge      = string
+    vlan_id     = optional(number)
+    firewall    = optional(bool, false)
     features = optional(object({
-      nesting = optional(bool, false)
-      keyctl  = optional(bool, false)
+      nesting = optional(bool, true)
+      keyctl  = optional(bool, true)
     }), {})
     ipv4_address    = string
     ipv4_gateway    = string

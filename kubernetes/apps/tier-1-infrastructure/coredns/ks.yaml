@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: coredns
   namespace: flux-system
+  labels:
+    layer: infrastructure
 spec:
   targetNamespace: kube-system
   commonMetadata:

@@ -10,6 +10,7 @@ metadata:
     tier: "0-foundation"
     component: crds
     critical: "true"
+    layer: foundation
 spec:
   dependsOn:
     - name: flux-system

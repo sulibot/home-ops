@@ -8,6 +8,26 @@ include "root" {
 
 terraform {
   source = "../../../modules/talos_install_schematic"
+
+  after_hook "write_artifact_schematic_catalog" {
+    commands = ["apply"]
+    execute = ["bash", "-c", <<-EOT
+      set -euo pipefail
+
+      CATALOG_PATH="${get_repo_root()}/terraform/infra/live/clusters/_shared/artifacts-schematic.json"
+      NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      mkdir -p "$(dirname "$CATALOG_PATH")"
+
+      tofu output -json | jq --arg generated_at "$NOW" '{
+        schematic_id: .schematic_id.value,
+        generated_at: $generated_at
+      }' > "$CATALOG_PATH"
+
+      echo "✓ Wrote artifact schematic catalog: $CATALOG_PATH"
+    EOT
+    ]
+    run_on_error = false
+  }
 }
 
 locals {

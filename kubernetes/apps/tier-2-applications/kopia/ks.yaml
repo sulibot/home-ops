@@ -13,11 +13,11 @@ spec:
   #  components:
   #    - ../../../../components/nfs-scaler
   dependsOn:
-    - name: external-secrets
+    - name: secrets-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system
-    - name: ceph-csi  # Wait for Ceph CSI before creating PVC
+    - name: storage-ready  # Wait for storage capability signal before creating PVC
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

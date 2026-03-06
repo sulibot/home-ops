@@ -18,6 +18,8 @@ spec:
       namespace: flux-system
     - name: ceph-csi
       namespace: flux-system
+    - name: grafana
+      namespace: flux-system
     # - name: volsync
     #   namespace: flux-system
     # - name: volsync-repository-pvc-observability

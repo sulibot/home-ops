@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  TIER0_INTERVAL: "15m"
+  TIER0_RETRY_INTERVAL: "1m"
+  TIER1_INTERVAL: "15m"
+  TIER1_RETRY_INTERVAL: "30s"
+  TIER2_INTERVAL: "15m"
+  TIER2_RETRY_INTERVAL: "2m"

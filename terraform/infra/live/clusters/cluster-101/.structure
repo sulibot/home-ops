@@ -1,11 +1,13 @@
 cluster-101/
-├── artifacts/                          # Talos Image Pipeline
-│   ├── extension/                     # Build: FRR extension → ghcr.io
-│   ├── build/                         # Build: installer (metal) + ISO (nocloud)
-│   └── publish/                       # Publish: Upload ISO to Proxmox
-│
-└── cluster/                            # Cluster Deployment
-    ├── secrets/                       # Talos cluster secrets (one-time)
-    ├── compute/                       # Create Proxmox VMs
-    ├── config/                        # Generate Talos machine configs
-    └── bootstrap/                     # Bootstrap Kubernetes cluster
+├── cluster.hcl
+├── secrets/
+├── compute/
+├── config/
+├── apply/
+├── bootstrap/
+├── cilium-bootstrap/
+├── flux/
+├── flux-operator/       # retired (docs only)
+├── flux-instance/       # retired (docs only)
+├── flux-bootstrap-monitor/ # retired (docs only)
+└── patch/              # retired execution path (docs only)

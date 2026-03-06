@@ -24,7 +24,6 @@ locals {
     "iommu=pt",                            # PCI Passthrough
     "mitigations=off",                     # Less security, faster performance
     "module_blacklist=igc",                # Disable onboard NIC
-    "module.sig_enforce=0",                # Allow unsigned kernel modules (keeping for flexibility)
     "security=none",                       # Less security, faster performance
     "sysctl.kernel.kexec_load_disabled=1", # Meteor Lake CPU & Intel iGPU
     "talos.auditd.disabled=1",             # Less security, faster performanceu.ol80

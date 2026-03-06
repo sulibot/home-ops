@@ -85,6 +85,27 @@ resource "null_resource" "wait_cilium_ready" {
   }
 }
 
+resource "null_resource" "prepare_flux_namespace" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      kubectl --kubeconfig="$KUBECONFIG" create namespace flux-system --dry-run=client -o yaml | kubectl --kubeconfig="$KUBECONFIG" apply -f -
+      kubectl --kubeconfig="$KUBECONFIG" label namespace flux-system \
+        pod-security.kubernetes.io/enforce=privileged \
+        pod-security.kubernetes.io/audit=baseline \
+        pod-security.kubernetes.io/warn=baseline \
+        --overwrite
+      echo "✓ flux-system namespace prepared for bootstrap operator"
+    EOT
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
+  }
+
+  depends_on = [null_resource.wait_cilium_ready]
+}
+
 resource "helm_release" "flux_operator" {
   name       = "flux-operator"
   namespace  = "flux-system"
@@ -92,8 +113,8 @@ resource "helm_release" "flux_operator" {
   chart      = "flux-operator"
   version    = var.flux_operator_version
 
-  create_namespace = true
-  wait             = false  # Don't wait - flux-instance stage will handle readiness checks
+  create_namespace = false
+  wait             = false # Don't wait - flux-instance stage will handle readiness checks
   wait_for_jobs    = false
   timeout          = 600
 
@@ -111,8 +132,8 @@ resource "helm_release" "flux_operator" {
       # Explicitly enable RBAC (default: true, but made explicit so a partial/failed
       # install doesn't silently leave flux-operator without its ClusterRoleBinding)
       rbac = {
-        create            = true  # ClusterRoleBinding: flux-operator → cluster-admin
-        createAggregation = true  # view/edit/admin access to ResourceSet APIs
+        create            = true # ClusterRoleBinding: flux-operator → cluster-admin
+        createAggregation = true # view/edit/admin access to ResourceSet APIs
       }
 
       # Startup probe for flux-operator deployment
@@ -123,13 +144,24 @@ resource "helm_release" "flux_operator" {
         }
         initialDelaySeconds = 10
         periodSeconds       = 5
-        failureThreshold    = 60  # 10s + (60 × 5s) = 310s total tolerance
+        failureThreshold    = 60 # 10s + (60 × 5s) = 310s total tolerance
         successThreshold    = 1
         timeoutSeconds      = 3
       }
+
+      extraEnvs = var.kubernetes_api_host != "" ? [
+        {
+          name  = "KUBERNETES_SERVICE_HOST"
+          value = var.kubernetes_api_host
+        },
+        {
+          name  = "KUBERNETES_SERVICE_PORT"
+          value = "6443"
+        }
+      ] : []
     })
   ]
 
   # Wait for Cilium to be ready before deploying
-  depends_on = [null_resource.wait_cilium_ready]
+  depends_on = [null_resource.prepare_flux_namespace]
 }

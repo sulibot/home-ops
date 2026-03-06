@@ -5,10 +5,13 @@
 # common/proxmox-infrastructure.hcl
 
 locals {
+  enabled       = true
   cluster_name  = "sol" # Human-readable cluster name
-  cluster_id    = 101   # Numeric cluster identifier
+  tenant_id     = 101   # Universal tenant identifier
+  cluster_id    = 101   # Compatibility alias for module inputs expecting cluster_id
   controlplanes = 3
   workers       = 3
+  talos_apply_mode = "staged_if_needing_reboot"
   network = {
     bridge_public = "vmbr0" # Legacy: used when use_sdn = false
     vlan_public   = 101     # Legacy: used when use_sdn = false

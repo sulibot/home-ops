@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: authentik-outpost
   namespace: flux-system
+  labels:
+    layer: applications
 spec:
   targetNamespace: default
   commonMetadata:
@@ -20,4 +22,4 @@ spec:
   path: ./kubernetes/apps/tier-2-applications/authentik-outpost/app
   dependsOn:
     - name: authentik
-    - name: external-secrets
+    - name: secrets-ready

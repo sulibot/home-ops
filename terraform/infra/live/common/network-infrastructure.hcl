@@ -31,10 +31,12 @@ locals {
   }
 
   # OCI pull-through registry cache (Zot, VLAN 200, pve02)
-  # All registries use the same endpoint with overridePath=true so containerd
-  # passes the full /v2/<registry>/image path through to Zot for namespace routing.
+  # Fronted by Caddy on zot.sulibot.com (valid TLS cert).
+  # overridePath=true makes containerd pass /v2/<registry>/... to Zot namespace routing.
   registry_mirrors = {
-    endpoint = "http://[fd00:200::51]:5000"
+    endpoints = [
+      "https://zot.sulibot.com",
+    ]
     registries = [
       "docker.io",
       "ghcr.io",

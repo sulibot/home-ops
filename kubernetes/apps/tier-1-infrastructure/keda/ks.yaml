@@ -13,6 +13,10 @@ spec:
   dependsOn:
     - name: metrics-server
       namespace: flux-system
+    - name: kube-prometheus-stack
+      namespace: flux-system
+    - name: grafana
+      namespace: flux-system
   interval: ${TIER1_INTERVAL:=15m}
   retryInterval: ${TIER1_RETRY_INTERVAL:=30s}
   path: ./kubernetes/apps/tier-1-infrastructure/keda/app

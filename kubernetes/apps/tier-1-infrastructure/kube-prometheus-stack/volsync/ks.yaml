@@ -5,6 +5,8 @@ kind: Kustomization
 metadata:
   name: &app prometheus-volsync
   namespace: flux-system
+  labels:
+    layer: infrastructure
 spec:
   targetNamespace: observability
   commonMetadata:

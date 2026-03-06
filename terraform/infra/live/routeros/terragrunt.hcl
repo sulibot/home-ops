@@ -323,9 +323,6 @@ inputs = {
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
     { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m" },
-    # MinIO S3 object storage LXC (VLAN 200, pve02)
-    { name = "minio.sulibot.com", type = "AAAA", address = "fd00:200::52", ttl = "5m" },
-    { name = "minio.sulibot.com", type = "A", address = "10.200.0.52", ttl = "5m" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },

@@ -8,11 +8,12 @@ metadata:
     tier: "0-foundation"
     component: storage
     critical: "true"
+    layer: foundation
 spec:
   dependsOn:
     - name: flux-system
       namespace: flux-system
-    - name: snapshot-controller-crds  # Only need CRDs for VolumeSnapshotClass, not the controller itself
+    - name: snapshot-controller-crds # Only need CRDs for VolumeSnapshotClass, not the controller itself
       namespace: flux-system
   interval: ${TIER0_INTERVAL:=15m}
   retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
@@ -23,7 +24,7 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  wait: true         # BLOCKING: Ensure CSI drivers are ready before storage-dependent apps
+  wait: true # BLOCKING: Ensure CSI drivers are ready before storage-dependent apps
   decryption:
     provider: sops
     secretRef:

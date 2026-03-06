@@ -12,17 +12,16 @@ metadata:
 spec:
   components:
     - ../../../../components/volsync
-
   dependsOn:
-    - name: external-secrets
+    - name: secrets-ready
       namespace: flux-system
-    - name: external-secrets
-      namespace: flux-system
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system
     - name: volsync-repository-pvc
+      namespace: flux-system
+    - name: kube-prometheus-stack
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

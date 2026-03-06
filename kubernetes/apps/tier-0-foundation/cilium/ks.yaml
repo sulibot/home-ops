@@ -11,6 +11,7 @@ metadata:
     tier: "0-foundation"
     component: cni
     critical: "true"
+    layer: foundation
 spec:
   dependsOn:
     - name: flux-system
@@ -26,7 +27,7 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: kube-system
-  wait: true         # BLOCKING: CNI must be fully running before anything else
+  wait: true # BLOCKING: CNI must be fully running before anything else
   timeout: 10m
   healthChecks:
     # Verify Cilium agent is running on all nodes

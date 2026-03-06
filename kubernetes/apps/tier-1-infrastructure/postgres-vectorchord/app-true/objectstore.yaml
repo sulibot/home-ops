@@ -10,7 +10,7 @@ metadata:
   namespace: default
 spec:
   configuration:
-    endpointURL: "http://10.200.0.52/"
+    endpointURL: "https://s3.sulibot.com/"
     destinationPath: "s3://cnpg-backups/postgres-vectorchord"
     s3Credentials:
       accessKeyId:

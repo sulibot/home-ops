@@ -17,3 +17,10 @@ provider "proxmox" {
     private_key = file(pathexpand("~/.ssh/id_ed25519"))
   }
 }
+
+provider "routeros" {
+  hosturl  = data.sops_file.secrets.data["routeros_hosturl"]
+  username = data.sops_file.secrets.data["routeros_username"]
+  password = data.sops_file.secrets.data["routeros_password"]
+  insecure = true
+}

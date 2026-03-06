@@ -7,6 +7,7 @@ metadata:
   labels:
     tier: "0-foundation"
     critical: "true"
+    layer: foundation
 spec:
   dependsOn:
     - name: flux-system
@@ -14,7 +15,7 @@ spec:
   interval: ${TIER0_INTERVAL:=15m}
   retryInterval: ${TIER0_RETRY_INTERVAL:=1m}
   timeout: 10m
-  wait: true         # BLOCKING: Tier 1 waits for Tier 0 to be Ready
+  wait: true # BLOCKING: Tier 1 waits for Tier 0 to be Ready
   prune: true
   sourceRef:
     kind: GitRepository

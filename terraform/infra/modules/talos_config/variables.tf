@@ -145,6 +145,12 @@ variable "install_disk" {
   default     = "/dev/sda"
 }
 
+variable "install_wipe" {
+  description = "Whether Talos install should wipe the install disk (destructive). Use true for fresh rebuilds when repartitioning is required (e.g. swap volume creation)."
+  type        = bool
+  default     = false
+}
+
 variable "installer_image" {
   description = "Custom Talos installer image (e.g., factory.talos.dev/installer/<schematic>:<version>)"
   type        = string
@@ -254,9 +260,10 @@ locals {
 }
 
 variable "registry_mirrors" {
-  description = "OCI registry pull-through cache. endpoint = Zot URL; registries = list of upstream registries. Each registry gets a RegistryMirrorConfig with overridePath=true so containerd routes /v2/<registry>/... through Zot namespace."
+  description = "OCI registry pull-through cache. Provide endpoints (preferred) or legacy endpoint, plus registries. Each registry gets overridePath=true so containerd routes /v2/<registry>/... through Zot namespace."
   type = object({
-    endpoint   = string
+    endpoint   = optional(string)
+    endpoints  = optional(list(string))
     registries = list(string)
   })
   default = null
@@ -300,4 +307,16 @@ variable "swap_size" {
   description = "Swap volume size in Talos quantity format (example: 4GiB)."
   type        = string
   default     = "4GiB"
+}
+
+variable "ephemeral_max_size" {
+  description = "Maximum size for the EPHEMERAL system volume. Reserve headroom for swap on the system disk (example: 50GiB on a 60GiB disk with 8GiB swap)."
+  type        = string
+  default     = "50GiB"
+}
+
+variable "apply_cilium_bgp_inline" {
+  description = "Apply Cilium BGP CRs as Talos inline manifests. Keep false to let Flux own CR ordering after Cilium CRDs exist."
+  type        = bool
+  default     = false
 }

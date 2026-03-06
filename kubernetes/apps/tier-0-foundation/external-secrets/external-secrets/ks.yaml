@@ -9,6 +9,7 @@ metadata:
     tier: "0-foundation"
     component: secrets
     critical: "true"
+    layer: foundation
 spec:
   dependsOn:
     - name: flux-system

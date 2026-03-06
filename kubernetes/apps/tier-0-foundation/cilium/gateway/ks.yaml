@@ -9,6 +9,7 @@ metadata:
     tier: "1-infrastructure"
     component: network-service
     critical: "false"
+    layer: foundation
 spec:
   dependsOn:
     - name: cilium

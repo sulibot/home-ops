@@ -9,3 +9,8 @@ output "sync_path" {
   description = "Git path being synced by Flux"
   value       = var.git_path
 }
+
+output "ready_id" {
+  description = "Apply-time signal that FluxInstance has been applied"
+  value       = null_resource.flux_instance.id
+}

@@ -9,6 +9,14 @@ spec:
     kind: OCIRepository
     name: multus
   interval: 1h
+  timeout: 15m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
   values:
     cni:
       binPath: /opt/cni/bin
@@ -41,24 +49,3 @@ spec:
                       - name: host-run-netns
                         hostPath:
                           path: /var/run/netns
-          # Add command override to install-multus-binary init container
-          # Mitigates race conditions after node reboots
-          - target:
-              kind: DaemonSet
-              name: kube-multus-ds
-            patch: |-
-              apiVersion: apps/v1
-              kind: DaemonSet
-              metadata:
-                name: kube-multus-ds
-              spec:
-                template:
-                  spec:
-                    initContainers:
-                      - name: install-multus-binary
-                        command:
-                          - "/usr/src/multus-cni/bin/install_multus"
-                          - "-d"
-                          - "/host/opt/cni/bin"
-                          - "-t"
-                          - "thick"

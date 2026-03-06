@@ -14,13 +14,13 @@ spec:
     - ../../../../components/volsync
 
   dependsOn:
-    - name: external-secrets
+    - name: secrets-ready
       namespace: flux-system
     - name: immich-helm-repo
       namespace: flux-system
-    - name: postgres-vectorchord
+    - name: postgres-vectorchord-ready
       namespace: flux-system
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system

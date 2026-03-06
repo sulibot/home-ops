@@ -75,8 +75,9 @@ resource "proxmox_virtual_environment_container" "this" {
   }
 
   features {
-    nesting = try(each.value.features.nesting, false)
-    keyctl  = try(each.value.features.keyctl, false)
+    # Default to namespace-capable LXC features so PAM/kanidm-unixd works consistently.
+    nesting = try(each.value.features.nesting, true)
+    keyctl  = try(each.value.features.keyctl, true)
   }
 
   initialization {

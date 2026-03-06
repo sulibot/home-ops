@@ -1,8 +1,9 @@
 # Flux Bootstrap Monitor Module
 # Event-driven bootstrap accelerator:
 # - keeps steady-state Flux intervals fixed in Git
-# - requests immediate reconciles at key milestones to avoid waiting for interval loops
-# - waits for tier readiness for operator visibility
+# - requests immediate reconciles at key milestones
+# - runs CNPG recovery checks
+# - verifies capability gates using an in-cluster job
 
 terraform {
   required_providers {
@@ -14,18 +15,15 @@ terraform {
 }
 
 ########## STEP 0: REQUEST IMMEDIATE RECONCILE CASCADE ##########
-# Trigger top-level and tier kustomizations right away, so bootstrap speed
-# is decoupled from normal reconcile intervals.
 
 resource "null_resource" "request_initial_reconcile" {
   triggers = {
-    kubeconfig = var.kubeconfig_path
-    run_id     = timestamp()
+    kubeconfig_path = var.kubeconfig_path
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -e
+      set -euo pipefail
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "🚀 REQUESTING IMMEDIATE FLUX RECONCILIATION"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -41,14 +39,14 @@ resource "null_resource" "request_initial_reconcile" {
             annotate kustomization "$K" -n flux-system \
             reconcile.fluxcd.io/requestedAt="$TS" \
             --overwrite || true
-          echo "  ✅ requested reconcile for $K"
+          echo "  ✓ requested reconcile for $K"
         else
-          echo "  ℹ️  $K not found yet (skipped)"
+          echo "  - $K not found yet (skipped)"
         fi
       done
 
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "✅ Reconcile requests submitted"
+      echo "✓ Reconcile requests submitted"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     EOT
 
@@ -56,90 +54,51 @@ resource "null_resource" "request_initial_reconcile" {
   }
 }
 
-########## STEP 1: CHECK TIER 0 (FOUNDATION) ##########
-# Uses kubectl directly — data "kubernetes_resource" returns null for non-existent
-# resources and OpenTofu treats that as a fatal error on a fresh cluster.
+########## STEP 1: CHECK TIER STATUS (NO CHURN) ##########
 
 resource "null_resource" "check_tier_0" {
   triggers = {
-    always_run = timestamp()
+    reconcile_id = null_resource.request_initial_reconcile.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "📦 TIER 0 (Foundation) Status"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      set -euo pipefail
       READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
         get kustomization tier-0-foundation -n flux-system \
         -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
-      echo "Ready: $${READY:-Unknown}"
-      echo ""
-      echo "Apps included:"
-      echo "  • gateway-api-crds"
-      echo "  • snapshot-controller-crds"
-      echo "  • cilium (CNI)"
-      echo "  • external-secrets + onepassword"
-      echo "  • ceph-csi (storage)"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "Tier-0 Ready: $${READY:-Unknown}"
     EOT
 
     interpreter = ["bash", "-c"]
   }
-
-  depends_on = [null_resource.request_initial_reconcile]
 }
-
-########## STEP 2: CHECK TIER 1 (INFRASTRUCTURE) ##########
 
 resource "null_resource" "check_tier_1" {
   triggers = {
-    tier_0_complete = null_resource.check_tier_0.id
+    tier_0_id = null_resource.check_tier_0.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "🏗️  TIER 1 (Infrastructure) Status"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      set -euo pipefail
       READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
         get kustomization tier-1-infrastructure -n flux-system \
         -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
-      echo "Ready: $${READY:-Unknown}"
-      echo ""
-      echo "Apps included: 21 infrastructure services"
-      echo "  • cert-manager, volsync, metrics-server"
-      echo "  • multus, istio, external-dns"
-      echo "  • postgres, redis"
-      echo "  • prometheus, grafana, victoria-logs"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "Tier-1 Ready: $${READY:-Unknown}"
     EOT
 
     interpreter = ["bash", "-c"]
   }
 }
 
-########## STEP 2.5: CNPG AUTOMATIC RESTORE ##########
-# Checks for available backups (barman-cloud WAL or VolumeSnapshot).
-# If found, the cluster is a rebuild (disaster recovery), not a fresh install:
-#   1. Suspend the postgres-vectorchord Flux kustomization so Flux doesn't fight us
-#   2. Delete the CNPG Cluster (takes its PVC with it — data dir is empty anyway)
-#   3. Apply a recovery cluster spec (barman-cloud WAL preferred, snapshot fallback)
-#   4. Wait for the cluster to reach healthy state
-#   5. Normalize bootstrap: patch server from recovery → initdb BEFORE resuming Flux
-#      (required: Flux dry-run 3-way merge of server:recovery + git:initdb produces both
-#       methods simultaneously, which the CNPG webhook rejects as invalid)
-#   6. Resume the kustomization — server bootstrap now matches Git, dry-run passes cleanly
-# On a fresh install there are no backups, so this is a no-op.
+########## STEP 2: CNPG RESTORE CHECK ##########
 
 resource "null_resource" "cnpg_restore" {
   triggers = {
-    tier_1_complete = null_resource.check_tier_1.id
+    tier_1_id = null_resource.check_tier_1.id
   }
 
-  # Delegates to scripts/cnpg-restore.sh — single source of truth.
-  # The script can also be run manually without Terraform:
-  #   ./scripts/cnpg-restore.sh --kubeconfig <path>
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     command     = "\"$(git -C \"${path.module}\" rev-parse --show-toplevel)\"/scripts/cnpg-restore.sh"
@@ -151,169 +110,221 @@ resource "null_resource" "cnpg_restore" {
   depends_on = [null_resource.check_tier_1]
 }
 
-########## STEP 3: WAIT FOR BOOTSTRAP COMPLETE ##########
-# Critical app readiness is checked via kubectl polling inside the provisioner.
-# We do NOT use data "kubernetes_resource" for HelmReleases here because those
-# resources don't exist yet when Terraform plans/applies — the provider returns
-# null and OpenTofu treats that as a fatal "Provider produced null object" error.
+########## STEP 3: IN-CLUSTER CAPABILITY GATE JOB ##########
 
 resource "null_resource" "wait_bootstrap_complete" {
   triggers = {
-    # Only re-run if tier checks change
-    tier_0_ready    = null_resource.check_tier_0.id
-    tier_1_ready    = null_resource.check_tier_1.id
     cnpg_restore_id = null_resource.cnpg_restore.id
+    timeout_seconds = tostring(var.bootstrap_timeout_seconds)
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -e
+      set -euo pipefail
 
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "⏳ WAITING FOR BOOTSTRAP COMPLETE"
+      echo "⏳ RUNNING IN-CLUSTER CAPABILITY GATE CHECK"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Timeout: 5 minutes (300 seconds)"
-      echo ""
 
-      START_TIME=$(date +%s)
-      TIMEOUT_SECONDS=300
-      TIMED_OUT=false
+      kubectl --kubeconfig="$KUBECONFIG" apply -f - <<'YAML'
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flux-bootstrap-capability-check
+  namespace: flux-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: flux-bootstrap-capability-check
+rules:
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["external-secrets.io"]
+    resources: ["clustersecretstores"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flux-bootstrap-capability-check
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flux-bootstrap-capability-check
+subjects:
+  - kind: ServiceAccount
+    name: flux-bootstrap-capability-check
+    namespace: flux-system
+YAML
 
-      kustomization_ready() {
-        local name="$1"
-        kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization "$name" -n flux-system \
-          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"
-      }
+      kubectl --kubeconfig="$KUBECONFIG" delete job flux-bootstrap-capability-gates -n flux-system --ignore-not-found
 
-      deployment_available() {
-        local ns="$1"
-        local name="$2"
-        local ready
-        ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" get deployment "$name" -n "$ns" \
-          -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || true)
-        [ "$ready" = "True" ]
-      }
+      kubectl --kubeconfig="$KUBECONFIG" apply -f - <<'YAML'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flux-bootstrap-capability-gates
+  namespace: flux-system
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: flux-bootstrap-capability-check
+      restartPolicy: Never
+      containers:
+        - name: gate-check
+          image: public.ecr.aws/bitnami/kubectl:1.34.1
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              set -euo pipefail
 
-      daemonset_ready() {
-        local ns="$1"
-        local name="$2"
-        local desired ready
-        desired=$(kubectl --kubeconfig="${var.kubeconfig_path}" get daemonset "$name" -n "$ns" \
-          -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || true)
-        ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" get daemonset "$name" -n "$ns" \
-          -o jsonpath='{.status.numberReady}' 2>/dev/null || true)
-        [ -n "$desired" ] && [ "$desired" != "0" ] && [ "$desired" = "$ready" ]
-      }
+              START_TIME=$(date +%s)
+              TIMEOUT_SECONDS=${var.bootstrap_timeout_seconds}
+              TIMED_OUT=false
 
-      capability_ready_fallback() {
-        local gate="$1"
-        case "$gate" in
-          "secrets-ready")
-            deployment_available "external-secrets" "external-secrets" &&
-              kubectl --kubeconfig="${var.kubeconfig_path}" get clustersecretstore onepassword-connect >/dev/null 2>&1
-            ;;
-          "storage-ready")
-            daemonset_ready "ceph-csi" "ceph-csi-cephfs-nodeplugin" &&
-              daemonset_ready "ceph-csi" "ceph-csi-rbd-nodeplugin" &&
-              deployment_available "ceph-csi" "ceph-csi-cephfs-provisioner" &&
-              deployment_available "ceph-csi" "ceph-csi-rbd-provisioner"
-            ;;
-          "postgres-vectorchord-ready")
-            local phase
-            phase=$(kubectl --kubeconfig="${var.kubeconfig_path}" get cluster postgres-vectorchord -n default \
-              -o jsonpath='{.status.phase}' 2>/dev/null || true)
-            echo "$phase" | grep -qi "healthy"
-            ;;
-          *)
-            return 1
-            ;;
-        esac
-      }
+              kustomization_ready() {
+                kubectl -n flux-system get kustomization "$1" \
+                  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q True
+              }
 
-      check_timeout() {
-        CURRENT_TIME=$(date +%s)
-        ELAPSED=$((CURRENT_TIME - START_TIME))
-        if [ $ELAPSED -ge $TIMEOUT_SECONDS ]; then
-          echo ""
-          echo "⚠ TIMEOUT: Bootstrap exceeded 5 minutes"
-          echo "  Continuing with partial readiness."
-          return 1
-        fi
-        return 0
-      }
+              deployment_available() {
+                local ns="$1"
+                local name="$2"
+                local ready
+                ready=$(kubectl -n "$ns" get deployment "$name" \
+                  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || true)
+                [ "$ready" = "True" ]
+              }
 
-      # Wait for Tier 0
-      echo "Checking Tier 0 (Foundation)..."
-      while ! kustomization_ready "tier-0-foundation"; do
-        if ! check_timeout; then TIMED_OUT=true; break; fi
-        ELAPSED=$(($(date +%s) - START_TIME))
-        echo "  ⏳ [$(($ELAPSED/60))m $(($ELAPSED%60))s] Tier 0 not ready, waiting..."
-        sleep 10
-      done
-      if [ "$TIMED_OUT" = "false" ]; then
-        echo "  ✅ Tier 0 Ready"
-      fi
+              daemonset_ready() {
+                local ns="$1"
+                local name="$2"
+                local desired
+                local ready
+                desired=$(kubectl -n "$ns" get daemonset "$name" \
+                  -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || true)
+                ready=$(kubectl -n "$ns" get daemonset "$name" \
+                  -o jsonpath='{.status.numberReady}' 2>/dev/null || true)
+                [ -n "$desired" ] && [ "$desired" != "0" ] && [ "$desired" = "$ready" ]
+              }
 
-      # Wait for capability gates (instead of full tier-1).
-      # Full tier-1 can stay non-ready due optional CRDs/apps that are not bootstrap-critical.
-      echo ""
-      echo "Checking Capability Gates..."
-      for GATE in "secrets-ready" "storage-ready" "postgres-vectorchord-ready"; do
-        while [ "$TIMED_OUT" = "false" ]; do
-          if kustomization_ready "$GATE"; then
-            echo "  ✅ Gate '$GATE' Ready"
-            break
-          fi
+              capability_ready_fallback() {
+                local gate="$1"
+                case "$gate" in
+                  secrets-ready)
+                    deployment_available external-secrets external-secrets &&
+                      kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1
+                    ;;
+                  storage-ready)
+                    daemonset_ready ceph-csi ceph-csi-cephfs-nodeplugin &&
+                      daemonset_ready ceph-csi ceph-csi-rbd-nodeplugin &&
+                      deployment_available ceph-csi ceph-csi-cephfs-provisioner &&
+                      deployment_available ceph-csi ceph-csi-rbd-provisioner
+                    ;;
+                  postgres-vectorchord-ready)
+                    local phase
+                    phase=$(kubectl -n default get cluster postgres-vectorchord \
+                      -o jsonpath='{.status.phase}' 2>/dev/null || true)
+                    echo "$phase" | grep -qi healthy
+                    ;;
+                  *)
+                    return 1
+                    ;;
+                esac
+              }
 
-          if capability_ready_fallback "$GATE"; then
-            echo "  ✅ Gate '$GATE' Ready (fallback capability check)"
-            break
-          fi
+              check_timeout() {
+                local now
+                local elapsed
+                now=$(date +%s)
+                elapsed=$((now - START_TIME))
+                if [ "$elapsed" -ge "$TIMEOUT_SECONDS" ]; then
+                  TIMED_OUT=true
+                  return 1
+                fi
+                return 0
+              }
 
-          if ! check_timeout; then TIMED_OUT=true; break; fi
-          ELAPSED=$(($(date +%s) - START_TIME))
-          echo "  ⏳ [$(($ELAPSED/60))m $(($ELAPSED%60))s] Gate '$GATE' not ready, waiting..."
-          sleep 10
-        done
-      done
+              echo "Checking Tier 0..."
+              while ! kustomization_ready tier-0-foundation; do
+                if ! check_timeout; then
+                  break
+                fi
+                sleep 10
+              done
 
-      # Observe selected app readiness (non-gating).
-      echo ""
-      echo "App Snapshot (non-gating):"
-      for app in "default/plex" "default/home-assistant" "default/immich"; do
-        NAMESPACE=$(echo "$app" | cut -d'/' -f1)
-        NAME=$(echo "$app" | cut -d'/' -f2)
-        if kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" &>/dev/null; then
-          READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" \
-            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
-          echo "  • $NAME: $${READY:-Unknown}"
-        else
-          echo "  • $NAME: not found"
-        fi
-      done
+              if [ "$TIMED_OUT" = "false" ]; then
+                echo "Checking capability gates..."
+                for gate in secrets-ready storage-ready postgres-vectorchord-ready; do
+                  while true; do
+                    if kustomization_ready "$gate" || capability_ready_fallback "$gate"; then
+                      echo "  ✓ $gate"
+                      break
+                    fi
+                    if ! check_timeout; then
+                      break
+                    fi
+                    sleep 10
+                  done
+                  [ "$TIMED_OUT" = "true" ] && break
+                done
+              fi
 
-      NOW=$(date +%s)
-      TOTAL_ELAPSED=$((NOW - START_TIME))
-      echo ""
+              echo "App snapshot (non-gating):"
+              for app in plex home-assistant immich; do
+                if kubectl -n default get helmrelease "$app" >/dev/null 2>&1; then
+                  ready=$(kubectl -n default get helmrelease "$app" \
+                    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+                  echo "  - $app: $ready"
+                else
+                  echo "  - $app: not found"
+                fi
+              done
+
+              elapsed=$(( $(date +%s) - START_TIME ))
+              if [ "$TIMED_OUT" = "true" ]; then
+                echo "WARNING: bootstrap capability checks timed out after $elapsed seconds; continuing."
+              else
+                echo "SUCCESS: bootstrap capability checks passed in $elapsed seconds."
+              fi
+YAML
+
+      WAIT_TIMEOUT=$(( ${var.bootstrap_timeout_seconds} + 180 ))
+      kubectl --kubeconfig="$KUBECONFIG" wait -n flux-system --for=condition=Complete \
+        --timeout="$${WAIT_TIMEOUT}s" job/flux-bootstrap-capability-gates
+
+      kubectl --kubeconfig="$KUBECONFIG" logs -n flux-system job/flux-bootstrap-capability-gates || true
+
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      if [ "$TIMED_OUT" = "true" ]; then
-        echo "⚠ BOOTSTRAP PARTIALLY COMPLETE (timeout reached)"
-      else
-        echo "✅ BOOTSTRAP COMPLETE!"
-      fi
+      echo "✓ CAPABILITY GATE CHECK COMPLETE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Total time: $(($TOTAL_ELAPSED/60))m $(($TOTAL_ELAPSED%60))s"
-      echo ""
     EOT
 
     interpreter = ["bash", "-c"]
+
+    environment = {
+      KUBECONFIG = var.kubeconfig_path
+    }
   }
 
   depends_on = [null_resource.cnpg_restore]
 }
 
 ########## STEP 4: FINAL RECONCILE CASCADE ##########
-# Ask Flux to immediately process any remaining dependency transitions.
 
 resource "null_resource" "final_reconcile_cascade" {
   triggers = {
@@ -322,7 +333,7 @@ resource "null_resource" "final_reconcile_cascade" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -e
+      set -euo pipefail
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "🔄 FINAL FLUX RECONCILE CASCADE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -334,13 +345,13 @@ resource "null_resource" "final_reconcile_cascade" {
             annotate kustomization "$K" -n flux-system \
             reconcile.fluxcd.io/requestedAt="$TS" \
             --overwrite || true
-          echo "  ✅ requested reconcile for $K"
+          echo "  ✓ requested reconcile for $K"
         else
-          echo "  ℹ️  $K not found yet (skipped)"
+          echo "  - $K not found yet (skipped)"
         fi
       done
-      echo ""
-      echo "✅ Reconcile requests submitted."
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "✓ Final reconcile requests submitted"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     EOT
 

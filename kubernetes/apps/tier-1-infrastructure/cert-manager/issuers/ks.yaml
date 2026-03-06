@@ -9,6 +9,7 @@ metadata:
     tier: "1-infrastructure"
     component: cert-manager
     critical: "true"
+    layer: infrastructure
 spec:
   dependsOn:
     - name: cert-manager

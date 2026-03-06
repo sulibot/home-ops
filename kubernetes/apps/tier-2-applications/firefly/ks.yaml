@@ -13,13 +13,13 @@ spec:
   components:
     - ../../../../components/volsync
   dependsOn:
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system
     - name: volsync-repository-pvc
       namespace: flux-system
-    - name: postgres-vectorchord
+    - name: postgres-vectorchord-ready
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

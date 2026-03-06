@@ -1,0 +1,12 @@
+cluster-102/
+├── cluster.hcl
+├── secrets/
+├── compute/
+├── config/
+├── apply/
+├── bootstrap/
+├── flux/
+├── flux-operator/       # retired (docs only)
+├── flux-instance/       # retired (docs only)
+├── flux-bootstrap-monitor/ # retired (docs only)
+└── patch/              # retired execution path (docs only)

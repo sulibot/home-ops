@@ -56,3 +56,9 @@ variable "region" {
   type        = string
   default     = ""
 }
+
+variable "kubernetes_api_host" {
+  description = "Optional explicit Kubernetes API host override for Flux controllers"
+  type        = string
+  default     = ""
+}

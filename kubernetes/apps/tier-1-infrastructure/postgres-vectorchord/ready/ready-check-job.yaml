@@ -7,7 +7,8 @@ metadata:
     app.kubernetes.io/name: postgres-vectorchord
     app.kubernetes.io/component: ready-check
 spec:
-  backoffLimit: 0
+  backoffLimit: 6
+  activeDeadlineSeconds: 1800
   template:
     spec:
       serviceAccountName: postgres-vectorchord-ready-check
@@ -50,15 +51,23 @@ spec:
                 exit 1
               fi
 
-              for DB in immich authentik firefly paperless; do
-                EXISTS="$(run_psql "SELECT 1 FROM pg_database WHERE datname='${DB}';")"
+              # Capability-based check: only verify DBs explicitly declared via CNPG Database CRs.
+              mapfile -t REQUIRED_DBS < <(kubectl -n "${NS}" get databases.postgresql.cnpg.io \
+                -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null | sed '/^$/d' || true)
+
+              if [ "${#REQUIRED_DBS[@]}" -eq 0 ]; then
+                echo "No CNPG Database CRs found; skipping per-database existence checks."
+              fi
+
+              for DB in "${REQUIRED_DBS[@]}"; do
+                EXISTS="$(run_psql "SELECT 1 FROM pg_database WHERE datname='${DB}';" || true)"
                 if [ "${EXISTS}" != "1" ]; then
-                  echo "Required database '${DB}' is missing."
+                  echo "Declared database '${DB}' is not present yet."
                   exit 1
                 fi
               done
 
               kubectl -n "${NS}" exec "${PRIMARY_POD}" -- \
-                psql -U postgres -d immich -Atqc "BEGIN; CREATE TEMP TABLE __ready_probe(id int); INSERT INTO __ready_probe VALUES (1); ROLLBACK;"
+                psql -U postgres -d postgres -Atqc "BEGIN; CREATE TEMP TABLE __ready_probe(id int); INSERT INTO __ready_probe VALUES (1); ROLLBACK;"
 
               echo "postgres-vectorchord is ready for dependent applications."

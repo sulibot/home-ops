@@ -10,7 +10,7 @@ metadata:
     component: storage
 spec:
   dependsOn:
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: volsync
       namespace: flux-system

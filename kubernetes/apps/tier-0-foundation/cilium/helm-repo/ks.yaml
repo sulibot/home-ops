@@ -7,6 +7,8 @@ kind: Kustomization
 metadata:
   name: cilium-helm-repo
   namespace: flux-system
+  labels:
+    layer: foundation
 spec:
   interval: 15m
   retryInterval: 30s

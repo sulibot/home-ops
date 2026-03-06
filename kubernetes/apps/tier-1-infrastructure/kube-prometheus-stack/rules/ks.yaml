@@ -8,6 +8,7 @@ metadata:
   labels:
     tier: "1-infrastructure"
     component: observability
+    layer: infrastructure
 spec:
   # PrometheusRule CRD is installed by kube-prometheus-stack HelmRelease.
   # This must run after kps is deployed, otherwise dry-run validation fails.

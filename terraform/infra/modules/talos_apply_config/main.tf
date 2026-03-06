@@ -39,10 +39,30 @@ variable "client_configuration" {
 variable "machine_configs" {
   type = map(object({
     machine_configuration = string
-    config_patch          = string
+    config_patches        = list(string)
   }))
   description = "Machine configurations for all nodes"
   sensitive   = true
+}
+
+variable "apply_mode" {
+  type        = string
+  description = "Talos machine configuration apply mode."
+  default     = "staged_if_needing_reboot"
+}
+
+variable "on_destroy" {
+  type = object({
+    reset    = bool
+    reboot   = bool
+    graceful = bool
+  })
+  description = "Safety controls for talos_machine_configuration_apply destroy behavior."
+  default = {
+    reset    = false
+    reboot   = false
+    graceful = true
+  }
 }
 
 variable "all_node_names" {
@@ -114,10 +134,10 @@ resource "talos_machine_configuration_apply" "nodes" {
   client_configuration        = var.client_configuration
   machine_configuration_input = replace(var.machine_configs[each.key].machine_configuration, "$$", "$")
   node                        = each.key
+  apply_mode                  = var.apply_mode
 
-  config_patches = [
-    replace(var.machine_configs[each.key].config_patch, "$$", "$")
-  ]
+  config_patches = [for patch in var.machine_configs[each.key].config_patches : replace(patch, "$$", "$")]
+  on_destroy     = var.on_destroy
 
   # Apply configs via IPv4 (IPv6 ULA is in VRF and not reachable from workstation)
   endpoint = var.all_node_ips[each.key].ipv4
@@ -129,4 +149,17 @@ resource "talos_machine_configuration_apply" "nodes" {
 output "applied_nodes" {
   value       = keys(talos_machine_configuration_apply.nodes)
   description = "List of nodes that had configs applied"
+}
+
+output "requested_apply_mode" {
+  value       = var.apply_mode
+  description = "Requested Talos apply mode."
+}
+
+output "resolved_apply_modes" {
+  value = {
+    for name, res in talos_machine_configuration_apply.nodes :
+    name => res.resolved_apply_mode
+  }
+  description = "Resolved apply mode per node as reported by Talos provider."
 }

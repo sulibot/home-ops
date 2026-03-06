@@ -8,7 +8,13 @@
       "Read(//Users/sulibot/repos/github/home-ops/**)",
       "Bash(# Check thelounge in cluster kubectl get all,pvc,replicationsource,replicationdestination -n default -l app.kubernetes.io/name=thelounge kubectl get pvc -n default)",
       "WebFetch(domain:support.plex.tv)",
-      "WebFetch(domain:webtools-ng.github.io)"
+      "WebFetch(domain:webtools-ng.github.io)",
+      "Bash(~/.zshrc:*)",
+      "Bash(direnv allow)",
+      "Read(//Users/sulibot/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/sulibot"
     ]
   }
 }

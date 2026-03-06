@@ -11,9 +11,9 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: external-secrets
+    - name: secrets-ready
       namespace: flux-system
-    - name: postgres-vectorchord
+    - name: postgres-vectorchord-ready
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

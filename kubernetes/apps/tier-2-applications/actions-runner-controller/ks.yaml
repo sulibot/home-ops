@@ -36,7 +36,7 @@ spec:
     - name: cilium
       namespace: flux-system
     - name: actions-runner-controller
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
   interval: ${TIER2_INTERVAL:=15m}
   retryInterval: ${TIER2_RETRY_INTERVAL:=30s}

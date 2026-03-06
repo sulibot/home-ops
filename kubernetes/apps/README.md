@@ -1,91 +1,64 @@
-# Flux Application Layers
+# Flux App Graph
 
-Applications are organized into dependency layers for controlled startup and updates.
+This repo uses a **3-tier bootstrap model** with **capability-signal dependencies**.
 
-## Layer 0: CRDs
-Core Custom Resource Definitions that other components depend on.
-- `gateway-api-crds` - Gateway API CRDs for Cilium
-- `snapshot-controller-crds` - Volume snapshot CRDs
+## Bootstrap Flow
 
-## Layer 1: Network & CNI
-Container Network Interface and core networking.
-- `cilium` - Primary CNI (depends on: gateway-api-crds)
-- `multus` - Secondary network interfaces
-
-## Layer 2: Storage & Security Foundations
-Storage providers and secrets management.
-- `external-secrets` - External secrets operator (depends on: cilium)
-- `onepassword` - 1Password integration (depends on: external-secrets)
-- `ceph-csi-*` - Ceph CSI drivers (depends on: cilium, snapshot-controller-crds)
-- `snapshot-controller` - Volume snapshots (depends on: cilium, snapshot-controller-crds)
-
-## Layer 3: Core Platform Services
-Essential cluster services.
-- `cert-manager` - Certificate management (depends on: external-secrets, cilium)
-- `reloader` - Auto-reload on ConfigMap/Secret changes (depends on: cilium)
-- `metrics-server` - Resource metrics (depends on: cilium)
-- `coredns` - DNS services (depends on: cilium)
-- `spegel` - P2P image distribution (depends on: cilium)
-  - Note: CoreDNS must be owned by Flux; keep the HelmRelease selectors aligned with `k8s-app: kube-dns` to avoid empty endpoints.
-
-## Layer 4: Network Services
-Ingress, egress, and DNS automation.
-- `cilium-gateway` - Gateway API (depends on: cert-manager, cilium)
-- `cilium` - BGP + IP pool configuration (bundled with Cilium core)
-- `external-dns` - Automatic DNS records (depends on: cilium-gateway)
-- `certificates` - TLS certificates (depends on: cert-manager)
-- `cloudflare-tunnel` - Cloudflare Tunnel (depends on: external-secrets)
-
-## Layer 5: Observability
-Monitoring, logging, and alerting.
-- `kube-prometheus-stack` - Prometheus & Grafana (depends on: ceph-csi)
-- `victoria-logs` - Log aggregation (depends on: ceph-csi)
-- `fluent-bit` - Log collection (depends on: cilium)
-- `gatus` - Health monitoring (depends on: cilium-gateway)
-- `grafana-instance` - Grafana dashboards (depends on: kube-prometheus-stack)
-
-## Layer 6: Data Services
-Databases, caching, and backup.
-- `cloudnative-pg` - PostgreSQL operator (depends on: ceph-csi)
-- `volsync` - Volume replication (depends on: ceph-csi, external-secrets, snapshot-controller)
-
-## Layer 7: Applications
-User-facing applications and workloads.
-- All apps in `default/*` namespace (depends on: ceph-csi, cilium-gateway, external-secrets)
-- All apps in `observability/*` for additional monitoring tools
-- All apps in `actions-runner-system/*` for GitHub Actions
-
-## Dependency Flow
-
-```
-CRDs (0)
-  ↓
-CNI (1) ←─ depends on CRDs
-  ↓
-Storage/Security (2) ←─ depends on CNI
-  ↓
-Core Services (3) ←─ depends on Storage/Security
-  ↓
-Network Services (4) ←─ depends on Core Services
-  ↓
-Observability (5) ←─ depends on Storage
-  ↓
-Data Services (6) ←─ depends on Storage
-  ↓
-Applications (7) ←─ depends on Network Services, Storage
+```text
+flux-system
+  -> tier-0-foundation (blocking, wait=true)
+       -> tier-1-infrastructure (non-blocking, wait=false)
+       -> tier-2-applications (non-blocking, wait=false)
 ```
 
-## Implementation
+- Tier 0 is the only hard bootstrap gate.
+- Tier 1 and Tier 2 reconcile in parallel for faster cluster bring-up.
+- Fine-grained ordering is defined per app via `dependsOn` capability signals, not via global tier serialization.
 
-Each Kustomization has a `layer` label that can be used for:
-- Selective reconciliation: `flux reconcile ks --with-source -l layer=network`
-- Monitoring: Filter by layer in dashboards
-- Troubleshooting: Reconcile layers in order during recovery
+## Capability Signals
 
-Example:
-```yaml
-metadata:
-  labels:
-    layer: network
-    component: ingress
+Use capability kustomizations as readiness contracts:
+- `secrets-ready`
+- `storage-ready`
+- `ingress-ready`
+- `postgres-vectorchord-ready`
+- optional: `identity-ready` (if/when identity becomes a shared platform contract)
+
+Pattern:
+- Infra publishes readiness signal.
+- Apps depend on signal(s) they truly need.
+- Unrelated apps remain parallel.
+
+## Labels
+
+- Top-level tier kustomizations use `metadata.labels.tier`.
+- Unit/app kustomizations use `metadata.labels.layer` (+ `component`, `critical` as needed).
+
+This keeps queries simple while preserving functional grouping.
+
+Examples:
+- `flux get kustomizations -A --status-selector ready=false`
+- `flux reconcile ks --with-source -l layer=applications`
+
+## Linting
+
+Run graph lint before refactors/PRs:
+
+```bash
+task flux:lint-graph
 ```
+
+Checks include:
+- missing graph labels
+- duplicate `dependsOn` entries
+- tier-2 apps accidentally depending on `tier-1-infrastructure`
+
+## Design Rule
+
+Prefer capability dependencies over broad tier dependencies.
+
+Good:
+- app depends on `secrets-ready` + `postgres-vectorchord-ready`
+
+Avoid:
+- app depends on entire `tier-1-infrastructure`

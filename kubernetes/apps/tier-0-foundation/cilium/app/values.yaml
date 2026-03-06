@@ -43,6 +43,12 @@ k8s:
 # Native routing (no encapsulation for better performance)
 # routingMode: native should disable tunneling automatically in 1.18.x
 routingMode: native
+# Pin datapath/routing to the primary transport NIC.
+# This avoids auto-device drift when loopback and VLAN interfaces are also present.
+devices:
+  - ens18
+nodePort:
+  directRoutingDevice: ens18
 # Enable autoDirectNodeRoutes to allow Cilium to manage pod-to-pod routes.
 # Disabling this requires a fully functional external BGP setup for pod routes, which is currently not working.
 # This is the primary cause of pod-to-service timeouts (e.g., to kube-apiserver).

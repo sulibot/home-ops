@@ -4,6 +4,8 @@ kind: Kustomization
 metadata:
   name: snapshot-controller
   namespace: flux-system
+  labels:
+    layer: foundation
 spec:
   dependsOn:
     - name: snapshot-controller-crds
