@@ -13,11 +13,22 @@
     "github>sulibot/home-ops//.github/renovate/overrides.json5",
     "github>sulibot/home-ops//.github/renovate/semanticCommits.json5",
     ":automergeBranch",
-    ":disableRateLimiting",
     ":dependencyDashboard",
     ":semanticCommits",
     ":timezone(America/Los_Angeles)",
   ],
+  prHourlyLimit: 4,
+  prConcurrentLimit: 15,
+  schedule: [
+    "after 10pm and before 5am every weekday",
+    "every weekend",
+  ],
+  updateNotScheduled: false,
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ["before 4am on monday"],
+    automerge: true,
+  },
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
   suppressNotifications: [
     "prEditedNotification",
@@ -26,6 +37,11 @@
   ignorePaths: [
     "**/*.sops.*",
     "**/resources/**",
+    "**/.terragrunt-cache/**",
+    "**/*.backup",
+    "**/*.before-reorg",
+    "archieve/**",
+    "ansible/lae.proxmox/collections/**",
   ],
   flux: {
     managerFilePatterns: ["/\\.yaml(?:\\.j2)?$/"],
@@ -35,5 +51,26 @@
   },
   kubernetes: {
     managerFilePatterns: ["/\\.yaml(?:\\.j2)?$/"],
+  },
+  terragrunt: {
+    managerFilePatterns: [
+      "/(^|/)terragrunt\\.hcl$/",
+    ],
+  },
+  terraform: {
+    managerFilePatterns: [
+      "/(^|/).*\\.tf$/",
+      "/(^|/)versions\\.tf$/",
+    ],
+  },
+  ansible: {
+    managerFilePatterns: [
+      "/ansible/.+\\.(?:yaml|yml)$/",
+    ],
+  },
+  "ansible-galaxy": {
+    managerFilePatterns: [
+      "/ansible/.*/requirements(?:\\.ansible)?\\.ya?ml$/",
+    ],
   },
 }

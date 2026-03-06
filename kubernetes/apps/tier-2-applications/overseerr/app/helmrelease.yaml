@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: sctx/overseerr
-              tag: latest
+              tag: latest@sha256:6197516c9d7b58ccf113455e32aafb94df5d91995fe50e8c2cae6ba6c7c7b7de
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
@@ -81,4 +81,3 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /data
-

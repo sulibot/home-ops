@@ -39,6 +39,21 @@
       commitMessageTopic: "action {{depName}}",
     },
     {
+      matchManagers: ["terragrunt"],
+      semanticCommitScope: "terragrunt",
+      commitMessageTopic: "module {{depName}}",
+    },
+    {
+      matchManagers: ["terraform"],
+      semanticCommitScope: "terraform",
+      commitMessageTopic: "provider/module {{depName}}",
+    },
+    {
+      matchManagers: ["ansible", "ansible-galaxy"],
+      semanticCommitScope: "ansible",
+      commitMessageTopic: "dependency {{depName}}",
+    },
+    {
       matchDatasources: ["github-releases"],
       semanticCommitScope: "github-release",
       commitMessageTopic: "release {{depName}}",

@@ -11,6 +11,8 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
+    - name: kube-prometheus-stack
+      namespace: flux-system
     - name: external-secrets
       namespace: flux-system
   interval: 15m

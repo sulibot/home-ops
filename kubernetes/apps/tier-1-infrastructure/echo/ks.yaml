@@ -13,6 +13,8 @@ spec:
   dependsOn:
     - name: cilium-gateway
       namespace: flux-system
+    - name: kube-prometheus-stack
+      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/echo/app

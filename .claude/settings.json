@@ -12,7 +12,16 @@
       "Bash(~/.zshrc:*)",
       "Bash(direnv allow)",
       "Read(//Users/sulibot/**)",
-      "Bash(npx --yes renovate --version)"
+      "Bash(npx --yes renovate --version)",
+      "Bash(gh pr checks 200 --repo sulibot/home-ops)",
+      "Bash(gh pr close $pr --repo sulibot/home-ops --comment \"Closing to allow Renovate to recreate on updated base branch\")",
+      "WebSearch",
+      "Bash(sed 's/[[:space:]]*$//')",
+      "WebFetch(domain:openbao.org)",
+      "WebFetch(domain:external-secrets.io)",
+      "WebFetch(domain:labs.iximiuz.com)",
+      "Bash(then op item get \"$id\" --format json)",
+      "Bash(gh pr checks 202)"
     ],
     "additionalDirectories": [
       "/Users/sulibot"

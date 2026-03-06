@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: lscr.io/linuxserver/lidarr
-              tag: latest
+              tag: latest@sha256:58f149df604246d7039a4c8b99ab1fefd1c4ae625048c76f3b956f2e0fb9774b
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
@@ -80,4 +80,3 @@ spec:
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /data
-

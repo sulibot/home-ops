@@ -29,5 +29,51 @@
       ],
       datasourceTemplate: "docker",
     },
+    {
+      customType: "regex",
+      description: "Process Terragrunt provider versions",
+      managerFilePatterns: [
+        "/(^|/)terragrunt\\.hcl$/",
+      ],
+      matchStrings: [
+        "source\\s*=\\s*\"(?<depName>[^\"]+)\"\\s*,\\s*version\\s*=\\s*\"(?<currentValue>[^\"]+)\"",
+      ],
+      datasourceTemplate: "terraform-provider",
+    },
+    {
+      customType: "regex",
+      description: "Process Terragrunt git module refs",
+      managerFilePatterns: [
+        "/(^|/)terragrunt\\.hcl$/",
+      ],
+      matchStrings: [
+        "source\\s*=\\s*\"(?:git::)?https://github\\.com/(?<depName>[^/\\\"]+/[^/\\\".]+)(?:\\.git)?[^\\\"]*\\?ref=(?<currentValue>[^\\\"&]+)",
+      ],
+      datasourceTemplate: "github-tags",
+    },
+    {
+      customType: "regex",
+      description: "Process Kubernetes and Cilium versions in Ansible group vars",
+      managerFilePatterns: [
+        "/terraform/ansible/group_vars/all\\.yml$/",
+      ],
+      matchStrings: [
+        "kubernetes_version:\\s*\"?(?<currentValue>\\d+\\.\\d+\\.\\d+)\"?",
+      ],
+      depNameTemplate: "kubernetes/kubernetes",
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
+      description: "Process Cilium versions in Ansible group vars",
+      managerFilePatterns: [
+        "/terraform/ansible/group_vars/all\\.yml$/",
+      ],
+      matchStrings: [
+        "cilium_version:\\s*\"?(?<currentValue>\\d+\\.\\d+\\.\\d+)\"?",
+      ],
+      depNameTemplate: "cilium/cilium",
+      datasourceTemplate: "github-releases",
+    },
   ],
 }

@@ -30,6 +30,14 @@
       addLabels: ["renovate/github-action"],
     },
     {
+      matchManagers: ["terraform", "terragrunt"],
+      addLabels: ["renovate/terraform"],
+    },
+    {
+      matchManagers: ["ansible", "ansible-galaxy"],
+      addLabels: ["renovate/ansible"],
+    },
+    {
       matchDatasources: ["github-releases"],
       addLabels: ["renovate/github-release"],
     },

@@ -18,20 +18,20 @@ spec:
   install:
     remediation:
       retries: 5
-    timeout: 10m
+    timeout: 30m
   upgrade:
     cleanupOnFail: true
     remediation:
       retries: 3
       strategy: rollback
-    timeout: 10m
+    timeout: 30m
   maxHistory: 3
   values:
     global:
       podAnnotations:
         reloader.stakater.com/auto: "true"
       deploymentStrategy:
-        type: RollingUpdate
+        type: Recreate
       envFrom:
         - secretRef:
             name: authentik-secret
@@ -60,6 +60,12 @@ spec:
         - authentik-blueprints
     server:
       replicas: 1
+      startupProbe:
+        failureThreshold: 180
+        tcpSocket:
+          port: http
+        periodSeconds: 10
+        timeoutSeconds: 5
       ingress:
         enabled: false
       metrics:
@@ -68,3 +74,15 @@ spec:
           enabled: true
     worker:
       replicas: 1
+      livenessProbe:
+        tcpSocket:
+          port: http
+      readinessProbe:
+        tcpSocket:
+          port: http
+      startupProbe:
+        failureThreshold: 180
+        tcpSocket:
+          port: http
+        periodSeconds: 10
+        timeoutSeconds: 5
