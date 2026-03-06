@@ -38,6 +38,7 @@ spec:
             envFrom:
               - secretRef:
                   name: calibre-web-automated-oidc
+                  optional: true
             probes:
               liveness: &probes
                 enabled: true
