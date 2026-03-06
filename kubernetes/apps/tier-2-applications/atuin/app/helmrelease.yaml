@@ -41,6 +41,8 @@ spec:
               TZ: America/Los_Angeles
             command:
               - /usr/local/bin/atuin-server
+            args:
+              - start
             probes:
               liveness: &probes
                 enabled: true
