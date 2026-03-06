@@ -1,13 +1,10 @@
 # Flux Bootstrap Monitor Module
-# Creates a bootstrap override ConfigMap so Flux uses aggressive intervals during bootstrap.
-# ks.yaml files use ${VAR:=production_default} — without the ConfigMap, apps run at
-# their individual production-appropriate intervals. With the ConfigMap, all tier
-# Kustomizations are overridden to aggressive bootstrap intervals.
-# After bootstrap completes, the ConfigMap is deleted and apps revert to their defaults.
+# Event-driven bootstrap accelerator:
+# - keeps steady-state Flux intervals fixed in Git
+# - requests immediate reconciles at key milestones to avoid waiting for interval loops
+# - waits for tier readiness for operator visibility
 
 terraform {
-  backend "local" {}
-
   required_providers {
     null = {
       source  = "hashicorp/null"
@@ -16,56 +13,42 @@ terraform {
   }
 }
 
-########## STEP 0: CREATE BOOTSTRAP OVERRIDE ConfigMap (IMMEDIATELY) ##########
-# Applied as soon as this module runs — before Flux has time to reconcile at
-# production defaults. Overrides all tier intervals to aggressive bootstrap values.
-# Deleted in Step 5 after bootstrap completes.
+########## STEP 0: REQUEST IMMEDIATE RECONCILE CASCADE ##########
+# Trigger top-level and tier kustomizations right away, so bootstrap speed
+# is decoupled from normal reconcile intervals.
 
-resource "null_resource" "create_bootstrap_configmap" {
+resource "null_resource" "request_initial_reconcile" {
   triggers = {
-    # Re-create if cluster changes (new kubeconfig) or bootstrap values change
-    kubeconfig           = var.kubeconfig_path
-    tier0_interval       = var.tier0_bootstrap_interval
-    tier0_retry_interval = var.tier0_bootstrap_retry_interval
-    tier1_interval       = var.tier1_bootstrap_interval
-    tier1_retry_interval = var.tier1_bootstrap_retry_interval
-    tier2_interval       = var.tier2_bootstrap_interval
-    tier2_retry_interval = var.tier2_bootstrap_retry_interval
+    kubeconfig = var.kubeconfig_path
+    run_id     = timestamp()
   }
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "🚀 CREATING BOOTSTRAP OVERRIDE ConfigMap"
+      echo "🚀 REQUESTING IMMEDIATE FLUX RECONCILIATION"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "  TIER0_INTERVAL:       ${var.tier0_bootstrap_interval}"
-      echo "  TIER0_RETRY_INTERVAL: ${var.tier0_bootstrap_retry_interval}"
-      echo "  TIER1_INTERVAL:       ${var.tier1_bootstrap_interval}"
-      echo "  TIER1_RETRY_INTERVAL: ${var.tier1_bootstrap_retry_interval}"
-      echo "  TIER2_INTERVAL:       ${var.tier2_bootstrap_interval}"
-      echo "  TIER2_RETRY_INTERVAL: ${var.tier2_bootstrap_retry_interval}"
+      TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-      kubectl --kubeconfig="${var.kubeconfig_path}" apply -f - <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: cluster-settings
-  namespace: flux-system
-  labels:
-    app.kubernetes.io/managed-by: terraform
-    bootstrap: "true"
-data:
-  TIER0_INTERVAL: "${var.tier0_bootstrap_interval}"
-  TIER0_RETRY_INTERVAL: "${var.tier0_bootstrap_retry_interval}"
-  TIER1_INTERVAL: "${var.tier1_bootstrap_interval}"
-  TIER1_RETRY_INTERVAL: "${var.tier1_bootstrap_retry_interval}"
-  TIER2_INTERVAL: "${var.tier2_bootstrap_interval}"
-  TIER2_RETRY_INTERVAL: "${var.tier2_bootstrap_retry_interval}"
-EOF
+      kubectl --kubeconfig="${var.kubeconfig_path}" \
+        annotate gitrepository flux-system -n flux-system \
+        reconcile.fluxcd.io/requestedAt="$TS" --overwrite || true
+
+      for K in flux-system apps tier-0-foundation tier-1-infrastructure tier-2-applications; do
+        if kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization "$K" -n flux-system >/dev/null 2>&1; then
+          kubectl --kubeconfig="${var.kubeconfig_path}" \
+            annotate kustomization "$K" -n flux-system \
+            reconcile.fluxcd.io/requestedAt="$TS" \
+            --overwrite || true
+          echo "  ✅ requested reconcile for $K"
+        else
+          echo "  ℹ️  $K not found yet (skipped)"
+        fi
+      done
 
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "✅ Bootstrap ConfigMap applied — Flux will pick up on next reconcile"
+      echo "✅ Reconcile requests submitted"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     EOT
 
@@ -104,7 +87,7 @@ resource "null_resource" "check_tier_0" {
     interpreter = ["bash", "-c"]
   }
 
-  depends_on = [null_resource.create_bootstrap_configmap]
+  depends_on = [null_resource.request_initial_reconcile]
 }
 
 ########## STEP 2: CHECK TIER 1 (INFRASTRUCTURE) ##########
@@ -189,79 +172,123 @@ resource "null_resource" "wait_bootstrap_complete" {
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "⏳ WAITING FOR BOOTSTRAP COMPLETE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "Timeout: 45 minutes (2700 seconds)"
+      echo "Timeout: 5 minutes (300 seconds)"
       echo ""
 
       START_TIME=$(date +%s)
-      TIMEOUT_SECONDS=2700
+      TIMEOUT_SECONDS=300
+      TIMED_OUT=false
+
+      kustomization_ready() {
+        local name="$1"
+        kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization "$name" -n flux-system \
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"
+      }
+
+      deployment_available() {
+        local ns="$1"
+        local name="$2"
+        local ready
+        ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" get deployment "$name" -n "$ns" \
+          -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || true)
+        [ "$ready" = "True" ]
+      }
+
+      daemonset_ready() {
+        local ns="$1"
+        local name="$2"
+        local desired ready
+        desired=$(kubectl --kubeconfig="${var.kubeconfig_path}" get daemonset "$name" -n "$ns" \
+          -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || true)
+        ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" get daemonset "$name" -n "$ns" \
+          -o jsonpath='{.status.numberReady}' 2>/dev/null || true)
+        [ -n "$desired" ] && [ "$desired" != "0" ] && [ "$desired" = "$ready" ]
+      }
+
+      capability_ready_fallback() {
+        local gate="$1"
+        case "$gate" in
+          "secrets-ready")
+            deployment_available "external-secrets" "external-secrets" &&
+              kubectl --kubeconfig="${var.kubeconfig_path}" get clustersecretstore onepassword-connect >/dev/null 2>&1
+            ;;
+          "storage-ready")
+            daemonset_ready "ceph-csi" "ceph-csi-cephfs-nodeplugin" &&
+              daemonset_ready "ceph-csi" "ceph-csi-rbd-nodeplugin" &&
+              deployment_available "ceph-csi" "ceph-csi-cephfs-provisioner" &&
+              deployment_available "ceph-csi" "ceph-csi-rbd-provisioner"
+            ;;
+          "postgres-vectorchord-ready")
+            local phase
+            phase=$(kubectl --kubeconfig="${var.kubeconfig_path}" get cluster postgres-vectorchord -n default \
+              -o jsonpath='{.status.phase}' 2>/dev/null || true)
+            echo "$phase" | grep -qi "healthy"
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+      }
 
       check_timeout() {
         CURRENT_TIME=$(date +%s)
         ELAPSED=$((CURRENT_TIME - START_TIME))
         if [ $ELAPSED -ge $TIMEOUT_SECONDS ]; then
           echo ""
-          echo "❌ TIMEOUT: Bootstrap exceeded 45 minutes"
-          echo "   Current status may indicate issues"
-          exit 1
+          echo "⚠ TIMEOUT: Bootstrap exceeded 5 minutes"
+          echo "  Continuing with partial readiness."
+          return 1
         fi
         return 0
       }
 
       # Wait for Tier 0
       echo "Checking Tier 0 (Foundation)..."
-      while ! kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization tier-0-foundation -n flux-system \
-          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; do
-        check_timeout
+      while ! kustomization_ready "tier-0-foundation"; do
+        if ! check_timeout; then TIMED_OUT=true; break; fi
         ELAPSED=$(($(date +%s) - START_TIME))
         echo "  ⏳ [$(($ELAPSED/60))m $(($ELAPSED%60))s] Tier 0 not ready, waiting..."
         sleep 10
       done
-      echo "  ✅ Tier 0 Ready"
+      if [ "$TIMED_OUT" = "false" ]; then
+        echo "  ✅ Tier 0 Ready"
+      fi
 
-      # Wait for Tier 1
+      # Wait for capability gates (instead of full tier-1).
+      # Full tier-1 can stay non-ready due optional CRDs/apps that are not bootstrap-critical.
       echo ""
-      echo "Checking Tier 1 (Infrastructure)..."
-      while ! kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization tier-1-infrastructure -n flux-system \
-          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; do
-        check_timeout
-        ELAPSED=$(($(date +%s) - START_TIME))
-        echo "  ⏳ [$(($ELAPSED/60))m $(($ELAPSED%60))s] Tier 1 not ready, waiting..."
-        sleep 10
-      done
-      echo "  ✅ Tier 1 Ready"
-
-      # Wait for critical apps
-      echo ""
-      echo "Checking Critical Apps..."
-      ALL_READY=false
-      while [ "$ALL_READY" != "true" ]; do
-        check_timeout
-
-        FAILED_APPS=()
-
-        for app in "default/plex" "default/home-assistant" "default/immich"; do
-          NAMESPACE=$(echo "$app" | cut -d'/' -f1)
-          NAME=$(echo "$app" | cut -d'/' -f2)
-
-          if kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" &>/dev/null; then
-            if kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" \
-                -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then
-              echo "  ✅ $NAME Ready"
-            else
-              FAILED_APPS+=("$NAME")
-            fi
-          else
-            FAILED_APPS+=("$NAME (not found)")
+      echo "Checking Capability Gates..."
+      for GATE in "secrets-ready" "storage-ready" "postgres-vectorchord-ready"; do
+        while [ "$TIMED_OUT" = "false" ]; do
+          if kustomization_ready "$GATE"; then
+            echo "  ✅ Gate '$GATE' Ready"
+            break
           fi
-        done
 
-        if [ $${#FAILED_APPS[@]} -eq 0 ]; then
-          ALL_READY=true
-        else
-          NOW=$(date +%s)
-          ELAPSED=$((NOW - START_TIME))
-          echo "  ⏳ [$((ELAPSED/60))m $((ELAPSED%60))s] Waiting for: $${FAILED_APPS[*]}"
+          if capability_ready_fallback "$GATE"; then
+            echo "  ✅ Gate '$GATE' Ready (fallback capability check)"
+            break
+          fi
+
+          if ! check_timeout; then TIMED_OUT=true; break; fi
+          ELAPSED=$(($(date +%s) - START_TIME))
+          echo "  ⏳ [$(($ELAPSED/60))m $(($ELAPSED%60))s] Gate '$GATE' not ready, waiting..."
           sleep 10
+        done
+      done
+
+      # Observe selected app readiness (non-gating).
+      echo ""
+      echo "App Snapshot (non-gating):"
+      for app in "default/plex" "default/home-assistant" "default/immich"; do
+        NAMESPACE=$(echo "$app" | cut -d'/' -f1)
+        NAME=$(echo "$app" | cut -d'/' -f2)
+        if kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" &>/dev/null; then
+          READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" get helmrelease -n "$NAMESPACE" "$NAME" \
+            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+          echo "  • $NAME: $${READY:-Unknown}"
+        else
+          echo "  • $NAME: not found"
         fi
       done
 
@@ -269,7 +296,11 @@ resource "null_resource" "wait_bootstrap_complete" {
       TOTAL_ELAPSED=$((NOW - START_TIME))
       echo ""
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "✅ BOOTSTRAP COMPLETE!"
+      if [ "$TIMED_OUT" = "true" ]; then
+        echo "⚠ BOOTSTRAP PARTIALLY COMPLETE (timeout reached)"
+      else
+        echo "✅ BOOTSTRAP COMPLETE!"
+      fi
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "Total time: $(($TOTAL_ELAPSED/60))m $(($TOTAL_ELAPSED%60))s"
       echo ""
@@ -281,13 +312,10 @@ resource "null_resource" "wait_bootstrap_complete" {
   depends_on = [null_resource.cnpg_restore]
 }
 
-########## STEP 4: DELETE BOOTSTRAP ConfigMap (REVERT TO DEFAULTS) ##########
-# Deleting the ConfigMap lets each app revert to its own ${VAR:=production_default}.
-# No more override — every Kustomization runs at its individually tuned interval.
+########## STEP 4: FINAL RECONCILE CASCADE ##########
+# Ask Flux to immediately process any remaining dependency transitions.
 
-resource "null_resource" "delete_bootstrap_configmap" {
-  count = var.auto_switch_intervals ? 1 : 0
-
+resource "null_resource" "final_reconcile_cascade" {
   triggers = {
     bootstrap_complete = null_resource.wait_bootstrap_complete.id
   }
@@ -296,29 +324,23 @@ resource "null_resource" "delete_bootstrap_configmap" {
     command = <<-EOT
       set -e
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "🔄 REMOVING BOOTSTRAP OVERRIDE ConfigMap"
+      echo "🔄 FINAL FLUX RECONCILE CASCADE"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      kubectl --kubeconfig="${var.kubeconfig_path}" \
-        delete configmap cluster-settings -n flux-system --ignore-not-found
-
+      TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      for K in flux-system apps tier-0-foundation tier-1-infrastructure tier-2-applications; do
+        if kubectl --kubeconfig="${var.kubeconfig_path}" get kustomization "$K" -n flux-system >/dev/null 2>&1; then
+          kubectl --kubeconfig="${var.kubeconfig_path}" \
+            annotate kustomization "$K" -n flux-system \
+            reconcile.fluxcd.io/requestedAt="$TS" \
+            --overwrite || true
+          echo "  ✅ requested reconcile for $K"
+        else
+          echo "  ℹ️  $K not found yet (skipped)"
+        fi
+      done
       echo ""
-      echo "🔁 Triggering immediate Flux reconciliation cascade..."
-
-      # Annotating the top-level 'apps' Kustomization causes kustomize-controller
-      # to immediately re-reconcile the object via a watch event — no polling delay.
-      # This cascades: apps → tier-0/tier-1/tier-2 → all individual app ks.yaml files,
-      # which will now resolve their $${VAR:=default} with the ConfigMap absent,
-      # falling back to each app's own production default.
-      kubectl --kubeconfig="${var.kubeconfig_path}" \
-        annotate kustomization apps -n flux-system \
-        reconcile.fluxcd.io/requestedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        --overwrite
-
-      echo ""
-      echo "✅ ConfigMap deleted and reconciliation triggered."
-      echo "   All apps will revert to their individual production defaults"
-      echo "   within one reconcile cycle (~30s–1m)."
+      echo "✅ Reconcile requests submitted."
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     EOT
 

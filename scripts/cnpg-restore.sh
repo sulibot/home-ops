@@ -48,16 +48,32 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # Must wait for the operator pod to be Ready — not just the CRD to exist —
 # because the CNPG validating webhook (which rejects invalid Cluster specs)
 # runs in the operator pod.
-echo "Waiting for CNPG CRDs (up to 10m)..."
-if ! $KC wait --for=condition=Available crd/clusters.postgresql.cnpg.io \
+echo "Waiting for CNPG CRD registration (up to 10m)..."
+# CRDs report Established/NamesAccepted, not Available.
+if ! $KC wait --for=condition=Established crd/clusters.postgresql.cnpg.io \
     --timeout=600s 2>/dev/null; then
   echo "  ⚠️  CNPG CRDs not available after 10m — skipping restore check"
   exit 0
 fi
-echo "Waiting for CNPG operator pod (up to 5m)..."
-if ! $KC wait pods -l app.kubernetes.io/name=cloudnative-pg \
-    -n cnpg-system --for=condition=Ready --timeout=300s 2>/dev/null; then
-  echo "  ⚠️  CNPG operator pod not ready after 5m — skipping restore check"
+echo "Waiting for CNPG operator deployment discovery (up to 5m)..."
+OPERATOR_NS=""
+for _ in $(seq 1 150); do
+  OPERATOR_NS=$($KC get deployment -A -l app.kubernetes.io/name=cloudnative-pg \
+    -o jsonpath='{.items[0].metadata.namespace}' 2>/dev/null || true)
+  [ -n "$OPERATOR_NS" ] && break
+  sleep 2
+done
+
+if [ -z "$OPERATOR_NS" ]; then
+  echo "  ⚠️  CNPG operator deployment not found after 5m — skipping restore check"
+  exit 0
+fi
+
+echo "  ℹ️  CNPG operator namespace: $OPERATOR_NS"
+echo "Waiting for CNPG operator deployment readiness (up to 5m)..."
+if ! $KC wait deployment -l app.kubernetes.io/name=cloudnative-pg \
+    -n "$OPERATOR_NS" --for=condition=Available --timeout=300s 2>/dev/null; then
+  echo "  ⚠️  CNPG operator deployment not ready after 5m — skipping restore check"
   exit 0
 fi
 echo "  ✅ CNPG operator ready"

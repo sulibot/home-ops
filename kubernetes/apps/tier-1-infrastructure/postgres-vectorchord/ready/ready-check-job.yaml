@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-vectorchord-ready-check
+  namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: ready-check
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: postgres-vectorchord-ready-check
+      restartPolicy: Never
+      containers:
+        - name: ready-check
+          image: bitnami/kubectl@sha256:fd0cffa1252d718a561fee455ea5ae88781acbf31e59171ce7160ff762aa2980
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              set -euo pipefail
+
+              CLUSTER=postgres-vectorchord
+              NS=default
+
+              run_psql() {
+                kubectl -n "${NS}" exec "${PRIMARY_POD}" -- psql -U postgres -Atqc "$1"
+              }
+
+              echo "Waiting for CNPG primary pod..."
+              timeout 1200 bash -ec '
+                while true; do
+                  PRIMARY="$(kubectl -n "'"${NS}"'" get clusters.postgresql.cnpg.io "'"${CLUSTER}"'" -o jsonpath="{.status.currentPrimary}" 2>/dev/null || true)"
+                  if [ -n "${PRIMARY}" ]; then
+                    echo "${PRIMARY}" > /tmp/primary_pod
+                    break
+                  fi
+                  sleep 5
+                done
+              '
+              PRIMARY_POD="$(cat /tmp/primary_pod)"
+
+              echo "Waiting for pod ${PRIMARY_POD} to become Ready..."
+              kubectl -n "${NS}" wait --for=condition=Ready "pod/${PRIMARY_POD}" --timeout=1200s
+
+              IN_RECOVERY="$(run_psql "SELECT pg_is_in_recovery();")"
+              if [ "${IN_RECOVERY}" != "f" ]; then
+                echo "Database is still in recovery mode."
+                exit 1
+              fi
+
+              for DB in immich authentik firefly paperless; do
+                EXISTS="$(run_psql "SELECT 1 FROM pg_database WHERE datname='${DB}';")"
+                if [ "${EXISTS}" != "1" ]; then
+                  echo "Required database '${DB}' is missing."
+                  exit 1
+                fi
+              done
+
+              kubectl -n "${NS}" exec "${PRIMARY_POD}" -- \
+                psql -U postgres -d immich -Atqc "BEGIN; CREATE TEMP TABLE __ready_probe(id int); INSERT INTO __ready_probe VALUES (1); ROLLBACK;"
+
+              echo "postgres-vectorchord is ready for dependent applications."

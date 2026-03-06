@@ -9,11 +9,4 @@ terraform {
       version = ">= 3.2.0"
     }
   }
-
-  # Backend configuration managed by Terragrunt
-  backend "local" {}
-}
-
-provider "kubernetes" {
-  config_path = var.kubeconfig_path
 }
