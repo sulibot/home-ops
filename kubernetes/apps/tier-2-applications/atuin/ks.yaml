@@ -17,6 +17,8 @@ spec:
       namespace: flux-system
     - name: storage-ready
       namespace: flux-system
+    - name: postgres-vectorchord-ready
+      namespace: flux-system
     - name: volsync
       namespace: flux-system
     - name: volsync-repository-pvc
