@@ -7,7 +7,7 @@ terraform {
     }
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.97.0"
+      version = "~> 0.98.0"
     }
     routeros = {
       source  = "terraform-routeros/routeros"
