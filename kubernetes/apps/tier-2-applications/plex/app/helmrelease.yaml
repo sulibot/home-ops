@@ -33,7 +33,7 @@ spec:
               tag: 1.43.0.10492@sha256:8cb062f2b0660bd7811387e6c799da0ce5f18112078fe21485c11adcc83a9c1c
             env:
               TZ: America/Los_Angeles
-              PLEX_ADVERTISE_URL: http://10.101.250.120:32400,https://plex.sulibot.com:443
+              PLEX_ADVERTISE_URL: http://10.30.0.250:32400,http://10.101.250.120:32400,https://plex.sulibot.com:443
               PLEX_NO_AUTH_NETWORKS: 10.0.30.0/24,fd00:30::/64
               PLEX_CLAIM:
                 valueFrom:
@@ -69,6 +69,20 @@ spec:
               requests:
                 cpu: 100m
     defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan30",
+              "namespace": "kube-system",
+              "ips": ["10.30.0.250/24", "fd00:30::250/64"]
+            },
+            {
+              "name": "vlan31",
+              "namespace": "kube-system",
+              "ips": ["10.31.0.250/24", "fd00:31::250/64"]
+            }
+          ]
       resourceClaims:
         - name: gpu
           resourceClaimTemplateName: plex
