@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: docker.io/ollama/ollama
-              tag: 0.17.5
+              tag: 0.17.7
             env:
               TZ: America/Los_Angeles
               OLLAMA_NUM_PARALLEL: 1
