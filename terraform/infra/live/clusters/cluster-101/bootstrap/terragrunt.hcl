@@ -7,11 +7,11 @@ locals {
   tenant_id      = local.cluster_config.tenant_id
   context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
 
-  cluster_enabled       = try(local.cluster_config.enabled, true)
-  bootstrap_mode        = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
-  cluster_kubeconfig    = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
-  kubeconfig_exists     = fileexists(local.cluster_kubeconfig)
-  kubernetes_api_ready  = local.kubeconfig_exists && trimspace(run_cmd(
+  cluster_enabled    = try(local.cluster_config.enabled, true)
+  bootstrap_mode     = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
+  cluster_kubeconfig = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  kubeconfig_exists  = fileexists(local.cluster_kubeconfig)
+  kubernetes_api_ready = local.kubeconfig_exists && trimspace(run_cmd(
     "bash",
     "-lc",
     "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
@@ -50,6 +50,15 @@ dependency "talos_config" {
 
 terraform {
   source = "../../../../modules/talos_bootstrap"
+
+  before_hook "refresh_cluster_creds" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import"]
+    execute = [
+      "bash",
+      "-lc",
+      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE=\"10.$TENANT_ID.0.11\"; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
+    ]
+  }
 
   # Validate machine configs and secrets exist before bootstrap
   before_hook "validate_machine_configs" {

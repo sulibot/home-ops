@@ -10,7 +10,7 @@ locals {
   bootstrap_mode         = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
   has_cluster_kubeconfig = fileexists(local.cluster_kubeconfig)
-  kubernetes_api_ready  = local.has_cluster_kubeconfig && trimspace(run_cmd(
+  kubernetes_api_ready = local.has_cluster_kubeconfig && trimspace(run_cmd(
     "bash",
     "-lc",
     "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
@@ -52,7 +52,7 @@ terraform {
     execute = [
       "bash",
       "-lc",
-      "set -euo pipefail; TALOSCONFIG='${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/talosconfig'; KUBECONFIG_OUT='${local.cluster_kubeconfig}'; BOOTSTRAP_NODE='10.${local.tenant_id}.0.11'; if [ -f \"$TALOSCONFIG\" ]; then talosctl --talosconfig \"$TALOSCONFIG\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_OUT\" --merge=false --force >/dev/null 2>&1 || true; fi"
+      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE=\"10.$TENANT_ID.0.11\"; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
     ]
   }
 }
