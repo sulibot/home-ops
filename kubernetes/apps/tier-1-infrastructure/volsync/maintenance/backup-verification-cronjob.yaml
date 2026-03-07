@@ -32,6 +32,46 @@ spec:
               image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
               imagePullPolicy: IfNotPresent
               env:
+                - name: KOPIA_REPOSITORY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_REPOSITORY
+                - name: KOPIA_S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_S3_BUCKET
+                - name: KOPIA_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_S3_ENDPOINT
+                - name: KOPIA_S3_DISABLE_TLS
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_S3_DISABLE_TLS
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_S3_ENDPOINT
+                - name: AWS_S3_DISABLE_TLS
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_S3_DISABLE_TLS
                 - name: KOPIA_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -52,8 +92,12 @@ spec:
 
                   # Connect to repository
                   echo "📦 Connecting to Kopia repository..."
-                  kopia repository connect filesystem \
-                    --path=/repository/repository \
+                  kopia repository connect s3 \
+                    --bucket="$KOPIA_S3_BUCKET" \
+                    --endpoint="$KOPIA_S3_ENDPOINT" \
+                    --access-key="$AWS_ACCESS_KEY_ID" \
+                    --secret-access-key="$AWS_SECRET_ACCESS_KEY" \
+                    --disable-tls="$KOPIA_S3_DISABLE_TLS" \
                     --password="$KOPIA_PASSWORD" \
                     --config-file=/tmp/kopia-verify.config \
                     --override-hostname=volsync.volsync-system.svc.cluster.local \
@@ -139,9 +183,6 @@ spec:
                     exit 0
                   fi
               volumeMounts:
-                - name: repository
-                  mountPath: /repository
-                  readOnly: true
                 - name: tmp
                   mountPath: /tmp
               securityContext:
@@ -156,9 +197,6 @@ spec:
                 limits:
                   memory: 512Mi
           volumes:
-            - name: repository
-              persistentVolumeClaim:
-                claimName: kopia
             - name: tmp
               emptyDir: {}
 ---
