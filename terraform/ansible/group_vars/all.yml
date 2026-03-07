@@ -6,7 +6,7 @@ svc_cidr_v4: "10.96.0.0/12"
 svc_cidr_v6: "fd00:96::/108"
 
 # Cilium
-cilium_version: "1.16.5"         # CHANGE_ME
+cilium_version: "1.19.1"         # CHANGE_ME
 cilium_values: |
   kubeProxyReplacement: true
   routingMode: native
