@@ -1,0 +1,49 @@
+---
+# Auto-cleanup completed/failed VolSync mover Jobs after 2 hours.
+# This keeps pod lists clean without hiding active ReplicationSource failures,
+# which remain visible via CR status and alerts.
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-mover-job-ttl
+spec:
+  policyName: volsync-mover-job-ttl
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-mover-job-ttl
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - jobs
+  matchConditions:
+    - name: is-volsync-mover-job
+      expression: >-
+        object.metadata.name.startsWith("volsync-dst-") || object.metadata.name.startsWith("volsync-src-")
+    - name: has-volsync-created-by-labels
+      expression: >-
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+    - name: ttl-not-already-set
+      expression: >-
+        !has(object.spec.ttlSecondsAfterFinished)
+  failurePolicy: Ignore
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/ttlSecondsAfterFinished",
+              value: 7200
+            }
+          ]

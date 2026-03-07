@@ -7,7 +7,8 @@ metadata:
   namespace: volsync-system
 spec:
   enabled: true
+  schedule: 0 */6 * * *
   trigger:
-    schedule: 30 3 * * *
+    schedule: 30 */6 * * *
   repository:
     repository: volsync-maintenance-secret

@@ -28,13 +28,16 @@ spec:
         resources:
           - jobs
   matchConditions:
-    # Match both backup (volsync-src-*) and restore (volsync-dst-*) jobs
+    # Match backup (volsync-src-*), restore (volsync-dst-*), and KopiaMaintenance jobs
     - name: is-volsync-mover-job
       expression: >-
-        object.metadata.name.startsWith("volsync-dst-") || object.metadata.name.startsWith("volsync-src-")
-    - name: has-volsync-created-by-labels
+        object.metadata.name.startsWith("volsync-dst-") ||
+        object.metadata.name.startsWith("volsync-src-") ||
+        object.metadata.?labels["volsync.backube/kopia-maintenance"].orValue("") == "true"
+    - name: has-volsync-labels
       expression: >-
-        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync" ||
+        object.metadata.?labels["volsync.backube/kopia-maintenance"].orValue("") == "true"
     - name: repository-volume-does-not-exist
       expression: >-
         !has(object.spec.template.spec.volumes) ||

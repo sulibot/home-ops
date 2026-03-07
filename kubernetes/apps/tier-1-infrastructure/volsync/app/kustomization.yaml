@@ -8,4 +8,5 @@ resources:
   - ./ocirepository.yaml
   # - ./mutatingadmissionpolicy-jitter.yaml  # DISABLED: Causes pods to hang in PodInitializing
   - ./mutatingadmissionpolicy-restore.yaml  # ENABLED: Matches restore and backup jobs to mount shared repository PVC
+  - ./mutatingadmissionpolicy-job-ttl.yaml
   # Note: grafanadashboard and prometheusrule removed to break circular dependency with kube-prometheus-stack
