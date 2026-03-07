@@ -7,7 +7,7 @@ terraform {
     null     = { source = "hashicorp/null", version = "~> 3.0" }
     proxmox  = { source = "bpg/proxmox", version = "~> 0.97.0" }
     routeros = { source = "terraform-routeros/routeros", version = "~> 1.99.0" }
-    sops     = { source = "carlpett/sops", version = "~> 1.3.0" }
+    sops     = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
 }
 
