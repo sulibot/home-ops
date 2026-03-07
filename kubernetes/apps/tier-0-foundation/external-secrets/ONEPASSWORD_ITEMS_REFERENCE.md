@@ -189,8 +189,13 @@ UNIFI_API_KEY: "your-unifi-api-key"
 
 ```yaml
 KOPIA_PASSWORD: "your-kopia-repository-password"
-KOPIA_FS_PATH: "/repository"
-KOPIA_REPOSITORY: "filesystem:///repository"
+KOPIA_REPOSITORY: "s3://cnpg-backups/volsync-kopia"
+KOPIA_S3_ENDPOINT: "https://s3.sulibot.com"
+AWS_ACCESS_KEY_ID: "volsync-kopia"
+AWS_SECRET_ACCESS_KEY: "<minio-service-user-secret>"
+AWS_DEFAULT_REGION: "us-east-1"
+AWS_REGION: "us-east-1"
+AWS_S3_ENDPOINT: "https://s3.sulibot.com"
 ```
 
 ### 23. zigbee

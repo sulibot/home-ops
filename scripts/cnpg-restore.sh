@@ -32,6 +32,8 @@ CLUSTER_NAME="${CNPG_CLUSTER_NAME:-postgres-vectorchord}"
 CLUSTER_NS="${CNPG_CLUSTER_NAMESPACE:-default}"
 KUSTOMIZATION_NS="${CNPG_KUSTOMIZATION_NAMESPACE:-flux-system}"
 KUSTOMIZATION_NAME="${CNPG_KUSTOMIZATION_NAME:-postgres-vectorchord}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE_DIR="${SCRIPT_DIR}/cnpg/templates"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -112,6 +114,7 @@ STALE_BACKUP_MAX_AGE_SECONDS="$(( CNPG_STALE_BACKUP_MAX_AGE_MINUTES_RAW * 60 ))"
 
 require_cmd kubectl
 require_cmd jq
+require_cmd python3
 
 SCHEDULEDBACKUP_PREV_STATES=()
 RESUME_FLUX_ON_EXIT="false"
@@ -221,6 +224,40 @@ wait_for_secrets() {
   done
 
   return 1
+}
+
+render_manifest_template() {
+  local template_file="$1"
+  if [ ! -f "$template_file" ]; then
+    err "Template file not found: $template_file"
+    exit 1
+  fi
+
+  python3 - "$template_file" <<'PY'
+import os
+import sys
+
+template_path = sys.argv[1]
+with open(template_path, "r", encoding="utf-8") as fh:
+    data = fh.read()
+
+replacements = {
+    "__CLUSTER_NAME__": os.environ.get("CLUSTER_NAME", ""),
+    "__CLUSTER_NS__": os.environ.get("CLUSTER_NS", ""),
+    "__CNPG_STORAGE_SIZE__": os.environ.get("CNPG_STORAGE_SIZE", ""),
+    "__SNAP_NAME__": os.environ.get("SNAP_NAME", ""),
+}
+
+for src, dst in replacements.items():
+    data = data.replace(src, dst)
+
+sys.stdout.write(data)
+PY
+}
+
+apply_manifest_template() {
+  local template_file="$1"
+  render_manifest_template "$template_file" | $KC -n "$CLUSTER_NS" apply -f -
 }
 
 suspend_flux_kustomization_if_needed() {
@@ -508,71 +545,9 @@ $KC -n "$CLUSTER_NS" delete cluster "$CLUSTER_NAME" --ignore-not-found --wait=tr
 $KC -n "$CLUSTER_NS" delete pvc "${CLUSTER_NAME}-1" --ignore-not-found --wait=true >/dev/null || true
 
 log "  4/8 Applying recovery cluster spec..."
+export CLUSTER_NAME CLUSTER_NS CNPG_STORAGE_SIZE
 if [ "$restore_method" = "barman" ]; then
-  $KC -n "$CLUSTER_NS" apply -f - <<YAML
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: ${CLUSTER_NAME}
-  namespace: ${CLUSTER_NS}
-  annotations:
-    cnpg.io/skipEmptyWalArchiveCheck: "enabled"
-spec:
-  instances: 1
-  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
-  startDelay: 30
-  stopDelay: 30
-  switchoverDelay: 60
-  postgresql:
-    shared_preload_libraries:
-      - "vchord.so"
-  backup:
-    volumeSnapshot:
-      className: csi-rbd-rbd-vm-snapclass
-      snapshotOwnerReference: backup
-  plugins:
-    - name: barman-cloud.cloudnative-pg.io
-      isWALArchiver: true
-      parameters:
-        barmanObjectName: postgres-vectorchord-backup
-  bootstrap:
-    recovery:
-      source: postgres-vectorchord
-      database: immich
-      owner: immich
-  externalClusters:
-    - name: postgres-vectorchord
-      plugin:
-        name: barman-cloud.cloudnative-pg.io
-        parameters:
-          barmanObjectName: postgres-vectorchord-backup
-  managed:
-    roles:
-      - name: atuin
-        login: true
-        ensure: present
-        passwordSecret:
-          name: atuin-pg-password
-      - name: authentik
-        login: true
-        ensure: present
-        passwordSecret:
-          name: authentik-pg-password
-      - name: firefly
-        login: true
-        ensure: present
-        passwordSecret:
-          name: firefly-pg-password
-      - name: paperless
-        login: true
-        ensure: present
-        passwordSecret:
-          name: paperless-pg-password
-  storage:
-    resizeInUseVolumes: true
-    size: ${CNPG_STORAGE_SIZE}
-    storageClass: csi-rbd-rbd-vm-sc-retain
-YAML
+  apply_manifest_template "${TEMPLATE_DIR}/cluster-restore-barman.yaml.tpl"
 else
   snap_name="$($KC -n "$CLUSTER_NS" get volumesnapshots.snapshot.storage.k8s.io -l "cnpg.io/cluster=${CLUSTER_NAME}" \
     -o json | jq -r '[.items[]? | select((.status.readyToUse // false) == true) | .metadata.name] | last // ""')"
@@ -581,66 +556,8 @@ else
     exit 1
   fi
 
-  $KC -n "$CLUSTER_NS" apply -f - <<YAML
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: ${CLUSTER_NAME}
-  namespace: ${CLUSTER_NS}
-spec:
-  instances: 1
-  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
-  startDelay: 30
-  stopDelay: 30
-  switchoverDelay: 60
-  postgresql:
-    shared_preload_libraries:
-      - "vchord.so"
-  backup:
-    volumeSnapshot:
-      className: csi-rbd-rbd-vm-snapclass
-      snapshotOwnerReference: backup
-  plugins:
-    - name: barman-cloud.cloudnative-pg.io
-      isWALArchiver: true
-      parameters:
-        barmanObjectName: postgres-vectorchord-backup
-  bootstrap:
-    recovery:
-      database: immich
-      owner: immich
-      volumeSnapshots:
-        storage:
-          name: ${snap_name}
-          kind: VolumeSnapshot
-          apiGroup: snapshot.storage.k8s.io
-  managed:
-    roles:
-      - name: atuin
-        login: true
-        ensure: present
-        passwordSecret:
-          name: atuin-pg-password
-      - name: authentik
-        login: true
-        ensure: present
-        passwordSecret:
-          name: authentik-pg-password
-      - name: firefly
-        login: true
-        ensure: present
-        passwordSecret:
-          name: firefly-pg-password
-      - name: paperless
-        login: true
-        ensure: present
-        passwordSecret:
-          name: paperless-pg-password
-  storage:
-    resizeInUseVolumes: true
-    size: ${CNPG_STORAGE_SIZE}
-    storageClass: csi-rbd-rbd-vm-sc-retain
-YAML
+  export SNAP_NAME="$snap_name"
+  apply_manifest_template "${TEMPLATE_DIR}/cluster-restore-snapshot.yaml.tpl"
 fi
 
 log "  5/8 Waiting for cluster recovery (up to 20m)..."

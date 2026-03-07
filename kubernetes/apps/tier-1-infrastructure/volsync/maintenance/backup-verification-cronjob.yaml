@@ -37,11 +37,6 @@ spec:
                     secretKeyRef:
                       name: volsync-maintenance-secret
                       key: KOPIA_REPOSITORY
-                - name: KOPIA_S3_BUCKET
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-maintenance-secret
-                      key: KOPIA_S3_BUCKET
                 - name: KOPIA_S3_ENDPOINT
                   valueFrom:
                     secretKeyRef:
@@ -82,16 +77,31 @@ spec:
 
                   # Connect to repository
                   echo "📦 Connecting to Kopia repository..."
+                  if [[ "$KOPIA_REPOSITORY" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                    KOPIA_BUCKET="${BASH_REMATCH[1]}"
+                    KOPIA_PREFIX="${BASH_REMATCH[3]}"
+                  else
+                    echo "❌ Unsupported KOPIA_REPOSITORY format: $KOPIA_REPOSITORY"
+                    exit 1
+                  fi
+
+                  CONNECT_ARGS=(
+                    "--bucket=$KOPIA_BUCKET"
+                    "--endpoint=$KOPIA_S3_ENDPOINT"
+                    "--access-key=$AWS_ACCESS_KEY_ID"
+                    "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
+                    "--password=$KOPIA_PASSWORD"
+                    "--config-file=/tmp/kopia-verify.config"
+                    "--override-hostname=volsync.volsync-system.svc.cluster.local"
+                    "--override-username=volsync"
+                    "--readonly"
+                  )
+                  if [ -n "${KOPIA_PREFIX:-}" ]; then
+                    CONNECT_ARGS+=("--prefix=$KOPIA_PREFIX")
+                  fi
+
                   kopia repository connect s3 \
-                    --bucket="$KOPIA_S3_BUCKET" \
-                    --endpoint="$KOPIA_S3_ENDPOINT" \
-                    --access-key="$AWS_ACCESS_KEY_ID" \
-                    --secret-access-key="$AWS_SECRET_ACCESS_KEY" \
-                    --password="$KOPIA_PASSWORD" \
-                    --config-file=/tmp/kopia-verify.config \
-                    --override-hostname=volsync.volsync-system.svc.cluster.local \
-                    --override-username=volsync \
-                    --readonly
+                    "${CONNECT_ARGS[@]}"
 
                   echo "✅ Connected to repository"
                   echo ""

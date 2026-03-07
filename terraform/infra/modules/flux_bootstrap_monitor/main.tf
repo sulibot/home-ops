@@ -107,12 +107,12 @@ resource "null_resource" "wait_crd_established" {
       echo "📚 WAITING FOR REQUIRED CRDs (Established)"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      wait_crd() {
+      wait_crd_required() {
         local crd="$1"
         local timeout="$2"
         local deadline
         local now
-        echo "  - $crd"
+        echo "  - required: $crd"
 
         deadline=$(( $(date +%s) + $${timeout%s} ))
         while true; do
@@ -121,8 +121,8 @@ resource "null_resource" "wait_crd_established" {
           fi
           now=$(date +%s)
           if [ "$now" -ge "$deadline" ]; then
-            echo "    ⚠ timeout waiting for CRD to appear: $crd"
-            return 0
+            echo "    ✗ timeout waiting for required CRD to appear: $crd" >&2
+            return 1
           fi
           sleep 5
         done
@@ -131,20 +131,27 @@ resource "null_resource" "wait_crd_established" {
           --for=condition=Established \
           --timeout="$${timeout}" \
           "crd/$${crd}"; then
-          echo "    ⚠ CRD did not reach Established in time: $crd"
+          echo "    ✗ required CRD did not reach Established in time: $crd" >&2
+          return 1
+        fi
+
+        return 0
+      }
+
+      wait_crd_optional() {
+        local crd="$1"
+        local timeout="$2"
+        if ! wait_crd_required "$crd" "$timeout"; then
+          echo "    ⚠ optional CRD gate timed out: $crd"
         fi
       }
 
-      # Best-effort capability pre-checks for restore workflow.
-      # External Secrets CRDs can lag significantly on first bootstrap;
-      # do not block the whole run on this.
-      wait_crd "clustersecretstores.external-secrets.io" "30s"
-      wait_crd "clusters.postgresql.cnpg.io" "600s"
+      # Required for bootstrap capability checks and restore workflow.
+      wait_crd_required "clustersecretstores.external-secrets.io" "300s"
+      wait_crd_required "clusters.postgresql.cnpg.io" "600s"
 
       # Optional but preferred for snapshot-based CNPG restore fallback.
-      if ! wait_crd "volumesnapshots.snapshot.storage.k8s.io" "180s"; then
-        echo "  ⚠ volumesnapshots.snapshot.storage.k8s.io not Established yet (non-fatal)"
-      fi
+      wait_crd_optional "volumesnapshots.snapshot.storage.k8s.io" "180s"
 
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "✓ Required CRDs are Established"

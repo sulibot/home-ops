@@ -201,6 +201,11 @@ resource "null_resource" "zot_caddy_frontend" {
     timeout     = "10m"
   }
 
+  provisioner "file" {
+    content     = "CF_Token=$${data.sops_file.secrets.data[\"cloudflare_api_token\"]}\n"
+    destination = "/root/cloudflare.env"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "export DEBIAN_FRONTEND=noninteractive",
@@ -209,10 +214,11 @@ resource "null_resource" "zot_caddy_frontend" {
       "mkdir -p /etc/caddy/certs /etc/systemd/system/caddy.service.d /root/.acme.sh",
       "cat > /etc/systemd/system/caddy.service.d/override.conf <<'UNIT'\n[Service]\nPrivateTmp=false\nPrivateDevices=false\nProtectSystem=no\nProtectHome=false\nNoNewPrivileges=false\nUNIT",
       "if [ ! -x /root/.acme.sh/acme.sh ]; then curl -fsSL https://get.acme.sh | sh -s email=admin@sulibot.com >/dev/null; fi",
-      "export CF_Token='$${data.sops_file.secrets.data["cloudflare_api_token"]}'",
+      "set -a && . /root/cloudflare.env && set +a",
       "/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >/dev/null",
       "/root/.acme.sh/acme.sh --issue --dns dns_cf -d ${local.service_domain} --keylength ec-256 --force",
       "/root/.acme.sh/acme.sh --install-cert -d ${local.service_domain} --ecc --fullchain-file /etc/caddy/certs/${local.service_domain}.crt --key-file /etc/caddy/certs/${local.service_domain}.key",
+      "shred -u /root/cloudflare.env || rm -f /root/cloudflare.env",
       "chown root:caddy /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
       "chmod 640 /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
       "cat > /etc/caddy/Caddyfile <<'CFG'\n{\n  admin off\n}\n\n${local.service_domain} {\n  tls /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key\n  reverse_proxy 127.0.0.1:5000\n}\nCFG",

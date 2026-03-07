@@ -126,6 +126,13 @@ terraform/infra/live/clusters/_shared/artifacts-schematic.json
 
 # Talos client config (per-user credentials)
 talos/clusters/**/talosconfig
+talos/clusters/**/kubeconfig
+
+# Terragrunt-generated Terraform files for service LXC stacks
+terraform/infra/live/services/minio-lxc/main.tf
+terraform/infra/live/services/minio-lxc/providers.tf
+terraform/infra/live/services/zot-lxc/main.tf
+terraform/infra/live/services/zot-lxc/providers.tf
 
 # FRR extension symlink (links to separate repository)
 FRR/
