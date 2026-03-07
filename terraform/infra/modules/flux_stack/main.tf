@@ -35,10 +35,15 @@ module "bootstrap_monitor" {
   count  = var.bootstrap_mode ? 1 : 0
   source = "../flux_bootstrap_monitor"
 
-  kubeconfig_path           = var.kubeconfig_path
-  bootstrap_timeout_seconds = var.bootstrap_timeout_seconds
-  cnpg_new_db               = var.cnpg_new_db
-  region                    = var.region
+  kubeconfig_path                   = var.kubeconfig_path
+  bootstrap_timeout_seconds         = var.bootstrap_timeout_seconds
+  cnpg_new_db                       = var.cnpg_new_db
+  cnpg_restore_mode                 = var.cnpg_restore_mode
+  cnpg_restore_method               = var.cnpg_restore_method
+  cnpg_backup_max_age_hours         = var.cnpg_backup_max_age_hours
+  cnpg_stale_backup_max_age_minutes = var.cnpg_stale_backup_max_age_minutes
+  cnpg_storage_size                 = var.cnpg_storage_size
+  region                            = var.region
 
   depends_on = [module.instance]
 }

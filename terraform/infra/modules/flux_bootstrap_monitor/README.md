@@ -23,6 +23,11 @@ steady-state Flux intervals in Git.
 
 - `kubeconfig_path`: kubeconfig used by local-exec actions.
 - `bootstrap_timeout_seconds`: timeout budget for capability-gate checks.
+- `cnpg_restore_mode`: `RESTORE_REQUIRED` (default) or `NEW_DB`.
+- `cnpg_restore_method`: `auto` (default), `barman`, or `snapshot`.
+- `cnpg_backup_max_age_hours`: freshness threshold for acceptable restore sources.
+- `cnpg_stale_backup_max_age_minutes`: stale non-completed Backup CR cleanup threshold.
+- `cnpg_storage_size`: storage size used when restore helper recreates the CNPG cluster.
 - `region`: passthrough compatibility input.
 
 ## Outputs
@@ -36,3 +41,4 @@ steady-state Flux intervals in Git.
 - This module is designed to run as a child of `flux_stack`, not as a standalone Terragrunt unit.
 - It does not mutate Flux `interval` settings or commit changes to Git.
 - In steady-state applies, keep `bootstrap_mode=false` and this module is skipped.
+- Restore flow is fail-closed by default: in `RESTORE_REQUIRED`, bootstrap fails if no fresh backup source exists.

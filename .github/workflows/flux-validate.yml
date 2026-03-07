@@ -183,6 +183,22 @@ jobs:
             echo "⚠️ Found $ERROR_COUNT HelmRelease warning(s)" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Validate CNPG owner-role contract
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### CNPG Owner/Role Contract Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ./scripts/check-cnpg-role-contract.sh
+          echo "✅ CNPG owner-role contract is valid" >> $GITHUB_STEP_SUMMARY
+
+      - name: Validate CNPG backup hygiene
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### CNPG Backup Hygiene Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ./scripts/check-cnpg-backup-hygiene.sh
+          echo "✅ CNPG backup hygiene is valid" >> $GITHUB_STEP_SUMMARY
+
       - name: Check for SOPS encrypted secrets
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY

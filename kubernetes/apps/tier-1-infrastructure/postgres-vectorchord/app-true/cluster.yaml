@@ -43,6 +43,11 @@ spec:
 
   managed:
     roles:
+      - name: atuin
+        login: true
+        ensure: present
+        passwordSecret:
+          name: atuin-pg-password
       - name: authentik
         login: true
         ensure: present

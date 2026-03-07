@@ -16,6 +16,11 @@ For initial cluster build, run with bootstrap mode enabled:
 TALOS_BOOTSTRAP_MODE=true terragrunt apply --all --non-interactive
 ```
 
+By default, `compute/` now runs a CNPG restore preflight gate before `plan/apply`:
+- `CNPG_RESTORE_MODE=RESTORE_REQUIRED` (default): requires a fresh plugin backup or snapshot.
+- `CNPG_RESTORE_MODE=NEW_DB`: allows fresh DB bootstrap when no backup exists.
+- `CNPG_BACKUP_MAX_AGE_HOURS=36` controls freshness threshold.
+
 For steady-state run-all, omit bootstrap mode:
 
 ```bash

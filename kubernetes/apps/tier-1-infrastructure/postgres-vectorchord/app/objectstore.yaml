@@ -8,6 +8,11 @@ kind: ObjectStore
 metadata:
   name: postgres-vectorchord-backup
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 spec:
   configuration:
     endpointURL: "https://s3.sulibot.com/"

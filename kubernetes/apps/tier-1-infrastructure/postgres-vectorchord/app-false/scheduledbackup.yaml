@@ -10,6 +10,11 @@ kind: ScheduledBackup
 metadata:
   name: postgres-vectorchord-snapshot
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 spec:
   schedule: "0 2 * * *"  # Daily at 2am
   immediate: true         # Also run a backup immediately on first creation (bootstrap)
@@ -32,6 +37,11 @@ kind: ScheduledBackup
 metadata:
   name: postgres-vectorchord-barman
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 spec:
   schedule: "0 3 * * *"  # Daily at 3am — WAL archiving is continuous; daily base backups keep recovery windows small
   immediate: true          # Run base backup immediately on creation (bootstrap)

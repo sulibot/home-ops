@@ -1,6 +1,5 @@
 locals {
-  region        = "home-lab"
-  talos_version = "v1.8.2"
+  region = "home-lab"
 }
 
 remote_state {
@@ -15,8 +14,4 @@ terraform {
     commands  = get_terraform_commands_that_need_vars()
     arguments = ["-var", "region=${local.region}"]
   }
-}
-
-inputs = {
-  talos_version = local.talos_version
 }

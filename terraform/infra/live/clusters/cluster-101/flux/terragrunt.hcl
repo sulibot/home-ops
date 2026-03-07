@@ -10,6 +10,11 @@ locals {
   cluster_enabled        = try(local.cluster_config.enabled, true)
   bootstrap_mode         = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
   cnpg_new_db            = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
+  cnpg_restore_mode      = trimspace(upper(get_env("CNPG_RESTORE_MODE", local.cnpg_new_db ? "NEW_DB" : "RESTORE_REQUIRED")))
+  cnpg_restore_method    = trimspace(lower(get_env("CNPG_RESTORE_METHOD", "auto")))
+  cnpg_backup_max_age_hours = tonumber(get_env("CNPG_BACKUP_MAX_AGE_HOURS", "36"))
+  cnpg_stale_backup_max_age_minutes = tonumber(get_env("CNPG_STALE_BACKUP_MAX_AGE_MINUTES", "45"))
+  cnpg_storage_size      = trimspace(get_env("CNPG_STORAGE_SIZE", "60Gi"))
   app_versions           = local.context.app_versions
   secrets                = yamldecode(sops_decrypt_file("${get_repo_root()}/terraform/infra/live/common/secrets.sops.yaml"))
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
@@ -53,4 +58,9 @@ inputs = {
   kubernetes_api_host = "fd00:${local.tenant_id}::10"
   bootstrap_mode      = local.bootstrap_mode
   cnpg_new_db         = local.cnpg_new_db
+  cnpg_restore_mode   = local.cnpg_restore_mode
+  cnpg_restore_method = local.cnpg_restore_method
+  cnpg_backup_max_age_hours = local.cnpg_backup_max_age_hours
+  cnpg_stale_backup_max_age_minutes = local.cnpg_stale_backup_max_age_minutes
+  cnpg_storage_size   = local.cnpg_storage_size
 }

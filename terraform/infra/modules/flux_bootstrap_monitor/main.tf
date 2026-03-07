@@ -168,8 +168,13 @@ resource "null_resource" "cnpg_restore" {
     interpreter = ["bash", "-c"]
     command     = "\"$(git -C \"${path.module}\" rev-parse --show-toplevel)\"/scripts/cnpg-restore.sh"
     environment = {
-      KUBECONFIG = var.kubeconfig_path
-      CNPG_NEW_DB = var.cnpg_new_db ? "true" : "false"
+      KUBECONFIG                        = var.kubeconfig_path
+      CNPG_NEW_DB                       = var.cnpg_new_db ? "true" : "false"
+      CNPG_RESTORE_MODE                 = var.cnpg_restore_mode
+      CNPG_RESTORE_METHOD               = var.cnpg_restore_method
+      CNPG_BACKUP_MAX_AGE_HOURS         = tostring(var.cnpg_backup_max_age_hours)
+      CNPG_STALE_BACKUP_MAX_AGE_MINUTES = tostring(var.cnpg_stale_backup_max_age_minutes)
+      CNPG_STORAGE_SIZE                 = var.cnpg_storage_size
     }
   }
 

@@ -5,6 +5,11 @@ kind: CronJob
 metadata:
   name: postgres-vectorchord-backup-verifier
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 spec:
   schedule: "15 4 * * *"
   concurrencyPolicy: Forbid
@@ -39,8 +44,15 @@ spec:
                     method="$1"
                     newest=0
                     rows_file="$(mktemp)"
-                    rows="$(kubectl get backups.postgresql.cnpg.io -n "${NAMESPACE}" -l "cnpg.io/cluster=${CLUSTER_NAME}" \
-                      -o jsonpath='{range .items[*]}{.spec.method}{"|"}{.status.phase}{"|"}{.status.stoppedAt}{"\n"}{end}')"
+                    rows="$(kubectl get backups.postgresql.cnpg.io -n "${NAMESPACE}" -o json | jq -r \
+                      --arg cluster "${CLUSTER_NAME}" '
+                        .items[]
+                        | select(
+                            ((.metadata.labels["cnpg.io/cluster"] // "") == $cluster)
+                            or ((.spec.cluster.name // "") == $cluster)
+                          )
+                        | "\(.spec.method // \"\")|\(.status.phase // \"\")|\(.status.stoppedAt // .status.completedAt // .metadata.creationTimestamp // \"\")"
+                      ')"
 
                     [ -z "${rows}" ] && { rm -f "${rows_file}"; return 1; }
                     printf '%s\n' "${rows}" > "${rows_file}"
@@ -112,12 +124,22 @@ kind: ServiceAccount
 metadata:
   name: postgres-vectorchord-backup-verifier
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: postgres-vectorchord-backup-verifier
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 rules:
   - apiGroups: ["postgresql.cnpg.io"]
     resources: ["backups"]
@@ -131,6 +153,11 @@ kind: RoleBinding
 metadata:
   name: postgres-vectorchord-backup-verifier
   namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
