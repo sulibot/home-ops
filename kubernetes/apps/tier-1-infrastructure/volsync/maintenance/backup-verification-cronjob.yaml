@@ -47,11 +47,6 @@ spec:
                     secretKeyRef:
                       name: volsync-maintenance-secret
                       key: KOPIA_S3_ENDPOINT
-                - name: KOPIA_S3_DISABLE_TLS
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-maintenance-secret
-                      key: KOPIA_S3_DISABLE_TLS
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
@@ -67,11 +62,6 @@ spec:
                     secretKeyRef:
                       name: volsync-maintenance-secret
                       key: AWS_S3_ENDPOINT
-                - name: AWS_S3_DISABLE_TLS
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-maintenance-secret
-                      key: AWS_S3_DISABLE_TLS
                 - name: KOPIA_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -97,7 +87,6 @@ spec:
                     --endpoint="$KOPIA_S3_ENDPOINT" \
                     --access-key="$AWS_ACCESS_KEY_ID" \
                     --secret-access-key="$AWS_SECRET_ACCESS_KEY" \
-                    --disable-tls="$KOPIA_S3_DISABLE_TLS" \
                     --password="$KOPIA_PASSWORD" \
                     --config-file=/tmp/kopia-verify.config \
                     --override-hostname=volsync.volsync-system.svc.cluster.local \
