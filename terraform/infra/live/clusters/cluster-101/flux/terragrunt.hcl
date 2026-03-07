@@ -18,6 +18,8 @@ locals {
   app_versions           = local.context.app_versions
   secrets                = yamldecode(sops_decrypt_file("${get_repo_root()}/terraform/infra/live/common/secrets.sops.yaml"))
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  cluster_talosconfig    = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/talosconfig"
+  bootstrap_node_ipv4    = "10.${local.tenant_id}.0.11"
   has_cluster_kubeconfig = fileexists(local.cluster_kubeconfig)
 }
 
@@ -40,6 +42,15 @@ dependency "bootstrap" {
 
 terraform {
   source = "../../../../modules//flux_stack"
+
+  before_hook "refresh_kubeconfig" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import"]
+    execute = [
+      "bash",
+      "-lc",
+      "set -euo pipefail; if [ -f '${local.cluster_talosconfig}' ]; then talosctl --talosconfig '${local.cluster_talosconfig}' --nodes '${local.bootstrap_node_ipv4}' --endpoints '${local.bootstrap_node_ipv4}' kubeconfig '${local.cluster_kubeconfig}' --merge=false --force >/dev/null 2>&1 || true; fi"
+    ]
+  }
 }
 
 inputs = {

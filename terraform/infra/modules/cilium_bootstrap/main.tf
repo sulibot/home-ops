@@ -25,6 +25,18 @@ variable "repo_root" {
   type        = string
 }
 
+variable "cilium_daemonset_exists" {
+  description = "Whether Cilium DaemonSet already exists in kube-system at plan time"
+  type        = bool
+  default     = false
+}
+
+variable "cluster_uid" {
+  description = "Kubernetes cluster identity marker (kube-system namespace UID)"
+  type        = string
+  default     = ""
+}
+
 locals {
   cilium_helmrelease_path = "${var.repo_root}/kubernetes/apps/tier-0-foundation/cilium/app/helmrelease.yaml"
   cilium_bootstrap_path   = "${var.repo_root}/kubernetes/bootstrap/helmfile.yaml.gotmpl"
@@ -33,6 +45,8 @@ locals {
 resource "null_resource" "bootstrap_cilium" {
   triggers = {
     kubeconfig_path        = var.kubeconfig_path
+    cilium_daemonset_state = tostring(var.cilium_daemonset_exists)
+    cluster_uid            = var.cluster_uid
     cilium_helmrelease_sha = filesha256(local.cilium_helmrelease_path)
     cilium_bootstrap_sha   = filesha256(local.cilium_bootstrap_path)
   }

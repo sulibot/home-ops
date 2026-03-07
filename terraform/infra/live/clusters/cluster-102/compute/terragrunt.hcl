@@ -87,13 +87,83 @@ terraform {
         exit 0
       fi
 
-      cd ${get_repo_root()}
-      KUBECONFIG="${local.cluster_kubeconfig}" \
-      CNPG_RESTORE_MODE="${local.cnpg_restore_mode}" \
-      CNPG_BACKUP_MAX_AGE_HOURS="${local.cnpg_backup_max_age_hours}" \
-      CNPG_CLUSTER_NAME="postgres-vectorchord" \
-      CNPG_CLUSTER_NAMESPACE="default" \
-      ./scripts/cnpg-preflight.sh
+      MODE="${local.cnpg_restore_mode}"
+      MAX_AGE_HOURS="${local.cnpg_backup_max_age_hours}"
+      CLUSTER_NAME="postgres-vectorchord"
+      CLUSTER_NS="default"
+      KUBECONFIG_PATH="${local.cluster_kubeconfig}"
+
+      if ! printf '%s' "$MAX_AGE_HOURS" | grep -Eq '^[0-9]+$'; then
+        echo "ERROR: CNPG_BACKUP_MAX_AGE_HOURS must be a positive integer, got '$MAX_AGE_HOURS'" >&2
+        exit 1
+      fi
+      if [ "$MAX_AGE_HOURS" -le 0 ]; then
+        echo "ERROR: CNPG_BACKUP_MAX_AGE_HOURS must be > 0" >&2
+        exit 1
+      fi
+
+      if [ "$MODE" = "NEW_DB" ]; then
+        echo "✓ CNPG preflight skipped in NEW_DB mode"
+        exit 0
+      fi
+
+      if [ ! -f "$KUBECONFIG_PATH" ]; then
+        echo "ERROR: kubeconfig not found at $KUBECONFIG_PATH (required in RESTORE_REQUIRED mode)" >&2
+        exit 1
+      fi
+      if ! command -v jq >/dev/null 2>&1; then
+        echo "ERROR: jq is required for CNPG preflight" >&2
+        exit 1
+      fi
+      if ! kubectl --kubeconfig="$KUBECONFIG_PATH" version --request-timeout=10s >/dev/null 2>&1; then
+        echo "ERROR: cannot reach Kubernetes API using $KUBECONFIG_PATH in RESTORE_REQUIRED mode" >&2
+        exit 1
+      fi
+
+      THRESHOLD_SECONDS=$((MAX_AGE_HOURS * 3600))
+
+      plugin_age="$(
+        kubectl --kubeconfig="$KUBECONFIG_PATH" -n "$CLUSTER_NS" get backup.postgresql.cnpg.io -o json 2>/dev/null | \
+          jq -r --arg cluster "$CLUSTER_NAME" '
+            [ .items[]?
+              | select(
+                  ((.metadata.labels["cnpg.io/cluster"] // "") == $cluster)
+                  or ((.spec.cluster.name // "") == $cluster)
+                )
+              | select((.spec.method // "") == "plugin")
+              | select((.status.phase // "" | ascii_downcase) == "completed")
+              | (now - ((.status.stoppedAt // .status.completedAt // .metadata.creationTimestamp) | fromdateiso8601))
+            ]
+            | if length == 0 then "" else (min | floor | tostring) end'
+      )"
+
+      snapshot_age="$(
+        kubectl --kubeconfig="$KUBECONFIG_PATH" -n "$CLUSTER_NS" get volumesnapshots.snapshot.storage.k8s.io -l "cnpg.io/cluster=$CLUSTER_NAME" -o json 2>/dev/null | \
+          jq -r '
+            [ .items[]?
+              | select((.status.readyToUse // false) == true)
+              | (now - (.metadata.creationTimestamp | fromdateiso8601))
+            ]
+            | if length == 0 then "" else (min | floor | tostring) end'
+      )"
+
+      plugin_fresh="false"
+      snapshot_fresh="false"
+      if [ -n "$plugin_age" ] && [ "$plugin_age" -le "$THRESHOLD_SECONDS" ]; then
+        plugin_fresh="true"
+      fi
+      if [ -n "$snapshot_age" ] && [ "$snapshot_age" -le "$THRESHOLD_SECONDS" ]; then
+        snapshot_fresh="true"
+      fi
+
+      if [ "$plugin_fresh" = "true" ] || [ "$snapshot_fresh" = "true" ]; then
+        echo "✓ CNPG preflight passed (fresh restore source found)"
+        exit 0
+      fi
+
+      echo "ERROR: no fresh CNPG restore source found and CNPG_RESTORE_MODE=RESTORE_REQUIRED" >&2
+      echo "       refresh backup/snapshot or set CNPG_RESTORE_MODE=NEW_DB intentionally" >&2
+      exit 1
     EOT
     ]
   }

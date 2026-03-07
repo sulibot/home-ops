@@ -12,7 +12,7 @@ steady-state Flux intervals in Git.
 
 1. Request immediate Flux reconcile annotations.
 2. Check Tier-0 and Tier-1 status snapshots.
-3. Run CNPG recovery helper (`scripts/cnpg-restore.sh`).
+3. Run inline CNPG recovery orchestration (declared in module `main.tf`).
 4. Launch an in-cluster Job to validate bootstrap capability gates:
    - `secrets-ready`
    - `storage-ready`
@@ -27,7 +27,7 @@ steady-state Flux intervals in Git.
 - `cnpg_restore_method`: `auto` (default), `barman`, or `snapshot`.
 - `cnpg_backup_max_age_hours`: freshness threshold for acceptable restore sources.
 - `cnpg_stale_backup_max_age_minutes`: stale non-completed Backup CR cleanup threshold.
-- `cnpg_storage_size`: storage size used when restore helper recreates the CNPG cluster.
+- `cnpg_storage_size`: storage size used when inline restore orchestration recreates the CNPG cluster.
 - `region`: passthrough compatibility input.
 
 ## Outputs
