@@ -52,6 +52,13 @@ spec:
         - authentik-blueprints
     server:
       replicas: 1
+      volumeMounts:
+        - name: blueprints-cm-authentik-blueprints
+          mountPath: /blueprints/mounted/cm-authentik-blueprints
+      volumes:
+        - name: blueprints-cm-authentik-blueprints
+          configMap:
+            name: authentik-blueprints
       ingress:
         enabled: false
       metrics:

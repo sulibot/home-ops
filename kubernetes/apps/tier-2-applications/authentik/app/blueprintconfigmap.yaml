@@ -163,59 +163,127 @@ data:
             .pf-c-login * {
               font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important;
             }
+            .pf-c-login {
+              --sb-bg: #061a2b;
+              --sb-surface: #0c2238;
+              --sb-border: #2d4f79;
+              --sb-text: #e6edf5;
+              --sb-muted: #b6c5d6;
+              --sb-focus: #61a8ff;
+              --sb-local: #ff7a00;
+              --sb-local-hover: #e06b00;
+              --sb-google: #2b7fe0;
+              --sb-google-hover: #246fc3;
+            }
             .pf-c-login__main {
-              max-width: 420px !important;
-              width: 100% !important;
-              border-radius: 16px !important;
-              padding: 32px !important;
-              background: #0f1720 !important;
-              box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45) !important;
+              max-width: 460px !important;
+              width: min(92vw, 460px) !important;
+              border-radius: 22px !important;
+              padding: clamp(24px, 4vw, 38px) !important;
+              background: linear-gradient(180deg, #0d243b 0%, #091a2a 100%) !important;
+              border: 1px solid rgba(112, 159, 217, 0.25) !important;
+              box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45) !important;
             }
             .pf-c-login__main-header.pf-c-brand {
-              padding-bottom: 8px !important;
+              padding-bottom: 12px !important;
             }
             .pf-c-login__main-header.pf-c-brand img,
             .pf-c-login__main-header .pf-c-brand img {
-              width: 175px !important;
-              height: 175px !important;
-              margin-bottom: 8px !important;
+              width: clamp(84px, 24vw, 112px) !important;
+              height: auto !important;
+              margin: 0 auto 12px !important;
+              display: block !important;
             }
             .pf-c-login__main .pf-c-title {
-              display: none !important;
+              color: var(--sb-text) !important;
+              font-size: clamp(30px, 3.6vw, 40px) !important;
+              line-height: 1.1 !important;
+              margin: 4px 0 6px !important;
+              letter-spacing: -0.02em !important;
             }
             .pf-c-login__main-body {
-              margin-top: 8px !important;
+              margin-top: 6px !important;
             }
-            .pf-c-form-control {
-              height: 48px !important;
-              border-radius: 12px !important;
-              background: #1f2e42 !important;
-              border: 1px solid #1f2e42 !important;
-              color: #ffffff !important;
-              padding-left: 16px !important;
-              padding-right: 16px !important;
+            .pf-c-login__main-body p,
+            .pf-c-login__main-body .pf-c-content {
+              color: var(--sb-muted) !important;
             }
-            .pf-c-form-control:focus {
-              border-color: #6495ed !important;
-              box-shadow: 0 0 0 2px rgba(100, 149, 237, 0.35) !important;
+            .pf-c-form {
+              margin-top: 16px !important;
             }
-            .pf-c-form__label,
-            .pf-c-form__label-required,
-            .pf-c-form__label .pf-c-form__label-required {
-              display: none !important;
+            .pf-c-form__group {
+              margin-bottom: 14px !important;
+            }
+            .pf-c-form__label-text {
+              color: var(--sb-muted) !important;
+              font-size: 13px !important;
+              letter-spacing: 0.01em !important;
+            }
+            .pf-c-form-control,
+            .pf-c-input-group .pf-c-form-control {
+              height: 52px !important;
+              border-radius: 14px !important;
+              background: #132b45 !important;
+              border: 1px solid var(--sb-border) !important;
+              color: var(--sb-text) !important;
+              padding: 0 14px !important;
+            }
+            .pf-c-form-control::placeholder {
+              color: #9eb4ca !important;
+              opacity: 0.95 !important;
+            }
+            .pf-c-form-control:focus,
+            .pf-c-input-group .pf-c-form-control:focus {
+              border-color: var(--sb-focus) !important;
+              box-shadow: 0 0 0 3px rgba(97, 168, 255, 0.28) !important;
+            }
+            .pf-c-input-group {
+              border-radius: 14px !important;
+              overflow: hidden !important;
+              border: 1px solid var(--sb-border) !important;
+              background: #132b45 !important;
+            }
+            .pf-c-input-group .pf-c-form-control {
+              border: 0 !important;
+              box-shadow: none !important;
+            }
+            .pf-c-input-group .pf-c-button {
+              min-width: 52px !important;
+              border: 0 !important;
+              border-left: 1px solid rgba(140, 173, 207, 0.35) !important;
+              border-radius: 0 !important;
+              background: rgba(147, 180, 215, 0.16) !important;
+              color: var(--sb-text) !important;
             }
             .pf-c-divider {
-              margin: 24px 0 !important;
-              border-top-color: rgba(148, 163, 184, 0.45) !important;
+              margin: 22px 0 18px !important;
+              border-top-color: rgba(165, 188, 212, 0.34) !important;
             }
-            /* Google source button */
+            .pf-c-login__main .pf-c-button.pf-m-primary {
+              min-height: 52px !important;
+              border-radius: 12px !important;
+              font-weight: 600 !important;
+              font-size: 18px !important;
+              letter-spacing: 0.01em !important;
+              transition: all 0.16s ease !important;
+            }
+            .pf-c-login__main-body .pf-c-button.pf-m-primary {
+              background: var(--sb-local) !important;
+              border-color: var(--sb-local) !important;
+              color: #fff !important;
+            }
+            .pf-c-login__main-body .pf-c-button.pf-m-primary:hover,
+            .pf-c-login__main-body .pf-c-button.pf-m-primary:focus {
+              background: var(--sb-local-hover) !important;
+              border-color: var(--sb-local-hover) !important;
+            }
             .pf-c-login__main-footer .source-button,
             .pf-c-login__main-footer .pf-c-button {
               min-height: 52px !important;
-              border-radius: 999px !important;
-              background: #6495ed !important;
-              border-color: #6495ed !important;
-              color: #ffffff !important;
+              border-radius: 12px !important;
+              background: var(--sb-google) !important;
+              border-color: var(--sb-google) !important;
+              color: #fff !important;
               font-weight: 600 !important;
               font-size: 18px !important;
             }
@@ -223,40 +291,8 @@ data:
             .pf-c-login__main-footer .source-button:focus,
             .pf-c-login__main-footer .pf-c-button:hover,
             .pf-c-login__main-footer .pf-c-button:focus {
-              background: #4f7ed5 !important;
-              border-color: #4f7ed5 !important;
-            }
-            /* Local Authentik submit button */
-            .pf-c-login__main-body .pf-c-button.pf-m-primary {
-              min-height: 52px !important;
-              border-radius: 999px !important;
-              background: #ff7a00 !important;
-              border-color: #ff7a00 !important;
-              color: #ffffff !important;
-              font-weight: 600 !important;
-              font-size: 18px !important;
-              position: relative !important;
-            }
-            .pf-c-login__main-body .pf-c-button.pf-m-primary .pf-c-button__text {
-              color: transparent !important;
-              font-size: 0 !important;
-            }
-            .pf-c-login__main-body .pf-c-button.pf-m-primary .pf-c-button__text::after {
-              content: "Login with Authentik";
-              font-size: 18px !important;
-              font-weight: 600 !important;
-              line-height: 1 !important;
-              color: #ffffff !important;
-              position: absolute !important;
-              inset: 0 !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-            }
-            .pf-c-login__main-body .pf-c-button.pf-m-primary:hover,
-            .pf-c-login__main-body .pf-c-button.pf-m-primary:focus {
-              background: #e56d00 !important;
-              border-color: #e56d00 !important;
+              background: var(--sb-google-hover) !important;
+              border-color: var(--sb-google-hover) !important;
             }
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       - model: authentik_brands.brand
