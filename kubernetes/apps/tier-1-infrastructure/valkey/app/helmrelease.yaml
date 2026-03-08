@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: valkey
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: valkey
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    architecture: replication
+
+    auth:
+      enabled: true
+      existingSecret: valkey
+      existingSecretPasswordKey: VALKEY_PASSWORD
+
+    sentinel:
+      enabled: true
+      quorum: 2
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+
+    replica:
+      replicaCount: 2
+      resources:
+        requests:
+          cpu: 25m
+          memory: 128Mi
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: valkey
+                  app.kubernetes.io/component: node
+              topologyKey: kubernetes.io/hostname
+      persistence:
+        enabled: true
+        storageClass: csi-cephfs-config-sc
+        size: 1Gi

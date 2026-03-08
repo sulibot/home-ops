@@ -42,6 +42,7 @@ resources:
   - ./postgres-vectorchord/ks-precheck.yaml
   - ./postgres-vectorchord/ks.yaml
   - ./postgres-vectorchord/ks-ready.yaml
+  - ./valkey/ks.yaml
   - ./secrets-ready/ks.yaml
   - ./storage-ready/ks.yaml
   - ./ingress-ready/ks.yaml
