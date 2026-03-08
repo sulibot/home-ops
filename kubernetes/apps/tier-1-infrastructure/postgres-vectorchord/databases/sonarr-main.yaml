@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: sonarr-main
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: sonarr_main
+  owner: sonarr
+  ensure: present

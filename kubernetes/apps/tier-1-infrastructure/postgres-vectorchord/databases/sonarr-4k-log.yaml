@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: sonarr-4k-log
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: sonarr_4k_log
+  owner: sonarr_4k
+  ensure: present

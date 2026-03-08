@@ -124,6 +124,26 @@ spec:
         ensure: present
         passwordSecret:
           name: paperless-pg-password
+      - name: radarr
+        login: true
+        ensure: present
+        passwordSecret:
+          name: radarr-pg-password
+      - name: radarr_4k
+        login: true
+        ensure: present
+        passwordSecret:
+          name: radarr-4k-pg-password
+      - name: sonarr
+        login: true
+        ensure: present
+        passwordSecret:
+          name: sonarr-pg-password
+      - name: sonarr_4k
+        login: true
+        ensure: present
+        passwordSecret:
+          name: sonarr-4k-pg-password
 
   storage:
     size: 60Gi

@@ -1,0 +1,41 @@
+---
+# One-shot SQLite → PostgreSQL migration job for Sonarr-4K.
+# Run AFTER scaling sonarr-4k down to 0, then scale back up once complete.
+# Delete or comment out this file after migration is verified.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarr-4k-pgloader
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: pgloader
+          image: docker.io/dimitri/pgloader:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pgloader \
+                --with "batch rows = 1000" \
+                sqlite:///config/sonarr.db \
+                "postgresql://sonarr_4k:${SONARR__POSTGRES__PASSWORD}@postgres-vectorchord-rw.default.svc.cluster.local/sonarr_4k_main"
+          env:
+            - name: SONARR__POSTGRES__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sonarr-4k-secret
+                  key: SONARR__POSTGRES__PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: sonarr-4k-config

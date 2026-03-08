@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: radarr-4k-log
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: radarr_4k_log
+  owner: radarr_4k
+  ensure: present

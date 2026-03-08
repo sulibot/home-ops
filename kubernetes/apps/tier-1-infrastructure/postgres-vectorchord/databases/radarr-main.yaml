@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: radarr-main
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: radarr_main
+  owner: radarr
+  ensure: present

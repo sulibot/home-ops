@@ -1,0 +1,41 @@
+---
+# One-shot SQLite → PostgreSQL migration job for Radarr-4K.
+# Run AFTER scaling radarr-4k down to 0, then scale back up once complete.
+# Delete or comment out this file after migration is verified.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: radarr-4k-pgloader
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: pgloader
+          image: docker.io/dimitri/pgloader:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pgloader \
+                --with "batch rows = 1000" \
+                sqlite:///config/radarr.db \
+                "postgresql://radarr_4k:${RADARR__POSTGRES__PASSWORD}@postgres-vectorchord-rw.default.svc.cluster.local/radarr_4k_main"
+          env:
+            - name: RADARR__POSTGRES__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: radarr-4k-secret
+                  key: RADARR__POSTGRES__PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: radarr-4k-config

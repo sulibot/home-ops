@@ -5,3 +5,11 @@ resources:
   - authentik.yaml
   - firefly.yaml
   - paperless.yaml
+  - radarr-main.yaml
+  - radarr-log.yaml
+  - radarr-4k-main.yaml
+  - radarr-4k-log.yaml
+  - sonarr-main.yaml
+  - sonarr-log.yaml
+  - sonarr-4k-main.yaml
+  - sonarr-4k-log.yaml
