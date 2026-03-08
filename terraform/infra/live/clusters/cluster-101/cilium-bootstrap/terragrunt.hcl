@@ -8,6 +8,7 @@ locals {
 
   cluster_enabled        = try(local.cluster_config.enabled, true)
   bootstrap_mode         = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
+  bootstrap_run_token    = local.bootstrap_mode ? formatdate("YYYYMMDDhhmmss", timestamp()) : ""
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
   has_cluster_kubeconfig = fileexists(local.cluster_kubeconfig)
   kubernetes_api_ready = local.has_cluster_kubeconfig && trimspace(run_cmd(
@@ -61,5 +62,6 @@ inputs = {
   kubeconfig_path         = local.has_cluster_kubeconfig ? local.cluster_kubeconfig : dependency.bootstrap.outputs.kubeconfig_path
   cilium_daemonset_exists = local.cilium_daemonset_exists
   cluster_uid             = local.cluster_uid
+  bootstrap_run_token     = local.bootstrap_run_token
   repo_root               = get_repo_root()
 }

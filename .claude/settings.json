@@ -21,7 +21,8 @@
       "WebFetch(domain:external-secrets.io)",
       "WebFetch(domain:labs.iximiuz.com)",
       "Bash(then op item get \"$id\" --format json)",
-      "Bash(gh pr checks 202)"
+      "Bash(gh pr checks 202)",
+      "Read(//usr/local/bin/**)"
     ],
     "additionalDirectories": [
       "/Users/sulibot"

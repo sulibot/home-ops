@@ -4,6 +4,7 @@ kind: Kustomization
 #  - ../../../../../components/volsync
 resources:
   - externalsecret.yaml
+  - ocirepository.yaml
   - helmrelease.yaml
   - valkey-svc.yaml
   - vpa.yaml

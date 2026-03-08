@@ -112,6 +112,7 @@ resource "null_resource" "wait_crd_established" {
         local timeout="$2"
         local deadline
         local now
+        local established
         echo "  - required: $crd"
 
         deadline=$(( $(date +%s) + $${timeout%s} ))
@@ -127,15 +128,24 @@ resource "null_resource" "wait_crd_established" {
           sleep 5
         done
 
-        if ! kubectl --kubeconfig="${var.kubeconfig_path}" wait \
-          --for=condition=Established \
-          --timeout="$${timeout}" \
-          "crd/$${crd}"; then
-          echo "    ✗ required CRD did not reach Established in time: $crd" >&2
-          return 1
-        fi
+        # Avoid `kubectl wait` here because CRDs can transiently exist with
+        # nil status.conditions, which causes accessor errors and false negatives.
+        while true; do
+          established=$(kubectl --kubeconfig="${var.kubeconfig_path}" get "crd/$${crd}" \
+            -o jsonpath='{range .status.conditions[?(@.type=="Established")]}{.status}{end}' 2>/dev/null || true)
+          if [ "$established" = "True" ]; then
+            echo "    ✓ $crd Established"
+            return 0
+          fi
 
-        return 0
+          now=$(date +%s)
+          if [ "$now" -ge "$deadline" ]; then
+            echo "    ✗ required CRD did not reach Established in time: $crd" >&2
+            return 1
+          fi
+
+          sleep 5
+        done
       }
 
       wait_crd_optional() {
@@ -183,6 +193,19 @@ resource "null_resource" "cnpg_restore" {
       KUSTOMIZATION_NAME="$CNPG_KUSTOMIZATION_NAME"
       MAX_AGE_SECONDS=$((CNPG_BACKUP_MAX_AGE_HOURS * 3600))
       STALE_BACKUP_MAX_AGE_SECONDS=$((CNPG_STALE_BACKUP_MAX_AGE_MINUTES * 60))
+      SECRETS_TIMEOUT_SECONDS="$CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS"
+      FLUX_KUSTOMIZATION_TIMEOUT_SECONDS="$CNPG_RESTORE_FLUX_KUSTOMIZATION_TIMEOUT_SECONDS"
+      FLUX_KUSTOMIZATION_NAMESPACE="$CNPG_RESTORE_FLUX_KUSTOMIZATION_NAMESPACE"
+      FLUX_KUSTOMIZATION_NAME="$CNPG_RESTORE_FLUX_KUSTOMIZATION_NAME"
+      FLUX_PRECHECK_KUSTOMIZATION_NAME="$CNPG_RESTORE_FLUX_PRECHECK_KUSTOMIZATION_NAME"
+      RBD_GATE_TIMEOUT_SECONDS="$CNPG_RESTORE_RBD_GATE_TIMEOUT_SECONDS"
+      RBD_SELF_HEAL_RETRIES="$CNPG_RESTORE_RBD_SELF_HEAL_RETRIES"
+      RBD_SELF_HEAL_SETTLE_SECONDS="$CNPG_RESTORE_RBD_SELF_HEAL_SETTLE_SECONDS"
+      RBD_NODEPLUGIN_NAMESPACE="$CNPG_RESTORE_RBD_NODEPLUGIN_NAMESPACE"
+      RBD_NODEPLUGIN_DAEMONSET_NAME="$CNPG_RESTORE_RBD_NODEPLUGIN_DAEMONSET_NAME"
+      CLUSTER_HEALTH_TIMEOUT_SECONDS="$CNPG_RESTORE_CLUSTER_HEALTH_TIMEOUT_SECONDS"
+      DATABASE_CR_TIMEOUT_SECONDS="$CNPG_RESTORE_DATABASE_CR_TIMEOUT_SECONDS"
+      PROGRESS_STALL_TIMEOUT_SECONDS="$CNPG_RESTORE_PROGRESS_STALL_TIMEOUT_SECONDS"
       RESUME_FLUX_ON_EXIT="false"
       SCHEDULED_STATE_FILE="$(mktemp)"
       RESTORE_METHOD=""
@@ -201,6 +224,65 @@ resource "null_resource" "cnpg_restore" {
         fi
       }
       trap cleanup EXIT
+
+      stage() {
+        local title="$1"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "$title"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      }
+
+      wait_until() {
+        local timeout_seconds="$1"
+        local interval_seconds="$2"
+        shift 2
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        while true; do
+          if "$@"; then
+            return 0
+          fi
+          if [ "$(date +%s)" -ge "$deadline" ]; then
+            return 1
+          fi
+          sleep "$interval_seconds"
+        done
+      }
+
+      request_flux_reconcile() {
+        local ns="$1"
+        local name="$2"
+        local ts
+        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        $KC -n "$ns" annotate kustomization "$name" reconcile.fluxcd.io/requestedAt="$ts" --overwrite >/dev/null 2>&1 || true
+      }
+
+      is_flux_kustomization_ready() {
+        local ns="$1"
+        local name="$2"
+        local status
+        status="$($KC -n "$ns" get kustomization "$name" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | .status' | head -n1 || true)"
+        [ "$status" = "True" ]
+      }
+
+      wait_for_flux_kustomization_ready() {
+        local timeout_seconds="$1"
+        local ns="$2"
+        local name="$3"
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        local last_reconcile_request=0
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+          if is_flux_kustomization_ready "$ns" "$name"; then
+            return 0
+          fi
+          now="$(date +%s)"
+          if [ $((now - last_reconcile_request)) -ge 30 ]; then
+            request_flux_reconcile "$ns" "$name"
+            last_reconcile_request="$now"
+          fi
+          sleep 5
+        done
+        return 1
+      }
 
       age_from_plugin_backup() {
         $KC -n "$CLUSTER_NS" get backup.postgresql.cnpg.io -o json 2>/dev/null | jq -r --arg cluster "$CLUSTER_NAME" '
@@ -225,58 +307,289 @@ resource "null_resource" "cnpg_restore" {
 
       wait_for_cluster_healthy() {
         local timeout_seconds="$1"
-        local loops=$((timeout_seconds / 10))
-        local i=0
-        while [ "$i" -lt "$loops" ]; do
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        local last_progress_ts="$(date +%s)"
+        local last_progress_sig=""
+        while [ "$(date +%s)" -lt "$deadline" ]; do
           phase="$($KC -n "$CLUSTER_NS" get cluster "$CLUSTER_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
           if echo "$phase" | grep -qi "healthy"; then
             return 0
           fi
+
+          progress_sig="$($KC -n "$CLUSTER_NS" get cluster "$CLUSTER_NAME" -o json 2>/dev/null | jq -r '
+            [
+              (.status.phase // ""),
+              (.status.currentPrimary // ""),
+              (.status.conditions[]? | select(.type=="Ready") | .reason // "")
+            ] | join("|")' || true)"
+          if [ -n "$progress_sig" ] && [ "$progress_sig" != "$last_progress_sig" ]; then
+            last_progress_sig="$progress_sig"
+            last_progress_ts="$(date +%s)"
+          fi
+
+          blocker="$(detect_restore_blocker || true)"
+          if [ -n "$blocker" ]; then
+            echo "ERROR: restore blocked before healthy: $blocker" >&2
+            dump_restore_state
+            return 1
+          fi
+
+          if [ $(( $(date +%s) - last_progress_ts )) -ge "$PROGRESS_STALL_TIMEOUT_SECONDS" ]; then
+            echo "ERROR: restore progress stalled for $PROGRESS_STALL_TIMEOUT_SECONDS seconds" >&2
+            dump_restore_state
+            return 1
+          fi
+
           sleep 10
-          i=$((i + 1))
         done
+        echo "ERROR: cluster did not become healthy in $timeout_seconds seconds" >&2
+        dump_restore_state
         return 1
       }
 
       wait_for_database_crs() {
         local timeout_seconds="$1"
-        local loops=$((timeout_seconds / 10))
-        local i=0
-        while [ "$i" -lt "$loops" ]; do
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        while [ "$(date +%s)" -lt "$deadline" ]; do
           pending="$($KC -n "$CLUSTER_NS" get databases.postgresql.cnpg.io -o json 2>/dev/null | jq -r '[.items[]? | select((.status.applied // false) != true) | .metadata.name] | join(",")' || true)"
           if [ -z "$pending" ] || [ "$pending" = "null" ]; then
             return 0
           fi
           sleep 10
-          i=$((i + 1))
         done
         return 1
       }
 
-      wait_for_required_secrets() {
+      wait_for_secret_with_reconcile() {
         local timeout_seconds="$1"
-        shift
-        local loops=$((timeout_seconds / 5))
-        local i=0
-        while [ "$i" -lt "$loops" ]; do
-          local missing=0
-          for s in "$@"; do
-            if ! $KC -n "$CLUSTER_NS" get secret "$s" >/dev/null 2>&1; then
-              missing=$((missing + 1))
-            fi
-          done
-          if [ "$missing" -eq 0 ]; then
+        local secret_name="$2"
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        local last_reconcile_request=0
+        local last_status_log=0
+
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+          if $KC -n "$CLUSTER_NS" get secret "$secret_name" >/dev/null 2>&1; then
             return 0
           fi
+
+          now="$(date +%s)"
+          if [ $((now - last_reconcile_request)) -ge 20 ]; then
+            request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_PRECHECK_KUSTOMIZATION_NAME"
+            request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_KUSTOMIZATION_NAME"
+            last_reconcile_request="$now"
+          fi
+
+          if [ $((now - last_status_log)) -ge 30 ]; then
+            ext_ready="$($KC -n "$CLUSTER_NS" get externalsecret "$secret_name" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
+            flux_precheck_ready="$($KC -n "$FLUX_KUSTOMIZATION_NAMESPACE" get kustomization "$FLUX_PRECHECK_KUSTOMIZATION_NAME" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
+            flux_main_ready="$($KC -n "$FLUX_KUSTOMIZATION_NAMESPACE" get kustomization "$FLUX_KUSTOMIZATION_NAME" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
+
+            [ -z "$ext_ready" ] && ext_ready="not-found-or-pending"
+            [ -z "$flux_precheck_ready" ] && flux_precheck_ready="not-found-or-pending"
+            [ -z "$flux_main_ready" ] && flux_main_ready="not-found-or-pending"
+
+            echo "WAIT: secret/$secret_name is not ready yet (ExternalSecret=$ext_ready, precheck=$flux_precheck_ready, main=$flux_main_ready)"
+            last_status_log="$now"
+          fi
+
           sleep 5
-          i=$((i + 1))
+        done
+
+        return 1
+      }
+
+      workers_missing_rbd_csi() {
+        local workers
+        workers="$($KC get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+        [ -z "$workers" ] && return 0
+
+        while IFS= read -r node; do
+          [ -z "$node" ] && continue
+          has_rbd="$($KC get csinode "$node" -o json 2>/dev/null | jq -r '[.spec.drivers[]?.name] | index("rbd.csi.ceph.com") != null' || echo false)"
+          if [ "$has_rbd" != "true" ]; then
+            echo "$node"
+          fi
+        done <<< "$workers"
+      }
+
+      restart_rbd_nodeplugin_pod_for_node() {
+        local node="$1"
+        local pod
+        pod="$($KC -n "$RBD_NODEPLUGIN_NAMESPACE" get pods -o json 2>/dev/null | jq -r --arg node "$node" --arg ds "$RBD_NODEPLUGIN_DAEMONSET_NAME" '
+          [.items[]?
+            | select(.spec.nodeName == $node)
+            | select(any(.metadata.ownerReferences[]?; .kind == "DaemonSet" and .name == $ds))
+            | .metadata.name
+          ] | first // ""' || true)"
+
+        if [ -z "$pod" ]; then
+          echo "WARN: no rbd nodeplugin pod found on node '$node'" >&2
+          return 1
+        fi
+
+        echo "WARN: restarting rbd nodeplugin pod '$pod' on node '$node'" >&2
+        $KC -n "$RBD_NODEPLUGIN_NAMESPACE" delete pod "$pod" --wait=false >/dev/null 2>&1 || true
+        return 0
+      }
+
+      wait_for_rbd_csi_on_workers() {
+        local timeout_seconds="$1"
+        local deadline=$(( $(date +%s) + timeout_seconds ))
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+          missing="$(workers_missing_rbd_csi || true)"
+          if [ -z "$missing" ]; then
+            return 0
+          fi
+
+          if [ -z "$($KC get nodes -l '!node-role.kubernetes.io/control-plane' -o name 2>/dev/null || true)" ]; then
+            sleep 5
+            continue
+          fi
+          sleep 5
         done
         return 1
       }
 
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "CNPG RESTORE ORCHESTRATION (INLINE)"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      ensure_rbd_csi_on_workers() {
+        local timeout_seconds="$1"
+        local retries="$2"
+        local settle_seconds="$3"
+        local attempt=0
+
+        while true; do
+          if wait_for_rbd_csi_on_workers "$timeout_seconds"; then
+            return 0
+          fi
+
+          missing="$(workers_missing_rbd_csi || true)"
+          [ -z "$missing" ] && return 0
+
+          if [ "$attempt" -ge "$retries" ]; then
+            echo "ERROR: rbd.csi.ceph.com missing on worker CSINodes after $attempt self-heal attempt(s): $(echo "$missing" | tr '\n' ',' | sed 's/,$//')" >&2
+            return 1
+          fi
+
+          echo "WARN: rbd.csi.ceph.com missing on nodes: $(echo "$missing" | tr '\n' ',' | sed 's/,$//')" >&2
+          while IFS= read -r node; do
+            [ -z "$node" ] && continue
+            restart_rbd_nodeplugin_pod_for_node "$node" || true
+          done <<< "$missing"
+
+          attempt=$((attempt + 1))
+          sleep "$settle_seconds"
+        done
+      }
+
+      barman_object_store_probe() {
+        if [ "$CNPG_OBJECT_STORE_PROBE_MODE" = "off" ]; then
+          return 0
+        fi
+
+        if ! command -v aws >/dev/null 2>&1; then
+          if [ "$CNPG_OBJECT_STORE_PROBE_MODE" = "required" ]; then
+            echo "ERROR: aws CLI is required for CNPG object-store probe mode=required" >&2
+            return 1
+          fi
+          echo "WARN: aws CLI not found; skipping direct object-store probe (mode=auto)." >&2
+          return 0
+        fi
+
+        secret_json="$($KC -n "$CLUSTER_NS" get secret cnpg-barman-s3 -o json 2>/dev/null || true)"
+        [ -z "$secret_json" ] && return 1
+
+        decode_key() {
+          local key="$1"
+          echo "$secret_json" | jq -r --arg k "$key" '.data[$k] // empty' | base64 -d 2>/dev/null || true
+        }
+
+        endpoint="$(decode_key endpoint)"
+        [ -z "$endpoint" ] && endpoint="$(decode_key ENDPOINT_URL)"
+        [ -z "$endpoint" ] && endpoint="$(decode_key AWS_ENDPOINT)"
+        [ -z "$endpoint" ] && endpoint="$(decode_key S3_ENDPOINT)"
+
+        bucket="$(decode_key bucket)"
+        [ -z "$bucket" ] && bucket="$(decode_key BUCKET_NAME)"
+
+        access_key="$(decode_key ACCESS_KEY_ID)"
+        [ -z "$access_key" ] && access_key="$(decode_key ACCESS_KEY)"
+
+        secret_key="$(decode_key SECRET_ACCESS_KEY)"
+        [ -z "$secret_key" ] && secret_key="$(decode_key ACCESS_SECRET_KEY)"
+
+        if [ -z "$endpoint" ] || [ -z "$bucket" ] || [ -z "$access_key" ] || [ -z "$secret_key" ]; then
+          if [ "$CNPG_OBJECT_STORE_PROBE_MODE" = "required" ]; then
+            echo "ERROR: CNPG object-store probe missing endpoint/bucket/credentials in cnpg-barman-s3 secret" >&2
+            return 1
+          fi
+          echo "WARN: skipping direct object-store probe; secret keys are incomplete (mode=auto)." >&2
+          return 0
+        fi
+
+        if ! timeout "$CNPG_OBJECT_STORE_PROBE_TIMEOUT_SECONDS" env \
+          AWS_ACCESS_KEY_ID="$access_key" \
+          AWS_SECRET_ACCESS_KEY="$secret_key" \
+          AWS_EC2_METADATA_DISABLED=true \
+          aws --endpoint-url "$endpoint" s3api list-objects-v2 \
+            --bucket "$bucket" \
+            --max-items 1 \
+            --query 'length(Contents)' \
+            --output text >/dev/null 2>&1; then
+          if [ "$CNPG_OBJECT_STORE_PROBE_MODE" = "required" ]; then
+            echo "ERROR: direct object-store probe failed for bucket '$bucket' at '$endpoint'" >&2
+            return 1
+          fi
+          echo "WARN: direct object-store probe failed (mode=auto); continuing with in-cluster metadata logic." >&2
+          return 0
+        fi
+        return 0
+      }
+
+      detect_restore_blocker() {
+        local pods
+        pods="$($KC -n "$CLUSTER_NS" get pods -o json 2>/dev/null | jq -r --arg cluster "$CLUSTER_NAME" '
+          [.items[]?
+            | select(
+                ((.metadata.labels["cnpg.io/cluster"] // "") == $cluster)
+                or (.metadata.name | startswith($cluster + "-"))
+              )
+            | .metadata.name
+          ] | .[]' || true)"
+        [ -z "$pods" ] && return 1
+
+        while IFS= read -r pod; do
+          [ -z "$pod" ] && continue
+          pod_phase="$($KC -n "$CLUSTER_NS" get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+          if [ "$pod_phase" = "Failed" ]; then
+            echo "pod/$pod entered Failed phase"
+            return 0
+          fi
+
+          if [ "$pod_phase" = "Pending" ]; then
+            warning="$($KC -n "$CLUSTER_NS" get events --field-selector "involvedObject.kind=Pod,involvedObject.name=$pod,type=Warning" -o json 2>/dev/null | jq -r '
+              [.items[]?
+                | "\(.reason // ""): \(.message // "")"
+                | select(test("does not contain driver rbd.csi.ceph.com|timed out waiting for the condition"))
+              ] | last // ""' || true)"
+            if [ -n "$warning" ]; then
+              echo "pod/$pod pending with warning: $warning"
+              return 0
+            fi
+          fi
+        done <<< "$pods"
+
+        return 1
+      }
+
+      dump_restore_state() {
+        echo "----- restore diagnostics start -----" >&2
+        $KC -n "$CLUSTER_NS" get cluster "$CLUSTER_NAME" -o wide >&2 || true
+        $KC -n "$CLUSTER_NS" get pods -l "cnpg.io/cluster=$CLUSTER_NAME" -o wide >&2 || true
+        $KC -n "$CLUSTER_NS" get pvc "$${CLUSTER_NAME}-1" -o wide >&2 || true
+        $KC -n "$CLUSTER_NS" get events --sort-by=.lastTimestamp | tail -n 20 >&2 || true
+        echo "----- restore diagnostics end -----" >&2
+      }
+
+      stage "CNPG RESTORE ORCHESTRATION (INLINE)"
       echo "Mode: $CNPG_RESTORE_MODE"
       echo "Restore method preference: $CNPG_RESTORE_METHOD"
 
@@ -285,6 +598,7 @@ resource "null_resource" "cnpg_restore" {
         exit 1
       fi
 
+      stage "STAGE 1: NO-OP CHECK FOR EXISTING HEALTHY DATA"
       # If cluster is already healthy and has user data, leave it alone.
       phase="$($KC -n "$CLUSTER_NS" get cluster "$CLUSTER_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
       if echo "$phase" | grep -qi "healthy"; then
@@ -298,6 +612,7 @@ resource "null_resource" "cnpg_restore" {
         fi
       fi
 
+      stage "STAGE 2: DETECT RESTORE SOURCE"
       plugin_age="$(age_from_plugin_backup || true)"
       snapshot_age="$(age_from_snapshot || true)"
       plugin_fresh="false"
@@ -334,8 +649,42 @@ resource "null_resource" "cnpg_restore" {
           echo "No fresh backup found; NEW_DB mode allows fresh bootstrap."
           exit 0
         fi
-        echo "ERROR: no fresh backup found and CNPG_RESTORE_MODE=RESTORE_REQUIRED" >&2
+
+        # In RESTORE_REQUIRED mode, allow barman restore attempts when backup metadata
+        # is missing from the fresh cluster but object-store backups exist in MinIO.
+        if [ "$CNPG_RESTORE_METHOD" = "auto" ] || [ "$CNPG_RESTORE_METHOD" = "barman" ]; then
+          echo "WARN: no fresh in-cluster backup metadata detected; forcing barman restore attempt." >&2
+          echo "      plugin_age='$${plugin_age:-<none>}' snapshot_age='$${snapshot_age:-<none>}'" >&2
+          RESTORE_METHOD="barman"
+        else
+          echo "ERROR: no fresh backup found and CNPG_RESTORE_MODE=RESTORE_REQUIRED" >&2
+          exit 1
+        fi
+      fi
+
+      stage "STAGE 3: PRE-READINESS GATES"
+      # Nudge the precheck and CNPG kustomizations, but do not hard-gate on Ready.
+      # During bootstrap/restore, the postgres kustomization can be transiently NotReady
+      # due expected bootstrap drift while still producing required secrets.
+      request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_PRECHECK_KUSTOMIZATION_NAME"
+      request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_KUSTOMIZATION_NAME"
+
+      # Prevent CNPG restore from burning timeout while PVCs cannot attach.
+      if ! ensure_rbd_csi_on_workers "$RBD_GATE_TIMEOUT_SECONDS" "$RBD_SELF_HEAL_RETRIES" "$RBD_SELF_HEAL_SETTLE_SECONDS"; then
+        echo "ERROR: rbd.csi.ceph.com is not registered on all worker CSINodes" >&2
         exit 1
+      fi
+
+      # Only gate restore on the backup credential when using barman restore.
+      if [ "$RESTORE_METHOD" = "barman" ]; then
+        if ! wait_for_secret_with_reconcile "$SECRETS_TIMEOUT_SECONDS" "cnpg-barman-s3"; then
+          echo "ERROR: required CNPG secret 'cnpg-barman-s3' did not become ready in time" >&2
+          exit 1
+        fi
+        if ! barman_object_store_probe; then
+          echo "ERROR: object-store preflight failed for barman restore path" >&2
+          exit 1
+        fi
       fi
 
       current_suspend="$($KC -n "$KUSTOMIZATION_NS" get kustomization "$KUSTOMIZATION_NAME" -o jsonpath='{.spec.suspend}' 2>/dev/null || true)"
@@ -376,19 +725,11 @@ resource "null_resource" "cnpg_restore" {
         done <<< "$stale_backups"
       fi
 
-      if ! wait_for_required_secrets 300 \
-        "cnpg-barman-s3" \
-        "atuin-pg-password" \
-        "authentik-pg-password" \
-        "firefly-pg-password" \
-        "paperless-pg-password"; then
-        echo "ERROR: required CNPG secrets did not become ready in time" >&2
-        exit 1
-      fi
-
+      stage "STAGE 4: SUSPEND GITOPS + PREPARE CLEAN RESTORE"
       $KC -n "$CLUSTER_NS" delete cluster "$CLUSTER_NAME" --ignore-not-found --wait=true >/dev/null || true
       $KC -n "$CLUSTER_NS" delete pvc "$${CLUSTER_NAME}-1" --ignore-not-found --wait=true >/dev/null || true
 
+      stage "STAGE 5: APPLY RECOVERY CLUSTER SPEC"
       if [ "$RESTORE_METHOD" = "barman" ]; then
         $KC -n "$CLUSTER_NS" apply -f - <<YAML
 apiVersion: postgresql.cnpg.io/v1
@@ -427,28 +768,6 @@ spec:
         name: barman-cloud.cloudnative-pg.io
         parameters:
           barmanObjectName: postgres-vectorchord-backup
-  managed:
-    roles:
-      - name: atuin
-        login: true
-        ensure: present
-        passwordSecret:
-          name: atuin-pg-password
-      - name: authentik
-        login: true
-        ensure: present
-        passwordSecret:
-          name: authentik-pg-password
-      - name: firefly
-        login: true
-        ensure: present
-        passwordSecret:
-          name: firefly-pg-password
-      - name: paperless
-        login: true
-        ensure: present
-        passwordSecret:
-          name: paperless-pg-password
   storage:
     resizeInUseVolumes: true
     size: $CNPG_STORAGE_SIZE
@@ -493,28 +812,6 @@ spec:
           name: $SNAP_NAME
           kind: VolumeSnapshot
           apiGroup: snapshot.storage.k8s.io
-  managed:
-    roles:
-      - name: atuin
-        login: true
-        ensure: present
-        passwordSecret:
-          name: atuin-pg-password
-      - name: authentik
-        login: true
-        ensure: present
-        passwordSecret:
-          name: authentik-pg-password
-      - name: firefly
-        login: true
-        ensure: present
-        passwordSecret:
-          name: firefly-pg-password
-      - name: paperless
-        login: true
-        ensure: present
-        passwordSecret:
-          name: paperless-pg-password
   storage:
     resizeInUseVolumes: true
     size: $CNPG_STORAGE_SIZE
@@ -522,8 +819,9 @@ spec:
 YAML
       fi
 
-      if ! wait_for_cluster_healthy 1200; then
-        echo "ERROR: CNPG restore did not become healthy in 20 minutes" >&2
+      stage "STAGE 6: HEALTH + POST-RESTORE VALIDATION"
+      if ! wait_for_cluster_healthy "$CLUSTER_HEALTH_TIMEOUT_SECONDS"; then
+        echo "ERROR: CNPG restore did not become healthy in time" >&2
         exit 1
       fi
 
@@ -540,8 +838,8 @@ YAML
         }}
       ]' >/dev/null
 
-      if ! wait_for_database_crs 600; then
-        echo "ERROR: database CRs did not reach applied=true in 10 minutes" >&2
+      if ! wait_for_database_crs "$DATABASE_CR_TIMEOUT_SECONDS"; then
+        echo "ERROR: database CRs did not reach applied=true in time" >&2
         exit 1
       fi
 
@@ -560,17 +858,32 @@ YAML
       echo "CNPG restore orchestration complete."
     EOT
     environment = {
-      KUBECONFIG                        = var.kubeconfig_path
-      CNPG_NEW_DB                       = var.cnpg_new_db ? "true" : "false"
-      CNPG_RESTORE_MODE                 = var.cnpg_restore_mode
-      CNPG_RESTORE_METHOD               = var.cnpg_restore_method
-      CNPG_BACKUP_MAX_AGE_HOURS         = tostring(var.cnpg_backup_max_age_hours)
-      CNPG_STALE_BACKUP_MAX_AGE_MINUTES = tostring(var.cnpg_stale_backup_max_age_minutes)
-      CNPG_STORAGE_SIZE                 = var.cnpg_storage_size
-      CNPG_CLUSTER_NAME                 = "postgres-vectorchord"
-      CNPG_CLUSTER_NAMESPACE            = "default"
-      CNPG_KUSTOMIZATION_NAMESPACE      = "flux-system"
-      CNPG_KUSTOMIZATION_NAME           = "postgres-vectorchord"
+      KUBECONFIG                                    = var.kubeconfig_path
+      CNPG_NEW_DB                                   = var.cnpg_new_db ? "true" : "false"
+      CNPG_RESTORE_MODE                             = var.cnpg_restore_mode
+      CNPG_RESTORE_METHOD                           = var.cnpg_restore_method
+      CNPG_BACKUP_MAX_AGE_HOURS                     = tostring(var.cnpg_backup_max_age_hours)
+      CNPG_STALE_BACKUP_MAX_AGE_MINUTES             = tostring(var.cnpg_stale_backup_max_age_minutes)
+      CNPG_STORAGE_SIZE                             = var.cnpg_storage_size
+      CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS = tostring(var.cnpg_restore_required_secrets_timeout_seconds)
+      CNPG_RESTORE_FLUX_KUSTOMIZATION_TIMEOUT_SECONDS = tostring(var.cnpg_restore_flux_kustomization_timeout_seconds)
+      CNPG_RESTORE_FLUX_KUSTOMIZATION_NAMESPACE       = var.cnpg_restore_flux_kustomization_namespace
+      CNPG_RESTORE_FLUX_KUSTOMIZATION_NAME            = var.cnpg_restore_flux_kustomization_name
+      CNPG_RESTORE_FLUX_PRECHECK_KUSTOMIZATION_NAME   = var.cnpg_restore_flux_precheck_kustomization_name
+      CNPG_RESTORE_RBD_GATE_TIMEOUT_SECONDS         = tostring(var.cnpg_restore_rbd_gate_timeout_seconds)
+      CNPG_RESTORE_RBD_SELF_HEAL_RETRIES            = tostring(var.cnpg_restore_rbd_self_heal_retries)
+      CNPG_RESTORE_RBD_SELF_HEAL_SETTLE_SECONDS     = tostring(var.cnpg_restore_rbd_self_heal_settle_seconds)
+      CNPG_RESTORE_RBD_NODEPLUGIN_NAMESPACE         = var.cnpg_restore_rbd_nodeplugin_namespace
+      CNPG_RESTORE_RBD_NODEPLUGIN_DAEMONSET_NAME    = var.cnpg_restore_rbd_nodeplugin_daemonset_name
+      CNPG_RESTORE_CLUSTER_HEALTH_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_cluster_healthy_timeout_seconds)
+      CNPG_RESTORE_DATABASE_CR_TIMEOUT_SECONDS      = tostring(var.cnpg_restore_database_cr_timeout_seconds)
+      CNPG_RESTORE_PROGRESS_STALL_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_progress_stall_timeout_seconds)
+      CNPG_OBJECT_STORE_PROBE_MODE                  = var.cnpg_object_store_probe_mode
+      CNPG_OBJECT_STORE_PROBE_TIMEOUT_SECONDS       = tostring(var.cnpg_object_store_probe_timeout_seconds)
+      CNPG_CLUSTER_NAME                             = "postgres-vectorchord"
+      CNPG_CLUSTER_NAMESPACE                        = "default"
+      CNPG_KUSTOMIZATION_NAMESPACE                  = "flux-system"
+      CNPG_KUSTOMIZATION_NAME                       = "postgres-vectorchord"
     }
   }
 
@@ -614,6 +927,12 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list", "watch", "delete"]
   - apiGroups: ["external-secrets.io"]
     resources: ["clustersecretstores"]
     verbs: ["get", "list", "watch"]
@@ -650,9 +969,18 @@ spec:
     spec:
       serviceAccountName: flux-bootstrap-capability-check
       restartPolicy: Never
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: gate-check
           image: public.ecr.aws/bitnami/kubectl:1.34.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
           command:
             - /bin/bash
             - -ec
@@ -689,6 +1017,92 @@ spec:
                 [ -n "$desired" ] && [ "$desired" != "0" ] && [ "$desired" = "$ready" ]
               }
 
+              csi_driver_registered_on_workers() {
+                local driver="$1"
+                local workers
+                local missing=0
+
+                workers=$(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+                [ -z "$workers" ] && return 1
+
+                while IFS= read -r node; do
+                  [ -z "$node" ] && continue
+                  has_driver=$(kubectl get csinode "$node" -o json 2>/dev/null | jq -r --arg driver "$driver" '[.spec.drivers[]?.name] | index($driver) != null' || echo false)
+                  if [ "$has_driver" != "true" ]; then
+                    missing=$((missing + 1))
+                  fi
+                done <<< "$workers"
+
+                [ "$missing" -eq 0 ]
+              }
+
+              workers_missing_csi_driver() {
+                local driver="$1"
+                local workers
+
+                workers=$(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+                [ -z "$workers" ] && return 1
+
+                while IFS= read -r node; do
+                  [ -z "$node" ] && continue
+                  has_driver=$(kubectl get csinode "$node" -o json 2>/dev/null | jq -r --arg driver "$driver" '[.spec.drivers[]?.name] | index($driver) != null' || echo false)
+                  if [ "$has_driver" != "true" ]; then
+                    echo "$node"
+                  fi
+                done <<< "$workers"
+              }
+
+              restart_nodeplugin_pod_for_node() {
+                local ns="$1"
+                local ds="$2"
+                local node="$3"
+                local pod
+
+                pod=$(kubectl -n "$ns" get pods -o json 2>/dev/null | jq -r --arg node "$node" --arg ds "$ds" '
+                  [.items[]?
+                    | select(.spec.nodeName == $node)
+                    | select(any(.metadata.ownerReferences[]?; .kind == "DaemonSet" and .name == $ds))
+                    | .metadata.name
+                  ] | first // ""' || true)
+                if [ -z "$pod" ]; then
+                  echo "WARN: no pod from $ds found on $node" >&2
+                  return 1
+                fi
+                echo "WARN: restarting $ds pod $pod on $node" >&2
+                kubectl -n "$ns" delete pod "$pod" --ignore-not-found >/dev/null
+                return 0
+              }
+
+              ensure_csi_driver_on_workers() {
+                local driver="$1"
+                local nodeplugin_namespace="$2"
+                local nodeplugin_daemonset="$3"
+                local retries="$4"
+                local settle_seconds="$5"
+                local attempt=0
+
+                while true; do
+                  missing="$(workers_missing_csi_driver "$driver" || true)"
+                  if [ -z "$missing" ]; then
+                    return 0
+                  fi
+
+                  if [ "$attempt" -ge "$retries" ]; then
+                    echo "ERROR: $driver missing on worker CSINodes after $attempt self-heal attempt(s): $(echo "$missing" | tr '\n' ',' | sed 's/,$//')" >&2
+                    return 1
+                  fi
+
+                  attempt=$((attempt + 1))
+                  echo "WARN: $driver missing on nodes: $(echo "$missing" | tr '\n' ',' | sed 's/,$//')" >&2
+                  while IFS= read -r node; do
+                    [ -z "$node" ] && continue
+                    restart_nodeplugin_pod_for_node "$nodeplugin_namespace" "$nodeplugin_daemonset" "$node" || true
+                  done <<< "$missing"
+
+                  sleep "$settle_seconds"
+                done
+              }
+
               capability_ready_fallback() {
                 local gate="$1"
                 case "$gate" in
@@ -700,7 +1114,9 @@ spec:
                     daemonset_ready ceph-csi ceph-csi-cephfs-nodeplugin &&
                       daemonset_ready ceph-csi ceph-csi-rbd-nodeplugin &&
                       deployment_available ceph-csi ceph-csi-cephfs-provisioner &&
-                      deployment_available ceph-csi ceph-csi-rbd-provisioner
+                      deployment_available ceph-csi ceph-csi-rbd-provisioner &&
+                      ensure_csi_driver_on_workers cephfs.csi.ceph.com ceph-csi ceph-csi-cephfs-nodeplugin 2 15 &&
+                      ensure_csi_driver_on_workers rbd.csi.ceph.com ceph-csi ceph-csi-rbd-nodeplugin 2 15
                     ;;
                   postgres-vectorchord-ready)
                     local phase
@@ -738,7 +1154,20 @@ spec:
                 echo "Checking capability gates..."
                 for gate in secrets-ready storage-ready postgres-vectorchord-ready; do
                   while true; do
-                    if kustomization_ready "$gate" || capability_ready_fallback "$gate"; then
+                    gate_ok=false
+                    if [ "$gate" = "storage-ready" ]; then
+                      # storage-ready must validate live CSI driver registration
+                      # on workers (kustomization Ready alone is insufficient).
+                      if capability_ready_fallback "$gate"; then
+                        gate_ok=true
+                      fi
+                    else
+                      if kustomization_ready "$gate" || capability_ready_fallback "$gate"; then
+                        gate_ok=true
+                      fi
+                    fi
+
+                    if [ "$gate_ok" = "true" ]; then
                       echo "  ✓ $gate"
                       break
                     fi

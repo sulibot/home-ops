@@ -6,15 +6,10 @@ metadata:
   name: &app authentik
 spec:
   interval: 1h
-  chart:
-    spec:
-      chart: *app
-      version: "2026.2.0"
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: authentik
-        namespace: default
+  chartRef:
+    kind: OCIRepository
+    name: authentik
+    namespace: default
   install:
     remediation:
       retries: 5

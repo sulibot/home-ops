@@ -5,7 +5,7 @@ kind: Kustomization
 resources:
   - ./blueprintconfigmap.yaml
   - ./externalsecret.yaml
-  - ./helmrepository.yaml
+  - ./ocirepository.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./rbac.yaml

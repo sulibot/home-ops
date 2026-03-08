@@ -5,15 +5,10 @@ metadata:
   name: immich
   namespace: default
 spec:
-  chart:
-    spec:
-      chart: immich
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: immich
-        namespace: flux-system
-      version: 0.10.3
+  chartRef:
+    kind: OCIRepository
+    name: immich
+    namespace: default
   interval: 1h0m0s
   timeout: 10m
   maxHistory: 3

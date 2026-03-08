@@ -14,7 +14,7 @@ spec:
   # components:
   #   - ../../../../components/volsync
   dependsOn:
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     - name: grafana
       namespace: flux-system

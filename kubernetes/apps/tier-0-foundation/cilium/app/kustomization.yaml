@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: kube-system
 
 resources:
+  - ocirepository.yaml
   - helmrelease.yaml
 
 configMapGenerator:

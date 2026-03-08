@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/part-of: postgres-vectorchord
     cnpg.io/cluster: postgres-vectorchord
 spec:
-  schedule: "0 2 * * *"  # Daily at 2am
+  schedule: "0 0 2 * * *"  # Daily at 2am
   immediate: true         # Also run a backup immediately on first creation (bootstrap)
   # Intentionally omit backupOwnerReference so Backup CRs and snapshots are not
   # garbage-collected if this ScheduledBackup object is renamed/refactored.
@@ -43,7 +43,7 @@ metadata:
     app.kubernetes.io/part-of: postgres-vectorchord
     cnpg.io/cluster: postgres-vectorchord
 spec:
-  schedule: "0 3 * * *"  # Daily at 3am — WAL archiving is continuous; daily base backups keep recovery windows small
+  schedule: "0 0 3 * * *"  # Daily at 3am — WAL archiving is continuous; daily base backups keep recovery windows small
   immediate: true          # Run base backup immediately on creation (bootstrap)
   # Intentionally omit backupOwnerReference so Backup CRs are retained across
   # ScheduledBackup object lifecycle changes.

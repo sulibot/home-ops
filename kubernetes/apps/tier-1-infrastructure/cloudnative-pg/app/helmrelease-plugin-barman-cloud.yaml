@@ -9,13 +9,8 @@ metadata:
   name: cnpg-plugin-barman-cloud
   namespace: default
 spec:
-  chart:
-    spec:
-      chart: plugin-barman-cloud
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: cnpg
-        namespace: flux-system
-      version: 0.5.0
+  chartRef:
+    kind: OCIRepository
+    name: cnpg-plugin-barman-cloud
+    namespace: default
   interval: 1h0m0s

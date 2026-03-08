@@ -11,14 +11,10 @@ metadata:
   name: cilium
   namespace: kube-system
 spec:
-  chart:
-    spec:
-      chart: cilium
-      version: 1.19.1
-      sourceRef:
-        kind: HelmRepository
-        name: cilium
-        namespace: flux-system
+  chartRef:
+    kind: OCIRepository
+    name: cilium
+    namespace: kube-system
 
   interval: 30m
   timeout: 10m

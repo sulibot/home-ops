@@ -5,15 +5,10 @@ metadata:
   name: cnpg
   namespace: default
 spec:
-  chart:
-    spec:
-      chart: cloudnative-pg
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: cnpg
-        namespace: flux-system
-      version: 0.27.1
+  chartRef:
+    kind: OCIRepository
+    name: cnpg
+    namespace: default
   interval: 1h0m0s
   values:
     additionalArgs: []

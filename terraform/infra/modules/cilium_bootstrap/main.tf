@@ -37,8 +37,15 @@ variable "cluster_uid" {
   default     = ""
 }
 
+variable "bootstrap_run_token" {
+  description = "Unique token to force cilium bootstrap execution for explicit bootstrap runs."
+  type        = string
+  default     = ""
+}
+
 locals {
   cilium_helmrelease_path = "${var.repo_root}/kubernetes/apps/tier-0-foundation/cilium/app/helmrelease.yaml"
+  cilium_ocirepo_path     = "${var.repo_root}/kubernetes/apps/tier-0-foundation/cilium/app/ocirepository.yaml"
   cilium_bootstrap_path   = "${var.repo_root}/kubernetes/bootstrap/helmfile.yaml.gotmpl"
 }
 
@@ -47,7 +54,9 @@ resource "null_resource" "bootstrap_cilium" {
     kubeconfig_path        = var.kubeconfig_path
     cilium_daemonset_state = tostring(var.cilium_daemonset_exists)
     cluster_uid            = var.cluster_uid
+    bootstrap_run_token    = var.bootstrap_run_token
     cilium_helmrelease_sha = filesha256(local.cilium_helmrelease_path)
+    cilium_ocirepo_sha     = filesha256(local.cilium_ocirepo_path)
     cilium_bootstrap_sha   = filesha256(local.cilium_bootstrap_path)
   }
 
@@ -70,7 +79,19 @@ resource "null_resource" "bootstrap_cilium" {
         done
       '
 
-      CILIUM_VERSION=$(yq '.spec.chart.spec.version' "${local.cilium_helmrelease_path}")
+      CILIUM_VERSION="$(yq -r '.spec.chart.spec.version // ""' "${local.cilium_helmrelease_path}")"
+      if [ -z "$CILIUM_VERSION" ] || [ "$CILIUM_VERSION" = "null" ]; then
+        CILIUM_OCI_NAME="$(yq -r '.spec.chartRef.name // ""' "${local.cilium_helmrelease_path}")"
+        if [ -n "$CILIUM_OCI_NAME" ] && [ "$CILIUM_OCI_NAME" != "null" ]; then
+          CILIUM_VERSION="$(yq -r '
+            select(.kind == "OCIRepository") | .spec.ref.tag // ""
+          ' "${local.cilium_ocirepo_path}" | head -n1)"
+        fi
+      fi
+      if [ -z "$CILIUM_VERSION" ] || [ "$CILIUM_VERSION" = "null" ]; then
+        echo "ERROR: unable to resolve Cilium chart version from HelmRelease/OCIRepository" >&2
+        exit 1
+      fi
       echo "Installing Gateway API CRDs + Cilium CNI v$CILIUM_VERSION via bootstrap unit..."
       CILIUM_VERSION="$CILIUM_VERSION" helmfile -f "${local.cilium_bootstrap_path}" sync
       echo "✓ Cilium bootstrap completed"

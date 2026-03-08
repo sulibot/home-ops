@@ -18,15 +18,10 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  chart:
-    spec:
-      chart: cert-manager
-      reconcileStrategy: ChartVersion
-      sourceRef:
-        kind: HelmRepository
-        name: cert-manager
-        namespace: flux-system
-      version: v1.19.4
+  chartRef:
+    kind: OCIRepository
+    name: cert-manager
+    namespace: flux-system
   values:
     crds:
       enabled: true

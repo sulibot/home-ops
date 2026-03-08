@@ -16,7 +16,7 @@ spec:
   dependsOn:
     - name: external-secrets
       namespace: flux-system
-    - name: ceph-csi
+    - name: storage-ready
       namespace: flux-system
     # - name: volsync
     #   namespace: flux-system

@@ -1,4 +1,4 @@
 resources:
+  - ocirepository.yaml
   - helmrelease.yaml
   - helmrelease-plugin-barman-cloud.yaml
-
