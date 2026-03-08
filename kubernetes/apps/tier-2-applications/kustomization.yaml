@@ -35,6 +35,7 @@ resources:
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
   - ./ollama/ks.yaml
+  - ./opencloud/ks.yaml
   - ./overseerr/ks.yaml
   - ./paperless/ks.yaml
   - ./paperless-gpt/ks.yaml

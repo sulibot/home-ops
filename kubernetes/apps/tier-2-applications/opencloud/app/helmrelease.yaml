@@ -1,0 +1,113 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: opencloud
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: opencloud
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      opencloud:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/opencloudeu/opencloud-rolling
+              tag: 5.1.0@sha256:c2c0d18093c7bd097fdc7071ffb4d244984e33981e172f7343a21303860ac124
+            command:
+              - /bin/sh
+              - -c
+              - "opencloud init || true; opencloud server"
+            env:
+              TZ: America/Los_Angeles
+              OC_URL: https://opencloud.sulibot.com
+              OC_LOG_LEVEL: info
+              OC_INSECURE: "false"
+              OC_ENABLE_OCM: "false"
+              PROXY_HTTP_ADDR: 0.0.0.0:9200
+              PROXY_TLS: "false"
+              IDM_CREATE_DEMO_USERS: "false"
+              IDM_ADMIN_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: opencloud-secret
+                    key: IDM_ADMIN_PASSWORD
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+
+    service:
+      app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        ports:
+          http:
+            port: &port 9200
+
+    route:
+      app:
+        hostnames:
+          - "opencloud.sulibot.com"
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      data:
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /var/lib/opencloud
+            subPath: data
+          - path: /etc/opencloud
+            subPath: config
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
