@@ -1,11 +1,11 @@
 output "tier_0_ready" {
-  description = "Tier 0 (Foundation) check completed (status logged inside provisioner)"
-  value       = null_resource.check_tier_0.id != "" ? "Checked" : "Unknown"
+  description = "Tier 0 prerequisite checks completed (covered by CRD gate and in-cluster capability job)"
+  value       = null_resource.wait_crd_established.id != "" ? "Checked" : "Unknown"
 }
 
 output "tier_1_ready" {
-  description = "Tier 1 (Infrastructure) check completed (status logged inside provisioner)"
-  value       = null_resource.check_tier_1.id != "" ? "Checked" : "Unknown"
+  description = "Tier 1 prerequisite checks completed (covered by restore orchestration and capability job)"
+  value       = null_resource.cnpg_restore.id != "" ? "Checked" : "Unknown"
 }
 
 output "bootstrap_complete" {

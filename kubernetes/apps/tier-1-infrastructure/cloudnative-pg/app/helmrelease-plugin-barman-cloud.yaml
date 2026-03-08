@@ -9,6 +9,9 @@ metadata:
   name: cnpg-plugin-barman-cloud
   namespace: default
 spec:
+  dependsOn:
+    - name: cert-manager
+      namespace: flux-system
   chartRef:
     kind: OCIRepository
     name: cnpg-plugin-barman-cloud

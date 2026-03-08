@@ -72,12 +72,6 @@ variable "cnpg_storage_size" {
   default     = "60Gi"
 }
 
-variable "cnpg_restore_required_secrets_timeout_seconds" {
-  description = "Timeout waiting for required restore secrets."
-  type        = number
-  default     = 300
-}
-
 variable "cnpg_restore_rbd_gate_timeout_seconds" {
   description = "Timeout waiting for rbd.csi.ceph.com registration on workers."
   type        = number
@@ -118,6 +112,12 @@ variable "cnpg_restore_database_cr_timeout_seconds" {
   description = "Timeout waiting for database CRs to reach applied=true."
   type        = number
   default     = 600
+}
+
+variable "cnpg_expected_databases" {
+  description = "Database CR names that must exist and report status.applied=true after restore."
+  type        = list(string)
+  default     = ["atuin", "authentik", "firefly", "paperless"]
 }
 
 variable "cnpg_restore_progress_stall_timeout_seconds" {

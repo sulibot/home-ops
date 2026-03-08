@@ -15,6 +15,8 @@ spec:
       namespace: flux-system
     - name: ceph-csi
       namespace: flux-system
+    - name: cert-manager
+      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/cloudnative-pg/app
@@ -24,7 +26,7 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: default
-  wait: true
+  wait: false
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment

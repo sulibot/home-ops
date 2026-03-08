@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - helm-repo/helmrepository.yaml
   - app/helmrelease.yaml
+  - app/ocirepository.yaml
   - app/externalsecret.yaml
   # issuers/ks.yaml is managed via tier-1-infrastructure/kustomization.yaml
   # (it needs postBuild variable substitution which cert-manager Kustomization lacks)

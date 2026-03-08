@@ -54,49 +54,11 @@ resource "null_resource" "request_initial_reconcile" {
   }
 }
 
-########## STEP 1: CHECK TIER STATUS (NO CHURN) ##########
-
-resource "null_resource" "check_tier_0" {
-  triggers = {
-    reconcile_id = null_resource.request_initial_reconcile.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -euo pipefail
-      READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
-        get kustomization tier-0-foundation -n flux-system \
-        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
-      echo "Tier-0 Ready: $${READY:-Unknown}"
-    EOT
-
-    interpreter = ["bash", "-c"]
-  }
-}
-
-resource "null_resource" "check_tier_1" {
-  triggers = {
-    tier_0_id = null_resource.check_tier_0.id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -euo pipefail
-      READY=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
-        get kustomization tier-1-infrastructure -n flux-system \
-        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
-      echo "Tier-1 Ready: $${READY:-Unknown}"
-    EOT
-
-    interpreter = ["bash", "-c"]
-  }
-}
-
-########## STEP 2: WAIT FOR CRD CAPABILITIES ##########
+########## STEP 1: WAIT FOR CRD CAPABILITIES ##########
 
 resource "null_resource" "wait_crd_established" {
   triggers = {
-    tier_1_id       = null_resource.check_tier_1.id
+    reconcile_id    = null_resource.request_initial_reconcile.id
     kubeconfig_path = var.kubeconfig_path
   }
 
@@ -106,6 +68,15 @@ resource "null_resource" "wait_crd_established" {
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "📚 WAITING FOR REQUIRED CRDs (Established)"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      tier0_ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
+        get kustomization tier-0-foundation -n flux-system \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
+      tier1_ready=$(kubectl --kubeconfig="${var.kubeconfig_path}" \
+        get kustomization tier-1-infrastructure -n flux-system \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "NotFound")
+      echo "Tier-0 Ready: $${tier0_ready:-Unknown}"
+      echo "Tier-1 Ready: $${tier1_ready:-Unknown}"
 
       wait_crd_required() {
         local crd="$1"
@@ -171,10 +142,10 @@ resource "null_resource" "wait_crd_established" {
     interpreter = ["bash", "-c"]
   }
 
-  depends_on = [null_resource.check_tier_1]
+  depends_on = [null_resource.request_initial_reconcile]
 }
 
-########## STEP 3: CNPG RESTORE CHECK ##########
+########## STEP 2: CNPG RESTORE CHECK ##########
 
 resource "null_resource" "cnpg_restore" {
   triggers = {
@@ -349,13 +320,28 @@ resource "null_resource" "cnpg_restore" {
       wait_for_database_crs() {
         local timeout_seconds="$1"
         local deadline=$(( $(date +%s) + timeout_seconds ))
+        local expected_csv="$CNPG_EXPECTED_DATABASES"
+        local expected_count
+        expected_count="$(echo "$expected_csv" | tr ',' '\n' | sed '/^$/d' | wc -l | tr -d ' ')"
         while [ "$(date +%s)" -lt "$deadline" ]; do
-          pending="$($KC -n "$CLUSTER_NS" get databases.postgresql.cnpg.io -o json 2>/dev/null | jq -r '[.items[]? | select((.status.applied // false) != true) | .metadata.name] | join(",")' || true)"
-          if [ -z "$pending" ] || [ "$pending" = "null" ]; then
+          status="$($KC -n "$CLUSTER_NS" get databases.postgresql.cnpg.io -o json 2>/dev/null | jq -r --arg expected "$expected_csv" '
+            ($expected | split(",") | map(select(length > 0))) as $exp
+            | [.items[]? | {name: .metadata.name, applied: (.status.applied // false)}] as $items
+            | {
+                present: [$items[] | .name],
+                missing: [$exp[] | select(([ $items[] | .name ] | index(.)) == null)],
+                pending: [$items[] | select(.name as $n | ($exp | index($n)) != null) | select(.applied != true) | .name]
+              }' || true)"
+          missing="$(echo "$status" | jq -r '.missing | join(",")' 2>/dev/null || true)"
+          pending="$(echo "$status" | jq -r '.pending | join(",")' 2>/dev/null || true)"
+          present_count="$(echo "$status" | jq -r '.present | map(select(. != "")) | length' 2>/dev/null || echo 0)"
+
+          if [ "$present_count" -ge "$expected_count" ] && [ -z "$missing" ] && [ -z "$pending" ]; then
             return 0
           fi
           sleep 10
         done
+        echo "ERROR: expected databases not ready (missing='$${missing:-<none>}' pending='$${pending:-<none>}')" >&2
         return 1
       }
 
@@ -831,7 +817,6 @@ YAML
       CNPG_BACKUP_MAX_AGE_HOURS                       = tostring(var.cnpg_backup_max_age_hours)
       CNPG_STALE_BACKUP_MAX_AGE_MINUTES               = tostring(var.cnpg_stale_backup_max_age_minutes)
       CNPG_STORAGE_SIZE                               = var.cnpg_storage_size
-      CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_required_secrets_timeout_seconds)
       CNPG_RESTORE_FLUX_KUSTOMIZATION_TIMEOUT_SECONDS = tostring(var.cnpg_restore_flux_kustomization_timeout_seconds)
       CNPG_RESTORE_FLUX_KUSTOMIZATION_NAMESPACE       = var.cnpg_restore_flux_kustomization_namespace
       CNPG_RESTORE_FLUX_KUSTOMIZATION_NAME            = var.cnpg_restore_flux_kustomization_name
@@ -843,6 +828,7 @@ YAML
       CNPG_RESTORE_RBD_NODEPLUGIN_DAEMONSET_NAME      = var.cnpg_restore_rbd_nodeplugin_daemonset_name
       CNPG_RESTORE_CLUSTER_HEALTH_TIMEOUT_SECONDS     = tostring(var.cnpg_restore_cluster_healthy_timeout_seconds)
       CNPG_RESTORE_DATABASE_CR_TIMEOUT_SECONDS        = tostring(var.cnpg_restore_database_cr_timeout_seconds)
+      CNPG_EXPECTED_DATABASES                         = join(",", var.cnpg_expected_databases)
       CNPG_RESTORE_PROGRESS_STALL_TIMEOUT_SECONDS     = tostring(var.cnpg_restore_progress_stall_timeout_seconds)
       CNPG_OBJECT_STORE_PROBE_MODE                    = var.cnpg_object_store_probe_mode
       CNPG_OBJECT_STORE_PROBE_TIMEOUT_SECONDS         = tostring(var.cnpg_object_store_probe_timeout_seconds)
@@ -856,7 +842,7 @@ YAML
   depends_on = [null_resource.wait_crd_established]
 }
 
-########## STEP 4: IN-CLUSTER CAPABILITY GATE JOB ##########
+########## STEP 3: IN-CLUSTER CAPABILITY GATE JOB ##########
 
 resource "null_resource" "wait_bootstrap_complete" {
   triggers = {
@@ -1186,7 +1172,7 @@ YAML
   depends_on = [null_resource.cnpg_restore]
 }
 
-########## STEP 5: FINAL RECONCILE CASCADE ##########
+########## STEP 4: FINAL RECONCILE CASCADE ##########
 
 resource "null_resource" "final_reconcile_cascade" {
   triggers = {
