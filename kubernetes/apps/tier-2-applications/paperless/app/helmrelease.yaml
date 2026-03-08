@@ -60,12 +60,8 @@ spec:
               PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: "true"
               # OCR
               PAPERLESS_OCR_LANGUAGE: eng
-              # Redis/Valkey
-              PAPERLESS_REDIS:
-                valueFrom:
-                  secretKeyRef:
-                    name: paperless-secret
-                    key: PAPERLESS_REDIS_URL
+              # Redis sidecar
+              PAPERLESS_REDIS: redis://paperless-redis.default.svc.cluster.local:6379
               # OIDC via Authentik (Google SSO) — auto-creates accounts on first login
               PAPERLESS_APPS: "allauth.socialaccount.providers.openid_connect"
               PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
@@ -111,6 +107,19 @@ spec:
               limits:
                 memory: 6Gi
 
+      redis:
+        containers:
+          redis:
+            image:
+              repository: ghcr.io/valkey-io/valkey
+              tag: 9.0.2
+            resources:
+              requests:
+                cpu: 5m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
@@ -127,6 +136,11 @@ spec:
         ports:
           http:
             port: 8000
+      redis:
+        controller: redis
+        ports:
+          http:
+            port: 6379
     route:
       app:
         hostnames:
