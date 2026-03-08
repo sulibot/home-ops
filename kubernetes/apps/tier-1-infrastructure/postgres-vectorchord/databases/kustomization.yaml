@@ -5,6 +5,7 @@ resources:
   - authentik.yaml
   - firefly.yaml
   - paperless.yaml
+  - vikunja.yaml
   - radarr-main.yaml
   - radarr-log.yaml
   - radarr-4k-main.yaml

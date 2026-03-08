@@ -26,14 +26,6 @@ spec:
       vikunja:
         annotations:
           reloader.stakater.com/auto: "true"
-        initContainers:
-          init-db:
-            image:
-              repository: ghcr.io/haraldkoch/postgres-init
-              tag: 18.3@sha256:01c1b0418ad5dba25ceff7a86dbf9bde551464e9670b59820e6d7c32e506d9a7
-            envFrom:
-              - secretRef:
-                  name: vikunja-secret
         containers:
           app:
             image:

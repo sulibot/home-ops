@@ -63,6 +63,11 @@ spec:
         ensure: present
         passwordSecret:
           name: paperless-pg-password
+      - name: vikunja
+        login: true
+        ensure: present
+        passwordSecret:
+          name: vikunja-pg-password
 
   storage:
     size: 60Gi
