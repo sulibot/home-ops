@@ -64,7 +64,10 @@ spec:
                 tag: v2.5.6
               env:
                 # Intentionally pinned to default namespace (matches ks.yaml targetNamespace).
-                REDIS_HOSTNAME: valkey.default.svc.cluster.local
+                # Central Valkey is deployed with replication+sentinel. The generic service can
+                # resolve to replicas, which causes READONLY errors for Immich writes.
+                # Pin Immich to the current writable master endpoint.
+                REDIS_HOSTNAME: valkey-node-2.valkey-headless.default.svc.cluster.local
                 REDIS_PASSWORD:
                   valueFrom:
                     secretKeyRef:
