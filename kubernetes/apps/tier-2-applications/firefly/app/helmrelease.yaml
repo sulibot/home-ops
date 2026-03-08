@@ -52,8 +52,13 @@ spec:
               # Cache / Session
               CACHE_DRIVER: redis
               SESSION_DRIVER: redis
-              REDIS_HOST: firefly-valkey.default.svc.cluster.local
+              REDIS_HOST: valkey.default.svc.cluster.local
               REDIS_PORT: "6379"
+              REDIS_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: valkey
+                    key: VALKEY_PASSWORD
               # App secrets
               APP_KEY:
                 valueFrom:
@@ -89,35 +94,6 @@ spec:
               limits:
                 memory: 512Mi
 
-      valkey:
-        containers:
-          valkey:
-            image:
-              repository: ghcr.io/valkey-io/valkey
-              tag: 9.0.2
-            args: [--save, "", --appendonly, "no"]
-            probes:
-              liveness: &valkey-probe
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command: [valkey-cli, ping]
-              readiness: *valkey-probe
-            resources:
-              requests:
-                cpu: 5m
-                memory: 32Mi
-              limits:
-                memory: 128Mi
-        pod:
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 999
-            runAsGroup: 1000
-            fsGroup: 1000
-            fsGroupChangePolicy: OnRootMismatch
-
       cron:
         type: cronjob
         cronjob:
@@ -152,12 +128,6 @@ spec:
         ports:
           http:
             port: 8080
-      valkey:
-        controller: valkey
-        ports:
-          valkey:
-            port: 6379
-
     route:
       app:
         hostnames:

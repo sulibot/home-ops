@@ -64,8 +64,12 @@ spec:
                 tag: v2.5.6
               env:
                 # Intentionally pinned to default namespace (matches ks.yaml targetNamespace).
-                # Use dual-stack service so Node.js/c-ares resolves via IPv4 A record.
-                REDIS_HOSTNAME: immich-valkey-dual.default.svc.cluster.local
+                REDIS_HOSTNAME: valkey.default.svc.cluster.local
+                REDIS_PASSWORD:
+                  valueFrom:
+                    secretKeyRef:
+                      name: valkey
+                      key: VALKEY_PASSWORD
                 IMMICH_MACHINE_LEARNING_URL: http://immich-machine-learning.default.svc.cluster.local:3003
                 DB_HOSTNAME:
                   valueFrom:
@@ -100,7 +104,7 @@ spec:
                 - identifier: main
 
     valkey:
-      enabled: true
+      enabled: false
 
     machine-learning:
       enabled: true

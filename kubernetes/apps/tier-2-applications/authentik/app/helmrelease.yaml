@@ -43,10 +43,7 @@ spec:
     postgresql:
       enabled: false
     redis:
-      enabled: true
-      master:
-        persistence:
-          enabled: false
+      enabled: false
     prometheus:
       rules:
         enabled: true

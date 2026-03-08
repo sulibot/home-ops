@@ -19,6 +19,8 @@ spec:
       namespace: flux-system
     - name: volsync-repository-pvc
       namespace: flux-system
+    - name: valkey
+      namespace: flux-system
     - name: postgres-vectorchord-ready
       namespace: flux-system
   interval: 15m
