@@ -57,6 +57,7 @@ resources:
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
   - ./tqm/ks.yaml
+  - ./vikunja/ks.yaml
   # tuppr disabled
   # - ./tuppr/ks.yaml
   - ./volsync-repository-pvc/ks.yaml

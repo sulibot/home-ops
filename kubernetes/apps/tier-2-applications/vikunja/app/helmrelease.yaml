@@ -1,0 +1,129 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vikunja
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: vikunja
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      vikunja:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/haraldkoch/postgres-init
+              tag: 18.3@sha256:01c1b0418ad5dba25ceff7a86dbf9bde551464e9670b59820e6d7c32e506d9a7
+            envFrom:
+              - secretRef:
+                  name: vikunja-secret
+        containers:
+          app:
+            image:
+              repository: mirror.gcr.io/vikunja/vikunja
+              tag: 2.1.0@sha256:f13103b0287aef74a69241fa46e6cac76e14caf643602144ccaca57fc76e587f
+            env:
+              TZ: America/Los_Angeles
+              PATH: /app/vikunja:$${PATH}
+              VIKUNJA_SERVICE_PUBLICURL: https://vikunja.sulibot.com
+              VIKUNJA_SERVICE_TIMEZONE: America/Los_Angeles
+              VIKUNJA_MAILER_ENABLED: "true"
+              VIKUNJA_METRICS_ENABLED: "true"
+              VIKUNJA_DATABASE_TYPE: postgres
+              VIKUNJA_REDIS_ENABLED: "true"
+              VIKUNJA_REDIS_HOST: valkey-primary.default.svc.cluster.local:6379
+              VIKUNJA_REDIS_DB: "8"
+              VIKUNJA_KEYVALUE_TYPE: redis
+            envFrom:
+              - secretRef:
+                  name: vikunja-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: &port 3456
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    service:
+      app:
+        controller: vikunja
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - vikunja.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      data:
+        existingClaim: vikunja-config
+        globalMounts:
+          - path: /app/vikunja/files
+      config:
+        type: secret
+        name: vikunja-secret
+        globalMounts:
+          - path: /etc/vikunja/config.yml
+            subPath: config.yml
+            readOnly: true
