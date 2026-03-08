@@ -767,7 +767,7 @@ data:
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           mode: proxy
           external_host: "https://firefly.sulibot.com"
-          internal_host: "http://firefly-app.default.svc.cluster.local:8080"
+          internal_host: "http://firefly.default.svc.cluster.local:8080"
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
