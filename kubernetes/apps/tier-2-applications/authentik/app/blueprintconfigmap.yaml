@@ -86,7 +86,7 @@ data:
         attrs:
           name: Sulibot Internal Authentication
           slug: sulibot-internal-authentication-flow
-          title: ""
+          title: "Sign in"
           designation: authentication
       - model: authentik_flows.flow
         state: present
@@ -95,7 +95,7 @@ data:
         attrs:
           name: Sulibot Cloudflare Authentication
           slug: sulibot-cf-authentication-flow
-          title: ""
+          title: "Continue with Google"
           designation: authentication
       - model: authentik_flows.flowstagebinding
         state: present
