@@ -193,7 +193,6 @@ resource "null_resource" "cnpg_restore" {
       KUSTOMIZATION_NAME="$CNPG_KUSTOMIZATION_NAME"
       MAX_AGE_SECONDS=$((CNPG_BACKUP_MAX_AGE_HOURS * 3600))
       STALE_BACKUP_MAX_AGE_SECONDS=$((CNPG_STALE_BACKUP_MAX_AGE_MINUTES * 60))
-      SECRETS_TIMEOUT_SECONDS="$CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS"
       FLUX_KUSTOMIZATION_TIMEOUT_SECONDS="$CNPG_RESTORE_FLUX_KUSTOMIZATION_TIMEOUT_SECONDS"
       FLUX_KUSTOMIZATION_NAMESPACE="$CNPG_RESTORE_FLUX_KUSTOMIZATION_NAMESPACE"
       FLUX_KUSTOMIZATION_NAME="$CNPG_RESTORE_FLUX_KUSTOMIZATION_NAME"
@@ -357,44 +356,6 @@ resource "null_resource" "cnpg_restore" {
           fi
           sleep 10
         done
-        return 1
-      }
-
-      wait_for_secret_with_reconcile() {
-        local timeout_seconds="$1"
-        local secret_name="$2"
-        local deadline=$(( $(date +%s) + timeout_seconds ))
-        local last_reconcile_request=0
-        local last_status_log=0
-
-        while [ "$(date +%s)" -lt "$deadline" ]; do
-          if $KC -n "$CLUSTER_NS" get secret "$secret_name" >/dev/null 2>&1; then
-            return 0
-          fi
-
-          now="$(date +%s)"
-          if [ $((now - last_reconcile_request)) -ge 20 ]; then
-            request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_PRECHECK_KUSTOMIZATION_NAME"
-            request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_KUSTOMIZATION_NAME"
-            last_reconcile_request="$now"
-          fi
-
-          if [ $((now - last_status_log)) -ge 30 ]; then
-            ext_ready="$($KC -n "$CLUSTER_NS" get externalsecret "$secret_name" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
-            flux_precheck_ready="$($KC -n "$FLUX_KUSTOMIZATION_NAMESPACE" get kustomization "$FLUX_PRECHECK_KUSTOMIZATION_NAME" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
-            flux_main_ready="$($KC -n "$FLUX_KUSTOMIZATION_NAMESPACE" get kustomization "$FLUX_KUSTOMIZATION_NAME" -o json 2>/dev/null | jq -r '.status.conditions[]? | select(.type=="Ready") | "\(.status // "Unknown")/\(.reason // "Unknown")"' | head -n1 || true)"
-
-            [ -z "$ext_ready" ] && ext_ready="not-found-or-pending"
-            [ -z "$flux_precheck_ready" ] && flux_precheck_ready="not-found-or-pending"
-            [ -z "$flux_main_ready" ] && flux_main_ready="not-found-or-pending"
-
-            echo "WAIT: secret/$secret_name is not ready yet (ExternalSecret=$ext_ready, precheck=$flux_precheck_ready, main=$flux_main_ready)"
-            last_status_log="$now"
-          fi
-
-          sleep 5
-        done
-
         return 1
       }
 
@@ -663,11 +624,12 @@ resource "null_resource" "cnpg_restore" {
       fi
 
       stage "STAGE 3: PRE-READINESS GATES"
-      # Nudge the precheck and CNPG kustomizations, but do not hard-gate on Ready.
-      # During bootstrap/restore, the postgres kustomization can be transiently NotReady
-      # due expected bootstrap drift while still producing required secrets.
+      # Recovery precheck owns restore prerequisites and must be Ready before suspend.
       request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_PRECHECK_KUSTOMIZATION_NAME"
-      request_flux_reconcile "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_KUSTOMIZATION_NAME"
+      if ! wait_for_flux_kustomization_ready "$FLUX_KUSTOMIZATION_TIMEOUT_SECONDS" "$FLUX_KUSTOMIZATION_NAMESPACE" "$FLUX_PRECHECK_KUSTOMIZATION_NAME"; then
+        echo "ERROR: precheck kustomization '$FLUX_PRECHECK_KUSTOMIZATION_NAME' did not become Ready in time" >&2
+        exit 1
+      fi
 
       # Prevent CNPG restore from burning timeout while PVCs cannot attach.
       if ! ensure_rbd_csi_on_workers "$RBD_GATE_TIMEOUT_SECONDS" "$RBD_SELF_HEAL_RETRIES" "$RBD_SELF_HEAL_SETTLE_SECONDS"; then
@@ -677,8 +639,12 @@ resource "null_resource" "cnpg_restore" {
 
       # Only gate restore on the backup credential when using barman restore.
       if [ "$RESTORE_METHOD" = "barman" ]; then
-        if ! wait_for_secret_with_reconcile "$SECRETS_TIMEOUT_SECONDS" "cnpg-barman-s3"; then
-          echo "ERROR: required CNPG secret 'cnpg-barman-s3' did not become ready in time" >&2
+        if ! $KC -n "$CLUSTER_NS" get secret cnpg-barman-s3 >/dev/null 2>&1; then
+          echo "ERROR: required CNPG secret 'cnpg-barman-s3' is missing after precheck readiness gate" >&2
+          exit 1
+        fi
+        if ! $KC -n "$CLUSTER_NS" get objectstore.barmancloud.cnpg.io postgres-vectorchord-backup >/dev/null 2>&1; then
+          echo "ERROR: required ObjectStore 'postgres-vectorchord-backup' is missing after precheck readiness gate" >&2
           exit 1
         fi
         if ! barman_object_store_probe; then
@@ -858,32 +824,32 @@ YAML
       echo "CNPG restore orchestration complete."
     EOT
     environment = {
-      KUBECONFIG                                    = var.kubeconfig_path
-      CNPG_NEW_DB                                   = var.cnpg_new_db ? "true" : "false"
-      CNPG_RESTORE_MODE                             = var.cnpg_restore_mode
-      CNPG_RESTORE_METHOD                           = var.cnpg_restore_method
-      CNPG_BACKUP_MAX_AGE_HOURS                     = tostring(var.cnpg_backup_max_age_hours)
-      CNPG_STALE_BACKUP_MAX_AGE_MINUTES             = tostring(var.cnpg_stale_backup_max_age_minutes)
-      CNPG_STORAGE_SIZE                             = var.cnpg_storage_size
-      CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS = tostring(var.cnpg_restore_required_secrets_timeout_seconds)
+      KUBECONFIG                                      = var.kubeconfig_path
+      CNPG_NEW_DB                                     = var.cnpg_new_db ? "true" : "false"
+      CNPG_RESTORE_MODE                               = var.cnpg_restore_mode
+      CNPG_RESTORE_METHOD                             = var.cnpg_restore_method
+      CNPG_BACKUP_MAX_AGE_HOURS                       = tostring(var.cnpg_backup_max_age_hours)
+      CNPG_STALE_BACKUP_MAX_AGE_MINUTES               = tostring(var.cnpg_stale_backup_max_age_minutes)
+      CNPG_STORAGE_SIZE                               = var.cnpg_storage_size
+      CNPG_RESTORE_REQUIRED_SECRETS_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_required_secrets_timeout_seconds)
       CNPG_RESTORE_FLUX_KUSTOMIZATION_TIMEOUT_SECONDS = tostring(var.cnpg_restore_flux_kustomization_timeout_seconds)
       CNPG_RESTORE_FLUX_KUSTOMIZATION_NAMESPACE       = var.cnpg_restore_flux_kustomization_namespace
       CNPG_RESTORE_FLUX_KUSTOMIZATION_NAME            = var.cnpg_restore_flux_kustomization_name
       CNPG_RESTORE_FLUX_PRECHECK_KUSTOMIZATION_NAME   = var.cnpg_restore_flux_precheck_kustomization_name
-      CNPG_RESTORE_RBD_GATE_TIMEOUT_SECONDS         = tostring(var.cnpg_restore_rbd_gate_timeout_seconds)
-      CNPG_RESTORE_RBD_SELF_HEAL_RETRIES            = tostring(var.cnpg_restore_rbd_self_heal_retries)
-      CNPG_RESTORE_RBD_SELF_HEAL_SETTLE_SECONDS     = tostring(var.cnpg_restore_rbd_self_heal_settle_seconds)
-      CNPG_RESTORE_RBD_NODEPLUGIN_NAMESPACE         = var.cnpg_restore_rbd_nodeplugin_namespace
-      CNPG_RESTORE_RBD_NODEPLUGIN_DAEMONSET_NAME    = var.cnpg_restore_rbd_nodeplugin_daemonset_name
-      CNPG_RESTORE_CLUSTER_HEALTH_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_cluster_healthy_timeout_seconds)
-      CNPG_RESTORE_DATABASE_CR_TIMEOUT_SECONDS      = tostring(var.cnpg_restore_database_cr_timeout_seconds)
-      CNPG_RESTORE_PROGRESS_STALL_TIMEOUT_SECONDS   = tostring(var.cnpg_restore_progress_stall_timeout_seconds)
-      CNPG_OBJECT_STORE_PROBE_MODE                  = var.cnpg_object_store_probe_mode
-      CNPG_OBJECT_STORE_PROBE_TIMEOUT_SECONDS       = tostring(var.cnpg_object_store_probe_timeout_seconds)
-      CNPG_CLUSTER_NAME                             = "postgres-vectorchord"
-      CNPG_CLUSTER_NAMESPACE                        = "default"
-      CNPG_KUSTOMIZATION_NAMESPACE                  = "flux-system"
-      CNPG_KUSTOMIZATION_NAME                       = "postgres-vectorchord"
+      CNPG_RESTORE_RBD_GATE_TIMEOUT_SECONDS           = tostring(var.cnpg_restore_rbd_gate_timeout_seconds)
+      CNPG_RESTORE_RBD_SELF_HEAL_RETRIES              = tostring(var.cnpg_restore_rbd_self_heal_retries)
+      CNPG_RESTORE_RBD_SELF_HEAL_SETTLE_SECONDS       = tostring(var.cnpg_restore_rbd_self_heal_settle_seconds)
+      CNPG_RESTORE_RBD_NODEPLUGIN_NAMESPACE           = var.cnpg_restore_rbd_nodeplugin_namespace
+      CNPG_RESTORE_RBD_NODEPLUGIN_DAEMONSET_NAME      = var.cnpg_restore_rbd_nodeplugin_daemonset_name
+      CNPG_RESTORE_CLUSTER_HEALTH_TIMEOUT_SECONDS     = tostring(var.cnpg_restore_cluster_healthy_timeout_seconds)
+      CNPG_RESTORE_DATABASE_CR_TIMEOUT_SECONDS        = tostring(var.cnpg_restore_database_cr_timeout_seconds)
+      CNPG_RESTORE_PROGRESS_STALL_TIMEOUT_SECONDS     = tostring(var.cnpg_restore_progress_stall_timeout_seconds)
+      CNPG_OBJECT_STORE_PROBE_MODE                    = var.cnpg_object_store_probe_mode
+      CNPG_OBJECT_STORE_PROBE_TIMEOUT_SECONDS         = tostring(var.cnpg_object_store_probe_timeout_seconds)
+      CNPG_CLUSTER_NAME                               = "postgres-vectorchord"
+      CNPG_CLUSTER_NAMESPACE                          = "default"
+      CNPG_KUSTOMIZATION_NAMESPACE                    = "flux-system"
+      CNPG_KUSTOMIZATION_NAME                         = "postgres-vectorchord"
     }
   }
 

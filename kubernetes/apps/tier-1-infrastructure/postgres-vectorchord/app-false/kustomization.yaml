@@ -3,7 +3,5 @@ kind: Kustomization
 resources:
   - ../databases
   - cluster.yaml
-  - externalsecret-barman.yaml
-  - objectstore.yaml
   - scheduledbackup.yaml
   - backup-verification-cronjob.yaml

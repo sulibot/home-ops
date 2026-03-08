@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/barmancloud.cnpg.io/objectstore_v1.json
+# ObjectStore for the barman-cloud plugin — replaces inline barmanObjectStore in Cluster spec.
+# Credentials come from cnpg-barman-s3 Secret (created by ExternalSecret from 1Password).
+# MinIO LXC: minio01, pve02, VLAN 200, CT 200052 (provisioned via terragrunt).
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres-vectorchord-backup
+  namespace: default
+  labels:
+    app.kubernetes.io/name: postgres-vectorchord
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: postgres-vectorchord
+    cnpg.io/cluster: postgres-vectorchord
+spec:
+  configuration:
+    endpointURL: "https://s3.sulibot.com/"
+    destinationPath: "s3://cnpg-backups/postgres-vectorchord"
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-barman-s3
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-barman-s3
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+      maxParallel: 4
+    data:
+      compression: gzip
+      jobs: 2
+  retentionPolicy: "14d"

@@ -23,6 +23,18 @@ spec:
   targetNamespace: default
   wait: true
   healthChecks:
+    - apiVersion: external-secrets.io/v1
+      kind: ExternalSecret
+      name: cnpg-barman-s3
+      namespace: default
+    - apiVersion: v1
+      kind: Secret
+      name: cnpg-barman-s3
+      namespace: default
+    - apiVersion: barmancloud.cnpg.io/v1
+      kind: ObjectStore
+      name: postgres-vectorchord-backup
+      namespace: default
     - apiVersion: batch/v1
       kind: Job
       name: postgres-vectorchord-recovery-precheck
