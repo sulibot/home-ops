@@ -26,6 +26,48 @@ spec:
       calibre-web-automated:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          configure-oidc:
+            image:
+              repository: ghcr.io/crocodilestick/calibre-web-automated
+              tag: v4.0.6
+            envFrom:
+              - secretRef:
+                  name: calibre-web-automated-oidc
+                  optional: false
+            command:
+              - /bin/bash
+              - -ec
+              - |
+                set -euo pipefail
+
+                DB_PATH="/config/app.db"
+
+                if [[ ! -f "$DB_PATH" ]]; then
+                  cp /app/calibre-web-automated/empty_library/app.db "$DB_PATH"
+                fi
+
+                sqlite3 "$DB_PATH" <<'SQL'
+                INSERT INTO oauthProvider(provider_name, active)
+                SELECT 'generic', 0
+                WHERE NOT EXISTS (SELECT 1 FROM oauthProvider WHERE provider_name='generic');
+                SQL
+
+                sqlite3 "$DB_PATH" <<SQL
+                UPDATE oauthProvider
+                SET oauth_client_id='${OAUTH_CLIENT_ID}',
+                    oauth_client_secret='${OAUTH_CLIENT_SECRET}',
+                    metadata_url='https://auth.sulibot.com/application/o/calibre-web-automated/.well-known/openid-configuration',
+                    scope='openid profile email',
+                    username_mapper='preferred_username',
+                    email_mapper='email',
+                    login_button='Login with Authentik',
+                    active=1
+                WHERE provider_name='generic';
+
+                UPDATE settings
+                SET config_oauth_redirect_host='https://calibre-web-automated.sulibot.com';
+                SQL
         containers:
           app:
             image:
