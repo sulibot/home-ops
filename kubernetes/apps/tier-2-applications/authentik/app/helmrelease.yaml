@@ -55,12 +55,6 @@ spec:
         - authentik-blueprints
     server:
       replicas: 1
-      startupProbe:
-        failureThreshold: 180
-        tcpSocket:
-          port: http
-        periodSeconds: 10
-        timeoutSeconds: 5
       ingress:
         enabled: false
       metrics:
@@ -69,15 +63,3 @@ spec:
           enabled: true
     worker:
       replicas: 1
-      livenessProbe:
-        tcpSocket:
-          port: http
-      readinessProbe:
-        tcpSocket:
-          port: http
-      startupProbe:
-        failureThreshold: 180
-        tcpSocket:
-          port: http
-        periodSeconds: 10
-        timeoutSeconds: 5
