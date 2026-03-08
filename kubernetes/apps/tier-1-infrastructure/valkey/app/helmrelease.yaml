@@ -23,6 +23,11 @@ spec:
     timeout: 10m
   values:
     architecture: replication
+    rbac:
+      create: true
+    serviceAccount:
+      create: true
+      automountServiceAccountToken: true
 
     auth:
       enabled: true
@@ -32,6 +37,8 @@ spec:
     sentinel:
       enabled: true
       quorum: 2
+      service:
+        createPrimary: true
       resources:
         requests:
           cpu: 10m
@@ -39,6 +46,7 @@ spec:
 
     replica:
       replicaCount: 3
+      automountServiceAccountToken: true
       resources:
         requests:
           cpu: 25m
