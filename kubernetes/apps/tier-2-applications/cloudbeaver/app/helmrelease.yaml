@@ -40,6 +40,10 @@ spec:
               tag: 26.0.0@sha256:53b446904be9cf7326e5cc446201aaaa35daa52e36887e46e38c70dde14b12e2
             env:
               TZ: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: cloudbeaver-oidc
+                  optional: true
             probes:
               liveness: &probes
                 enabled: true
