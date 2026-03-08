@@ -1,0 +1,73 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vikunja-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vikunja-bootstrap
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vikunja-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: vikunja-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vikunja-bootstrap
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vikunja-bootstrap-admin
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 2
+  template:
+    spec:
+      serviceAccountName: vikunja-bootstrap
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: docker.io/bitnami/kubectl:1.33.4
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: vikunja-admin
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              for i in $(seq 1 60); do
+                POD="$(kubectl -n default get pod -l app.kubernetes.io/instance=vikunja -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+                if [ -n "$POD" ] && [ "$(kubectl -n default get pod "$POD" -o jsonpath='{.status.phase}' 2>/dev/null || true)" = "Running" ]; then
+                  break
+                fi
+                sleep 5
+              done
+
+              if [ -z "${POD:-}" ]; then
+                echo "vikunja pod not found"
+                exit 1
+              fi
+
+              if kubectl -n default exec "$POD" -- /app/vikunja/vikunja user list --email "$VIKUNJA_ADMIN_EMAIL" | grep -q "$VIKUNJA_ADMIN_EMAIL"; then
+                echo "vikunja admin user already exists: $VIKUNJA_ADMIN_EMAIL"
+                exit 0
+              fi
+
+              kubectl -n default exec "$POD" -- /app/vikunja/vikunja user create \
+                -u "$VIKUNJA_ADMIN_USERNAME" \
+                -e "$VIKUNJA_ADMIN_EMAIL" \
+                -p "$VIKUNJA_ADMIN_PASSWORD"
