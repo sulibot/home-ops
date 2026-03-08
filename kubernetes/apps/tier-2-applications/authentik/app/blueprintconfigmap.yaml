@@ -552,6 +552,8 @@ data:
           redirect_uris:
             - url: "https://karakeep.sulibot.com/api/auth/callback/custom"
               matching_mode: strict
+            - url: "https://karakeep.sulibot.com/api/auth/callback/oidc"
+              matching_mode: strict
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
