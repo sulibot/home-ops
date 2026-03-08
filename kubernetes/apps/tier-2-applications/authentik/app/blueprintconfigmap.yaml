@@ -388,7 +388,7 @@ data:
           name: Login with Google
           slug: google
           enabled: true
-          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
           enrollment_flow: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
           provider_type: google
           consumer_key: !Env GOOGLE_CLIENT_ID
