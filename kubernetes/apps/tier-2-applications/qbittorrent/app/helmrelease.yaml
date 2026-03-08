@@ -41,6 +41,26 @@ spec:
             securityContext:
               runAsUser: 0
         containers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.40.0
+            env:
+              VPN_SERVICE_PROVIDER: nordvpn
+              VPN_TYPE: wireguard
+            envFrom:
+              - secretRef:
+                  name: qbittorrent-nordvpn-secret
+            securityContext:
+              runAsUser: 0
+              runAsNonRoot: false
+              capabilities:
+                add: ["NET_ADMIN"]
+              readOnlyRootFilesystem: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
           app:
             image:
               repository: ghcr.io/home-operations/qbittorrent
@@ -81,9 +101,9 @@ spec:
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
           [{
-            "name": "vlan10",
+            "name": "vlan30",
             "namespace": "kube-system",
-            "ips": ["10.10.0.253/24", "fd00:10::253/64"]
+            "ips": ["10.30.0.252/24", "fd00:30::252/64"]
           }]
       securityContext:
         runAsNonRoot: false
@@ -143,5 +163,12 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+      tun-device:
+        type: hostPath
+        hostPath: /dev/net/tun
+        advancedMounts:
+          qbittorrent:
+            gluetun:
+              - path: /dev/net/tun
       tmp:
         type: emptyDir
