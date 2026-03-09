@@ -81,8 +81,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /jsonrpc/status
+                  tcpSocket:
                     port: 80
                   periodSeconds: 10
                   timeoutSeconds: 5
@@ -91,8 +90,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /
+                  tcpSocket:
                     port: 80
                   failureThreshold: 30
                   periodSeconds: 10
