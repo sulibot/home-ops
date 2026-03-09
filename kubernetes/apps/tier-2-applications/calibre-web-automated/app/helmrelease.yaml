@@ -55,8 +55,8 @@ spec:
 
                 sqlite3 "$DB_PATH" <<SQL
                 UPDATE oauthProvider
-                SET oauth_client_id='${OAUTH_CLIENT_ID}',
-                    oauth_client_secret='${OAUTH_CLIENT_SECRET}',
+                SET oauth_client_id='$${OAUTH_CLIENT_ID}',
+                    oauth_client_secret='$${OAUTH_CLIENT_SECRET}',
                     metadata_url='https://auth.sulibot.com/application/o/calibre-web-automated/.well-known/openid-configuration',
                     scope='openid profile email',
                     username_mapper='preferred_username',
@@ -86,10 +86,9 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /login
+                  tcpSocket:
                     port: &port 8083
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
@@ -98,8 +97,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /login
+                  tcpSocket:
                     port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 5
