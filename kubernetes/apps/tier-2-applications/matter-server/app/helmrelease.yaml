@@ -63,7 +63,7 @@ spec:
               "ips": ["10.30.0.252/24", "fd00:30::252/64"]
             }
           ]
-      hostUsers: false
+      hostUsers: true
       securityContext:
         runAsNonRoot: false
         runAsUser: 0
