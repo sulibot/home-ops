@@ -29,8 +29,14 @@ spec:
     - name: has-volsync-created-by-labels
       expression: >-
         object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+    - name: xdg-cache-home-missing
+      expression: >-
+        !(
+          has(object.spec.template.spec.containers[0].env)
+          && object.spec.template.spec.containers[0].env.exists(e, e.name == "XDG_CACHE_HOME")
+        )
   failurePolicy: Ignore
-  reinvocationPolicy: IfNeeded
+  reinvocationPolicy: Never
   mutations:
     - patchType: JSONPatch
       jsonPatch:
@@ -85,7 +91,7 @@ spec:
       expression: >-
         has(object.spec.kopia)
   failurePolicy: Ignore
-  reinvocationPolicy: IfNeeded
+  reinvocationPolicy: Never
   mutations:
     - patchType: JSONPatch
       jsonPatch:
