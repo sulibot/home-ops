@@ -34,7 +34,6 @@ spec:
               repository: ghcr.io/flaresolverr/flaresolverr
               tag: v3.4.6
             env:
-              PORT: &port 80
               TZ: America/Los_Angeles
               LOG_LEVEL: info
             probes:
@@ -74,4 +73,11 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: 8191
+    persistence:
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+          - path: /var/tmp
