@@ -16,6 +16,7 @@ resources:
   # - ./cross-seed/ks.yaml
   # emby disabled
   # - ./emby/ks.yaml
+  - ./flaresolverr/ks.yaml
   - ./filebrowser/ks.yaml
   - ./firefly/ks.yaml
   - ./go2rtc/ks.yaml
