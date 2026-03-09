@@ -10,8 +10,6 @@ metadata:
     component: application
     critical: "false"
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     - name: onepassword
       namespace: flux-system
