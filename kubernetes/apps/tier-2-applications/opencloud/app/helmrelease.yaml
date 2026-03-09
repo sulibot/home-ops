@@ -52,9 +52,9 @@ spec:
               PROXY_OIDC_REWRITE_WELLKNOWN: "true"
               PROXY_AUTOPROVISION_ACCOUNTS: "true"
               GRAPH_USERNAME_MATCH: "none"
-              PROXY_USER_OIDC_CLAIM: "sub"
-              PROXY_AUTOPROVISION_CLAIM_USERNAME: "sub"
-              PROXY_USER_CS3_CLAIM: "username"
+              PROXY_USER_OIDC_CLAIM: "preferred_username"
+              PROXY_AUTOPROVISION_CLAIM_USERNAME: "preferred_username"
+              PROXY_USER_CS3_CLAIM: "preferred_username"
               OC_ENABLE_OCM: "false"
               PROXY_HTTP_ADDR: 0.0.0.0:9200
               PROXY_TLS: "false"
