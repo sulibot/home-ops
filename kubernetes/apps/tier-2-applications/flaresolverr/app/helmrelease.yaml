@@ -34,6 +34,7 @@ spec:
               repository: ghcr.io/flaresolverr/flaresolverr
               tag: v3.4.6
             env:
+              HOST: "::"
               TZ: America/Los_Angeles
               LOG_LEVEL: info
             probes:
