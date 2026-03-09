@@ -1,0 +1,79 @@
+---
+# Periodic guardrail to nudge the critical secret dependency chain.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: flux-secrets-chain-reconciler
+  namespace: flux-system
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 1800
+      template:
+        spec:
+          serviceAccountName: flux-secrets-chain-reconciler
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reconciler
+              image: public.ecr.aws/bitnami/kubectl:1.34.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  ts="$(date -u +%FT%TZ)"
+                  for ks in onepassword external-secrets secrets-ready; do
+                    kubectl -n flux-system annotate kustomization "${ks}" reconcile.fluxcd.io/requestedAt="${ts}" --overwrite
+                  done
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flux-secrets-chain-reconciler
+  namespace: flux-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flux-secrets-chain-reconciler
+  namespace: flux-system
+rules:
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-secrets-chain-reconciler
+  namespace: flux-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flux-secrets-chain-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: flux-secrets-chain-reconciler
+    namespace: flux-system

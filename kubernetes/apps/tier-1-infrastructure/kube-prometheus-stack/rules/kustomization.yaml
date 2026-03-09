@@ -4,5 +4,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../app/alertmanagerconfig.yaml
+  - ./prometheusrule-flux.yaml
   - ./prometheusrule-observability.yaml
   - ./prometheusrule-pods.yaml

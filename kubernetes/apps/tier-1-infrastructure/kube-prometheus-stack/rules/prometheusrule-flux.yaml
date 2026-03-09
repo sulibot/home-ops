@@ -1,0 +1,45 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux-platform-rules
+  namespace: observability
+spec:
+  groups:
+    - name: flux.platform
+      interval: 1m
+      rules:
+        - alert: FluxControllerDown
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="flux-system",
+              deployment=~"source-controller|kustomize-controller|helm-controller|notification-controller"
+            } < 1
+          for: 5m
+          labels:
+            severity: critical
+            component: flux
+          annotations:
+            summary: "Flux controller {{ $labels.deployment }} unavailable"
+            description: |
+              Flux controller {{ $labels.deployment }} has no available replicas for at least 5 minutes.
+              Reconciliation and drift correction may be stalled.
+
+        - alert: FluxKustomizationNotReady
+          expr: |
+            gotk_reconcile_condition{
+              namespace="flux-system",
+              kind="Kustomization",
+              type="Ready",
+              status="False"
+            } == 1
+          for: 15m
+          labels:
+            severity: warning
+            component: flux
+          annotations:
+            summary: "Flux Kustomization {{ $labels.name }} not Ready"
+            description: |
+              Flux Kustomization {{ $labels.name }} has been NotReady for at least 15 minutes.
+              Check dependency chain, source status, and reconciliation errors.

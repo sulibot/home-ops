@@ -1,0 +1,99 @@
+---
+# Enforce conservative defaults for VolSync mover workloads.
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-mover-job-guardrails
+spec:
+  policyName: volsync-mover-job-guardrails
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-mover-job-guardrails
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - jobs
+  matchConditions:
+    - name: is-volsync-mover-job
+      expression: >-
+        object.metadata.name.startsWith("volsync-dst-") || object.metadata.name.startsWith("volsync-src-")
+    - name: has-volsync-created-by-labels
+      expression: >-
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+  failurePolicy: Ignore
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/parallelism",
+              value: 1
+            },
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/containers/0/env/1/value",
+              value: "/tmp/kopia-cache"
+            },
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/containers/0/env/-",
+              value: Object.spec.template.spec.containers.env{
+                name: "XDG_CACHE_HOME",
+                value: "/tmp/kopia-cache"
+              }
+            }
+          ]
+---
+# Safety fallback: force ReplicationSource kopia parallelism to 1.
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-replicationsource-serialization
+spec:
+  policyName: volsync-replicationsource-serialization
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-replicationsource-serialization
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - volsync.backube
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - replicationsources
+  matchConditions:
+    - name: has-kopia-spec
+      expression: >-
+        has(object.spec.kopia)
+  failurePolicy: Ignore
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/kopia/parallelism",
+              value: 1
+            }
+          ]
