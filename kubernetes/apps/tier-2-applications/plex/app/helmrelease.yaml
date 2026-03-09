@@ -40,6 +40,11 @@ spec:
                   secretKeyRef:
                     name: plex-secret
                     key: PLEX_CLAIM
+              PLEX_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: plex-secret
+                    key: PLEX_TOKEN
             probes:
               liveness: &probes
                 enabled: true
