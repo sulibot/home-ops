@@ -31,6 +31,9 @@ spec:
               tag: 26.0.0@sha256:a60b71e46cb01b41874c0b8028f661e9e3a958b20402a7403517ca6f9d95976f
             env:
               NZBGET__CONTROLIP: "::"
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
             command:
               - /bin/sh
               - -c
@@ -44,8 +47,8 @@ spec:
 
                   # Update config - use $$ to escape for Helm
                   sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlUsername=.*@ControlUsername=@" "$CONFIG_FILE"
-                  sed -i "s@^ControlPassword=.*@ControlPassword=@" "$CONFIG_FILE"
+                  sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                  sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                   sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
 
                   echo "After update:"
@@ -64,6 +67,9 @@ spec:
               NZBGET__PORT: &port 80
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
             probes:
               liveness:
                 enabled: true
