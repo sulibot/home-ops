@@ -68,6 +68,11 @@ spec:
         ensure: present
         passwordSecret:
           name: vikunja-pg-password
+      - name: miniflux
+        login: true
+        ensure: present
+        passwordSecret:
+          name: miniflux-pg-password
 
   storage:
     size: 60Gi

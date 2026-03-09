@@ -129,6 +129,11 @@ spec:
         ensure: present
         passwordSecret:
           name: vikunja-pg-password
+      - name: miniflux
+        login: true
+        ensure: present
+        passwordSecret:
+          name: miniflux-pg-password
       - name: radarr
         login: true
         ensure: present

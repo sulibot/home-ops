@@ -6,6 +6,7 @@ resources:
   - firefly.yaml
   - paperless.yaml
   - vikunja.yaml
+  - miniflux.yaml
   - radarr-main.yaml
   - radarr-log.yaml
   - radarr-4k-main.yaml

@@ -1,0 +1,111 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: miniflux
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: miniflux
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      miniflux:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/miniflux/miniflux
+              tag: 2.2.17
+            env:
+              TZ: America/Los_Angeles
+              BASE_URL: https://miniflux.sulibot.com
+              CREATE_ADMIN: "1"
+              RUN_MIGRATIONS: "1"
+              LOG_DATE_TIME: "1"
+              POLLING_SCHEDULER: entry_frequency
+              POLLING_FREQUENCY: "15"
+              PORT: &port 8080
+              OAUTH2_PROVIDER: oidc
+              OAUTH2_CLIENT_ID: miniflux
+              OAUTH2_OIDC_DISCOVERY_ENDPOINT: https://auth.sulibot.com/application/o/miniflux/.well-known/openid-configuration
+              OAUTH2_REDIRECT_URL: https://miniflux.sulibot.com/oauth2/oidc/callback
+              OAUTH2_USER_CREATION: "1"
+            envFrom:
+              - secretRef:
+                  name: miniflux-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthcheck
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthcheck
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 30
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    service:
+      app:
+        controller: miniflux
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - miniflux.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port

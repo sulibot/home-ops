@@ -1,0 +1,22 @@
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: miniflux
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: miniflux
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: app
+        minAllowed:
+          cpu: 25m
+          memory: 128Mi
+        maxAllowed:
+          cpu: 1
+          memory: 1Gi
+        controlledResources: [cpu, memory]
