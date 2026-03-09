@@ -29,6 +29,7 @@ resources:
   - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
+  - ./matter-server/ks.yaml
   - ./miniflux/ks.yaml
   # mosquitto disabled
   # - ./mosquitto/ks.yaml
