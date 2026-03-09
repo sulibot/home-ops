@@ -64,8 +64,6 @@ spec:
               readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             resources:
-              claims:
-                - name: gpu
               requests:
                 cpu: 100m
     defaultPodOptions:
@@ -83,10 +81,7 @@ spec:
               "ips": ["10.31.0.250/24", "fd00:31::250/64"]
             }
           ]
-      resourceClaims:
-        - name: gpu
-          resourceClaimTemplateName: plex
-      # Schedule on worker nodes only (nodes without control-plane role)
+      # Prefer GPU workers, but do not require GPU so scheduling can still proceed.
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -94,6 +89,19 @@ spec:
             - matchExpressions:
               - key: node-role.kubernetes.io/control-plane
                 operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: gpu.passthrough.enabled
+                    operator: In
+                    values: ["true"]
+            - weight: 90
+              preference:
+                matchExpressions:
+                  - key: gpu.driver
+                    operator: In
+                    values: ["xe"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

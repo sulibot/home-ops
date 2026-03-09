@@ -35,13 +35,28 @@ spec:
               capabilities: {drop: ["ALL"]}
             env:
               TZ: America/Los_Angeles
-            resources:
-              claims:
-                - name: gpu
     defaultPodOptions:
-      resourceClaims:
-        - name: gpu
-          resourceClaimTemplateName: emby
+      # Prefer GPU workers, but keep scheduling possible on non-GPU nodes.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: gpu.passthrough.enabled
+                    operator: In
+                    values: ["true"]
+            - weight: 90
+              preference:
+                matchExpressions:
+                  - key: gpu.driver
+                    operator: In
+                    values: ["xe"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -81,4 +96,3 @@ spec:
             subPath: data
       tmp:
         type: emptyDir
-
