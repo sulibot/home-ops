@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: opencloud
   updatePolicy:
-    updateMode: "Auto"
+    updateMode: "Initial"
     minReplicas: 1
   resourcePolicy:
     containerPolicies:
