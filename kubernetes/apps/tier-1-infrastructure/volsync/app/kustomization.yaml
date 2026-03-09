@@ -6,8 +6,11 @@ resources:
   - ../namespace.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
-  - ./mutatingadmissionpolicy-jitter.yaml
-  - ./mutatingadmissionpolicy-mover-guardrails.yaml
+  # Disabled: these mutate Job pod templates on CREATE and cause immutable-update
+  # reconcile loops in VolSync (delete/recreate churn for volsync-src-* jobs).
+  # Keep Job behavior driven by ReplicationSource spec instead.
+  # - ./mutatingadmissionpolicy-jitter.yaml
+  # - ./mutatingadmissionpolicy-mover-guardrails.yaml
   # - ./mutatingadmissionpolicy-restore.yaml  # Filesystem repo mount no longer needed after S3 backend migration
   - ./mutatingadmissionpolicy-job-ttl.yaml
   # Note: grafanadashboard and prometheusrule removed to break circular dependency with kube-prometheus-stack
