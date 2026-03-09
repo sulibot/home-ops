@@ -31,11 +31,5 @@
       matchPackageNames: ["/ghcr\\.io\\/siderolabs\\/installer/"],
       enabled: false,
     },
-    {
-      description: "Disable Rook-Ceph updates (storage layer; must follow upgrade guide, no version skipping)",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["/rook-ceph/"],
-      enabled: false,
-    },
   ],
 }

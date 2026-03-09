@@ -40,7 +40,7 @@
     "**/.terragrunt-cache/**",
     "**/*.backup",
     "**/*.before-reorg",
-    "archieve/**",
+    "archive/**",
     "ansible/lae.proxmox/collections/**",
   ],
   flux: {
