@@ -93,8 +93,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - name: home-assistant
-                port: 8123
+              - name: authentik-outpost
+                port: 9000
     persistence:
       config:
         enabled: true
