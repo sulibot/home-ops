@@ -115,7 +115,7 @@ spec:
             command:
               - /bin/sh
               - -c
-              - "curl --silent --show-error --fail http://firefly-app.default.svc.cluster.local:8080/api/v1/cron/${STATIC_CRON_TOKEN}"
+              - "curl --silent --show-error --fail --retry 5 --retry-all-errors --retry-delay 2 http://firefly.default.svc.cluster.local:8080/api/v1/cron/$${STATIC_CRON_TOKEN}"
             env:
               STATIC_CRON_TOKEN:
                 valueFrom:
