@@ -41,7 +41,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: bootstrap
-          image: docker.io/bitnami/kubectl:1.33.4
+          image: registry.k8s.io/kubectl:v1.33.4
           imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
@@ -57,7 +57,7 @@ spec:
                 sleep 5
               done
 
-              if [ -z "${POD:-}" ]; then
+              if [ -z "$POD" ]; then
                 echo "vikunja pod not found"
                 exit 1
               fi
