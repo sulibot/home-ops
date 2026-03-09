@@ -81,3 +81,7 @@ spec:
         globalMounts:
           - path: /tmp
           - path: /var/tmp
+      app-local:
+        type: emptyDir
+        globalMounts:
+          - path: /app/.local
