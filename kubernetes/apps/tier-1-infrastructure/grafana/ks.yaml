@@ -79,6 +79,7 @@ spec:
   postBuild:
     substitute:
       APP: grafana
+      VOLSYNC_SCHEDULE: "2 * * * *"
       VOLSYNC_SOURCE_PVC: grafana-pvc
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc

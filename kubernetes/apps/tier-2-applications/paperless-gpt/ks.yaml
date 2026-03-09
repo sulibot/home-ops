@@ -35,6 +35,7 @@ spec:
   postBuild:
     substitute:
       APP: paperless-gpt
+      VOLSYNC_SCHEDULE: "24 * * * *"
       VOLSYNC_CAPACITY: 1Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

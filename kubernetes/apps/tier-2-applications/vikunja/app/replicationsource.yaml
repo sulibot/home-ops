@@ -11,7 +11,7 @@ metadata:
 spec:
   sourcePVC: vikunja-config
   trigger:
-    schedule: "0 * * * *"
+    schedule: "${VOLSYNC_SCHEDULE:=0 * * * *}"
   kopia:
     repository: vikunja-volsync-secret
     storageClassName: csi-cephfs-config-sc
@@ -20,7 +20,7 @@ spec:
     capacity: 5Gi
     copyMethod: Snapshot
     compression: zstd-fastest
-    parallelism: 2
+    parallelism: ${VOLSYNC_PARALLELISM:=1}
     volumeSnapshotClassName: csi-cephfs-config-snapclass
     cacheStorageClassName: csi-cephfs-config-sc
     cacheAccessModes:

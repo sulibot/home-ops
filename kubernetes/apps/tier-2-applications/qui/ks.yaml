@@ -27,6 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: qui
+      VOLSYNC_SCHEDULE: "29 * * * *"
       VOLSYNC_CAPACITY: 2Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

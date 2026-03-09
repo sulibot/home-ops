@@ -17,7 +17,7 @@ spec:
 
   # --- Backup scheduling --------------------------------------------------
   trigger:
-    schedule: "0 * * * *"  # Every hour
+    schedule: "${VOLSYNC_SCHEDULE:=0 * * * *}"  # Hourly, app-specific minute via ks substitute
 
   # --- Kopia backup configuration ----------------------------------------
   kopia:
@@ -30,7 +30,7 @@ spec:
     capacity: "${VOLSYNC_CAPACITY:=5Gi}"
     copyMethod: Snapshot
     compression: "zstd-fastest"
-    parallelism: 2
+    parallelism: ${VOLSYNC_PARALLELISM:=1}
 
     # Snapshot integration
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:=csi-cephfs-config-snapclass}"

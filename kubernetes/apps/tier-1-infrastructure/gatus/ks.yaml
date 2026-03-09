@@ -32,6 +32,7 @@ spec:
   postBuild:
     substitute:
       APP: gatus
+      VOLSYNC_SCHEDULE: "1 * * * *"
       VOLSYNC_SOURCE_PVC: gatus-config
       VOLSYNC_CAPACITY: 5Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc

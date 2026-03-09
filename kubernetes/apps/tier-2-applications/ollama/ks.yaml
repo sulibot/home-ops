@@ -25,6 +25,7 @@ spec:
   postBuild:
     substitute:
       APP: ollama
+      VOLSYNC_SCHEDULE: "22 * * * *"
       VOLSYNC_CAPACITY: 30Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

@@ -28,6 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: prowlarr
+      VOLSYNC_SCHEDULE: "27 * * * *"
       VOLSYNC_CAPACITY: 3Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

@@ -28,6 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: overseerr
+      VOLSYNC_SCHEDULE: "23 * * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
