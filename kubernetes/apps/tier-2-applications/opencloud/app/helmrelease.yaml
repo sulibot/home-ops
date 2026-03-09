@@ -60,7 +60,11 @@ spec:
               PROXY_TLS: "false"
               WEB_OIDC_AUTHORITY: "https://auth.sulibot.com/application/o/opencloud/"
               WEB_OIDC_METADATA_URL: "https://auth.sulibot.com/application/o/opencloud/.well-known/openid-configuration"
-              WEB_OIDC_CLIENT_ID: "web"
+              WEB_OIDC_CLIENT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: opencloud-secret
+                    key: OPENCLOUD_OIDC_CLIENT_ID
               WEB_OIDC_SCOPE: "openid profile email"
               IDM_CREATE_DEMO_USERS: "false"
               OC_ADMIN_USER_ID:
