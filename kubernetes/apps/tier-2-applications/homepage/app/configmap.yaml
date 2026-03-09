@@ -228,6 +228,16 @@ data:
             icon: home-assistant.png
             description: Home Automation
             siteMonitor: https://home.sulibot.com
+        - OpenCloud:
+            href: https://opencloud.sulibot.com
+            icon: mdi-cloud
+            description: File Sync
+            siteMonitor: https://opencloud.sulibot.com
+        - Vikunja:
+            href: https://vikunja.sulibot.com
+            icon: vikunja.png
+            description: Todo & Project Manager
+            siteMonitor: https://vikunja.sulibot.com
 
     - AI:
         - Paperless GPT:
@@ -261,6 +271,11 @@ data:
             icon: victoriametrics.png
             description: Log Aggregation
             siteMonitor: https://victoria-logs.sulibot.com
+        - CloudBeaver:
+            href: https://cloudbeaver.sulibot.com
+            icon: mdi-database
+            description: Database Manager
+            siteMonitor: https://cloudbeaver.sulibot.com
 
   bookmarks.yaml: |
     - Git:
