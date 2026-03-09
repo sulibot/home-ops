@@ -81,6 +81,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
+                  httpGet: null
                   tcpSocket:
                     port: 80
                   periodSeconds: 10
@@ -90,6 +91,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
+                  httpGet: null
                   tcpSocket:
                     port: 80
                   failureThreshold: 30
