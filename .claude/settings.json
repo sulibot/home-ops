@@ -22,7 +22,14 @@
       "WebFetch(domain:labs.iximiuz.com)",
       "Bash(then op item get \"$id\" --format json)",
       "Bash(gh pr checks 202)",
-      "Read(//usr/local/bin/**)"
+      "Read(//usr/local/bin/**)",
+      "Bash(docker buildx imagetools inspect dbeaver/cloudbeaver:26.0.0)",
+      "WebFetch(domain:lemmy.world)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:wiki.servarr.com)",
+      "WebFetch(domain:forums.unraid.net)",
+      "WebFetch(domain:vikunja.io)",
+      "WebFetch(domain:news.ycombinator.com)"
     ],
     "additionalDirectories": [
       "/Users/sulibot"
