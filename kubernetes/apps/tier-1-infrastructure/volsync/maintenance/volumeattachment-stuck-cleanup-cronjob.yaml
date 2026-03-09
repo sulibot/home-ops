@@ -1,0 +1,179 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: volumeattachment-stuck-cleanup
+  namespace: volsync-system
+spec:
+  schedule: "*/10 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app: volumeattachment-stuck-cleanup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: volumeattachment-stuck-cleanup
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: public.ecr.aws/bitnami/kubectl:1.34.1
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: STUCK_THRESHOLD_MINUTES
+                  value: "15"
+                - name: CSI_DRIVER_ALLOWLIST
+                  value: "cephfs.csi.ceph.com,rbd.csi.ceph.com"
+                - name: DRY_RUN
+                  value: "false"
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  STUCK_THRESHOLD_MINUTES="${STUCK_THRESHOLD_MINUTES:-15}"
+                  CSI_DRIVER_ALLOWLIST="${CSI_DRIVER_ALLOWLIST:-cephfs.csi.ceph.com,rbd.csi.ceph.com}"
+                  DRY_RUN="${DRY_RUN:-false}"
+
+                  now_epoch="$(date +%s)"
+                  cleaned=0
+                  scanned=0
+                  skipped=0
+
+                  echo "Scanning for stale VolumeAttachments..."
+                  echo "  threshold: ${STUCK_THRESHOLD_MINUTES}m"
+                  echo "  drivers: ${CSI_DRIVER_ALLOWLIST}"
+                  echo "  dry-run: ${DRY_RUN}"
+
+                  mapfile -t rows < <(
+                    kubectl get volumeattachments.storage.k8s.io -o json | jq -r --arg drivers "$CSI_DRIVER_ALLOWLIST" '
+                      ($drivers | split(",")) as $allow
+                      | .items[]?
+                      | select((.spec.attacher // "") as $a | ($allow | index($a)))
+                      | select((.metadata.deletionTimestamp // "") == "")
+                      | select((.status.attached // false) == true)
+                      | [
+                          .metadata.name,
+                          .spec.attacher,
+                          (.spec.nodeName // ""),
+                          (.metadata.creationTimestamp // ""),
+                          (.spec.source.persistentVolumeName // "")
+                        ] | @tsv
+                    '
+                  )
+
+                  if [ "${#rows[@]}" -eq 0 ]; then
+                    echo "No attached VolumeAttachments found for allowlisted CSI drivers."
+                    exit 0
+                  fi
+
+                  for row in "${rows[@]}"; do
+                    scanned=$((scanned + 1))
+                    IFS=$'\t' read -r name attacher node created pv <<<"${row}"
+
+                    if [ -z "${node}" ] || [ -z "${created}" ]; then
+                      echo "SKIP: ${name} missing node or creation timestamp"
+                      skipped=$((skipped + 1))
+                      continue
+                    fi
+
+                    created_epoch="$(date -d "${created}" +%s 2>/dev/null || echo 0)"
+                    if [ "${created_epoch}" -eq 0 ]; then
+                      echo "SKIP: ${name} failed to parse creationTimestamp='${created}'"
+                      skipped=$((skipped + 1))
+                      continue
+                    fi
+
+                    age_minutes="$(( (now_epoch - created_epoch) / 60 ))"
+                    ready_status="$(
+                      kubectl get node "${node}" -o json 2>/dev/null \
+                        | jq -r '[.status.conditions[]? | select(.type=="Ready")][0].status // "Unknown"' \
+                        || echo "Unknown"
+                    )"
+
+                    if [ "${ready_status}" = "True" ]; then
+                      echo "SKIP: ${name} node=${node} ready=True age=${age_minutes}m"
+                      skipped=$((skipped + 1))
+                      continue
+                    fi
+
+                    if [ "${age_minutes}" -lt "${STUCK_THRESHOLD_MINUTES}" ]; then
+                      echo "SKIP: ${name} node=${node} ready=${ready_status} age=${age_minutes}m (<${STUCK_THRESHOLD_MINUTES}m)"
+                      skipped=$((skipped + 1))
+                      continue
+                    fi
+
+                    echo "CLEANUP: ${name} pv=${pv} node=${node} attacher=${attacher} ready=${ready_status} age=${age_minutes}m"
+                    if [ "${DRY_RUN}" = "true" ]; then
+                      continue
+                    fi
+
+                    kubectl delete volumeattachment.storage.k8s.io "${name}" --wait=false
+                    cleaned=$((cleaned + 1))
+                  done
+
+                  echo "Done: scanned=${scanned} cleaned=${cleaned} skipped=${skipped}"
+                  if [ "${DRY_RUN}" = "true" ]; then
+                    exit 0
+                  fi
+
+                  # Non-zero surfaces action in job status/alerts.
+                  if [ "${cleaned}" -gt 0 ]; then
+                    exit 2
+                  fi
+                  exit 0
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: volumeattachment-stuck-cleanup
+  namespace: volsync-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: volumeattachment-stuck-cleanup
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: volumeattachment-stuck-cleanup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: volumeattachment-stuck-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: volumeattachment-stuck-cleanup
+    namespace: volsync-system

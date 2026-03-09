@@ -693,6 +693,7 @@ Before cluster rebuild, verify these are in place:
 - [ ] All LoadBalancer services have dual-stack IPs (IPv6,IPv4)
 - [ ] DR scripts tested and working (especially dr-3 with timeout)
 - [ ] Gateway health checks added to cilium kustomization
+- [ ] VolumeAttachment stuck cleanup automation enabled (cephfs/rbd, NotReady node gate, age threshold)
 - [ ] Validation scripts exist and are executable
 
 ---

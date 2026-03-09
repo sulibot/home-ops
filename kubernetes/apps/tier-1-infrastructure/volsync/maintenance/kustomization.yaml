@@ -6,5 +6,6 @@ resources:
   - ./externalsecret.yaml
   - ./kopiamaintenance.yaml
   - ./stuck-restore-detection-cronjob.yaml
+  - ./volumeattachment-stuck-cleanup-cronjob.yaml
   - ./backup-verification-cronjob.yaml
   - ./prometheusrule.yaml
