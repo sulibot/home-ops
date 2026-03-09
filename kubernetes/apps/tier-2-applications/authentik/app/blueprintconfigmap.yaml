@@ -821,8 +821,8 @@ data:
           name: opencloud
         attrs:
           name: opencloud
+          client_type: public
           client_id: !Env OPENCLOUD_OIDC_CLIENT_ID
-          client_secret: !Env OPENCLOUD_OIDC_CLIENT_SECRET
           redirect_uris:
             - url: "https://opencloud.sulibot.com/oidc-callback.html"
               matching_mode: strict
