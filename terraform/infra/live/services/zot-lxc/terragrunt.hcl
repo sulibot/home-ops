@@ -16,6 +16,26 @@ locals {
   zot_admin_pass   = try(local.secrets.zot_admin_password, local.secrets.minio_root_password)
   service_domain   = "zot.sulibot.com"
   host_domain      = "${local.zot_class.hostname}.sulibot.com"
+  zot_caddy_frontend_commands = [
+    "export DEBIAN_FRONTEND=noninteractive",
+    "apt-get update -qq >/dev/null",
+    "apt-get install -y -qq --no-install-recommends caddy curl openssl >/dev/null",
+    "mkdir -p /etc/caddy/certs /etc/systemd/system/caddy.service.d /root/.acme.sh",
+    "cat > /etc/systemd/system/caddy.service.d/override.conf <<'UNIT'\n[Service]\nPrivateTmp=false\nPrivateDevices=false\nProtectSystem=no\nProtectHome=false\nNoNewPrivileges=false\nUNIT",
+    "if [ ! -x /root/.acme.sh/acme.sh ]; then curl -fsSL https://get.acme.sh | sh -s email=admin@sulibot.com >/dev/null; fi",
+    "set -a && . /root/cloudflare.env && set +a",
+    "/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >/dev/null",
+    "/root/.acme.sh/acme.sh --issue --dns dns_cf -d ${local.service_domain} --keylength ec-256 --force",
+    "/root/.acme.sh/acme.sh --install-cert -d ${local.service_domain} --ecc --fullchain-file /etc/caddy/certs/${local.service_domain}.crt --key-file /etc/caddy/certs/${local.service_domain}.key",
+    "shred -u /root/cloudflare.env || rm -f /root/cloudflare.env",
+    "chown root:caddy /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
+    "chmod 640 /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
+    "cat > /etc/caddy/Caddyfile <<'CFG'\n{\n  admin off\n}\n\n${local.service_domain} {\n  tls /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key\n  reverse_proxy 127.0.0.1:5000\n}\nCFG",
+    "systemctl daemon-reload",
+    "systemctl enable --now caddy",
+    "systemctl restart caddy",
+    "curl -ksS -o /dev/null https://${local.service_domain}/v2/",
+  ]
 }
 
 generate "providers" {
@@ -202,31 +222,14 @@ resource "null_resource" "zot_caddy_frontend" {
   }
 
   provisioner "file" {
-    content     = "CF_Token=$${data.sops_file.secrets.data[\"cloudflare_api_token\"]}\n"
+    content     = <<-EOT
+CF_Token=$${data.sops_file.secrets.data["cloudflare_api_token"]}
+EOT
     destination = "/root/cloudflare.env"
   }
 
   provisioner "remote-exec" {
-    inline = [
-      "export DEBIAN_FRONTEND=noninteractive",
-      "apt-get update -qq >/dev/null",
-      "apt-get install -y -qq --no-install-recommends caddy curl openssl >/dev/null",
-      "mkdir -p /etc/caddy/certs /etc/systemd/system/caddy.service.d /root/.acme.sh",
-      "cat > /etc/systemd/system/caddy.service.d/override.conf <<'UNIT'\n[Service]\nPrivateTmp=false\nPrivateDevices=false\nProtectSystem=no\nProtectHome=false\nNoNewPrivileges=false\nUNIT",
-      "if [ ! -x /root/.acme.sh/acme.sh ]; then curl -fsSL https://get.acme.sh | sh -s email=admin@sulibot.com >/dev/null; fi",
-      "set -a && . /root/cloudflare.env && set +a",
-      "/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >/dev/null",
-      "/root/.acme.sh/acme.sh --issue --dns dns_cf -d ${local.service_domain} --keylength ec-256 --force",
-      "/root/.acme.sh/acme.sh --install-cert -d ${local.service_domain} --ecc --fullchain-file /etc/caddy/certs/${local.service_domain}.crt --key-file /etc/caddy/certs/${local.service_domain}.key",
-      "shred -u /root/cloudflare.env || rm -f /root/cloudflare.env",
-      "chown root:caddy /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
-      "chmod 640 /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
-      "cat > /etc/caddy/Caddyfile <<'CFG'\n{\n  admin off\n}\n\n${local.service_domain} {\n  tls /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key\n  reverse_proxy 127.0.0.1:5000\n}\nCFG",
-      "systemctl daemon-reload",
-      "systemctl enable --now caddy",
-      "systemctl restart caddy",
-      "curl -ksS -o /dev/null https://${local.service_domain}/v2/",
-    ]
+    inline = ${jsonencode(local.zot_caddy_frontend_commands)}
   }
 }
 
