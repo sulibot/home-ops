@@ -70,6 +70,10 @@ spec:
                     shutil.copytree(extract_dir, target)
                 PY
             securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
               readOnlyRootFilesystem: false
         containers:
           app:
@@ -88,6 +92,10 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
               privileged: false
               readOnlyRootFilesystem: true
             resources:
@@ -96,6 +104,7 @@ spec:
               limits:
                 memory: 2Gi
     defaultPodOptions:
+      automountServiceAccountToken: false
       # nodeSelector:
       #   usb-zigbee: "true"
       annotations:
@@ -113,11 +122,16 @@ spec:
             }
           ]
       securityContext:
+        seccompProfile:
+          type: RuntimeDefault
         runAsNonRoot: true
         runAsUser: 568
         runAsGroup: 568
         fsGroup: 568
         fsGroupChangePolicy: OnRootMismatch
+
+    serviceAccount:
+      home-assistant: {}
     service:
       app:
         ports:
