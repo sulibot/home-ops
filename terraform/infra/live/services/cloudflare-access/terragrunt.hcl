@@ -51,6 +51,7 @@ locals {
     "atuin.sulibot.com",
     "immich.sulibot.com",
     "immich-app.sulibot.com",
+    "ha-google.sulibot.com",
     "home-assistant.sulibot.com",
     "home-assistant-app.sulibot.com",
   ]
@@ -230,6 +231,30 @@ resource "cloudflare_zero_trust_access_application" "home_assistant_warp" {
       auth_method = {
         auth_method = "warp"
       }
+    }]
+  }]
+}
+
+# ---------------------------------------------------------------------------
+# Home Assistant Google endpoint — bypass Access, Google performs OAuth with HA
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "home_assistant_google_bypass" {
+  account_id                 = local.account_id
+  name                       = "Home Assistant Google (bypass)"
+  domain                     = "ha-google.sulibot.com"
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Bypass"
+    decision   = "bypass"
+    precedence = 1
+    include = [{
+      everyone = {}
     }]
   }]
 }
