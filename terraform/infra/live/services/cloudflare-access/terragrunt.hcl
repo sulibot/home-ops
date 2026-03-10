@@ -31,8 +31,8 @@ terraform {
   backend "local" {}
 
   required_providers {
-    cloudflare = { source = "cloudflare/cloudflare", version = "~> 4.0" }
-    sops       = { source = "carlpett/sops",         version = "~> 1.3.0" }
+    cloudflare = { source = "cloudflare/cloudflare", version = "~> 5.0" }
+    sops       = { source = "carlpett/sops",         version = "~> 1.4.0" }
     null       = { source = "hashicorp/null",         version = "~> 3.0" }
   }
 }
@@ -70,13 +70,14 @@ locals {
 # ---------------------------------------------------------------------------
 
 # Explicit host CNAMEs → Cloudflare Tunnel.
-resource "cloudflare_record" "tunnel_host" {
+resource "cloudflare_dns_record" "tunnel_host" {
   for_each = toset(local.tunnel_hostnames)
 
   zone_id = local.zone_id
   name    = each.value
   type    = "CNAME"
   content = "$${local.tunnel_id}.cfargotunnel.com"
+  ttl     = 1
   proxied = true
 }
 
@@ -88,7 +89,7 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
   account_id = local.account_id
   name       = "Authentik"
   type       = "oidc"
-  config {
+  config = {
     client_id     = data.sops_file.secrets.data["cf_access_client_id"]
     client_secret = data.sops_file.secrets.data["cf_access_client_secret"]
     auth_url      = "https://auth.sulibot.com/application/o/authorize/"
@@ -109,20 +110,22 @@ resource "cloudflare_zero_trust_access_application" "browser_protected" {
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = true
+  enable_binding_cookie     = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass  = false
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.authentik.id]
-}
-
-resource "cloudflare_zero_trust_access_policy" "browser_protected_allow" {
-  for_each = cloudflare_zero_trust_access_application.browser_protected
-
-  account_id     = local.account_id
-  application_id = each.value.id
-  name           = "Allow approved users"
-  decision       = "allow"
-  precedence     = 1
-  include {
-    email = local.effective_allowed_emails
-  }
+  policies = [{
+    name       = "Allow approved users"
+    decision   = "allow"
+    precedence = 1
+    include = [
+      for email in local.effective_allowed_emails : {
+        email = {
+          email = email
+        }
+      }
+    ]
+  }]
 }
 
 # ---------------------------------------------------------------------------
@@ -135,17 +138,18 @@ resource "cloudflare_zero_trust_access_application" "authentik_bypass" {
   domain           = "auth.sulibot.com"
   type             = "self_hosted"
   session_duration = "24h"
-}
-
-resource "cloudflare_zero_trust_access_policy" "authentik_bypass" {
-  account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.authentik_bypass.id
-  name           = "Bypass"
-  decision       = "bypass"
-  precedence     = 1
-  include {
-    everyone = true
-  }
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Bypass"
+    decision   = "bypass"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+  }]
 }
 
 # ---------------------------------------------------------------------------
@@ -158,17 +162,18 @@ resource "cloudflare_zero_trust_access_application" "atuin_bypass" {
   domain           = "atuin.sulibot.com"
   type             = "self_hosted"
   session_duration = "24h"
-}
-
-resource "cloudflare_zero_trust_access_policy" "atuin_bypass" {
-  account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.atuin_bypass.id
-  name           = "Bypass"
-  decision       = "bypass"
-  precedence     = 1
-  include {
-    everyone = true
-  }
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Bypass"
+    decision   = "bypass"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+  }]
 }
 
 # ---------------------------------------------------------------------------
@@ -181,20 +186,23 @@ resource "cloudflare_zero_trust_access_application" "immich_warp" {
   domain           = "immich-app.sulibot.com"
   type             = "self_hosted"
   session_duration = "24h"
-}
-
-resource "cloudflare_zero_trust_access_policy" "immich_warp_allow" {
-  account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.immich_warp.id
-  name           = "Allow via WARP"
-  decision       = "allow"
-  precedence     = 1
-  include {
-    everyone = true
-  }
-  require {
-    auth_method = "warp"
-  }
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Allow via WARP"
+    decision   = "allow"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+    require = [{
+      auth_method = {
+        auth_method = "warp"
+      }
+    }]
+  }]
 }
 
 # ---------------------------------------------------------------------------
@@ -207,20 +215,23 @@ resource "cloudflare_zero_trust_access_application" "home_assistant_warp" {
   domain           = "home-assistant-app.sulibot.com"
   type             = "self_hosted"
   session_duration = "24h"
-}
-
-resource "cloudflare_zero_trust_access_policy" "home_assistant_warp_allow" {
-  account_id     = local.account_id
-  application_id = cloudflare_zero_trust_access_application.home_assistant_warp.id
-  name           = "Allow via WARP"
-  decision       = "allow"
-  precedence     = 1
-  include {
-    everyone = true
-  }
-  require {
-    auth_method = "warp"
-  }
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Allow via WARP"
+    decision   = "allow"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+    require = [{
+      auth_method = {
+        auth_method = "warp"
+      }
+    }]
+  }]
 }
 
 # ---------------------------------------------------------------------------

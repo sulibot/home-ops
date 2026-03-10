@@ -78,5 +78,30 @@ locals {
       ipv4      = "10.200.0.51/24"
       ipv6      = "fd00:200::51/64"
     }
+
+    otbr = {
+      role      = "otbr"
+      tenant_id = 30
+      network = {
+        bridge       = "vmbr0"
+        vlan_id      = 30
+        ipv4_gateway = "10.30.0.254"
+        ipv6_gateway = "fd00:30::fffe"
+      }
+      storage = {
+        vm_datastore = "rbd-vm"
+      }
+      sizing = {
+        cpu_cores = 2
+        memory_mb = 2048
+        swap_mb   = 512
+        disk_gb   = 16
+      }
+      node_name = "pve01"
+      vm_id     = 30253
+      hostname  = "otbr01"
+      ipv4      = "10.30.0.253/24"
+      ipv6      = "fd00:30::253/64"
+    }
   }
 }
