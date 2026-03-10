@@ -22,8 +22,47 @@ locals {
         { id = "8086:4680", node = "pve01", path = "0000:00:02.2" },
         { id = "8086:4680", node = "pve02", path = "0000:00:02.2" },
       ]
+    },
+    {
+      name    = "intel-igpu-vf3"
+      comment = "Intel iGPU SR-IOV VF 3 (Alder Lake, 00:02.3)"
+      maps = [
+        { id = "8086:4680", node = "pve01", path = "0000:00:02.3" },
+        { id = "8086:4680", node = "pve02", path = "0000:00:02.3" },
+      ]
+    },
+    {
+      name    = "intel-igpu-vf4"
+      comment = "Intel iGPU SR-IOV VF 4 (Alder Lake, 00:02.4)"
+      maps = [
+        { id = "8086:4680", node = "pve01", path = "0000:00:02.4" },
+        { id = "8086:4680", node = "pve02", path = "0000:00:02.4" },
+      ]
+    },
+    {
+      name    = "intel-igpu-vf5"
+      comment = "Intel iGPU SR-IOV VF 5 (Alder Lake, 00:02.5)"
+      maps = [
+        { id = "8086:4680", node = "pve01", path = "0000:00:02.5" },
+        { id = "8086:4680", node = "pve02", path = "0000:00:02.5" },
+      ]
+    },
+    {
+      name    = "intel-igpu-vf6"
+      comment = "Intel iGPU SR-IOV VF 6 (Alder Lake, 00:02.6)"
+      maps = [
+        { id = "8086:4680", node = "pve01", path = "0000:00:02.6" },
+        { id = "8086:4680", node = "pve02", path = "0000:00:02.6" },
+      ]
+    },
+    {
+      name    = "intel-igpu-vf7"
+      comment = "Intel iGPU SR-IOV VF 7 (Alder Lake, 00:02.7)"
+      maps = [
+        { id = "8086:4680", node = "pve01", path = "0000:00:02.7" },
+        { id = "8086:4680", node = "pve02", path = "0000:00:02.7" },
+      ]
     }
-    # Add more VFs as needed (vf3, vf4, etc.)
     # pve01/pve02 support up to 7 VFs each (00:02.1 through 00:02.7)
   ]
 

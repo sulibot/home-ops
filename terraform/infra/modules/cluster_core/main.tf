@@ -89,9 +89,9 @@ variable "proxmox_ping_timeout_seconds" {
 variable "vm_defaults" {
   description = "Default VM sizing"
   type = object({
-    cpu_cores = number
-    memory_mb = number
-    disk_gb   = number
+    cpu_cores    = number
+    memory_mb    = number
+    disk_gb      = number
     swap_disk_gb = optional(number, 0)
   })
 }
@@ -117,26 +117,27 @@ variable "nodes" {
     ip_suffix     = number # Suffix for IP calculation
     control_plane = optional(bool, false)
     # Optional overrides for specific nodes
-    node_name   = optional(string)
-    cpu_cores   = optional(number)
-    memory_mb   = optional(number)
-    disk_gb     = optional(number)
+    node_name    = optional(string)
+    cpu_cores    = optional(number)
+    memory_mb    = optional(number)
+    disk_gb      = optional(number)
     swap_disk_gb = optional(number)
-    vlan_public = optional(number)
-    vlan_mesh   = optional(number)
-    public_mtu  = optional(number)
-    mesh_mtu    = optional(number)
+    vlan_public  = optional(number)
+    vlan_mesh    = optional(number)
+    public_mtu   = optional(number)
+    mesh_mtu     = optional(number)
     # GPU passthrough configuration
     gpu_passthrough = optional(object({
-      pci_address = string           # PCI address of GPU (e.g., "0000:00:02.0")
-      pcie        = optional(bool, true)  # Use PCIe passthrough
-      rombar      = optional(bool, true)  # Enable ROM BAR
-      x_vga       = optional(bool, false) # Primary VGA (usually false for secondary GPU)
+      pci_address   = string                 # Primary PCI address (legacy/single-device support)
+      pci_addresses = optional(list(string)) # Optional list of PCI addresses (multi-VF passthrough)
+      pcie          = optional(bool, true)   # Use PCIe passthrough
+      rombar        = optional(bool, true)   # Enable ROM BAR
+      x_vga         = optional(bool, false)  # Primary VGA (usually false for secondary GPU)
     }))
     # USB passthrough configuration
     usb = optional(list(object({
-      mapping = string                  # Hardware mapping name (e.g., "sonoff-zigbee")
-      usb3    = optional(bool, true)   # USB 3.0 support
+      mapping = string               # Hardware mapping name (e.g., "sonoff-zigbee")
+      usb3    = optional(bool, true) # USB 3.0 support
     })))
   }))
 }
@@ -151,12 +152,12 @@ variable "ip_config" {
       ipv4_gateway = optional(string)
     })
     public = object({
-      ipv6_prefix  = string
-      ipv4_prefix  = string
-      ipv6_gateway = optional(string)
-      ipv4_gateway = optional(string)
-      gua_ipv6_prefix  = optional(string, "")  # GUA prefix for internet connectivity
-      gua_ipv6_gateway = optional(string, "")  # GUA gateway
+      ipv6_prefix      = string
+      ipv4_prefix      = string
+      ipv6_gateway     = optional(string)
+      ipv4_gateway     = optional(string)
+      gua_ipv6_prefix  = optional(string, "") # GUA prefix for internet connectivity
+      gua_ipv6_gateway = optional(string, "") # GUA gateway
     })
     dns_servers = list(string)
   })
@@ -184,7 +185,7 @@ locals {
 
   # Generate full node configuration, including calculated IP addresses
   nodes = { for idx, node in var.nodes : node.name => merge(node, {
-    index       = idx
+    index = idx
     # REMOVED - mesh network no longer needed for link-local migration
     # mesh_ipv6   = format("%s%d", var.ip_config.mesh.ipv6_prefix, node.ip_suffix)
     # mesh_ipv4   = format("%s%d", var.ip_config.mesh.ipv4_prefix, node.ip_suffix)
@@ -237,8 +238,8 @@ locals {
     services_ipv6      = format("fd00:%d:96::/108", var.cluster_id)
     loadbalancers_ipv4 = format("10.%d.250.0/24", var.cluster_id)
     loadbalancers_ipv6 = format("fd00:%d:250::/112", var.cluster_id)
-    talosVersion      = var.talos_version
-    kubernetesVersion = var.kubernetes_version
+    talosVersion       = var.talos_version
+    kubernetesVersion  = var.kubernetes_version
   }
 }
 
@@ -298,8 +299,8 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
         [
           {
             type = "physical"
-            name = "ens18"  # Talos uses predictable interface naming, not eth0
-            mtu = 1450  # VXLAN overhead (matches Proxmox VM network device and Talos config)
+            name = "ens18" # Talos uses predictable interface naming, not eth0
+            mtu  = 1450    # VXLAN overhead (matches Proxmox VM network device and Talos config)
             subnets = concat(
               # IPv4 configuration
               [
@@ -341,20 +342,20 @@ resource "proxmox_virtual_environment_file" "cloud_init_network_config" {
         # Add ens19 configuration for worker nodes (VLAN trunk, no IP)
         !each.value.control_plane ? [
           {
-            type    = "physical"
-            name    = "ens19"
-            mtu     = 1500
+            type = "physical"
+            name = "ens19"
+            mtu  = 1500
             subnets = [
               {
-                type = "manual"  # No IP address, just bring it up
+                type = "manual" # No IP address, just bring it up
               }
             ]
           }
         ] : [],
         [
           {
-            type        = "nameserver"
-            address     = var.ip_config.dns_servers
+            type    = "nameserver"
+            address = var.ip_config.dns_servers
           }
         ]
       )
@@ -382,10 +383,10 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   )
 
   # VM lifecycle management
-  started         = true   # Ensure VM starts after creation
-  stop_on_destroy = true   # Force stop VM during destroy (don't wait indefinitely)
-  on_boot         = true   # Auto-start VM when Proxmox node boots
-  reboot          = false  # Don't auto-reboot on config changes (managed by Talos)
+  started         = true  # Ensure VM starts after creation
+  stop_on_destroy = true  # Force stop VM during destroy (don't wait indefinitely)
+  on_boot         = true  # Auto-start VM when Proxmox node boots
+  reboot          = false # Don't auto-reboot on config changes (managed by Talos)
 
   machine       = "q35"
   scsi_hardware = "virtio-scsi-single"
@@ -464,7 +465,7 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     for_each = !each.value.control_plane ? [1] : []
     content {
       bridge  = "vmbr0"
-      vlan_id = null  # No VLAN tagging at VM level - trunk all VLANs
+      vlan_id = null # No VLAN tagging at VM level - trunk all VLANs
       mtu     = 1500
     }
   }
@@ -495,7 +496,7 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   dynamic "serial_device" {
     for_each = try(each.value.gpu_passthrough, null) != null ? [1] : []
     content {
-      device = "socket"  # Virtual serial port; access via qm terminal or Proxmox noVNC
+      device = "socket" # Virtual serial port; access via qm terminal or Proxmox noVNC
     }
   }
 
@@ -523,14 +524,21 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   # - xvga=false: GPU is not primary display (prevents early init)
   # - Kernel args (i915.enable_display=0, nomodeset) prevent driver init
   dynamic "hostpci" {
-    for_each = each.value.gpu_passthrough != null ? [each.value.gpu_passthrough] : []
+    for_each = each.value.gpu_passthrough != null ? {
+      for idx, addr in(
+        try(length(each.value.gpu_passthrough.pci_addresses), 0) > 0
+        ? each.value.gpu_passthrough.pci_addresses
+        : [each.value.gpu_passthrough.pci_address]
+      ) :
+      idx => addr
+    } : {}
     content {
-      device = "hostpci0"
+      device = format("hostpci%d", tonumber(hostpci.key))
       # Use raw PCI ID instead of mapping (requires root@pam credentials)
-      id     = hostpci.value.pci_address
-      pcie   = try(hostpci.value.pcie, true)
-      rombar = try(hostpci.value.rombar, false)  # CRITICAL: false for iGPU to prevent UEFI init
-      xvga   = try(hostpci.value.x_vga, false)   # CRITICAL: false to prevent early GPU init
+      id     = hostpci.value
+      pcie   = try(each.value.gpu_passthrough.pcie, true)
+      rombar = try(each.value.gpu_passthrough.rombar, false) # CRITICAL: false for iGPU to prevent UEFI init
+      xvga   = try(each.value.gpu_passthrough.x_vga, false)  # CRITICAL: false to prevent early GPU init
     }
   }
 
@@ -554,15 +562,15 @@ resource "null_resource" "proxmox_vrf_pings" {
   for_each = local.ping_batches
 
   triggers = {
-    ips      = jsonencode(each.value)
-    host     = each.key
-    ssh_host = lookup(var.proxmox_ssh_hostnames, each.key, each.key)
-    ssh_user = var.proxmox_ssh_user
-    ssh_port = tostring(var.proxmox_ssh_port)
-    ssh_key  = var.proxmox_ssh_private_key_path
-    vrf      = var.proxmox_ping_vrf
-    retries  = tostring(var.proxmox_ping_retries)
-    delay_s  = tostring(var.proxmox_ping_delay_seconds)
+    ips       = jsonencode(each.value)
+    host      = each.key
+    ssh_host  = lookup(var.proxmox_ssh_hostnames, each.key, each.key)
+    ssh_user  = var.proxmox_ssh_user
+    ssh_port  = tostring(var.proxmox_ssh_port)
+    ssh_key   = var.proxmox_ssh_private_key_path
+    vrf       = var.proxmox_ping_vrf
+    retries   = tostring(var.proxmox_ping_retries)
+    delay_s   = tostring(var.proxmox_ping_delay_seconds)
     timeout_s = tostring(var.proxmox_ping_timeout_seconds)
   }
 
@@ -621,8 +629,8 @@ output "node_ips" {
       # Pass through GPU passthrough configuration to talos_config module
       # Derives driver configuration automatically from PCI device detection
       gpu_passthrough = try(node.gpu_passthrough, null) != null ? {
-        enabled       = true
-        pci_address   = node.gpu_passthrough.pci_address
+        enabled     = true
+        pci_address = node.gpu_passthrough.pci_address
         # Use Xe driver (official Siderolabs extension) for newer Intel GPUs
         # xe.force_probe kernel arg (set in install-schematic.hcl) handles GPU init
         driver        = try(node.gpu_passthrough.driver, "xe")
@@ -641,17 +649,17 @@ output "talhelper_env" {
   description = "A map structured for generating a talenv.yaml file"
   value = { for n in local.nodes : n.name => {
     # Use the public network IP for Talos API and bootstrap access
-    ipAddress    = n.public_ipv4
-    hostname     = n.name
-    publicIPv4   = n.public_ipv4
-    publicIPv6   = n.public_ipv6
+    ipAddress  = n.public_ipv4
+    hostname   = n.name
+    publicIPv4 = n.public_ipv4
+    publicIPv6 = n.public_ipv6
     # IPv4 gateway (static)
     publicGatewayIPv4 = try(var.ip_config.public.ipv4_gateway, null)
     # IPv6 gateway (link-local anycast per IP addressing documentation)
     # Format: fe80::<cluster_id>:fffe
     publicGatewayIPv6 = format("fe80::%d:fffe", var.cluster_id)
-    publicMTU    = coalesce(try(n.public_mtu, null), var.network.public_mtu)
-    endpoint     = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.${cluster_id}.0.10)
+    publicMTU         = coalesce(try(n.public_mtu, null), var.network.public_mtu)
+    endpoint          = "fd00:${var.cluster_id}::10" # Control Plane VIP (dual-stack with 10.${cluster_id}.0.10)
     # Determine the node role based on its name prefix
     controlPlane = substr(n.name, 4, 2) == "cp"
     # Node loopback addresses (VM identity per IP addressing documentation)
@@ -696,31 +704,31 @@ output "talenv_yaml" {
 
       # Nodes array for talhelper template iteration
       nodes = [for n in local.nodes : {
-        hostname         = n.name
-        ipAddress        = n.public_ipv4
-        controlPlane     = n.control_plane
-        publicIPv4       = n.public_ipv4
-        publicIPv6       = n.public_ipv6
+        hostname     = n.name
+        ipAddress    = n.public_ipv4
+        controlPlane = n.control_plane
+        publicIPv4   = n.public_ipv4
+        publicIPv6   = n.public_ipv6
         # IPv4 gateway (static)
         publicGatewayIPv4 = var.ip_config.public.ipv4_gateway
         # IPv6 gateway (link-local anycast per IP addressing documentation)
         publicGatewayIPv6 = format("fe80::%d:fffe", var.cluster_id)
-        publicMTU        = coalesce(try(n.public_mtu, null), var.network.public_mtu)
+        publicMTU         = coalesce(try(n.public_mtu, null), var.network.public_mtu)
         # Node loopback addresses (VM identity per IP addressing documentation)
         # Format: 10.<TID>.254.<suffix> and fd00:<TID>:fe::<suffix>
-        loopbackIPv4     = format("10.%d.254.%d", var.cluster_id, n.ip_suffix)
-        loopbackIPv6     = format("fd00:%d:fe::%d", var.cluster_id, n.ip_suffix)
+        loopbackIPv4 = format("10.%d.254.%d", var.cluster_id, n.ip_suffix)
+        loopbackIPv6 = format("fd00:%d:fe::%d", var.cluster_id, n.ip_suffix)
       }]
     },
     # Flatten node properties as individual variables for envsubst
     # Use public IPs for bootstrap access (egress network is accessible)
     merge([for n in local.nodes : {
-      "${replace(n.name, "-", "_")}_ipAddress"      = n.public_ipv4
+      "${replace(n.name, "-", "_")}_ipAddress" = n.public_ipv4
       # REMOVED - mesh network no longer needed for link-local migration
       # "${replace(n.name, "-", "_")}_mesh_ipv4"      = n.mesh_ipv4
       # "${replace(n.name, "-", "_")}_mesh_ipv6"      = n.mesh_ipv6
-      "${replace(n.name, "-", "_")}_public_ipv4"    = n.public_ipv4
-      "${replace(n.name, "-", "_")}_public_ipv6"    = n.public_ipv6
+      "${replace(n.name, "-", "_")}_public_ipv4" = n.public_ipv4
+      "${replace(n.name, "-", "_")}_public_ipv6" = n.public_ipv6
     }]...)
   ))
 }
@@ -728,10 +736,10 @@ output "talenv_yaml" {
 output "talconfig_yaml" {
   description = "Complete talconfig.yaml for talhelper"
   value = yamlencode({
-    clusterName = "cluster-${var.cluster_id}"
-    talosVersion = var.talos_version
+    clusterName       = "cluster-${var.cluster_id}"
+    talosVersion      = var.talos_version
     kubernetesVersion = var.kubernetes_version
-    endpoint = "https://[fd00:${var.cluster_id}::10]:6443"
+    endpoint          = "https://[fd00:${var.cluster_id}::10]:6443"
 
     # Reference to secrets file
     secretsFile = "{{ .talos.env.dir }}/talsecret.sops.yaml"
@@ -753,10 +761,10 @@ output "talconfig_yaml" {
 
     # Nodes - explicitly defined (no loops)
     nodes = [for n in local.nodes : {
-      hostname = n.name
-      ipAddress = n.public_ipv4
+      hostname     = n.name
+      ipAddress    = n.public_ipv4
       controlPlane = n.control_plane
-      installDisk = "/dev/sda"
+      installDisk  = "/dev/sda"
       networkInterfaces = [{
         deviceSelector = {
           hardwareAddr = "*"
@@ -785,12 +793,12 @@ output "talconfig_yaml" {
         }
       }
       sysctls = {
-        "fs.file-max" = "1000000"
-        "fs.inotify.max_user_watches" = "524288"
+        "fs.file-max"                    = "1000000"
+        "fs.inotify.max_user_watches"    = "524288"
         "net.netfilter.nf_conntrack_max" = "1048576"
-        "net.core.somaxconn" = "32768"
-        "net.ipv4.ip_forward" = "1"
-        "net.ipv6.conf.all.forwarding" = "1"
+        "net.core.somaxconn"             = "32768"
+        "net.ipv4.ip_forward"            = "1"
+        "net.ipv6.conf.all.forwarding"   = "1"
       }
     }
   })

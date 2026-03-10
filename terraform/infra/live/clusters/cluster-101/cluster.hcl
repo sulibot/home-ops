@@ -32,7 +32,7 @@ locals {
   # Kernel arg xe.force_probe=4680 is set in install-schematic.hcl for Alder Lake-S GT1 VF
   gpu_config = {
     enabled = true
-    mapping = "intel-igpu-vf1"
+    mappings = [for vf in range(1, 8) : format("intel-igpu-vf%d", vf)]
     pcie    = true
     rombar  = false
     driver  = "xe"
@@ -57,13 +57,26 @@ locals {
       # 2. A PCI mapping exists for this node (e.g., pve03 has no SR-IOV support)
       gpu_passthrough = (
         local.gpu_config.enabled &&
-        can(local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)])
-        ) ? merge(
-        local.gpu_config,
-        {
-          pci_address = local.hardware_mappings.pci_mapping_paths[local.gpu_config.mapping][format("pve%02d", i)]
+        length([
+          for mapping in local.gpu_config.mappings :
+          local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
+          if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
+        ]) > 0
+        ) ? {
+          pci_address = [
+            for mapping in local.gpu_config.mappings :
+            local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
+            if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
+          ][0]
+          pci_addresses = [
+            for mapping in local.gpu_config.mappings :
+            local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
+            if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
+          ]
+          pcie   = local.gpu_config.pcie
+          rombar = local.gpu_config.rombar
         }
-      ) : null
+      : null
       # USB passthrough disabled
       usb = null
     }
