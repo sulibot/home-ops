@@ -14,22 +14,17 @@
       overridePackageName: "ghcr.io/siderolabs/installer",
     },
     {
-      description: "Disable Kubernetes updates (requires coordinated Talos + k8s upgrade)",
-      matchDatasources: ["docker"],
+      description: "Disable Kubernetes version updates (managed manually with coordinated Talos upgrades)",
       matchPackageNames: [
-        "/kube-apiserver/",
-        "/kube-controller-manager/",
-        "/kube-proxy/",
-        "/kube-scheduler/",
-        "/kubelet/",
+        "kubernetes/kubernetes",
+        "ghcr.io/siderolabs/kubelet",
       ],
       enabled: false,
     },
     {
-      description: "Disable Talos updates (requires factory image rebuild + machineconfig changes)",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["/ghcr\\.io\\/siderolabs\\/installer/"],
-      enabled: false,
+      description: "Allow Talos installer updates",
+      matchPackageNames: ["ghcr.io/siderolabs/installer"],
+      enabled: true,
     },
   ],
 }

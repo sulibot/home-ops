@@ -111,7 +111,7 @@ locals {
   # Terraform provider versions
   provider_versions = {
     talos      = "~> 0.9.0"
-    proxmox    = "~> 0.89.0"
+    proxmox    = "~> 0.98.0"
     helm       = "~> 3.1.1"
     kubernetes = "~> 3.0.0"
     kubectl    = "~> 1.14.0"

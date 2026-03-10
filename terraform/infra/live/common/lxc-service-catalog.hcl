@@ -1,7 +1,7 @@
 locals {
   # Shared defaults for LXC-based service stacks.
   lxc_defaults = {
-    provider_version = "~> 0.97.0"
+    provider_version = "~> 0.98.0"
     template_file_id = "resources:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
     vm_datastore     = "rbd-vm"
   }
