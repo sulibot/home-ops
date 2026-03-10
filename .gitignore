@@ -139,3 +139,6 @@ FRR/
 
 # Local dev environment (contains OP_SERVICE_ACCOUNT_TOKEN path)
 .envrc
+
+# Local Claude/Codex app settings
+.claude/settings.json
