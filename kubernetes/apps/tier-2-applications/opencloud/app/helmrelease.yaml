@@ -48,9 +48,31 @@ spec:
               OC_URL: https://opencloud.sulibot.com
               OC_LOG_LEVEL: info
               OC_INSECURE: "false"
+              OC_EXCLUDE_RUN_SERVICES: "idp"
+              OC_OIDC_ISSUER: "https://auth.sulibot.com/application/o/opencloud/"
+              OC_OIDC_CLIENT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: opencloud-secret
+                    key: OPENCLOUD_OIDC_CLIENT_ID
+              OC_OIDC_SCOPE: "openid profile email"
+              PROXY_OIDC_REWRITE_WELLKNOWN: "true"
+              PROXY_AUTOPROVISION_ACCOUNTS: "true"
+              GRAPH_USERNAME_MATCH: "none"
+              PROXY_USER_OIDC_CLAIM: "preferred_username"
+              PROXY_AUTOPROVISION_CLAIM_USERNAME: "preferred_username"
+              PROXY_USER_CS3_CLAIM: "username"
               OC_ENABLE_OCM: "false"
               PROXY_HTTP_ADDR: 0.0.0.0:9200
               PROXY_TLS: "false"
+              WEB_OIDC_AUTHORITY: "https://auth.sulibot.com/application/o/opencloud/"
+              WEB_OIDC_METADATA_URL: "https://auth.sulibot.com/application/o/opencloud/.well-known/openid-configuration"
+              WEB_OIDC_CLIENT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: opencloud-secret
+                    key: OPENCLOUD_OIDC_CLIENT_ID
+              WEB_OIDC_SCOPE: "openid profile email"
               IDM_CREATE_DEMO_USERS: "false"
               OC_ADMIN_USER_ID:
                 valueFrom:
