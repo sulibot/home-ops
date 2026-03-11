@@ -55,7 +55,8 @@ inputs = {
     pve_asn         = local.network.routeros.pve_asn        # 4200001000
     remote_range    = local.network.routeros.pve_range_ipv6 # fd00:0:0:ffff::/64
     local_address   = local.network.routeros.loopback_ipv6  # fd00:0:0:ffff::fffe
-    # afi="ip,ipv6", use_bfd=true, hold_time="30s", keepalive_time="10s"
+    use_bfd         = false
+    # afi="ip,ipv6", hold_time="30s", keepalive_time="10s"
     # redistribute="connected,static,bgp", default_originate="always"
     # All above use module defaults — match prod exactly.
   }
@@ -182,8 +183,7 @@ inputs = {
     allow_remote_requests  = true
     cache_max_ttl          = "1d"
     max_concurrent_queries = 200
-    # set deduplicates — device shows "lo,lo" but provider normalises to unique members
-    mdns_repeat_ifaces   = ["vlan30", "vlan200", "lo"]
+    mdns_repeat_ifaces   = ["vlan30", "vlan31"]
     query_server_timeout = "3s"
     query_total_timeout  = "15s"
     servers              = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
