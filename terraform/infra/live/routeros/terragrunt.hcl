@@ -346,6 +346,22 @@ inputs = {
     { name = "dhcp_pool_vlan200", ranges = ["10.200.0.201-10.200.0.250"] },
   ]
 
+  ipv4_dhcp_options = [
+    { name = "domain-search", code = 119, value = "0x07'sulibot'0x03'com'0x0007'sulibot'0x05'local'0x00" },
+    { name = "next-server", code = 66, value = "'10.0.9.254'" },
+    { name = "boot-file-pxe-bios", code = 67, value = "0x756e64696f6e6c792e6b70786500" },
+    { name = "boot-file-pxe-uefi", code = 67, value = "0x697078652e65666900" },
+    { name = "bootfile-netbootxyz", code = 67, value = "'netboot.xyz.efi'" },
+    { name = "next-server-netbootxyz", code = 66, value = "'10.0.9.254'" },
+  ]
+
+  ipv4_dhcp_option_sets = [
+    { name = "domain-search-set", options = ["domain-search"] },
+    { name = "boot-pxe-bios", options = ["boot-file-pxe-bios", "next-server"] },
+    { name = "boot-pxe-uefi", options = ["boot-file-pxe-uefi", "next-server"] },
+    { name = "netboot.xyz", options = ["bootfile-netbootxyz", "next-server-netbootxyz"] },
+  ]
+
   ipv4_dhcp_servers = [
     {
       name            = "dhcp_vlan31"
@@ -860,6 +876,8 @@ inputs = {
     { name = "idm03.sulibot.com", type = "A", address = "10.100.0.63", ttl = "5m" },
     { name = "kanidm.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },
+    { name = "printer.sulibot.com", type = "AAAA", address = "fd00:31::5", ttl = "5m" },
+    { name = "printer.sulibot.com", type = "A", address = "10.31.0.5", ttl = "5m" },
     # IPv4 A records — currently disabled on device, kept here for completeness
     { name = "pve01.sulibot.com", type = "A", address = "10.10.0.1", ttl = "5m", disabled = true },
     { name = "pve02.sulibot.com", type = "A", address = "10.10.0.2", ttl = "5m", disabled = true },

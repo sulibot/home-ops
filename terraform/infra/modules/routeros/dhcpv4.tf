@@ -7,6 +7,23 @@ resource "routeros_ip_pool" "pools" {
   comment   = each.value.comment
 }
 
+resource "routeros_ip_dhcp_server_option" "options" {
+  for_each = { for o in var.ipv4_dhcp_options : o.name => o }
+
+  name    = each.value.name
+  code    = each.value.code
+  value   = each.value.value
+  comment = each.value.comment
+}
+
+resource "routeros_ip_dhcp_server_option_set" "option_sets" {
+  for_each = { for s in var.ipv4_dhcp_option_sets : s.name => s }
+
+  name    = each.value.name
+  options = join(",", each.value.options)
+  comment = each.value.comment
+}
+
 resource "routeros_ip_dhcp_server" "servers" {
   for_each = { for s in var.ipv4_dhcp_servers : s.name => s }
 

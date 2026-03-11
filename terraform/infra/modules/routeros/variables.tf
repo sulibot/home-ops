@@ -152,6 +152,27 @@ variable "ipv4_pools" {
   default = []
 }
 
+variable "ipv4_dhcp_options" {
+  description = "IPv4 DHCP option definitions."
+  type = list(object({
+    name    = string
+    code    = number
+    value   = string
+    comment = optional(string, "")
+  }))
+  default = []
+}
+
+variable "ipv4_dhcp_option_sets" {
+  description = "IPv4 DHCP option sets."
+  type = list(object({
+    name    = string
+    options = list(string)
+    comment = optional(string, "")
+  }))
+  default = []
+}
+
 variable "ipv4_dhcp_servers" {
   description = "IPv4 DHCP servers."
   type = list(object({
