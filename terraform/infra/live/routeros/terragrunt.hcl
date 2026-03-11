@@ -876,6 +876,8 @@ inputs = {
     { name = "idm03.sulibot.com", type = "A", address = "10.100.0.63", ttl = "5m" },
     { name = "kanidm.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },
+    { name = "ap.sulibot.com", type = "AAAA", address = "fd00:30::1", ttl = "5m" },
+    { name = "ap.sulibot.com", type = "A", address = "10.30.0.1", ttl = "5m" },
     { name = "printer.sulibot.com", type = "AAAA", address = "fd00:31::5", ttl = "5m" },
     { name = "printer.sulibot.com", type = "A", address = "10.31.0.5", ttl = "5m" },
     # IPv4 A records — currently disabled on device, kept here for completeness
