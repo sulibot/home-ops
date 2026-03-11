@@ -32,10 +32,15 @@ variable "firewall_filter_rules" {
     disabled             = optional(bool, false)
     protocol             = optional(string)
     connection_state     = optional(string)
+    in_interface         = optional(string)
     in_interface_list    = optional(string)
+    out_interface        = optional(string)
     out_interface_list   = optional(string)
+    src_address          = optional(string)
     src_address_list     = optional(string)
+    dst_address          = optional(string)
     dst_address_list     = optional(string)
+    dst_port             = optional(string)
     connection_nat_state = optional(string)
     hw_offload           = optional(bool)
     ipsec_policy         = optional(string)
@@ -69,6 +74,161 @@ variable "interface_lists" {
   description = "Interface list names to manage (WAN, LAN, etc.)"
   type        = list(string)
   default     = []
+}
+
+variable "bridges" {
+  description = "Bridge interfaces to manage."
+  type = list(object({
+    name           = string
+    comment        = optional(string, "")
+    admin_mac      = optional(string)
+    auto_mac       = optional(bool)
+    igmp_snooping  = optional(bool)
+    pvid           = optional(number)
+    protocol_mode  = optional(string)
+    vlan_filtering = optional(bool)
+    disabled       = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "bridge_ports" {
+  description = "Bridge port membership."
+  type = list(object({
+    bridge    = string
+    interface = string
+    comment   = optional(string, "")
+    disabled  = optional(bool, false)
+    pvid      = optional(number)
+  }))
+  default = []
+}
+
+variable "bridge_vlans" {
+  description = "Bridge VLAN table rows."
+  type = list(object({
+    bridge   = string
+    vlan_ids = set(string)
+    tagged   = optional(set(string), [])
+    untagged = optional(set(string), [])
+    comment  = optional(string, "")
+    disabled = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "vlan_interfaces" {
+  description = "VLAN interfaces."
+  type = list(object({
+    name      = string
+    interface = string
+    vlan_id   = number
+    comment   = optional(string, "")
+    disabled  = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "ipv4_addresses" {
+  description = "IPv4 addresses assigned to interfaces."
+  type = list(object({
+    address   = string
+    interface = string
+    network   = optional(string)
+    comment   = optional(string, "")
+    disabled  = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "ipv4_pools" {
+  description = "IPv4 pools."
+  type = list(object({
+    name      = string
+    ranges    = list(string)
+    next_pool = optional(string)
+    comment   = optional(string, "")
+  }))
+  default = []
+}
+
+variable "ipv4_dhcp_servers" {
+  description = "IPv4 DHCP servers."
+  type = list(object({
+    name                       = string
+    interface                  = string
+    address_pool               = optional(string)
+    add_arp                    = optional(bool)
+    address_lists              = optional(set(string), [])
+    allow_dual_stack_queue     = optional(bool)
+    always_broadcast           = optional(bool)
+    authoritative              = optional(string)
+    bootp_lease_time           = optional(string)
+    bootp_support              = optional(string)
+    client_mac_limit           = optional(number)
+    comment                    = optional(string, "")
+    conflict_detection         = optional(bool)
+    delay_threshold            = optional(string)
+    dhcp_option_set            = optional(string)
+    disabled                   = optional(bool, false)
+    dynamic_lease_identifiers  = optional(string)
+    insert_queue_before        = optional(string)
+    lease_script               = optional(string)
+    lease_time                 = optional(string)
+    parent_queue               = optional(string)
+    relay                      = optional(string)
+    src_address                = optional(string)
+    support_broadband_tr101    = optional(bool)
+    use_framed_as_classless    = optional(bool)
+    use_radius                 = optional(string)
+    use_reconfigure            = optional(bool)
+  }))
+  default = []
+}
+
+variable "ipv4_dhcp_server_networks" {
+  description = "IPv4 DHCP server networks."
+  type = list(object({
+    address         = string
+    gateway         = optional(string)
+    dns_server      = optional(list(string), [])
+    wins_server     = optional(list(string), [])
+    ntp_server      = optional(list(string), [])
+    caps_manager    = optional(list(string), [])
+    domain          = optional(string)
+    dhcp_option     = optional(list(string), [])
+    dhcp_option_set = optional(string)
+    dns_none        = optional(bool)
+    ntp_none        = optional(bool)
+    netmask         = optional(number)
+    next_server     = optional(string)
+    boot_file_name  = optional(string)
+    comment         = optional(string, "")
+  }))
+  default = []
+}
+
+variable "ipv4_dhcp_server_leases" {
+  description = "Static IPv4 DHCP leases and reservations."
+  type = list(object({
+    address               = string
+    mac_address           = string
+    server                = optional(string)
+    client_id             = optional(string)
+    address_lists         = optional(string)
+    allow_dual_stack_queue = optional(bool)
+    always_broadcast      = optional(bool)
+    block_access          = optional(bool)
+    comment               = optional(string, "")
+    dhcp_option           = optional(string)
+    dhcp_option_set       = optional(string)
+    disabled              = optional(bool, false)
+    insert_queue_before   = optional(string)
+    lease_time            = optional(string)
+    rate_limit            = optional(string)
+    use_src_mac           = optional(bool)
+  }))
+  default = []
 }
 
 variable "interface_list_members" {
@@ -150,6 +310,66 @@ variable "ipv6_address_lists" {
   default = []
 }
 
+variable "ipv6_dhcp_clients" {
+  description = "IPv6 DHCP clients / prefix delegation clients."
+  type = list(object({
+    interface                     = string
+    request                       = list(string)
+    comment                       = optional(string, "")
+    disabled                      = optional(bool, false)
+    accept_prefix_without_address = optional(bool)
+    add_default_route             = optional(bool)
+    allow_reconfigure             = optional(bool)
+    check_gateway                 = optional(string)
+    default_route_tables          = optional(set(string), [])
+    pool_name                     = optional(string)
+    pool_prefix_length            = optional(number)
+    prefix_address_lists          = optional(set(string), [])
+    script                        = optional(string)
+    use_peer_dns                  = optional(bool)
+    validate_server_duid          = optional(bool)
+  }))
+  default = []
+}
+
+variable "ipv6_addresses" {
+  description = "IPv6 addresses to assign to interfaces."
+  type = list(object({
+    interface       = string
+    address         = optional(string)
+    from_pool       = optional(string)
+    advertise       = optional(bool)
+    auto_link_local = optional(bool)
+    comment         = optional(string, "")
+    disabled        = optional(bool, false)
+    eui_64          = optional(bool)
+    no_dad          = optional(bool)
+  }))
+  default = []
+}
+
+variable "ipv6_neighbor_discovery" {
+  description = "IPv6 neighbor discovery / router advertisement settings per interface."
+  type = list(object({
+    interface                     = string
+    advertise_dns                 = optional(bool)
+    advertise_mac_address         = optional(bool)
+    comment                       = optional(string, "")
+    disabled                      = optional(bool, false)
+    dns                           = optional(string)
+    managed_address_configuration = optional(bool)
+    mtu                           = optional(number)
+    other_configuration           = optional(bool)
+    ra_delay                      = optional(string)
+    ra_interval                   = optional(string)
+    ra_lifetime                   = optional(string)
+    ra_preference                 = optional(string)
+    reachable_time                = optional(string)
+    retransmit_interval           = optional(string)
+  }))
+  default = []
+}
+
 variable "ipv6_firewall_filter_rules" {
   description = "IPv6 firewall filter rules. Order is preserved by list index."
   type = list(object({
@@ -180,6 +400,74 @@ variable "routing_filter_rules" {
     rule     = string
     comment  = optional(string, "")
     disabled = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "ospf_instances" {
+  description = "OSPF instances."
+  type = list(object({
+    name               = string
+    version            = optional(number)
+    vrf                = optional(string)
+    router_id          = optional(string)
+    redistribute       = optional(set(string), [])
+    comment            = optional(string, "")
+    disabled           = optional(bool, false)
+    domain_id          = optional(string)
+    domain_tag         = optional(number)
+    in_filter_chain    = optional(string)
+    mpls_te_address    = optional(string)
+    mpls_te_area       = optional(string)
+    originate_default  = optional(string)
+    out_filter_chain   = optional(string)
+    out_filter_select  = optional(string)
+    routing_table      = optional(string)
+  }))
+  default = []
+}
+
+variable "ospf_areas" {
+  description = "OSPF areas."
+  type = list(object({
+    name           = string
+    instance       = string
+    area_id        = optional(string)
+    type           = optional(string)
+    comment        = optional(string, "")
+    default_cost   = optional(number)
+    disabled       = optional(bool, false)
+    no_summaries   = optional(bool)
+    nssa_translate = optional(string)
+  }))
+  default = []
+}
+
+variable "ospf_interface_templates" {
+  description = "OSPF interface templates."
+  type = list(object({
+    area                = string
+    interfaces          = optional(set(string), [])
+    networks            = optional(set(string), [])
+    instance_id         = optional(number)
+    type                = optional(string)
+    cost                = optional(number)
+    hello_interval      = optional(string)
+    dead_interval       = optional(string)
+    retransmit_interval = optional(string)
+    transmit_delay      = optional(string)
+    priority            = optional(number)
+    passive             = optional(bool)
+    use_bfd             = optional(bool)
+    auth                = optional(string)
+    auth_id             = optional(number)
+    auth_key            = optional(string)
+    authentication_key  = optional(string)
+    comment             = optional(string, "")
+    disabled            = optional(bool, false)
+    prefix_list         = optional(string)
+    vlink_neighbor_id   = optional(string)
+    vlink_transit_area  = optional(string)
   }))
   default = []
 }

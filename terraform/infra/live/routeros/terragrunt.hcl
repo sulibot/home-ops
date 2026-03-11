@@ -100,11 +100,11 @@ inputs = {
       disabled     = true
     },
     {
-      comment            = "Allow inter-LAN traffic"
+      comment            = "Allow personal devices to reach IoT"
       chain              = "forward"
       action             = "accept"
-      in_interface_list  = "LAN"
-      out_interface_list = "LAN"
+      in_interface       = "vlan30"
+      out_interface      = "vlan31"
     },
     {
       comment          = "defconf: fasttrack"
@@ -145,6 +145,48 @@ inputs = {
       action           = "drop"
       dst_address_list = "no_forward_ipv4"
     },
+    {
+      comment       = "Allow SSDP discovery from personal to IoT"
+      chain         = "forward"
+      action        = "accept"
+      protocol      = "udp"
+      dst_port      = "1900"
+      in_interface  = "vlan30"
+      out_interface = "vlan31"
+    },
+    {
+      comment       = "Allow SSDP discovery from IoT to personal"
+      chain         = "forward"
+      action        = "accept"
+      protocol      = "udp"
+      dst_port      = "1900"
+      in_interface  = "vlan31"
+      out_interface = "vlan30"
+    },
+    {
+      comment       = "Allow IGMP between personal and IoT"
+      chain         = "forward"
+      action        = "accept"
+      protocol      = "igmp"
+      in_interface  = "vlan30"
+      out_interface = "vlan31"
+    },
+    {
+      comment       = "Allow IGMP between IoT and personal"
+      chain         = "forward"
+      action        = "accept"
+      protocol      = "igmp"
+      in_interface  = "vlan31"
+      out_interface = "vlan30"
+    },
+    {
+      comment      = "Block new IoT connections to personal devices"
+      chain        = "forward"
+      action       = "drop"
+      in_interface = "vlan31"
+      out_interface = "vlan30"
+      connection_state = "new"
+    },
   ]
 
   # ── FIREWALL NAT ─────────────────────────────────────────────────────────────
@@ -157,6 +199,77 @@ inputs = {
   ]
 
   # ── INTERFACE LISTS ──────────────────────────────────────────────────────────
+  bridges = [
+    {
+      name           = "br-fabric"
+      comment        = "defconf"
+      admin_mac      = "02:00:00:00:00:01"
+      auto_mac       = false
+      igmp_snooping  = true
+      pvid           = 1
+      protocol_mode  = "rstp"
+      vlan_filtering = true
+    },
+    {
+      name    = "lo_dns"
+      comment = "DNS server loopback"
+    },
+  ]
+
+  bridge_ports = [
+    { bridge = "br-fabric", interface = "pve01[ether2]" },
+    { bridge = "br-fabric", interface = "pve02[ether3]" },
+    { bridge = "br-fabric", interface = "pve03[ether4]" },
+    { bridge = "br-fabric", interface = "pve04[ether5]" },
+    { bridge = "br-fabric", interface = "wifi[ether6]", pvid = 30 },
+    { bridge = "br-fabric", interface = "ilom-pve03[ether7]" },
+    { bridge = "br-fabric", interface = "spare[ether8]" },
+  ]
+
+  bridge_vlans = [
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["10"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["1"]
+      tagged   = ["br-fabric"]
+      untagged = ["pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["30"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "spare[ether8]"]
+      untagged = ["wifi[ether6]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["31"]
+      tagged   = ["br-fabric", "wifi[ether6]", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "spare[ether8]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["200"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["100"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]"]
+    },
+  ]
+
+  vlan_interfaces = [
+    { name = "vlan1", interface = "br-fabric", vlan_id = 1, comment = "Native VLAN - Untagged traffic" },
+    { name = "vlan10", interface = "br-fabric", vlan_id = 10, comment = "Management/Infrastructure VLAN" },
+    { name = "vlan30", interface = "br-fabric", vlan_id = 30, comment = "WiFi Client Network" },
+    { name = "vlan31", interface = "br-fabric", vlan_id = 31, comment = "WiFi IoT Devices" },
+    { name = "vlan100", interface = "br-fabric", vlan_id = 100, comment = "kanidm" },
+    { name = "vlan200", interface = "br-fabric", vlan_id = 200, comment = "VM/Container Standard LAN" },
+  ]
+
   # Skip builtins: all, none, dynamic, static (IDs *2000000-*2000003).
   interface_lists = ["WAN", "LAN"]
 
@@ -213,6 +326,424 @@ inputs = {
     max_neighbor_entries         = 8192
   }
 
+  ipv4_addresses = [
+    { address = "10.30.0.254/24", network = "10.30.0.0", interface = "vlan30", comment = "wifi" },
+    { address = "10.31.0.254/24", network = "10.31.0.0", interface = "vlan31", comment = "wifi-iot" },
+    { address = "10.255.0.53/32", network = "10.255.0.53", interface = "lo_dns" },
+    { address = "10.10.0.254/24", network = "10.10.0.0", interface = "vlan10" },
+    { address = "10.1.0.254/24", network = "10.1.0.0", interface = "vlan1" },
+    { address = "10.0.10.254/24", network = "10.0.10.0", interface = "vlan10" },
+    { address = "10.200.0.254/24", network = "10.200.0.0", interface = "vlan200", comment = "Standard VM LAN" },
+    { address = "10.255.0.254/32", network = "10.255.0.254", interface = "lo" },
+  ]
+
+  ipv4_pools = [
+    { name = "dhcp_pool_vlan30", ranges = ["10.30.0.11-10.30.0.239"] },
+    { name = "dhcp_pool_vlan31", ranges = ["10.31.0.30-10.31.0.240"] },
+    { name = "dhcp_pool_vlan9", ranges = ["10.0.9.230-10.0.9.250"] },
+    { name = "dhcp_pool_vlan10", ranges = ["10.10.0.230-10.10.0.250"] },
+    { name = "dhcp_pool16", ranges = ["10.0.9.200-10.0.9.253"] },
+    { name = "dhcp_pool_vlan200", ranges = ["10.200.0.201-10.200.0.250"] },
+  ]
+
+  ipv4_dhcp_servers = [
+    {
+      name            = "dhcp_vlan31"
+      interface       = "vlan31"
+      address_pool    = "dhcp_pool_vlan31"
+      lease_time      = "30m"
+      use_radius      = "no"
+      use_reconfigure = false
+    },
+    {
+      name            = "dhcp_vlan30"
+      interface       = "vlan30"
+      address_pool    = "dhcp_pool_vlan30"
+      lease_time      = "30m"
+      use_radius      = "no"
+      use_reconfigure = false
+      dhcp_option_set = "domain-search-set"
+    },
+    {
+      name            = "dhcp_vlan200"
+      interface       = "vlan200"
+      address_pool    = "dhcp_pool_vlan200"
+      lease_time      = "30m"
+      use_radius      = "no"
+      use_reconfigure = false
+    },
+    {
+      name            = "dhcp_vlan10"
+      interface       = "vlan10"
+      address_pool    = "dhcp_pool_vlan10"
+      lease_time      = "30m"
+      use_radius      = "no"
+      use_reconfigure = false
+    },
+  ]
+
+  ipv4_dhcp_server_networks = [
+    {
+      address    = "10.10.0.0/24"
+      gateway    = "10.10.0.254"
+      dns_server = ["10.10.0.254"]
+      domain     = "sulibot.com"
+    },
+    {
+      address    = "10.30.0.0/24"
+      gateway    = "10.30.0.254"
+      dns_server = ["10.30.0.254"]
+      domain     = "sulibot.com"
+    },
+    {
+      address    = "10.31.0.0/24"
+      gateway    = "10.31.0.254"
+      dns_server = ["10.31.0.254"]
+      domain     = "sulibot.com"
+    },
+    {
+      address    = "10.200.0.0/24"
+      gateway    = "10.200.0.254"
+      dns_server = ["10.200.0.254"]
+      domain     = "sulibot.com"
+      comment    = "Standard VM LAN"
+    },
+  ]
+
+  ipv4_dhcp_server_leases = [
+    {
+      address     = "10.10.0.53"
+      mac_address = "44:B7:D0:D5:85:6B"
+      client_id   = "1:44:b7:d0:d5:85:6b"
+    },
+    {
+      address     = "10.30.0.5"
+      mac_address = "14:D4:24:F5:AA:02"
+      client_id   = "1:14:d4:24:f5:aa:2"
+      server      = "dhcp_vlan30"
+    },
+    {
+      address     = "10.30.0.1"
+      mac_address = "90:09:D0:12:93:B7"
+      client_id   = "1:90:9:d0:12:93:b7"
+      server      = "dhcp_vlan30"
+    },
+  ]
+
+  ospf_instances = [
+    {
+      name         = "PVE_UNDERLAY"
+      version      = 2
+      vrf          = "main"
+      router_id    = "10.255.0.254"
+      redistribute = ["connected"]
+    },
+    {
+      name         = "PVE_UNDERLAY_V6"
+      version      = 3
+      vrf          = "main"
+      router_id    = "10.255.0.254"
+      redistribute = ["connected"]
+    },
+  ]
+
+  ospf_areas = [
+    {
+      name     = "backbone"
+      instance = "PVE_UNDERLAY"
+      area_id  = "0.0.0.0"
+      type     = "default"
+    },
+    {
+      name     = "backbone_v6"
+      instance = "PVE_UNDERLAY_V6"
+      area_id  = "0.0.0.0"
+      type     = "default"
+    },
+  ]
+
+  ospf_interface_templates = [
+    {
+      area                = "backbone"
+      interfaces          = ["vlan10"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1000
+    },
+    {
+      area                = "backbone_v6"
+      interfaces          = ["vlan10"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1000
+    },
+    {
+      area                = "backbone"
+      interfaces          = ["lo"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1
+      passive             = true
+    },
+    {
+      area                = "backbone_v6"
+      interfaces          = ["lo"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1
+      passive             = true
+    },
+    {
+      area                = "backbone"
+      interfaces          = ["lo_dns"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1
+      passive             = true
+    },
+    {
+      area                = "backbone_v6"
+      interfaces          = ["lo_dns"]
+      instance_id         = 0
+      type                = "broadcast"
+      retransmit_interval = "5s"
+      transmit_delay      = "1s"
+      hello_interval      = "10s"
+      dead_interval       = "40s"
+      priority            = 128
+      cost                = 1
+      passive             = true
+    },
+  ]
+
+  ipv6_dhcp_clients = [
+    {
+      interface                     = "wan6-v31"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["default"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-v31"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-v200"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["default"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-v200"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-v10"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["default"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-v10"
+      pool_prefix_length            = 64
+      script                        = "update-nat66-on-prefix-change"
+    },
+    {
+      interface                     = "wan6-vnet100"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["main:25"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-vnet100"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-vnet101"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["main:25"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-vnet101"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-vnet102"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["main:25"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-vnet102"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-vnet103"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["main:25"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-vnet103"
+      pool_prefix_length            = 64
+    },
+    {
+      interface                     = "wan6-v30"
+      request                       = ["prefix"]
+      accept_prefix_without_address = true
+      add_default_route             = false
+      default_route_tables          = ["default"]
+      check_gateway                 = "none"
+      use_peer_dns                  = false
+      validate_server_duid          = true
+      allow_reconfigure             = false
+      pool_name                     = "pd-v30"
+      pool_prefix_length            = 64
+      script                        = "update-nat66-on-prefix-change"
+    },
+  ]
+
+  ipv6_addresses = [
+    {
+      interface = "vlan10"
+      address   = "fd00:10::fffe/64"
+      advertise = true
+    },
+    {
+      interface = "vlan10"
+      from_pool = "pd-v10"
+      address   = "::fffe"
+      advertise = true
+      comment   = "Gateway - Auto from PD"
+    },
+    {
+      interface = "vlan30"
+      address   = "fd00:30::fffe/64"
+      advertise = true
+    },
+    {
+      interface = "vlan30"
+      address   = "fd00:30::/128"
+      advertise = false
+    },
+    {
+      interface = "vlan31"
+      address   = "fd00:31::fffe/64"
+      advertise = true
+    },
+    {
+      interface = "vlan31"
+      from_pool = "pd-v31"
+      address   = "::fffe"
+      advertise = true
+      comment   = "Gateway - Auto from PD"
+    },
+    {
+      interface = "vlan200"
+      address   = "fd00:200::fffe/64"
+      advertise = true
+      comment   = "Standard VM LAN IPv6"
+    },
+  ]
+
+  ipv6_neighbor_discovery = [
+    {
+      interface                     = "vlan10"
+      advertise_dns                 = true
+      advertise_mac_address         = true
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:10::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "3m20s-10m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
+    {
+      interface                     = "vlan30"
+      advertise_dns                 = true
+      advertise_mac_address         = false
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:30::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "20s-1m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
+    {
+      interface                     = "vlan31"
+      advertise_dns                 = true
+      advertise_mac_address         = true
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:31::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "3m20s-10m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
+    {
+      interface                     = "vlan200"
+      advertise_dns                 = true
+      advertise_mac_address         = false
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:200::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "20s-1m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
+  ]
+
   # ── IP SERVICES ───────────────────────────────────────────────────────────────
   # Static (non-dynamic) services only. Import by service name (e.g. "ssh").
   ip_services = [
@@ -242,14 +773,7 @@ inputs = {
   ipv6_firewall_filter_rules = [
     # 0 (*1E) — log rules for observability (no comment field, log-prefix only)
     { chain = "forward", action = "log", src_address = "fd00:101::/64", log_prefix = "VM_OUT" },
-    # 1 (*1F)
-    { chain = "forward", action = "log", src_address = "2600:1700:ab1a:500e::/64", log_prefix = "VM_GUA_OUT" },
-    # 2 (*1D)
     { chain = "forward", action = "log", dst_address = "fd00:101::6/128", log_prefix = "TEST_TO_VM" },
-    # 3 (*1B)
-    { chain = "forward", action = "log", src_address = "2600:1700:ab1a:500e::/64", log_prefix = "TENANT_FWD" },
-    # 4 (*1C)
-    { chain = "forward", action = "log", dst_address = "2600:1700:ab1a:500e::/64", log_prefix = "TENANT_REPLY" },
     # 5 (*16)
     { chain = "forward", action = "fasttrack-connection", connection_state = "established,related", comment = "IPv6 fasttrack for performance" },
     # 6 (*1)

@@ -15,10 +15,15 @@ resource "routeros_ip_firewall_filter" "rules" {
 
   protocol             = each.value.protocol
   connection_state     = each.value.connection_state
+  in_interface         = each.value.in_interface
   in_interface_list    = each.value.in_interface_list
+  out_interface        = each.value.out_interface
   out_interface_list   = each.value.out_interface_list
+  src_address          = each.value.src_address
   src_address_list     = each.value.src_address_list
+  dst_address          = each.value.dst_address
   dst_address_list     = each.value.dst_address_list
+  dst_port             = each.value.dst_port
   connection_nat_state = each.value.connection_nat_state
   hw_offload           = each.value.hw_offload
   ipsec_policy         = each.value.ipsec_policy
