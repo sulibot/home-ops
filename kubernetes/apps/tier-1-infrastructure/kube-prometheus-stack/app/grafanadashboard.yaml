@@ -6,6 +6,7 @@ metadata:
   name: kubernetes-api-server
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -21,6 +22,7 @@ metadata:
   name: kubernetes-coredns
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -36,6 +38,7 @@ metadata:
   name: kubernetes-global
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -51,6 +54,7 @@ metadata:
   name: kubernetes-namespaces
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -66,6 +70,7 @@ metadata:
   name: kubernetes-nodes
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -81,6 +86,7 @@ metadata:
   name: kubernetes-pods
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -96,6 +102,7 @@ metadata:
   name: kubernetes-volumes
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -111,6 +118,7 @@ metadata:
   name: node-exporter-full
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -126,6 +134,7 @@ metadata:
   name: prometheus
 spec:
   allowCrossNamespaceImport: true
+  folder: cluster
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana

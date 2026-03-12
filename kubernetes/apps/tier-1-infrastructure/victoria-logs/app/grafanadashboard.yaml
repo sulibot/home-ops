@@ -6,6 +6,7 @@ metadata:
   name: victoria-logs-single-node
 spec:
   allowCrossNamespaceImport: true
+  folder: logs
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana

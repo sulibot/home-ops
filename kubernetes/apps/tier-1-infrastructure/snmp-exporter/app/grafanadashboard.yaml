@@ -6,6 +6,7 @@ metadata:
   name: routeros-mikrotik
 spec:
   allowCrossNamespaceImport: true
+  folder: network
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
