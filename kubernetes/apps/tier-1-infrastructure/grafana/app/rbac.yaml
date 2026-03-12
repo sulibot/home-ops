@@ -1,0 +1,73 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/rbac.authorization.k8s.io/clusterrole_v1.json
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-operator-supplemental
+rules:
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - secrets
+      - services
+      - serviceaccounts
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - httproutes
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["grafana.integreatly.org"]
+    resources:
+      - grafanas
+      - grafanadashboards
+      - grafanadatasources
+      - grafanaalertrulegroups
+      - grafanacontactpoints
+      - grafanafolders
+      - grafanalibrarypanels
+      - grafanamanifests
+      - grafanamutetimings
+      - grafananotificationpolicies
+      - grafananotificationpolicyroutes
+      - grafananotificationtemplates
+      - grafanaserviceaccounts
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["grafana.integreatly.org"]
+    resources:
+      - grafanadashboards/status
+      - grafanadatasources/status
+      - grafanaalertrulegroups/status
+      - grafanacontactpoints/status
+      - grafanafolders/status
+      - grafanalibrarypanels/status
+      - grafanamanifests/status
+      - grafanamutetimings/status
+      - grafananotificationpolicies/status
+      - grafananotificationpolicyroutes/status
+      - grafananotificationtemplates/status
+      - grafanas/status
+      - grafanaserviceaccounts/status
+    verbs: ["get", "patch", "update"]
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/rbac.authorization.k8s.io/clusterrolebinding_v1.json
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-operator-supplemental
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-operator-supplemental
+subjects:
+  - kind: ServiceAccount
+    name: grafana-operator
+    namespace: observability

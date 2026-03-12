@@ -29,6 +29,7 @@ resources:
   # - ./cloudflared/helm-repo/ks.yaml
   # - ./cloudflared/ks.yaml
   - ./certificates/ks.yaml
+  - ./cilium-observability/ks.yaml
 
   # Drivers
   - ./intel-gpu-resource-driver/ks.yaml

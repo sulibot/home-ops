@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: matter-server
   updatePolicy:
-    updateMode: "Auto"
+    updateMode: "Initial"
     minReplicas: 1
   resourcePolicy:
     containerPolicies:

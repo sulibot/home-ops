@@ -1,0 +1,66 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vpa-recommender
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: vpa
+    app.kubernetes.io/instance: vpa
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vpa
+      app.kubernetes.io/instance: vpa
+      app.kubernetes.io/component: recommender
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - kube-system
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vpa-updater
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: vpa
+    app.kubernetes.io/instance: vpa
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vpa
+      app.kubernetes.io/instance: vpa
+      app.kubernetes.io/component: updater
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - kube-system
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vpa-admission-controller
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: vpa
+    app.kubernetes.io/instance: vpa
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vpa
+      app.kubernetes.io/instance: vpa
+      app.kubernetes.io/component: admission-controller
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - kube-system
