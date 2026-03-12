@@ -26,6 +26,12 @@ spec:
           target: fd00:1::82
           auth:
             - public_v2
+        - name: routeros
+          module:
+            - mikrotik
+          target: fd00:30::fffe
+          auth:
+            - public_v2
       path: /snmp
       scrapeTimeout: 10s
       relabelings:

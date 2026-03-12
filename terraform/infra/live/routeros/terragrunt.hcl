@@ -302,6 +302,22 @@ inputs = {
     servers              = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
   }
 
+  snmp = {
+    enabled = true
+    vrf     = "main"
+  }
+
+  snmp_communities = [
+    {
+      name        = "public"
+      addresses   = ["10.101.224.0/20", "fd00:101:224::/60"]
+      read_access = true
+      security    = "none"
+      write_access = false
+      comment     = "Restricted to snmp-exporter pod CIDRs"
+    },
+  ]
+
   # ── SYSTEM ────────────────────────────────────────────────────────────────────
   system = {
     identity             = "router"

@@ -518,3 +518,36 @@ variable "dns_records" {
   }))
   default = []
 }
+
+variable "snmp" {
+  description = "RouterOS SNMP singleton settings."
+  type = object({
+    enabled            = optional(bool)
+    contact            = optional(string)
+    location           = optional(string)
+    src_address        = optional(string)
+    trap_interfaces    = optional(string)
+    trap_target        = optional(set(string), [])
+    vrf                = optional(string)
+    engine_id_suffix   = optional(string)
+  })
+  default = null
+}
+
+variable "snmp_communities" {
+  description = "RouterOS SNMP communities."
+  type = list(object({
+    name                     = string
+    addresses                = optional(set(string), [])
+    authentication_password  = optional(string)
+    authentication_protocol  = optional(string)
+    comment                  = optional(string, "")
+    disabled                 = optional(bool, false)
+    encryption_password      = optional(string)
+    encryption_protocol      = optional(string)
+    read_access              = optional(bool, true)
+    security                 = optional(string, "none")
+    write_access             = optional(bool, false)
+  }))
+  default = []
+}
