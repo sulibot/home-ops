@@ -838,12 +838,12 @@ data:
           },
           "targets": [
             {
-              "expr": "container_memory_working_set_bytes{namespace=\"default\",pod=~\"matter-server-.*\",container=\"app\"}",
+              "expr": "container_memory_working_set_bytes{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\"}",
               "legendFormat": "matter-server usage",
               "refId": "A"
             },
             {
-              "expr": "kube_pod_container_resource_requests{namespace=\"default\",pod=~\"matter-server-.*\",container=\"app\",resource=\"memory\",unit=\"byte\"}",
+              "expr": "kube_pod_container_resource_requests{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\",resource=\"memory\",unit=\"byte\"}",
               "legendFormat": "matter-server request",
               "refId": "B"
             }
@@ -928,12 +928,12 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"default\",pod=~\"matter-server-.*\",container=\"app\"}[5m])",
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\"}[5m])",
               "legendFormat": "matter-server usage",
               "refId": "A"
             },
             {
-              "expr": "kube_pod_container_resource_requests{namespace=\"default\",pod=~\"matter-server-.*\",container=\"app\",resource=\"cpu\",unit=\"core\"}",
+              "expr": "kube_pod_container_resource_requests{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\",resource=\"cpu\",unit=\"core\"}",
               "legendFormat": "matter-server request",
               "refId": "B"
             }

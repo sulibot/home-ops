@@ -27,6 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: matter-server
+      NAMESPACE: matter-server
       VOLSYNC_SCHEDULE: "19 * * * *"
       VOLSYNC_CAPACITY: 5Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
@@ -37,5 +38,5 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: default
+  targetNamespace: matter-server
   wait: false

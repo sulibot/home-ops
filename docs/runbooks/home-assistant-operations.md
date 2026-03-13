@@ -276,7 +276,7 @@ Operational implication:
 
 Home Assistant Matter integration is configured to use the internal cluster service URL:
 
-- `ws://matter-server.default.svc.cluster.local:5580/ws`
+- `ws://matter-server.matter-server.svc.cluster.local:5580/ws`
 
 This is the correct HA-to-Matter path in this cluster.
 

@@ -26,6 +26,29 @@ spec:
       matter-server:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          enable-ipv6-rio:
+            image:
+              repository: busybox
+              tag: "1.36"
+            command:
+              - sh
+              - -lc
+              - |
+                for i in $(seq 1 30); do
+                  [ -e /proc/sys/net/ipv6/conf/net1/accept_ra_rt_info_max_plen ] && break
+                  sleep 1
+                done
+                echo 64 > /proc/sys/net/ipv6/conf/net1/accept_ra_rt_info_max_plen
+                cat /proc/sys/net/ipv6/conf/net1/accept_ra_rt_info_max_plen
+                mkdir -p /data
+                chown -R 1000:1000 /data 2>/dev/null || true
+            securityContext:
+              privileged: true
+              allowPrivilegeEscalation: true
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
         containers:
           app:
             image:
@@ -43,6 +66,9 @@ spec:
               - --log-level=debug
               - --log-level-sdk=debug
             securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
               capabilities:
@@ -65,10 +91,10 @@ spec:
           ]
       hostUsers: true
       securityContext:
-        runAsNonRoot: false
-        runAsUser: 0
-        runAsGroup: 0
-        fsGroup: 0
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         supplementalGroups: [34]
     service:
