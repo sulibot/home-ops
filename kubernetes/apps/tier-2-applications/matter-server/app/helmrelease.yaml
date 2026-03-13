@@ -26,22 +26,6 @@ spec:
       matter-server:
         annotations:
           reloader.stakater.com/auto: "true"
-        initContainers:
-          setup-thread-routing:
-            image:
-              repository: busybox
-              tag: "1.37"
-            command:
-              - /bin/sh
-              - -c
-              - |
-                sysctl -w net.ipv6.conf.net1.accept_ra_rt_info_max_plen=128
-                ip -6 route add fdac:7df6:ccd1:1::/64 via fd00:30::253 dev net1 || true
-            securityContext:
-              runAsUser: 0
-              capabilities:
-                add: ["NET_ADMIN"]
-                drop: ["ALL"]
         containers:
           app:
             image:
