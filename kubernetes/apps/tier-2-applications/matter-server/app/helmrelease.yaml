@@ -26,6 +26,22 @@ spec:
       matter-server:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          setup-thread-routing:
+            image:
+              repository: busybox
+              tag: "1.37"
+            command:
+              - /bin/sh
+              - -c
+              - |
+                sysctl -w net.ipv6.conf.net1.accept_ra_rt_info_max_plen=128
+                ip -6 route add fdac:7df6:ccd1:1::/64 via fd00:30::253 dev net1 || true
+            securityContext:
+              runAsUser: 0
+              capabilities:
+                add: ["NET_ADMIN"]
+                drop: ["ALL"]
         containers:
           app:
             image:
@@ -36,12 +52,12 @@ spec:
               MATTER_SERVER__INSTANCE_NAME: "{{ .Release.Name }}"
               MATTER_SERVER__PORT: &port 5580
               MATTER_SERVER__APPLICATION_URL: &host "matter-server.sulibot.com"
-              MATTER_SERVER__LOG_LEVEL: info
+              MATTER_SERVER__LOG_LEVEL: debug
             args:
               - --storage-path=/data
               - --primary-interface=net1
-              - --log-level=info
-              - --log-level-sdk=info
+              - --log-level=debug
+              - --log-level-sdk=debug
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
