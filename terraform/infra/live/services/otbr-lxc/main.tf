@@ -19,8 +19,8 @@ locals {
   ssh_public_key = file(pathexpand("~/.ssh/id_ed25519.pub"))
   host_domain    = "otbr01.sulibot.com"
   service_domain = "otbr.sulibot.com"
-  container_ipv4 = "10.30.0.253"
-  container_ipv6 = "fd00:30::253"
+  container_ipv4 = "10.31.0.253"
+  container_ipv6 = "fd00:31::253"
 
   containers = {
     otbr01 = {
@@ -34,16 +34,16 @@ locals {
       swap_mb     = 512
       disk_gb     = 16
       bridge      = "vmbr0"
-      vlan_id     = 30
+      vlan_id     = 31
       firewall    = false
       features = {
         nesting = true
         keyctl  = true
       }
-      ipv4_address    = "10.30.0.253/24"
-      ipv4_gateway    = "10.30.0.254"
-      ipv6_address    = "fd00:30::253/64"
-      ipv6_gateway    = "fd00:30::fffe"
+      ipv4_address    = "10.31.0.253/24"
+      ipv4_gateway    = "10.31.0.254"
+      ipv6_address    = "fd00:31::253/64"
+      ipv6_gateway    = "fd00:31::fffe"
       ssh_public_keys = [local.ssh_public_key]
       tags            = ["thread", "matter", "otbr", "lxc", "trixie"]
       mount_points = [

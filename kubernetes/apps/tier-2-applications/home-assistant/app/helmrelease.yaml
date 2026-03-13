@@ -111,11 +111,6 @@ spec:
         k8s.v1.cni.cncf.io/networks: |-
           [
             {
-              "name": "vlan30",
-              "namespace": "kube-system",
-              "ips": ["10.30.0.251/24", "fd00:30::251/64"]
-            },
-            {
               "name": "vlan31",
               "namespace": "kube-system",
               "ips": ["10.31.0.251/24", "fd00:31::251/64"]
@@ -138,32 +133,6 @@ spec:
           http:
             appProtocol: kubernetes.io/ws
             port: 8123
-    route:
-      app:
-        annotations:
-          gatus.home-operations.com/endpoint: |-
-            conditions: ["[STATUS] == 200"]
-        hostnames:
-          - "{{ .Release.Name }}.sulibot.com"
-          - hass.sulibot.com
-          - home-assistant-app.sulibot.com
-        parentRefs:
-          - name: gateway-tunnel
-            namespace: network
-        rules:
-          - backendRefs:
-              - name: authentik-outpost
-                port: 9000
-      google:
-        hostnames:
-          - ha-google.sulibot.com
-        parentRefs:
-          - name: gateway-tunnel
-            namespace: network
-        rules:
-          - backendRefs:
-              - identifier: app
-                port: 8123
     persistence:
       config:
         enabled: true

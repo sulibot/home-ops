@@ -1,0 +1,73 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pve-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: proxmox-api-targets
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: proxmox-api-targets
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: https
+      path: /pve
+      interval: 60s
+      scrapeTimeout: 30s
+      params:
+        module:
+          - default
+        cluster:
+          - "1"
+        node:
+          - "1"
+      relabelings:
+        - sourceLabels:
+            - __address__
+          targetLabel: __param_target
+        - sourceLabels:
+            - __param_target
+          targetLabel: instance
+        - targetLabel: __address__
+          replacement: pve-exporter.observability.svc.cluster.local:9221
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ceph-mgr-targets
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ceph-mgr-targets
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 15s
+      relabelings:
+        - targetLabel: ceph_cluster
+          replacement: proxmox

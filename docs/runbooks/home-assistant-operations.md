@@ -75,58 +75,40 @@ This matters operationally:
 Home Assistant has:
 
 - default cluster networking on Cilium
-- Multus address on VLAN 30:
-  - `10.30.0.251`
-  - `fd00:30::251`
-- Multus address on VLAN 31:
-  - `10.31.0.251`
+- a single Multus attachment on VLAN 31:
   - `fd00:31::251`
+  - `10.31.0.251`
 
 Practical access paths:
 
-- Local/direct HA: `http://10.30.0.251:8123`
-- Human remote browser path: `https://hass.sulibot.com`
-- Google cloud-to-cloud direct path: `https://ha-google.sulibot.com`
+- Canonical internal HA URL: `http://[fd00:31::251]:8123`
+- IPv4 fallback HA URL: `http://10.31.0.251:8123`
+- VLAN 30 reaches Home Assistant by routed access into VLAN 31
 
 ### HTTP routes
 
-Home Assistant is split across two public routes:
+Home Assistant is internal-only in the intended design.
 
-- `home-assistant-app`
-  - hostnames: `home-assistant.sulibot.com`, `hass.sulibot.com`, `home-assistant-app.sulibot.com`
-  - backend: `authentik-outpost`
-  - purpose: human access
-- `home-assistant-google`
-  - hostname: `ha-google.sulibot.com`
-  - backend: direct Home Assistant service on `8123`
-  - purpose: Google OAuth/account-linking and fulfillment
-
-This separation is intentional. Human access stays behind Authentik. Google cannot use the Authentik path and must hit HA directly.
+- No public Home Assistant route is part of the target topology.
+- The canonical endpoint is the VLAN 31 IPv6 address.
+- IPv4 remains valid as a compatibility path only.
 
 ## Authentication Model
 
 ### Human access
 
-Human browser access uses:
+Human browser and app access use the direct internal Home Assistant endpoint:
 
-- Cloudflare / tunnel path
-- Authentik outpost
-- `auth_header` in Home Assistant
+- preferred: `http://[fd00:31::251]:8123`
+- fallback: `http://10.31.0.251:8123`
 
-Runtime config in `/config/configuration.yaml`:
-
-- `auth_header.username_header: X-Authentik-Email`
-- `auth_header.allow_bypass_login: true`
-
-This is acceptable only because the public human route goes through the Authentik outpost and HA trusts only known proxy sources.
+Home Assistant local auth is the intended path in this topology.
 
 ### Local access
 
 Home Assistant also uses `trusted_networks`:
 
-- `fd00:30::/64`
 - `fd00:31::/64`
-- `10.30.0.0/24`
 - `10.31.0.0/24`
 
 and currently:
@@ -137,13 +119,7 @@ This is convenient, but it is a trust shortcut. Anyone on those subnets can bypa
 
 ### Google access
 
-The Google endpoint is intentionally direct to HA and not behind Authentik. The control plane here is:
-
-- Google OAuth account linking
-- Home Assistant local auth
-- explicit entity exposure under `google_assistant`
-
-This is not equivalent to “internet-safe by default.” It is acceptable only as a dedicated machine path with limited scope.
+No Google cloud-to-cloud endpoint is part of the current intended topology.
 
 ## Security Posture
 
@@ -164,15 +140,14 @@ Home Assistant now runs with:
 
 `/config/configuration.yaml` contains:
 
-- `ip_ban_enabled: true`
+- `ip_ban_enabled: false`
 - `login_attempts_threshold: 5`
 - explicit `trusted_proxies`
 
 ### What is still intentionally permissive
 
 - `trusted_networks` bypass remains enabled
-- `auth_header` bypass remains enabled for the Authentik path
-- the Google endpoint is publicly reachable by design
+- Home Assistant local auth and trusted networks remain the primary local access model
 
 ### Security recommendations
 
@@ -185,8 +160,6 @@ Keep doing:
 
 Avoid:
 
-- exposing the normal human HA path directly without Authentik
-- putting Cloudflare Access or Authentik in front of the Google endpoint
 - widening `trusted_networks` further
 
 ## Persistent Storage
@@ -310,7 +283,7 @@ This is the correct HA-to-Matter path in this cluster.
 Do not replace it with:
 
 - `matter-server.sulibot.com`
-- `10.30.0.252`
+- `10.31.0.252`
 
 unless behavior changes are intentionally validated.
 
@@ -333,60 +306,8 @@ Operational split:
 
 - HA and Matter Server are in Kubernetes
 - OTBR is not
-- Thread radio access is not a Kubernetes pod concern in the current design
-
-## Google Home Integration
-
-### Current HA config
-
-Runtime config contains:
-
-```yaml
-google_assistant:
-  project_id: sulibot-home-assistant
-  service_account: !include SERVICE_ACCOUNT.json
-  report_state: true
-  expose_by_default: false
-```
-
-Required service account file:
-
-- `/config/SERVICE_ACCOUNT.json`
-
-### Public endpoints
-
-Expected behaviors:
-
-- `https://ha-google.sulibot.com/auth/authorize` -> `405` with `Allow: GET,OPTIONS`
-- `https://ha-google.sulibot.com/auth/token` -> `405` with `Allow: OPTIONS,POST`
-- `https://ha-google.sulibot.com/api/google_assistant` -> `405` with `Allow: OPTIONS,POST`
-
-If `/api/google_assistant` returns `404`, the integration is not enabled correctly in HA.
-
-### Account linking values
-
-For Google Home Developer Console:
-
-- Project ID: `sulibot-home-assistant`
-- OAuth Client ID: `https://oauth-redirect.googleusercontent.com/r/sulibot-home-assistant`
-- Client secret: `notused`
-- Authorization URL: `https://ha-google.sulibot.com/auth/authorize`
-- Token URL: `https://ha-google.sulibot.com/auth/token`
-- Fulfillment URL: `https://ha-google.sulibot.com/api/google_assistant`
-
-### Entity exposure
-
-Google is linked, but no useful voice control happens until entities are explicitly exposed.
-
-Current safe default:
-
-- `expose_by_default: false`
-
-Operational rule:
-
-- expose only the entities you want users to control by voice
-- assign sane names and rooms
-- start with a small set and expand deliberately
+- Thread radio access remains outside Kubernetes, but Matter-over-Thread still depends on the pod network being able to route to the Thread OMR prefix.
+- The current static Thread OMR route workaround remains required until the Kubernetes networking model handles that path explicitly.
 
 ## Normal Operations
 
@@ -407,19 +328,17 @@ kubectl -n default rollout status deploy/home-assistant --timeout=180s
 
 Because the deployment uses `Recreate`, if restart hangs, check for a stuck old pod on a dead node.
 
-### Validate public routes
+### Validate internal endpoints
 
 ```bash
-curl -k -I https://hass.sulibot.com
-curl -k -I https://ha-google.sulibot.com/auth/authorize
-curl -k -I https://ha-google.sulibot.com/auth/token
-curl -k -I https://ha-google.sulibot.com/api/google_assistant
+curl -I 'http://[fd00:31::251]:8123'
+curl -I http://10.31.0.251:8123
 ```
 
 Expected:
 
-- `hass.sulibot.com` redirects into Authentik
-- Google endpoint paths hit HA directly
+- both endpoints return the Home Assistant HTTP listener
+- IPv6 is the preferred internal path
 
 ### Validate local runtime config
 
@@ -562,15 +481,12 @@ If you want full GitOps for HA configuration later, design that as a separate pr
 ### Key files
 
 - HelmRelease: `/Users/sulibot/repos/github/home-ops/kubernetes/apps/tier-2-applications/home-assistant/app/helmrelease.yaml`
-- Cloudflare Terraform: `/Users/sulibot/repos/github/home-ops/terraform/infra/live/services/cloudflare-access/terragrunt.hcl`
 - HA runtime config: `/config/configuration.yaml`
-- Google service account: `/config/SERVICE_ACCOUNT.json`
 
 ### Key URLs
 
-- Local HA: `http://10.30.0.251:8123`
-- Human remote HA: `https://hass.sulibot.com`
-- Google endpoint: `https://ha-google.sulibot.com`
+- Local HA preferred: `http://[fd00:31::251]:8123`
+- Local HA fallback: `http://10.31.0.251:8123`
 - OTBR: `http://otbr01.sulibot.com:8081`
 
 ### Key commands

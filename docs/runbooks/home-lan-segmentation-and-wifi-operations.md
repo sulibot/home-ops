@@ -468,10 +468,15 @@ Operationally observed pattern:
 
 Expected behavior:
 
-- Home Assistant on `10.30.0.251` can discover devices on `vlan31`
-- HomeKit / mDNS devices on `vlan31` are visible to HA on `vlan30`
+- Home Assistant on `fd00:31::251` / `10.31.0.251` can discover devices on `vlan31`
+- HomeKit / mDNS devices on `vlan31` are visible to HA in the IoT plane directly
 - personal devices on `vlan30` can reach device web UIs or APIs on `vlan31`
 - IoT devices cannot initiate arbitrary new sessions into `vlan30`
+
+Important limitation:
+
+- The current Thread OMR workaround remains required.
+- Moving OTBR, Home Assistant, and `matter-server` to `vlan31` simplifies the topology, but it does not by itself teach the Kubernetes pod network how to route to the Thread OMR prefix.
 
 ## Troubleshooting
 

@@ -63,3 +63,8 @@ spec:
         enabled: true
         storageClass: csi-cephfs-config-sc
         size: 1Gi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true

@@ -1,0 +1,56 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxmox-api-targets
+  labels:
+    app.kubernetes.io/name: proxmox-api-targets
+spec:
+  ports:
+    - name: https
+      port: 8006
+      protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/endpoints.json
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: proxmox-api-targets
+subsets:
+  - addresses:
+      - ip: fd00:10::1
+      - ip: fd00:10::2
+      - ip: fd00:10::3
+    ports:
+      - name: https
+        port: 8006
+        protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: ceph-mgr-targets
+  labels:
+    app.kubernetes.io/name: ceph-mgr-targets
+spec:
+  ports:
+    - name: metrics
+      port: 9283
+      protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/endpoints.json
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ceph-mgr-targets
+subsets:
+  - addresses:
+      - ip: fd00:10::1
+      - ip: fd00:10::2
+      - ip: fd00:10::3
+    ports:
+      - name: metrics
+        port: 9283
+        protocol: TCP

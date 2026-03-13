@@ -52,7 +52,7 @@ spec:
         sidecarLabel: grafana_dashboard
         sidecarLabelValue: "1"
       podMonitorAdditionalLabels: {}
-      podMonitorEnabled: false
+      podMonitorEnabled: true
       podMonitorMetricRelabelings: []
       podMonitorRelabelings: []
     monitoringQueriesConfigMap:

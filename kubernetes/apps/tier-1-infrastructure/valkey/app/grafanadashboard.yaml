@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: valkey
+spec:
+  allowCrossNamespaceImport: true
+  folder: databases
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  url: https://raw.githubusercontent.com/oliver006/redis_exporter/defa68d6784592451d6e812b3a6f0352482c5314/contrib/redis-mixin/dashboards/redis-overview.json

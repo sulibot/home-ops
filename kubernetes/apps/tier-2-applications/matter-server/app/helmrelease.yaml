@@ -58,9 +58,9 @@ spec:
         k8s.v1.cni.cncf.io/networks: |-
           [
             {
-              "name": "vlan30",
+              "name": "vlan31",
               "namespace": "kube-system",
-              "ips": ["10.30.0.252/24", "fd00:30::252/64"]
+              "ips": ["10.31.0.252/24", "fd00:31::252/64"]
             }
           ]
       hostUsers: true

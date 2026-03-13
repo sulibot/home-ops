@@ -81,12 +81,12 @@ locals {
 
     otbr = {
       role      = "otbr"
-      tenant_id = 30
+      tenant_id = 31
       network = {
         bridge       = "vmbr0"
-        vlan_id      = 30
-        ipv4_gateway = "10.30.0.254"
-        ipv6_gateway = "fd00:30::fffe"
+        vlan_id      = 31
+        ipv4_gateway = "10.31.0.254"
+        ipv6_gateway = "fd00:31::fffe"
       }
       storage = {
         vm_datastore = "rbd-vm"
@@ -100,8 +100,8 @@ locals {
       node_name = "pve01"
       vm_id     = 30253
       hostname  = "otbr01"
-      ipv4      = "10.30.0.253/24"
-      ipv6      = "fd00:30::253/64"
+      ipv4      = "10.31.0.253/24"
+      ipv6      = "fd00:31::253/64"
     }
   }
 }
