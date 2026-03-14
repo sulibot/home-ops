@@ -41,7 +41,7 @@ spec:
                 done
                 echo 64 > /proc/sys/net/ipv6/conf/net1/accept_ra_rt_info_max_plen
                 cat /proc/sys/net/ipv6/conf/net1/accept_ra_rt_info_max_plen
-                mkdir -p /data
+                mkdir -p /data /data/credentials/development/paa-root-certs
                 chown -R 1000:1000 /data 2>/dev/null || true
             securityContext:
               privileged: true
@@ -63,6 +63,7 @@ spec:
             args:
               - --storage-path=/data
               - --primary-interface=net1
+              - --paa-root-cert-dir=/data/credentials/development/paa-root-certs
               - --log-level=debug
               - --log-level-sdk=debug
             securityContext:
