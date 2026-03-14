@@ -133,6 +133,17 @@ spec:
           http:
             appProtocol: kubernetes.io/ws
             port: 8123
+    route:
+      app:
+        hostnames:
+          - hass.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8123
     persistence:
       config:
         enabled: true
