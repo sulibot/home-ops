@@ -1,0 +1,110 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: stirling-pdf
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: stirling-pdf
+  interval: 1h
+  timeout: 15m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 15m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 15m
+  values:
+    controllers:
+      stirling-pdf:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/stirling-tools/s-pdf
+              tag: 2.7.0@sha256:b90827e1041ca57d2de6f23bb8638f516a34e1109d1f9eb05d598c60f629e9e0
+            env:
+              TZ: America/Los_Angeles
+              DOCKER_ENABLE_SECURITY: "false"
+              SECURITY_ENABLE_LOGIN: "false"
+              INSTALL_BOOK_AND_ADVANCED_HTML_OPS: "true"
+              SERVER_PORT: &port 8080
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/info/status
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/info/status
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 50m
+                memory: 512Mi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+    service:
+      app:
+        controller: stirling-pdf
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - pdf.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: http
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /configs
+      temporary:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /customFiles
+          - path: /logs
+          - path: /pipeline
+          - path: /tmp
+          - path: /usr/share/tessdata
