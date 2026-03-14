@@ -37,7 +37,7 @@ spec:
           app:
             image:
               repository: docker.io/dbeaver/cloudbeaver
-              tag: 26.0.0@sha256:53b446904be9cf7326e5cc446201aaaa35daa52e36887e46e38c70dde14b12e2
+              tag: 26.0.0@sha256:876adb5566a5a091a2ef9eeb2c2106dce1414cd2b33c658b90da8f325d11db51
             env:
               TZ: America/Los_Angeles
             envFrom:
