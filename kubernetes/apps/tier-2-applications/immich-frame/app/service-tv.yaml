@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/service_v1.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-frame-tv
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: immich-frame-tv.sulibot.com
+    external-dns.alpha.kubernetes.io/target: 10.31.0.7,fd00:31::7
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/controller: immich-frame
+    app.kubernetes.io/instance: immich-frame
+    app.kubernetes.io/name: immich-frame
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080

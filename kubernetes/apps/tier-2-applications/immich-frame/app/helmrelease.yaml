@@ -54,6 +54,15 @@ spec:
               limits:
                 memory: 512Mi
     defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan31",
+              "namespace": "kube-system",
+              "ips": ["10.31.0.7/24", "fd00:31::7/64"]
+            }
+          ]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
