@@ -3,19 +3,20 @@ include "root" {
 }
 
 locals {
-  versions       = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
-  proxmox_infra  = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  network_infra  = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
-  lxc_catalog    = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  otbr_class     = local.lxc_catalog.services.otbr
-  credentials    = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file   = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  host_domain    = "${local.otbr_class.hostname}.sulibot.com"
-  service_domain = "otbr.sulibot.com"
-  rcp_device     = "/dev/ttyACM0"
-  otbr_git_ref   = "thread-reference-20250612"
-  infra_if_name  = "eth0"
-  radio_url      = "spinel+hdlc+uart://${local.rcp_device}?uart-baudrate=460800"
+  versions            = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
+  proxmox_infra       = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  network_infra       = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
+  lxc_catalog         = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  otbr_class          = local.lxc_catalog.services.otbr
+  credentials         = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file        = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  host_domain         = "${local.otbr_class.hostname}.sulibot.com"
+  service_domain      = "otbr.sulibot.com"
+  rcp_device          = "/dev/ttyACM0"
+  otbr_git_ref        = "thread-reference-20250612"
+  infra_if_name       = "eth0"
+  radio_url           = "spinel+hdlc+uart://${local.rcp_device}?uart-baudrate=460800"
+  thread_network_name = "sulibot-home"
 }
 
 generate "providers" {
@@ -76,6 +77,7 @@ locals {
   service_domain = "${local.service_domain}"
   container_ipv4 = "${replace(local.otbr_class.ipv4, "/24", "")}"
   container_ipv6 = "${replace(local.otbr_class.ipv6, "/64", "")}"
+  thread_dataset_tlv = data.sops_file.secrets.data["otbr_thread_dataset_secret"]
 
   containers = {
     otbr01 = {
@@ -138,6 +140,12 @@ locals {
     "systemctl is-active --quiet otbr-agent",
     "systemctl is-active --quiet otbr-web",
     "timeout 10 ot-ctl state >/dev/null",
+    "timeout 10 ot-ctl dataset set active ${local.thread_dataset_tlv}",
+    "timeout 10 ot-ctl dataset networkname ${local.thread_network_name}",
+    "timeout 10 ot-ctl dataset commit active",
+    "timeout 10 ot-ctl ifconfig up",
+    "timeout 10 ot-ctl thread start",
+    "timeout 10 ot-ctl dataset networkname | grep -Fx '${local.thread_network_name}'",
     "journalctl -u otbr-agent --no-pager -n 20 | tail -n 20",
   ]
 }
