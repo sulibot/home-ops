@@ -32,15 +32,23 @@ spec:
               repository: ghcr.io/immichframe/immichframe
               tag: v1.0.32.0@sha256:a0b54ee307d5746cd59518bd3ff60d80bf133b5dbe3202585f8c788d9ce3f2a8
             env:
+              ApiKey:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-frame-secret
+                    key: IMMICH_API_KEY
               ClockFormat: "HH:mm"
+              ImmichServerUrl:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-frame-secret
+                    key: IMMICH_API_URL
               PhotoDateFormat: "yyyy-MM-dd"
               Tags: ""
               TZ: America/Los_Angeles
               UnitSystem: metric
               WeatherLatLong: "37.773972,-122.431297"
             envFrom:
-              - secretRef:
-                  name: immich-frame-secret
               - secretRef:
                   name: immich-frame-keys
             securityContext:
