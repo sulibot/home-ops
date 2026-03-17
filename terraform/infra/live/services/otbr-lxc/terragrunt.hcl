@@ -140,12 +140,13 @@ locals {
     "systemctl is-active --quiet otbr-agent",
     "systemctl is-active --quiet otbr-web",
     "timeout 10 ot-ctl state >/dev/null",
-    "timeout 10 ot-ctl dataset set active ${local.thread_dataset_tlv}",
+    "timeout 10 ot-ctl dataset set active $${local.thread_dataset_tlv}",
+    "timeout 10 ot-ctl dataset init active",
     "timeout 10 ot-ctl dataset networkname ${local.thread_network_name}",
     "timeout 10 ot-ctl dataset commit active",
     "timeout 10 ot-ctl ifconfig up",
     "timeout 10 ot-ctl thread start",
-    "timeout 10 ot-ctl dataset networkname | grep -Fx '${local.thread_network_name}'",
+    "timeout 10 sh -lc \"ot-ctl dataset active | grep -F 'Network Name: ${local.thread_network_name}'\"",
     "journalctl -u otbr-agent --no-pager -n 20 | tail -n 20",
   ]
 }

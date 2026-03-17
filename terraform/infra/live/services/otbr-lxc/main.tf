@@ -16,11 +16,11 @@ variable "region" {
 }
 
 locals {
-  ssh_public_key = file(pathexpand("~/.ssh/id_ed25519.pub"))
-  host_domain    = "otbr01.sulibot.com"
-  service_domain = "otbr.sulibot.com"
-  container_ipv4 = "10.31.0.253"
-  container_ipv6 = "fd00:31::253"
+  ssh_public_key     = file(pathexpand("~/.ssh/id_ed25519.pub"))
+  host_domain        = "otbr01.sulibot.com"
+  service_domain     = "otbr.sulibot.com"
+  container_ipv4     = "10.31.0.253"
+  container_ipv6     = "fd00:31::253"
   thread_dataset_tlv = data.sops_file.secrets.data["otbr_thread_dataset_secret"]
 
   containers = {
@@ -85,11 +85,12 @@ locals {
     "systemctl is-active --quiet otbr-web",
     "timeout 10 ot-ctl state >/dev/null",
     "timeout 10 ot-ctl dataset set active ${local.thread_dataset_tlv}",
+    "timeout 10 ot-ctl dataset init active",
     "timeout 10 ot-ctl dataset networkname sulibot-home",
     "timeout 10 ot-ctl dataset commit active",
     "timeout 10 ot-ctl ifconfig up",
     "timeout 10 ot-ctl thread start",
-    "timeout 10 ot-ctl dataset networkname | grep -Fx 'sulibot-home'",
+    "timeout 10 sh -lc \"ot-ctl dataset active | grep -F 'Network Name: sulibot-home'\"",
     "journalctl -u otbr-agent --no-pager -n 20 | tail -n 20",
   ]
 }
