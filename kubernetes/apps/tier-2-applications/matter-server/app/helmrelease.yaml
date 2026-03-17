@@ -87,7 +87,12 @@ spec:
             {
               "name": "vlan31",
               "namespace": "kube-system",
-              "ips": ["10.31.0.252/24", "fd00:31::252/64"]
+              "ips": ["10.31.0.6/24", "fd00:31::6/64"]
+            },
+            {
+              "name": "vlan30",
+              "namespace": "kube-system",
+              "ips": ["10.30.0.6/24", "fd00:30::6/64"]
             }
           ]
       hostUsers: true
