@@ -42,7 +42,7 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: immich-frame-secret
-                    key: IMMICH_API_URL
+                    key: IMMICH_URL
               PhotoDateFormat: "yyyy-MM-dd"
               Tags: ""
               TZ: America/Los_Angeles
