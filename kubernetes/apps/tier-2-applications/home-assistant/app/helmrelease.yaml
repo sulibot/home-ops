@@ -241,7 +241,7 @@ spec:
                   entity_id: light.smart_wi_fi_dimmer_switch_3
               condition:
                 - condition: template
-                  value_template: "{{ trigger.to_state is not none }}"
+                  value_template: "{{ `{{ trigger.to_state is not none }}` }}"
               action:
                 - choose:
                     - conditions:
@@ -257,7 +257,7 @@ spec:
                       target:
                         entity_id: light.living_room_lights
                       data:
-                        brightness: "{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}"
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}` }}"
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
