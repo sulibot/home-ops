@@ -477,7 +477,6 @@ spec:
                   target:
                     entity_id:
                       - switch.adaptive_lighting_adapt_brightness_living_room
-                      - switch.adaptive_lighting_adapt_brightness_living_room_2
                       - switch.adaptive_lighting_adapt_brightness_master
                       - switch.adaptive_lighting_adapt_brightness_bedroom
             - id: bedroom_morning_green_to_white_fade
