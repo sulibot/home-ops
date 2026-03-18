@@ -168,6 +168,15 @@ spec:
             app:
               - path: /config/automations.yaml
                 subPath: automations.yaml
+      living-room-dashboard-file:
+        enabled: true
+        type: configMap
+        identifier: living-room-dashboard
+        advancedMounts:
+          home-assistant:
+            app:
+              - path: /config/living-room-dashboard.yaml
+                subPath: living-room-dashboard.yaml
       config-cache:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config-cache"
@@ -190,6 +199,16 @@ spec:
             automation: !include automations.yaml
             script: !include scripts.yaml
             scene: !include scenes.yaml
+
+            lovelace:
+              mode: storage
+              dashboards:
+                living-room:
+                  mode: yaml
+                  title: Living Room
+                  icon: mdi:sofa
+                  show_in_sidebar: true
+                  filename: living-room-dashboard.yaml
 
             http:
               use_x_forwarded_for: true
@@ -277,6 +296,44 @@ spec:
                         entity_id: light.living_room_lights
                       data:
                         brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}` }}"
+      living-room-dashboard:
+        enabled: true
+        data:
+          living-room-dashboard.yaml: |
+            title: Living Room
+            views:
+              - title: Lights
+                path: lights
+                icon: mdi:lightbulb-group
+                cards:
+                  - type: vertical-stack
+                    cards:
+                      - type: tile
+                        entity: light.living_room_lights
+                        name: Living Room Lights
+                        icon: mdi:ceiling-light-multiple
+                        features:
+                          - type: light-brightness
+                      - type: grid
+                        title: Individual Lights
+                        columns: 3
+                        square: false
+                        cards:
+                          - type: tile
+                            entity: light.essentials_a19_a60
+                            name: Couch left
+                            features:
+                              - type: light-brightness
+                          - type: tile
+                            entity: light.essentials_a19_a60_2
+                            name: Couch right
+                            features:
+                              - type: light-brightness
+                          - type: tile
+                            entity: light.essentials_a19_a60_3
+                            name: TV right
+                            features:
+                              - type: light-brightness
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
