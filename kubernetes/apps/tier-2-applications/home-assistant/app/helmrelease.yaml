@@ -150,11 +150,112 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
+      configuration-file:
+        enabled: true
+        type: configMap
+        identifier: configuration
+        advancedMounts:
+          home-assistant:
+            app:
+              - path: /config/configuration.yaml
+                subPath: configuration.yaml
+      automations-file:
+        enabled: true
+        type: configMap
+        identifier: automations
+        advancedMounts:
+          home-assistant:
+            app:
+              - path: /config/automations.yaml
+                subPath: automations.yaml
       config-cache:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config-cache"
         globalMounts:
           - path: /config/.venv
+    configMaps:
+      configuration:
+        enabled: true
+        data:
+          configuration.yaml: |
+            # Loads default set of integrations. Do not remove.
+            default_config:
+
+            # Load frontend themes from the themes folder
+            frontend:
+              themes: !include_dir_merge_named themes
+
+            automation: !include automations.yaml
+            script: !include scripts.yaml
+            scene: !include scenes.yaml
+
+            http:
+              use_x_forwarded_for: true
+              ip_ban_enabled: false
+              login_attempts_threshold: 5
+              trusted_proxies:
+                - fd00:69::/64
+                - fd00:42::/64
+                - fd00:101:224::/60
+
+            homeassistant:
+              auth_providers:
+                - type: trusted_networks
+                  trusted_networks:
+                    - fd00:30::/64
+                    - fd00:31::/64
+                    - 10.30.0.0/24
+                    - 10.31.0.0/24
+                  allow_bypass_login: true
+                - type: homeassistant
+              customize:
+                light.smart_wi_fi_dimmer_switch_3:
+                  friendly_name: Living Room Wall Dimmer
+                  icon: mdi:light-switch
+
+            google_assistant:
+              project_id: sulibot-home-assistant
+              service_account: !include SERVICE_ACCOUNT.json
+              report_state: true
+              expose_by_default: false
+
+            light:
+              - platform: group
+                unique_id: living_room_lights_group
+                name: Living Room Lights
+                entities:
+                  - light.essentials_a19_a60
+                  - light.essentials_a19_a60_2
+                  - light.essentials_a19_a60_3
+      automations:
+        enabled: true
+        data:
+          automations.yaml: |
+            - id: living_room_dimmer_mirrors_nanoleaf_bulbs
+              alias: Living Room Dimmer Mirrors Nanoleaf Bulbs
+              mode: restart
+              trigger:
+                - platform: state
+                  entity_id: light.smart_wi_fi_dimmer_switch_3
+              condition:
+                - condition: template
+                  value_template: "{{ trigger.to_state is not none }}"
+              action:
+                - choose:
+                    - conditions:
+                        - condition: state
+                          entity_id: light.smart_wi_fi_dimmer_switch_3
+                          state: "off"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: light.living_room_lights
+                  default:
+                    - service: light.turn_on
+                      target:
+                        entity_id: light.living_room_lights
+                      data:
+                        brightness: "{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}"
       tmp:
         type: emptyDir
       # usb-zigbee:
