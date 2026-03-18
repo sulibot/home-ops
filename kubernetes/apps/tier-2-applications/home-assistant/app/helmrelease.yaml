@@ -191,6 +191,11 @@ spec:
             script: !include scripts.yaml
             scene: !include scenes.yaml
 
+            input_boolean:
+              bedroom_lights_locked:
+                name: Bedroom Lights Locked
+                icon: mdi:lock
+
             http:
               use_x_forwarded_for: true
               ip_ban_enabled: false
@@ -288,6 +293,32 @@ spec:
                 light.smart_wi_fi_dimmer_switch:
                   expose: false
 
+            adaptive_lighting:
+              - name: living_room
+                lights:
+                  - light.living_room_lights
+                prefer_rgb_color: false
+                transition: 5
+                initial_transition: 1
+                take_over_control: true
+                detect_non_ha_changes: false
+              - name: master
+                lights:
+                  - light.master_lights
+                prefer_rgb_color: false
+                transition: 5
+                initial_transition: 1
+                take_over_control: true
+                detect_non_ha_changes: false
+              - name: bedroom
+                lights:
+                  - light.bedroom_lights
+                prefer_rgb_color: false
+                transition: 5
+                initial_transition: 1
+                take_over_control: true
+                detect_non_ha_changes: false
+
             light:
               - platform: group
                 unique_id: living_room_lights_group
@@ -378,6 +409,9 @@ spec:
               condition:
                 - condition: template
                   value_template: "{{ `{{ trigger.to_state is not none }}` }}"
+                - condition: state
+                  entity_id: input_boolean.bedroom_lights_locked
+                  state: "off"
               action:
                 - choose:
                     - conditions:
@@ -394,6 +428,79 @@ spec:
                         entity_id: light.bedroom_lights
                       data:
                         brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') }}` }}"
+            - id: bedroom_lights_lock_enable
+              alias: Bedroom Lights Lock Enable
+              trigger:
+                - platform: time
+                  at: "19:30:00"
+              action:
+                - service: input_boolean.turn_on
+                  target:
+                    entity_id: input_boolean.bedroom_lights_locked
+              mode: single
+            - id: bedroom_lights_lock_disable
+              alias: Bedroom Lights Lock Disable
+              trigger:
+                - platform: time
+                  at: "04:00:00"
+              action:
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: input_boolean.bedroom_lights_locked
+              mode: single
+            - id: bedroom_lights_lock_enforce_from_dimmer
+              alias: Bedroom Lights Lock Enforce From Dimmer
+              mode: restart
+              trigger:
+                - platform: state
+                  entity_id: light.smart_wi_fi_dimmer_switch
+                  to: "on"
+              condition:
+                - condition: state
+                  entity_id: input_boolean.bedroom_lights_locked
+                  state: "on"
+              action:
+                - service: light.turn_off
+                  target:
+                    entity_id:
+                      - light.smart_wi_fi_dimmer_switch
+                      - light.bedroom_lights
+            - id: adaptive_lighting_disable_brightness_after_start
+              alias: Adaptive Lighting Disable Brightness After Start
+              mode: single
+              trigger:
+                - platform: homeassistant
+                  event: start
+              action:
+                - delay: "00:00:20"
+                - service: switch.turn_off
+                  target:
+                    entity_id:
+                      - switch.adaptive_lighting_adapt_brightness_living_room
+                      - switch.adaptive_lighting_adapt_brightness_master
+                      - switch.adaptive_lighting_adapt_brightness_bedroom
+            - id: bedroom_morning_green_to_white_fade
+              alias: Bedroom Morning Green To White Fade
+              mode: single
+              trigger:
+                - platform: time
+                  at: "07:00:00"
+              action:
+                - service: light.turn_on
+                  target:
+                    entity_id: light.bedroom_lights
+                  data:
+                    rgb_color: [0, 255, 0]
+                    brightness_pct: 1
+                    transition: 1
+                - delay: "00:00:01"
+                - service: light.turn_on
+                  target:
+                    entity_id: light.bedroom_lights
+                  data:
+                    color_temp_kelvin: 4000
+                    brightness_pct: 80
+                    transition: 3600
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
