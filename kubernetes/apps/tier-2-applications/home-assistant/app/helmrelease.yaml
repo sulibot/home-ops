@@ -221,6 +221,13 @@ spec:
                   icon: mdi:light-switch
                 light.master_lights:
                   icon: mdi:ceiling-light-multiple
+                light.smart_wi_fi_dimmer_switch:
+                  friendly_name: Bedroom Wall Dimmer
+                  icon: mdi:light-switch
+                light.bedroom_lights:
+                  icon: mdi:ceiling-light-multiple
+                light.standing_lamp:
+                  icon: mdi:floor-lamp
 
             google_assistant:
               project_id: sulibot-home-assistant
@@ -258,6 +265,28 @@ spec:
                   room: Master
                 light.smart_wi_fi_dimmer_switch_2:
                   expose: false
+                light.bedroom_lights:
+                  expose: true
+                  room: Bedroom
+                  aliases:
+                    - Bedroom Lights
+                light.standing_lamp:
+                  expose: true
+                  room: Bedroom
+                  aliases:
+                    - Standing Lamp
+                light.essentials_a19_a60_6:
+                  expose: true
+                  room: Bedroom
+                light.essentials_a19_a60_7:
+                  expose: true
+                  room: Bedroom
+                light.essentials_a19_a60_8:
+                  expose: false
+                light.essentials_a19_a60_9:
+                  expose: false
+                light.smart_wi_fi_dimmer_switch:
+                  expose: false
 
             light:
               - platform: group
@@ -273,6 +302,19 @@ spec:
                 entities:
                   - light.essentials_a19_a60_4
                   - light.essentials_a19_a60_5
+              - platform: group
+                unique_id: standing_lamp_group
+                name: Standing Lamp
+                entities:
+                  - light.essentials_a19_a60_8
+                  - light.essentials_a19_a60_9
+              - platform: group
+                unique_id: bedroom_lights_group
+                name: Bedroom Lights
+                entities:
+                  - light.essentials_a19_a60_6
+                  - light.essentials_a19_a60_7
+                  - light.standing_lamp
       automations:
         enabled: true
         data:
@@ -327,6 +369,31 @@ spec:
                         entity_id: light.master_lights
                       data:
                         brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_2', 'brightness') }}` }}"
+            - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
+              alias: Bedroom Dimmer Mirrors Bulbs
+              mode: restart
+              trigger:
+                - platform: state
+                  entity_id: light.smart_wi_fi_dimmer_switch
+              condition:
+                - condition: template
+                  value_template: "{{ `{{ trigger.to_state is not none }}` }}"
+              action:
+                - choose:
+                    - conditions:
+                        - condition: state
+                          entity_id: light.smart_wi_fi_dimmer_switch
+                          state: "off"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: light.bedroom_lights
+                  default:
+                    - service: light.turn_on
+                      target:
+                        entity_id: light.bedroom_lights
+                      data:
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') }}` }}"
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
