@@ -508,7 +508,37 @@ spec:
                   data:
                     color_temp_kelvin: 4000
                     brightness_pct: 80
-                    transition: 3600
+                    transition: 1800
+            - id: bedroom_morning_adaptive_lighting_handoff
+              alias: Bedroom Morning Adaptive Lighting Handoff
+              mode: single
+              trigger:
+                - platform: time
+                  at: "07:30:00"
+              condition:
+                - condition: time
+                  weekday:
+                    - mon
+                    - tue
+                    - wed
+                    - thu
+                    - fri
+              action:
+                - service: adaptive_lighting.set_manual_control
+                  data:
+                    entity_id: switch.adaptive_lighting_bedroom
+                    lights:
+                      - light.bedroom_lights
+                    manual_control: false
+                - service: adaptive_lighting.apply
+                  data:
+                    entity_id: switch.adaptive_lighting_bedroom
+                    lights:
+                      - light.bedroom_lights
+                    adapt_brightness: false
+                    adapt_color: true
+                    turn_on_lights: true
+                    transition: 5
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
