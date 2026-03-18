@@ -173,6 +173,8 @@ spec:
         existingClaim: "{{ .Release.Name }}-config-cache"
         globalMounts:
           - path: /config/.venv
+      tmp:
+        type: emptyDir
     configMaps:
       configuration:
         enabled: true
@@ -256,8 +258,6 @@ spec:
                         entity_id: light.living_room_lights
                       data:
                         brightness: "{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}"
-      tmp:
-        type: emptyDir
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
