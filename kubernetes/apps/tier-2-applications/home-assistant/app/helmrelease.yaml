@@ -302,11 +302,14 @@ spec:
           living-room-dashboard.yaml: |
             title: Living Room
             views:
-              - title: Lights
-                path: lights
-                icon: mdi:lightbulb-group
+              - title: Living Room
+                path: living-room
+                icon: mdi:sofa
                 cards:
-                  - type: vertical-stack
+                  - type: grid
+                    title: Lights
+                    columns: 2
+                    square: false
                     cards:
                       - type: tile
                         entity: light.living_room_lights
@@ -314,26 +317,32 @@ spec:
                         icon: mdi:ceiling-light-multiple
                         features:
                           - type: light-brightness
-                      - type: grid
-                        title: Individual Lights
-                        columns: 3
-                        square: false
-                        cards:
-                          - type: tile
-                            entity: light.essentials_a19_a60
-                            name: Couch left
-                            features:
-                              - type: light-brightness
-                          - type: tile
-                            entity: light.essentials_a19_a60_2
-                            name: Couch right
-                            features:
-                              - type: light-brightness
-                          - type: tile
-                            entity: light.essentials_a19_a60_3
-                            name: TV right
-                            features:
-                              - type: light-brightness
+                      - type: tile
+                        entity: light.essentials_a19_a60
+                        name: Couch left
+                        features:
+                          - type: light-brightness
+                      - type: tile
+                        entity: light.essentials_a19_a60_2
+                        name: Couch right
+                        features:
+                          - type: light-brightness
+                      - type: tile
+                        entity: light.essentials_a19_a60_3
+                        name: TV right
+                        features:
+                          - type: light-brightness
+                  - type: grid
+                    title: Media
+                    columns: 2
+                    square: false
+                    cards:
+                      - type: tile
+                        entity: media_player.tv
+                        name: TV
+                      - type: tile
+                        entity: media_player.speakers_2
+                        name: Speakers
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
