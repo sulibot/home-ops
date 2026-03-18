@@ -216,6 +216,11 @@ spec:
                   icon: mdi:light-switch
                 light.living_room_lights:
                   icon: mdi:ceiling-light-multiple
+                light.smart_wi_fi_dimmer_switch_2:
+                  friendly_name: Master Wall Dimmer
+                  icon: mdi:light-switch
+                light.master_lights:
+                  icon: mdi:ceiling-light-multiple
 
             google_assistant:
               project_id: sulibot-home-assistant
@@ -239,16 +244,20 @@ spec:
                   room: Living Room
                 light.smart_wi_fi_dimmer_switch_3:
                   expose: false
-
-            adaptive_lighting:
-              - name: living_room
-                lights:
-                  - light.living_room_lights
-                prefer_rgb_color: false
-                transition: 5
-                initial_transition: 1
-                take_over_control: true
-                detect_non_ha_changes: false
+                light.master_lights:
+                  expose: true
+                  room: Master
+                  aliases:
+                    - Master Lights
+                    - Master Bedroom Lights
+                light.essentials_a19_a60_4:
+                  expose: true
+                  room: Master
+                light.essentials_a19_a60_5:
+                  expose: true
+                  room: Master
+                light.smart_wi_fi_dimmer_switch_2:
+                  expose: false
 
             light:
               - platform: group
@@ -258,6 +267,12 @@ spec:
                   - light.essentials_a19_a60
                   - light.essentials_a19_a60_2
                   - light.essentials_a19_a60_3
+              - platform: group
+                unique_id: master_lights_group
+                name: Master Lights
+                entities:
+                  - light.essentials_a19_a60_4
+                  - light.essentials_a19_a60_5
       automations:
         enabled: true
         data:
@@ -287,6 +302,31 @@ spec:
                         entity_id: light.living_room_lights
                       data:
                         brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}` }}"
+            - id: master_dimmer_mirrors_nanoleaf_bulbs
+              alias: Master Dimmer Mirrors Nanoleaf Bulbs
+              mode: restart
+              trigger:
+                - platform: state
+                  entity_id: light.smart_wi_fi_dimmer_switch_2
+              condition:
+                - condition: template
+                  value_template: "{{ `{{ trigger.to_state is not none }}` }}"
+              action:
+                - choose:
+                    - conditions:
+                        - condition: state
+                          entity_id: light.smart_wi_fi_dimmer_switch_2
+                          state: "off"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: light.master_lights
+                  default:
+                    - service: light.turn_on
+                      target:
+                        entity_id: light.master_lights
+                      data:
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_2', 'brightness') }}` }}"
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath
