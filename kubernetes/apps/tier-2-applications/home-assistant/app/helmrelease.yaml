@@ -214,12 +214,31 @@ spec:
                 light.smart_wi_fi_dimmer_switch_3:
                   friendly_name: Living Room Wall Dimmer
                   icon: mdi:light-switch
+                light.living_room_lights:
+                  icon: mdi:ceiling-light-multiple
 
             google_assistant:
               project_id: sulibot-home-assistant
               service_account: !include SERVICE_ACCOUNT.json
               report_state: true
               expose_by_default: false
+              entity_config:
+                light.living_room_lights:
+                  expose: true
+                  room: Living Room
+                  aliases:
+                    - Living Room
+                light.essentials_a19_a60:
+                  expose: true
+                  room: Living Room
+                light.essentials_a19_a60_2:
+                  expose: true
+                  room: Living Room
+                light.essentials_a19_a60_3:
+                  expose: true
+                  room: Living Room
+                light.smart_wi_fi_dimmer_switch_3:
+                  expose: false
 
             light:
               - platform: group
