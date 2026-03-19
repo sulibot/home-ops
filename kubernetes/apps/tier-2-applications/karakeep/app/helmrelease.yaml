@@ -150,18 +150,20 @@ spec:
         pod:
           affinity:
             podAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                - labelSelector:
-                    matchExpressions:
-                      - key: app.kubernetes.io/name
-                        operator: In
-                        values:
-                          - karakeep
-                      - key: app.kubernetes.io/controller
-                        operator: In
-                        values:
-                          - karakeep
-                  topologyKey: kubernetes.io/hostname
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: app.kubernetes.io/name
+                          operator: In
+                          values:
+                            - karakeep
+                        - key: app.kubernetes.io/controller
+                          operator: In
+                          values:
+                            - karakeep
+                    topologyKey: kubernetes.io/hostname
         containers:
           app:
             image:
