@@ -374,7 +374,7 @@ spec:
                       target:
                         entity_id: light.living_room_lights
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') }}` }}"
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') | int(0) }}` }}"
             - id: master_dimmer_mirrors_nanoleaf_bulbs
               alias: Master Dimmer Mirrors Nanoleaf Bulbs
               mode: restart
@@ -399,7 +399,7 @@ spec:
                       target:
                         entity_id: light.master_lights
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_2', 'brightness') }}` }}"
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_2', 'brightness') | int(0) }}` }}"
             - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
               alias: Bedroom Dimmer Mirrors Bulbs
               mode: restart
@@ -427,7 +427,7 @@ spec:
                       target:
                         entity_id: light.bedroom_lights
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') }}` }}"
+                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') | int(0) }}` }}"
             - id: bedroom_lights_lock_enable
               alias: Bedroom Lights Lock Enable
               trigger:
