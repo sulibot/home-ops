@@ -75,61 +75,6 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
-          bootstrap-auth-header:
-            image:
-              repository: python
-              tag: 3.14-alpine
-            command:
-              - /bin/sh
-              - -ec
-              - |
-                python - <<'PY'
-                import json
-                import os
-                import shutil
-                import tarfile
-                import tempfile
-                import urllib.request
-
-                # renovate: datasource=github-releases depName=BeryJu/hass-auth-header
-                version = "v1.12"
-                target = "/config/custom_components/auth_header"
-                manifest_path = os.path.join(target, "manifest.json")
-
-                if os.path.exists(manifest_path):
-                    with open(manifest_path, "r", encoding="utf-8") as handle:
-                        manifest = json.load(handle)
-                    if manifest.get("version") == version.removeprefix("v"):
-                        print(f"auth_header {version} already installed")
-                        raise SystemExit(0)
-
-                os.makedirs("/config/custom_components", exist_ok=True)
-
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    archive = os.path.join(tmpdir, "auth_header.tar.gz")
-                    extract_dir = os.path.join(tmpdir, "extract")
-                    urllib.request.urlretrieve(
-                        f"https://github.com/BeryJu/hass-auth-header/archive/refs/tags/{version}.tar.gz",
-                        archive,
-                    )
-                    with tarfile.open(archive, mode="r:gz") as tarred:
-                        tarred.extractall(extract_dir)
-
-                    source = os.path.join(
-                        extract_dir,
-                        f"hass-auth-header-{version.removeprefix('v')}",
-                        "custom_components",
-                        "auth_header",
-                    )
-                    shutil.rmtree(target, ignore_errors=True)
-                    shutil.copytree(source, target)
-                PY
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              readOnlyRootFilesystem: false
           bootstrap-auth-oidc:
             image:
               repository: python
@@ -304,6 +249,16 @@ spec:
           - matches:
               - path:
                   type: Exact
+                  value: /
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /auth/oidc/redirect
+          - matches:
+              - path:
+                  type: Exact
                   value: /auth/authorize
             filters:
               - type: RequestRedirect
@@ -331,8 +286,8 @@ spec:
               - name: home-assistant-direct
                 port: 8123
           - backendRefs:
-              - name: authentik-outpost
-                port: 9000
+              - name: home-assistant-direct
+                port: 8123
       local:
         hostnames:
           - hass-local.sulibot.com
@@ -442,9 +397,6 @@ spec:
                   icon: mdi:ceiling-light-multiple
                 light.standing_lamp:
                   icon: mdi:floor-lamp
-
-            auth_header:
-              username_header: X-authentik-username
 
             auth_oidc:
               client_id: homeassistant-app

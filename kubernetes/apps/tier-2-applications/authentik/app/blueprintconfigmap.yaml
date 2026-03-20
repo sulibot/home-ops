@@ -902,29 +902,6 @@ data:
           provider: !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
           meta_launch_url: "https://firefly.sulibot.com"
           policy_engine_mode: any
-      # Home Assistant browser — full proxy mode via shared outpost
-      - model: authentik_providers_proxy.proxyprovider
-        state: present
-        identifiers:
-          name: home-assistant-proxy
-        attrs:
-          name: home-assistant-proxy
-          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
-          mode: proxy
-          external_host: "https://hass.sulibot.com"
-          internal_host: "http://home-assistant-direct.default.svc.cluster.local:8123"
-          internal_host_ssl_validation: false
-      - model: authentik_core.application
-        state: present
-        identifiers:
-          slug: home-assistant
-        attrs:
-          name: Home Assistant Web
-          slug: home-assistant
-          provider: !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
-          meta_launch_url: "https://hass.sulibot.com"
-          policy_engine_mode: any
       # Home Assistant app — OIDC client for native app token exchange
       - model: authentik_providers_oauth2.oauth2provider
         state: present
@@ -968,7 +945,6 @@ data:
           type: proxy
           providers:
             - !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
-            - !Find [authentik_providers_proxy.proxyprovider, [name, home-assistant-proxy]]
           config:
             authentik_host: "https://auth.sulibot.com"
             log_level: info
