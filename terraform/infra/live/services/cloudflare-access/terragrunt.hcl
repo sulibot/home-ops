@@ -252,6 +252,25 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
   }]
 }
 
+# ---------------------------------------------------------------------------
+# Default WARP device profile
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_device_default_profile" "default" {
+  account_id = local.account_id
+
+  exclude = [
+    {
+      address     = "10.0.0.0/8"
+      description = "Private IPv4 space"
+    },
+    {
+      address     = "fd00::/7"
+      description = "Unique local IPv6 space"
+    },
+  ]
+}
+
 
 
 # ---------------------------------------------------------------------------
