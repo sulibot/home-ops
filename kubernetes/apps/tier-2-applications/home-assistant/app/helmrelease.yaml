@@ -75,6 +75,61 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
+          bootstrap-auth-oidc:
+            image:
+              repository: python
+              tag: 3.14-alpine
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                python - <<'PY'
+                import json
+                import os
+                import shutil
+                import tarfile
+                import tempfile
+                import urllib.request
+
+                # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
+                version = "v0.6.5-alpha"
+                target = "/config/custom_components/auth_oidc"
+                manifest_path = os.path.join(target, "manifest.json")
+
+                if os.path.exists(manifest_path):
+                    with open(manifest_path, "r", encoding="utf-8") as handle:
+                        manifest = json.load(handle)
+                    if manifest.get("version") == version.removeprefix("v"):
+                        print(f"auth_oidc {version} already installed")
+                        raise SystemExit(0)
+
+                os.makedirs("/config/custom_components", exist_ok=True)
+
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    archive = os.path.join(tmpdir, "auth_oidc.tar.gz")
+                    extract_dir = os.path.join(tmpdir, "extract")
+                    urllib.request.urlretrieve(
+                        f"https://github.com/christiaangoossens/hass-oidc-auth/archive/refs/tags/{version}.tar.gz",
+                        archive,
+                    )
+                    with tarfile.open(archive, mode="r:gz") as tarred:
+                        tarred.extractall(extract_dir)
+
+                    source = os.path.join(
+                        extract_dir,
+                        f"hass-oidc-auth-{version.removeprefix('v')}",
+                        "custom_components",
+                        "auth_oidc",
+                    )
+                    shutil.rmtree(target, ignore_errors=True)
+                    shutil.copytree(source, target)
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
         containers:
           app:
             image:
