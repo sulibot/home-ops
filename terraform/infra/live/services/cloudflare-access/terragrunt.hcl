@@ -49,6 +49,10 @@ locals {
 
   bypass_apps = {
     "auth.sulibot.com" = "Authentik"
+    "atuin.sulibot.com" = "Atuin"
+    "plex.sulibot.com" = "Plex"
+    "overseerr.sulibot.com" = "Overseerr"
+    "requests.sulibot.com" = "Overseerr"
   }
 
   email_only_apps = {
@@ -56,9 +60,6 @@ locals {
   }
 
   warp_only_apps = {
-    "atuin.sulibot.com" = "Atuin"
-    "plex.sulibot.com" = "Plex"
-    "overseerr.sulibot.com" = "Overseerr"
     "immich-app.sulibot.com" = "Immich"
     "hass-app.sulibot.com" = "Home Assistant"
   }

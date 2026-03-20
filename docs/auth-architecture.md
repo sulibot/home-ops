@@ -56,8 +56,8 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `hass.sulibot.com` | Home Assistant (browser) | Native OIDC via Authentik (`hass-oidc-auth`) |
 | `hass-app.sulibot.com` | Home Assistant (app/discovery) | Native OIDC via Authentik (`hass-oidc-auth`), WARP required externally |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
-| `plex.sulibot.com` | Plex | Plex account, WARP required externally |
-| `seerr.sulibot.com` | Jellyseerr | Plex/own auth, WARP required externally |
+| `plex.sulibot.com` | Plex | Plex account (no WARP requirement externally) |
+| `seerr.sulibot.com` | Jellyseerr | Plex/own auth (no WARP requirement externally) |
 
 ### Apps on `gateway-internal` (LAN only)
 
@@ -168,9 +168,10 @@ In Zero Trust -> Access -> Applications:
 |-------------|-------------|--------|-------|
 | `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard catch-all |
 | `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
-| `WARP-only apps` | `plex.sulibot.com`, `overseerr.sulibot.com`, `atuin.sulibot.com`, `immich-app.sulibot.com`, `hass-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
+| `auth + public bypass` | `auth.sulibot.com`, `atuin.sulibot.com`, `plex.sulibot.com`, `overseerr.sulibot.com`, `requests.sulibot.com` | Bypass | Publicly reachable through Tunnel; app handles auth |
+| `WARP-only apps` | `immich-app.sulibot.com`, `hass-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
 
-**Important**: `auth.sulibot.com` is intentionally bypassed in Cloudflare Access. WARP-protected tunnel apps are not publicly bypassed.
+**Important**: `auth.sulibot.com` remains intentionally bypassed in Cloudflare Access. Only `immich-app.sulibot.com` and `hass-app.sulibot.com` are WARP-protected tunnel apps.
 
 **Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
