@@ -261,17 +261,6 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
     or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
   EOT
   , "\n", " "))
-
-  exclude = [
-    {
-      address     = "10.0.0.0/8"
-      description = "Private IPv4 space on trusted home networks"
-    },
-    {
-      address     = "fd00::/7"
-      description = "Unique local IPv6 space on trusted home networks"
-    },
-  ]
 }
 
 
