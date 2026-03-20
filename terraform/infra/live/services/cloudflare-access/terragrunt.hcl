@@ -253,20 +253,40 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
 }
 
 # ---------------------------------------------------------------------------
-# Default WARP device profile
+# Managed network-scoped WARP profile
 # ---------------------------------------------------------------------------
 
-resource "cloudflare_zero_trust_device_default_profile" "default" {
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted" {
   account_id = local.account_id
+  name       = "Home trusted"
+  type       = "tls"
+  config = {
+    tls_sockaddr = "10.30.0.254:443"
+    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+  }
+}
+
+resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
+  account_id  = local.account_id
+  name        = "Home trusted"
+  description = "Exclude local private networks from WARP when on io or europa."
+  precedence  = 10
+
+  service_mode_v2 = { mode = "warp" }
+
+  match = trimspace(replace(<<-EOT
+    network == "${cloudflare_zero_trust_device_managed_networks.home_trusted.name}"
+  EOT
+  , "\n", " "))
 
   exclude = [
     {
       address     = "10.0.0.0/8"
-      description = "Private IPv4 space"
+      description = "Private IPv4 space on trusted home networks"
     },
     {
       address     = "fd00::/7"
-      description = "Unique local IPv6 space"
+      description = "Unique local IPv6 space on trusted home networks"
     },
   ]
 }
