@@ -303,6 +303,16 @@ spec:
         rules:
           - matches:
               - path:
+                  type: Exact
+                  value: /auth/authorize
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /auth/oidc/welcome
+          - matches:
+              - path:
                   type: PathPrefix
                   value: /auth
               - path:
@@ -323,6 +333,16 @@ spec:
           - backendRefs:
               - name: authentik-outpost
                 port: 9000
+      local:
+        hostnames:
+          - hass-local.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: home-assistant-direct
+                port: 8123
     persistence:
       config:
         enabled: true
