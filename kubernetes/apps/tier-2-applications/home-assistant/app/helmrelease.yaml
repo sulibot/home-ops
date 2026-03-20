@@ -75,7 +75,7 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
-          bootstrap-auth-oidc:
+          bootstrap-auth-header:
             image:
               repository: python
               tag: 3.14-alpine
@@ -91,25 +91,26 @@ spec:
                 import tempfile
                 import urllib.request
 
-                # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
-                version = "v0.6.5-alpha"
-                target = "/config/custom_components/auth_oidc"
+                # renovate: datasource=github-releases depName=BeryJu/hass-auth-header
+                version = "v1.12"
+                target = "/config/custom_components/auth_header"
                 manifest_path = os.path.join(target, "manifest.json")
 
                 if os.path.exists(manifest_path):
                     with open(manifest_path, "r", encoding="utf-8") as handle:
                         manifest = json.load(handle)
                     if manifest.get("version") == version.removeprefix("v"):
-                        print(f"auth_oidc {version} already installed")
+                        print(f"auth_header {version} already installed")
+                        shutil.rmtree("/config/custom_components/auth_oidc", ignore_errors=True)
                         raise SystemExit(0)
 
                 os.makedirs("/config/custom_components", exist_ok=True)
 
                 with tempfile.TemporaryDirectory() as tmpdir:
-                    archive = os.path.join(tmpdir, "auth_oidc.tar.gz")
+                    archive = os.path.join(tmpdir, "auth_header.tar.gz")
                     extract_dir = os.path.join(tmpdir, "extract")
                     urllib.request.urlretrieve(
-                        f"https://github.com/christiaangoossens/hass-oidc-auth/archive/refs/tags/{version}.tar.gz",
+                        f"https://github.com/BeryJu/hass-auth-header/archive/refs/tags/{version}.tar.gz",
                         archive,
                     )
                     with tarfile.open(archive, mode="r:gz") as tarred:
@@ -117,28 +118,13 @@ spec:
 
                     source = os.path.join(
                         extract_dir,
-                        f"hass-oidc-auth-{version.removeprefix('v')}",
+                        f"hass-auth-header-{version.removeprefix('v')}",
                         "custom_components",
-                        "auth_oidc",
+                        "auth_header",
                     )
                     shutil.rmtree(target, ignore_errors=True)
                     shutil.copytree(source, target)
-
-                venv_python = "/config/.venv/bin/python"
-                if os.path.exists(venv_python):
-                    import subprocess
-
-                    subprocess.check_call(
-                        [
-                            venv_python,
-                            "-m",
-                            "pip",
-                            "install",
-                            "--disable-pip-version-check",
-                            "--no-cache-dir",
-                            "joserfc",
-                        ]
-                    )
+                shutil.rmtree("/config/custom_components/auth_oidc", ignore_errors=True)
                 PY
             securityContext:
               allowPrivilegeEscalation: false
@@ -213,8 +199,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - identifier: app
-                port: 8123
+              - name: authentik-outpost
+                port: 9000
     persistence:
       config:
         enabled: true
@@ -266,6 +252,23 @@ spec:
               bedroom_lights_locked:
                 name: Bedroom Lights Locked
                 icon: mdi:lock
+              bedroom_lights_override:
+                name: Bedroom Lights Override
+                icon: mdi:gesture-tap-button
+
+            counter:
+              bedroom_lights_press_count:
+                name: Bedroom Lights Press Count
+                initial: 0
+                step: 1
+
+            timer:
+              bedroom_lights_press_window:
+                name: Bedroom Lights Press Window
+                duration: "00:00:05"
+              bedroom_lights_override:
+                name: Bedroom Lights Override
+                duration: "00:30:00"
 
             http:
               use_x_forwarded_for: true
@@ -298,13 +301,8 @@ spec:
                 light.standing_lamp:
                   icon: mdi:floor-lamp
 
-            auth_oidc:
-              client_id: homeassistant
-              discovery_url: https://auth.sulibot.com/application/o/home-assistant/.well-known/openid-configuration
-              display_name: Authentik
-              features:
-                force_https: true
-                include_groups_scope: false
+            auth_header:
+              username_header: X-authentik-username
 
             google_assistant:
               project_id: sulibot-home-assistant
@@ -481,9 +479,14 @@ spec:
               condition:
                 - condition: template
                   value_template: "{{ `{{ trigger.to_state is not none }}` }}"
-                - condition: state
-                  entity_id: input_boolean.bedroom_lights_locked
-                  state: "off"
+                - condition: or
+                  conditions:
+                    - condition: state
+                      entity_id: input_boolean.bedroom_lights_locked
+                      state: "off"
+                    - condition: state
+                      entity_id: input_boolean.bedroom_lights_override
+                      state: "on"
               action:
                 - choose:
                     - conditions:
@@ -519,7 +522,106 @@ spec:
                 - service: input_boolean.turn_off
                   target:
                     entity_id: input_boolean.bedroom_lights_locked
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: input_boolean.bedroom_lights_override
+                - service: timer.cancel
+                  target:
+                    entity_id:
+                      - timer.bedroom_lights_press_window
+                      - timer.bedroom_lights_override
+                - service: counter.reset
+                  target:
+                    entity_id: counter.bedroom_lights_press_count
               mode: single
+            - id: bedroom_lights_lock_override_detect_triple_press
+              alias: Bedroom Lights Lock Override Detect Triple Press
+              mode: restart
+              trigger:
+                - platform: state
+                  entity_id: light.smart_wi_fi_dimmer_switch
+                  to: "on"
+              condition:
+                - condition: state
+                  entity_id: input_boolean.bedroom_lights_locked
+                  state: "on"
+                - condition: state
+                  entity_id: input_boolean.bedroom_lights_override
+                  state: "off"
+              action:
+                - variables:
+                    press_window_active: "{{ `{{ is_state('timer.bedroom_lights_press_window', 'active') }}` }}"
+                    next_press_count: "{{ `{{ states('counter.bedroom_lights_press_count') | int(0) + 1 if is_state('timer.bedroom_lights_press_window', 'active') else 1 }}` }}"
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ `{{ press_window_active }}` }}"
+                      sequence:
+                        - service: counter.increment
+                          target:
+                            entity_id: counter.bedroom_lights_press_count
+                  default:
+                    - service: counter.reset
+                      target:
+                        entity_id: counter.bedroom_lights_press_count
+                    - service: counter.increment
+                      target:
+                        entity_id: counter.bedroom_lights_press_count
+                    - service: timer.start
+                      target:
+                        entity_id: timer.bedroom_lights_press_window
+                      data:
+                        duration: "00:00:05"
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ `{{ next_press_count >= 3 }}` }}"
+                      sequence:
+                        - service: input_boolean.turn_on
+                          target:
+                            entity_id: input_boolean.bedroom_lights_override
+                        - service: timer.start
+                          target:
+                            entity_id: timer.bedroom_lights_override
+                          data:
+                            duration: "00:30:00"
+                        - service: timer.cancel
+                          target:
+                            entity_id: timer.bedroom_lights_press_window
+                        - service: counter.reset
+                          target:
+                            entity_id: counter.bedroom_lights_press_count
+                        - service: light.turn_on
+                          target:
+                            entity_id:
+                              - light.smart_wi_fi_dimmer_switch
+                              - light.bedroom_lights
+                          data:
+                            brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') | int(0) }}` }}"
+            - id: bedroom_lights_lock_override_reset_press_window
+              alias: Bedroom Lights Lock Override Reset Press Window
+              mode: single
+              trigger:
+                - platform: event
+                  event_type: timer.finished
+                  event_data:
+                    entity_id: timer.bedroom_lights_press_window
+              action:
+                - service: counter.reset
+                  target:
+                    entity_id: counter.bedroom_lights_press_count
+            - id: bedroom_lights_lock_override_disable
+              alias: Bedroom Lights Lock Override Disable
+              mode: single
+              trigger:
+                - platform: event
+                  event_type: timer.finished
+                  event_data:
+                    entity_id: timer.bedroom_lights_override
+              action:
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: input_boolean.bedroom_lights_override
             - id: bedroom_lights_lock_enforce_from_dimmer
               alias: Bedroom Lights Lock Enforce From Dimmer
               mode: restart
@@ -531,6 +633,9 @@ spec:
                 - condition: state
                   entity_id: input_boolean.bedroom_lights_locked
                   state: "on"
+                - condition: state
+                  entity_id: input_boolean.bedroom_lights_override
+                  state: "off"
               action:
                 - service: light.turn_off
                   target:
