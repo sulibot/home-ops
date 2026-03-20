@@ -305,6 +305,18 @@ spec:
               - path:
                   type: PathPrefix
                   value: /auth
+              - path:
+                  type: PathPrefix
+                  value: /frontend_latest
+              - path:
+                  type: PathPrefix
+                  value: /frontend_es5
+              - path:
+                  type: PathPrefix
+                  value: /static
+              - path:
+                  type: Exact
+                  value: /manifest.json
             backendRefs:
               - name: home-assistant-direct
                 port: 8123
