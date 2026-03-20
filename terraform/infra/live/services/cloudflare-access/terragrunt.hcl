@@ -129,6 +129,43 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
 }
 
 # ---------------------------------------------------------------------------
+# Device enrollment
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_policy" "warp_enrollment" {
+  account_id = local.account_id
+  name       = "WARP device enrollment"
+  decision   = "allow"
+  include = concat(
+    [{
+      email_domain = {
+        domain = "sulibot.com"
+      }
+    }],
+    [
+      for email in local.effective_allowed_emails : {
+        email = {
+          email = email
+        }
+      }
+    ]
+  )
+}
+
+resource "cloudflare_zero_trust_access_application" "warp_enrollment" {
+  account_id                = local.account_id
+  type                      = "warp"
+  name                      = "WARP device enrollment"
+  allowed_idps              = [cloudflare_zero_trust_access_identity_provider.authentik.id]
+  auto_redirect_to_identity = true
+  app_launcher_visible      = false
+  policies = [{
+    id         = cloudflare_zero_trust_access_policy.warp_enrollment.id
+    precedence = 1
+  }]
+}
+
+# ---------------------------------------------------------------------------
 # Bypass apps
 # ---------------------------------------------------------------------------
 
@@ -285,8 +322,8 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   service_mode_v2 = { mode = "warp" }
 
   match = trimspace(replace(<<-EOT
-    network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
-    or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
+    network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
+    or network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
   EOT
   , "\n", " "))
 }
