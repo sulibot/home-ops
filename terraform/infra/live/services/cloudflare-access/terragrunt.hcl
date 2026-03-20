@@ -158,7 +158,6 @@ resource "cloudflare_zero_trust_access_application" "warp_enrollment" {
   name                      = "WARP device enrollment"
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.authentik.id]
   auto_redirect_to_identity = true
-  app_launcher_visible      = false
   policies = [{
     id         = cloudflare_zero_trust_access_policy.warp_enrollment.id
     precedence = 1
@@ -326,6 +325,22 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
     or network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
   EOT
   , "\n", " "))
+}
+
+resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "home_trusted" {
+  account_id = local.account_id
+  policy_id  = cloudflare_zero_trust_device_custom_profile.home_trusted.policy_id
+
+  domains = [{
+    suffix      = "sulibot.com"
+    description = "Use local DNS for sulibot.com on trusted home networks"
+    dns_server = [
+      "10.30.0.254",
+      "fd00:30::fffe",
+      "10.255.0.53",
+      "fd00:0:0:ffff::53",
+    ]
+  }]
 }
 
 
