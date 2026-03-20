@@ -306,7 +306,7 @@ spec:
                 port: 9000
       mobile:
         hostnames:
-          - ha-app.sulibot.com
+          - ha-apps.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network

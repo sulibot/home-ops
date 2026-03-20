@@ -935,7 +935,7 @@ data:
           client_type: public
           client_id: homeassistant-app
           redirect_uris:
-            - url: "https://ha-app.sulibot.com/auth/oidc/callback"
+            - url: "https://ha-apps.sulibot.com/auth/oidc/callback"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
@@ -956,7 +956,7 @@ data:
           name: Home Assistant App
           slug: home-assistant-app
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, home-assistant-app]]
-          meta_launch_url: "https://ha-app.sulibot.com/auth/oidc/redirect"
+          meta_launch_url: "https://ha-apps.sulibot.com/auth/oidc/redirect"
           policy_engine_mode: any
       # Proxy outpost — self-managed K8s deployment, no service_connection needed
       - model: authentik_outposts.outpost
