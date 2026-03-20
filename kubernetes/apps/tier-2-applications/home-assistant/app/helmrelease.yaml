@@ -123,6 +123,22 @@ spec:
                     )
                     shutil.rmtree(target, ignore_errors=True)
                     shutil.copytree(source, target)
+
+                venv_python = "/config/.venv/bin/python"
+                if os.path.exists(venv_python):
+                    import subprocess
+
+                    subprocess.check_call(
+                        [
+                            venv_python,
+                            "-m",
+                            "pip",
+                            "install",
+                            "--disable-pip-version-check",
+                            "--no-cache-dir",
+                            "joserfc",
+                        ]
+                    )
                 PY
             securityContext:
               allowPrivilegeEscalation: false
