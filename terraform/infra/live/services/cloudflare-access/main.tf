@@ -228,12 +228,22 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
 # Managed network-scoped WARP profile
 # ---------------------------------------------------------------------------
 
-resource "cloudflare_zero_trust_device_managed_networks" "home_trusted" {
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
   account_id = local.account_id
-  name       = "Home trusted"
+  name       = "Home trusted io"
   type       = "tls"
   config = {
     tls_sockaddr = "10.30.0.254:443"
+    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+  }
+}
+
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_europa" {
+  account_id = local.account_id
+  name       = "Home trusted europa"
+  type       = "tls"
+  config = {
+    tls_sockaddr = "10.31.0.254:443"
     sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
   }
 }
@@ -247,7 +257,8 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   service_mode_v2 = { mode = "warp" }
 
   match = trimspace(replace(<<-EOT
-    network == "${cloudflare_zero_trust_device_managed_networks.home_trusted.name}"
+    network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
+    or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
   EOT
   , "\n", " "))
 
