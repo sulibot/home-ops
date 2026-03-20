@@ -262,13 +262,6 @@ spec:
 
             homeassistant:
               auth_providers:
-                - type: trusted_networks
-                  trusted_networks:
-                    - fd00:30::/64
-                    - fd00:31::/64
-                    - 10.30.0.0/24
-                    - 10.31.0.0/24
-                  allow_bypass_login: true
                 - type: homeassistant
               customize:
                 light.smart_wi_fi_dimmer_switch_3:
