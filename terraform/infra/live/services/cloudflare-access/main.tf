@@ -20,10 +20,7 @@ locals {
   tunnel_id  = data.sops_file.secrets.data["cloudflare_tunnel_id"]
 
   bypass_apps = {
-    "auth.sulibot.com"      = "Authentik"
-    "atuin.sulibot.com"     = "Atuin"
-    "plex.sulibot.com"      = "Plex"
-    "overseerr.sulibot.com" = "Overseerr"
+    "auth.sulibot.com" = "Authentik"
   }
 
   email_only_apps = {
@@ -31,8 +28,11 @@ locals {
   }
 
   warp_only_apps = {
-    "immich-app.sulibot.com"         = "Immich"
-    "home-assistant-app.sulibot.com" = "Home Assistant"
+    "atuin.sulibot.com"     = "Atuin"
+    "plex.sulibot.com"      = "Plex"
+    "overseerr.sulibot.com" = "Overseerr"
+    "immich-app.sulibot.com" = "Immich"
+    "hass-app.sulibot.com"   = "Home Assistant"
   }
 
   warp_email_apps = {

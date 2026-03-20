@@ -53,10 +53,11 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik (local/password login disabled) |
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
-| `home-assistant.sulibot.com` | Home Assistant | Native OIDC via Authentik (`hass-oidc-auth`) |
+| `hass.sulibot.com` | Home Assistant (browser) | Native OIDC via Authentik (`hass-oidc-auth`) |
+| `hass-app.sulibot.com` | Home Assistant (app/discovery) | Native OIDC via Authentik (`hass-oidc-auth`), WARP required externally |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
-| `plex.sulibot.com` | Plex | Plex account (CF Access bypass) |
-| `seerr.sulibot.com` | Jellyseerr | Plex/own auth (CF Access bypass) |
+| `plex.sulibot.com` | Plex | Plex account, WARP required externally |
+| `seerr.sulibot.com` | Jellyseerr | Plex/own auth, WARP required externally |
 
 ### Apps on `gateway-internal` (LAN only)
 
@@ -133,7 +134,8 @@ External path (internet):
 6. Cloudflare Tunnel forwards to `gateway-tunnel` (`10.101.250.11`) in-cluster.
 7. App applies its own auth integration:
    - Immich/FileBrowser: native OIDC via Authentik
-   - Firefly/Home Assistant: Authentik outpost proxy/header auth
+   - Firefly: Authentik outpost proxy/header auth
+   - Home Assistant: native OIDC via Authentik (`hass-oidc-auth`)
 
 Internal path (LAN):
 
@@ -166,11 +168,9 @@ In Zero Trust -> Access -> Applications:
 |-------------|-------------|--------|-------|
 | `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard catch-all |
 | `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
-| `plex (bypass)` | `plex.sulibot.com` | Bypass | Plex uses its own account system |
-| `seerr (bypass)` | `seerr.sulibot.com`, `requests.sulibot.com` | Bypass | Jellyseerr uses Plex/local auth |
-| `atuin (bypass)` | `atuin.sulibot.com` | Bypass | Present for Atuin token auth when/if exposed externally |
+| `WARP-only apps` | `plex.sulibot.com`, `overseerr.sulibot.com`, `atuin.sulibot.com`, `immich-app.sulibot.com`, `hass-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
 
-**Important**: `auth.sulibot.com` is intentionally bypassed in Cloudflare Access. All other external apps remain behind the wildcard Access policy unless explicitly bypassed.
+**Important**: `auth.sulibot.com` is intentionally bypassed in Cloudflare Access. WARP-protected tunnel apps are not publicly bypassed.
 
 **Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
@@ -242,7 +242,7 @@ Blueprints are maintained in `blueprints/` (rendered into an inline ConfigMap) a
 | Blueprint file | Purpose |
 |----------------|---------|
 | `google-source.yaml` | Google OAuth source + silent enrollment flow |
-| `proxy-providers.yaml` | Proxy providers + outpost registration for Firefly and Home Assistant |
+| `proxy-providers.yaml` | Proxy providers + outpost registration for Firefly |
 | `filebrowser-provider.yaml` | OIDC provider for FileBrowser Quantum |
 | `immich-provider.yaml` | OIDC provider for Immich |
 | `karakeep-provider.yaml` | OIDC provider for Karakeep |
