@@ -294,26 +294,23 @@ spec:
           http:
             port: 8123
     route:
-      browser:
+      main:
         hostnames:
-          - ha.sulibot.com
+          - hass.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network
         rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /auth
+            backendRefs:
+              - name: home-assistant-direct
+                port: 8123
           - backendRefs:
               - name: authentik-outpost
                 port: 9000
-      mobile:
-        hostnames:
-          - ha-apps.sulibot.com
-        parentRefs:
-          - name: gateway-tunnel
-            namespace: network
-        rules:
-          - backendRefs:
-              - name: home-assistant-direct
-                port: 8123
     persistence:
       config:
         enabled: true
