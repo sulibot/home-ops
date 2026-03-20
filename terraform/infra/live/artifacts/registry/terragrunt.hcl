@@ -45,15 +45,15 @@ locals {
 }
 
 inputs = {
-  talos_version         = local.versions.talos_version
-  talos_platform        = local.versions.talos_platform
-  talos_architecture    = local.versions.talos_architecture
+  talos_version           = local.versions.talos_version
+  talos_platform          = local.versions.talos_platform
+  talos_architecture      = local.versions.talos_architecture
   talos_extra_kernel_args = local.schematic.install_kernel_args
   talos_system_extensions = local.schematic.install_factory_extensions
   talos_custom_extensions = []
   file_name_prefix        = "talos-factory"
 
   # Use centralized Proxmox infrastructure configuration
-  proxmox_datastore_id   = local.proxmox_infra.storage.datastore_id
-  proxmox_node_names     = local.proxmox_infra.proxmox_nodes
+  proxmox_datastore_id = local.proxmox_infra.storage.datastore_id
+  proxmox_node_names   = local.proxmox_infra.proxmox_nodes
 }

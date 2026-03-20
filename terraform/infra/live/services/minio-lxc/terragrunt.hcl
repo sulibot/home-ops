@@ -3,20 +3,20 @@ include "root" {
 }
 
 locals {
-  versions     = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
-  proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  network_infra = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
-  lxc_catalog   = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  kanidm_auth   = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
-  minio_class   = local.lxc_catalog.services.minio
-  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  secrets       = yamldecode(sops_decrypt_file(local.secrets_file))
-  minio_root_user  = local.secrets.minio_root_user
-  minio_root_pass  = local.secrets.minio_root_password
-  service_domain   = "minio.sulibot.com"
-  s3_domain        = "s3.sulibot.com"
-  host_domain      = "${local.minio_class.hostname}.sulibot.com"
+  versions        = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
+  proxmox_infra   = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  network_infra   = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
+  lxc_catalog     = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  kanidm_auth     = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
+  minio_class     = local.lxc_catalog.services.minio
+  credentials     = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file    = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  secrets         = yamldecode(sops_decrypt_file(local.secrets_file))
+  minio_root_user = local.secrets.minio_root_user
+  minio_root_pass = local.secrets.minio_root_password
+  service_domain  = "minio.sulibot.com"
+  s3_domain       = "s3.sulibot.com"
+  host_domain     = "${local.minio_class.hostname}.sulibot.com"
   minio_caddy_frontend_commands = [
     "export DEBIAN_FRONTEND=noninteractive",
     "apt-get update -qq >/dev/null",

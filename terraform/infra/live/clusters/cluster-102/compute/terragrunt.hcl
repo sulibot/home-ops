@@ -7,18 +7,18 @@ locals {
   tenant_id      = local.cluster_config.tenant_id
   context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
 
-  cluster_enabled = try(local.cluster_config.enabled, true)
-  cnpg_new_db_mode = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
-  cnpg_restore_mode = trimspace(upper(get_env("CNPG_RESTORE_MODE", local.cnpg_new_db_mode ? "NEW_DB" : "RESTORE_REQUIRED")))
+  cluster_enabled           = try(local.cluster_config.enabled, true)
+  cnpg_new_db_mode          = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
+  cnpg_restore_mode         = trimspace(upper(get_env("CNPG_RESTORE_MODE", local.cnpg_new_db_mode ? "NEW_DB" : "RESTORE_REQUIRED")))
   cnpg_backup_max_age_hours = trimspace(get_env("CNPG_BACKUP_MAX_AGE_HOURS", "36"))
-  cnpg_preflight_skip = trimspace(lower(get_env("CNPG_PREFLIGHT_SKIP", "false"))) == "true"
-  cluster_kubeconfig = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  cnpg_preflight_skip       = trimspace(lower(get_env("CNPG_PREFLIGHT_SKIP", "false"))) == "true"
+  cluster_kubeconfig        = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
 
   # Shared context locals
-  proxmox_infra    = local.context.proxmox_infra
-  network_infra    = local.context.network_infra
-  ipv6_prefixes    = local.context.ipv6_prefixes
-  versions         = local.context.versions
+  proxmox_infra     = local.context.proxmox_infra
+  network_infra     = local.context.network_infra
+  ipv6_prefixes     = local.context.ipv6_prefixes
+  versions          = local.context.versions
   artifact_registry = local.context.artifacts_registry_catalog
 
   control_plane_defaults = local.context.vm_sizing.control_plane
@@ -280,10 +280,10 @@ inputs = {
       ipv4_prefix = "10.10.${local.tenant_id}."
     }
     public = {
-      ipv6_prefix = "fd00:${local.tenant_id}::"
-      ipv4_prefix = "10.${local.tenant_id}.0."
-      ipv6_gateway = "fd00:${local.tenant_id}::fffe"
-      ipv4_gateway = "10.${local.tenant_id}.0.254"
+      ipv6_prefix      = "fd00:${local.tenant_id}::"
+      ipv4_prefix      = "10.${local.tenant_id}.0."
+      ipv6_gateway     = "fd00:${local.tenant_id}::fffe"
+      ipv4_gateway     = "10.${local.tenant_id}.0.254"
       gua_ipv6_prefix  = try(local.ipv6_prefixes.delegated_prefixes["vnet${local.tenant_id}"], "")
       gua_ipv6_gateway = try(local.ipv6_prefixes.delegated_gateways["vnet${local.tenant_id}"], "")
     }

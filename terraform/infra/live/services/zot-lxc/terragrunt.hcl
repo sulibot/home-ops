@@ -3,19 +3,19 @@ include "root" {
 }
 
 locals {
-  versions     = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
-  proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  network_infra = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
-  lxc_catalog   = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  kanidm_auth   = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
-  zot_class     = local.lxc_catalog.services.zot
-  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  secrets       = yamldecode(sops_decrypt_file(local.secrets_file))
-  zot_admin_user   = try(local.secrets.zot_admin_user, "admin@sulibot.com")
-  zot_admin_pass   = try(local.secrets.zot_admin_password, local.secrets.minio_root_password)
-  service_domain   = "zot.sulibot.com"
-  host_domain      = "${local.zot_class.hostname}.sulibot.com"
+  versions       = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
+  proxmox_infra  = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  network_infra  = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
+  lxc_catalog    = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  kanidm_auth    = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
+  zot_class      = local.lxc_catalog.services.zot
+  credentials    = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file   = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  secrets        = yamldecode(sops_decrypt_file(local.secrets_file))
+  zot_admin_user = try(local.secrets.zot_admin_user, "admin@sulibot.com")
+  zot_admin_pass = try(local.secrets.zot_admin_password, local.secrets.minio_root_password)
+  service_domain = "zot.sulibot.com"
+  host_domain    = "${local.zot_class.hostname}.sulibot.com"
   zot_caddy_frontend_commands = [
     "export DEBIAN_FRONTEND=noninteractive",
     "apt-get update -qq >/dev/null",

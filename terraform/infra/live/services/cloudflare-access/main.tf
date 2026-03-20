@@ -18,18 +18,44 @@ locals {
   account_id = data.sops_file.secrets.data["cloudflare_account_id"]
   zone_id    = data.sops_file.secrets.data["cloudflare_zone_id"]
   tunnel_id  = data.sops_file.secrets.data["cloudflare_tunnel_id"]
-  tunnel_hostnames = [
-    "auth.sulibot.com",
-    "atuin.sulibot.com",
-    "immich.sulibot.com",
-    "immich-app.sulibot.com",
-  ]
-  browser_protected_hostnames = [
-    "immich.sulibot.com",
-  ]
+
+  bypass_apps = {
+    "auth.sulibot.com"      = "Authentik"
+    "atuin.sulibot.com"     = "Atuin"
+    "plex.sulibot.com"      = "Plex"
+    "overseerr.sulibot.com" = "Overseerr"
+  }
+
+  email_only_apps = {
+    # Placeholder for future browser apps that should stay outside WARP
+  }
+
+  warp_only_apps = {
+    "immich-app.sulibot.com"         = "Immich"
+    "home-assistant-app.sulibot.com" = "Home Assistant"
+  }
+
+  warp_email_apps = {
+    "immich.sulibot.com" = "Immich"
+  }
+
+  tunnel_hostnames = distinct(concat(
+    keys(local.bypass_apps),
+    keys(local.email_only_apps),
+    keys(local.warp_only_apps),
+    keys(local.warp_email_apps),
+  ))
+
   allowed_emails = split(" ", data.sops_file.secrets.data["cf_access_allowed_emails"])
   emergency_allowed_emails = [
     "bcwallace@gmail.com",
+    "sulibot@gmail.com",
+    "bodawee@gmail.com",
+    "sarah.kalas@gmail.com",
+    "munirah.ahmad1@gmail.com",
+    "leon.mccaughan@gmail.com",
+    "barb.nykoruk@gmail.com",
+    "safiyazc@gmail.com",
   ]
   effective_allowed_emails = distinct(concat(local.allowed_emails, local.emergency_allowed_emails))
 }
@@ -69,13 +95,42 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
   }
 }
 
-# Browser apps protected by Cloudflare Access (explicit hostnames only).
-resource "cloudflare_zero_trust_access_application" "browser_protected" {
-  for_each = toset(local.browser_protected_hostnames)
+# ---------------------------------------------------------------------------
+# Bypass apps
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "bypass" {
+  for_each = local.bypass_apps
 
   account_id                 = local.account_id
-  name                       = "${each.value} (protected)"
-  domain                     = each.value
+  name                       = "${each.value} (bypass)"
+  domain                     = each.key
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Bypass"
+    decision   = "bypass"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+  }]
+}
+
+# ---------------------------------------------------------------------------
+# Email-only apps
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "email_only" {
+  for_each = local.email_only_apps
+
+  account_id                 = local.account_id
+  name                       = "${each.value} (email)"
+  domain                     = each.key
   type                       = "self_hosted"
   session_duration           = "24h"
   auto_redirect_to_identity  = true
@@ -98,61 +153,15 @@ resource "cloudflare_zero_trust_access_application" "browser_protected" {
 }
 
 # ---------------------------------------------------------------------------
-# Bypass — auth.sulibot.com (Authentik must be reachable for OIDC callbacks)
+# WARP-only apps
 # ---------------------------------------------------------------------------
 
-resource "cloudflare_zero_trust_access_application" "authentik_bypass" {
+resource "cloudflare_zero_trust_access_application" "warp_only" {
+  for_each = local.warp_only_apps
+
   account_id                 = local.account_id
-  name                       = "Authentik (bypass)"
-  domain                     = "auth.sulibot.com"
-  type                       = "self_hosted"
-  session_duration           = "24h"
-  auto_redirect_to_identity  = false
-  enable_binding_cookie      = false
-  http_only_cookie_attribute = false
-  options_preflight_bypass   = false
-  policies = [{
-    name       = "Bypass"
-    decision   = "bypass"
-    precedence = 1
-    include = [{
-      everyone = {}
-    }]
-  }]
-}
-
-# ---------------------------------------------------------------------------
-# Bypass — atuin.sulibot.com (CLI sync tool, owns its own auth)
-# ---------------------------------------------------------------------------
-
-resource "cloudflare_zero_trust_access_application" "atuin_bypass" {
-  account_id                 = local.account_id
-  name                       = "Atuin (bypass)"
-  domain                     = "atuin.sulibot.com"
-  type                       = "self_hosted"
-  session_duration           = "24h"
-  auto_redirect_to_identity  = false
-  enable_binding_cookie      = false
-  http_only_cookie_attribute = false
-  options_preflight_bypass   = false
-  policies = [{
-    name       = "Bypass"
-    decision   = "bypass"
-    precedence = 1
-    include = [{
-      everyone = {}
-    }]
-  }]
-}
-
-# ---------------------------------------------------------------------------
-# Immich app access — require WARP, no device posture checks
-# ---------------------------------------------------------------------------
-
-resource "cloudflare_zero_trust_access_application" "immich_warp" {
-  account_id                 = local.account_id
-  name                       = "Immich (WARP required)"
-  domain                     = "immich-app.sulibot.com"
+  name                       = "${each.value} (WARP only)"
+  domain                     = each.key
   type                       = "self_hosted"
   session_duration           = "24h"
   auto_redirect_to_identity  = false
@@ -166,6 +175,42 @@ resource "cloudflare_zero_trust_access_application" "immich_warp" {
     include = [{
       everyone = {}
     }]
+    require = [{
+      auth_method = {
+        auth_method = "warp"
+      }
+    }]
+  }]
+}
+
+# ---------------------------------------------------------------------------
+# WARP + email apps
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "warp_email" {
+  for_each = local.warp_email_apps
+
+  account_id                 = local.account_id
+  name                       = "${each.value} (WARP + email)"
+  domain                     = each.key
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = true
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  allowed_idps               = [cloudflare_zero_trust_access_identity_provider.authentik.id]
+  policies = [{
+    name       = "Allow approved users via WARP"
+    decision   = "allow"
+    precedence = 1
+    include = [
+      for email in local.effective_allowed_emails : {
+        email = {
+          email = email
+        }
+      }
+    ]
     require = [{
       auth_method = {
         auth_method = "warp"
@@ -202,8 +247,13 @@ resource "null_resource" "cf_access_1password_sync" {
 # Outputs
 # ---------------------------------------------------------------------------
 
-output "browser_protected_app_ids" {
-  value = { for k, v in cloudflare_zero_trust_access_application.browser_protected : k => v.id }
+output "access_application_ids" {
+  value = merge(
+    { for k, v in cloudflare_zero_trust_access_application.bypass : k => v.id },
+    { for k, v in cloudflare_zero_trust_access_application.email_only : k => v.id },
+    { for k, v in cloudflare_zero_trust_access_application.warp_only : k => v.id },
+    { for k, v in cloudflare_zero_trust_access_application.warp_email : k => v.id },
+  )
 }
 
 output "identity_provider_id" {

@@ -11,7 +11,7 @@ locals {
   bootstrap_run_token    = local.bootstrap_mode ? formatdate("YYYYMMDDhhmmss", timestamp()) : ""
   cluster_kubeconfig     = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
   has_cluster_kubeconfig = fileexists(local.cluster_kubeconfig)
-  kubernetes_api_ready  = local.has_cluster_kubeconfig && trimspace(run_cmd(
+  kubernetes_api_ready = local.has_cluster_kubeconfig && trimspace(run_cmd(
     "bash",
     "-lc",
     "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"

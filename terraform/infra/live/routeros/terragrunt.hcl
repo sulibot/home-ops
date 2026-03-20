@@ -100,11 +100,11 @@ inputs = {
       disabled     = true
     },
     {
-      comment            = "Allow personal devices to reach IoT"
-      chain              = "forward"
-      action             = "accept"
-      in_interface       = "vlan30"
-      out_interface      = "vlan31"
+      comment       = "Allow personal devices to reach IoT"
+      chain         = "forward"
+      action        = "accept"
+      in_interface  = "vlan30"
+      out_interface = "vlan31"
     },
     {
       comment          = "defconf: fasttrack"
@@ -180,11 +180,11 @@ inputs = {
       out_interface = "vlan30"
     },
     {
-      comment      = "Block new IoT connections to personal devices"
-      chain        = "forward"
-      action       = "drop"
-      in_interface = "vlan31"
-      out_interface = "vlan30"
+      comment          = "Block new IoT connections to personal devices"
+      chain            = "forward"
+      action           = "drop"
+      in_interface     = "vlan31"
+      out_interface    = "vlan30"
       connection_state = "new"
     },
   ]
@@ -296,10 +296,10 @@ inputs = {
     allow_remote_requests  = true
     cache_max_ttl          = "1d"
     max_concurrent_queries = 200
-    mdns_repeat_ifaces   = ["vlan30", "vlan31"]
-    query_server_timeout = "3s"
-    query_total_timeout  = "15s"
-    servers              = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
+    mdns_repeat_ifaces     = ["vlan30", "vlan31"]
+    query_server_timeout   = "3s"
+    query_total_timeout    = "15s"
+    servers                = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
   }
 
   snmp = {
@@ -309,12 +309,12 @@ inputs = {
 
   snmp_communities = [
     {
-      name        = "public"
-      addresses   = ["10.101.224.0/20", "fd00:101:224::/60"]
-      read_access = true
-      security    = "none"
+      name         = "public"
+      addresses    = ["10.101.224.0/20", "fd00:101:224::/60"]
+      read_access  = true
+      security     = "none"
       write_access = false
-      comment     = "Restricted to snmp-exporter pod CIDRs"
+      comment      = "Restricted to snmp-exporter pod CIDRs"
     },
   ]
 

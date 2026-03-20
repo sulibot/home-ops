@@ -44,11 +44,11 @@ inputs = {
   git_branch     = local.app_versions.gitops.flux_git_branch
   git_path       = "kubernetes/clusters/cluster-${local.tenant_id}"
 
-  github_token       = local.secrets.github_token
-  kubeconfig_path    = local.has_cluster_kubeconfig ? local.cluster_kubeconfig : dependency.bootstrap.outputs.kubeconfig_path
-  kubeconfig_content = local.has_cluster_kubeconfig ? file(local.cluster_kubeconfig) : dependency.bootstrap.outputs.kubeconfig
-  sops_age_key       = get_env("SOPS_AGE_KEY_FILE", "") != "" ? file(get_env("SOPS_AGE_KEY_FILE")) : ""
-  repo_root          = get_repo_root()
+  github_token        = local.secrets.github_token
+  kubeconfig_path     = local.has_cluster_kubeconfig ? local.cluster_kubeconfig : dependency.bootstrap.outputs.kubeconfig_path
+  kubeconfig_content  = local.has_cluster_kubeconfig ? file(local.cluster_kubeconfig) : dependency.bootstrap.outputs.kubeconfig
+  sops_age_key        = get_env("SOPS_AGE_KEY_FILE", "") != "" ? file(get_env("SOPS_AGE_KEY_FILE")) : ""
+  repo_root           = get_repo_root()
   kubernetes_api_host = "fd00:${local.tenant_id}::10"
-  bootstrap_mode     = local.bootstrap_mode
+  bootstrap_mode      = local.bootstrap_mode
 }

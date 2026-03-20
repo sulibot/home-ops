@@ -7,11 +7,11 @@ locals {
   tenant_id      = local.cluster_config.tenant_id
   context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
 
-  cluster_enabled       = try(local.cluster_config.enabled, true)
-  bootstrap_mode        = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
-  cluster_kubeconfig    = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
-  kubeconfig_exists     = fileexists(local.cluster_kubeconfig)
-  kubernetes_api_ready  = local.kubeconfig_exists && trimspace(run_cmd(
+  cluster_enabled    = try(local.cluster_config.enabled, true)
+  bootstrap_mode     = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
+  cluster_kubeconfig = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  kubeconfig_exists  = fileexists(local.cluster_kubeconfig)
+  kubernetes_api_ready = local.kubeconfig_exists && trimspace(run_cmd(
     "bash",
     "-lc",
     "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"

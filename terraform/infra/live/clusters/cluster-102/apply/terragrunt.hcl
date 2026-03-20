@@ -11,13 +11,13 @@ locals {
   tenant_id      = local.cluster_config.tenant_id
   context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
 
-  cluster_enabled             = try(local.cluster_config.enabled, true)
-  kubeconfig_path             = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
-  bootstrap_complete          = fileexists(local.kubeconfig_path)
-  forced_talos_apply_mode     = trimspace(get_env("TALOS_APPLY_MODE", ""))
-  requested_talos_apply_mode  = try(local.cluster_config.talos_apply_mode, local.context.talos_apply_mode_default)
-  default_talos_apply_mode    = local.bootstrap_complete ? local.requested_talos_apply_mode : "auto"
-  effective_talos_apply_mode  = local.forced_talos_apply_mode != "" ? local.forced_talos_apply_mode : local.default_talos_apply_mode
+  cluster_enabled            = try(local.cluster_config.enabled, true)
+  kubeconfig_path            = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  bootstrap_complete         = fileexists(local.kubeconfig_path)
+  forced_talos_apply_mode    = trimspace(get_env("TALOS_APPLY_MODE", ""))
+  requested_talos_apply_mode = try(local.cluster_config.talos_apply_mode, local.context.talos_apply_mode_default)
+  default_talos_apply_mode   = local.bootstrap_complete ? local.requested_talos_apply_mode : "auto"
+  effective_talos_apply_mode = local.forced_talos_apply_mode != "" ? local.forced_talos_apply_mode : local.default_talos_apply_mode
 }
 
 skip = !local.cluster_enabled
