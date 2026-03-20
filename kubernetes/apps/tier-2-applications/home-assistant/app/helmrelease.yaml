@@ -101,7 +101,6 @@ spec:
                         manifest = json.load(handle)
                     if manifest.get("version") == version.removeprefix("v"):
                         print(f"auth_header {version} already installed")
-                        shutil.rmtree("/config/custom_components/auth_oidc", ignore_errors=True)
                         raise SystemExit(0)
 
                 os.makedirs("/config/custom_components", exist_ok=True)
@@ -124,7 +123,106 @@ spec:
                     )
                     shutil.rmtree(target, ignore_errors=True)
                     shutil.copytree(source, target)
-                shutil.rmtree("/config/custom_components/auth_oidc", ignore_errors=True)
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
+          bootstrap-auth-oidc:
+            image:
+              repository: python
+              tag: 3.14-alpine
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                python - <<'PY'
+                import json
+                import os
+                import shutil
+                import tarfile
+                import tempfile
+                import urllib.request
+
+                # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
+                version = "v0.6.5-alpha"
+                target = "/config/custom_components/auth_oidc"
+                manifest_path = os.path.join(target, "manifest.json")
+
+                if os.path.exists(manifest_path):
+                    with open(manifest_path, "r", encoding="utf-8") as handle:
+                        manifest = json.load(handle)
+                    if manifest.get("version") == version.removeprefix("v"):
+                        print(f"auth_oidc {version} already installed")
+                        raise SystemExit(0)
+
+                os.makedirs("/config/custom_components", exist_ok=True)
+
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    archive = os.path.join(tmpdir, "auth_oidc.tar.gz")
+                    extract_dir = os.path.join(tmpdir, "extract")
+                    urllib.request.urlretrieve(
+                        f"https://github.com/christiaangoossens/hass-oidc-auth/archive/refs/tags/{version}.tar.gz",
+                        archive,
+                    )
+                    with tarfile.open(archive, mode="r:gz") as tarred:
+                        tarred.extractall(extract_dir)
+
+                    source = os.path.join(
+                        extract_dir,
+                        f"hass-oidc-auth-{version.removeprefix('v')}",
+                        "custom_components",
+                        "auth_oidc",
+                    )
+                    shutil.rmtree(target, ignore_errors=True)
+                    shutil.copytree(source, target)
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
+          bootstrap-auth-oidc-deps:
+            image:
+              repository: python
+              tag: 3.14-alpine
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                python - <<'PY'
+                import os
+                import subprocess
+                import sys
+
+                # renovate: datasource=pypi depName=joserfc
+                version = "1.6.3"
+                venv = "/config/.venv"
+                python_bin = os.path.join(venv, "bin", "python")
+                pip_bin = os.path.join(venv, "bin", "pip")
+
+                if not os.path.exists(python_bin):
+                    subprocess.check_call([sys.executable, "-m", "venv", venv])
+
+                installed = ""
+                try:
+                    installed = subprocess.check_output(
+                        [python_bin, "-c", "import joserfc; print(joserfc.__version__)"],
+                        text=True,
+                    ).strip()
+                except subprocess.CalledProcessError:
+                    installed = ""
+
+                if installed == version:
+                    print(f"joserfc {version} already installed")
+                    raise SystemExit(0)
+
+                subprocess.check_call(
+                    [python_bin, "-m", "pip", "install", f"joserfc=={version}"]
+                )
                 PY
             securityContext:
               allowPrivilegeEscalation: false
@@ -139,12 +237,12 @@ spec:
               tag: 2026.3.1@sha256:067e54e2e107892a584936f064147f8bf47c0120eed34e272cf6eb6c8520b0de
             env:
               TZ: America/Los_Angeles
+              PYTHONPATH: /config/.venv/lib/python3.14/site-packages
               # Required when Home Assistant is behind Gateway/API proxies.
               HASS_HTTP_USE_X_FORWARDED_FOR: "true"
               HASS_HTTP_TRUSTED_PROXY_1: fd00:69::/64
               HASS_HTTP_TRUSTED_PROXY_2: fd00:42::/64
-              # Current cluster proxy source range observed in HA logs.
-              HASS_HTTP_TRUSTED_PROXY_3: fd00:101:224::/60
+              HASS_HTTP_TRUSTED_PROXY_3: fd00:101:224:3::/64
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -190,10 +288,15 @@ spec:
           http:
             appProtocol: kubernetes.io/ws
             port: 8123
+      direct:
+        controller: home-assistant
+        ports:
+          http:
+            port: 8123
     route:
-      app:
+      browser:
         hostnames:
-          - hass.sulibot.com
+          - ha.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network
@@ -201,6 +304,16 @@ spec:
           - backendRefs:
               - name: authentik-outpost
                 port: 9000
+      mobile:
+        hostnames:
+          - ha-app.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: home-assistant-direct
+                port: 8123
     persistence:
       config:
         enabled: true
@@ -277,7 +390,7 @@ spec:
               trusted_proxies:
                 - fd00:69::/64
                 - fd00:42::/64
-                - fd00:101:224::/60
+                - fd00:101:224:3::/64
 
             homeassistant:
               auth_providers:
@@ -303,6 +416,13 @@ spec:
 
             auth_header:
               username_header: X-authentik-username
+
+            auth_oidc:
+              client_id: homeassistant-app
+              discovery_url: https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration
+              display_name: Authentik
+              features:
+                force_https: true
 
             google_assistant:
               project_id: sulibot-home-assistant
