@@ -239,9 +239,29 @@ spec:
           http:
             port: 8123
     route:
-      main:
+      browser:
         hostnames:
           - hass.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - matches:
+              - path:
+                  type: Exact
+                  value: /
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /auth/oidc/redirect
+          - backendRefs:
+              - name: home-assistant-direct
+                port: 8123
+      app:
+        hostnames:
+          - hass-app.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network
@@ -338,6 +358,8 @@ spec:
                 - fd00:101:224:3::/64
 
             homeassistant:
+              internal_url: https://hass-app.sulibot.com
+              external_url: https://hass.sulibot.com
               auth_providers:
                 - type: homeassistant
               customize:
