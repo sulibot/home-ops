@@ -319,6 +319,7 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   precedence  = 10
 
   service_mode_v2 = { mode = "warp" }
+  allow_mode_switch = true
 
   match = trimspace(replace(<<-EOT
     network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
