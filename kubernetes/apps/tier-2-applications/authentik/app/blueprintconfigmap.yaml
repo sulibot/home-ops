@@ -913,7 +913,7 @@ data:
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           mode: proxy
           external_host: "https://ha.sulibot.com"
-          internal_host: "http://home-assistant.default.svc.cluster.local:8123"
+          internal_host: "http://home-assistant-direct.default.svc.cluster.local:8123"
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
