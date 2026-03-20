@@ -262,6 +262,7 @@ spec:
 
             homeassistant:
               auth_providers:
+                - type: oidc
                 - type: homeassistant
               customize:
                 light.smart_wi_fi_dimmer_switch_3:
@@ -281,6 +282,13 @@ spec:
                   icon: mdi:ceiling-light-multiple
                 light.standing_lamp:
                   icon: mdi:floor-lamp
+
+            auth_oidc:
+              client_id: homeassistant
+              discovery_url: https://auth.sulibot.com/application/o/home-assistant/.well-known/openid-configuration
+              display_name: Authentik
+              features:
+                force_https: true
 
             google_assistant:
               project_id: sulibot-home-assistant
