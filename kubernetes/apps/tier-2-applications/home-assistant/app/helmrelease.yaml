@@ -304,6 +304,7 @@ spec:
               display_name: Authentik
               features:
                 force_https: true
+                include_groups_scope: false
 
             google_assistant:
               project_id: sulibot-home-assistant
