@@ -99,6 +99,7 @@ spec:
       app:
         hostnames:
           - vikunja.sulibot.com
+          - vikunja-app.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network

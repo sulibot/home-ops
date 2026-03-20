@@ -28,12 +28,13 @@ locals {
   }
 
   email_only_apps = {
-    # Placeholder for future browser apps that should stay outside WARP
+    "*.sulibot.com" = "Wildcard Browser Access"
   }
 
   warp_only_apps = {
     "immich-app.sulibot.com" = "Immich"
     "hass-app.sulibot.com"   = "Home Assistant"
+    "vikunja-app.sulibot.com" = "Vikunja"
   }
 
   warp_email_apps = {
@@ -67,7 +68,10 @@ locals {
 
 # Explicit host CNAMEs → Cloudflare Tunnel.
 resource "cloudflare_dns_record" "tunnel_host" {
-  for_each = toset(local.tunnel_hostnames)
+  for_each = toset([
+    for hostname in local.tunnel_hostnames : hostname
+    if !startswith(hostname, "*.")
+  ])
 
   zone_id = local.zone_id
   name    = each.value
