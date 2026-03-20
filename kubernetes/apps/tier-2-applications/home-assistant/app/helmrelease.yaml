@@ -262,7 +262,6 @@ spec:
 
             homeassistant:
               auth_providers:
-                - type: oidc
                 - type: homeassistant
               customize:
                 light.smart_wi_fi_dimmer_switch_3:
