@@ -676,10 +676,19 @@ spec:
                          or state_attr('light.desk_lamp', 'brightness')
                          or 0 }}` }}
                     temperature_template: >-
-                      {{ `{{ state_attr('light.fan_1', 'color_temp_kelvin')
-                         or state_attr('light.fan_2', 'color_temp_kelvin')
-                         or state_attr('light.fan_3', 'color_temp_kelvin')
-                         or state_attr('light.desk_lamp', 'color_temp_kelvin') }}` }}
+                      {{ `{{ (
+                        1000000 / (
+                          state_attr('light.fan_1', 'color_temp_kelvin')
+                          or state_attr('light.fan_2', 'color_temp_kelvin')
+                          or state_attr('light.fan_3', 'color_temp_kelvin')
+                          or state_attr('light.desk_lamp', 'color_temp_kelvin')
+                        )
+                      ) | round(0) if (
+                        state_attr('light.fan_1', 'color_temp_kelvin')
+                        or state_attr('light.fan_2', 'color_temp_kelvin')
+                        or state_attr('light.fan_3', 'color_temp_kelvin')
+                        or state_attr('light.desk_lamp', 'color_temp_kelvin')
+                      ) else none }}` }}
                     turn_on:
                       action: light.turn_on
                       target:
@@ -715,7 +724,7 @@ spec:
                           - light.fan_3
                           - light.desk_lamp
                       data:
-                        color_temp_kelvin: "{{ `{{ color_temp }}` }}"
+                        color_temp_kelvin: "{{ `{{ (1000000 / color_temp) | round(0) if color_temp else none }}` }}"
       automations:
         enabled: true
         data:
