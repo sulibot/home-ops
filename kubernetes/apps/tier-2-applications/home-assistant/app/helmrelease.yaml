@@ -501,6 +501,8 @@ spec:
               client_id: homeassistant-app
               discovery_url: https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration
               display_name: Authentik
+              claims:
+                username: email
               features:
                 automatic_user_linking: true
                 force_https: true
