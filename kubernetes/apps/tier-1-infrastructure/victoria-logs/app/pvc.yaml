@@ -1,0 +1,16 @@
+---
+# Git-owned Victoria Logs storage. This avoids StatefulSet PVC template drift and
+# makes future size changes declarative.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: server-volume-victoria-logs-server-0
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 50Gi
