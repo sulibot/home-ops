@@ -651,14 +651,71 @@ spec:
                   - light.essentials_a19_a60_6
                   - light.essentials_a19_a60_7
                   - light.standing_lamp
-              - platform: group
-                unique_id: dining_room_lights_group
-                name: Dining Room Lights
-                entities:
-                  - light.fan_1
-                  - light.fan_2
-                  - light.fan_3
-                  - light.desk_lamp
+              - platform: template
+                lights:
+                  dining_room_lights:
+                    unique_id: dining_room_lights_group
+                    friendly_name: Dining Room Lights
+                    icon_template: mdi:chandelier
+                    value_template: >-
+                      {{ `{{ is_state('light.fan_1', 'on')
+                         or is_state('light.fan_2', 'on')
+                         or is_state('light.fan_3', 'on')
+                         or is_state('light.desk_lamp', 'on') }}` }}
+                    availability_template: >-
+                      {{ `{{ not (
+                        is_state('light.fan_1', 'unavailable')
+                        and is_state('light.fan_2', 'unavailable')
+                        and is_state('light.fan_3', 'unavailable')
+                        and is_state('light.desk_lamp', 'unavailable')
+                      ) }}` }}
+                    level_template: >-
+                      {{ `{{ state_attr('light.fan_1', 'brightness')
+                         or state_attr('light.fan_2', 'brightness')
+                         or state_attr('light.fan_3', 'brightness')
+                         or state_attr('light.desk_lamp', 'brightness')
+                         or 0 }}` }}
+                    temperature_template: >-
+                      {{ `{{ state_attr('light.fan_1', 'color_temp_kelvin')
+                         or state_attr('light.fan_2', 'color_temp_kelvin')
+                         or state_attr('light.fan_3', 'color_temp_kelvin')
+                         or state_attr('light.desk_lamp', 'color_temp_kelvin') }}` }}
+                    turn_on:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.fan_1
+                          - light.fan_2
+                          - light.fan_3
+                          - light.desk_lamp
+                    turn_off:
+                      action: light.turn_off
+                      target:
+                        entity_id:
+                          - light.fan_1
+                          - light.fan_2
+                          - light.fan_3
+                          - light.desk_lamp
+                    set_level:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.fan_1
+                          - light.fan_2
+                          - light.fan_3
+                          - light.desk_lamp
+                      data:
+                        brightness: "{{ `{{ brightness }}` }}"
+                    set_temperature:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.fan_1
+                          - light.fan_2
+                          - light.fan_3
+                          - light.desk_lamp
+                      data:
+                        color_temp_kelvin: "{{ `{{ color_temp }}` }}"
       automations:
         enabled: true
         data:
