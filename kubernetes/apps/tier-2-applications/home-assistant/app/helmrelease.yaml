@@ -498,6 +498,8 @@ spec:
                   icon: mdi:floor-lamp
 
             auth_oidc:
+              additional_scopes:
+                - email
               client_id: homeassistant-app
               discovery_url: https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration
               display_name: Authentik
