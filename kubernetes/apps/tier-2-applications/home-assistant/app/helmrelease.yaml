@@ -42,7 +42,7 @@ spec:
                 import tempfile
                 import urllib.request
 
-                commit = "b2c7fa02968d85b0c5c27104ec1dd46be0d7e268"
+                commit = "ae2e3b329d81c9042d5a10f30115ddc60d4b1b68"
                 target = "/config/custom_components/aidot"
                 marker_path = os.path.join(target, ".codex-installed-commit")
 
@@ -498,6 +498,8 @@ spec:
                   icon: mdi:ceiling-light-multiple
                 light.standing_lamp:
                   icon: mdi:floor-lamp
+                light.dining_room_lights:
+                  icon: mdi:chandelier
 
             auth_oidc:
               additional_scopes:
@@ -569,6 +571,24 @@ spec:
                   expose: false
                 light.smart_wi_fi_dimmer_switch:
                   expose: false
+                light.dining_room_lights:
+                  expose: true
+                  room: Dining Room
+                  aliases:
+                    - Dining Room Lights
+                    - Dining Room Light
+                light.fan_1:
+                  expose: true
+                  room: Dining Room
+                light.fan_2:
+                  expose: true
+                  room: Dining Room
+                light.fan_3:
+                  expose: true
+                  room: Dining Room
+                light.desk_lamp:
+                  expose: true
+                  room: Dining Room
 
             adaptive_lighting:
               - name: living_room
@@ -590,6 +610,14 @@ spec:
               - name: bedroom
                 lights:
                   - light.bedroom_lights
+                prefer_rgb_color: false
+                transition: 5
+                initial_transition: 1
+                take_over_control: true
+                detect_non_ha_changes: false
+              - name: dining_room
+                lights:
+                  - light.dining_room_lights
                 prefer_rgb_color: false
                 transition: 5
                 initial_transition: 1
@@ -623,6 +651,14 @@ spec:
                   - light.essentials_a19_a60_6
                   - light.essentials_a19_a60_7
                   - light.standing_lamp
+              - platform: group
+                unique_id: dining_room_lights_group
+                name: Dining Room Lights
+                entities:
+                  - light.fan_1
+                  - light.fan_2
+                  - light.fan_3
+                  - light.desk_lamp
       automations:
         enabled: true
         data:
@@ -863,6 +899,7 @@ spec:
                       - switch.adaptive_lighting_adapt_brightness_living_room
                       - switch.adaptive_lighting_adapt_brightness_master
                       - switch.adaptive_lighting_adapt_brightness_bedroom
+                      - switch.adaptive_lighting_adapt_brightness_dining_room
             - id: bedroom_morning_green_to_white_fade
               alias: Bedroom Morning Green To White Fade
               mode: single
