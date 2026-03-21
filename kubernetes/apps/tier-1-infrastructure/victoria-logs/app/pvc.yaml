@@ -9,7 +9,7 @@ metadata:
   namespace: observability
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   storageClassName: csi-cephfs-config-sc
   resources:
     requests:
