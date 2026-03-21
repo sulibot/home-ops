@@ -685,7 +685,9 @@ spec:
                 unique_id: dining_room_lights_group
                 name: Dining Room Lights
                 entities:
-                  - light.dining_room_fan
+                  - light.fan_1
+                  - light.fan_2
+                  - light.fan_3
                   - light.desk_lamp
       automations:
         enabled: true
