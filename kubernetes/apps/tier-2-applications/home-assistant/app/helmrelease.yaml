@@ -184,6 +184,52 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
+          patch-auth-oidc-finish:
+            image:
+              repository: python
+              tag: 3.14-alpine
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                python - <<'PY'
+                from pathlib import Path
+
+                target = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
+                patch_marker = "auth-oidc-autosubmit-patch"
+
+                if not target.exists():
+                    raise SystemExit("auth_oidc finish.html not found")
+
+                content = target.read_text(encoding="utf-8")
+                if patch_marker in content:
+                    print("auth_oidc finish template already patched")
+                    raise SystemExit(0)
+
+                replacement = "\n".join([
+                    "        </form>",
+                    "        <script>",
+                    '            window.addEventListener("load", () => {',
+                    '                const form = document.querySelector("form[method=\'post\']");',
+                    "                if (form) {",
+                    "                    form.requestSubmit();",
+                    "                }",
+                    "            });",
+                    "        </script>",
+                    "        <!-- auth-oidc-autosubmit-patch -->",
+                    "    </div>",
+                ])
+
+                content = content.replace("        </form>\n    </div>", replacement)
+                target.write_text(content, encoding="utf-8")
+                print("auth_oidc finish template patched")
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
           bootstrap-auth-oidc-deps:
             image:
               repository: python
@@ -242,6 +288,9 @@ spec:
               HASS_HTTP_TRUSTED_PROXY_1: fd00:69::/64
               HASS_HTTP_TRUSTED_PROXY_2: fd00:42::/64
               HASS_HTTP_TRUSTED_PROXY_3: fd00:101:224:3::/64
+              # Cilium Gateway/Envoy forwards from the cluster pod CIDRs.
+              HASS_HTTP_TRUSTED_PROXY_4: fd00:101:224::/60
+              HASS_HTTP_TRUSTED_PROXY_5: 10.101.224.0/20
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -410,6 +459,8 @@ spec:
                 - fd00:69::/64
                 - fd00:42::/64
                 - fd00:101:224:3::/64
+                - fd00:101:224::/60
+                - 10.101.224.0/20
 
             homeassistant:
               internal_url: https://hass-app.sulibot.com
