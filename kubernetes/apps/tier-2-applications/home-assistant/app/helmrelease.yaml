@@ -43,7 +43,7 @@ spec:
                 import tempfile
                 import urllib.request
 
-                commit = "08c30aa6c0eaf0f97ecb6011aaed096c914fd83f"
+                commit = "d5887825a8fab9d1fcb8928c63a9cf9b87fd9025"
                 target = "/config/custom_components/aidot"
                 manifest_path = os.path.join(target, "manifest.json")
 
