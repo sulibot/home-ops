@@ -1,0 +1,16 @@
+---
+# Keep Victoria Logs storage under direct Git ownership so PVC sizing can change
+# without fighting StatefulSet volumeClaimTemplate immutability.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/persistentvolumeclaim.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: server-volume-victoria-logs-server-0
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 50Gi

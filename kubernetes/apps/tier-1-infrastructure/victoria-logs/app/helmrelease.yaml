@@ -56,11 +56,10 @@ spec:
   values:
     fullnameOverride: victoria-logs
     server:
-      retentionPeriod: 14d
+      retentionPeriod: 3d
       persistentVolume:
         enabled: true
-        storageClassName: csi-cephfs-config-sc
-        size: 20Gi
+        existingClaim: server-volume-victoria-logs-server-0
       # Use wildcard listen addr (instead of bracketed IPv6) to avoid invalid bind parsing.
       # This keeps kubelet probes healthy on dual-stack clusters.
       extraArgs:

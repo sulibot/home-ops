@@ -88,6 +88,20 @@ spec:
               VictoriaLogs storage growth trend indicates disk exhaustion risk in the next 24 hours.
               Adjust retention and/or increase disk capacity before ingestion is impacted.
 
+        - alert: VictoriaLogsPVCFreeSpaceLow
+          expr: |
+            kubelet_volume_stats_available_bytes{namespace="observability",persistentvolumeclaim="server-volume-victoria-logs-server-0"}
+            / kubelet_volume_stats_capacity_bytes{namespace="observability",persistentvolumeclaim="server-volume-victoria-logs-server-0"} < 0.20
+          for: 15m
+          labels:
+            severity: warning
+            component: logging
+          annotations:
+            summary: "Victoria Logs PVC free space below 20%"
+            description: |
+              Victoria Logs is close to exhausting its configured storage budget.
+              Reduce retention, lower ingestion, or expand the Git-managed PVC before the backend becomes read-only.
+
         - alert: FluentBitOutputErrors
           expr: |
             sum(rate(fluentbit_output_errors_total[10m])) > 0
@@ -100,6 +114,19 @@ spec:
             description: |
               Fluent Bit is experiencing output errors for at least 10 minutes.
               Verify VictoriaLogs endpoint health and Fluent Bit output configuration.
+
+        - alert: FluentBitOutputRetriesHigh
+          expr: |
+            sum(rate(fluentbit_output_retries_total[10m])) > 1
+          for: 15m
+          labels:
+            severity: warning
+            component: logging
+          annotations:
+            summary: "Fluent Bit output retries are elevated"
+            description: |
+              Fluent Bit is retrying log delivery persistently.
+              Investigate Victoria Logs latency, network reachability, or sustained ingestion spikes before local buffers fill.
 
         - alert: FluentBitDroppedRecords
           expr: |

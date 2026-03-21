@@ -25,6 +25,7 @@ spec:
           storage.path /var/log/fluent-bit-buffers/
           storage.sync normal
           storage.checksum off
+          storage.max_chunks_up 128
           storage.backlog.mem_limit 64M
 
       inputs: |-
@@ -32,11 +33,13 @@ spec:
           name tail
           alias kubernetes
           path /var/log/containers/*.log
+          exclude_path /var/log/containers/*_observability_fluent-bit-*.log
           parser containerd
           tag kubernetes.*
           db /var/log/fluent-bit-kube.db
           db.sync normal
           mem_buf_limit 64MB
+          storage.pause_on_chunks_overlimit on
           skip_empty_lines on
           skip_long_lines on
           storage.type filesystem
@@ -83,6 +86,49 @@ spec:
           condition key_does_not_exist app
           copy k_container_name app
 
+        [FILTER]
+          name modify
+          match kubernetes.*
+          set stream_class app
+
+        [FILTER]
+          name modify
+          match kubernetes.*
+          condition Key_value_matches namespace ^(kube-system|flux-system|observability|network)$
+          set stream_class infra
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          exclude log (?i)\"level\":\"(debug|trace)\"
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          exclude log (?i)\blevel=(debug|trace)\b
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          exclude log artifact up-to-date with remote revision
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          exclude log no changes since last reconcilation
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          regex namespace ^(kube-system|flux-system|observability|network)$
+          exclude log (?i)\"level\":\"info\"
+
+        [FILTER]
+          name grep
+          match kubernetes.*
+          regex namespace ^(kube-system|flux-system|observability|network)$
+          exclude log (?i)\blevel=info\b
+
       customParsers: |-
         [PARSER]
           name containerd
@@ -97,11 +143,12 @@ spec:
           match kubernetes.*
           host victoria-logs-server.observability.svc
           port 9428
-          uri /insert/jsonline?_stream_fields=stream,namespace,pod,container,node,app&_msg_field=log&_time_field=date
+          uri /insert/jsonline?_stream_fields=stream_class,stream,namespace,pod,container,node,app&_msg_field=log&_time_field=date
           format json_lines
           json_date_format iso8601
           compress gzip
           workers 2
+          storage.total_limit_size 1G
           retry_limit false
           log_response_payload false
     dashboards:
