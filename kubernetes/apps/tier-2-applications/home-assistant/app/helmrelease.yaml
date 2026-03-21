@@ -42,7 +42,7 @@ spec:
                 import tempfile
                 import urllib.request
 
-                commit = "c5901514ee345503e614c4bf524be8c6b64ef87e"
+                commit = "c59015124915a5e1f788d52f17b648facd84c9ac"
                 target = "/config/custom_components/aidot"
                 marker_path = os.path.join(target, ".codex-installed-commit")
 
