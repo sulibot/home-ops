@@ -498,6 +498,8 @@ spec:
                   icon: mdi:ceiling-light-multiple
                 light.standing_lamp:
                   icon: mdi:floor-lamp
+                light.dining_room_fan:
+                  icon: mdi:ceiling-fan-light
                 light.dining_room_lights:
                   icon: mdi:chandelier
 
@@ -577,18 +579,29 @@ spec:
                   aliases:
                     - Dining Room Lights
                     - Dining Room Light
+                light.dining_room_fan:
+                  expose: true
+                  room: Dining Room
+                  aliases:
+                    - Dining Room Fan
+                    - Dining Room Ceiling Light
                 light.fan_1:
-                  expose: true
-                  room: Dining Room
+                  expose: false
                 light.fan_2:
-                  expose: true
-                  room: Dining Room
+                  expose: false
                 light.fan_3:
-                  expose: true
-                  room: Dining Room
+                  expose: false
                 light.desk_lamp:
                   expose: true
                   room: Dining Room
+                  aliases:
+                    - Dining Room Desk Lamp
+                button.dining_room_button:
+                  expose: true
+                  room: Dining Room
+                  aliases:
+                    - Dining Room Button
+                    - Dining Room Lights Button
 
             adaptive_lighting:
               - name: living_room
@@ -624,6 +637,16 @@ spec:
                 take_over_control: true
                 detect_non_ha_changes: false
 
+            template:
+              - button:
+                  - name: Dining Room Button
+                    unique_id: dining_room_button
+                    icon: mdi:gesture-tap-button
+                    press:
+                      action: light.toggle
+                      target:
+                        entity_id: light.dining_room_lights
+
             light:
               - platform: group
                 unique_id: living_room_lights_group
@@ -651,80 +674,19 @@ spec:
                   - light.essentials_a19_a60_6
                   - light.essentials_a19_a60_7
                   - light.standing_lamp
-              - platform: template
-                lights:
-                  dining_room_lights:
-                    unique_id: dining_room_lights_template
-                    friendly_name: Dining Room Lights
-                    icon_template: mdi:chandelier
-                    value_template: >-
-                      {{ `{{ is_state('light.fan_1', 'on')
-                         or is_state('light.fan_2', 'on')
-                         or is_state('light.fan_3', 'on')
-                         or is_state('light.desk_lamp', 'on') }}` }}
-                    availability_template: >-
-                      {{ `{{ not (
-                        is_state('light.fan_1', 'unavailable')
-                        and is_state('light.fan_2', 'unavailable')
-                        and is_state('light.fan_3', 'unavailable')
-                        and is_state('light.desk_lamp', 'unavailable')
-                      ) }}` }}
-                    level_template: >-
-                      {{ `{{ state_attr('light.fan_1', 'brightness')
-                         or state_attr('light.fan_2', 'brightness')
-                         or state_attr('light.fan_3', 'brightness')
-                         or state_attr('light.desk_lamp', 'brightness')
-                         or 0 }}` }}
-                    temperature_template: >-
-                      {{ `{{ (
-                        1000000 / (
-                          state_attr('light.fan_1', 'color_temp_kelvin')
-                          or state_attr('light.fan_2', 'color_temp_kelvin')
-                          or state_attr('light.fan_3', 'color_temp_kelvin')
-                          or state_attr('light.desk_lamp', 'color_temp_kelvin')
-                        )
-                      ) | round(0) if (
-                        state_attr('light.fan_1', 'color_temp_kelvin')
-                        or state_attr('light.fan_2', 'color_temp_kelvin')
-                        or state_attr('light.fan_3', 'color_temp_kelvin')
-                        or state_attr('light.desk_lamp', 'color_temp_kelvin')
-                      ) else none }}` }}
-                    turn_on:
-                      action: light.turn_on
-                      target:
-                        entity_id:
-                          - light.fan_1
-                          - light.fan_2
-                          - light.fan_3
-                          - light.desk_lamp
-                    turn_off:
-                      action: light.turn_off
-                      target:
-                        entity_id:
-                          - light.fan_1
-                          - light.fan_2
-                          - light.fan_3
-                          - light.desk_lamp
-                    set_level:
-                      action: light.turn_on
-                      target:
-                        entity_id:
-                          - light.fan_1
-                          - light.fan_2
-                          - light.fan_3
-                          - light.desk_lamp
-                      data:
-                        brightness: "{{ `{{ brightness }}` }}"
-                    set_temperature:
-                      action: light.turn_on
-                      target:
-                        entity_id:
-                          - light.fan_1
-                          - light.fan_2
-                          - light.fan_3
-                          - light.desk_lamp
-                      data:
-                        color_temp_kelvin: "{{ `{{ (1000000 / color_temp) | round(0) if color_temp else none }}` }}"
+              - platform: group
+                unique_id: dining_room_fan_group
+                name: Dining Room Fan
+                entities:
+                  - light.fan_1
+                  - light.fan_2
+                  - light.fan_3
+              - platform: group
+                unique_id: dining_room_lights_group
+                name: Dining Room Lights
+                entities:
+                  - light.dining_room_fan
+                  - light.desk_lamp
       automations:
         enabled: true
         data:
