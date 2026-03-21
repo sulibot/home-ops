@@ -36,21 +36,20 @@ spec:
               - -ec
               - |
                 python - <<'PY'
-                import json
                 import os
                 import shutil
                 import tarfile
                 import tempfile
                 import urllib.request
 
-                commit = "d588782843fb92c02ae6014e7422f514c2d8bae5"
+                commit = "1cc384f31def004b1cfd9bfcc6ab639932bd0149"
                 target = "/config/custom_components/aidot"
-                manifest_path = os.path.join(target, "manifest.json")
+                marker_path = os.path.join(target, ".codex-installed-commit")
 
-                if os.path.exists(manifest_path):
-                    with open(manifest_path, "r", encoding="utf-8") as handle:
-                        manifest = json.load(handle)
-                    if manifest.get("version") == "1.2.0":
+                if os.path.exists(marker_path):
+                    with open(marker_path, "r", encoding="utf-8") as handle:
+                        installed_commit = handle.read().strip()
+                    if installed_commit == commit:
                         print("AiDot custom component already installed")
                         raise SystemExit(0)
 
@@ -74,6 +73,8 @@ spec:
                     )
                     shutil.rmtree(target, ignore_errors=True)
                     shutil.copytree(source, target)
+                    with open(marker_path, "w", encoding="utf-8") as handle:
+                        handle.write(commit + "\n")
                 PY
             securityContext:
               allowPrivilegeEscalation: false
