@@ -654,7 +654,7 @@ spec:
               - platform: template
                 lights:
                   dining_room_lights:
-                    unique_id: dining_room_lights_group
+                    unique_id: dining_room_lights_template
                     friendly_name: Dining Room Lights
                     icon_template: mdi:chandelier
                     value_template: >-
