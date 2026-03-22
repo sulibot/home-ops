@@ -129,6 +129,11 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
   }
 }
 
+resource "cloudflare_zero_trust_organization" "this" {
+  account_id                  = local.account_id
+  allow_authenticate_via_warp = true
+}
+
 # ---------------------------------------------------------------------------
 # Device enrollment
 # ---------------------------------------------------------------------------
@@ -204,6 +209,7 @@ resource "cloudflare_zero_trust_access_application" "email_only" {
   type                       = "self_hosted"
   session_duration           = "24h"
   auto_redirect_to_identity  = true
+  allow_authenticate_via_warp = true
   enable_binding_cookie      = false
   http_only_cookie_attribute = false
   options_preflight_bypass   = false
@@ -235,6 +241,7 @@ resource "cloudflare_zero_trust_access_application" "warp_only" {
   type                       = "self_hosted"
   session_duration           = "24h"
   auto_redirect_to_identity  = false
+  allow_authenticate_via_warp = true
   enable_binding_cookie      = false
   http_only_cookie_attribute = false
   options_preflight_bypass   = false
@@ -266,6 +273,7 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
   type                       = "self_hosted"
   session_duration           = "24h"
   auto_redirect_to_identity  = true
+  allow_authenticate_via_warp = true
   enable_binding_cookie      = false
   http_only_cookie_attribute = false
   options_preflight_bypass   = false

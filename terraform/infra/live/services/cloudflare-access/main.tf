@@ -32,9 +32,10 @@ locals {
   }
 
   warp_only_apps = {
-    "immich-app.sulibot.com"  = "Immich"
-    "hass-app.sulibot.com"    = "Home Assistant"
-    "vikunja-app.sulibot.com" = "Vikunja"
+    "immich-app.sulibot.com"     = "Immich"
+    "hass-app.sulibot.com"       = "Home Assistant"
+    "hass-get-token.sulibot.com" = "Home Assistant Token"
+    "vikunja-app.sulibot.com"    = "Vikunja"
   }
 
   warp_email_apps = {
@@ -98,6 +99,11 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
     scopes        = ["openid", "email", "profile"]
     claims        = ["email", "preferred_username"]
   }
+}
+
+resource "cloudflare_zero_trust_organization" "this" {
+  account_id                  = local.account_id
+  allow_authenticate_via_warp = true
 }
 
 # ---------------------------------------------------------------------------
@@ -169,16 +175,17 @@ resource "cloudflare_zero_trust_access_application" "bypass" {
 resource "cloudflare_zero_trust_access_application" "email_only" {
   for_each = local.email_only_apps
 
-  account_id                 = local.account_id
-  name                       = "${each.value} (email)"
-  domain                     = each.key
-  type                       = "self_hosted"
-  session_duration           = "24h"
-  auto_redirect_to_identity  = true
-  enable_binding_cookie      = false
-  http_only_cookie_attribute = false
-  options_preflight_bypass   = false
-  allowed_idps               = [cloudflare_zero_trust_access_identity_provider.authentik.id]
+  account_id                  = local.account_id
+  name                        = "${each.value} (email)"
+  domain                      = each.key
+  type                        = "self_hosted"
+  session_duration            = "24h"
+  auto_redirect_to_identity   = true
+  allow_authenticate_via_warp = true
+  enable_binding_cookie       = false
+  http_only_cookie_attribute  = false
+  options_preflight_bypass    = false
+  allowed_idps                = [cloudflare_zero_trust_access_identity_provider.authentik.id]
   policies = [{
     name       = "Allow approved users"
     decision   = "allow"
@@ -200,15 +207,16 @@ resource "cloudflare_zero_trust_access_application" "email_only" {
 resource "cloudflare_zero_trust_access_application" "warp_only" {
   for_each = local.warp_only_apps
 
-  account_id                 = local.account_id
-  name                       = "${each.value} (WARP only)"
-  domain                     = each.key
-  type                       = "self_hosted"
-  session_duration           = "24h"
-  auto_redirect_to_identity  = false
-  enable_binding_cookie      = false
-  http_only_cookie_attribute = false
-  options_preflight_bypass   = false
+  account_id                  = local.account_id
+  name                        = "${each.value} (WARP only)"
+  domain                      = each.key
+  type                        = "self_hosted"
+  session_duration            = "24h"
+  auto_redirect_to_identity   = false
+  allow_authenticate_via_warp = true
+  enable_binding_cookie       = false
+  http_only_cookie_attribute  = false
+  options_preflight_bypass    = false
   policies = [{
     name       = "Allow via WARP"
     decision   = "allow"
@@ -231,16 +239,17 @@ resource "cloudflare_zero_trust_access_application" "warp_only" {
 resource "cloudflare_zero_trust_access_application" "warp_email" {
   for_each = local.warp_email_apps
 
-  account_id                 = local.account_id
-  name                       = "${each.value} (WARP + email)"
-  domain                     = each.key
-  type                       = "self_hosted"
-  session_duration           = "24h"
-  auto_redirect_to_identity  = true
-  enable_binding_cookie      = false
-  http_only_cookie_attribute = false
-  options_preflight_bypass   = false
-  allowed_idps               = [cloudflare_zero_trust_access_identity_provider.authentik.id]
+  account_id                  = local.account_id
+  name                        = "${each.value} (WARP + email)"
+  domain                      = each.key
+  type                        = "self_hosted"
+  session_duration            = "24h"
+  auto_redirect_to_identity   = true
+  allow_authenticate_via_warp = true
+  enable_binding_cookie       = false
+  http_only_cookie_attribute  = false
+  options_preflight_bypass    = false
+  allowed_idps                = [cloudflare_zero_trust_access_identity_provider.authentik.id]
   policies = [{
     name       = "Allow approved users via WARP"
     decision   = "allow"
