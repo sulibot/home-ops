@@ -200,7 +200,6 @@ spec:
                 template = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
                 endpoint = Path("/config/custom_components/auth_oidc/endpoints/finish.py")
                 patch_marker = "auth-oidc-autosubmit-patch"
-                redirect_marker = "/lovelace?storeToken=true"
 
                 if not template.exists():
                     raise SystemExit("auth_oidc finish.html not found")
@@ -208,28 +207,50 @@ spec:
                     raise SystemExit("auth_oidc finish.py not found")
 
                 content = template.read_text(encoding="utf-8")
-                if patch_marker not in content:
-                    replacement = "\n".join([
-                        "        </form>",
-                        "        <script>",
-                        '            window.addEventListener("load", () => {',
-                        '                const form = document.querySelector("form[method=\'post\']");',
-                        "                if (form) {",
-                        "                    form.requestSubmit();",
-                        "                }",
-                        "            });",
-                        "        </script>",
-                        "        <!-- auth-oidc-autosubmit-patch -->",
-                        "    </div>",
-                    ])
-
-                    content = content.replace("        </form>\n    </div>", replacement)
-                    template.write_text(content, encoding="utf-8")
-                    print("auth_oidc finish template patched")
-                else:
-                    print("auth_oidc finish template already patched")
+                old_script = "\n".join([
+                    "        </form>",
+                    "        <script>",
+                    '            window.addEventListener(\"load\", () => {',
+                    '                const form = document.querySelector(\"form[method=\\'post\\']\");',
+                    "                if (form) {",
+                    "                    form.requestSubmit();",
+                    "                }",
+                    "            });",
+                    "        </script>",
+                    "        <!-- auth-oidc-autosubmit-patch -->",
+                    "    </div>",
+                ])
+                new_script = "\n".join([
+                    "        </form>",
+                    "        {% if auto_submit %}",
+                    "        <script>",
+                    '            window.addEventListener(\"load\", () => {',
+                    '                const form = document.querySelector(\"form[method=\\'post\\']\");',
+                    "                if (form) {",
+                    "                    form.requestSubmit();",
+                    "                }",
+                    "            });",
+                    "        </script>",
+                    "        {% endif %}",
+                    "        <!-- auth-oidc-autosubmit-patch -->",
+                    "    </div>",
+                ])
+                if old_script in content:
+                    content = content.replace(old_script, new_script)
+                elif patch_marker not in content:
+                    content = content.replace("        </form>\n    </div>", new_script)
+                template.write_text(content, encoding="utf-8")
+                print("auth_oidc finish template patched")
 
                 endpoint_content = endpoint.read_text(encoding="utf-8")
+                old_view = '        view_html = await get_view("finish", {"code": code})'
+                new_view = "\n".join([
+                    '        host = (request.host or "").split(":")[0]',
+                    '        auto_submit = host != "hass-get-token.sulibot.com"',
+                    '        view_html = await get_view("finish", {"code": code, "auto_submit": auto_submit})',
+                ])
+                if old_view in endpoint_content:
+                    endpoint_content = endpoint_content.replace(old_view, new_view)
                 endpoint_content = endpoint_content.replace(
                     'location="/?storeToken=true",',
                     'location="/lovelace?storeToken=true",',
