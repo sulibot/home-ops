@@ -271,14 +271,11 @@ spec:
                         """Finish route to allow the user to view their code."""
 
                         from aiohttp import web
-                        from homeassistant.components.auth import create_auth_code
-                        from homeassistant.components.http import HomeAssistantView, KEY_HASS
+                        from homeassistant.components.http import HomeAssistantView
 
                         from ..helpers import get_view
-                        from ..provider import OpenIDAuthProvider
 
                         PATH = "/auth/oidc/finish"
-                        IOS_CLIENT_ID = "https://home-assistant.io/iOS"
                         TOKEN_HOST = "hass-get-token.sulibot.com"
 
 
@@ -288,21 +285,6 @@ spec:
                             requires_auth = False
                             url = PATH
                             name = "auth:oidc:finish"
-
-                            def __init__(self, oidc_provider: OpenIDAuthProvider) -> None:
-                                self.oidc_provider = oidc_provider
-
-                            async def _async_create_mobile_auth_code(
-                                self, request: web.Request, code: str
-                            ) -> str | None:
-                                """Turn the plugin's temporary code into a real Home Assistant auth code."""
-                                hass = request.app[KEY_HASS]
-                                sub = await self.oidc_provider.async_get_subject(code)
-                                if sub is None:
-                                    return None
-
-                                credential = await self.oidc_provider.async_get_or_create_credentials({"sub": sub})
-                                return create_auth_code(hass, IOS_CLIENT_ID, credential)
 
                             async def get(self, request: web.Request) -> web.Response:
                                 """Show the finish screen to allow the user to view their code."""
@@ -327,22 +309,7 @@ spec:
                                 )
 
                                 if is_token_host:
-                                    mobile_code = await self._async_create_mobile_auth_code(request, code)
-                                    if not mobile_code:
-                                        view_html = await get_view(
-                                            "error",
-                                            {
-                                                "error": "This login code is invalid or has already been used. "
-                                                "Start the sign-in flow again to generate a fresh mobile code.",
-                                            },
-                                        )
-                                        return web.Response(text=view_html, content_type="text/html")
-
                                     show_browser_login = False
-                                    mobile_instructions = (
-                                        "Enter this code in the official Home Assistant iOS app after selecting "
-                                        "'Login with OpenID Connect (SSO)'."
-                                    )
 
                                 view_html = await get_view(
                                     "finish",
@@ -380,8 +347,8 @@ spec:
 
                 init_content = init_file.read_text(encoding="utf-8")
                 init_content = init_content.replace(
-                    "    hass.http.register_view(OIDCFinishView())",
                     "    hass.http.register_view(OIDCFinishView(provider))",
+                    "    hass.http.register_view(OIDCFinishView())",
                 )
                 init_file.write_text(init_content, encoding="utf-8")
                 print("auth_oidc init patched")
