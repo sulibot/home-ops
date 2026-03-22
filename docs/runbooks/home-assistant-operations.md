@@ -287,6 +287,12 @@ Do not replace it with:
 
 unless behavior changes are intentionally validated.
 
+The Kubernetes `matter-server` workload is self-managed and external to Home Assistant.
+It does not use the HA add-on version stream. The current server uses `matterjs-server`
+image tags, which have their own semver separate from the add-on's `8.2.x` numbering.
+Future stable upgrades should normally be a pinned image tag/digest bump in
+[`/Users/sulibot/repos/github/home-ops/kubernetes/apps/tier-2-applications/matter-server/app/helmrelease.yaml`](/Users/sulibot/repos/github/home-ops/kubernetes/apps/tier-2-applications/matter-server/app/helmrelease.yaml).
+
 ### Thread / OTBR
 
 OTBR runs outside Kubernetes in a Proxmox LXC.

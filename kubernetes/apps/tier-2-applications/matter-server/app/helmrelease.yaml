@@ -52,20 +52,21 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/home-assistant-libs/python-matter-server
-              tag: 8.1.0@sha256:170aa093ce91c76cde4cc390918307590f0f5558fcec93f913af3cb019e6562a
+              repository: ghcr.io/matter-js/matterjs-server
+              # matterjs-server uses its own semver, separate from the HA add-on's 8.2.x numbering.
+              # Future stable upgrades should be a tag/digest bump here.
+              tag: 0.5.7@sha256:e717ccaa60577c0d7aba1be835ddcaa48fb72d86aa2146280b13e773d8e3e02b
             env:
               TZ: America/Los_Angeles
-              MATTER_SERVER__INSTANCE_NAME: "{{ .Release.Name }}"
-              MATTER_SERVER__PORT: &port 5580
-              MATTER_SERVER__APPLICATION_URL: &host "matter-server.sulibot.com"
-              MATTER_SERVER__LOG_LEVEL: debug
+              PORT: &port 5580
+              LOG_LEVEL: debug
+              PRIMARY_INTERFACE: net1
+              STORAGE_PATH: /data
             args:
               - --storage-path=/data
+              - --port=5580
               - --primary-interface=net1
-              - --paa-root-cert-dir=/data/credentials/development/paa-root-certs
               - --log-level=debug
-              - --log-level-sdk=debug
             securityContext:
               runAsNonRoot: true
               runAsUser: 1000
@@ -114,7 +115,7 @@ spec:
     route:
       app:
         hostnames:
-          - *host
+          - &host "matter-server.sulibot.com"
         parentRefs:
           - name: gateway-internal
             namespace: network
