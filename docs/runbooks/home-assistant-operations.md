@@ -99,10 +99,13 @@ Home Assistant is internal-only in the intended design.
 
 Human browser and app access use the direct internal Home Assistant endpoint:
 
-- preferred: `http://[fd00:31::251]:8123`
-- fallback: `http://10.31.0.251:8123`
+- preferred test endpoint: `http://hass-local.sulibot.com`
+- direct IPv6 fallback: `http://[fd00:31::251]:8123`
+- direct IPv4 fallback: `http://10.31.0.251:8123`
 
-Home Assistant local auth is the intended path in this topology.
+Home Assistant local auth is the intended path in this topology. `hass-local.sulibot.com`
+is the preferred local HTTP endpoint for observing raw client behavior without the
+Cloudflare/browser/TLS layers involved.
 
 ### Local access
 

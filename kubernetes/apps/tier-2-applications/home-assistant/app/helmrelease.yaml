@@ -620,7 +620,7 @@ spec:
                 - 10.101.224.0/20
 
             homeassistant:
-              internal_url: https://hass-app.sulibot.com
+              internal_url: http://hass-local.sulibot.com
               external_url: https://hass-app.sulibot.com
               auth_providers:
                 - type: homeassistant

@@ -42,3 +42,17 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: sulibot-com-tls
+    - name: sulibot-http
+      hostname: sulibot.com
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: sulibot-wildcard-http
+      hostname: "*.sulibot.com"
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
