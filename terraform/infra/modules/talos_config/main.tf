@@ -539,8 +539,12 @@ locals {
             }
             accept;
           };
+          # Force a concrete global next hop for exported IPv6 routes.
+          # The LB pool aggregate is a static blackhole route and has no
+          # associated interface context of its own, so relying on implicit
+          # next-hop selection is not robust enough here.
+          next hop address ${node.public_ipv6};
           next hop self;
-          missing lladdr ignore;  # Allow exporting routes without link-local addresses
         };
       }
     EOT
