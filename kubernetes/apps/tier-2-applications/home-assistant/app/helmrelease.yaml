@@ -508,7 +508,7 @@ spec:
                 - email
               client_id: homeassistant-app
               discovery_url: https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration
-              display_name: Authentik
+              display_name: Authentik SSO
               claims:
                 username: email
               features:

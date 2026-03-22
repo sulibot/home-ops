@@ -4,36 +4,45 @@ machine:
       docker.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://registry-1.docker.io/v2"
         overridePath: true
       ghcr.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://ghcr.io/v2"
         overridePath: true
       gcr.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://gcr.io/v2"
         overridePath: true
       mirror.gcr.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://mirror.gcr.io/v2"
         overridePath: true
       registry.k8s.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://registry.k8s.io/v2"
         overridePath: true
       quay.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://quay.io/v2"
         overridePath: true
       lscr.io:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://lscr.io/v2"
         overridePath: true
       public.ecr.aws:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://public.ecr.aws/v2"
         overridePath: true
       factory.talos.dev:
         endpoints:
           - "http://[fd00:200::51]:5000"
+          - "https://factory.talos.dev/v2"
         overridePath: true

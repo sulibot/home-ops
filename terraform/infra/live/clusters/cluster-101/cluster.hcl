@@ -55,28 +55,24 @@ locals {
       # Only enable GPU passthrough if:
       # 1. gpu_config.enabled is true
       # 2. A PCI mapping exists for this node (e.g., pve03 has no SR-IOV support)
-      gpu_passthrough = (
-        local.gpu_config.enabled &&
-        length([
+      gpu_passthrough = local.gpu_config.enabled && length([
+        for mapping in local.gpu_config.mappings :
+        local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
+        if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
+      ]) > 0 ? {
+        pci_address = [
           for mapping in local.gpu_config.mappings :
           local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
           if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
-        ]) > 0
-        ) ? {
-          pci_address = [
-            for mapping in local.gpu_config.mappings :
-            local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
-            if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
-          ][0]
-          pci_addresses = [
-            for mapping in local.gpu_config.mappings :
-            local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
-            if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
-          ]
-          pcie   = local.gpu_config.pcie
-          rombar = local.gpu_config.rombar
-        }
-      : null
+        ][0]
+        pci_addresses = [
+          for mapping in local.gpu_config.mappings :
+          local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
+          if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
+        ]
+        pcie   = local.gpu_config.pcie
+        rombar = local.gpu_config.rombar
+      } : null
       # USB passthrough disabled
       usb = null
     }

@@ -39,7 +39,6 @@ locals {
     ]
     registries = [
       "docker.io",
-      "ghcr.io",
       "gcr.io",
       "mirror.gcr.io",
       "registry.k8s.io",
