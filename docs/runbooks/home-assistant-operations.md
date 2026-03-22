@@ -81,8 +81,9 @@ Home Assistant has:
 
 Practical access paths:
 
-- Canonical internal HA URL: `http://[fd00:31::251]:8123`
-- IPv4 fallback HA URL: `http://10.31.0.251:8123`
+- Canonical internal HA URL: `http://hass-local.sulibot.com`
+- Direct IPv6 fallback HA URL: `http://[fd00:31::251]:8123`
+- Direct IPv4 fallback HA URL: `http://10.31.0.251:8123`
 - VLAN 30 reaches Home Assistant by routed access into VLAN 31
 
 ### HTTP routes
@@ -494,8 +495,9 @@ If you want full GitOps for HA configuration later, design that as a separate pr
 
 ### Key URLs
 
-- Local HA preferred: `http://[fd00:31::251]:8123`
-- Local HA fallback: `http://10.31.0.251:8123`
+- Local HA preferred: `http://hass-local.sulibot.com`
+- Local HA IPv6 fallback: `http://[fd00:31::251]:8123`
+- Local HA IPv4 fallback: `http://10.31.0.251:8123`
 - OTBR: `http://otbr01.sulibot.com:8081`
 
 ### Key commands
