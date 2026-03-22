@@ -202,6 +202,7 @@ spec:
               - |
                 python - <<'PY'
                 from pathlib import Path
+                import textwrap
 
                 template = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
                 endpoint = Path("/config/custom_components/auth_oidc/endpoints/finish.py")
@@ -215,158 +216,164 @@ spec:
                     raise SystemExit("auth_oidc __init__.py not found")
 
                 template.write_text(
-                    """{% extends "base.html" %}
-{% block title %}Logged in!{% endblock %}
-{% block head %}
-{{ super() }}
-{% endblock %}
-{% block content %}
-<div class="text-center">
-    {% if show_browser_login %}
-    <div class="my-6">
-        <h2 class="text-xl font-semibold mb-6 text-gray-800">I want to login to this browser</h2>
-        <form method="post">
-            <input type="hidden" name="code" value="{{ browser_code }}">
-            <button type="submit"
-                class="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
-                Login to Home Assistant in this browser
-            </button>
-        </form>
-        {% if auto_submit %}
-        <script>
-            window.addEventListener("load", () => {
-                const form = document.querySelector("form[method='post']");
-                if (form) {
-                    form.requestSubmit();
-                }
-            });
-        </script>
-        {% endif %}
-    </div>
+                    textwrap.dedent(
+                        """\
+                        {% extends "base.html" %}
+                        {% block title %}Logged in!{% endblock %}
+                        {% block head %}
+                        {{ super() }}
+                        {% endblock %}
+                        {% block content %}
+                        <div class="text-center">
+                            {% if show_browser_login %}
+                            <div class="my-6">
+                                <h2 class="text-xl font-semibold mb-6 text-gray-800">I want to login to this browser</h2>
+                                <form method="post">
+                                    <input type="hidden" name="code" value="{{ browser_code }}">
+                                    <button type="submit"
+                                        class="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                                        Login to Home Assistant in this browser
+                                    </button>
+                                </form>
+                                {% if auto_submit %}
+                                <script>
+                                    window.addEventListener("load", () => {
+                                        const form = document.querySelector("form[method='post']");
+                                        if (form) {
+                                            form.requestSubmit();
+                                        }
+                                    });
+                                </script>
+                                {% endif %}
+                            </div>
 
-    <hr class="my-12">
-    {% endif %}
+                            <hr class="my-12">
+                            {% endif %}
 
-    <div class="my-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-800">I am on a mobile device</h2>
-        <p class="mb-4">Your one-time code is: <b class="text-blue-600 text-xl">{{ mobile_code }}</b></p>
-        <p class="mb-4 text-sm">You have 5 minutes to use this code on any device.<br />The code can only
-            be used once.</p>
-        <p class="mb-4 text-sm">{{ mobile_instructions }}</p>
-    </div>
-</div>
-{% endblock %}
-""",
+                            <div class="my-6">
+                                <h2 class="text-xl font-semibold mb-4 text-gray-800">I am on a mobile device</h2>
+                                <p class="mb-4">Your one-time code is: <b class="text-blue-600 text-xl">{{ mobile_code }}</b></p>
+                                <p class="mb-4 text-sm">You have 5 minutes to use this code on any device.<br />The code can only
+                                    be used once.</p>
+                                <p class="mb-4 text-sm">{{ mobile_instructions }}</p>
+                            </div>
+                        </div>
+                        {% endblock %}
+                        """
+                    ),
                     encoding="utf-8",
                 )
                 print("auth_oidc finish template patched")
 
                 endpoint.write_text(
-                    '''"""Finish route to allow the user to view their code."""
+                    textwrap.dedent(
+                        '''\
+                        """Finish route to allow the user to view their code."""
 
-from aiohttp import web
-from homeassistant.components.auth import create_auth_code
-from homeassistant.components.http import HomeAssistantView, KEY_HASS
+                        from aiohttp import web
+                        from homeassistant.components.auth import create_auth_code
+                        from homeassistant.components.http import HomeAssistantView, KEY_HASS
 
-from ..helpers import get_view
-from ..provider import OpenIDAuthProvider
+                        from ..helpers import get_view
+                        from ..provider import OpenIDAuthProvider
 
-PATH = "/auth/oidc/finish"
-IOS_CLIENT_ID = "https://home-assistant.io/iOS"
-TOKEN_HOST = "hass-get-token.sulibot.com"
+                        PATH = "/auth/oidc/finish"
+                        IOS_CLIENT_ID = "https://home-assistant.io/iOS"
+                        TOKEN_HOST = "hass-get-token.sulibot.com"
 
 
-class OIDCFinishView(HomeAssistantView):
-    """OIDC Plugin Finish View."""
+                        class OIDCFinishView(HomeAssistantView):
+                            """OIDC Plugin Finish View."""
 
-    requires_auth = False
-    url = PATH
-    name = "auth:oidc:finish"
+                            requires_auth = False
+                            url = PATH
+                            name = "auth:oidc:finish"
 
-    def __init__(self, oidc_provider: OpenIDAuthProvider) -> None:
-        self.oidc_provider = oidc_provider
+                            def __init__(self, oidc_provider: OpenIDAuthProvider) -> None:
+                                self.oidc_provider = oidc_provider
 
-    async def _async_create_mobile_auth_code(
-        self, request: web.Request, code: str
-    ) -> str | None:
-        """Turn the plugin's temporary code into a real Home Assistant auth code."""
-        hass = request.app[KEY_HASS]
-        sub = await self.oidc_provider.async_get_subject(code)
-        if sub is None:
-            return None
+                            async def _async_create_mobile_auth_code(
+                                self, request: web.Request, code: str
+                            ) -> str | None:
+                                """Turn the plugin's temporary code into a real Home Assistant auth code."""
+                                hass = request.app[KEY_HASS]
+                                sub = await self.oidc_provider.async_get_subject(code)
+                                if sub is None:
+                                    return None
 
-        credential = await self.oidc_provider.async_get_or_create_credentials({"sub": sub})
-        return create_auth_code(hass, IOS_CLIENT_ID, credential)
+                                credential = await self.oidc_provider.async_get_or_create_credentials({"sub": sub})
+                                return create_auth_code(hass, IOS_CLIENT_ID, credential)
 
-    async def get(self, request: web.Request) -> web.Response:
-        """Show the finish screen to allow the user to view their code."""
-        code = request.query.get("code")
+                            async def get(self, request: web.Request) -> web.Response:
+                                """Show the finish screen to allow the user to view their code."""
+                                code = request.query.get("code")
 
-        if not code:
-            view_html = await get_view(
-                "error",
-                {"error": "Missing code to show the finish screen."},
-            )
-            return web.Response(text=view_html, content_type="text/html")
+                                if not code:
+                                    view_html = await get_view(
+                                        "error",
+                                        {"error": "Missing code to show the finish screen."},
+                                    )
+                                    return web.Response(text=view_html, content_type="text/html")
 
-        host = (request.host or "").split(":")[0]
-        is_token_host = host == TOKEN_HOST
-        browser_code = code
-        mobile_code = code
-        show_browser_login = True
-        auto_submit = not is_token_host
-        mobile_instructions = (
-            "Please type the code into your app manually. If you don't see a code input, select "
-            "'Login with OpenID Connect (SSO)' first."
-        )
+                                host = (request.host or "").split(":")[0]
+                                is_token_host = host == TOKEN_HOST
+                                browser_code = code
+                                mobile_code = code
+                                show_browser_login = True
+                                auto_submit = not is_token_host
+                                mobile_instructions = (
+                                    "Please type the code into your app manually. If you don't see a code input, select "
+                                    "'Login with OpenID Connect (SSO)' first."
+                                )
 
-        if is_token_host:
-            mobile_code = await self._async_create_mobile_auth_code(request, code)
-            if not mobile_code:
-                view_html = await get_view(
-                    "error",
-                    {
-                        "error": "This login code is invalid or has already been used. "
-                        "Start the sign-in flow again to generate a fresh mobile code.",
-                    },
-                )
-                return web.Response(text=view_html, content_type="text/html")
+                                if is_token_host:
+                                    mobile_code = await self._async_create_mobile_auth_code(request, code)
+                                    if not mobile_code:
+                                        view_html = await get_view(
+                                            "error",
+                                            {
+                                                "error": "This login code is invalid or has already been used. "
+                                                "Start the sign-in flow again to generate a fresh mobile code.",
+                                            },
+                                        )
+                                        return web.Response(text=view_html, content_type="text/html")
 
-            show_browser_login = False
-            mobile_instructions = (
-                "Enter this code in the official Home Assistant iOS app after selecting "
-                "'Login with OpenID Connect (SSO)'."
-            )
+                                    show_browser_login = False
+                                    mobile_instructions = (
+                                        "Enter this code in the official Home Assistant iOS app after selecting "
+                                        "'Login with OpenID Connect (SSO)'."
+                                    )
 
-        view_html = await get_view(
-            "finish",
-            {
-                "auto_submit": auto_submit,
-                "browser_code": browser_code,
-                "mobile_code": mobile_code,
-                "mobile_instructions": mobile_instructions,
-                "show_browser_login": show_browser_login,
-            },
-        )
-        return web.Response(text=view_html, content_type="text/html")
+                                view_html = await get_view(
+                                    "finish",
+                                    {
+                                        "auto_submit": auto_submit,
+                                        "browser_code": browser_code,
+                                        "mobile_code": mobile_code,
+                                        "mobile_instructions": mobile_instructions,
+                                        "show_browser_login": show_browser_login,
+                                    },
+                                )
+                                return web.Response(text=view_html, content_type="text/html")
 
-    async def post(self, request: web.Request) -> web.Response:
-        """Receive response."""
-        data = await request.post()
-        code = data.get("code")
+                            async def post(self, request: web.Request) -> web.Response:
+                                """Receive response."""
+                                data = await request.post()
+                                code = data.get("code")
 
-        if not code:
-            return web.Response(text="No code received", status=500)
+                                if not code:
+                                    return web.Response(text="No code received", status=500)
 
-        return web.HTTPFound(
-            location="/lovelace?storeToken=true",
-            headers={
-                "set-cookie": "auth_oidc_code="
-                + code
-                + "; Path=/auth/login_flow; SameSite=Strict; HttpOnly; Max-Age=5",
-            },
-        )
-''',
+                                return web.HTTPFound(
+                                    location="/lovelace?storeToken=true",
+                                    headers={
+                                        "set-cookie": "auth_oidc_code="
+                                        + code
+                                        + "; Path=/auth/login_flow; SameSite=Strict; HttpOnly; Max-Age=5",
+                                    },
+                                )
+                        '''
+                    ),
                     encoding="utf-8",
                 )
                 print("auth_oidc finish endpoint patched")
