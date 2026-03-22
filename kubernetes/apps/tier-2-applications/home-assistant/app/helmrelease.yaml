@@ -518,7 +518,6 @@ spec:
               internal_url: https://hass-app.sulibot.com
               external_url: https://hass-app.sulibot.com
               auth_providers:
-                - type: oidc
                 - type: homeassistant
               customize:
                 light.smart_wi_fi_dimmer_switch_3:
