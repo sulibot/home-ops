@@ -387,6 +387,19 @@ locals {
         };
       }
 
+      # Originate the LoadBalancer VIP pools upstream as aggregate routes.
+      # Individual VIP reachability still depends on Cilium service handling,
+      # but the LAN/router must first know how to reach the LB address space.
+      protocol static lb_pool_v4 {
+        ipv4;
+        route ${var.loadbalancers_ipv4} blackhole;
+      }
+
+      protocol static lb_pool_v6 {
+        ipv6;
+        route ${var.loadbalancers_ipv6} blackhole;
+      }
+
       # Kernel protocol for IPv4 - imports/exports routes from/to kernel
       protocol kernel kernel_v4 {
         ipv4 {
@@ -473,6 +486,12 @@ locals {
               bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
               accept;
             }
+            # Advertise the service VIP aggregate to upstream so LAN clients
+            # can route to the LoadBalancer pool before Cilium handles a
+            # specific VIP inside the cluster.
+            if proto = "lb_pool_v4" then {
+              accept;
+            }
             # Tag Pod CIDRs (from Cilium) as Internal (Community :100)
             # This is CRITICAL for FRR to accept the pod routes via RM_VMS_IN_V4/6
             if proto = "cilium" then {
@@ -502,6 +521,12 @@ locals {
             # Tag Loopbacks (protocol direct_routes) as Public (Community :200)
             if proto = "direct_routes" then {
               bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
+              accept;
+            }
+            # Advertise the service VIP aggregate to upstream so LAN clients
+            # can route to the LoadBalancer pool before Cilium handles a
+            # specific VIP inside the cluster.
+            if proto = "lb_pool_v6" then {
               accept;
             }
             # Tag Pod CIDRs (from Cilium) as Internal (Community :100)
