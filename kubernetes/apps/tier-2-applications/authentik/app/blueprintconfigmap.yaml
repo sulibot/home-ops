@@ -12,18 +12,9 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
       # Reusable login flow pattern:
-      # - External requests use a dedicated Google-button-only flow via provider.authentication_flow.
-      # - App/OIDC/outpost requests use identifier-first UX:
-      #   @gmail.com -> Google source, non-gmail -> Authentik password.
-      - model: authentik_stages_identification.identificationstage
-        state: present
-        identifiers:
-          name: sulibot-google-button-identification
-        attrs:
-          name: sulibot-google-button-identification
-          user_fields: []
-          sources:
-            - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
+      # - All requests use one shared flow.
+      # - Local Authentik users and Google users can both log in.
+      # - Only Google users can self-register, via the Google source enrollment flow.
       - model: authentik_stages_identification.identificationstage
         state: present
         identifiers:
@@ -36,49 +27,6 @@ data:
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
           show_source_labels: true
-      - model: authentik_policies_expression.expressionpolicy
-        state: present
-        identifiers:
-          name: sulibot-is-cloudflare-access-request
-        attrs:
-          name: sulibot-is-cloudflare-access-request
-          expression: |
-            return False
-      - model: authentik_policies_expression.expressionpolicy
-        state: present
-        identifiers:
-          name: sulibot-is-gmail-identifier
-        attrs:
-          name: sulibot-is-gmail-identifier
-          expression: |
-            http_request = getattr(request, "http_request", None)
-            query = {}
-            if http_request:
-                query = getattr(http_request, "GET", {})
-            if not query:
-                query = getattr(request, "GET", {})
-            redirect_uri = (query.get("redirect_uri") or "").strip().lower()
-            next_url = (query.get("next") or "").strip().lower()
-            client_id = (query.get("client_id") or "").strip().lower()
-            identifier = ""
-            post = getattr(request, "POST", None)
-            if post:
-                identifier = (post.get("uid_field") or post.get("identifier") or "").strip().lower()
-            if not identifier:
-                for key in ("pending_user_identifier", "identifier", "uid_field", "uid", "username", "email"):
-                    value = request.context.get(key)
-                    if isinstance(value, str) and value.strip():
-                        identifier = value.strip().lower()
-                        break
-            if not identifier:
-                prompt_data = request.context.get("prompt_data", {})
-                if isinstance(prompt_data, dict):
-                    for key in ("uid_field", "identifier", "email", "username"):
-                        value = prompt_data.get(key)
-                        if isinstance(value, str) and value.strip():
-                            identifier = value.strip().lower()
-                            break
-            return identifier.endswith("@gmail.com")
       - model: authentik_flows.flow
         state: present
         identifiers:
@@ -88,15 +36,6 @@ data:
           slug: sulibot-internal-authentication-flow
           title: "Sign in"
           designation: authentication
-      - model: authentik_flows.flow
-        state: present
-        identifiers:
-          slug: sulibot-external-authentication-flow
-        attrs:
-          name: Sulibot External Authentication
-          slug: sulibot-external-authentication-flow
-          title: "Continue with Google"
-          designation: authentication
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -107,26 +46,6 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-shared-auth-identification]]
           order: 10
-      - model: authentik_flows.flowstagebinding
-        state: present
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
-          order: 10
-        attrs:
-          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
-          stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
-          order: 10
-      - model: authentik_flows.flowstagebinding
-        state: present
-        identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
-          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
-          order: 100
-        attrs:
-          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
-          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
-          order: 100
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
@@ -148,8 +67,7 @@ data:
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
       # Host-specific brand:
-      # - auth.sulibot.com defaults to app/internal flow (identifier-first routing).
-      # - External-only entrypoints use their provider-level Google-only auth flow.
+      # - auth.sulibot.com uses the shared authentication flow.
       - model: authentik_brands.brand
         state: present
         identifiers:
@@ -407,6 +325,49 @@ data:
             - username
             - email
           password_stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+  authorization-groups.yaml: |
+    version: 1
+    metadata:
+      name: Authentik Authorization Groups
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: standard-users
+        attrs:
+          name: standard-users
+      - model: authentik_core.group
+        state: present
+        identifiers:
+          name: trusted-users
+        attrs:
+          name: trusted-users
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        identifiers:
+          name: policy-access-standard
+        attrs:
+          name: policy-access-standard
+          expression: |
+            user = request.user
+            if not user or user.is_anonymous:
+                return False
+            groups = {group.name for group in user.groups.all()}
+            return "standard-users" in groups or "trusted-users" in groups
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        identifiers:
+          name: policy-access-trusted
+        attrs:
+          name: policy-access-trusted
+          expression: |
+            user = request.user
+            if not user or user.is_anonymous:
+                return False
+            groups = {group.name for group in user.groups.all()}
+            return "trusted-users" in groups
   immich-provider.yaml: |
     version: 1
     metadata:
@@ -458,6 +419,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, immich]]
           meta_launch_url: "https://immich.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, immich]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, immich]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   cloudflare-access.yaml: |
     version: 1
     metadata:
@@ -476,7 +450,7 @@ data:
           redirect_uris:
             - url: !Env CF_ACCESS_CALLBACK_URL
               matching_mode: strict
-          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
+          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
@@ -496,6 +470,19 @@ data:
           slug: cloudflare-access
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudflare-access]]
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, cloudflare-access]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, cloudflare-access]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   calibre-web-automated-provider.yaml: |
     version: 1
     metadata:
@@ -534,6 +521,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, calibre-web-automated]]
           meta_launch_url: "https://calibre-web-automated.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, calibre-web-automated]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, calibre-web-automated]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   karakeep-provider.yaml: |
     version: 1
     metadata:
@@ -574,6 +574,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, karakeep]]
           meta_launch_url: "https://karakeep.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, karakeep]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, karakeep]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   paperless-provider.yaml: |
     version: 1
     metadata:
@@ -612,6 +625,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, paperless]]
           meta_launch_url: "https://paperless.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, paperless]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, paperless]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   actual-provider.yaml: |
     version: 1
     metadata:
@@ -650,6 +676,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, actual]]
           meta_launch_url: "https://actual.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, actual]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, actual]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   filebrowser-provider.yaml: |
     version: 1
     metadata:
@@ -691,6 +730,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, filebrowser]]
           meta_launch_url: "https://filebrowser.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+          target: !Find [authentik_core.application, [slug, filebrowser]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+          target: !Find [authentik_core.application, [slug, filebrowser]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   cloudbeaver-provider.yaml: |
     version: 1
     metadata:
@@ -730,6 +782,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudbeaver]]
           meta_launch_url: "https://cloudbeaver.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+          target: !Find [authentik_core.application, [slug, cloudbeaver]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+          target: !Find [authentik_core.application, [slug, cloudbeaver]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   vikunja-provider.yaml: |
     version: 1
     metadata:
@@ -769,6 +834,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, vikunja]]
           meta_launch_url: "https://vikunja.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, vikunja]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, vikunja]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   miniflux-provider.yaml: |
     version: 1
     metadata:
@@ -808,6 +886,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, miniflux]]
           meta_launch_url: "https://miniflux.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, miniflux]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, miniflux]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   opencloud-provider.yaml: |
     version: 1
     metadata:
@@ -851,6 +942,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, opencloud]]
           meta_launch_url: "https://opencloud.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, opencloud]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, opencloud]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
   proxy-providers.yaml: |
     version: 1
     metadata:
@@ -902,6 +1006,19 @@ data:
           provider: !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
           meta_launch_url: "https://firefly.sulibot.com"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, firefly]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, firefly]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
       # Home Assistant app — OIDC client for native app token exchange
       - model: authentik_providers_oauth2.oauth2provider
         state: present
@@ -939,6 +1056,19 @@ data:
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, home-assistant-app]]
           meta_launch_url: "https://hass-get-token.sulibot.com/auth/oidc/welcome"
           policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, home-assistant-app]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, home-assistant-app]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
       # Proxy outpost — self-managed K8s deployment, no service_connection needed
       - model: authentik_outposts.outpost
         state: present

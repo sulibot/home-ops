@@ -18,6 +18,7 @@ entries:
       redirect_uris:
         - url: !Env CF_ACCESS_CALLBACK_URL
           matching_mode: strict
+      authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
