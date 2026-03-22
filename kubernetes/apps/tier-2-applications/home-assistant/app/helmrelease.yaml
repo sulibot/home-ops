@@ -385,6 +385,26 @@ spec:
           - backendRefs:
               - name: home-assistant-direct
                 port: 8123
+      get-token:
+        hostnames:
+          - hass-get-token.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - matches:
+              - path:
+                  type: Exact
+                  value: /
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /auth/oidc/welcome
+          - backendRefs:
+              - name: home-assistant-direct
+                port: 8123
       local:
         hostnames:
           - hass-local.sulibot.com
