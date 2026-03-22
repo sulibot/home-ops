@@ -12,7 +12,7 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
       # Reusable login flow pattern:
-      # - CF Access requests use a dedicated Google-button-only flow via provider.authentication_flow.
+      # - External requests use a dedicated Google-button-only flow via provider.authentication_flow.
       # - App/OIDC/outpost requests use identifier-first UX:
       #   @gmail.com -> Google source, non-gmail -> Authentik password.
       - model: authentik_stages_identification.identificationstage
@@ -91,10 +91,10 @@ data:
       - model: authentik_flows.flow
         state: present
         identifiers:
-          slug: sulibot-cf-authentication-flow
+          slug: sulibot-external-authentication-flow
         attrs:
-          name: Sulibot Cloudflare Authentication
-          slug: sulibot-cf-authentication-flow
+          name: Sulibot External Authentication
+          slug: sulibot-external-authentication-flow
           title: "Continue with Google"
           designation: authentication
       - model: authentik_flows.flowstagebinding
@@ -110,21 +110,21 @@ data:
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-cf-authentication-flow]]
+          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
           order: 10
         attrs:
-          target: !Find [authentik_flows.flow, [slug, sulibot-cf-authentication-flow]]
+          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
           stage: !Find [authentik_stages_identification.identificationstage, [name, sulibot-google-button-identification]]
           order: 10
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
-          target: !Find [authentik_flows.flow, [slug, sulibot-cf-authentication-flow]]
+          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
         attrs:
-          target: !Find [authentik_flows.flow, [slug, sulibot-cf-authentication-flow]]
+          target: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
       - model: authentik_flows.flowstagebinding
@@ -149,7 +149,7 @@ data:
           order: 100
       # Host-specific brand:
       # - auth.sulibot.com defaults to app/internal flow (identifier-first routing).
-      # - Cloudflare Access uses its provider-level Google-only auth flow.
+      # - External-only entrypoints use their provider-level Google-only auth flow.
       - model: authentik_brands.brand
         state: present
         identifiers:
@@ -476,7 +476,7 @@ data:
           redirect_uris:
             - url: !Env CF_ACCESS_CALLBACK_URL
               matching_mode: strict
-          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-cf-authentication-flow]]
+          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-external-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
