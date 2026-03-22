@@ -38,7 +38,7 @@
 
 {# Tenant prefix lists (adjust as needed) #}
 {% set TENANT_V4_LIST = tenant_v4_list | default(["10.100.0.0/24","10.101.0.0/24","10.102.0.0/24","10.103.0.0/24"]) %}
-{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/48","fd00:101::/48","fd00:102::/48","fd00:103::/48"]) %}
+{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/32","fd00:101::/32","fd00:102::/32","fd00:103::/32"]) %}
 {% set TENANT_LOOPBACK_V6_LIST = tenant_loopback_v6_list | default(["fd00:100:fe::/64","fd00:101:fe::/64","fd00:102:fe::/64","fd00:103:fe::/64"]) %}
 {% set TENANT_GUA_V6_LIST = tenant_gua_v6_list | default(["2600:1700:ab1a:500e::/64","2600:1700:ab1a:500d::/64","2600:1700:ab1a:500c::/64","2600:1700:ab1a:500b::/64"]) %}
 
