@@ -207,11 +207,12 @@ spec:
                     raise SystemExit("auth_oidc finish.py not found")
 
                 content = template.read_text(encoding="utf-8")
+                form_selector = '                const form = document.querySelector("form[method=\'post\']");'
                 old_script = "\n".join([
                     "        </form>",
                     "        <script>",
-                    '            window.addEventListener(\"load\", () => {',
-                    '                const form = document.querySelector(\"form[method=\\'post\\']\");',
+                    '            window.addEventListener("load", () => {',
+                    form_selector,
                     "                if (form) {",
                     "                    form.requestSubmit();",
                     "                }",
@@ -224,8 +225,8 @@ spec:
                     "        </form>",
                     "        {% if auto_submit %}",
                     "        <script>",
-                    '            window.addEventListener(\"load\", () => {',
-                    '                const form = document.querySelector(\"form[method=\\'post\\']\");',
+                    '            window.addEventListener("load", () => {',
+                    form_selector,
                     "                if (form) {",
                     "                    form.requestSubmit();",
                     "                }",
