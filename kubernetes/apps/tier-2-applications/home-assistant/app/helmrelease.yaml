@@ -539,6 +539,16 @@ spec:
           - backendRefs:
               - name: home-assistant-direct
                 port: 8123
+      debug:
+        hostnames:
+          - hass-debug.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: home-assistant-direct
+                port: 8123
     persistence:
       config:
         enabled: true
@@ -620,7 +630,7 @@ spec:
                 - 10.101.224.0/20
 
             homeassistant:
-              internal_url: http://hass-local.sulibot.com
+              internal_url: https://hass-local.sulibot.com
               external_url: https://hass-app.sulibot.com
               auth_providers:
                 - type: homeassistant

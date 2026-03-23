@@ -1033,6 +1033,8 @@ data:
               matching_mode: strict
             - url: "https://hass-app.sulibot.com/auth/oidc/callback"
               matching_mode: strict
+            - url: "https://hass-local.sulibot.com/auth/oidc/callback"
+              matching_mode: strict
             - url: "https://hass-get-token.sulibot.com/auth/oidc/callback"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
