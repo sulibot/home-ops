@@ -630,8 +630,11 @@ spec:
                 - 10.101.224.0/20
 
             homeassistant:
-              internal_url: https://hass-local.sulibot.com
-              external_url: https://hass.sulibot.com
+              # The iOS/mobile app persists HA's advertised internal/external URLs from
+              # discovery/onboarding. Keep both on the unified app/discovery hostname so
+              # the client does not pivot from local split-DNS onto the legacy browser host.
+              internal_url: https://hass-app.sulibot.com
+              external_url: https://hass-app.sulibot.com
               auth_providers:
                 - type: homeassistant
               customize:

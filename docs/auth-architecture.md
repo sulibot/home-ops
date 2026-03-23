@@ -53,8 +53,8 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `filebrowser.sulibot.com` | FileBrowser Quantum | Native OIDC via Authentik (local/password login disabled) |
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
-| `hass.sulibot.com` | Home Assistant (browser) | Native OIDC via Authentik (`hass-oidc-auth`) |
-| `hass-app.sulibot.com` | Home Assistant (app/discovery) | Native OIDC via Authentik (`hass-oidc-auth`), WARP required externally |
+| `hass.sulibot.com` | Home Assistant (legacy browser host) | Native OIDC via Authentik (`hass-oidc-auth`) |
+| `hass-app.sulibot.com` | Home Assistant (canonical app/discovery host) | Native OIDC via Authentik (`hass-oidc-auth`), WARP required externally and split-DNS direct internally |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
 | `vikunja-app.sulibot.com` | Vikunja (app) | App-safe endpoint, WARP required externally |
 | `plex.sulibot.com` | Plex | Plex account (no WARP requirement externally) |

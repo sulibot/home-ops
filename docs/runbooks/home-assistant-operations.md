@@ -81,8 +81,8 @@ Home Assistant has:
 
 Practical access paths:
 
-- Canonical internal HA URL: `https://hass-local.sulibot.com`
-- Canonical external browser HA URL: `https://hass.sulibot.com`
+- Canonical HA app/discovery URL: `https://hass-app.sulibot.com`
+- Legacy browser host: `https://hass.sulibot.com`
 - Debug-only local HA URL: `http://hass-debug.sulibot.com`
 - Direct IPv6 fallback HA URL: `http://[fd00:31::251]:8123`
 - Direct IPv4 fallback HA URL: `http://10.31.0.251:8123`
@@ -100,14 +100,14 @@ Home Assistant is internal-only in the intended design.
 
 ### Human access
 
-Human browser and app access use the direct internal Home Assistant endpoint:
+Human browser and app access should use the unified Home Assistant app/discovery endpoint:
 
-- preferred internal app endpoint: `https://hass-local.sulibot.com`
+- preferred app/discovery endpoint: `https://hass-app.sulibot.com`
 - debug-only HTTP endpoint: `http://hass-debug.sulibot.com`
 - direct IPv6 fallback: `http://[fd00:31::251]:8123`
 - direct IPv4 fallback: `http://10.31.0.251:8123`
 
-`hass-local.sulibot.com` is the real internal app/OIDC hostname.
+`hass-app.sulibot.com` is the canonical HA app/OIDC hostname.
 `hass-debug.sulibot.com` is the plain HTTP observation host for troubleshooting raw
 client behavior without the Cloudflare/browser/TLS layers involved.
 
@@ -498,7 +498,7 @@ If you want full GitOps for HA configuration later, design that as a separate pr
 
 ### Key URLs
 
-- Local HA preferred: `http://hass-local.sulibot.com`
+- HA app/discovery: `https://hass-app.sulibot.com`
 - Local HA IPv6 fallback: `http://[fd00:31::251]:8123`
 - Local HA IPv4 fallback: `http://10.31.0.251:8123`
 - OTBR: `http://otbr01.sulibot.com:8081`
