@@ -11,10 +11,10 @@ metadata:
 spec:
   gatewayClassName: cilium
   addresses:
-    - type: IPAddress
-      value: 10.101.250.11
-    - type: IPAddress
-      value: fd00:101:250::11
+  - type: IPAddress
+    value: 10.101.250.12
+  - type: IPAddress
+    value: fd00:101:250::12
   infrastructure:
     labels:
       advertise: loadbalancer

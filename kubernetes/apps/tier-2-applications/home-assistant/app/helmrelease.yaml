@@ -192,6 +192,266 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
+          bootstrap-matter-dimmer-bridge:
+            image:
+              repository: python
+              tag: 3.14-alpine
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                python - <<'PY'
+                import json
+                import os
+                from pathlib import Path
+                import textwrap
+
+                target = Path("/config/custom_components/matter_dimmer_bridge")
+                os.makedirs(target, exist_ok=True)
+
+                (target / "manifest.json").write_text(
+                    json.dumps(
+                        {
+                            "domain": "matter_dimmer_bridge",
+                            "name": "Matter Dimmer Bridge",
+                            "version": "0.1.0",
+                            "documentation": "https://github.com/sulibot/home-ops",
+                            "dependencies": ["matter"],
+                            "codeowners": ["@sulibot"],
+                            "iot_class": "local_push",
+                        },
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                (target / "__init__.py").write_text(
+                    textwrap.dedent(
+                        '''\
+                        """Bridge Matter dimmer attribute updates directly to target bulbs."""
+
+                        from __future__ import annotations
+
+                        import asyncio
+                        import logging
+                        from dataclasses import dataclass
+
+                        import voluptuous as vol
+                        from chip.clusters import Objects as clusters
+
+                        from homeassistant.components.matter.const import DOMAIN as MATTER_DOMAIN
+                        from homeassistant.components.matter.helpers import get_matter
+                        from homeassistant.const import CONF_ENTITY_ID, CONF_NAME, EVENT_HOMEASSISTANT_STARTED
+                        from homeassistant.core import Event, HomeAssistant, callback
+                        from homeassistant.helpers import config_validation as cv
+                        from matter_server.common.helpers.util import create_attribute_path
+                        from matter_server.common.models import EventType
+
+                        DOMAIN = "matter_dimmer_bridge"
+                        CONF_NODE_ID = "node_id"
+                        CONF_SWITCH_ENTITY_ID = "switch_entity_id"
+                        CONF_TARGET_ENTITY_IDS = "target_entity_ids"
+                        RETRY_DELAY_SECONDS = 5
+
+                        LOGGER = logging.getLogger(__name__)
+
+                        BRIDGE_SCHEMA = vol.Schema(
+                            {
+                                vol.Required(CONF_NAME): cv.string,
+                                vol.Required(CONF_NODE_ID): vol.Coerce(int),
+                                vol.Required(CONF_SWITCH_ENTITY_ID): cv.entity_id,
+                                vol.Required(CONF_TARGET_ENTITY_IDS): vol.All(
+                                    cv.ensure_list, [cv.entity_id]
+                                ),
+                            }
+                        )
+
+                        CONFIG_SCHEMA = vol.Schema(
+                            {DOMAIN: vol.All(cv.ensure_list, [BRIDGE_SCHEMA])},
+                            extra=vol.ALLOW_EXTRA,
+                        )
+
+
+                        @dataclass
+                        class BridgeState:
+                            """In-memory state for one mirrored dimmer."""
+
+                            name: str
+                            node_id: int
+                            switch_entity_id: str
+                            target_entity_ids: list[str]
+                            is_on: bool | None = None
+                            brightness: int = 255
+
+
+                        def _matter_to_ha_brightness(level: int | None) -> int:
+                            """Convert Matter currentLevel to HA brightness scale."""
+                            if level is None:
+                                return 255
+                            value = max(1, min(254, int(level)))
+                            return round((value - 1) * 255 / 253)
+
+
+                        async def _async_turn_on(
+                            hass: HomeAssistant, state: BridgeState, *, brightness: int | None = None
+                        ) -> None:
+                            """Mirror dimmer on/brightness to target bulbs."""
+                            service_data: dict[str, object] = {"entity_id": state.target_entity_ids}
+                            if brightness is not None:
+                                service_data["brightness"] = max(1, min(255, brightness))
+                            await hass.services.async_call(
+                                "light", "turn_on", service_data, blocking=True
+                            )
+
+
+                        async def _async_turn_off(hass: HomeAssistant, state: BridgeState) -> None:
+                            """Mirror dimmer off to target bulbs."""
+                            await hass.services.async_call(
+                                "light",
+                                "turn_off",
+                                {"entity_id": state.target_entity_ids},
+                                blocking=True,
+                            )
+
+
+                        def _load_initial_state(hass: HomeAssistant, state: BridgeState) -> None:
+                            """Prime cached switch state from Matter node data."""
+                            matter = get_matter(hass)
+                            node = matter.matter_client.get_node(state.node_id)
+                            endpoint = node.endpoints[1]
+                            onoff_cluster = endpoint.get_cluster(clusters.OnOff)
+                            level_cluster = endpoint.get_cluster(clusters.LevelControl)
+                            if onoff_cluster is not None:
+                                state.is_on = bool(getattr(onoff_cluster, "onOff", False))
+                            if level_cluster is not None:
+                                level = getattr(level_cluster, "currentLevel", None)
+                                if isinstance(level, int):
+                                    state.brightness = _matter_to_ha_brightness(level)
+
+
+                        def _setup_bridge(hass: HomeAssistant, state: BridgeState) -> list[callable]:
+                            """Subscribe to Matter attribute updates for one dimmer."""
+                            matter = get_matter(hass)
+                            matter_client = matter.matter_client
+                            _load_initial_state(hass, state)
+
+                            @callback
+                            def onoff_updated(event: EventType, value: object) -> None:
+                                if not isinstance(value, bool):
+                                    return
+                                state.is_on = value
+                                LOGGER.info("%s on/off -> %s", state.name, value)
+                                if value:
+                                    hass.async_create_task(
+                                        _async_turn_on(hass, state, brightness=state.brightness)
+                                    )
+                                else:
+                                    hass.async_create_task(_async_turn_off(hass, state))
+
+                            @callback
+                            def level_updated(event: EventType, value: object) -> None:
+                                if not isinstance(value, int):
+                                    return
+                                state.brightness = _matter_to_ha_brightness(value)
+                                LOGGER.info("%s brightness -> %s", state.name, state.brightness)
+                                if state.is_on is not False:
+                                    hass.async_create_task(
+                                        _async_turn_on(hass, state, brightness=state.brightness)
+                                    )
+
+                            return [
+                                matter_client.subscribe_events(
+                                    callback=onoff_updated,
+                                    event_filter=EventType.ATTRIBUTE_UPDATED,
+                                    node_filter=state.node_id,
+                                    attr_path_filter=create_attribute_path(
+                                        1,
+                                        clusters.OnOff.Attributes.OnOff.cluster_id,
+                                        clusters.OnOff.Attributes.OnOff.attribute_id,
+                                    ),
+                                ),
+                                matter_client.subscribe_events(
+                                    callback=level_updated,
+                                    event_filter=EventType.ATTRIBUTE_UPDATED,
+                                    node_filter=state.node_id,
+                                    attr_path_filter=create_attribute_path(
+                                        1,
+                                        clusters.LevelControl.Attributes.CurrentLevel.cluster_id,
+                                        clusters.LevelControl.Attributes.CurrentLevel.attribute_id,
+                                    ),
+                                ),
+                            ]
+
+
+                        async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+                            """Set up the Matter dimmer bridge."""
+                            entries = config.get(DOMAIN, [])
+                            if not entries:
+                                return True
+
+                            domain_data = hass.data.setdefault(DOMAIN, {})
+                            domain_data["started"] = False
+                            domain_data["unsubs"] = []
+
+                            states = [
+                                BridgeState(
+                                    name=entry[CONF_NAME],
+                                    node_id=entry[CONF_NODE_ID],
+                                    switch_entity_id=entry[CONF_SWITCH_ENTITY_ID],
+                                    target_entity_ids=list(entry[CONF_TARGET_ENTITY_IDS]),
+                                )
+                                for entry in entries
+                            ]
+
+                            async def _async_start(_: Event | None = None) -> None:
+                                if domain_data["started"]:
+                                    return
+                                if MATTER_DOMAIN not in hass.data or not hass.data[MATTER_DOMAIN]:
+                                    LOGGER.info("Matter not ready for dimmer bridge; retrying")
+                                    async def _retry(_: object) -> None:
+                                        await _async_start()
+                                    hass.loop.call_later(
+                                        RETRY_DELAY_SECONDS,
+                                        lambda: hass.async_create_task(_retry(None)),
+                                    )
+                                    return
+                                try:
+                                    unsubs: list[callable] = []
+                                    for state in states:
+                                        unsubs.extend(_setup_bridge(hass, state))
+                                    domain_data["unsubs"] = unsubs
+                                    domain_data["started"] = True
+                                    LOGGER.info(
+                                        "Started Matter dimmer bridge for %s",
+                                        ", ".join(state.name for state in states),
+                                    )
+                                except Exception:
+                                    LOGGER.exception("Failed to start Matter dimmer bridge")
+                                    async def _retry(_: object) -> None:
+                                        await _async_start()
+                                    hass.loop.call_later(
+                                        RETRY_DELAY_SECONDS,
+                                        lambda: hass.async_create_task(_retry(None)),
+                                    )
+
+                            if hass.is_running:
+                                hass.async_create_task(_async_start())
+                            else:
+                                hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _async_start)
+
+                            return True
+                        '''
+                    ),
+                    encoding="utf-8",
+                )
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
           patch-auth-oidc-finish:
             image:
               repository: python
@@ -771,7 +1031,32 @@ spec:
           - path: /config/.venv
       tmp:
         type: emptyDir
+      authorize-page:
+        enabled: true
+        type: configMap
+        identifier: authorize-page
+        advancedMounts:
+          home-assistant:
+            app:
+              - path: /usr/local/lib/python3.14/site-packages/hass_frontend/authorize.html
+                subPath: authorize.html
     configMaps:
+      authorize-page:
+        enabled: true
+        data:
+          authorize.html: |
+            <!DOCTYPE html><html><head><title>Home Assistant</title><meta charset="utf-8"><link rel="manifest" href="/manifest.json" crossorigin="use-credentials"><link rel="icon" href="/static/icons/favicon.ico"><link rel="modulepreload" href="/frontend_latest/authorize.0f231e4ef07f5519.js" crossorigin="use-credentials"><meta name="viewport" content="width=device-width,user-scalable=no,viewport-fit=cover,initial-scale=1"><style>body{font-family:Roboto,Noto,sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-weight:400;margin:0;padding:0;height:100%}</style><style>html{background-color:var(--primary-background-color,#fafafa);color:var(--primary-text-color,#212121)}@media (prefers-color-scheme:dark){html{background-color:var(--primary-background-color,#111);color:var(--primary-text-color,#e1e1e1)}}body{box-sizing:border-box;padding:32px 0;display:flex;flex-wrap:wrap;align-items:center}.content{width:100%;max-width:400px;margin:0 auto;padding:0 16px;box-sizing:content-box}.header{display:flex;align-items:center;justify-content:center;margin-bottom:32px;padding-top:var(--safe-area-inset-top)}.header img{height:56px;width:56px}</style></head><body><script>
+            (() => {
+              if (window.location.host !== "hass-app.sulibot.com") {
+                return;
+              }
+              const params = new URLSearchParams(window.location.search);
+              if (!params.get("client_id") || !params.get("redirect_uri")) {
+                return;
+              }
+              window.location.replace(`/auth/oidc/redirect?${params.toString()}`);
+            })();
+            </script><div class="content"><div class="header"><img src="/static/icons/favicon-192x192.png" alt="Home Assistant"></div><ha-authorize></ha-authorize></div><script>function _ls(d,e){var i=document.createElement("script");return e&&(i.crossOrigin="use-credentials"),i.src=d,document.head.appendChild(i)}"attachShadow"in Element.prototype||(_ls("/static/polyfills/webcomponents-bundle.js",!0),_ls("/static/polyfills/lit-polyfill-support.js",!0));var isModern=/Edge?\/(13[4-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Firefox\/(13[7-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Chrom(ium|e)\/(109|1[1-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|(Maci|X1{2}).+ Version\/(18\.([4-9]|\d{2,})|(19|[2-9]\d|\d{3,})\.\d+)([,.]\d+|)( \(\w+\)|)( Mobile\/\w+|) Safari\/|Chrome.+OPR\/(1{2}[89]|1[2-9]\d|[2-9]\d{2}|\d{4,})\.\d+\.\d+|(CPU[ +]OS|iPhone[ +]OS|CPU[ +]iPhone|CPU IPhone OS|CPU iPad OS)[ +]+(18[._]([4-9]|\d{2,})|(19|[2-9]\d|\d{3,})[._]\d+)([._]\d+|)|Android:?[ /-](13[5-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})(\.\d+|)(\.\d+|)|Mobile Safari.+OPR\/([89]\d|\d{3,})\.\d+\.\d+|Android.+Firefox\/(13[7-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Android.+Chrom(ium|e)\/(13[5-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|SamsungBrowser\/(2[89]|[3-9]\d|\d{3,})\.\d+|Home As{2}istant\/[\d.]+ \(.+; macOS (1[3-9]|[2-9]\d|\d{3,})\.\d+(\.\d+)?\)/.test(navigator.userAgent)&&"findLast"in Array.prototype</script><script>if(-1===navigator.userAgent.indexOf("Android")){function _pf(o,t){var n=document.createElement("link");n.rel="preload",n.as="font",n.type="font/woff2",n.href=o,n.crossOrigin="anonymous",document.head.appendChild(n)}_pf("/static/fonts/roboto/Roboto-Regular.woff2"),_pf("/static/fonts/roboto/Roboto-Medium.woff2")}</script><script crossorigin="use-credentials">isModern&&(import("/frontend_latest/authorize.0f231e4ef07f5519.js"),window.latestJS=!0)</script><script>window.latestJS||_ls("/frontend_es5/authorize.63b2163e52dedf94.js",!0)</script><script crossorigin="use-credentials">window.latestJS&&(window.providersPromise=fetch("/auth/providers",{credentials:"same-origin"}))</script></body></html>
       configuration:
         enabled: true
         data:
@@ -829,11 +1114,17 @@ spec:
               auth_providers:
                 - type: homeassistant
               customize:
+                light.living_room_switch:
+                  friendly_name: Living room switch
+                  icon: mdi:light-switch
                 light.smart_wi_fi_dimmer_switch_3:
                   friendly_name: Living Room Wall Dimmer
                   icon: mdi:light-switch
                 light.living_room_lights:
                   icon: mdi:ceiling-light-multiple
+                light.master_switch:
+                  friendly_name: Master Switch
+                  icon: mdi:light-switch
                 light.smart_wi_fi_dimmer_switch_2:
                   friendly_name: Master Wall Dimmer
                   icon: mdi:light-switch
@@ -863,6 +1154,21 @@ spec:
                 automatic_user_linking: true
                 force_https: true
 
+            matter_dimmer_bridge:
+              - name: Living room switch
+                node_id: 7
+                switch_entity_id: light.living_room_switch
+                target_entity_ids:
+                  - light.kajplats_e26_ws_globe_1600lm_2
+                  - light.kajplats_e26_ws_globe_1600lm_3
+                  - light.kajplats_e26_ws_globe_1600lm_4
+              - name: Master Switch
+                node_id: 6
+                switch_entity_id: light.master_switch
+                target_entity_ids:
+                  - light.kajplats_e26_ws_globe_1600lm
+                  - light.kajplats_e26_ws_globe_1600lm_5
+
             google_assistant:
               project_id: sulibot-home-assistant
               service_account: !include SERVICE_ACCOUNT.json
@@ -874,13 +1180,13 @@ spec:
                   room: Living Room
                   aliases:
                     - Living Room
-                light.essentials_a19_a60:
+                light.kajplats_e26_ws_globe_1600lm_2:
                   expose: true
                   room: Living Room
-                light.essentials_a19_a60_2:
+                light.kajplats_e26_ws_globe_1600lm_3:
                   expose: true
                   room: Living Room
-                light.essentials_a19_a60_3:
+                light.kajplats_e26_ws_globe_1600lm_4:
                   expose: true
                   room: Living Room
                 light.smart_wi_fi_dimmer_switch_3:
@@ -891,10 +1197,10 @@ spec:
                   aliases:
                     - Master Lights
                     - Master Bedroom Lights
-                light.essentials_a19_a60_4:
+                light.kajplats_e26_ws_globe_1600lm:
                   expose: true
                   room: Master
-                light.essentials_a19_a60_5:
+                light.kajplats_e26_ws_globe_1600lm_5:
                   expose: true
                   room: Master
                 light.smart_wi_fi_dimmer_switch_2:
@@ -954,7 +1260,9 @@ spec:
             adaptive_lighting:
               - name: living_room
                 lights:
-                  - light.living_room_lights
+                  - light.kajplats_e26_ws_globe_1600lm_2
+                  - light.kajplats_e26_ws_globe_1600lm_3
+                  - light.kajplats_e26_ws_globe_1600lm_4
                 prefer_rgb_color: false
                 transition: 5
                 initial_transition: 1
@@ -962,7 +1270,8 @@ spec:
                 detect_non_ha_changes: false
               - name: master
                 lights:
-                  - light.master_lights
+                  - light.kajplats_e26_ws_globe_1600lm
+                  - light.kajplats_e26_ws_globe_1600lm_5
                 prefer_rgb_color: false
                 transition: 5
                 initial_transition: 1
@@ -994,21 +1303,86 @@ spec:
                       action: light.toggle
                       target:
                         entity_id: light.dining_room_lights
+              - light:
+                  - name: Living Room Lights
+                    unique_id: living_room_lights_group
+                    state: >-
+                      {{ `{{ is_state('light.kajplats_e26_ws_globe_1600lm_2', 'on')
+                         or is_state('light.kajplats_e26_ws_globe_1600lm_3', 'on')
+                         or is_state('light.kajplats_e26_ws_globe_1600lm_4', 'on') }}` }}
+                    level: >-
+                      {{ `{{ [
+                        state_attr('light.kajplats_e26_ws_globe_1600lm_2', 'brightness') | int(0),
+                        state_attr('light.kajplats_e26_ws_globe_1600lm_3', 'brightness') | int(0),
+                        state_attr('light.kajplats_e26_ws_globe_1600lm_4', 'brightness') | int(0)
+                      ] | max }}` }}
+                    turn_on:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm_2
+                          - light.kajplats_e26_ws_globe_1600lm_3
+                          - light.kajplats_e26_ws_globe_1600lm_4
+                      data:
+                        brightness: "{{ `{{ brightness | default(none) }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
+                    set_level:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm_2
+                          - light.kajplats_e26_ws_globe_1600lm_3
+                          - light.kajplats_e26_ws_globe_1600lm_4
+                      data:
+                        brightness: "{{ `{{ brightness }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
+                    turn_off:
+                      action: light.turn_off
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm_2
+                          - light.kajplats_e26_ws_globe_1600lm_3
+                          - light.kajplats_e26_ws_globe_1600lm_4
+                      data:
+                        transition: "{{ `{{ transition | default(none) }}` }}"
+                  - name: Master Lights
+                    unique_id: master_lights_group
+                    state: >-
+                      {{ `{{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
+                         or is_state('light.kajplats_e26_ws_globe_1600lm_5', 'on') }}` }}
+                    level: >-
+                      {{ `{{ [
+                        state_attr('light.kajplats_e26_ws_globe_1600lm', 'brightness') | int(0),
+                        state_attr('light.kajplats_e26_ws_globe_1600lm_5', 'brightness') | int(0)
+                      ] | max }}` }}
+                    turn_on:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm
+                          - light.kajplats_e26_ws_globe_1600lm_5
+                      data:
+                        brightness: "{{ `{{ brightness | default(none) }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
+                    set_level:
+                      action: light.turn_on
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm
+                          - light.kajplats_e26_ws_globe_1600lm_5
+                      data:
+                        brightness: "{{ `{{ brightness }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
+                    turn_off:
+                      action: light.turn_off
+                      target:
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm
+                          - light.kajplats_e26_ws_globe_1600lm_5
+                      data:
+                        transition: "{{ `{{ transition | default(none) }}` }}"
 
             light:
-              - platform: group
-                unique_id: living_room_lights_group
-                name: Living Room Lights
-                entities:
-                  - light.essentials_a19_a60
-                  - light.essentials_a19_a60_2
-                  - light.essentials_a19_a60_3
-              - platform: group
-                unique_id: master_lights_group
-                name: Master Lights
-                entities:
-                  - light.essentials_a19_a60_4
-                  - light.essentials_a19_a60_5
               - platform: group
                 unique_id: standing_lamp_group
                 name: Standing Lamp
@@ -1045,52 +1419,82 @@ spec:
               alias: Living Room Dimmer Mirrors Nanoleaf Bulbs
               mode: restart
               trigger:
-                - platform: state
-                  entity_id: light.smart_wi_fi_dimmer_switch_3
-              condition:
-                - condition: template
-                  value_template: "{{ `{{ trigger.to_state is not none }}` }}"
+                - platform: device
+                  id: living_on
+                  device_id: c98335bbb6015e3fdec9c4fe20eff82e
+                  domain: light
+                  entity_id: 387f0c23bf200f82f86afbfe90b12278
+                  type: turned_on
+                - platform: device
+                  id: living_off
+                  device_id: c98335bbb6015e3fdec9c4fe20eff82e
+                  domain: light
+                  entity_id: 387f0c23bf200f82f86afbfe90b12278
+                  type: turned_off
               action:
+                - service: system_log.write
+                  data:
+                    level: info
+                    message: "{{ `{{ 'living_room_dimmer fired id=' ~ trigger.id ~ ' brightness=' ~ (state_attr('light.living_room_switch', 'brightness') | default('none')) }}` }}"
                 - choose:
                     - conditions:
-                        - condition: state
-                          entity_id: light.smart_wi_fi_dimmer_switch_3
-                          state: "off"
+                        - condition: trigger
+                          id: living_off
                       sequence:
                         - service: light.turn_off
                           target:
-                            entity_id: light.living_room_lights
+                            entity_id:
+                              - light.kajplats_e26_ws_globe_1600lm_2
+                              - light.kajplats_e26_ws_globe_1600lm_3
+                              - light.kajplats_e26_ws_globe_1600lm_4
                   default:
                     - service: light.turn_on
                       target:
-                        entity_id: light.living_room_lights
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm_2
+                          - light.kajplats_e26_ws_globe_1600lm_3
+                          - light.kajplats_e26_ws_globe_1600lm_4
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_3', 'brightness') | int(0) }}` }}"
+                        brightness: "{{ `{{ state_attr('light.living_room_switch', 'brightness') | int(0) }}` }}"
             - id: master_dimmer_mirrors_nanoleaf_bulbs
               alias: Master Dimmer Mirrors Nanoleaf Bulbs
               mode: restart
               trigger:
-                - platform: state
-                  entity_id: light.smart_wi_fi_dimmer_switch_2
-              condition:
-                - condition: template
-                  value_template: "{{ `{{ trigger.to_state is not none }}` }}"
+                - platform: device
+                  id: master_on
+                  device_id: b0e25d6eb46015505c495e669dfb504c
+                  domain: light
+                  entity_id: 12ac17dca953042d255646facff608bc
+                  type: turned_on
+                - platform: device
+                  id: master_off
+                  device_id: b0e25d6eb46015505c495e669dfb504c
+                  domain: light
+                  entity_id: 12ac17dca953042d255646facff608bc
+                  type: turned_off
               action:
+                - service: system_log.write
+                  data:
+                    level: info
+                    message: "{{ `{{ 'master_dimmer fired id=' ~ trigger.id ~ ' brightness=' ~ (state_attr('light.master_switch', 'brightness') | default('none')) }}` }}"
                 - choose:
                     - conditions:
-                        - condition: state
-                          entity_id: light.smart_wi_fi_dimmer_switch_2
-                          state: "off"
+                        - condition: trigger
+                          id: master_off
                       sequence:
                         - service: light.turn_off
                           target:
-                            entity_id: light.master_lights
+                            entity_id:
+                              - light.kajplats_e26_ws_globe_1600lm
+                              - light.kajplats_e26_ws_globe_1600lm_5
                   default:
                     - service: light.turn_on
                       target:
-                        entity_id: light.master_lights
+                        entity_id:
+                          - light.kajplats_e26_ws_globe_1600lm
+                          - light.kajplats_e26_ws_globe_1600lm_5
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch_2', 'brightness') | int(0) }}` }}"
+                        brightness: "{{ `{{ state_attr('light.master_switch', 'brightness') | int(0) }}` }}"
             - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
               alias: Bedroom Dimmer Mirrors Bulbs
               mode: restart
@@ -1111,9 +1515,8 @@ spec:
               action:
                 - choose:
                     - conditions:
-                        - condition: state
-                          entity_id: light.smart_wi_fi_dimmer_switch
-                          state: "off"
+                        - condition: template
+                          value_template: "{{ `{{ trigger.to_state.state == 'off' }}` }}"
                       sequence:
                         - service: light.turn_off
                           target:
@@ -1123,7 +1526,7 @@ spec:
                       target:
                         entity_id: light.bedroom_lights
                       data:
-                        brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') | int(0) }}` }}"
+                        brightness: "{{ `{{ trigger.to_state.attributes.brightness | int(0) }}` }}"
             - id: bedroom_lights_lock_enable
               alias: Bedroom Lights Lock Enable
               trigger:
@@ -1214,11 +1617,9 @@ spec:
                             entity_id: counter.bedroom_lights_press_count
                         - service: light.turn_on
                           target:
-                            entity_id:
-                              - light.smart_wi_fi_dimmer_switch
-                              - light.bedroom_lights
+                            entity_id: light.bedroom_lights
                           data:
-                            brightness: "{{ `{{ state_attr('light.smart_wi_fi_dimmer_switch', 'brightness') | int(0) }}` }}"
+                            brightness: "{{ `{{ trigger.to_state.attributes.brightness | int(0) }}` }}"
             - id: bedroom_lights_lock_override_reset_press_window
               alias: Bedroom Lights Lock Override Reset Press Window
               mode: single
@@ -1260,9 +1661,7 @@ spec:
               action:
                 - service: light.turn_off
                   target:
-                    entity_id:
-                      - light.smart_wi_fi_dimmer_switch
-                      - light.bedroom_lights
+                    entity_id: light.bedroom_lights
             - id: adaptive_lighting_disable_brightness_after_start
               alias: Adaptive Lighting Disable Brightness After Start
               mode: single
