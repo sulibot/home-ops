@@ -1117,16 +1117,10 @@ spec:
                 light.living_room_switch:
                   friendly_name: Living room switch
                   icon: mdi:light-switch
-                light.smart_wi_fi_dimmer_switch_3:
-                  friendly_name: Living Room Wall Dimmer
-                  icon: mdi:light-switch
                 light.living_room_lights:
                   icon: mdi:ceiling-light-multiple
                 light.master_switch:
                   friendly_name: Master Switch
-                  icon: mdi:light-switch
-                light.smart_wi_fi_dimmer_switch_2:
-                  friendly_name: Master Wall Dimmer
                   icon: mdi:light-switch
                 light.master_lights:
                   icon: mdi:ceiling-light-multiple
@@ -1189,7 +1183,7 @@ spec:
                 light.kajplats_e26_ws_globe_1600lm_4:
                   expose: true
                   room: Living Room
-                light.smart_wi_fi_dimmer_switch_3:
+                light.living_room_switch:
                   expose: false
                 light.master_lights:
                   expose: true
@@ -1203,7 +1197,7 @@ spec:
                 light.kajplats_e26_ws_globe_1600lm_5:
                   expose: true
                   room: Master
-                light.smart_wi_fi_dimmer_switch_2:
+                light.master_switch:
                   expose: false
                 light.bedroom_lights:
                   expose: true
@@ -1415,86 +1409,6 @@ spec:
         enabled: true
         data:
           automations.yaml: |
-            - id: living_room_dimmer_mirrors_nanoleaf_bulbs
-              alias: Living Room Dimmer Mirrors Nanoleaf Bulbs
-              mode: restart
-              trigger:
-                - platform: device
-                  id: living_on
-                  device_id: c98335bbb6015e3fdec9c4fe20eff82e
-                  domain: light
-                  entity_id: 387f0c23bf200f82f86afbfe90b12278
-                  type: turned_on
-                - platform: device
-                  id: living_off
-                  device_id: c98335bbb6015e3fdec9c4fe20eff82e
-                  domain: light
-                  entity_id: 387f0c23bf200f82f86afbfe90b12278
-                  type: turned_off
-              action:
-                - service: system_log.write
-                  data:
-                    level: info
-                    message: "{{ `{{ 'living_room_dimmer fired id=' ~ trigger.id ~ ' brightness=' ~ (state_attr('light.living_room_switch', 'brightness') | default('none')) }}` }}"
-                - choose:
-                    - conditions:
-                        - condition: trigger
-                          id: living_off
-                      sequence:
-                        - service: light.turn_off
-                          target:
-                            entity_id:
-                              - light.kajplats_e26_ws_globe_1600lm_2
-                              - light.kajplats_e26_ws_globe_1600lm_3
-                              - light.kajplats_e26_ws_globe_1600lm_4
-                  default:
-                    - service: light.turn_on
-                      target:
-                        entity_id:
-                          - light.kajplats_e26_ws_globe_1600lm_2
-                          - light.kajplats_e26_ws_globe_1600lm_3
-                          - light.kajplats_e26_ws_globe_1600lm_4
-                      data:
-                        brightness: "{{ `{{ state_attr('light.living_room_switch', 'brightness') | int(0) }}` }}"
-            - id: master_dimmer_mirrors_nanoleaf_bulbs
-              alias: Master Dimmer Mirrors Nanoleaf Bulbs
-              mode: restart
-              trigger:
-                - platform: device
-                  id: master_on
-                  device_id: b0e25d6eb46015505c495e669dfb504c
-                  domain: light
-                  entity_id: 12ac17dca953042d255646facff608bc
-                  type: turned_on
-                - platform: device
-                  id: master_off
-                  device_id: b0e25d6eb46015505c495e669dfb504c
-                  domain: light
-                  entity_id: 12ac17dca953042d255646facff608bc
-                  type: turned_off
-              action:
-                - service: system_log.write
-                  data:
-                    level: info
-                    message: "{{ `{{ 'master_dimmer fired id=' ~ trigger.id ~ ' brightness=' ~ (state_attr('light.master_switch', 'brightness') | default('none')) }}` }}"
-                - choose:
-                    - conditions:
-                        - condition: trigger
-                          id: master_off
-                      sequence:
-                        - service: light.turn_off
-                          target:
-                            entity_id:
-                              - light.kajplats_e26_ws_globe_1600lm
-                              - light.kajplats_e26_ws_globe_1600lm_5
-                  default:
-                    - service: light.turn_on
-                      target:
-                        entity_id:
-                          - light.kajplats_e26_ws_globe_1600lm
-                          - light.kajplats_e26_ws_globe_1600lm_5
-                      data:
-                        brightness: "{{ `{{ state_attr('light.master_switch', 'brightness') | int(0) }}` }}"
             - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
               alias: Bedroom Dimmer Mirrors Bulbs
               mode: restart
