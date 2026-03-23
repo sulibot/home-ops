@@ -631,7 +631,7 @@ spec:
 
             homeassistant:
               internal_url: https://hass-local.sulibot.com
-              external_url: https://hass-app.sulibot.com
+              external_url: https://hass.sulibot.com
               auth_providers:
                 - type: homeassistant
               customize:

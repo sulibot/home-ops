@@ -82,6 +82,7 @@ Home Assistant has:
 Practical access paths:
 
 - Canonical internal HA URL: `https://hass-local.sulibot.com`
+- Canonical external browser HA URL: `https://hass.sulibot.com`
 - Debug-only local HA URL: `http://hass-debug.sulibot.com`
 - Direct IPv6 fallback HA URL: `http://[fd00:31::251]:8123`
 - Direct IPv4 fallback HA URL: `http://10.31.0.251:8123`
