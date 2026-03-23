@@ -35,6 +35,7 @@ resources:
   - ./miniflux/ks.yaml
   # mosquitto disabled
   # - ./mosquitto/ks.yaml
+  - ./notifiarr/ks.yaml
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
   - ./ollama/ks.yaml

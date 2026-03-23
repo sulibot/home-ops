@@ -3,11 +3,11 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: notifier
+  name: notifiarr
 spec:
   chartRef:
     kind: OCIRepository
-    name: notifier
+    name: notifiarr
   interval: 1h
   timeout: 10m
   maxHistory: 3
@@ -23,32 +23,47 @@ spec:
     timeout: 10m
   values:
     controllers:
-      notifier:
-        replicas: 0
-        strategy: RollingUpdate
+      notifiarr:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: ghcr.io/home-operations/webhook
-              tag: 2.8.3@sha256:b5a6defe3462a7bba13342bb878b20504f3699644a442039dad21285edca0082
+              repository: ghcr.io/notifiarr/notifiarr
+              tag: v0.9.5@sha256:a9a1f37f924d740107874675df6b6a5edd87e5f66ca72ad27481a4bdfd42d162
             env:
-              WEBHOOK__PORT: &port 80
               TZ: America/Los_Angeles
+              DN_UPSTREAMS_0: "[10.101.0.0/16,fd00:101::/48]"
+              DN_RADARR_0_URL: http://radarr.default.svc.cluster.local
+              DN_RADARR_1_URL: http://radarr-4k.default.svc.cluster.local
+              DN_SONARR_0_URL: http://sonarr.default.svc.cluster.local
+              DN_SONARR_1_URL: http://sonarr-4k.default.svc.cluster.local
+              TMPDIR: /tmp
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 5
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             resources:
               requests:
-                cpu: 100m
+                cpu: 10m
+                memory: 256Mi
               limits:
-                memory: 512Mi
+                memory: 1Gi
     defaultPodOptions:
+      hostname: notifiarr
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -61,11 +76,20 @@ spec:
         ipFamilies: [IPv6, IPv4]
         ports:
           http:
-            port: *port
+            port: &port 5454
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.sulibot.com"
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
     persistence:
       config:
-        type: configMap
-        name: notifier-configmap
-        defaultMode: 0775
-        globalMounts:
-          - readOnly: true
+        enabled: true
+        type: persistentVolumeClaim
+        storageClass: csi-cephfs-config-sc
+        accessMode: ReadWriteMany
+        size: 100Mi
+      tmp:
+        type: emptyDir
