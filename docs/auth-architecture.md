@@ -54,7 +54,6 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `firefly.sulibot.com` | Firefly III | Authentik proxy outpost -> header auth |
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
 | `hass.sulibot.com` | Home Assistant (legacy browser host) | Native OIDC via Authentik (`hass-oidc-auth`) |
-| `hass-app.sulibot.com` | Home Assistant (canonical app/discovery host) | Native OIDC via Authentik (`hass-oidc-auth`), WARP required externally and split-DNS direct internally |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
 | `vikunja-app.sulibot.com` | Vikunja (app) | App-safe endpoint, WARP required externally |
 | `plex.sulibot.com` | Plex | Plex account (no WARP requirement externally) |
@@ -77,6 +76,8 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 | `status.sulibot.com` | Gatus (alias) | Internal ops endpoint (auth/config varies) |
 | `go2rtc.sulibot.com` | go2rtc | App-local auth / LAN trust |
 | `grafana.sulibot.com` | Grafana | Grafana auth (LAN route) |
+| `hass-app.sulibot.com` | Home Assistant (canonical app/discovery host) | Native OIDC via Authentik (`hass-oidc-auth`), LAN-only via split DNS |
+| `hass-get-token.sulibot.com` | Home Assistant token/finish helper | Native OIDC helper route, LAN-only via split DNS |
 | `jaeger.sulibot.com` | Jaeger | Internal ops endpoint (auth/config varies) |
 | `jellyseerr.sulibot.com` | Jellyseerr | Plex/own auth |
 | `requests.sulibot.com` | Jellyseerr (alias) | Plex/own auth |
@@ -170,7 +171,7 @@ In Zero Trust -> Access -> Applications:
 | `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard browser/email gate for all non-bypass, non-app hosts |
 | `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
 | `auth + public bypass` | `auth.sulibot.com`, `atuin.sulibot.com`, `plex.sulibot.com`, `overseerr.sulibot.com`, `requests.sulibot.com` | Bypass | Publicly reachable through Tunnel; app handles auth |
-| `WARP-only apps` | `immich-app.sulibot.com`, `hass-app.sulibot.com`, `vikunja-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
+| `WARP-only apps` | `immich-app.sulibot.com`, `vikunja-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
 
 **Important**: `auth.sulibot.com` remains intentionally bypassed in Cloudflare Access. Browser-style hosts fall under the wildcard email gate unless explicitly bypassed. App-specific hosts use dedicated WARP-only policies.
 

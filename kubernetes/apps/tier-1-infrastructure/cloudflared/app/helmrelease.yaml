@@ -39,10 +39,6 @@ spec:
                       service: http://plex.default.svc.cluster.local:32400
                     - hostname: overseerr.sulibot.com
                       service: http://overseerr.default.svc.cluster.local:80
-                    - hostname: home-assistant-app.sulibot.com
-                      service: http://home-assistant.default.svc.cluster.local:8123
-                    - hostname: hass-get-token.sulibot.com
-                      service: http://home-assistant.default.svc.cluster.local:8123
                     - hostname: requests.sulibot.com
                       service: http://jellyseerr.default.svc.cluster.local:80
                     - hostname: hello.sulibot.com
@@ -61,10 +57,6 @@ spec:
           service: http://plex.default.svc.cluster.local:32400
         - hostname: overseerr.sulibot.com
           service: http://overseerr.default.svc.cluster.local:80
-        - hostname: home-assistant-app.sulibot.com
-          service: http://home-assistant.default.svc.cluster.local:8123
-        - hostname: hass-get-token.sulibot.com
-          service: http://home-assistant.default.svc.cluster.local:8123
         - hostname: requests.sulibot.com
           service: http://jellyseerr.default.svc.cluster.local:80
         - hostname: hello.sulibot.com

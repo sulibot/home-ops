@@ -61,8 +61,6 @@ locals {
 
   warp_only_apps = {
     "immich-app.sulibot.com" = "Immich"
-    "hass-app.sulibot.com" = "Home Assistant"
-    "hass-get-token.sulibot.com" = "Home Assistant Token"
     "vikunja-app.sulibot.com" = "Vikunja"
   }
 

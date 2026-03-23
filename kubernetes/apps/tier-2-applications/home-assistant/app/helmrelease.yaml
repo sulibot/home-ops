@@ -206,12 +206,18 @@ spec:
 
                 template = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
                 endpoint = Path("/config/custom_components/auth_oidc/endpoints/finish.py")
+                callback_file = Path("/config/custom_components/auth_oidc/endpoints/callback.py")
+                redirect_file = Path("/config/custom_components/auth_oidc/endpoints/redirect.py")
                 init_file = Path("/config/custom_components/auth_oidc/__init__.py")
 
                 if not template.exists():
                     raise SystemExit("auth_oidc finish.html not found")
                 if not endpoint.exists():
                     raise SystemExit("auth_oidc finish.py not found")
+                if not callback_file.exists():
+                    raise SystemExit("auth_oidc callback.py not found")
+                if not redirect_file.exists():
+                    raise SystemExit("auth_oidc redirect.py not found")
                 if not init_file.exists():
                     raise SystemExit("auth_oidc __init__.py not found")
 
@@ -344,6 +350,191 @@ spec:
                     encoding="utf-8",
                 )
                 print("auth_oidc finish endpoint patched")
+
+                callback_file.write_text(
+                    textwrap.dedent(
+                        '''\
+                        """Callback route to return the user to after external OIDC interaction."""
+
+                        import urllib.parse
+
+                        from aiohttp import web
+                        from homeassistant.components.auth import create_auth_code
+                        from homeassistant.components.http import KEY_HASS, HomeAssistantView
+
+                        from ..helpers import get_url, get_view
+                        from ..oidc_client import OIDCClient
+                        from ..provider import OpenIDAuthProvider
+
+                        PATH = "/auth/oidc/callback"
+                        APP_HOST = "hass-app.sulibot.com"
+                        DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
+                        DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
+
+
+                        class OIDCCallbackView(HomeAssistantView):
+                            """OIDC Plugin Callback View."""
+
+                            requires_auth = False
+                            url = PATH
+                            name = "auth:oidc:callback"
+
+                            def __init__(
+                                self,
+                                oidc_client: OIDCClient,
+                                oidc_provider: OpenIDAuthProvider,
+                                force_https: bool,
+                            ) -> None:
+                                self.oidc_client = oidc_client
+                                self.oidc_provider = oidc_provider
+                                self.force_https = force_https
+
+                            async def get(self, request: web.Request) -> web.Response:
+                                """Receive response."""
+
+                                params = request.rel_url.query
+                                oidc_code = params.get("code")
+                                state = params.get("state")
+
+                                if not (oidc_code and state):
+                                    view_html = await get_view(
+                                        "error",
+                                        {
+                                            "error": "Missing code or state parameter.",
+                                        },
+                                    )
+                                    return web.Response(text=view_html, content_type="text/html")
+
+                                flow = self.oidc_client.flows.get(state, {})
+                                ha_client_id = flow.get("ha_client_id")
+                                ha_redirect_uri = flow.get("ha_redirect_uri")
+
+                                request_host = (request.host or "").split(":")[0]
+                                if request_host == APP_HOST:
+                                    ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
+                                    ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
+
+                                redirect_uri = get_url("/auth/oidc/callback", self.force_https)
+                                user_details = await self.oidc_client.async_complete_token_flow(
+                                    redirect_uri, oidc_code, state
+                                )
+                                if user_details is None:
+                                    view_html = await get_view(
+                                        "error",
+                                        {
+                                            "error": "Failed to get user details, "
+                                            + "see Home Assistant logs for more information.",
+                                        },
+                                    )
+                                    return web.Response(text=view_html, content_type="text/html")
+
+                                if user_details.get("role") == "invalid":
+                                    view_html = await get_view(
+                                        "error",
+                                        {
+                                            "error": "User is not in the correct group to access Home Assistant, "
+                                            + "contact your administrator!",
+                                        },
+                                    )
+                                    return web.Response(text=view_html, content_type="text/html")
+
+                                if ha_client_id and ha_redirect_uri and ha_redirect_uri.startswith("homeassistant"):
+                                    self.oidc_provider._user_meta[user_details["sub"]] = user_details
+                                    credentials = await self.oidc_provider.async_get_or_create_credentials(
+                                        {"sub": user_details["sub"]}
+                                    )
+                                    auth_code = create_auth_code(
+                                        request.app[KEY_HASS], ha_client_id, credentials
+                                    )
+                                    query = urllib.parse.urlencode({"code": auth_code})
+                                    separator = "&" if "?" in ha_redirect_uri else "?"
+                                    return web.HTTPFound(f"{ha_redirect_uri}{separator}{query}")
+
+                                login_code = await self.oidc_provider.async_save_user_info(user_details)
+                                return web.HTTPFound(
+                                    get_url("/auth/oidc/finish?code=" + login_code, self.force_https)
+                                )
+                        '''
+                    ),
+                    encoding="utf-8",
+                )
+                print("auth_oidc callback endpoint patched")
+
+                redirect_file.write_text(
+                    textwrap.dedent(
+                        '''\
+                        """Redirect route to redirect the user to the external OIDC server,
+                        can either be linked to directly or accessed through the welcome page."""
+
+                        import urllib.parse
+
+                        from aiohttp import web
+                        from homeassistant.components.http import HomeAssistantView
+
+                        from ..helpers import get_url, get_view
+                        from ..oidc_client import OIDCClient
+
+                        PATH = "/auth/oidc/redirect"
+                        APP_HOST = "hass-app.sulibot.com"
+                        DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
+                        DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
+
+
+                        class OIDCRedirectView(HomeAssistantView):
+                            """OIDC Plugin Redirect View."""
+
+                            requires_auth = False
+                            url = PATH
+                            name = "auth:oidc:redirect"
+
+                            def __init__(self, oidc_client: OIDCClient, force_https: bool) -> None:
+                                self.oidc_client = oidc_client
+                                self.force_https = force_https
+
+                            async def get(self, request: web.Request) -> web.Response:
+                                """Receive response."""
+
+                                try:
+                                    redirect_uri = get_url("/auth/oidc/callback", self.force_https)
+                                    auth_url = await self.oidc_client.async_get_authorization_url(redirect_uri)
+
+                                    if auth_url:
+                                        request_host = (request.host or "").split(":")[0]
+                                        ha_client_id = request.query.get("client_id")
+                                        ha_redirect_uri = request.query.get("redirect_uri")
+
+                                        if request_host == APP_HOST:
+                                            ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
+                                            ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
+
+                                        if ha_client_id or ha_redirect_uri:
+                                            parsed = urllib.parse.urlparse(auth_url)
+                                            state = urllib.parse.parse_qs(parsed.query).get("state", [None])[0]
+                                            if state and state in self.oidc_client.flows:
+                                                flow = self.oidc_client.flows[state]
+                                                if ha_client_id:
+                                                    flow["ha_client_id"] = ha_client_id
+                                                if ha_redirect_uri:
+                                                    flow["ha_redirect_uri"] = ha_redirect_uri
+
+                                        raise web.HTTPFound(auth_url)
+                                except RuntimeError:
+                                    pass
+
+                                view_html = await get_view(
+                                    "error",
+                                    {"error": "Integration is misconfigured, discovery could not be obtained."},
+                                )
+                                return web.Response(text=view_html, content_type="text/html")
+
+                            async def post(self, request: web.Request) -> web.Response:
+                                """POST"""
+                                return await self.get(request)
+                        '''
+                    ),
+                    encoding="utf-8",
+                )
+                print("auth_oidc redirect endpoint patched")
 
                 init_content = init_file.read_text(encoding="utf-8")
                 init_content = init_content.replace(
@@ -503,7 +694,7 @@ spec:
         hostnames:
           - hass-app.sulibot.com
         parentRefs:
-          - name: gateway-tunnel
+          - name: gateway-internal
             namespace: network
         rules:
           - backendRefs:
@@ -513,7 +704,7 @@ spec:
         hostnames:
           - hass-get-token.sulibot.com
         parentRefs:
-          - name: gateway-tunnel
+          - name: gateway-internal
             namespace: network
         rules:
           - matches:

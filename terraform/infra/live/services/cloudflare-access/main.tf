@@ -32,10 +32,8 @@ locals {
   }
 
   warp_only_apps = {
-    "immich-app.sulibot.com"     = "Immich"
-    "hass-app.sulibot.com"       = "Home Assistant"
-    "hass-get-token.sulibot.com" = "Home Assistant Token"
-    "vikunja-app.sulibot.com"    = "Vikunja"
+    "immich-app.sulibot.com"  = "Immich"
+    "vikunja-app.sulibot.com" = "Vikunja"
   }
 
   warp_email_apps = {
