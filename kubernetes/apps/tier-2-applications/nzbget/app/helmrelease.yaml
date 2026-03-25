@@ -39,15 +39,16 @@ spec:
               - -c
               - |
                 set -x
-                WORK_ROOT="/work"
-                CONFIG_DIR="${WORK_ROOT}/config"
-                CONFIG_FILE="${CONFIG_DIR}/nzbget.conf"
+                CONFIG_DIR="/work/config"
+                INTER_DIR="/work/intermediate"
+                TEMP_DIR="/work/tmp"
+                CONFIG_FILE="/work/config/nzbget.conf"
                 COMPAT_CONFIG="/config"
                 echo "=== Init container starting ==="
 
-                mkdir -p "${CONFIG_DIR}" "${WORK_ROOT}/intermediate" "${WORK_ROOT}/tmp" \
-                  "${CONFIG_DIR}/nzb" "${CONFIG_DIR}/queue" "${CONFIG_DIR}/scripts" "${COMPAT_CONFIG}"
-                chown -R 1000:1000 "${WORK_ROOT}" "${COMPAT_CONFIG}"
+                mkdir -p "$CONFIG_DIR" "$INTER_DIR" "$TEMP_DIR" \
+                  "$CONFIG_DIR/nzb" "$CONFIG_DIR/queue" "$CONFIG_DIR/scripts" "$COMPAT_CONFIG"
+                chown -R 1000:1000 /work "$COMPAT_CONFIG"
 
                 if [ ! -f "$CONFIG_FILE" ]; then
                   cp /app/nzbget.conf "$CONFIG_FILE"
@@ -56,10 +57,10 @@ spec:
                 echo "Config file ready, size: $(wc -l < "$CONFIG_FILE") lines"
 
                 # Update config - use $$ to escape for Helm
-                sed -i "s@^MainDir=.*@MainDir=${CONFIG_DIR}@" "$CONFIG_FILE"
+                sed -i "s@^MainDir=.*@MainDir=/work/config@" "$CONFIG_FILE"
                 sed -i "s@^DestDir=.*@DestDir=/data/usenet/completed@" "$CONFIG_FILE"
-                sed -i "s@^InterDir=.*@InterDir=${WORK_ROOT}/intermediate@" "$CONFIG_FILE"
-                sed -i "s@^TempDir=.*@TempDir=${WORK_ROOT}/tmp@" "$CONFIG_FILE"
+                sed -i "s@^InterDir=.*@InterDir=/work/intermediate@" "$CONFIG_FILE"
+                sed -i "s@^TempDir=.*@TempDir=/work/tmp@" "$CONFIG_FILE"
                 sed -i "s@^QueueDir=.*@QueueDir=\${MainDir}/queue@" "$CONFIG_FILE"
                 sed -i "s@^NzbDir=.*@NzbDir=\${MainDir}/nzb@" "$CONFIG_FILE"
                 sed -i "s@^ScriptDir=.*@ScriptDir=\${MainDir}/scripts@" "$CONFIG_FILE"
@@ -71,13 +72,13 @@ spec:
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=no@" "$CONFIG_FILE"
 
-                ln -snf "${CONFIG_FILE}" "${COMPAT_CONFIG}/nzbget.conf"
-                ln -snf "${CONFIG_DIR}/nzb" "${COMPAT_CONFIG}/nzb"
-                ln -snf "${CONFIG_DIR}/queue" "${COMPAT_CONFIG}/queue"
-                ln -snf "${WORK_ROOT}/tmp" "${COMPAT_CONFIG}/tmp"
-                ln -snf "${CONFIG_DIR}/scripts" "${COMPAT_CONFIG}/scripts"
-                ln -snf "/data/usenet/completed" "${COMPAT_CONFIG}/completed"
-                ln -snf "${WORK_ROOT}/intermediate" "${COMPAT_CONFIG}/intermediate"
+                ln -snf /work/config/nzbget.conf "$COMPAT_CONFIG/nzbget.conf"
+                ln -snf /work/config/nzb "$COMPAT_CONFIG/nzb"
+                ln -snf /work/config/queue "$COMPAT_CONFIG/queue"
+                ln -snf /work/tmp "$COMPAT_CONFIG/tmp"
+                ln -snf /work/config/scripts "$COMPAT_CONFIG/scripts"
+                ln -snf /data/usenet/completed "$COMPAT_CONFIG/completed"
+                ln -snf /work/intermediate "$COMPAT_CONFIG/intermediate"
 
                 echo "After update:"
                 grep "^MainDir=" "$CONFIG_FILE"
