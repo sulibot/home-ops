@@ -39,6 +39,7 @@ spec:
               - -c
               - |
                 set -x
+                MAIN_DIR="/work"
                 CONFIG_DIR="/work/config"
                 INTER_DIR="/work/intermediate"
                 TEMP_DIR="/work/tmp"
@@ -46,8 +47,8 @@ spec:
                 COMPAT_CONFIG="/config"
                 echo "=== Init container starting ==="
 
-                mkdir -p "$CONFIG_DIR" "$INTER_DIR" "$TEMP_DIR" \
-                  "$CONFIG_DIR/nzb" "$CONFIG_DIR/queue" "$CONFIG_DIR/scripts" "$COMPAT_CONFIG"
+                mkdir -p "$MAIN_DIR" "$CONFIG_DIR" "$INTER_DIR" "$TEMP_DIR" \
+                  "$MAIN_DIR/nzb" "$MAIN_DIR/queue" "$MAIN_DIR/scripts" "$COMPAT_CONFIG"
                 chown -R 1000:1000 /work "$COMPAT_CONFIG"
 
                 if [ ! -f "$CONFIG_FILE" ]; then
@@ -57,21 +58,23 @@ spec:
                 echo "Config file ready, size: $(wc -l < "$CONFIG_FILE") lines"
 
                 # Update config - use $$ to escape for Helm
-                sed -i "s@^MainDir=.*@MainDir=/work/config@" "$CONFIG_FILE"
+                sed -i "s@^MainDir=.*@MainDir=/work@" "$CONFIG_FILE"
                 sed -i "s@^DestDir=.*@DestDir=/data/usenet/completed@" "$CONFIG_FILE"
                 sed -i "s@^InterDir=.*@InterDir=/work/intermediate@" "$CONFIG_FILE"
                 sed -i "s@^TempDir=.*@TempDir=/work/tmp@" "$CONFIG_FILE"
                 sed -i "s@^QueueDir=.*@QueueDir=\${MainDir}/queue@" "$CONFIG_FILE"
                 sed -i "s@^NzbDir=.*@NzbDir=\${MainDir}/nzb@" "$CONFIG_FILE"
                 sed -i "s@^ScriptDir=.*@ScriptDir=\${MainDir}/scripts@" "$CONFIG_FILE"
+                sed -i "s@^LockFile=.*@LockFile=\${MainDir}/nzbget.lock@" "$CONFIG_FILE"
+                sed -i "s@^LogFile=.*@LogFile=\${MainDir}/nzbget.log@" "$CONFIG_FILE"
                 sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
                 sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
-                sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
+                sed -i "s@^ControlPort=.*@ControlPort=6789@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Connections=.*@Server1.Connections=0@" "$CONFIG_FILE"
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
-                sed -i "s@^DirectWrite=.*@DirectWrite=no@" "$CONFIG_FILE"
+                sed -i "s@^DirectWrite=.*@DirectWrite=yes@" "$CONFIG_FILE"
 
                 rm -rf "$COMPAT_CONFIG/nzbget.conf" \
                   "$COMPAT_CONFIG/nzb" \
@@ -82,10 +85,10 @@ spec:
                   "$COMPAT_CONFIG/intermediate"
 
                 ln -snf /work/config/nzbget.conf "$COMPAT_CONFIG/nzbget.conf"
-                ln -snf /work/config/nzb "$COMPAT_CONFIG/nzb"
-                ln -snf /work/config/queue "$COMPAT_CONFIG/queue"
+                ln -snf /work/nzb "$COMPAT_CONFIG/nzb"
+                ln -snf /work/queue "$COMPAT_CONFIG/queue"
                 ln -snf /work/tmp "$COMPAT_CONFIG/tmp"
-                ln -snf /work/config/scripts "$COMPAT_CONFIG/scripts"
+                ln -snf /work/scripts "$COMPAT_CONFIG/scripts"
                 ln -snf /data/usenet/completed "$COMPAT_CONFIG/completed"
                 ln -snf /work/intermediate "$COMPAT_CONFIG/intermediate"
 
@@ -94,6 +97,11 @@ spec:
                 grep "^DestDir=" "$CONFIG_FILE"
                 grep "^InterDir=" "$CONFIG_FILE"
                 grep "^TempDir=" "$CONFIG_FILE"
+                grep "^NzbDir=" "$CONFIG_FILE"
+                grep "^QueueDir=" "$CONFIG_FILE"
+                grep "^ScriptDir=" "$CONFIG_FILE"
+                grep "^LockFile=" "$CONFIG_FILE"
+                grep "^LogFile=" "$CONFIG_FILE"
                 grep "^ControlIP=" "$CONFIG_FILE"
                 grep "^ControlUsername=" "$CONFIG_FILE"
                 grep "^Server1.Connections=" "$CONFIG_FILE"
@@ -114,9 +122,9 @@ spec:
               - -o
               - OutputMode=log
               - -o
-              - ControlPort=80
+              - ControlPort=6789
             env:
-              NZBGET__PORT: &port 80
+              NZBGET__PORT: &containerPort 6789
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             envFrom:
@@ -154,7 +162,8 @@ spec:
         ipFamilyPolicy: PreferDualStack
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *containerPort
     route:
       app:
         hostnames:
