@@ -72,6 +72,14 @@ spec:
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=no@" "$CONFIG_FILE"
 
+                rm -rf "$COMPAT_CONFIG/nzbget.conf" \
+                  "$COMPAT_CONFIG/nzb" \
+                  "$COMPAT_CONFIG/queue" \
+                  "$COMPAT_CONFIG/tmp" \
+                  "$COMPAT_CONFIG/scripts" \
+                  "$COMPAT_CONFIG/completed" \
+                  "$COMPAT_CONFIG/intermediate"
+
                 ln -snf /work/config/nzbget.conf "$COMPAT_CONFIG/nzbget.conf"
                 ln -snf /work/config/nzb "$COMPAT_CONFIG/nzb"
                 ln -snf /work/config/queue "$COMPAT_CONFIG/queue"
@@ -96,6 +104,16 @@ spec:
             image:
               repository: ghcr.io/home-operations/nzbget
               tag: 26.0.0@sha256:0185f0b026696bfbb89f29aecf777b721a8aa288da90ceb1021b6ee52c6de8f7
+            command:
+              - /app/nzbget
+            args:
+              - --server
+              - --configfile
+              - /work/config/nzbget.conf
+              - -o
+              - OutputMode=log
+              - -o
+              - ControlPort=80
             env:
               NZBGET__PORT: &port 80
               NZBGET__CONTROLIP: "::"
