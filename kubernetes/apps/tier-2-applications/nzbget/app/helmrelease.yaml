@@ -68,7 +68,8 @@ spec:
                 sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
-                sed -i "s@^Server1.Connections=.*@Server1.Connections=50@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Connections=.*@Server1.Connections=0@" "$CONFIG_FILE"
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=no@" "$CONFIG_FILE"
 
