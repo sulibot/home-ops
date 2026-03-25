@@ -39,24 +39,56 @@ spec:
               - -c
               - |
                 set -x
-                CONFIG_FILE="/config/nzbget.conf"
+                WORK_ROOT="/work"
+                CONFIG_DIR="${WORK_ROOT}/config"
+                CONFIG_FILE="${CONFIG_DIR}/nzbget.conf"
+                COMPAT_CONFIG="/config"
                 echo "=== Init container starting ==="
 
-                if [ -f "$CONFIG_FILE" ]; then
-                  echo "Config file exists, size: $(wc -l < $CONFIG_FILE) lines"
+                mkdir -p "${CONFIG_DIR}" "${WORK_ROOT}/intermediate" "${WORK_ROOT}/tmp" \
+                  "${CONFIG_DIR}/nzb" "${CONFIG_DIR}/queue" "${CONFIG_DIR}/scripts" "${COMPAT_CONFIG}"
+                chown -R 1000:1000 "${WORK_ROOT}" "${COMPAT_CONFIG}"
 
-                  # Update config - use $$ to escape for Helm
-                  sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
-                  sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
-
-                  echo "After update:"
-                  grep "^ControlIP=" "$CONFIG_FILE"
-                  grep "^ControlUsername=" "$CONFIG_FILE"
-                else
-                  echo "Config file not found"
+                if [ ! -f "$CONFIG_FILE" ]; then
+                  cp /app/nzbget.conf "$CONFIG_FILE"
                 fi
+
+                echo "Config file ready, size: $(wc -l < "$CONFIG_FILE") lines"
+
+                # Update config - use $$ to escape for Helm
+                sed -i "s@^MainDir=.*@MainDir=${CONFIG_DIR}@" "$CONFIG_FILE"
+                sed -i "s@^DestDir=.*@DestDir=/data/usenet/completed@" "$CONFIG_FILE"
+                sed -i "s@^InterDir=.*@InterDir=${WORK_ROOT}/intermediate@" "$CONFIG_FILE"
+                sed -i "s@^TempDir=.*@TempDir=${WORK_ROOT}/tmp@" "$CONFIG_FILE"
+                sed -i "s@^QueueDir=.*@QueueDir=\${MainDir}/queue@" "$CONFIG_FILE"
+                sed -i "s@^NzbDir=.*@NzbDir=\${MainDir}/nzb@" "$CONFIG_FILE"
+                sed -i "s@^ScriptDir=.*@ScriptDir=\${MainDir}/scripts@" "$CONFIG_FILE"
+                sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
+                sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Connections=.*@Server1.Connections=50@" "$CONFIG_FILE"
+                sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
+                sed -i "s@^DirectWrite=.*@DirectWrite=no@" "$CONFIG_FILE"
+
+                ln -snf "${CONFIG_FILE}" "${COMPAT_CONFIG}/nzbget.conf"
+                ln -snf "${CONFIG_DIR}/nzb" "${COMPAT_CONFIG}/nzb"
+                ln -snf "${CONFIG_DIR}/queue" "${COMPAT_CONFIG}/queue"
+                ln -snf "${WORK_ROOT}/tmp" "${COMPAT_CONFIG}/tmp"
+                ln -snf "${CONFIG_DIR}/scripts" "${COMPAT_CONFIG}/scripts"
+                ln -snf "/data/usenet/completed" "${COMPAT_CONFIG}/completed"
+                ln -snf "${WORK_ROOT}/intermediate" "${COMPAT_CONFIG}/intermediate"
+
+                echo "After update:"
+                grep "^MainDir=" "$CONFIG_FILE"
+                grep "^DestDir=" "$CONFIG_FILE"
+                grep "^InterDir=" "$CONFIG_FILE"
+                grep "^TempDir=" "$CONFIG_FILE"
+                grep "^ControlIP=" "$CONFIG_FILE"
+                grep "^ControlUsername=" "$CONFIG_FILE"
+                grep "^Server1.Connections=" "$CONFIG_FILE"
+                grep "^ArticleCache=" "$CONFIG_FILE"
+                grep "^DirectWrite=" "$CONFIG_FILE"
                 echo "=== Init container complete ==="
         containers:
           app:
@@ -112,7 +144,15 @@ spec:
             namespace: network
     persistence:
       config:
-        existingClaim: "{{ .Release.Name }}-config"
+        enabled: true
+        type: emptyDir
+        globalMounts:
+          - path: /config
+      work:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-work"
+        globalMounts:
+          - path: /work
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
