@@ -43,7 +43,7 @@ spec:
               SONARR__POSTGRES__USER: sonarr
               SONARR__POSTGRES__MAINDB: sonarr_main
               SONARR__POSTGRES__LOGDB: sonarr_log
-              SONARR__SERVER__PORT: &port 80
+              SONARR__SERVER__PORT: &port 8989
               SONARR__UPDATE__BRANCH: develop
               TZ: America/Los_Angeles
             envFrom:
@@ -92,7 +92,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:

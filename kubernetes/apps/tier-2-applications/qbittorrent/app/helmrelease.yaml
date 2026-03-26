@@ -163,7 +163,7 @@ spec:
               tag: 5.1.4@sha256:bb82ad6668f8eda1d0fcce6c1341498bfa879155bb1295cd9d314a2c35c07a01
             env:
               TZ: America/Los_Angeles
-              QBT_WEBUI_PORT: &port 80
+              QBT_WEBUI_PORT: &port 8080
               QBT_TORRENTING_PORT: 50469
             probes:
               liveness: &probes
@@ -208,7 +208,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:
@@ -219,7 +220,7 @@ spec:
         rules:
           - backendRefs:
               - identifier: app
-                port: *port
+                port: 80
     configMaps:
       config:
         enabled: true

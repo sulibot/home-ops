@@ -38,7 +38,7 @@ spec:
               PROWLARR__AUTH__REQUIRED: DisabledForLocalAddresses
               PROWLARR__LOG__DBENABLED: "False"
               PROWLARR__LOG__LEVEL: info
-              PROWLARR__SERVER__PORT: &port 80
+              PROWLARR__SERVER__PORT: &port 9696
               PROWLARR__UPDATE__BRANCH: develop
               TZ: America/Los_Angeles
             envFrom:
@@ -87,7 +87,8 @@ spec:
           - IPv6
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:
@@ -101,4 +102,3 @@ spec:
         existingClaim: "{{ .Release.Name }}-config"
       tmp:
         type: emptyDir
-

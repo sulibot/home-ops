@@ -43,7 +43,7 @@ spec:
               RADARR__POSTGRES__USER: radarr
               RADARR__POSTGRES__MAINDB: radarr_main
               RADARR__POSTGRES__LOGDB: radarr_log
-              RADARR__SERVER__PORT: &port 80
+              RADARR__SERVER__PORT: &port 7878
               RADARR__UPDATE__BRANCH: develop
               TZ: America/Los_Angeles
             envFrom:
@@ -92,7 +92,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:
