@@ -38,7 +38,44 @@ spec:
                 set -eux
                 mkdir -p /config/qBittorrent/logs
                 mkdir -p /tmp/gluetun
+                mkdir -p /data/torrents/movies
+                mkdir -p /data/torrents/movies-4k
+                mkdir -p /data/torrents/tv
+                mkdir -p /data/torrents/tv-4k
+                mkdir -p /data/torrents/music
+                mkdir -p /data/torrents/books
+                mkdir -p /data/torrents/audiobooks
+                mkdir -p /data/torrents/flaresolverr
+                cat > /config/qBittorrent/categories.json <<'EOF'
+                {
+                    "audiobooks": {
+                        "save_path": "audiobooks"
+                    },
+                    "books": {
+                        "save_path": "books"
+                    },
+                    "flaresolverr": {
+                        "save_path": "flaresolverr"
+                    },
+                    "movies": {
+                        "save_path": "movies"
+                    },
+                    "movies-4k": {
+                        "save_path": "movies-4k"
+                    },
+                    "music": {
+                        "save_path": "music"
+                    },
+                    "tv": {
+                        "save_path": "tv"
+                    },
+                    "tv-4k": {
+                        "save_path": "tv-4k"
+                    }
+                }
+                EOF
                 chown -R 1000:1000 /config
+                chown -R 1000:1000 /data/torrents
                 chown -R 1000:1000 /tmp/gluetun
             securityContext:
               runAsUser: 0
