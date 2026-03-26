@@ -30,9 +30,9 @@ spec:
       APP: qbittorrent
       VOLSYNC_SCHEDULE: "28 * * * *"
       VOLSYNC_CAPACITY: 3Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
+      VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc
+      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-rbd-rbd-vm-sc
+      VOLSYNC_SNAPSHOTCLASS: csi-rbd-rbd-vm-snapclass
   prune: true
   sourceRef:
     kind: GitRepository

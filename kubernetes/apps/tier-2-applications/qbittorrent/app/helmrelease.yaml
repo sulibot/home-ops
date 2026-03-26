@@ -237,7 +237,7 @@ spec:
               - path: /dev/net/tun
       config:
         enabled: true
-        existingClaim: "{{ .Release.Name }}-config"
+        existingClaim: qbittorrent-config-rbd
         advancedMounts:
           qbittorrent:
             app:
