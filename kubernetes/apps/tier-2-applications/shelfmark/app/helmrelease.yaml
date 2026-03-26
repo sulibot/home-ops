@@ -43,25 +43,41 @@ spec:
                 python - <<'PY'
                 import json
                 import os
-                from pathlib import Path
-                from werkzeug.security import check_password_hash, generate_password_hash
+              from pathlib import Path
+              from werkzeug.security import check_password_hash, generate_password_hash
 
-                config_path = Path("/config/plugins/security.json")
-                config = {}
+              config_path = Path("/config/plugins/security.json")
+              config = {}
                 if config_path.exists():
                     try:
                         config = json.loads(config_path.read_text())
                     except Exception:
                         config = {}
 
-                username = (os.getenv("BOOTSTRAP_ADMIN_USERNAME") or "").strip()
-                password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD") or ""
-                changed = False
+              username = (os.getenv("BOOTSTRAP_ADMIN_USERNAME") or "").strip()
+              password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD") or ""
+              changed = False
 
-                if username and password:
-                    existing_hash = config.get("BUILTIN_PASSWORD_HASH", "")
-                    if (
-                        config.get("BUILTIN_USERNAME") != username
+              desired = {
+                  "AUTH_METHOD": os.getenv("AUTH_METHOD", "none"),
+                  "OIDC_DISCOVERY_URL": os.getenv("OIDC_DISCOVERY_URL", ""),
+                  "OIDC_CLIENT_ID": os.getenv("OIDC_CLIENT_ID", ""),
+                  "OIDC_CLIENT_SECRET": os.getenv("OIDC_CLIENT_SECRET", ""),
+                  "OIDC_GROUP_CLAIM": os.getenv("OIDC_GROUP_CLAIM", "groups"),
+                  "OIDC_ADMIN_GROUP": os.getenv("OIDC_ADMIN_GROUP", ""),
+                  "OIDC_USE_ADMIN_GROUP": os.getenv("OIDC_USE_ADMIN_GROUP", "true").lower() == "true",
+                  "OIDC_AUTO_PROVISION": os.getenv("OIDC_AUTO_PROVISION", "true").lower() == "true",
+                  "OIDC_BUTTON_LABEL": os.getenv("OIDC_BUTTON_LABEL", ""),
+              }
+              for key, value in desired.items():
+                  if config.get(key) != value:
+                      config[key] = value
+                      changed = True
+
+              if username and password:
+                  existing_hash = config.get("BUILTIN_PASSWORD_HASH", "")
+                  if (
+                      config.get("BUILTIN_USERNAME") != username
                         or not existing_hash
                         or not check_password_hash(existing_hash, password)
                     ):
