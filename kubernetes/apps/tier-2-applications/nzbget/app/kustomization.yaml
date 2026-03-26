@@ -5,6 +5,6 @@ kind: Kustomization
 resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
-  - ./manual-pvc-nzbget-work.yaml
+  - ./manual-pvc-nzbget-config-rbd.yaml
   - ./ocirepository.yaml
   - ./vpa.yaml

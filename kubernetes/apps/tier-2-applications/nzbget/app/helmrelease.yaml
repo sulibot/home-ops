@@ -41,14 +41,14 @@ spec:
                 set -x
                 MAIN_DIR="/config"
                 CONFIG_DIR="/config"
-                INTER_DIR="/work/intermediate"
-                TEMP_DIR="/work/tmp"
+                INTER_DIR="/data/usenet/intermediate"
+                TEMP_DIR="/config/tmp"
                 CONFIG_FILE="/config/nzbget.conf"
                 echo "=== Init container starting ==="
 
                 mkdir -p "$MAIN_DIR" "$INTER_DIR" "$TEMP_DIR" \
                   "$MAIN_DIR/nzb" "$MAIN_DIR/queue" "$MAIN_DIR/scripts"
-                chown -R 1000:1000 /work /config
+                chown -R 1000:1000 /config /data/usenet/intermediate
 
                 if [ ! -s "$CONFIG_FILE" ]; then
                   cp /app/nzbget.conf "$CONFIG_FILE"
@@ -59,13 +59,13 @@ spec:
                 # Update config
                 sed -i "s@^MainDir=.*@MainDir=/config@" "$CONFIG_FILE"
                 sed -i "s@^DestDir=.*@DestDir=/data/usenet/completed@" "$CONFIG_FILE"
-                sed -i "s@^InterDir=.*@InterDir=/work/intermediate@" "$CONFIG_FILE"
-                sed -i "s@^TempDir=.*@TempDir=/work/tmp@" "$CONFIG_FILE"
-                sed -i "s@^QueueDir=.*@QueueDir=/config/queue@" "$CONFIG_FILE"
-                sed -i "s@^NzbDir=.*@NzbDir=/config/nzb@" "$CONFIG_FILE"
-                sed -i "s@^ScriptDir=.*@ScriptDir=/config/scripts@" "$CONFIG_FILE"
-                sed -i "s@^LockFile=.*@LockFile=/config/nzbget.lock@" "$CONFIG_FILE"
-                sed -i "s@^LogFile=.*@LogFile=/config/nzbget.log@" "$CONFIG_FILE"
+                sed -i "s@^InterDir=.*@InterDir=/data/usenet/intermediate@" "$CONFIG_FILE"
+                sed -i "s@^TempDir=.*@TempDir=\$${MainDir}/tmp@" "$CONFIG_FILE"
+                sed -i "s@^QueueDir=.*@QueueDir=\$${MainDir}/queue@" "$CONFIG_FILE"
+                sed -i "s@^NzbDir=.*@NzbDir=\$${MainDir}/nzb@" "$CONFIG_FILE"
+                sed -i "s@^ScriptDir=.*@ScriptDir=\$${MainDir}/scripts@" "$CONFIG_FILE"
+                sed -i "s@^LockFile=.*@LockFile=\$${MainDir}/nzbget.lock@" "$CONFIG_FILE"
+                sed -i "s@^LogFile=.*@LogFile=\$${MainDir}/nzbget.log@" "$CONFIG_FILE"
                 sed -i "s@^UnrarCmd=.*@UnrarCmd=unrar@" "$CONFIG_FILE"
                 sed -i "s@^SevenZipCmd=.*@SevenZipCmd=7z@" "$CONFIG_FILE"
                 sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
@@ -212,14 +212,14 @@ spec:
                 sed -i "s@^Server4.Retention=.*@Server4.Retention=0@" "$CONFIG_FILE"
                 sed -i "s@^Server4.CertVerification=.*@Server4.CertVerification=strict@" "$CONFIG_FILE"
                 sed -i "s@^Server4.IpVersion=.*@Server4.IpVersion=auto@" "$CONFIG_FILE"
-                sed -i "s@^Category1.Name=.*@Category1.Name=Movies@" "$CONFIG_FILE"
-                sed -i "s@^Category1.DestDir=.*@Category1.DestDir=/data/usenet/completed/Movies@" "$CONFIG_FILE"
+                sed -i "s@^Category1.Name=.*@Category1.Name=movies@" "$CONFIG_FILE"
+                sed -i "s@^Category1.DestDir=.*@Category1.DestDir=\$${DestDir}/movies@" "$CONFIG_FILE"
                 sed -i "s@^Category1.Unpack=.*@Category1.Unpack=yes@" "$CONFIG_FILE"
-                sed -i "s@^Category2.Name=.*@Category2.Name=Series@" "$CONFIG_FILE"
+                sed -i "s@^Category2.Name=.*@Category2.Name=tv@" "$CONFIG_FILE"
                 if grep -q '^Category2.DestDir=' "$CONFIG_FILE"; then
-                  sed -i "s@^Category2.DestDir=.*@Category2.DestDir=/data/usenet/completed/Series@" "$CONFIG_FILE"
+                  sed -i "s@^Category2.DestDir=.*@Category2.DestDir=\$${DestDir}/tv@" "$CONFIG_FILE"
                 else
-                  printf '\nCategory2.DestDir=/data/usenet/completed/Series\n' >> "$CONFIG_FILE"
+                  printf '\nCategory2.DestDir=\$${DestDir}/tv\n' >> "$CONFIG_FILE"
                 fi
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=yes@" "$CONFIG_FILE"
@@ -314,20 +314,12 @@ spec:
       config:
         enabled: true
         type: persistentVolumeClaim
-        existingClaim: "{{ .Release.Name }}-config"
+        existingClaim: "{{ .Release.Name }}-config-rbd"
         globalMounts:
           - path: /config
-      work:
-        enabled: true
-        type: persistentVolumeClaim
-        existingClaim: "{{ .Release.Name }}-work"
-        globalMounts:
-          - path: /work
       content:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /data
             subPath: data
-      tmp:
-        type: emptyDir
