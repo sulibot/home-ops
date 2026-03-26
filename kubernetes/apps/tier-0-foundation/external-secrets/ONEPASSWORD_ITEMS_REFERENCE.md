@@ -164,9 +164,6 @@ SMTP_RELAY_USERNAME: "your-email@gmail.com"
 **Used by:** Shelfmark
 
 ```yaml
-username: "admin"
-BOOTSTRAP_ADMIN_PASSWORD: "<your-local-fallback-admin-password>"
-
 HARDCOVER_API_KEY: "your-hardcover-api-key"
 PROWLARR_API_KEY: "your-prowlarr-api-key"
 ```
@@ -178,7 +175,15 @@ SHELFMARK_OIDC_CLIENT_ID: "shelfmark"
 SHELFMARK_OIDC_CLIENT_SECRET: "<generated-client-secret>"
 ```
 
-### 20. sonarr
+### 20. shelfmark-bootstrap
+**Used by:** Shelfmark local fallback admin bootstrap
+
+```yaml
+username: "admin"
+BOOTSTRAP_ADMIN_PASSWORD: "<your-local-fallback-admin-password>"
+```
+
+### 21. sonarr
 **Used by:** Sonarr, Recyclarr, Cross-seed, Notifier
 
 ```yaml
@@ -186,14 +191,14 @@ SONARR_API_KEY: "your-sonarr-api-key"
 SONARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
-### 21. tautulli
+### 22. tautulli
 **Used by:** Tautulli
 
 ```yaml
 TAUTULLI_API_KEY: "your-tautulli-api-key"
 ```
 
-### 22. turbo-ac-tls
+### 23. turbo-ac-tls
 **Used by:** Certificate Import/Export
 
 This item should contain TLS certificate data:
@@ -204,14 +209,14 @@ tls.crt: "<base64-encoded-certificate>"
 tls.key: "<base64-encoded-private-key>"
 ```
 
-### 23. unifi
+### 24. unifi
 **Used by:** Unpoller
 
 ```yaml
 UNIFI_API_KEY: "your-unifi-api-key"
 ```
 
-### 24. volsync-template
+### 25. volsync-template
 **Used by:** VolSync (all apps), Kopia
 
 ```yaml
@@ -225,7 +230,7 @@ AWS_REGION: "us-east-1"
 AWS_S3_ENDPOINT: "https://s3.sulibot.com"
 ```
 
-### 25. zigbee
+### 26. zigbee
 **Used by:** Zigbee2MQTT
 
 ```yaml
