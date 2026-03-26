@@ -39,58 +39,151 @@ spec:
               - -c
               - |
                 set -x
-                MAIN_DIR="/work"
-                CONFIG_DIR="/work/config"
+                MAIN_DIR="/config"
+                CONFIG_DIR="/config"
                 INTER_DIR="/work/intermediate"
                 TEMP_DIR="/work/tmp"
-                CONFIG_FILE="/work/config/nzbget.conf"
-                COMPAT_CONFIG="/config"
+                CONFIG_FILE="/config/nzbget.conf"
                 echo "=== Init container starting ==="
 
-                mkdir -p "$MAIN_DIR" "$CONFIG_DIR" "$INTER_DIR" "$TEMP_DIR" \
-                  "$MAIN_DIR/nzb" "$MAIN_DIR/queue" "$MAIN_DIR/scripts" "$COMPAT_CONFIG"
-                chown -R 1000:1000 /work "$COMPAT_CONFIG"
+                mkdir -p "$MAIN_DIR" "$INTER_DIR" "$TEMP_DIR" \
+                  "$MAIN_DIR/nzb" "$MAIN_DIR/queue" "$MAIN_DIR/scripts"
+                chown -R 1000:1000 /work /config
 
-                if [ ! -f "$CONFIG_FILE" ]; then
+                if [ ! -s "$CONFIG_FILE" ]; then
                   cp /app/nzbget.conf "$CONFIG_FILE"
                 fi
 
                 echo "Config file ready, size: $(wc -l < "$CONFIG_FILE") lines"
 
-                # Update config - use $$ to escape for Helm
-                sed -i "s@^MainDir=.*@MainDir=/work@" "$CONFIG_FILE"
+                # Update config
+                sed -i "s@^MainDir=.*@MainDir=/config@" "$CONFIG_FILE"
                 sed -i "s@^DestDir=.*@DestDir=/data/usenet/completed@" "$CONFIG_FILE"
                 sed -i "s@^InterDir=.*@InterDir=/work/intermediate@" "$CONFIG_FILE"
                 sed -i "s@^TempDir=.*@TempDir=/work/tmp@" "$CONFIG_FILE"
-                sed -i "s@^QueueDir=.*@QueueDir=\${MainDir}/queue@" "$CONFIG_FILE"
-                sed -i "s@^NzbDir=.*@NzbDir=\${MainDir}/nzb@" "$CONFIG_FILE"
-                sed -i "s@^ScriptDir=.*@ScriptDir=\${MainDir}/scripts@" "$CONFIG_FILE"
+                sed -i "s@^QueueDir=.*@QueueDir=/config/queue@" "$CONFIG_FILE"
+                sed -i "s@^NzbDir=.*@NzbDir=/config/nzb@" "$CONFIG_FILE"
+                sed -i "s@^ScriptDir=.*@ScriptDir=/config/scripts@" "$CONFIG_FILE"
                 sed -i "s@^LockFile=.*@LockFile=\${MainDir}/nzbget.lock@" "$CONFIG_FILE"
                 sed -i "s@^LogFile=.*@LogFile=\${MainDir}/nzbget.log@" "$CONFIG_FILE"
-                sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                sed -i "s@^UnrarCmd=.*@UnrarCmd=unrar@" "$CONFIG_FILE"
+                sed -i "s@^SevenZipCmd=.*@SevenZipCmd=7z@" "$CONFIG_FILE"
+                sed -i "s@^ControlIP=.*@ControlIP=${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
+                sed -i "s@^ControlUsername=.*@ControlUsername=${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                sed -i "s@^ControlPassword=.*@ControlPassword=${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPort=.*@ControlPort=6789@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Name=.*@Server1.Name=Eweka@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Level=.*@Server1.Level=0@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Optional=.*@Server1.Optional=no@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Group=.*@Server1.Group=0@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Host=.*@Server1.Host=news.eweka.nl@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Encryption=.*@Server1.Encryption=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Port=.*@Server1.Port=563@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__EWEKA_USERNAME:-}" ]; then
+                  sed -i "s@^Server1.Username=.*@Server1.Username=${NZBGET__EWEKA_USERNAME}@" "$CONFIG_FILE"
+                fi
+                if [ -n "${NZBGET__EWEKA_PASSWORD:-}" ]; then
+                  sed -i "s@^Server1.Password=.*@Server1.Password=${NZBGET__EWEKA_PASSWORD}@" "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server1.JoinGroup=.*@Server1.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Connections=.*@Server1.Connections=0@" "$CONFIG_FILE"
+                sed -i "s@^Server1.Retention=.*@Server1.Retention=0@" "$CONFIG_FILE"
+                sed -i "s@^Server1.CertVerification=.*@Server1.CertVerification=strict@" "$CONFIG_FILE"
+                sed -i "s@^Server1.IpVersion=.*@Server1.IpVersion=auto@" "$CONFIG_FILE"
+                if ! grep -q '^Server2.Host=' "$CONFIG_FILE"; then
+                  printf '\n%s\n' \
+                    'Server2.Active=yes' \
+                    'Server2.Name=Frugal West' \
+                    'Server2.Level=0' \
+                    'Server2.Optional=no' \
+                    'Server2.Group=0' \
+                    'Server2.Host=newswest.frugalusenet.com' \
+                    'Server2.Encryption=yes' \
+                    'Server2.Port=563' \
+                    'Server2.Username=' \
+                    'Server2.Password=' \
+                    'Server2.JoinGroup=no' \
+                    'Server2.Cipher=' \
+                    'Server2.Connections=100' \
+                    'Server2.Retention=0' \
+                    'Server2.CertVerification=strict' \
+                    'Server2.IpVersion=auto' \
+                    'Server2.Notes=' >> "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server2.Active=.*@Server2.Active=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Name=.*@Server2.Name=Frugal West@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Level=.*@Server2.Level=0@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Optional=.*@Server2.Optional=no@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Group=.*@Server2.Group=0@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Host=.*@Server2.Host=newswest.frugalusenet.com@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Encryption=.*@Server2.Encryption=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Port=.*@Server2.Port=563@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server2.Username=.*@Server2.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                fi
+                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server2.Password=.*@Server2.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server2.JoinGroup=.*@Server2.JoinGroup=no@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Connections=.*@Server2.Connections=100@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Retention=.*@Server2.Retention=0@" "$CONFIG_FILE"
+                sed -i "s@^Server2.CertVerification=.*@Server2.CertVerification=strict@" "$CONFIG_FILE"
+                sed -i "s@^Server2.IpVersion=.*@Server2.IpVersion=auto@" "$CONFIG_FILE"
+                if ! grep -q '^Server3.Host=' "$CONFIG_FILE"; then
+                  printf '\n%s\n' \
+                    'Server3.Active=yes' \
+                    'Server3.Name=Frugal Bonus' \
+                    'Server3.Level=1' \
+                    'Server3.Optional=yes' \
+                    'Server3.Group=0' \
+                    'Server3.Host=bonus.frugalusenet.com' \
+                    'Server3.Encryption=yes' \
+                    'Server3.Port=563' \
+                    'Server3.Username=' \
+                    'Server3.Password=' \
+                    'Server3.JoinGroup=no' \
+                    'Server3.Cipher=' \
+                    'Server3.Connections=10' \
+                    'Server3.Retention=0' \
+                    'Server3.CertVerification=strict' \
+                    'Server3.IpVersion=auto' \
+                    'Server3.Notes=' >> "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server3.Active=.*@Server3.Active=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Name=.*@Server3.Name=Frugal Bonus@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Level=.*@Server3.Level=1@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Optional=.*@Server3.Optional=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Group=.*@Server3.Group=0@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Host=.*@Server3.Host=bonus.frugalusenet.com@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Encryption=.*@Server3.Encryption=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Port=.*@Server3.Port=563@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server3.Username=.*@Server3.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                elif ! grep -q '^Server3.Username=' "$CONFIG_FILE"; then
+                  printf '\nServer3.Username=\n' >> "$CONFIG_FILE"
+                fi
+                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server3.Password=.*@Server3.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                elif ! grep -q '^Server3.Password=' "$CONFIG_FILE"; then
+                  printf '\nServer3.Password=\n' >> "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server3.JoinGroup=.*@Server3.JoinGroup=no@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Connections=.*@Server3.Connections=10@" "$CONFIG_FILE"
+                sed -i "s@^Server3.Retention=.*@Server3.Retention=0@" "$CONFIG_FILE"
+                sed -i "s@^Server3.CertVerification=.*@Server3.CertVerification=strict@" "$CONFIG_FILE"
+                sed -i "s@^Server3.IpVersion=.*@Server3.IpVersion=auto@" "$CONFIG_FILE"
+                sed -i "s@^Category1.Name=.*@Category1.Name=Movies@" "$CONFIG_FILE"
+                sed -i "s@^Category1.DestDir=.*@Category1.DestDir=/data/usenet/completed/Movies@" "$CONFIG_FILE"
+                sed -i "s@^Category1.Unpack=.*@Category1.Unpack=yes@" "$CONFIG_FILE"
+                sed -i "s@^Category2.Name=.*@Category2.Name=Series@" "$CONFIG_FILE"
+                if grep -q '^Category2.DestDir=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category2.DestDir=.*@Category2.DestDir=/data/usenet/completed/Series@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory2.DestDir=/data/usenet/completed/Series\n' >> "$CONFIG_FILE"
+                fi
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=yes@" "$CONFIG_FILE"
-
-                rm -rf "$COMPAT_CONFIG/nzbget.conf" \
-                  "$COMPAT_CONFIG/nzb" \
-                  "$COMPAT_CONFIG/queue" \
-                  "$COMPAT_CONFIG/tmp" \
-                  "$COMPAT_CONFIG/scripts" \
-                  "$COMPAT_CONFIG/completed" \
-                  "$COMPAT_CONFIG/intermediate"
-
-                ln -snf /work/config/nzbget.conf "$COMPAT_CONFIG/nzbget.conf"
-                ln -snf /work/nzb "$COMPAT_CONFIG/nzb"
-                ln -snf /work/queue "$COMPAT_CONFIG/queue"
-                ln -snf /work/tmp "$COMPAT_CONFIG/tmp"
-                ln -snf /work/scripts "$COMPAT_CONFIG/scripts"
-                ln -snf /data/usenet/completed "$COMPAT_CONFIG/completed"
-                ln -snf /work/intermediate "$COMPAT_CONFIG/intermediate"
 
                 echo "After update:"
                 grep "^MainDir=" "$CONFIG_FILE"
@@ -105,6 +198,11 @@ spec:
                 grep "^ControlIP=" "$CONFIG_FILE"
                 grep "^ControlUsername=" "$CONFIG_FILE"
                 grep "^Server1.Connections=" "$CONFIG_FILE"
+                grep "^Server1.Host=" "$CONFIG_FILE"
+                grep "^Server2.Host=" "$CONFIG_FILE"
+                grep "^Server2.Connections=" "$CONFIG_FILE"
+                grep "^Server3.Host=" "$CONFIG_FILE"
+                grep "^Server3.Connections=" "$CONFIG_FILE"
                 grep "^ArticleCache=" "$CONFIG_FILE"
                 grep "^DirectWrite=" "$CONFIG_FILE"
                 echo "=== Init container complete ==="
@@ -118,13 +216,13 @@ spec:
             args:
               - --server
               - --configfile
-              - /work/config/nzbget.conf
+              - /config/nzbget.conf
               - -o
               - OutputMode=log
               - -o
               - ControlPort=6789
             env:
-              NZBGET__PORT: &containerPort 6789
+              NZBGET__PORT: "6789"
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             envFrom:
@@ -163,7 +261,7 @@ spec:
         ports:
           http:
             port: 80
-            targetPort: *containerPort
+            targetPort: 6789
     route:
       app:
         hostnames:
@@ -174,11 +272,13 @@ spec:
     persistence:
       config:
         enabled: true
-        type: emptyDir
+        type: persistentVolumeClaim
+        existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
           - path: /config
       work:
         enabled: true
+        type: persistentVolumeClaim
         existingClaim: "{{ .Release.Name }}-work"
         globalMounts:
           - path: /work
