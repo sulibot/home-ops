@@ -164,9 +164,8 @@ SMTP_RELAY_USERNAME: "your-email@gmail.com"
 **Used by:** Shelfmark
 
 ```yaml
-# Standard item username/password fields
 username: "admin"
-password: "<your-local-fallback-admin-password>"
+BOOTSTRAP_ADMIN_PASSWORD: "<your-local-fallback-admin-password>"
 
 HARDCOVER_API_KEY: "your-hardcover-api-key"
 PROWLARR_API_KEY: "your-prowlarr-api-key"
