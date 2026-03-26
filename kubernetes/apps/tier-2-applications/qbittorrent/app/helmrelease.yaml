@@ -39,8 +39,8 @@ spec:
                 set_pref() {
                   key="$1"
                   value="$2"
-                  if grep -Fq "${key}=" /config/qBittorrent/qBittorrent.conf 2>/dev/null; then
-                    awk -v key="${key}" -v value="${value}" '
+                  if grep -Fq "$key=" /config/qBittorrent/qBittorrent.conf 2>/dev/null; then
+                    awk -v key="$key" -v value="$value" '
                       BEGIN { replaced = 0 }
                       index($0, key "=") == 1 {
                         if (!replaced) {
