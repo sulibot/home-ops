@@ -64,13 +64,13 @@ spec:
                 sed -i "s@^QueueDir=.*@QueueDir=/config/queue@" "$CONFIG_FILE"
                 sed -i "s@^NzbDir=.*@NzbDir=/config/nzb@" "$CONFIG_FILE"
                 sed -i "s@^ScriptDir=.*@ScriptDir=/config/scripts@" "$CONFIG_FILE"
-                sed -i "s@^LockFile=.*@LockFile=\${MainDir}/nzbget.lock@" "$CONFIG_FILE"
-                sed -i "s@^LogFile=.*@LogFile=\${MainDir}/nzbget.log@" "$CONFIG_FILE"
+                sed -i 's@^LockFile=.*@LockFile=${MainDir}/nzbget.lock@' "$CONFIG_FILE"
+                sed -i 's@^LogFile=.*@LogFile=${MainDir}/nzbget.log@' "$CONFIG_FILE"
                 sed -i "s@^UnrarCmd=.*@UnrarCmd=unrar@" "$CONFIG_FILE"
                 sed -i "s@^SevenZipCmd=.*@SevenZipCmd=7z@" "$CONFIG_FILE"
-                sed -i "s@^ControlIP=.*@ControlIP=${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
-                sed -i "s@^ControlUsername=.*@ControlUsername=${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                sed -i "s@^ControlPassword=.*@ControlPassword=${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
+                sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPort=.*@ControlPort=6789@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Name=.*@Server1.Name=Eweka@" "$CONFIG_FILE"
@@ -80,11 +80,11 @@ spec:
                 sed -i "s@^Server1.Host=.*@Server1.Host=news.eweka.nl@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Encryption=.*@Server1.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Port=.*@Server1.Port=563@" "$CONFIG_FILE"
-                if [ -n "${NZBGET__EWEKA_USERNAME:-}" ]; then
-                  sed -i "s@^Server1.Username=.*@Server1.Username=${NZBGET__EWEKA_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__EWEKA_USERNAME:-}" ]; then
+                  sed -i "s@^Server1.Username=.*@Server1.Username=$${NZBGET__EWEKA_USERNAME}@" "$CONFIG_FILE"
                 fi
-                if [ -n "${NZBGET__EWEKA_PASSWORD:-}" ]; then
-                  sed -i "s@^Server1.Password=.*@Server1.Password=${NZBGET__EWEKA_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__EWEKA_PASSWORD:-}" ]; then
+                  sed -i "s@^Server1.Password=.*@Server1.Password=$${NZBGET__EWEKA_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server1.JoinGroup=.*@Server1.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Connections=.*@Server1.Connections=0@" "$CONFIG_FILE"
@@ -119,11 +119,11 @@ spec:
                 sed -i "s@^Server2.Host=.*@Server2.Host=newswest.frugalusenet.com@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Encryption=.*@Server2.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Port=.*@Server2.Port=563@" "$CONFIG_FILE"
-                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
-                  sed -i "s@^Server2.Username=.*@Server2.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server2.Username=.*@Server2.Username=$${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
                 fi
-                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
-                  sed -i "s@^Server2.Password=.*@Server2.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server2.Password=.*@Server2.Password=$${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server2.JoinGroup=.*@Server2.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Connections=.*@Server2.Connections=100@" "$CONFIG_FILE"
@@ -158,13 +158,13 @@ spec:
                 sed -i "s@^Server3.Host=.*@Server3.Host=bonus.frugalusenet.com@" "$CONFIG_FILE"
                 sed -i "s@^Server3.Encryption=.*@Server3.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server3.Port=.*@Server3.Port=563@" "$CONFIG_FILE"
-                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
-                  sed -i "s@^Server3.Username=.*@Server3.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server3.Username=.*@Server3.Username=$${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
                 elif ! grep -q '^Server3.Username=' "$CONFIG_FILE"; then
                   printf '\nServer3.Username=\n' >> "$CONFIG_FILE"
                 fi
-                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
-                  sed -i "s@^Server3.Password=.*@Server3.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "$${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server3.Password=.*@Server3.Password=$${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 elif ! grep -q '^Server3.Password=' "$CONFIG_FILE"; then
                   printf '\nServer3.Password=\n' >> "$CONFIG_FILE"
                 fi
