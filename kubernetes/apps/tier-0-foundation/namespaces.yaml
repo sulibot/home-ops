@@ -11,3 +11,6 @@ metadata:
     volsync.backube/privileged-movers: "true"      # Allow VolSync privileged movers (needed for PVC restores)
   labels:
     resource.kubernetes.io/admin-access: "true"   # Permit admin-level RBAC access
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
