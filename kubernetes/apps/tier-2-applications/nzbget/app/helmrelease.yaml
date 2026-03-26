@@ -105,7 +105,7 @@ spec:
                     'Server2.Password=' \
                     'Server2.JoinGroup=no' \
                     'Server2.Cipher=' \
-                    'Server2.Connections=150' \
+                    'Server2.Connections=200' \
                     'Server2.Retention=0' \
                     'Server2.CertVerification=strict' \
                     'Server2.IpVersion=auto' \
@@ -126,7 +126,7 @@ spec:
                   sed -i "s@^Server2.Password=.*@Server2.Password=$${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server2.JoinGroup=.*@Server2.JoinGroup=no@" "$CONFIG_FILE"
-                sed -i "s@^Server2.Connections=.*@Server2.Connections=150@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Connections=.*@Server2.Connections=200@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Retention=.*@Server2.Retention=0@" "$CONFIG_FILE"
                 sed -i "s@^Server2.CertVerification=.*@Server2.CertVerification=strict@" "$CONFIG_FILE"
                 sed -i "s@^Server2.IpVersion=.*@Server2.IpVersion=auto@" "$CONFIG_FILE"
