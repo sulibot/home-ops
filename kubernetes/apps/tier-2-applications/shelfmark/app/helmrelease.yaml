@@ -149,7 +149,7 @@ spec:
               # Direct Download: Cloudflare bypass
               USE_CF_BYPASS: "true"
               USING_EXTERNAL_BYPASSER: "true"
-              EXT_BYPASSER_URL: http://flaresolverr:8191
+              EXT_BYPASSER_URL: http://flaresolverr
               EXT_BYPASSER_PATH: /v1
               EXT_BYPASSER_TIMEOUT: "60000"
 
