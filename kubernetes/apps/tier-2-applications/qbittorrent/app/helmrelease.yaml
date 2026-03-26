@@ -37,7 +37,9 @@ spec:
               - |
                 set -eux
                 mkdir -p /config/qBittorrent/logs
+                mkdir -p /tmp/gluetun
                 chown -R 1000:1000 /config
+                chown -R 1000:1000 /tmp/gluetun
             securityContext:
               runAsUser: 0
         containers:
@@ -46,7 +48,7 @@ spec:
               repository: ghcr.io/qdm12/gluetun
               tag: v3.41.1
             env:
-              HEALTH_SERVER_ADDRESS: 127.0.0.1:9999
+              HEALTH_SERVER_ADDRESS: :9999
             envFrom:
               - secretRef:
                   name: qbittorrent-nordvpn-secret
