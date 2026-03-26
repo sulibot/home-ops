@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
+  - ./manual-plex-config-rbd-pvc.yaml
   - ./ocirepository.yaml
 #  - ./manual-plex-config-pvc.yaml  # Break-glass PVC - VolSync manages lifecycle
   - ./vpa.yaml

@@ -153,7 +153,7 @@ spec:
 
       config:
         enabled: true
-        existingClaim: "{{ .Release.Name }}-config"
+        existingClaim: plex-config-rbd
         globalMounts:
           - path: /config
       content:
