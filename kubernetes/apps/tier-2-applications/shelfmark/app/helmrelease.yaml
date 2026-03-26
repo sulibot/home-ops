@@ -55,8 +55,8 @@ spec:
               DEFAULT_RELEASE_SOURCE: prowlarr
 
               # Download destinations (within csi-cephfs-content-pvc)
-              INGEST_DIR: /media/books/import
-              DESTINATION_AUDIOBOOK: /media/books/audiobooks
+              INGEST_DIR: /media/books
+              DESTINATION_AUDIOBOOK: /media/audiobooks
 
               # Metadata providers
               METADATA_PROVIDER: hardcover

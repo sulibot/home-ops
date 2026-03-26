@@ -103,21 +103,30 @@ JELLYSEERR_PUSHOVER_TOKEN: "your-pushover-token"
 PLEX_TOKEN: "your-plex-token"
 ```
 
-### 12. prowlarr
+### 12. nordvpn
+**Used by:** qBittorrent VPN sidecar
+
+```yaml
+WIREGUARD_PRIVATE_KEY: "<your-nordvpn-wireguard-private-key>"
+# Optional
+SERVER_COUNTRIES: "United States"
+```
+
+### 13. prowlarr
 **Used by:** Prowlarr, Cross-seed
 
 ```yaml
 PROWLARR_API_KEY: "your-prowlarr-api-key"
 ```
 
-### 13. pushover
+### 14. pushover
 **Used by:** Notifier, Alertmanager
 
 ```yaml
 PUSHOVER_USER_KEY: "your-pushover-user-key"
 ```
 
-### 14. qui
+### 15. qui
 **Used by:** qBittorrent UI, Cross-seed
 
 ```yaml
@@ -125,7 +134,7 @@ QUI_SESSION_SECRET: "random-session-secret"
 QUI_CLIENT_API_KEY: "your-qui-api-key"
 ```
 
-### 15. radarr
+### 16. radarr
 **Used by:** Radarr, Recyclarr, Cross-seed, Notifier
 
 ```yaml
@@ -133,7 +142,7 @@ RADARR_API_KEY: "your-radarr-api-key"
 RADARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
-### 16. slskd
+### 17. slskd
 **Used by:** Soulseek Daemon
 
 ```yaml
@@ -141,7 +150,7 @@ SLSKD_SLSK_USERNAME: "your-soulseek-username"
 SLSKD_SLSK_PASSWORD: "your-soulseek-password"
 ```
 
-### 17. smtp-relay
+### 18. smtp-relay
 **Used by:** SMTP Relay
 
 ```yaml
@@ -151,7 +160,7 @@ SMTP_RELAY_SERVER: "smtp.gmail.com:587"
 SMTP_RELAY_USERNAME: "your-email@gmail.com"
 ```
 
-### 18. sonarr
+### 19. sonarr
 **Used by:** Sonarr, Recyclarr, Cross-seed, Notifier
 
 ```yaml
@@ -159,14 +168,14 @@ SONARR_API_KEY: "your-sonarr-api-key"
 SONARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
-### 19. tautulli
+### 20. tautulli
 **Used by:** Tautulli
 
 ```yaml
 TAUTULLI_API_KEY: "your-tautulli-api-key"
 ```
 
-### 20. turbo-ac-tls
+### 21. turbo-ac-tls
 **Used by:** Certificate Import/Export
 
 This item should contain TLS certificate data:
@@ -177,14 +186,14 @@ tls.crt: "<base64-encoded-certificate>"
 tls.key: "<base64-encoded-private-key>"
 ```
 
-### 21. unifi
+### 22. unifi
 **Used by:** Unpoller
 
 ```yaml
 UNIFI_API_KEY: "your-unifi-api-key"
 ```
 
-### 22. volsync-template
+### 23. volsync-template
 **Used by:** VolSync (all apps), Kopia
 
 ```yaml
@@ -198,7 +207,7 @@ AWS_REGION: "us-east-1"
 AWS_S3_ENDPOINT: "https://s3.sulibot.com"
 ```
 
-### 23. zigbee
+### 24. zigbee
 **Used by:** Zigbee2MQTT
 
 ```yaml

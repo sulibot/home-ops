@@ -41,6 +41,47 @@ spec:
             securityContext:
               runAsUser: 0
         containers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.41.1
+            env:
+              HEALTH_SERVER_ADDRESS: 127.0.0.1:9999
+            envFrom:
+              - secretRef:
+                  name: qbittorrent-nordvpn-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              capabilities:
+                drop: ["ALL"]
+                add: ["NET_ADMIN"]
           app:
             image:
               repository: ghcr.io/home-operations/qbittorrent
@@ -78,13 +119,6 @@ spec:
 #              limits:
 #                memory: 4Gi
     defaultPodOptions:
-      annotations:
-        k8s.v1.cni.cncf.io/networks: |-
-          [{
-            "name": "vlan30",
-            "namespace": "kube-system",
-            "ips": ["10.30.0.252/24", "fd00:30::252/64"]
-          }]
       securityContext:
         runAsNonRoot: false
         runAsUser: 1000
@@ -118,6 +152,14 @@ spec:
           .qbt.toml: |
             # qBittorrent configuration
     persistence:
+      dev-net-tun:
+        type: hostPath
+        hostPath: /dev/net/tun
+        hostPathType: CharDevice
+        advancedMounts:
+          qbittorrent:
+            gluetun:
+              - path: /dev/net/tun
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
