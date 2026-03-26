@@ -175,7 +175,7 @@ spec:
                 sed -i "s@^Server3.IpVersion=.*@Server3.IpVersion=auto@" "$CONFIG_FILE"
                 if ! grep -q '^Server4.Host=' "$CONFIG_FILE"; then
                   printf '\n%s\n' \
-                    'Server4.Active=no' \
+                    'Server4.Active=yes' \
                     'Server4.Name=Blocknews US' \
                     'Server4.Level=2' \
                     'Server4.Optional=yes' \
@@ -193,7 +193,7 @@ spec:
                     'Server4.IpVersion=auto' \
                     'Server4.Notes=' >> "$CONFIG_FILE"
                 fi
-                sed -i "s@^Server4.Active=.*@Server4.Active=no@" "$CONFIG_FILE"
+                sed -i "s@^Server4.Active=.*@Server4.Active=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Name=.*@Server4.Name=Blocknews US@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Level=.*@Server4.Level=2@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Optional=.*@Server4.Optional=yes@" "$CONFIG_FILE"
