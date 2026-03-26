@@ -221,6 +221,11 @@ spec:
                 else
                   printf '\nCategory2.DestDir=\$${DestDir}/tv\n' >> "$CONFIG_FILE"
                 fi
+                if grep -q '^Category2.Unpack=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category2.Unpack=.*@Category2.Unpack=yes@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory2.Unpack=yes\n' >> "$CONFIG_FILE"
+                fi
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=yes@" "$CONFIG_FILE"
 
