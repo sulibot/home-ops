@@ -45,6 +45,7 @@ spec:
                 mkdir -p /data/torrents/music
                 mkdir -p /data/torrents/books
                 mkdir -p /data/torrents/audiobooks
+                mkdir -p /data/torrents/cross-seed
                 mkdir -p /data/torrents/flaresolverr
                 cat > /config/qBittorrent/categories.json <<'EOF'
                 {
@@ -53,6 +54,9 @@ spec:
                     },
                     "books": {
                         "save_path": "books"
+                    },
+                    "cross-seed": {
+                        "save_path": "cross-seed"
                     },
                     "flaresolverr": {
                         "save_path": "flaresolverr"
