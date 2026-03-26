@@ -36,6 +36,31 @@ spec:
               - -c
               - |
                 set -eux
+                set_pref() {
+                  key="$1"
+                  value="$2"
+                  if grep -Fq "${key}=" /config/qBittorrent/qBittorrent.conf 2>/dev/null; then
+                    awk -v key="${key}" -v value="${value}" '
+                      BEGIN { replaced = 0 }
+                      index($0, key "=") == 1 {
+                        if (!replaced) {
+                          print key "=" value
+                          replaced = 1
+                        }
+                        next
+                      }
+                      { print }
+                      END {
+                        if (!replaced) {
+                          print key "=" value
+                        }
+                      }
+                    ' /config/qBittorrent/qBittorrent.conf > /config/qBittorrent/qBittorrent.conf.tmp
+                    mv /config/qBittorrent/qBittorrent.conf.tmp /config/qBittorrent/qBittorrent.conf
+                  else
+                    printf '%s=%s\n' "$key" "$value" >> /config/qBittorrent/qBittorrent.conf
+                  fi
+                }
                 mkdir -p /config/qBittorrent/logs
                 mkdir -p /tmp/gluetun
                 mkdir -p /data/torrents/movies
@@ -78,6 +103,13 @@ spec:
                     }
                 }
                 EOF
+                set_pref 'Session\DefaultSavePath' '/data/torrents'
+                set_pref 'Session\DisableAutoTMMByDefault' 'false'
+                set_pref 'Session\DisableAutoTMMTriggers\CategorySavePathChanged' 'false'
+                set_pref 'Session\DisableAutoTMMTriggers\DefaultSavePathChanged' 'false'
+                set_pref 'Session\GlobalMaxSeedingMinutes' '20160'
+                set_pref 'Session\ShareLimitAction' 'Remove'
+                set_pref 'General\DeleteTorrentsFilesAsDefault' 'true'
                 chown -R 1000:1000 /config
                 chown -R 1000:1000 /data/torrents
                 chown -R 1000:1000 /tmp/gluetun
