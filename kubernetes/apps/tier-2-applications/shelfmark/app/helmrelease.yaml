@@ -26,6 +26,56 @@ spec:
       shelfmark:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          bootstrap-admin:
+            image:
+              repository: ghcr.io/calibrain/shelfmark-lite
+              tag: v1.2.0@sha256:9db6adf0dc2d1b2459591e497ec8333a840cbfcaeeecd04b48f6e23383177ec9
+            envFrom:
+              - secretRef:
+                  name: shelfmark-secret
+            command:
+              - /bin/sh
+              - -ec
+            args:
+              - |
+                mkdir -p /config/plugins
+                python - <<'PY'
+                import json
+                import os
+                from pathlib import Path
+                from werkzeug.security import check_password_hash, generate_password_hash
+
+                config_path = Path("/config/plugins/security.json")
+                config = {}
+                if config_path.exists():
+                    try:
+                        config = json.loads(config_path.read_text())
+                    except Exception:
+                        config = {}
+
+                username = (os.getenv("BOOTSTRAP_ADMIN_USERNAME") or "").strip()
+                password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD") or ""
+                changed = False
+
+                if username and password:
+                    existing_hash = config.get("BUILTIN_PASSWORD_HASH", "")
+                    if (
+                        config.get("BUILTIN_USERNAME") != username
+                        or not existing_hash
+                        or not check_password_hash(existing_hash, password)
+                    ):
+                        config["BUILTIN_USERNAME"] = username
+                        config["BUILTIN_PASSWORD_HASH"] = generate_password_hash(password)
+                        changed = True
+
+                if changed or not config_path.exists():
+                    config_path.write_text(json.dumps(config, indent=2) + "\n")
+                PY
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
         containers:
           app:
             image:
@@ -57,6 +107,17 @@ spec:
               # Download destinations (within csi-cephfs-content-pvc)
               INGEST_DIR: /media/books
               DESTINATION_AUDIOBOOK: /media/audiobooks
+
+              # Authentication
+              AUTH_METHOD: oidc
+              OIDC_DISCOVERY_URL: https://auth.sulibot.com/application/o/shelfmark/.well-known/openid-configuration
+              OIDC_GROUP_CLAIM: groups
+              OIDC_ADMIN_GROUP: shelfmark-admins
+              OIDC_USE_ADMIN_GROUP: "true"
+              OIDC_AUTO_PROVISION: "true"
+              OIDC_BUTTON_LABEL: Login with Authentik
+              HIDE_LOCAL_AUTH: "false"
+              OIDC_AUTO_REDIRECT: "false"
 
               # Metadata providers
               METADATA_PROVIDER: hardcover
