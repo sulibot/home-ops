@@ -71,7 +71,7 @@ spec:
                 sed -i "s@^ControlIP=.*@ControlIP=$${NZBGET__CONTROLIP}@" "$CONFIG_FILE"
                 sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
-                sed -i "s@^ControlPort=.*@ControlPort=6789@" "$CONFIG_FILE"
+                sed -i "s@^ControlPort=.*@ControlPort=80@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Name=.*@Server1.Name=Eweka@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Level=.*@Server1.Level=0@" "$CONFIG_FILE"
@@ -266,9 +266,9 @@ spec:
               - -o
               - OutputMode=log
               - -o
-              - ControlPort=6789
+              - ControlPort=80
             env:
-              NZBGET__PORT: "6789"
+              NZBGET__PORT: "80"
               NZBGET__CONTROLIP: "::"
               TZ: America/Los_Angeles
             envFrom:
@@ -307,7 +307,7 @@ spec:
         ports:
           http:
             port: 80
-            targetPort: 6789
+            targetPort: 80
     route:
       app:
         hostnames:
