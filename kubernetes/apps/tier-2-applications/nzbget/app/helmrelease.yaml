@@ -323,3 +323,7 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+      tmp:
+        enabled: false
+      work:
+        enabled: false
