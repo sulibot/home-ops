@@ -56,6 +56,22 @@ spec:
               requests:
                 cpu: 15m
                 memory: 150Mi
+          proxy:
+            image:
+              repository: docker.io/alpine/socat
+              tag: 1.8.0.3
+            args:
+              - TCP6-LISTEN:8080,ipv6only=0,fork,reuseaddr
+              - TCP6:[::1]:8191
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
     defaultPodOptions:
       dnsConfig:
         options:
@@ -75,7 +91,7 @@ spec:
         ports:
           http:
             port: 80
-            targetPort: 8191
+            targetPort: 8080
     persistence:
       tmp:
         type: emptyDir
