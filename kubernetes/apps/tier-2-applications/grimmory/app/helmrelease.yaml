@@ -187,6 +187,7 @@ spec:
     route:
       app:
         hostnames:
+          - books.sulibot.com
           - grimmory.sulibot.com
         parentRefs:
           - name: gateway-internal
