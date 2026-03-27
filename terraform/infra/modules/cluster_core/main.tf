@@ -250,9 +250,14 @@ locals {
 
   proxmox_ha_enabled    = try(var.proxmox_ha.enabled, false)
   proxmox_ha_group_name = trimspace(try(var.proxmox_ha.group_name, "")) != "" ? trimspace(var.proxmox_ha.group_name) : "cluster-${var.cluster_id}"
+  proxmox_ha_rule_name  = "${local.proxmox_ha_group_name}-nodes"
   proxmox_ha_nodes = join(",", [
     for node in local.hypervisors :
     format("%s:%d", node, lookup(try(var.proxmox_ha.node_priorities, {}), node, 1))
+  ])
+  proxmox_ha_resource_sids = join(",", [
+    for name in sort(keys(local.nodes)) :
+    format("vm:%s", tostring(try(local.nodes[name].vm_id, 0)))
   ])
 
   # Kubernetes Network CIDRs (derived from cluster_id)
@@ -588,17 +593,17 @@ resource "proxmox_virtual_environment_vm" "nodes" {
   boot_order = ["scsi0", "ide0"]
 }
 
-resource "null_resource" "proxmox_ha_group" {
+resource "null_resource" "proxmox_ha_rule" {
   count = local.proxmox_ha_enabled ? 1 : 0
 
   triggers = {
-    group_name = local.proxmox_ha_group_name
-    nodes      = local.proxmox_ha_nodes
-    restricted = try(var.proxmox_ha.restricted, true) ? "1" : "0"
-    nofailback = try(var.proxmox_ha.nofailback, true) ? "1" : "0"
-    ssh_host   = lookup(var.proxmox_ssh_hostnames, var.proxmox.node_primary, var.proxmox.node_primary)
-    ssh_user   = var.proxmox_ssh_user
-    ssh_port   = tostring(var.proxmox_ssh_port)
+    rule_name = local.proxmox_ha_rule_name
+    nodes     = local.proxmox_ha_nodes
+    strict    = try(var.proxmox_ha.restricted, true) ? "1" : "0"
+    resources = local.proxmox_ha_resource_sids
+    ssh_host  = lookup(var.proxmox_ssh_hostnames, var.proxmox.node_primary, var.proxmox.node_primary)
+    ssh_user  = var.proxmox_ssh_user
+    ssh_port  = tostring(var.proxmox_ssh_port)
   }
 
   provisioner "local-exec" {
@@ -613,15 +618,15 @@ resource "null_resource" "proxmox_ha_group" {
       ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
         set -euo pipefail
 
-        GROUP_NAME="${self.triggers.group_name}"
-        GROUP_NODES="${self.triggers.nodes}"
-        RESTRICTED="${self.triggers.restricted}"
-        NOFAILBACK="${self.triggers.nofailback}"
+        RULE_NAME="${self.triggers.rule_name}"
+        RULE_NODES="${self.triggers.nodes}"
+        RULE_STRICT="${self.triggers.strict}"
+        RULE_RESOURCES="${self.triggers.resources}"
 
-        if ha-manager groups | awk 'NR > 1 {print $1}' | grep -qx "$GROUP_NAME"; then
-          ha-manager groupset "$GROUP_NAME" --nodes "$GROUP_NODES" --restricted "$RESTRICTED" --nofailback "$NOFAILBACK"
+        if ha-manager rules list | awk 'NR > 1 {print $1}' | grep -qx "$RULE_NAME"; then
+          ha-manager rules set node-affinity "$RULE_NAME" --resources "$RULE_RESOURCES" --nodes "$RULE_NODES" --strict "$RULE_STRICT"
         else
-          ha-manager groupadd "$GROUP_NAME" --nodes "$GROUP_NODES" --restricted "$RESTRICTED" --nofailback "$NOFAILBACK"
+          ha-manager rules add node-affinity "$RULE_NAME" --resources "$RULE_RESOURCES" --nodes "$RULE_NODES" --strict "$RULE_STRICT"
         fi
       ENDSSH
     EOT
@@ -637,9 +642,11 @@ resource "null_resource" "proxmox_ha_group" {
       SSH_PORT="${self.triggers.ssh_port}"
       SSH_KEY="$HOME/.ssh/id_ed25519"
 
-      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "ha-manager groupremove '${self.triggers.group_name}' || true"
+      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "ha-manager rules remove '${self.triggers.rule_name}' || true"
     EOT
   }
+
+  depends_on = [null_resource.proxmox_ha_membership]
 }
 
 resource "null_resource" "proxmox_ha_membership" {
@@ -648,8 +655,8 @@ resource "null_resource" "proxmox_ha_membership" {
   triggers = {
     vm_id        = tostring(try(each.value.vm_id, 0))
     sid          = format("vm:%s", tostring(try(each.value.vm_id, 0)))
-    group_name   = local.proxmox_ha_group_name
     state        = try(var.proxmox_ha.state, "started")
+    failback     = try(var.proxmox_ha.nofailback, true) ? "0" : "1"
     max_restart  = tostring(try(var.proxmox_ha.max_restart, 1))
     max_relocate = tostring(try(var.proxmox_ha.max_relocate, 1))
     ssh_host     = lookup(var.proxmox_ssh_hostnames, var.proxmox.node_primary, var.proxmox.node_primary)
@@ -670,15 +677,15 @@ resource "null_resource" "proxmox_ha_membership" {
         set -euo pipefail
 
         SID="${self.triggers.sid}"
-        GROUP_NAME="${self.triggers.group_name}"
         STATE="${self.triggers.state}"
+        FAILBACK="${self.triggers.failback}"
         MAX_RESTART="${self.triggers.max_restart}"
         MAX_RELOCATE="${self.triggers.max_relocate}"
 
         if ha-manager config | awk 'NF > 0 {print $1}' | grep -qx "$SID"; then
-          ha-manager set "$SID" --group "$GROUP_NAME" --state "$STATE" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
+          ha-manager set "$SID" --state "$STATE" --failback "$FAILBACK" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
         else
-          ha-manager add "$SID" --group "$GROUP_NAME" --state "$STATE" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
+          ha-manager add "$SID" --state "$STATE" --failback "$FAILBACK" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
         fi
       ENDSSH
     EOT
@@ -700,7 +707,6 @@ resource "null_resource" "proxmox_ha_membership" {
 
   depends_on = [
     proxmox_virtual_environment_vm.nodes,
-    null_resource.proxmox_ha_group,
   ]
 }
 
