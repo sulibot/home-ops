@@ -193,6 +193,22 @@ spec:
                 memory: 2Gi
 #              limits:
 #                memory: 4Gi
+          proxy:
+            image:
+              repository: docker.io/alpine/socat
+              tag: 1.8.0.3
+            args:
+              - TCP6-LISTEN:8081,ipv6only=0,fork,reuseaddr
+              - TCP6:[::1]:8080
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
     defaultPodOptions:
       securityContext:
         runAsNonRoot: false
@@ -209,7 +225,7 @@ spec:
         ports:
           http:
             port: 80
-            targetPort: *port
+            targetPort: 8081
     route:
       app:
         hostnames:
