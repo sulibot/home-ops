@@ -101,8 +101,8 @@ jobs:
       - name: Setup SOPS Age Key
         run: |
           mkdir -p ~/.config/sops/age
-          echo "$SOPS_AGE_KEY" > ~/.config/sops/age/age.agekey
-          chmod 600 ~/.config/sops/age/age.agekey
+          echo "$SOPS_AGE_KEY" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -151,7 +151,7 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: rm -f ~/.config/sops/age/age.agekey
+        run: rm -f ~/.config/sops/age/keys.txt
 ```
 
 ### 2. `.github/workflows/cluster-provision-debian.yml`
@@ -220,8 +220,8 @@ jobs:
       - name: Setup SOPS Age Key
         run: |
           mkdir -p ~/.config/sops/age
-          echo "$SOPS_AGE_KEY" > ~/.config/sops/age/age.agekey
-          chmod 600 ~/.config/sops/age/age.agekey
+          echo "$SOPS_AGE_KEY" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
 
       - name: Setup Dependencies
         run: |
@@ -308,7 +308,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          rm -f ~/.config/sops/age/age.agekey
+          rm -f ~/.config/sops/age/keys.txt
           # Clean up any sensitive terraform outputs
           find terraform/live/clusters/cluster-$CLUSTER_ID -name "*.tfstate*" -delete || true
 ```
@@ -860,7 +860,7 @@ Check:
 Check:
 - GitHub token has correct permissions
 - Repository path exists: `kubernetes/clusters/production`
-- SOPS Age key is in `/root/.config/sops/age/age.agekey`
+- SOPS Age key is in `/root/.config/sops/age/keys.txt`
 
 ## Future Enhancements
 

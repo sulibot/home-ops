@@ -68,7 +68,7 @@ Options:
   --help           Show this help message
 
 Environment Variables:
-  SOPS_AGE_KEY_FILE       Path to SOPS Age key (default: ~/.config/sops/age/age.agekey)
+  SOPS_AGE_KEY_FILE       Path to SOPS Age key (default: ~/.config/sops/age/keys.txt)
   TALOS_CONFIG_DIR        Path to store Talos configs (default: ~/.talos)
   GITHUB_TOKEN            GitHub PAT for Flux bootstrap
 
@@ -143,7 +143,7 @@ fi
 # Set paths
 CLUSTER_DIR="${REPO_ROOT}/terraform/live/clusters/cluster-${CLUSTER_ID}"
 TALOS_CONFIG_DIR="${TALOS_CONFIG_DIR:-${HOME}/.talos/cluster-${CLUSTER_ID}}"
-SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/age.agekey}"
+SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/keys.txt}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 # Validate paths

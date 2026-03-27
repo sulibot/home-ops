@@ -1,7 +1,7 @@
 # roles/sops_age_secret/tasks/main.yml
 - name: Read SOPS AGE private key
   slurp:
-    src: "{{ lookup('env','HOME') }}/.config/sops/age/age.agekey"
+    src: "{{ lookup('env','HOME') }}/.config/sops/age/keys.txt"
   register: age_key
 
 - name: Create or update Kubernetes Secret for SOPS AGE key

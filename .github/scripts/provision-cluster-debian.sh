@@ -65,7 +65,7 @@ Options:
   --help           Show this help message
 
 Environment Variables:
-  SOPS_AGE_KEY_FILE   Path to SOPS Age key (default: ~/.config/sops/age/age.agekey)
+  SOPS_AGE_KEY_FILE   Path to SOPS Age key (default: ~/.config/sops/age/keys.txt)
   ANSIBLE_INVENTORY   Path to Ansible inventory (default: ansible/k8s/inventory/hosts.ini)
 
 Examples:
@@ -133,7 +133,7 @@ fi
 # Set paths
 CLUSTER_DIR="${REPO_ROOT}/terraform/live/clusters/cluster-${CLUSTER_ID}"
 ANSIBLE_DIR="${REPO_ROOT}/ansible/k8s"
-SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/age.agekey}"
+SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/keys.txt}"
 ANSIBLE_INVENTORY="${ANSIBLE_INVENTORY:-${ANSIBLE_DIR}/inventory/hosts.ini}"
 
 # Validate paths

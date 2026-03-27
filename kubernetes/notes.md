@@ -3,7 +3,7 @@ Flux
 SOPS & Bootstrap
 ``````
 
-cat ~/.config/sops/age/age.agekey |
+cat ~/.config/sops/age/keys.txt |
 kubectl create secret generic sops-age \
 --namespace=flux-system \
 --from-file=age.agekey=/dev/stdin
@@ -129,7 +129,7 @@ rotate flux SOPS key:
 
 kubectl delete -n flux-system secrets sops-age
 
-cat age.agekey |
+cat ~/.config/sops/age/keys.txt |
 kubectl create secret generic sops-age \
 --namespace=flux-system \
 --from-file=age.agekey=/dev/stdin
@@ -150,7 +150,7 @@ add in gotk-sync.yaml
       name: sops-age
 
 
-cat /Users/suahmad/.config/sops/age/age.agekey |
+cat /Users/suahmad/.config/sops/age/keys.txt |
 kubectl create secret generic sops-age \
 --namespace=flux-system \
 --from-file=age.agekey=/dev/stdin 

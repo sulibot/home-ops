@@ -37,7 +37,7 @@
   gather_facts: false
   vars:
     flux_namespace: flux-system
-    sops_age_key_path: "~/.config/sops/age/age.agekey"
+    sops_age_key_path: "~/.config/sops/age/keys.txt"
     github_owner: sulibot
     github_repo: home-ops
     flux_path: kubernetes/clusters/production
