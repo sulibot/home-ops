@@ -1,0 +1,241 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grimmory
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: grimmory
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      grimmory:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          media-layout:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: 1.37.0
+            command:
+              - sh
+              - -c
+              - |
+                set -eux
+                mkdir -p /data/media/books /data/media/audiobooks /data/media/_bookdrop/grimmory
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+          mariadb:
+            image:
+              repository: lscr.io/linuxserver/mariadb
+              tag: 11.4.8
+            env:
+              TZ: America/Los_Angeles
+              PUID: "1000"
+              PGID: "1000"
+              MYSQL_DATABASE: grimmory
+              MYSQL_USER: grimmory
+              MYSQL_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: grimmory-secret
+                    key: DATABASE_PASSWORD
+              MYSQL_ROOT_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: grimmory-secret
+                    key: MYSQL_ROOT_PASSWORD
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - sh
+                      - -c
+                      - mariadb-admin ping --socket=/run/mysqld/mysqld.sock --user=root --password="$MYSQL_ROOT_PASSWORD"
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+            restartPolicy: Always
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              readOnlyRootFilesystem: true
+              seccompProfile:
+                type: Unconfined
+          wait-for-mariadb:
+            image:
+              repository: docker.io/wait4x/wait4x
+              tag: 3.6.0
+            args:
+              - mysql
+              - grimmory:$(DATABASE_PASSWORD)@tcp(localhost:3306)/grimmory
+            env:
+              DATABASE_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: grimmory-secret
+                    key: DATABASE_PASSWORD
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              readOnlyRootFilesystem: true
+        containers:
+          app:
+            image:
+              repository: grimmory/grimmory
+              tag: latest
+            command:
+              - java
+            args:
+              - -jar
+              - /app/app.jar
+            env:
+              TZ: America/Los_Angeles
+              USER_ID: "1000"
+              GROUP_ID: "1000"
+              DATABASE_URL: jdbc:mariadb://localhost:3306/grimmory
+              DATABASE_USERNAME: grimmory
+              DATABASE_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: grimmory-secret
+                    key: DATABASE_PASSWORD
+              DISK_TYPE: NETWORK
+              REMOTE_AUTH_ENABLED: "true"
+              REMOTE_AUTH_CREATE_NEW_USERS: "true"
+              REMOTE_AUTH_HEADER_NAME: X-authentik-name
+              REMOTE_AUTH_HEADER_USER: X-authentik-username
+              REMOTE_AUTH_HEADER_EMAIL: X-authentik-email
+              REMOTE_AUTH_HEADER_GROUPS: X-authentik-groups
+              REMOTE_AUTH_ADMIN_GROUP: grimmory-admins
+              REMOTE_AUTH_GROUPS_DELIMITER: "\\|"
+            probes:
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/healthcheck
+                    port: &port 6060
+                  failureThreshold: 30
+                  periodSeconds: 10
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/healthcheck
+                    port: *port
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: ["ALL"]
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+    defaultPodOptions:
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: grimmory
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        ports:
+          http:
+            port: 80
+            targetPort: *port
+    route:
+      app:
+        hostnames:
+          - grimmory.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - name: authentik-outpost
+                port: 9000
+    persistence:
+      config:
+        enabled: true
+        existingClaim: grimmory-config
+        advancedMounts:
+          grimmory:
+            app:
+              - path: /app/data
+                subPath: app
+            mariadb:
+              - path: /config
+                subPath: mariadb
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        advancedMounts:
+          grimmory:
+            media-layout:
+              - path: /data
+                subPath: data
+            app:
+              - path: /data
+                subPath: data
+              - path: /books
+                subPath: data/media
+              - path: /bookdrop
+                subPath: data/media/_bookdrop/grimmory
+      mysqld:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 1Mi
+        advancedMounts:
+          grimmory:
+            mariadb:
+              - path: /run/mysqld
+      tmp:
+        type: emptyDir
+        advancedMounts:
+          grimmory:
+            app:
+              - path: /tmp
+            mariadb:
+              - path: /tmp

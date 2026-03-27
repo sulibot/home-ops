@@ -75,6 +75,7 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 | `gatus.sulibot.com` | Gatus | Internal ops endpoint (auth/config varies) |
 | `status.sulibot.com` | Gatus (alias) | Internal ops endpoint (auth/config varies) |
 | `go2rtc.sulibot.com` | go2rtc | App-local auth / LAN trust |
+| `grimmory.sulibot.com` | Grimmory | Authentik proxy outpost -> remote auth |
 | `grafana.sulibot.com` | Grafana | Grafana auth (LAN route) |
 | `hass-app.sulibot.com` | Home Assistant (canonical app/discovery host) | Native OIDC via Authentik (`hass-oidc-auth`), LAN-only via split DNS |
 | `hass-get-token.sulibot.com` | Home Assistant token/finish helper | Native OIDC helper route, LAN-only via split DNS |

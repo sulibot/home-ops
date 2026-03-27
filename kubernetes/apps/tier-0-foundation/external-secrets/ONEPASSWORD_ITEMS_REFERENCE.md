@@ -177,6 +177,28 @@ Also required in the `authentik` item for Shelfmark OIDC:
 SHELFMARK_OIDC_CLIENT_ID: "shelfmark"
 SHELFMARK_OIDC_CLIENT_SECRET: "<generated-client-secret>"
 ```
+
+### 20. grimmory
+**Used by:** Grimmory
+
+```yaml
+DB_PASSWORD: "<generated-database-password>"
+MYSQL_ROOT_PASSWORD: "<generated-mariadb-root-password>"
+```
+
+### 19a. bookshelf
+**Used by:** Bookshelf
+
+```yaml
+BOOKSHELF_API_KEY: "your-bookshelf-api-key"
+```
+
+### 19b. audiobookshelf
+**Used by:** Audiobookshelf
+
+```yaml
+AUDIOBOOKSHELF_API_KEY: "your-audiobookshelf-api-key"
+```
 ### 20. sonarr
 **Used by:** Sonarr, Recyclarr, Cross-seed, Notifier
 
