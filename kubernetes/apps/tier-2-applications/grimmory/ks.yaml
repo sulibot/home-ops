@@ -10,30 +10,16 @@ metadata:
     component: application
     critical: "false"
 spec:
-  components:
-    - ../../../../components/volsync
   dependsOn:
     - name: secrets-ready
       namespace: flux-system
     - name: storage-ready
-      namespace: flux-system
-    - name: volsync
-      namespace: flux-system
-    - name: volsync-repository-pvc
       namespace: flux-system
     - name: authentik-outpost
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/grimmory/app
-  postBuild:
-    substitute:
-      APP: grimmory
-      VOLSYNC_SCHEDULE: "41 * * * *"
-      VOLSYNC_CAPACITY: 10Gi
-      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
   prune: true
   sourceRef:
     kind: GitRepository
