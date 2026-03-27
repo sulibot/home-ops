@@ -209,6 +209,7 @@ spec:
       app:
         hostnames:
           - shelfmark.sulibot.com
+          - books.sulibot.com
         parentRefs:
           - name: gateway-internal
             namespace: network
