@@ -96,6 +96,35 @@ spec:
                 if changed or not config_path.exists():
                     config_path.write_text(json.dumps(config, indent=2) + "\n")
 
+                clients_path = Path("/config/plugins/prowlarr_clients.json")
+                clients = {}
+                if clients_path.exists():
+                    try:
+                        clients = json.loads(clients_path.read_text())
+                    except Exception:
+                        clients = {}
+
+                desired_clients = {
+                    "PROWLARR_TORRENT_CLIENT": os.getenv("PROWLARR_TORRENT_CLIENT", "qbittorrent"),
+                    "QBITTORRENT_URL": os.getenv("QBITTORRENT_URL", "http://qbittorrent"),
+                    "QBITTORRENT_USERNAME": os.getenv("QBITTORRENT_USERNAME", ""),
+                    "QBITTORRENT_PASSWORD": os.getenv("QBITTORRENT_PASSWORD", ""),
+                    "QBITTORRENT_CATEGORY_AUDIOBOOK": os.getenv("QBITTORRENT_CATEGORY_AUDIOBOOK", "audiobooks"),
+                    "PROWLARR_USENET_CLIENT": os.getenv("PROWLARR_USENET_CLIENT", "nzbget"),
+                    "NZBGET_URL": os.getenv("NZBGET_URL", "http://nzbget.default.svc.cluster.local"),
+                    "NZBGET_USERNAME": os.getenv("NZBGET_USERNAME", ""),
+                    "NZBGET_PASSWORD": os.getenv("NZBGET_PASSWORD", ""),
+                    "NZBGET_CATEGORY": os.getenv("NZBGET_CATEGORY", "books"),
+                    "NZBGET_CATEGORY_AUDIOBOOK": os.getenv("NZBGET_CATEGORY_AUDIOBOOK", "audiobooks"),
+                }
+                for key, value in desired_clients.items():
+                    if clients.get(key) != value:
+                        clients[key] = value
+                        changed = True
+
+                if changed or not clients_path.exists():
+                    clients_path.write_text(json.dumps(clients, indent=2) + "\n")
+
                 PY
             securityContext:
               allowPrivilegeEscalation: false
