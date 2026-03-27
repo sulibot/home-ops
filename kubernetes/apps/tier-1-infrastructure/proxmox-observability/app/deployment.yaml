@@ -19,7 +19,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: pve-exporter
-          image: prompve/prometheus-pve-exporter:v3.8.1
+          image: prompve/prometheus-pve-exporter:latest
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/prometheus/pve.yml
