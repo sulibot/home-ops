@@ -34,6 +34,14 @@ spec:
             envFrom:
               - secretRef:
                   name: shelfmark-secret
+            env:
+              AUTH_METHOD: oidc
+              OIDC_DISCOVERY_URL: https://auth.sulibot.com/application/o/shelfmark/.well-known/openid-configuration
+              OIDC_GROUP_CLAIM: groups
+              OIDC_ADMIN_GROUP: shelfmark-admins
+              OIDC_USE_ADMIN_GROUP: "true"
+              OIDC_AUTO_PROVISION: "true"
+              OIDC_BUTTON_LABEL: Login with Authentik
             command:
               - /bin/sh
               - -ec
