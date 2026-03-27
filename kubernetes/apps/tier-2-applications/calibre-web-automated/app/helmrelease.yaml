@@ -157,8 +157,10 @@ spec:
           - path: /calibre-library
             subPath: data/books/calibre
       ingest:
-        type: emptyDir
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
         globalMounts:
           - path: /cwa-book-ingest
+            subPath: data/books/ingest
       tmp:
         type: emptyDir

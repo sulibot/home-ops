@@ -130,7 +130,7 @@ spec:
               DEFAULT_RELEASE_SOURCE: prowlarr
 
               # Download destinations (within csi-cephfs-content-pvc)
-              INGEST_DIR: /data/media/books
+              INGEST_DIR: /data/books/ingest
               DESTINATION_AUDIOBOOK: /data/media/audiobooks
 
               # Authentication
