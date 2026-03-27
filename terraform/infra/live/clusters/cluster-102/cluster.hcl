@@ -20,6 +20,16 @@ locals {
     use_sdn       = true
   }
 
+  proxmox_ha = {
+    enabled      = true
+    group_name   = "sol102-k8s"
+    restricted   = true
+    nofailback   = true
+    state        = "started"
+    max_restart  = 3
+    max_relocate = 3
+  }
+
   hardware_mappings = read_terragrunt_config(find_in_parent_folders("common/proxmox_hardware_mappings/terragrunt.hcl")).locals
 
   gpu_config = {

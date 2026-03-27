@@ -304,6 +304,20 @@ inputs = {
     nodes        = local.proxmox_infra.proxmox_nodes
   }
 
+  proxmox_ha = merge(
+    {
+      enabled         = false
+      group_name      = "cluster-${local.tenant_id}"
+      restricted      = true
+      nofailback      = true
+      state           = "started"
+      max_restart     = 3
+      max_relocate    = 3
+      node_priorities = { for node in local.proxmox_infra.proxmox_nodes : node => 1 }
+    },
+    try(local.cluster_config.proxmox_ha, {})
+  )
+
   proxmox_ssh_hostnames = local.proxmox_infra.proxmox_hostnames
 
   vm_defaults = {

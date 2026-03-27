@@ -5,12 +5,12 @@
 # common/proxmox-infrastructure.hcl
 
 locals {
-  enabled       = true
-  cluster_name  = "sol" # Human-readable cluster name
-  tenant_id     = 101   # Universal tenant identifier
-  cluster_id    = 101   # Compatibility alias for module inputs expecting cluster_id
-  controlplanes = 3
-  workers       = 3
+  enabled          = true
+  cluster_name     = "sol" # Human-readable cluster name
+  tenant_id        = 101   # Universal tenant identifier
+  cluster_id       = 101   # Compatibility alias for module inputs expecting cluster_id
+  controlplanes    = 3
+  workers          = 3
   talos_apply_mode = "staged_if_needing_reboot"
   network = {
     bridge_public = "vmbr0" # Legacy: used when use_sdn = false
@@ -22,6 +22,16 @@ locals {
     use_sdn       = true # Use SDN VNet (vnet101) with dynamic unnumbered BGP peering
   }
 
+  proxmox_ha = {
+    enabled      = true
+    group_name   = "sol-k8s"
+    restricted   = true
+    nofailback   = true
+    state        = "started"
+    max_restart  = 3
+    max_relocate = 3
+  }
+
   # ---------------------------------------------------------------------------
   # Reference shared Proxmox hardware mappings so clusters can resolve PCI IDs
   # without hardcoding them inline.
@@ -31,11 +41,11 @@ locals {
   # Uses Xe driver (official Siderolabs extension) for newer Intel GPUs with SR-IOV
   # Kernel arg xe.force_probe=4680 is set in install-schematic.hcl for Alder Lake-S GT1 VF
   gpu_config = {
-    enabled = true
+    enabled  = true
     mappings = [for vf in range(1, 8) : format("intel-igpu-vf%d", vf)]
-    pcie    = true
-    rombar  = false
-    driver  = "xe"
+    pcie     = true
+    rombar   = false
+    driver   = "xe"
     # No driver_params needed - xe.force_probe kernel arg handles GPU initialization
     driver_params = {}
   }
@@ -59,7 +69,7 @@ locals {
         for mapping in local.gpu_config.mappings :
         local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
         if can(local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)])
-      ]) > 0 ? {
+        ]) > 0 ? {
         pci_address = [
           for mapping in local.gpu_config.mappings :
           local.hardware_mappings.pci_mapping_paths[mapping][format("pve%02d", i)]
