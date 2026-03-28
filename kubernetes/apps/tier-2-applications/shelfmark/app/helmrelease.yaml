@@ -42,6 +42,8 @@ spec:
               OIDC_USE_ADMIN_GROUP: "true"
               OIDC_AUTO_PROVISION: "true"
               OIDC_BUTTON_LABEL: Login with Authentik
+              INGEST_DIR: /data/media/books
+              DESTINATION_AUDIOBOOK: /data/media/audiobooks
             command:
               - /bin/sh
               - -ec
@@ -125,6 +127,27 @@ spec:
                 if changed or not clients_path.exists():
                     clients_path.write_text(json.dumps(clients, indent=2) + "\n")
 
+                downloads_path = Path("/config/plugins/downloads.json")
+                downloads = {}
+                if downloads_path.exists():
+                    try:
+                        downloads = json.loads(downloads_path.read_text())
+                    except Exception:
+                        downloads = {}
+
+                downloads_changed = False
+                desired_downloads = {
+                    "DESTINATION": os.getenv("INGEST_DIR", os.getenv("DESTINATION", "/data/books/ingest")),
+                    "DESTINATION_AUDIOBOOK": os.getenv("DESTINATION_AUDIOBOOK", "/data/media/audiobooks"),
+                }
+                for key, value in desired_downloads.items():
+                    if downloads.get(key) != value:
+                        downloads[key] = value
+                        downloads_changed = True
+
+                if downloads_changed or not downloads_path.exists():
+                    downloads_path.write_text(json.dumps(downloads, indent=2) + "\n")
+
                 PY
             securityContext:
               allowPrivilegeEscalation: false
@@ -159,7 +182,7 @@ spec:
               DEFAULT_RELEASE_SOURCE: prowlarr
 
               # Download destinations (within csi-cephfs-content-pvc)
-              INGEST_DIR: /data/books/ingest
+              INGEST_DIR: /data/media/books
               DESTINATION_AUDIOBOOK: /data/media/audiobooks
 
               # Authentication
@@ -247,7 +270,7 @@ spec:
       app:
         hostnames:
           - shelfmark.sulibot.com
-          - books.sulibot.com
+          - booksearch.sulibot.com
         parentRefs:
           - name: gateway-internal
             namespace: network
