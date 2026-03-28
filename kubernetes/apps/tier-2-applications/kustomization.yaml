@@ -60,7 +60,6 @@ resources:
   - ./smtp-relay/ks.yaml
   - ./sonarr-4k/ks.yaml
   - ./sonarr/ks.yaml
-  - ./stirling-pdf/ks.yaml
   - ./tautulli/ks.yaml
   - ./tqm/ks.yaml
   - ./vikunja/ks.yaml
