@@ -1089,7 +1089,7 @@ data:
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           mode: proxy
           external_host: "https://grimmory.sulibot.com"
-          internal_host: "http://grimmory.default.svc.cluster.local:6060"
+          internal_host: "http://grimmory.default.svc.cluster.local"
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
