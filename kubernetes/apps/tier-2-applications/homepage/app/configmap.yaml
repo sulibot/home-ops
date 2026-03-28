@@ -172,13 +172,28 @@ data:
         - Bookshelf:
             href: https://bookshelf.sulibot.com
             icon: readarr.png
-            description: Book Manager
+            description: Book Automation
             siteMonitor: https://bookshelf.sulibot.com
+        - Audiobookshelf:
+            href: https://audiobookshelf.sulibot.com
+            icon: mdi-headphones-box
+            description: Audio Library
+            siteMonitor: https://audiobookshelf.sulibot.com
+        - Grimmory:
+            href: https://grimmory.sulibot.com
+            icon: mdi-book-open-page-variant
+            description: Book Library
+            siteMonitor: https://grimmory.sulibot.com
+        - Calibre-Web:
+            href: https://calibre-web-automated.sulibot.com
+            icon: mdi-book-open-variant
+            description: Ebook Library
+            siteMonitor: https://calibre-web-automated.sulibot.com
         - Shelfmark:
-            href: https://shelfmark.sulibot.com
-            icon: mdi-headphones
-            description: Audiobook Manager
-            siteMonitor: https://shelfmark.sulibot.com
+            href: https://booksearch.sulibot.com
+            icon: mdi-book-search
+            description: Book Search
+            siteMonitor: https://booksearch.sulibot.com
         - LazyLibrarian:
             href: https://lazylibrarian.sulibot.com
             icon: mdi-book-search
@@ -199,10 +214,7 @@ data:
             href: https://paperless.sulibot.com
             icon: paperless.png
             description: Document Manager
-            widget:
-              type: paperlessngx
-              url: http://paperless.default.svc.cluster.local:8000
-              key: "5dd123796d7d3b51887fd584ba4fc15ebb7aa03f"
+            siteMonitor: https://paperless.sulibot.com
         - Karakeep:
             href: https://karakeep.sulibot.com
             icon: mdi-bookmark

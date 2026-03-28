@@ -1,0 +1,32 @@
+---
+## yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/volsync.backube/replicationdestination_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationDestination
+metadata:
+  name: grimmory-dst
+  labels:
+    app.kubernetes.io/name: grimmory
+    app.kubernetes.io/component: backup-restore
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  trigger:
+    manual: restore-once
+  kopia:
+    repository: grimmory-volsync-secret
+    sourceIdentity:
+      sourceName: grimmory-src
+      sourceNamespace: default
+    copyMethod: Snapshot
+    storageClassName: csi-cephfs-config-sc
+    accessModes:
+      - ReadWriteMany
+    capacity: 10Gi
+    volumeSnapshotClassName: csi-cephfs-config-snapclass
+    cacheStorageClassName: csi-cephfs-config-sc
+    cacheAccessModes:
+      - ReadWriteMany
+    cacheCapacity: 5Gi
+    moverSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000

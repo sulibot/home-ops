@@ -17,6 +17,10 @@ spec:
       namespace: flux-system
     - name: authentik-outpost
       namespace: flux-system
+    - name: volsync
+      namespace: flux-system
+    - name: volsync-repository-pvc
+      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/grimmory/app
