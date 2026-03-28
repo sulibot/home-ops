@@ -43,20 +43,18 @@ spec:
                 drop: ["ALL"]
           mariadb:
             image:
-              repository: lscr.io/linuxserver/mariadb
-              tag: 11.4.8
+              repository: docker.io/library/mariadb
+              tag: 11.4
             env:
               TZ: America/Los_Angeles
-              PUID: "1000"
-              PGID: "1000"
-              MYSQL_DATABASE: grimmory
-              MYSQL_USER: grimmory
-              MYSQL_PASSWORD:
+              MARIADB_DATABASE: grimmory
+              MARIADB_USER: grimmory
+              MARIADB_PASSWORD:
                 valueFrom:
                   secretKeyRef:
                     name: grimmory-secret
                     key: DATABASE_PASSWORD
-              MYSQL_ROOT_PASSWORD:
+              MARIADB_ROOT_PASSWORD:
                 valueFrom:
                   secretKeyRef:
                     name: grimmory-secret
@@ -70,25 +68,26 @@ spec:
                     command:
                       - sh
                       - -c
-                      - mariadb-admin ping --socket=/run/mysqld/mysqld.sock --user=root --password="$MYSQL_ROOT_PASSWORD"
+                      - mariadb-admin ping --socket=/run/mysqld/mysqld.sock --user=root --password="$MARIADB_ROOT_PASSWORD"
                   periodSeconds: 10
                   timeoutSeconds: 5
                   failureThreshold: 6
             restartPolicy: Always
             securityContext:
               allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
               capabilities:
                 drop: ["ALL"]
-              readOnlyRootFilesystem: true
-              seccompProfile:
-                type: Unconfined
+              readOnlyRootFilesystem: false
           wait-for-mariadb:
             image:
               repository: docker.io/wait4x/wait4x
               tag: 3.6.0
             args:
               - mysql
-              - grimmory:$(DATABASE_PASSWORD)@tcp(localhost:3306)/grimmory
+              - grimmory:$(DATABASE_PASSWORD)@tcp(127.0.0.1:3306)/grimmory
             env:
               DATABASE_PASSWORD:
                 valueFrom:
@@ -206,7 +205,7 @@ spec:
               - path: /app/data
                 subPath: app
             mariadb:
-              - path: /config
+              - path: /var/lib/mysql
                 subPath: mariadb
       content:
         enabled: true
