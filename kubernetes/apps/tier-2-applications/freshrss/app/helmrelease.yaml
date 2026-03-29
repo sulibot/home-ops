@@ -34,29 +34,13 @@ spec:
             env:
               TZ: America/Los_Angeles
               CRON_MIN: "18,48"
-              PUID: "1000"
-              PGID: "1000"
               LISTEN: &port 8080
               DOMAIN: freshrss.sulibot.com
               DB_TYPE: pgsql
-              FRESHRSS_INSTALL: >-
-                --default-user "${FRESHRSS_DEFAULT_USER}"
-                --base-url "https://freshrss.sulibot.com"
-                --auth-type http_auth
-                --api-enabled
-                --db-type "${DB_TYPE}"
-                --db-host "${DB_HOST}"
-                --db-user "${DB_USER}"
-                --db-password "${DB_PASSWORD}"
-                --db-base "${DB_BASE}"
-              FRESHRSS_USER: >-
-                --user "${FRESHRSS_ADMIN_USERNAME}"
-                --email "${FRESHRSS_ADMIN_EMAIL}"
-                --password "${FRESHRSS_ADMIN_PASSWORD}"
               OIDC_ENABLED: "1"
               OIDC_PROVIDER_METADATA_URL: https://auth.sulibot.com/application/o/freshrss/.well-known/openid-configuration
               OIDC_SCOPES: openid email profile
-              OIDC_REMOTE_USER_CLAIM: email
+              OIDC_REMOTE_USER_CLAIM: preferred_username
               OIDC_X_FORWARDED_HEADERS: X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
             envFrom:
               - secretRef:
@@ -95,10 +79,10 @@ spec:
 
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 33
         fsGroupChangePolicy: OnRootMismatch
 
     service:

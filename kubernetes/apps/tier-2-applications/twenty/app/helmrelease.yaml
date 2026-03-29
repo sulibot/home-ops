@@ -38,7 +38,7 @@ spec:
           app:
             image:
               repository: twentycrm/twenty
-              tag: v1.19.1
+              tag: v1.19.0@sha256:032dd25c6c82ecca541f817082a0bc9e3e9cb182f8324427335f7bd7654473f8
             env:
               TZ: America/Los_Angeles
               NODE_PORT: &port 3000
@@ -87,7 +87,7 @@ spec:
           app:
             image:
               repository: twentycrm/twenty
-              tag: v1.19.1
+              tag: v1.19.0@sha256:032dd25c6c82ecca541f817082a0bc9e3e9cb182f8324427335f7bd7654473f8
             command:
               - yarn
               - worker:prod
