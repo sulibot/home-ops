@@ -18,6 +18,7 @@ resources:
   # - ./emby/ks.yaml
   - ./flaresolverr/ks.yaml
   - ./filebrowser/ks.yaml
+  - ./freshrss/ks.yaml
   - ./firefly/ks.yaml
   - ./go2rtc/ks.yaml
   - ./grimmory/ks.yaml
@@ -61,6 +62,7 @@ resources:
   - ./sonarr-4k/ks.yaml
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
+  - ./twenty/ks.yaml
   - ./tqm/ks.yaml
   - ./vikunja/ks.yaml
   # tuppr disabled

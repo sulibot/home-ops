@@ -1,0 +1,24 @@
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: twenty
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: twenty-server
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsOnly
+        minAllowed:
+          cpu: 25m
+          memory: 128Mi
+        maxAllowed:
+          cpu: "4"
+          memory: 4Gi

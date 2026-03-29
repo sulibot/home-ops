@@ -1,0 +1,145 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: twenty
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: twenty
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      server:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: twentycrm/twenty
+              tag: v1.19.1
+            env:
+              TZ: America/Los_Angeles
+              NODE_PORT: &port 3000
+              SERVER_URL: https://twenty.sulibot.com
+              SIGN_IN_PREFILLED: "true"
+              STORAGE_TYPE: local
+              ACCESS_TOKEN_EXPIRES_IN: 7d
+              LOGIN_TOKEN_EXPIRES_IN: 1h
+            envFrom: &envFrom
+              - secretRef:
+                  name: twenty-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 250m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+
+      worker:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: twentycrm/twenty
+              tag: v1.19.1
+            command:
+              - yarn
+              - worker:prod
+            env:
+              TZ: America/Los_Angeles
+              SERVER_URL: https://twenty.sulibot.com
+              STORAGE_TYPE: local
+              DISABLE_DB_MIGRATIONS: "true"
+              DISABLE_CRON_JOBS_REGISTRATION: "true"
+            envFrom: *envFrom
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
+    service:
+      app:
+        controller: server
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - twenty.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        advancedMounts:
+          server:
+            app:
+              - path: /app/packages/twenty-server/.local-storage
+                subPath: local-storage
+              - path: /app/docker-data
+                subPath: docker-data
+          worker:
+            app:
+              - path: /app/packages/twenty-server/.local-storage
+                subPath: local-storage
+              - path: /app/docker-data
+                subPath: docker-data

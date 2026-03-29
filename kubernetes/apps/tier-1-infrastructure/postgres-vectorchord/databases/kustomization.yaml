@@ -4,6 +4,7 @@ resources:
   - atuin.yaml
   - authentik.yaml
   - firefly.yaml
+  - freshrss.yaml
   - paperless.yaml
   - vikunja.yaml
   - miniflux.yaml
@@ -15,3 +16,4 @@ resources:
   - sonarr-log.yaml
   - sonarr-4k-main.yaml
   - sonarr-4k-log.yaml
+  - twenty.yaml

@@ -199,6 +199,31 @@ BOOKSHELF_API_KEY: "your-bookshelf-api-key"
 ```yaml
 AUDIOBOOKSHELF_API_KEY: "your-audiobookshelf-api-key"
 ```
+
+### 19c. freshrss
+**Used by:** FreshRSS
+
+`freshrss` item:
+
+```yaml
+FRESHRSS_DB_PASSWORD: "<generated-database-password>"
+```
+
+Also required in the `authentik` item for FreshRSS OIDC:
+
+```yaml
+FRESHRSS_OIDC_CLIENT_ID: "freshrss"
+FRESHRSS_OIDC_CLIENT_SECRET: "<generated-client-secret>"
+FRESHRSS_OIDC_CLIENT_CRYPTO_KEY: "<random-32+-char-secret>"
+```
+
+Also required as a 1Password Login item named `freshrss-admin` for the bootstrap admin:
+
+```yaml
+username: "admin@sulibot.com"
+password: "<generated-admin-password>"
+```
+
 ### 20. sonarr
 **Used by:** Sonarr, Recyclarr, Cross-seed, Notifier
 
@@ -253,6 +278,24 @@ AWS_S3_ENDPOINT: "https://s3.sulibot.com"
 ZIGBEE2MQTT_CONFIG_ADVANCED_EXT_PAN_ID: "[0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77]"
 ZIGBEE2MQTT_CONFIG_ADVANCED_PAN_ID: "0x1234"
 ZIGBEE2MQTT_CONFIG_ADVANCED_NETWORK_KEY: "[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10]"
+```
+
+### 26. twenty
+**Used by:** Twenty
+
+`twenty` item:
+
+```yaml
+TWENTY_DB_PASSWORD: "<generated-database-password>"
+TWENTY_APP_SECRET: "<random-app-secret>"
+```
+
+Optional manual bootstrap login item for your first Twenty admin account:
+
+```yaml
+# 1Password Login item named `twenty-admin`
+username: "admin@sulibot.com"
+password: "<generated-admin-password>"
 ```
 
 ## How to Create These Items in 1Password

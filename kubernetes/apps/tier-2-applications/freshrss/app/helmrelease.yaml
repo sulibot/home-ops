@@ -1,0 +1,148 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: freshrss
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: freshrss
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      freshrss:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: freshrss/freshrss
+              tag: 1.28.1@sha256:9100f649f5c946f589f54cdb9be7a65996528f48f691ef90eb262a0e06e5a522
+            env:
+              TZ: America/Los_Angeles
+              CRON_MIN: "18,48"
+              PUID: "1000"
+              PGID: "1000"
+              LISTEN: &port 8080
+              DOMAIN: freshrss.sulibot.com
+              DB_TYPE: pgsql
+              FRESHRSS_INSTALL: >-
+                --default-user "${FRESHRSS_DEFAULT_USER}"
+                --base-url "https://freshrss.sulibot.com"
+                --auth-type http_auth
+                --api-enabled
+                --db-type "${DB_TYPE}"
+                --db-host "${DB_HOST}"
+                --db-user "${DB_USER}"
+                --db-password "${DB_PASSWORD}"
+                --db-base "${DB_BASE}"
+              FRESHRSS_USER: >-
+                --user "${FRESHRSS_ADMIN_USERNAME}"
+                --email "${FRESHRSS_ADMIN_EMAIL}"
+                --password "${FRESHRSS_ADMIN_PASSWORD}"
+              OIDC_ENABLED: "1"
+              OIDC_PROVIDER_METADATA_URL: https://auth.sulibot.com/application/o/freshrss/.well-known/openid-configuration
+              OIDC_SCOPES: openid email profile
+              OIDC_REMOTE_USER_CLAIM: email
+              OIDC_X_FORWARDED_HEADERS: X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
+            envFrom:
+              - secretRef:
+                  name: freshrss-secret
+              - secretRef:
+                  name: freshrss-admin
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /i/
+                    port: *port
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /i/
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    service:
+      app:
+        controller: freshrss
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - freshrss.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        advancedMounts:
+          freshrss:
+            app:
+              - path: /var/www/FreshRSS/data
+                subPath: data
+      config-custom:
+        type: secret
+        name: freshrss-secret
+        globalMounts:
+          - path: /var/www/FreshRSS/data/config.custom.php
+            subPath: config.custom.php
+            readOnly: true
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      var-run:
+        type: emptyDir
+        globalMounts:
+          - path: /var/run
