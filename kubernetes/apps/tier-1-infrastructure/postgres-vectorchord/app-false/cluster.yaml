@@ -134,6 +134,16 @@ spec:
         ensure: present
         passwordSecret:
           name: miniflux-pg-password
+      - name: freshrss
+        login: true
+        ensure: present
+        passwordSecret:
+          name: freshrss-pg-password
+      - name: twenty
+        login: true
+        ensure: present
+        passwordSecret:
+          name: twenty-pg-password
       - name: radarr
         login: true
         ensure: present
