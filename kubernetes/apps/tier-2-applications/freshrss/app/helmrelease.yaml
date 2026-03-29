@@ -48,7 +48,7 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /i/
+                    path: /
                     port: *port
                   initialDelaySeconds: 10
                   periodSeconds: 10
@@ -60,7 +60,7 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /i/
+                    path: /
                     port: *port
                   periodSeconds: 10
                   timeoutSeconds: 1

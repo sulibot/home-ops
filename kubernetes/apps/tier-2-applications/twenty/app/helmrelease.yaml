@@ -23,6 +23,12 @@ spec:
     timeout: 10m
   values:
     defaultPodOptions:
+      hostAliases:
+        - ip: fd00:101:96::8:b467
+          hostnames:
+            - valkey-primary
+            - valkey-primary.default
+            - valkey-primary.default.svc.cluster.local
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
