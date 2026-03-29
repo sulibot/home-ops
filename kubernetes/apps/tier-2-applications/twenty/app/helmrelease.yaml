@@ -34,6 +34,50 @@ spec:
       server:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          wait-for-redis:
+            image:
+              repository: twentycrm/twenty
+              tag: v1.19.0@sha256:032dd25c6c82ecca541f817082a0bc9e3e9cb182f8324427335f7bd7654473f8
+            envFrom:
+              - secretRef:
+                  name: twenty-secret
+            command:
+              - node
+              - -e
+              - |
+                const dns = require("dns").promises;
+                const net = require("net");
+
+                const url = new URL(process.env.REDIS_URL);
+                const host = url.hostname;
+                const port = Number(url.port || "6379");
+
+                const connect = (address, family) => new Promise((resolve, reject) => {
+                  const socket = net.connect({ host: address, port, family }, () => {
+                    socket.end();
+                    resolve();
+                  });
+                  socket.setTimeout(3000);
+                  socket.on("timeout", () => socket.destroy(new Error("timeout")));
+                  socket.on("error", reject);
+                });
+
+                (async () => {
+                  for (let attempt = 1; attempt <= 60; attempt++) {
+                    try {
+                      const addresses = await dns.lookup(host, { all: true });
+                      for (const address of addresses) {
+                        await connect(address.address, address.family);
+                      }
+                      process.exit(0);
+                    } catch (error) {
+                      console.error(`redis wait attempt ${attempt} failed:`, error.message);
+                      await new Promise((resolve) => setTimeout(resolve, 2000));
+                    }
+                  }
+                  process.exit(1);
+                })();
         containers:
           app:
             image:
