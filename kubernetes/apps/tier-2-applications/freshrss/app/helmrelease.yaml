@@ -37,6 +37,11 @@ spec:
               LISTEN: &port 8080
               DOMAIN: freshrss.sulibot.com
               DB_TYPE: pgsql
+              OIDC_ENABLED: "1"
+              OIDC_PROVIDER_METADATA_URL: https://auth.sulibot.com/application/o/freshrss/.well-known/openid-configuration
+              OIDC_SCOPES: openid email profile
+              OIDC_REMOTE_USER_CLAIM: preferred_username
+              OIDC_X_FORWARDED_HEADERS: X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
             envFrom:
               - secretRef:
                   name: freshrss-secret
@@ -47,8 +52,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /
+                  tcpSocket:
                     port: *port
                   initialDelaySeconds: 10
                   periodSeconds: 10
@@ -59,8 +63,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /
+                  tcpSocket:
                     port: *port
                   periodSeconds: 10
                   timeoutSeconds: 1
