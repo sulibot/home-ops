@@ -46,6 +46,12 @@ entries:
       meta_launch_url: "https://freshrss.sulibot.com"
       policy_engine_mode: any
   - model: authentik_policies.policybinding
+    state: absent
+    identifiers:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      target: !Find [authentik_core.application, [slug, freshrss]]
+      order: 0
+  - model: authentik_policies.policybinding
     state: present
     identifiers:
       policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-freshrss]]
