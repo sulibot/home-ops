@@ -960,6 +960,15 @@ data:
       labels:
         blueprints.goauthentik.io/instantiate: "true"
     entries:
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        identifiers:
+          name: policy-access-freshrss
+        attrs:
+          name: policy-access-freshrss
+          expression: |
+            user = request.user
+            return bool(user and not user.is_anonymous)
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -995,11 +1004,11 @@ data:
       - model: authentik_policies.policybinding
         state: present
         identifiers:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-freshrss]]
           target: !Find [authentik_core.application, [slug, freshrss]]
           order: 0
         attrs:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-freshrss]]
           target: !Find [authentik_core.application, [slug, freshrss]]
           order: 0
           enabled: true
