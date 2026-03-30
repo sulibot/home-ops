@@ -978,6 +978,8 @@ data:
           client_id: !Env FRESHRSS_OIDC_CLIENT_ID
           client_secret: !Env FRESHRSS_OIDC_CLIENT_SECRET
           redirect_uris:
+            - url: "https://freshrss.sulibot.com/i/oidc/"
+              matching_mode: strict
             - url: "https://freshrss.sulibot.com:443/i/oidc/"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
