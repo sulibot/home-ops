@@ -2,16 +2,18 @@
 
 ## Current State
 
-### Bootstrap admins
+### Local admin accounts
 
-The first local admin accounts have already been created and verified.
+The local admin-capable accounts have already been created and verified.
 
-| App | Login | Display name | 1Password item |
-|-----|-------|--------------|----------------|
-| Baserow | `admin@sulibot.com` | `Sulaiman Admin` | `baserow-admin` |
-| n8n | `admin@sulibot.com` | `Sulaiman Admin` | `n8n-admin` |
+| App | Login | Privilege level | Display name | 1Password item |
+|-----|-------|-----------------|--------------|----------------|
+| Baserow | `admin@sulibot.com` | staff admin | `Sulaiman Admin` | `baserow-admin` |
+| Baserow | `sulibot@gmail.com` | staff admin | `Sulaiman Admin` | `baserow-sulibot` |
+| n8n | `admin@sulibot.com` | global owner | `Sulaiman Admin` | `n8n-admin` |
+| n8n | `sulibot@gmail.com` | global admin | `Sulaiman Admin` | `n8n-sulibot` |
 
-These credentials are stored in the `Kubernetes` vault in 1Password and are intended to remain available as break-glass local accounts even if SSO is added later.
+These credentials are stored in the `Kubernetes` vault in 1Password and are intended to remain available as local admin and break-glass accounts even if SSO is added later.
 
 ### Runtime secrets
 
@@ -23,6 +25,14 @@ The runtime app secrets remain separate:
 | n8n | `n8n` | database password, encryption key |
 
 The admin login credentials are not synced into Kubernetes Secrets because the applications do not need them at runtime.
+
+### Account model
+
+The intended steady state is:
+
+- `admin@sulibot.com` remains the primary break-glass admin account
+- `sulibot@gmail.com` is the normal secondary human admin account
+- neither account should be removed when adding SSO until API and UI auth have both been re-validated
 
 ## OIDC Status
 
