@@ -4,9 +4,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: "${APP}-config"
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
   labels:
     app.kubernetes.io/name: "${APP}"
     app.kubernetes.io/component: storage
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
     volsync.backube/auto-restore: "true"
 spec:
   # --- Volume Populator: Auto-restore from ReplicationDestination ---
