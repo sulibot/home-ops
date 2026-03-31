@@ -19,6 +19,8 @@ spec:
   switchoverDelay: 60
 
   postgresql:
+    parameters:
+      max_connections: "300"
     shared_preload_libraries:
       - "vchord.so"
 
