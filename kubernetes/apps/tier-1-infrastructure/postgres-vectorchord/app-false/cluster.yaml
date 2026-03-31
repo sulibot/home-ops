@@ -114,6 +114,11 @@ spec:
         ensure: present
         passwordSecret:
           name: authentik-pg-password
+      - name: baserow
+        login: true
+        ensure: present
+        passwordSecret:
+          name: baserow-pg-password
       - name: firefly
         login: true
         ensure: present
@@ -134,6 +139,11 @@ spec:
         ensure: present
         passwordSecret:
           name: miniflux-pg-password
+      - name: n8n
+        login: true
+        ensure: present
+        passwordSecret:
+          name: n8n-pg-password
       - name: freshrss
         login: true
         ensure: present

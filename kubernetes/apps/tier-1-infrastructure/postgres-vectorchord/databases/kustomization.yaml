@@ -3,11 +3,13 @@ kind: Kustomization
 resources:
   - atuin.yaml
   - authentik.yaml
+  - baserow.yaml
   - firefly.yaml
   - freshrss.yaml
   - paperless.yaml
   - vikunja.yaml
   - miniflux.yaml
+  - n8n.yaml
   - radarr-main.yaml
   - radarr-log.yaml
   - radarr-4k-main.yaml

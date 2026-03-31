@@ -1,0 +1,136 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: baserow
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: baserow
+  interval: 1h
+  timeout: 15m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 15m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 15m
+  values:
+    controllers:
+      baserow:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/baserow/baserow
+              tag: 2.0.6
+            env:
+              TZ: America/Los_Angeles
+              BASEROW_PUBLIC_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: BASEROW_PUBLIC_URL
+              DATABASE_HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: DATABASE_HOST
+              DATABASE_NAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: DATABASE_NAME
+              DATABASE_PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: DATABASE_PORT
+              DATABASE_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: DATABASE_USER
+              DATABASE_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: DATABASE_PASSWORD
+              REDIS_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: REDIS_URL
+              SECRET_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: baserow-secret
+                    key: SECRET_KEY
+              BASEROW_EXTRA_ALLOWED_HOSTS: baserow.sulibot.com
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &port 80
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 60
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
+    service:
+      app:
+        controller: baserow
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - baserow.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      data:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /baserow/data
+
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp

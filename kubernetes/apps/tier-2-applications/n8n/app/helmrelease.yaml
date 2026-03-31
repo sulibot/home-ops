@@ -1,0 +1,128 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: n8n
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: n8n
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      n8n:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.n8n.io/n8nio/n8n
+              tag: 2.2.6
+            env:
+              TZ: America/Los_Angeles
+              GENERIC_TIMEZONE: America/Los_Angeles
+              N8N_HOST: n8n.sulibot.com
+              N8N_EDITOR_BASE_URL: https://n8n.sulibot.com
+              WEBHOOK_URL: https://n8n.sulibot.com
+              N8N_PROTOCOL: https
+              N8N_PORT: &port 5678
+              N8N_LISTEN_ADDRESS: "::"
+              N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
+              N8N_LOG_LEVEL: info
+              N8N_LOG_OUTPUT: console
+              N8N_DIAGNOSTICS_ENABLED: "false"
+              N8N_PERSONALIZATION_ENABLED: "false"
+              EXECUTIONS_DATA_PRUNE: "true"
+              EXECUTIONS_DATA_MAX_AGE: "168"
+              EXECUTIONS_DATA_PRUNE_MAX_COUNT: "50000"
+            envFrom:
+              - secretRef:
+                  name: n8n-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 25m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+    service:
+      app:
+        controller: n8n
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - n8n.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      data:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /home/node/.n8n
+
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
