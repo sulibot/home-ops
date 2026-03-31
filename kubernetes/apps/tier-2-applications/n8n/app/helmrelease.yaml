@@ -38,6 +38,7 @@ spec:
               N8N_EDITOR_BASE_URL: https://n8n.sulibot.com
               WEBHOOK_URL: https://n8n.sulibot.com
               N8N_PROTOCOL: https
+              N8N_PROXY_HOPS: "1"
               N8N_PORT: &port 5678
               N8N_LISTEN_ADDRESS: "::"
               N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
