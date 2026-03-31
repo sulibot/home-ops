@@ -1310,15 +1310,15 @@ spec:
                   - name: Living Room Lights
                     unique_id: living_room_lights_group
                     state: >-
-                      {{ is_state('light.kajplats_e26_ws_globe_1600lm_2', 'on')
+                      {{ `{{ is_state('light.kajplats_e26_ws_globe_1600lm_2', 'on')
                          or is_state('light.kajplats_e26_ws_globe_1600lm_3', 'on')
-                         or is_state('light.kajplats_e26_ws_globe_1600lm_4', 'on') }}
+                         or is_state('light.kajplats_e26_ws_globe_1600lm_4', 'on') }}` }}
                     level: >-
-                      {{ [
+                      {{ `{{ [
                         state_attr('light.kajplats_e26_ws_globe_1600lm_2', 'brightness') | int(0),
                         state_attr('light.kajplats_e26_ws_globe_1600lm_3', 'brightness') | int(0),
                         state_attr('light.kajplats_e26_ws_globe_1600lm_4', 'brightness') | int(0)
-                      ] | max }}
+                      ] | max }}` }}
                     turn_on:
                       action: light.turn_on
                       target:
@@ -1327,8 +1327,8 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm_3
                           - light.kajplats_e26_ws_globe_1600lm_4
                       data:
-                        brightness: "{{ brightness | default(none) }}"
-                        transition: "{{ transition | default(none) }}"
+                        brightness: "{{ `{{ brightness | default(none) }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
                     set_level:
                       action: light.turn_on
                       target:
@@ -1337,8 +1337,8 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm_3
                           - light.kajplats_e26_ws_globe_1600lm_4
                       data:
-                        brightness: "{{ brightness }}"
-                        transition: "{{ transition | default(none) }}"
+                        brightness: "{{ `{{ brightness }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
                     turn_off:
                       action: light.turn_off
                       target:
@@ -1347,17 +1347,17 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm_3
                           - light.kajplats_e26_ws_globe_1600lm_4
                       data:
-                        transition: "{{ transition | default(none) }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
                   - name: Master Lights
                     unique_id: master_lights_group
                     state: >-
-                      {{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
-                         or is_state('light.kajplats_e26_ws_globe_1600lm_5', 'on') }}
+                      {{ `{{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
+                         or is_state('light.kajplats_e26_ws_globe_1600lm_5', 'on') }}` }}
                     level: >-
-                      {{ [
+                      {{ `{{ [
                         state_attr('light.kajplats_e26_ws_globe_1600lm', 'brightness') | int(0),
                         state_attr('light.kajplats_e26_ws_globe_1600lm_5', 'brightness') | int(0)
-                      ] | max }}
+                      ] | max }}` }}
                     turn_on:
                       action: light.turn_on
                       target:
@@ -1365,8 +1365,8 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm
                           - light.kajplats_e26_ws_globe_1600lm_5
                       data:
-                        brightness: "{{ brightness | default(none) }}"
-                        transition: "{{ transition | default(none) }}"
+                        brightness: "{{ `{{ brightness | default(none) }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
                     set_level:
                       action: light.turn_on
                       target:
@@ -1374,8 +1374,8 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm
                           - light.kajplats_e26_ws_globe_1600lm_5
                       data:
-                        brightness: "{{ brightness }}"
-                        transition: "{{ transition | default(none) }}"
+                        brightness: "{{ `{{ brightness }}` }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
                     turn_off:
                       action: light.turn_off
                       target:
@@ -1383,7 +1383,7 @@ spec:
                           - light.kajplats_e26_ws_globe_1600lm
                           - light.kajplats_e26_ws_globe_1600lm_5
                       data:
-                        transition: "{{ transition | default(none) }}"
+                        transition: "{{ `{{ transition | default(none) }}` }}"
 
             light:
               - platform: group
