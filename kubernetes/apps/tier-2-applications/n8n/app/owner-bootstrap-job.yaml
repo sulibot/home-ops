@@ -1,0 +1,42 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: n8n-owner-bootstrap
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: curlimages/curl:8.12.1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: n8n-owner-bootstrap-secret
+          command:
+            - sh
+            - -lc
+            - |
+              set -eu
+
+              until curl -fsS http://n8n:5678/healthz >/dev/null; do
+                echo "waiting for n8n"
+                sleep 5
+              done
+
+              settings="$(curl -fsS http://n8n:5678/rest/settings)"
+              echo "$settings" | grep -q '"showSetupOnFirstLoad":true' || {
+                echo "owner already configured"
+                exit 0
+              }
+
+              payload="$(printf '{"email":"%s","firstName":"%s","lastName":"%s","password":"%s"}' \
+                "$N8N_OWNER_EMAIL" "$N8N_OWNER_FIRST_NAME" "$N8N_OWNER_LAST_NAME" "$N8N_OWNER_PASSWORD")"
+
+              curl -fsS -X POST http://n8n:5678/rest/owner/setup \
+                -H 'Content-Type: application/json' \
+                --data "$payload"

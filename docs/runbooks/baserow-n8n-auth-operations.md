@@ -10,8 +10,8 @@ The local admin-capable accounts have already been created and verified.
 |-----|-------|-----------------|--------------|----------------|
 | Baserow | `admin@sulibot.com` | staff admin | `Sulaiman Admin` | `baserow-admin` |
 | Baserow | `sulibot@gmail.com` | staff admin | `Sulaiman Admin` | `baserow-sulibot` |
-| n8n | `admin@sulibot.com` | global owner | `Sulaiman Admin` | `n8n-admin` |
-| n8n | `sulibot@gmail.com` | global admin | `Sulaiman Admin` | `n8n-sulibot` |
+| n8n | `sulibot@gmail.com` | global owner | `Sulaiman Ahmad` | `n8n-sulibot` |
+| n8n | `admin@sulibot.com` | member | `Sulaiman Admin` | `n8n-admin` |
 
 These credentials are stored in the `Kubernetes` vault in 1Password and are intended to remain available as local admin and break-glass accounts even if SSO is added later.
 
@@ -30,8 +30,8 @@ The admin login credentials are not synced into Kubernetes Secrets because the a
 
 The intended steady state is:
 
-- `admin@sulibot.com` remains the primary break-glass admin account
-- `sulibot@gmail.com` is the normal secondary human admin account
+- `sulibot@gmail.com` is the primary n8n owner account
+- `admin@sulibot.com` is retained only as a lower-privilege fallback account
 - neither account should be removed when adding SSO until API and UI auth have both been re-validated
 
 ## OIDC Status
