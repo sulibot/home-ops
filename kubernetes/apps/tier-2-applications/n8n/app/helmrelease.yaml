@@ -49,6 +49,7 @@ spec:
               EXECUTIONS_DATA_PRUNE: "true"
               EXECUTIONS_DATA_MAX_AGE: "168"
               EXECUTIONS_DATA_PRUNE_MAX_COUNT: "50000"
+              N8N_RUNNERS_ENABLED: "false"
             envFrom:
               - secretRef:
                   name: n8n-secret
