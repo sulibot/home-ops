@@ -74,6 +74,9 @@ spec:
                     name: baserow-secret
                     key: SECRET_KEY
               BASEROW_EXTRA_ALLOWED_HOSTS: baserow.sulibot.com
+              BASEROW_RUN_MINIMAL: "yes"
+              BASEROW_AMOUNT_OF_WORKERS: "1"
+              BASEROW_AMOUNT_OF_GUNICORN_WORKERS: "2"
             probes:
               liveness: &probes
                 enabled: true
@@ -97,10 +100,10 @@ spec:
                   failureThreshold: 60
             resources:
               requests:
-                cpu: 100m
-                memory: 512Mi
+                cpu: 250m
+                memory: 1Gi
               limits:
-                memory: 2Gi
+                memory: 4Gi
 
     service:
       app:
