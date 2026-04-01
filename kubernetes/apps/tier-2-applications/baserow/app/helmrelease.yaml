@@ -117,8 +117,6 @@ spec:
         hostnames:
           - baserow.sulibot.com
         parentRefs:
-          - name: gateway-tunnel
-            namespace: network
           - name: gateway-internal
             namespace: network
         rules:

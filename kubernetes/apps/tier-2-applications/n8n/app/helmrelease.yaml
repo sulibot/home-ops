@@ -107,8 +107,6 @@ spec:
         hostnames:
           - n8n.sulibot.com
         parentRefs:
-          - name: gateway-tunnel
-            namespace: network
           - name: gateway-internal
             namespace: network
         rules:
