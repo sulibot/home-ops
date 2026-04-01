@@ -50,8 +50,8 @@ spec:
               EXECUTIONS_DATA_MAX_AGE: "168"
               EXECUTIONS_DATA_PRUNE_MAX_COUNT: "50000"
               N8N_RUNNERS_ENABLED: "false"
-              NODE_FUNCTION_ALLOW_BUILTIN: "*"
-              NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+              NODE_FUNCTION_ALLOW_BUILTIN: '*'
+              NODE_FUNCTION_ALLOW_EXTERNAL: '*'
             envFrom:
               - secretRef:
                   name: n8n-secret
