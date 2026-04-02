@@ -52,6 +52,9 @@ spec:
               N8N_RUNNERS_ENABLED: "false"
               NODE_FUNCTION_ALLOW_BUILTIN: '*'
               NODE_FUNCTION_ALLOW_EXTERNAL: '*'
+              EXECUTIONS_TIMEOUT: "600"
+              EXECUTIONS_TIMEOUT_MAX: "600"
+              N8N_RUNNERS_TASK_TIMEOUT: "600"
             envFrom:
               - secretRef:
                   name: n8n-secret
