@@ -22,6 +22,7 @@ locals {
   bypass_apps = {
     "auth.sulibot.com"      = "Authentik"
     "atuin.sulibot.com"     = "Atuin"
+    "karakeep.sulibot.com"  = "Karakeep"
     "plex.sulibot.com"      = "Plex"
     "overseerr.sulibot.com" = "Overseerr"
     "requests.sulibot.com"  = "Overseerr"
