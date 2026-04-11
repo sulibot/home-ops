@@ -50,6 +50,7 @@ locals {
   bypass_apps = {
     "auth.sulibot.com" = "Authentik"
     "atuin.sulibot.com" = "Atuin"
+    "karakeep.sulibot.com" = "Karakeep"
     "plex.sulibot.com" = "Plex"
     "overseerr.sulibot.com" = "Overseerr"
     "requests.sulibot.com" = "Overseerr"
@@ -129,6 +130,7 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
 
 resource "cloudflare_zero_trust_organization" "this" {
   account_id                  = local.account_id
+  auth_domain                 = "sulibot.cloudflareaccess.com"
   allow_authenticate_via_warp = true
 }
 
