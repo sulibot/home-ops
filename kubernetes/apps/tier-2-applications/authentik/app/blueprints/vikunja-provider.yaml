@@ -15,6 +15,8 @@ entries:
       redirect_uris:
         - url: "https://vikunja.sulibot.com/auth/openid/authentik"
           matching_mode: strict
+        - url: "^http://127\\.0\\.0\\.1:[0-9]+/auth/openid/authentik$"
+          matching_mode: regex
       authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]

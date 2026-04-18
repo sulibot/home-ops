@@ -218,6 +218,34 @@ These scripts are for day-to-day cluster operations.
 
 **Purpose:** Validate cluster configuration consistency
 
+---
+
+### Validate Internal Auth Path
+**Script:** `validate-internal-auth-path.sh`
+
+**Purpose:** Reproduce and compare the internal Authentik login path against the public path from the same client, with a focus on catching redirect leaks to `*.cloudflareaccess.com`.
+
+**When to use:**
+- A LAN user resolves an app host locally but still lands on a Cloudflare Access page
+- You need to compare normal client resolution with a forced local-VIP flow
+- You need to verify both the app hostname and `auth.sulibot.com` from the same device
+
+**What it does:**
+1. Resolves the app host and Authentik host using the local client's DNS
+2. Probes both hosts pinned to the expected local VIPs
+3. Traces the redirect chain with normal client resolution
+4. Traces the redirect chain again with `curl --resolve` pinned to the local VIPs
+5. Prints repo hints for FileBrowser/AuthentiK manifests when run from the repo root
+
+**Usage:**
+```bash
+./scripts/validate-internal-auth-path.sh
+./scripts/validate-internal-auth-path.sh --app-host paperless.sulibot.com --app-vip 10.101.250.12 --auth-vip 10.101.250.12
+```
+
+**Default target:** `filebrowser.sulibot.com` with `auth.sulibot.com`
+If no VIPs are passed, the script uses the client's current first resolved IPv4 for each hostname.
+
 **Usage:**
 ```bash
 ./scripts/maint-validate-cluster.sh

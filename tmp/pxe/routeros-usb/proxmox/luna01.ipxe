@@ -1,0 +1,4 @@
+#!ipxe
+echo Boot profile: luna01
+echo Fetching stage-2 boot assets from https://pxe.factory.talos.dev/pxe/f5e875a78190cdfa9a86313aed913e19ad5017aae95d9921cfad547b0cf23f13/v1.12.4/metal-amd64
+chain https://pxe.factory.talos.dev/pxe/f5e875a78190cdfa9a86313aed913e19ad5017aae95d9921cfad547b0cf23f13/v1.12.4/metal-amd64

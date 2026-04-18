@@ -2,6 +2,7 @@
 locals {
   first_cp_name = length(var.control_plane_nodes) > 0 ? sort(keys(var.control_plane_nodes))[0] : ""
   first_cp_node = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
+  output_directory = var.output_directory != "" ? var.output_directory : "${var.repo_root}/talos/clusters/cluster-${var.cluster_id}"
   cluster_endpoint_host = var.cluster_endpoint != "" ? replace(
     replace(
       replace(
@@ -204,7 +205,7 @@ resource "talos_cluster_kubeconfig" "cluster" {
 # Write kubeconfig to file for use by downstream modules
 resource "local_sensitive_file" "kubeconfig" {
   content         = talos_cluster_kubeconfig.cluster.kubeconfig_raw
-  filename        = "${var.repo_root}/talos/clusters/cluster-${var.cluster_id}/kubeconfig"
+  filename        = "${local.output_directory}/kubeconfig"
   file_permission = "0600"
 
   depends_on = [talos_cluster_kubeconfig.cluster]

@@ -173,7 +173,7 @@ Current bridges:
 - `pve01[ether2]`
 - `pve02[ether3]`
 - `pve03[ether4]`
-- `pve04[ether5]`
+- `luna01[ether5]`
 - `wifi[ether6]`
   - `pvid=30`
 - `ilom-pve03[ether7]`
@@ -183,18 +183,18 @@ Current bridges:
 
 - `vlan1`
   - tagged: `br-fabric`
-  - untagged: `pve01-04`, `ilom-pve03`, `spare`
+  - untagged: `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`, `spare`
 - `vlan10`
-  - tagged: `br-fabric`, `pve01-04`, `ilom-pve03`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`
 - `vlan30`
-  - tagged: `br-fabric`, `pve01-04`, `spare`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `spare`
   - untagged: `wifi[ether6]`
 - `vlan31`
-  - tagged: `br-fabric`, `wifi[ether6]`, `pve01-04`, `spare`
+  - tagged: `br-fabric`, `wifi[ether6]`, `pve01`, `pve02`, `pve03`, `luna01`, `spare`
 - `vlan100`
-  - tagged: `br-fabric`, `pve01-04`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`
 - `vlan200`
-  - tagged: `br-fabric`, `pve01-04`, `ilom-pve03`, `spare`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`, `spare`
 
 This is the intended AP trunk model.
 

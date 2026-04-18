@@ -6,6 +6,102 @@ locals {
   versions = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
   network  = read_terragrunt_config(find_in_parent_folders("common/network-infrastructure.hcl")).locals
   creds    = yamldecode(sops_decrypt_file(find_in_parent_folders("common/secrets.sops.yaml")))
+
+  # RouterOS itself is the PXE/TFTP server for stage-1 recovery on vlan10.
+  # Keep next-server on the router so the lab can recover from a wiped infra
+  # footprint using only RouterOS + USB-backed boot assets.
+  pxe_server_ipv4 = "10.10.0.254"
+
+  # Bare-metal PXE inventory is keyed by physical router port slot so interface
+  # labels can reflect current hostnames without losing the future rollout shape.
+  baremetal_ports = {
+    slot02 = {
+      enabled      = false
+      hostname     = ""
+      interface    = "pve01[ether2]"
+      dhcp_server  = "dhcp_vlan10"
+      ipv4_address = "10.10.0.1"
+      ipv6_address = "fd00:10::1"
+      mac_address  = ""
+      comment      = "future bare-metal PXE slot on pve01"
+    }
+    slot03 = {
+      enabled      = false
+      hostname     = ""
+      interface    = "pve02[ether3]"
+      dhcp_server  = "dhcp_vlan10"
+      ipv4_address = "10.10.0.2"
+      ipv6_address = "fd00:10::2"
+      mac_address  = ""
+      comment      = "future bare-metal PXE slot on pve02"
+    }
+    slot04 = {
+      enabled      = false
+      hostname     = ""
+      interface    = "pve03[ether4]"
+      dhcp_server  = "dhcp_vlan10"
+      ipv4_address = "10.10.0.3"
+      ipv6_address = "fd00:10::3"
+      mac_address  = ""
+      comment      = "future bare-metal PXE slot on pve03"
+    }
+    slot05 = {
+      enabled      = true
+      hostname     = "luna01"
+      interface    = "luna01[ether5]"
+      dhcp_server  = "dhcp_vlan10"
+      ipv4_address = "10.10.0.4"
+      ipv6_address = "fd00:10::4"
+      mac_address  = "00:E0:67:25:96:C8"
+      comment      = "luna01 bare-metal PXE on vlan10"
+    }
+  }
+
+  active_baremetal_ports = {
+    for name, port in local.baremetal_ports :
+    name => port if port.enabled
+  }
+
+  baremetal_pxe_option_sets = [
+    for inventory_name, port in local.active_baremetal_ports : {
+      name    = "pxe-${port.hostname != "" ? port.hostname : inventory_name}"
+      options = ["boot-file-pxe-uefi", "next-server"]
+      comment = port.comment
+    }
+  ]
+
+  baremetal_pxe_leases = [
+    for inventory_name, port in local.active_baremetal_ports : {
+      address         = port.ipv4_address
+      mac_address     = trimspace(port.mac_address) != "" ? port.mac_address : "00:00:00:00:00:00"
+      server          = port.dhcp_server
+      dhcp_option_set = "pxe-${port.hostname != "" ? port.hostname : inventory_name}"
+      disabled        = trimspace(port.mac_address) == ""
+      comment         = trimspace(port.mac_address) == "" ? "${port.comment} (set MAC before apply)" : port.comment
+    }
+  ]
+
+  baremetal_dns_records = flatten([
+    for inventory_name, port in local.active_baremetal_ports : [
+      {
+        name     = "${port.hostname}.sulibot.com"
+        type     = "AAAA"
+        address  = port.ipv6_address
+        ttl      = "5m"
+        comment  = port.comment
+        disabled = port.hostname == ""
+      },
+      {
+        name     = "${port.hostname}.sulibot.com"
+        type     = "A"
+        address  = port.ipv4_address
+        ttl      = "5m"
+        comment  = port.comment
+        disabled = port.hostname == ""
+      }
+    ]
+    if port.hostname != ""
+  ])
 }
 
 generate "provider" {
@@ -220,7 +316,7 @@ inputs = {
     { bridge = "br-fabric", interface = "pve01[ether2]" },
     { bridge = "br-fabric", interface = "pve02[ether3]" },
     { bridge = "br-fabric", interface = "pve03[ether4]" },
-    { bridge = "br-fabric", interface = "pve04[ether5]" },
+    { bridge = "br-fabric", interface = "luna01[ether5]" },
     { bridge = "br-fabric", interface = "wifi[ether6]", pvid = 30 },
     { bridge = "br-fabric", interface = "ilom-pve03[ether7]" },
     { bridge = "br-fabric", interface = "spare[ether8]" },
@@ -230,34 +326,34 @@ inputs = {
     {
       bridge   = "br-fabric"
       vlan_ids = ["10"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["1"]
       tagged   = ["br-fabric"]
-      untagged = ["pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+      untagged = ["pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["30"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "spare[ether8]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "spare[ether8]"]
       untagged = ["wifi[ether6]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["31"]
-      tagged   = ["br-fabric", "wifi[ether6]", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "spare[ether8]"]
+      tagged   = ["br-fabric", "wifi[ether6]", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["200"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["100"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "pve04[ether5]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]"]
     },
   ]
 
@@ -283,7 +379,7 @@ inputs = {
     { list = "LAN", interface = "pve01[ether2]" },
     { list = "LAN", interface = "lo" },
     { list = "LAN", interface = "pve02[ether3]" },
-    { list = "LAN", interface = "pve04[ether5]" },
+    { list = "LAN", interface = "luna01[ether5]" },
     { list = "LAN", interface = "vlan200" },
     { list = "LAN", interface = "vlan1" },
     { list = "LAN", interface = "lo_dns" },
@@ -364,19 +460,19 @@ inputs = {
 
   ipv4_dhcp_options = [
     { name = "domain-search", code = 119, value = "0x07'sulibot'0x03'com'0x0007'sulibot'0x05'local'0x00" },
-    { name = "next-server", code = 66, value = "'10.0.9.254'" },
+    { name = "next-server", code = 66, value = "'${local.pxe_server_ipv4}'" },
     { name = "boot-file-pxe-bios", code = 67, value = "0x756e64696f6e6c792e6b70786500" },
     { name = "boot-file-pxe-uefi", code = 67, value = "0x697078652e65666900" },
     { name = "bootfile-netbootxyz", code = 67, value = "'netboot.xyz.efi'" },
-    { name = "next-server-netbootxyz", code = 66, value = "'10.0.9.254'" },
+    { name = "next-server-netbootxyz", code = 66, value = "'${local.pxe_server_ipv4}'" },
   ]
 
-  ipv4_dhcp_option_sets = [
+  ipv4_dhcp_option_sets = concat([
     { name = "domain-search-set", options = ["domain-search"] },
     { name = "boot-pxe-bios", options = ["boot-file-pxe-bios", "next-server"] },
     { name = "boot-pxe-uefi", options = ["boot-file-pxe-uefi", "next-server"] },
     { name = "netboot.xyz", options = ["bootfile-netbootxyz", "next-server-netbootxyz"] },
-  ]
+  ], local.baremetal_pxe_option_sets)
 
   ipv4_dhcp_servers = [
     {
@@ -442,7 +538,7 @@ inputs = {
     },
   ]
 
-  ipv4_dhcp_server_leases = [
+  ipv4_dhcp_server_leases = concat([
     {
       address     = "10.10.0.53"
       mac_address = "44:B7:D0:D5:85:6B"
@@ -460,7 +556,7 @@ inputs = {
       client_id   = "1:90:9:d0:12:93:b7"
       server      = "dhcp_vlan30"
     },
-  ]
+  ], local.baremetal_pxe_leases)
 
   ospf_instances = [
     {
@@ -874,11 +970,11 @@ inputs = {
   # ── DNS (static infra records only) ─────────────────────────────────────────
   # Only records with ttl=5m are managed here.
   # Records with ttl=0s are owned by Kubernetes external-dns — do NOT add them.
-  dns_records = [
+  dns_records = concat([
     { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:10::1", ttl = "5m" },
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
-    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m" },
+    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by luna01" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },
@@ -900,5 +996,5 @@ inputs = {
     { name = "pve01.sulibot.com", type = "A", address = "10.10.0.1", ttl = "5m", disabled = true },
     { name = "pve02.sulibot.com", type = "A", address = "10.10.0.2", ttl = "5m", disabled = true },
     { name = "pve03.sulibot.com", type = "A", address = "10.10.0.3", ttl = "5m", disabled = true },
-  ]
+  ], local.baremetal_dns_records)
 }

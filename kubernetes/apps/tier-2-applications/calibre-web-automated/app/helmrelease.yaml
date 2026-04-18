@@ -5,6 +5,7 @@ kind: HelmRelease
 metadata:
   name: calibre-web-automated
 spec:
+  suspend: true
   chartRef:
     kind: OCIRepository
     name: calibre-web-automated
@@ -29,7 +30,7 @@ spec:
         initContainers:
           configure-oidc:
             image:
-              repository: ghcr.io/crocodilestick/calibre-web-automated
+              repository: docker.io/crocodilestick/calibre-web-automated
               tag: v4.0.6
             envFrom:
               - secretRef:
@@ -71,7 +72,7 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/crocodilestick/calibre-web-automated
+              repository: docker.io/crocodilestick/calibre-web-automated
               tag: v4.0.6
             env:
               TZ: America/Los_Angeles
@@ -157,10 +158,8 @@ spec:
           - path: /calibre-library
             subPath: data/books/calibre
       ingest:
-        type: persistentVolumeClaim
-        existingClaim: csi-cephfs-content-pvc
+        type: emptyDir
         globalMounts:
           - path: /cwa-book-ingest
-            subPath: data/books/ingest
       tmp:
         type: emptyDir

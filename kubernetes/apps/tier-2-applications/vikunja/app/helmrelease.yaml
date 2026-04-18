@@ -35,6 +35,7 @@ spec:
               TZ: America/Los_Angeles
               PATH: /app/vikunja:$${PATH}
               VIKUNJA_SERVICE_PUBLICURL: https://vikunja.sulibot.com
+              VIKUNJA_CORS_ENABLE: "true"
               VIKUNJA_SERVICE_TIMEZONE: America/Los_Angeles
               VIKUNJA_MAILER_ENABLED: "true"
               VIKUNJA_METRICS_ENABLED: "true"
@@ -102,6 +103,8 @@ spec:
           - vikunja-app.sulibot.com
         parentRefs:
           - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
             namespace: network
         rules:
           - backendRefs:

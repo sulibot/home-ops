@@ -1,0 +1,1601 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "252"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"deployment.kubernetes.io/revision":"149","meta.helm.sh/release-name":"home-assistant","meta.helm.sh/release-namespace":"default","reloader.stakater.com/auto":"true"},"labels":{"app.kubernetes.io/controller":"home-assistant","app.kubernetes.io/instance":"home-assistant","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"home-assistant","helm.sh/chart":"app-template-4.6.2_1bf84c8236b2","helm.toolkit.fluxcd.io/name":"home-assistant","helm.toolkit.fluxcd.io/namespace":"default"},"name":"home-assistant","namespace":"default"},"spec":{"progressDeadlineSeconds":600,"replicas":1,"revisionHistoryLimit":3,"selector":{"matchLabels":{"app.kubernetes.io/controller":"home-assistant","app.kubernetes.io/instance":"home-assistant","app.kubernetes.io/name":"home-assistant"}},"strategy":{"type":"Recreate"},"template":{"metadata":{"annotations":{"checksum/configMaps":"7f19704f227ae27c5f9715bf7c89240fb615581a162cd2b325500861459237d5","k8s.v1.cni.cncf.io/networks":"[\n  {\n    \"name\": \"vlan31\",\n    \"namespace\": \"kube-system\",\n    \"ips\": [\"10.31.0.251/24\", \"fd00:31::251/64\"]\n  }\n]","kubectl.kubernetes.io/restartedAt":"2026-03-22T05:36:30Z"},"labels":{"app.kubernetes.io/controller":"home-assistant","app.kubernetes.io/instance":"home-assistant","app.kubernetes.io/name":"home-assistant"}},"spec":{"automountServiceAccountToken":false,"containers":[{"env":[{"name":"STAKATER_HOME_ASSISTANT_AUTOMATIONS_CONFIGMAP","value":"9f510b0477be3f550f10b09a3ae061a1cf614c26"},{"name":"STAKATER_HOME_ASSISTANT_LIVING_ROOM_DASHBOARD_CONFIGMAP","value":"9c372c6a549461e088d642b1db396b0b8c3d1966"},{"name":"STAKATER_HOME_ASSISTANT_CONFIGURATION_CONFIGMAP","value":"57055dbb92a024b14fe1f098d93947364924a4be"},{"name":"HASS_HTTP_TRUSTED_PROXY_1","value":"fd00:69::/64"},{"name":"HASS_HTTP_TRUSTED_PROXY_2","value":"fd00:42::/64"},{"name":"HASS_HTTP_TRUSTED_PROXY_3","value":"fd00:101:224:3::/64"},{"name":"HASS_HTTP_TRUSTED_PROXY_4","value":"fd00:101:224::/60"},{"name":"HASS_HTTP_TRUSTED_PROXY_5","value":"10.101.224.0/20"},{"name":"HASS_HTTP_USE_X_FORWARDED_FOR","value":"true"},{"name":"PYTHONPATH","value":"/config/.venv/lib/python3.14/site-packages"},{"name":"TZ","value":"America/Los_Angeles"}],"envFrom":[{"secretRef":{"name":"home-assistant-secret"}}],"image":"ghcr.io/home-operations/home-assistant:2026.3.1","imagePullPolicy":"IfNotPresent","name":"app","resources":{"limits":{"memory":"2Gi"},"requests":{"cpu":"10m"}},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config/automations.yaml","name":"automations-file","subPath":"automations.yaml"},{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/config/configuration.yaml","name":"configuration-file","subPath":"configuration.yaml"},{"mountPath":"/tmp","name":"tmp"}]}],"dnsPolicy":"ClusterFirst","enableServiceLinks":false,"initContainers":[{"command":["/bin/sh","-ec","python - \u003c\u003c'PY'\nimport os\nimport shutil\nimport tarfile\nimport tempfile\nimport urllib.request\n\ncommit = \"f1008bc241cea835ed31bf254c259d4241420f36\"\ntarget = \"/config/custom_components/aidot\"\nmarker_path = os.path.join(target, \".codex-installed-commit\")\n\nif os.path.exists(marker_path):\n    with open(marker_path, \"r\", encoding=\"utf-8\") as handle:\n        installed_commit = handle.read().strip()\n    if installed_commit == commit:\n        print(\"AiDot custom component already installed\")\n        raise SystemExit(0)\n\nos.makedirs(\"/config/custom_components\", exist_ok=True)\n\nwith tempfile.TemporaryDirectory() as tmpdir:\n    archive = os.path.join(tmpdir, \"aidot.tar.gz\")\n    extract_dir = os.path.join(tmpdir, \"extract\")\n    urllib.request.urlretrieve(\n        f\"https://github.com/sulibot/hass-AiDot/archive/{commit}.tar.gz\",\n        archive,\n    )\n    with tarfile.open(archive, mode=\"r:gz\") as tarred:\n        tarred.extractall(extract_dir)\n\n    source = os.path.join(\n        extract_dir,\n        f\"hass-AiDot-{commit}\",\n        \"custom_components\",\n        \"aidot\",\n    )\n    shutil.rmtree(target, ignore_errors=True)\n    os.makedirs(target, exist_ok=True)\n    shutil.copytree(source, target, dirs_exist_ok=True)\n    with open(marker_path, \"w\", encoding=\"utf-8\") as handle:\n        handle.write(commit + \"\\n\")\nPY\n"],"image":"python:3.14-alpine","imagePullPolicy":"IfNotPresent","name":"bootstrap-aidot","resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/tmp","name":"tmp"}]},{"command":["/bin/sh","-ec","python - \u003c\u003c'PY'\nimport json\nimport os\nimport shutil\nimport tarfile\nimport tempfile\nimport urllib.request\n\n# renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth\nversion = \"v0.6.5-alpha\"\ntarget = \"/config/custom_components/auth_oidc\"\nmanifest_path = os.path.join(target, \"manifest.json\")\n\nif os.path.exists(manifest_path):\n    with open(manifest_path, \"r\", encoding=\"utf-8\") as handle:\n        manifest = json.load(handle)\n    if manifest.get(\"version\") == version.removeprefix(\"v\"):\n        print(f\"auth_oidc {version} already installed\")\n        raise SystemExit(0)\n\nos.makedirs(\"/config/custom_components\", exist_ok=True)\n\nwith tempfile.TemporaryDirectory() as tmpdir:\n    archive = os.path.join(tmpdir, \"auth_oidc.tar.gz\")\n    extract_dir = os.path.join(tmpdir, \"extract\")\n    urllib.request.urlretrieve(\n        f\"https://github.com/christiaangoossens/hass-oidc-auth/archive/refs/tags/{version}.tar.gz\",\n        archive,\n    )\n    with tarfile.open(archive, mode=\"r:gz\") as tarred:\n        tarred.extractall(extract_dir)\n\n    source = os.path.join(\n        extract_dir,\n        f\"hass-oidc-auth-{version.removeprefix('v')}\",\n        \"custom_components\",\n        \"auth_oidc\",\n    )\n    shutil.rmtree(target, ignore_errors=True)\n    shutil.copytree(source, target)\nPY\n"],"image":"python:3.14-alpine","imagePullPolicy":"IfNotPresent","name":"bootstrap-auth-oidc","resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/tmp","name":"tmp"}]},{"command":["/bin/sh","-ec","python - \u003c\u003c'PY'\nimport os\nimport subprocess\nimport sys\n\n# renovate: datasource=pypi depName=joserfc\nversion = \"1.6.3\"\nvenv = \"/config/.venv\"\npython_bin = os.path.join(venv, \"bin\", \"python\")\npip_bin = os.path.join(venv, \"bin\", \"pip\")\n\nif not os.path.exists(python_bin):\n    subprocess.check_call([sys.executable, \"-m\", \"venv\", venv])\n\ninstalled = \"\"\ntry:\n    installed = subprocess.check_output(\n        [python_bin, \"-c\", \"import joserfc; print(joserfc.__version__)\"],\n        text=True,\n    ).strip()\nexcept subprocess.CalledProcessError:\n    installed = \"\"\n\nif installed == version:\n    print(f\"joserfc {version} already installed\")\n    raise SystemExit(0)\n\nsubprocess.check_call(\n    [python_bin, \"-m\", \"pip\", \"install\", f\"joserfc=={version}\"]\n)\nPY\n"],"image":"python:3.14-alpine","imagePullPolicy":"IfNotPresent","name":"bootstrap-auth-oidc-deps","resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/tmp","name":"tmp"}]},{"command":["/bin/sh","-ec","python - \u003c\u003c'PY'\nimport json\nimport os\nimport shutil\nimport tempfile\nimport urllib.request\nimport zipfile\n\nversion = \"2.0.5\"\ntarget = \"/config/custom_components/hacs\"\nmanifest_path = os.path.join(target, \"manifest.json\")\n\nif os.path.exists(manifest_path):\n    with open(manifest_path, \"r\", encoding=\"utf-8\") as handle:\n        manifest = json.load(handle)\n    if manifest.get(\"version\") == version:\n        print(f\"HACS {version} already installed\")\n        raise SystemExit(0)\n\nos.makedirs(\"/config/custom_components\", exist_ok=True)\n\nwith tempfile.TemporaryDirectory() as tmpdir:\n    archive = os.path.join(tmpdir, \"hacs.zip\")\n    extract_dir = os.path.join(tmpdir, \"extract\")\n    urllib.request.urlretrieve(\n        f\"https://github.com/hacs/integration/releases/download/{version}/hacs.zip\",\n        archive,\n    )\n    with zipfile.ZipFile(archive) as zipped:\n        zipped.extractall(extract_dir)\n\n    shutil.rmtree(target, ignore_errors=True)\n    shutil.copytree(extract_dir, target)\nPY\n"],"image":"python:3.14-alpine","imagePullPolicy":"IfNotPresent","name":"bootstrap-hacs","resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/tmp","name":"tmp"}]},{"command":["/bin/sh","-ec","python - \u003c\u003c'PY'\nfrom pathlib import Path\n\ntemplate = Path(\"/config/custom_components/auth_oidc/views/templates/finish.html\")\nendpoint = Path(\"/config/custom_components/auth_oidc/endpoints/finish.py\")\n\nif not template.exists():\n    raise SystemExit(\"auth_oidc finish.html not found\")\nif not endpoint.exists():\n    raise SystemExit(\"auth_oidc finish.py not found\")\n\ncontent = template.read_text(encoding=\"utf-8\")\nscript_block = \"\"\"\n        {% if auto_submit %}\n        \u003cscript\u003e\n            window.addEventListener(\"load\", () =\u003e {\n                const form = document.querySelector(\"form[method='post']\");\n                if (form) {\n                    form.requestSubmit();\n                }\n            });\n        \u003c/script\u003e\n        {% endif %}\n        \u003c!-- auth-oidc-autosubmit-patch --\u003e\n    \u003c/div\u003e\"\"\"\ncontent = content.replace(\"        \u003c/form\u003e\\n    \u003c/div\u003e\", \"        \u003c/form\u003e\\n\" + script_block)\ncontent = content.replace(\"\"\"        \u003c/form\u003e\n        \u003cscript\u003e\n            window.addEventListener(\"load\", () =\u003e {\n                const form = document.querySelector(\"form[method='post']\");\n                if (form) {\n                    form.requestSubmit();\n                }\n            });\n        \u003c/script\u003e\n        \u003c!-- auth-oidc-autosubmit-patch --\u003e\n    \u003c/div\u003e\"\"\", \"        \u003c/form\u003e\\n\" + script_block)\ntemplate.write_text(content, encoding=\"utf-8\")\nprint(\"auth_oidc finish template patched\")\n\nendpoint_content = endpoint.read_text(encoding=\"utf-8\")\nold_view = '        view_html = await get_view(\"finish\", {\"code\": code})'\nnew_view = \"\\n\".join([\n    '        host = (request.host or \"\").split(\":\")[0]',\n    '        auto_submit = host != \"hass-get-token.sulibot.com\"',\n    '        view_html = await get_view(\"finish\", {\"code\": code, \"auto_submit\": auto_submit})',\n])\nif old_view in endpoint_content:\n    endpoint_content = endpoint_content.replace(old_view, new_view)\nendpoint_content = endpoint_content.replace(\n    'location=\"/?storeToken=true\",',\n    'location=\"/lovelace?storeToken=true\",',\n)\nendpoint.write_text(endpoint_content, encoding=\"utf-8\")\nprint(\"auth_oidc finish endpoint patched\")\nPY\n"],"image":"python:3.14-alpine","imagePullPolicy":"IfNotPresent","name":"patch-auth-oidc-finish","resources":{},"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":false},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File","volumeMounts":[{"mountPath":"/config","name":"config"},{"mountPath":"/config/.venv","name":"config-cache"},{"mountPath":"/tmp","name":"tmp"}]}],"restartPolicy":"Always","schedulerName":"default-scheduler","securityContext":{"fsGroup":1000,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}},"serviceAccount":"home-assistant","serviceAccountName":"home-assistant","terminationGracePeriodSeconds":30,"volumes":[{"configMap":{"defaultMode":420,"name":"home-assistant-automations"},"name":"automations-file"},{"name":"config","persistentVolumeClaim":{"claimName":"home-assistant-config"}},{"name":"config-cache","persistentVolumeClaim":{"claimName":"home-assistant-config-cache"}},{"configMap":{"defaultMode":420,"name":"home-assistant-configuration"},"name":"configuration-file"},{"emptyDir":{},"name":"tmp"}]}}}}
+    meta.helm.sh/release-name: home-assistant
+    meta.helm.sh/release-namespace: default
+    reloader.stakater.com/auto: "true"
+  creationTimestamp: "2026-03-08T05:26:29Z"
+  generation: 428
+  labels:
+    app.kubernetes.io/controller: home-assistant
+    app.kubernetes.io/instance: home-assistant
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: home-assistant
+    helm.sh/chart: app-template-4.6.2_1bf84c8236b2
+    helm.toolkit.fluxcd.io/name: home-assistant
+    helm.toolkit.fluxcd.io/namespace: default
+  name: home-assistant
+  namespace: default
+  resourceVersion: "47421515"
+  uid: ad8c2999-0d66-42a1-94e5-6f5b05460757
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: home-assistant
+      app.kubernetes.io/instance: home-assistant
+      app.kubernetes.io/name: home-assistant
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/configMaps: 8af02e705deec5e465cb34aaf40b8c181cfbecd0f72cb52218e474369006a2f3
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan31",
+              "namespace": "kube-system",
+              "ips": ["10.31.0.251/24", "fd00:31::251/64"]
+            }
+          ]
+        kubectl.kubernetes.io/restartedAt: "2026-04-15T16:37:52-07:00"
+      labels:
+        app.kubernetes.io/controller: home-assistant
+        app.kubernetes.io/instance: home-assistant
+        app.kubernetes.io/name: home-assistant
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: STAKATER_HOME_ASSISTANT_AUTHORIZE_PAGE_CONFIGMAP
+          value: c158764669e2b44554a8a909391f885d3879de20
+        - name: STAKATER_HOME_ASSISTANT_AUTOMATIONS_CONFIGMAP
+          value: 4c8524a9b997b505fe918ed706d743caa01a1d0d
+        - name: STAKATER_HOME_ASSISTANT_LIVING_ROOM_DASHBOARD_CONFIGMAP
+          value: 9c372c6a549461e088d642b1db396b0b8c3d1966
+        - name: STAKATER_HOME_ASSISTANT_CONFIGURATION_CONFIGMAP
+          value: 60e4fe971f8b3c8a8326f2914608ef9e79888ded
+        - name: HASS_HTTP_TRUSTED_PROXY_1
+          value: fd00:69::/64
+        - name: HASS_HTTP_TRUSTED_PROXY_2
+          value: fd00:42::/64
+        - name: HASS_HTTP_TRUSTED_PROXY_3
+          value: fd00:101:224:3::/64
+        - name: HASS_HTTP_TRUSTED_PROXY_4
+          value: fd00:101:224:5::/64
+        - name: HASS_HTTP_TRUSTED_PROXY_5
+          value: fd00:101:224::/60
+        - name: HASS_HTTP_TRUSTED_PROXY_6
+          value: fd00:101:224::/56
+        - name: HASS_HTTP_TRUSTED_PROXY_7
+          value: 10.101.224.0/20
+        - name: HASS_HTTP_USE_X_FORWARDED_FOR
+          value: "true"
+        - name: PYTHONPATH
+          value: /config/.venv/lib/python3.14/site-packages
+        - name: TZ
+          value: America/Los_Angeles
+        envFrom:
+        - secretRef:
+            name: home-assistant-secret
+        image: ghcr.io/home-operations/home-assistant:2026.3.1
+        imagePullPolicy: IfNotPresent
+        name: app
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            cpu: 10m
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /usr/local/lib/python3.14/site-packages/hass_frontend/authorize.html
+          name: authorize-page
+          subPath: authorize.html
+        - mountPath: /config/automations.yaml
+          name: automations-file
+          subPath: automations.yaml
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /config/configuration.yaml
+          name: configuration-file
+          subPath: configuration.yaml
+        - mountPath: /tmp
+          name: tmp
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      initContainers:
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          import os
+          import shutil
+          import tarfile
+          import tempfile
+          import urllib.request
+
+          commit = "f1008bc241cea835ed31bf254c259d4241420f36"
+          target = "/config/custom_components/aidot"
+          marker_path = os.path.join(target, ".codex-installed-commit")
+
+          if os.path.exists(marker_path):
+              with open(marker_path, "r", encoding="utf-8") as handle:
+                  installed_commit = handle.read().strip()
+              if installed_commit == commit:
+                  print("AiDot custom component already installed")
+                  raise SystemExit(0)
+
+          os.makedirs("/config/custom_components", exist_ok=True)
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              archive = os.path.join(tmpdir, "aidot.tar.gz")
+              extract_dir = os.path.join(tmpdir, "extract")
+              urllib.request.urlretrieve(
+                  f"https://github.com/sulibot/hass-AiDot/archive/{commit}.tar.gz",
+                  archive,
+              )
+              with tarfile.open(archive, mode="r:gz") as tarred:
+                  tarred.extractall(extract_dir)
+
+              source = os.path.join(
+                  extract_dir,
+                  f"hass-AiDot-{commit}",
+                  "custom_components",
+                  "aidot",
+              )
+              shutil.rmtree(target, ignore_errors=True)
+              os.makedirs(target, exist_ok=True)
+              shutil.copytree(source, target, dirs_exist_ok=True)
+              with open(marker_path, "w", encoding="utf-8") as handle:
+                  handle.write(commit + "\n")
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-aidot
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          import json
+          import os
+          import shutil
+          import tarfile
+          import tempfile
+          import urllib.request
+
+          # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
+          version = "v0.6.5-alpha"
+          target = "/config/custom_components/auth_oidc"
+          manifest_path = os.path.join(target, "manifest.json")
+
+          if os.path.exists(manifest_path):
+              with open(manifest_path, "r", encoding="utf-8") as handle:
+                  manifest = json.load(handle)
+              if manifest.get("version") == version.removeprefix("v"):
+                  print(f"auth_oidc {version} already installed")
+                  raise SystemExit(0)
+
+          os.makedirs("/config/custom_components", exist_ok=True)
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              archive = os.path.join(tmpdir, "auth_oidc.tar.gz")
+              extract_dir = os.path.join(tmpdir, "extract")
+              urllib.request.urlretrieve(
+                  f"https://github.com/christiaangoossens/hass-oidc-auth/archive/refs/tags/{version}.tar.gz",
+                  archive,
+              )
+              with tarfile.open(archive, mode="r:gz") as tarred:
+                  tarred.extractall(extract_dir)
+
+              source = os.path.join(
+                  extract_dir,
+                  f"hass-oidc-auth-{version.removeprefix('v')}",
+                  "custom_components",
+                  "auth_oidc",
+              )
+              shutil.rmtree(target, ignore_errors=True)
+              shutil.copytree(source, target)
+              with open(os.path.join(target, "manifest.json"), "r", encoding="utf-8") as handle:
+                  manifest = json.load(handle)
+              manifest["requirements"] = []
+              with open(os.path.join(target, "manifest.json"), "w", encoding="utf-8") as handle:
+                  json.dump(manifest, handle, indent=2)
+                  handle.write("\n")
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-auth-oidc
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          # renovate: datasource=pypi depName=joserfc
+          version = "1.6.3"
+          packages = [
+              "aiofiles",
+              "jinja2",
+              "bcrypt",
+              f"joserfc=={version}",
+          ]
+          venv = "/config/.venv"
+          python_bin = os.path.join(venv, "bin", "python")
+
+          if not os.path.exists(python_bin):
+              subprocess.check_call([sys.executable, "-m", "venv", venv])
+
+          try:
+              subprocess.check_call(
+                  [
+                      python_bin,
+                      "-c",
+                      (
+                          "import aiofiles, jinja2, bcrypt, joserfc; "
+                          f"assert joserfc.__version__ == {version!r}"
+                      ),
+                  ]
+              )
+              print("auth_oidc Python dependencies already installed")
+              raise SystemExit(0)
+          except subprocess.CalledProcessError:
+              pass
+
+          subprocess.check_call(
+              [python_bin, "-m", "pip", "install", *packages]
+          )
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-auth-oidc-deps
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          import json
+          import os
+          import shutil
+          import tempfile
+          import urllib.request
+          import zipfile
+
+          version = "2.0.5"
+          target = "/config/custom_components/hacs"
+          manifest_path = os.path.join(target, "manifest.json")
+
+          if os.path.exists(manifest_path):
+              with open(manifest_path, "r", encoding="utf-8") as handle:
+                  manifest = json.load(handle)
+              if manifest.get("version") == version:
+                  print(f"HACS {version} already installed")
+                  raise SystemExit(0)
+
+          os.makedirs("/config/custom_components", exist_ok=True)
+
+          with tempfile.TemporaryDirectory() as tmpdir:
+              archive = os.path.join(tmpdir, "hacs.zip")
+              extract_dir = os.path.join(tmpdir, "extract")
+              urllib.request.urlretrieve(
+                  f"https://github.com/hacs/integration/releases/download/{version}/hacs.zip",
+                  archive,
+              )
+              with zipfile.ZipFile(archive) as zipped:
+                  zipped.extractall(extract_dir)
+
+              shutil.rmtree(target, ignore_errors=True)
+              shutil.copytree(extract_dir, target)
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-hacs
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import textwrap
+
+          target = Path("/config/custom_components/matter_dimmer_bridge")
+          os.makedirs(target, exist_ok=True)
+
+          (target / "manifest.json").write_text(
+              json.dumps(
+                  {
+                      "domain": "matter_dimmer_bridge",
+                      "name": "Matter Dimmer Bridge",
+                      "version": "0.1.0",
+                      "documentation": "https://github.com/sulibot/home-ops",
+                      "dependencies": ["matter"],
+                      "codeowners": ["@sulibot"],
+                      "iot_class": "local_push",
+                  },
+                  indent=2,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+
+          (target / "__init__.py").write_text(
+              textwrap.dedent(
+                  '''\
+                  """Bridge Matter dimmer attribute updates directly to target bulbs."""
+
+                  from __future__ import annotations
+
+                  import asyncio
+                  import logging
+                  import time
+                  from dataclasses import dataclass
+
+                  import voluptuous as vol
+                  from chip.clusters import Objects as clusters
+
+                  from homeassistant.components.matter.const import DOMAIN as MATTER_DOMAIN
+                  from homeassistant.components.matter.helpers import get_matter
+                  from homeassistant.const import CONF_ENTITY_ID, CONF_NAME, EVENT_HOMEASSISTANT_STARTED
+                  from homeassistant.core import Event, HomeAssistant, callback
+                  from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_track_state_change_event
+                  from matter_server.common.helpers.util import create_attribute_path
+                  from matter_server.common.models import EventType
+
+                  DOMAIN = "matter_dimmer_bridge"
+                  CONF_NODE_ID = "node_id"
+                  CONF_SWITCH_ENTITY_ID = "switch_entity_id"
+                  CONF_TARGET_ENTITY_IDS = "target_entity_ids"
+                  CONF_TARGET_SELECTOR = "target_selector"
+                  CONF_TARGETS = "targets"
+                  CONF_LABEL = "label"
+                  CONF_DOUBLE_TAP_WINDOW_SECONDS = "double_tap_window_seconds"
+                  CONF_ENTITY_IDS = "entity_ids"
+                  RETRY_DELAY_SECONDS = 5
+                  DOUBLE_TAP_WINDOW_SECONDS = 0.45
+                  TURN_ON_LEVEL_SUPPRESSION_SECONDS = 1.2
+                  TARGET_SWITCH_LEVEL_SUPPRESSION_SECONDS = 0.9
+                  BRIGHTNESS_DELTA_THRESHOLD = 8
+                  LEVEL_DEDUPE_WINDOW_SECONDS = 0.25
+                  ONOFF_DEBOUNCE_SECONDS = 0.15
+                  DEFAULT_TRANSITION_SECONDS = 0.0
+                  HOLD_CYCLE_WINDOW_SECONDS = 2.0
+                  HOLD_CYCLE_MIN_UPDATES = 3
+                  HOLD_CYCLE_HIGH_EDGE = 235
+                  HOLD_CYCLE_LOW_EDGE = 20
+                  FOCUS_IDLE_RESET_SECONDS = 30.0
+                  SWITCH_SYNC_SUPPRESSION_SECONDS = 1.0
+
+                  LOGGER = logging.getLogger(__name__)
+
+                  TARGET_SCHEMA = vol.Schema(
+                      {
+                          vol.Required(CONF_LABEL): cv.string,
+                          vol.Exclusive(CONF_ENTITY_ID, "target_entity"): cv.entity_id,
+                          vol.Exclusive(CONF_ENTITY_IDS, "target_entity"): vol.All(
+                              cv.ensure_list, [cv.entity_id]
+                          ),
+                      }
+                  )
+
+                  BRIDGE_SCHEMA = vol.Schema(
+                      {
+                          vol.Required(CONF_NAME): cv.string,
+                          vol.Required(CONF_NODE_ID): vol.Coerce(int),
+                          vol.Required(CONF_SWITCH_ENTITY_ID): cv.entity_id,
+                          vol.Optional(CONF_TARGET_ENTITY_IDS): vol.All(
+                              cv.ensure_list, [cv.entity_id]
+                          ),
+                          vol.Optional(CONF_TARGET_SELECTOR): cv.entity_id,
+                          vol.Optional(CONF_TARGETS): vol.All(
+                              cv.ensure_list, [TARGET_SCHEMA]
+                          ),
+                          vol.Optional(CONF_DOUBLE_TAP_WINDOW_SECONDS): vol.Coerce(float),
+                      }
+                  )
+
+                  CONFIG_SCHEMA = vol.Schema(
+                      {DOMAIN: vol.All(cv.ensure_list, [BRIDGE_SCHEMA])},
+                      extra=vol.ALLOW_EXTRA,
+                  )
+
+
+                  @dataclass
+                  class TargetSpec:
+                      """Config for one selectable target."""
+
+                      label: str
+                      entity_ids: list[str]
+
+
+                  @dataclass
+                  class BridgeState:
+                      """In-memory state for one mirrored dimmer."""
+
+                      name: str
+                      node_id: int
+                      switch_entity_id: str
+                      target_entity_ids: list[str]
+                      target_selector: str | None = None
+                      targets: list[TargetSpec] | None = None
+                      is_on: bool | None = None
+                      brightness: int = 255
+                      suppress_level_until: float = 0.0
+                      pending_single_tap: asyncio.Task | None = None
+                      last_onoff_timestamp: float = 0.0
+                      last_onoff_value: bool | None = None
+                      last_tap_timestamp: float = 0.0
+                      last_single_tap_completed_at: float = 0.0
+                      last_level_value: int | None = None
+                      last_level_timestamp: float = 0.0
+                      double_tap_window_seconds: float = DOUBLE_TAP_WINDOW_SECONDS
+                      hold_direction: int | None = None
+                      hold_start_level: int | None = None
+                      hold_started_at: float = 0.0
+                      hold_update_count: int = 0
+                      target_last_on: dict[str, bool] | None = None
+                      pending_focus_reset: asyncio.Task | None = None
+                      ignore_onoff_until: float = 0.0
+
+
+                  def _matter_to_ha_brightness(level: int | None) -> int:
+                      """Convert Matter currentLevel to HA brightness scale."""
+                      if level is None:
+                          return 255
+                      value = max(1, min(254, int(level)))
+                      return round((value - 1) * 255 / 253)
+
+
+                  def _target_cycling_enabled(state: BridgeState) -> bool:
+                      """Return whether target cycling is configured for this dimmer."""
+                      return bool(state.target_selector and state.targets)
+
+
+                  def _resolve_selected_target(
+                      state: BridgeState, hass: HomeAssistant
+                  ) -> list[str]:
+                      """Return the currently selected target entities."""
+                      if not _target_cycling_enabled(state):
+                          return state.target_entity_ids
+
+                      selector_state = hass.states.get(state.target_selector)
+                      if selector_state is None:
+                          return state.targets[-1].entity_ids
+
+                      for target in state.targets:
+                          if target.label == selector_state.state:
+                              return target.entity_ids
+                      return state.targets[-1].entity_ids
+
+
+                  def _resolve_selected_label(
+                      state: BridgeState, hass: HomeAssistant
+                  ) -> str | None:
+                      """Return the currently selected target label."""
+                      if not _target_cycling_enabled(state):
+                          return None
+
+                      selector_state = hass.states.get(state.target_selector)
+                      if selector_state is None:
+                          return state.targets[-1].label
+
+                      labels = [target.label for target in state.targets]
+                      if selector_state.state in labels:
+                          return selector_state.state
+                      return state.targets[-1].label
+
+
+                  def _resolve_default_target(
+                      state: BridgeState,
+                  ) -> tuple[str | None, list[str]]:
+                      """Return the default room/group target."""
+                      if not _target_cycling_enabled(state):
+                          return None, state.target_entity_ids
+                      default = state.targets[-1]
+                      return default.label, default.entity_ids
+
+
+                  def _uniform_target_state(
+                      hass: HomeAssistant, entity_ids: list[str]
+                  ) -> bool | None:
+                      """Return True/False if all target entities share one state."""
+                      states = [hass.states.get(entity_id) for entity_id in entity_ids]
+                      available = [
+                          entity_state.state
+                          for entity_state in states
+                          if entity_state is not None
+                          and entity_state.state not in ("unknown", "unavailable")
+                      ]
+                      if len(available) != len(entity_ids) or not available:
+                          return None
+                      if all(value == "on" for value in available):
+                          return True
+                      if all(value == "off" for value in available):
+                          return False
+                      return None
+
+
+                  async def _async_drive_switch_indicator(
+                      hass: HomeAssistant, state: BridgeState, *, turn_on: bool
+                  ) -> None:
+                      """Best-effort attempt to drive the switch indicator state."""
+                      state.ignore_onoff_until = (
+                          time.monotonic() + SWITCH_SYNC_SUPPRESSION_SECONDS
+                      )
+                      service = "turn_on" if turn_on else "turn_off"
+                      LOGGER.info(
+                          "%s switch indicator sync -> %s via %s",
+                          state.name,
+                          turn_on,
+                          state.switch_entity_id,
+                      )
+                      await hass.services.async_call(
+                          "light",
+                          service,
+                          {
+                              "entity_id": state.switch_entity_id,
+                              "transition": DEFAULT_TRANSITION_SECONDS,
+                          },
+                          blocking=True,
+                      )
+
+
+                  def _schedule_focus_reset(hass: HomeAssistant, state: BridgeState) -> None:
+                      """Reset focus to the room default after idle time."""
+                      if not _target_cycling_enabled(state):
+                          return
+
+                      pending = state.pending_focus_reset
+                      if pending is not None and not pending.done():
+                          pending.cancel()
+
+                      async def _reset_focus_later() -> None:
+                          try:
+                              await asyncio.sleep(FOCUS_IDLE_RESET_SECONDS)
+                              current_label = _resolve_selected_label(state, hass)
+                              default_label, default_entities = _resolve_default_target(state)
+                              if current_label != default_label and default_label is not None:
+                                  await hass.services.async_call(
+                                      "input_select",
+                                      "select_option",
+                                      {
+                                          "entity_id": state.target_selector,
+                                          "option": default_label,
+                                      },
+                                      blocking=True,
+                                  )
+                                  LOGGER.info(
+                                      "%s selected target after idle reset: %s",
+                                      state.name,
+                                      default_label,
+                                  )
+                              uniform_state = _uniform_target_state(hass, default_entities)
+                              if uniform_state is not None:
+                                  await _async_drive_switch_indicator(
+                                      hass, state, turn_on=uniform_state
+                                  )
+                          except asyncio.CancelledError:
+                              raise
+                          finally:
+                              state.pending_focus_reset = None
+
+                      state.pending_focus_reset = hass.async_create_task(_reset_focus_later())
+
+
+                  async def _async_cycle_target(hass: HomeAssistant, state: BridgeState) -> None:
+                      """Advance to the next target in the selector."""
+                      if not _target_cycling_enabled(state):
+                          return
+
+                      labels = [target.label for target in state.targets]
+                      current_label = _resolve_selected_label(state, hass) or labels[-1]
+                      LOGGER.info(
+                          "%s selected target before press: %s",
+                          state.name,
+                          current_label,
+                      )
+                      try:
+                          current_index = labels.index(current_label)
+                      except ValueError:
+                          current_index = len(labels) - 1
+                      next_label = labels[(current_index + 1) % len(labels)]
+                      await hass.services.async_call(
+                          "input_select",
+                          "select_option",
+                          {"entity_id": state.target_selector, "option": next_label},
+                          blocking=True,
+                      )
+                      next_entities: list[str] = []
+                      for target in state.targets:
+                          if target.label == next_label:
+                              next_entities = target.entity_ids
+                              break
+                      state.suppress_level_until = (
+                          time.monotonic() + TARGET_SWITCH_LEVEL_SUPPRESSION_SECONDS
+                      )
+                      LOGGER.info(
+                          "%s selected target after focus advance: %s",
+                          state.name,
+                          next_label,
+                      )
+                      LOGGER.info(
+                          "%s entity IDs flashed: %s",
+                          state.name,
+                          next_entities,
+                      )
+                      if next_entities:
+                          hass.async_create_task(
+                              _async_flash_target_entities(hass, next_entities)
+                          )
+                      _schedule_focus_reset(hass, state)
+
+
+                  def _reset_hold_tracking(state: BridgeState) -> None:
+                      """Reset brightness-hold gesture tracking."""
+                      state.hold_direction = None
+                      state.hold_start_level = None
+                      state.hold_started_at = 0.0
+                      state.hold_update_count = 0
+
+
+                  async def _async_flash_target_entities(
+                      hass: HomeAssistant, entity_ids: list[str]
+                  ) -> None:
+                      """Best-effort visual focus indicator for the selected target."""
+                      states = {
+                          entity_id: hass.states.get(entity_id)
+                          for entity_id in entity_ids
+                      }
+                      available = {
+                          entity_id: entity_state
+                          for entity_id, entity_state in states.items()
+                          if entity_state is not None
+                          and entity_state.state not in ("unknown", "unavailable")
+                      }
+                      if not available:
+                          return
+
+                      was_on = {
+                          entity_id
+                          for entity_id, entity_state in available.items()
+                          if entity_state.state == "on"
+                      }
+
+                      if was_on:
+                          await hass.services.async_call(
+                              "light",
+                              "turn_off",
+                              {
+                                  "entity_id": list(was_on),
+                                  "transition": DEFAULT_TRANSITION_SECONDS,
+                              },
+                              blocking=True,
+                          )
+                          await asyncio.sleep(0.18)
+                          await hass.services.async_call(
+                              "light",
+                              "turn_on",
+                              {
+                                  "entity_id": list(was_on),
+                                  "transition": DEFAULT_TRANSITION_SECONDS,
+                              },
+                              blocking=True,
+                          )
+                          return
+
+                      await hass.services.async_call(
+                          "light",
+                          "turn_on",
+                          {
+                              "entity_id": list(available),
+                              "brightness": 255,
+                              "transition": DEFAULT_TRANSITION_SECONDS,
+                          },
+                          blocking=True,
+                      )
+                      await asyncio.sleep(0.18)
+                      await hass.services.async_call(
+                          "light",
+                          "turn_off",
+                          {
+                              "entity_id": list(available),
+                              "transition": DEFAULT_TRANSITION_SECONDS,
+                          },
+                          blocking=True,
+                      )
+
+
+                  async def _async_turn_on(
+                      hass: HomeAssistant, state: BridgeState, *, brightness: int | None = None
+                  ) -> None:
+                      """Mirror dimmer on/brightness to target bulbs."""
+                      entity_id = (
+                          _resolve_selected_target(state, hass)
+                          if _target_cycling_enabled(state)
+                          else state.target_entity_ids
+                      )
+                      LOGGER.info("%s entity IDs toggled: %s", state.name, entity_id)
+                      service_data: dict[str, object] = {"entity_id": entity_id}
+                      service_data["transition"] = DEFAULT_TRANSITION_SECONDS
+                      if brightness is not None:
+                          service_data["brightness"] = max(1, min(255, brightness))
+                      await hass.services.async_call(
+                          "light", "turn_on", service_data, blocking=True
+                      )
+                      if _target_cycling_enabled(state):
+                          state.target_last_on = state.target_last_on or {}
+                          state.target_last_on["|".join(entity_id)] = True
+
+
+                  async def _async_turn_off(hass: HomeAssistant, state: BridgeState) -> None:
+                      """Mirror dimmer off to target bulbs."""
+                      entity_id = (
+                          _resolve_selected_target(state, hass)
+                          if _target_cycling_enabled(state)
+                          else state.target_entity_ids
+                      )
+                      LOGGER.info("%s entity IDs toggled: %s", state.name, entity_id)
+                      await hass.services.async_call(
+                          "light",
+                          "turn_off",
+                          {
+                              "entity_id": entity_id,
+                              "transition": DEFAULT_TRANSITION_SECONDS,
+                          },
+                          blocking=True,
+                      )
+                      if _target_cycling_enabled(state):
+                          state.target_last_on = state.target_last_on or {}
+                          state.target_last_on["|".join(entity_id)] = False
+
+
+                  async def _async_toggle_selected(hass: HomeAssistant, state: BridgeState) -> None:
+                      """Toggle the currently selected target."""
+                      selected_label = _resolve_selected_label(state, hass)
+                      entity_ids = _resolve_selected_target(state, hass)
+                      if selected_label is not None:
+                          LOGGER.info(
+                              "%s selected target before press: %s",
+                              state.name,
+                              selected_label,
+                          )
+                      states = [hass.states.get(entity_id) for entity_id in entity_ids]
+                      available_states = [
+                          entity_state.state
+                          for entity_state in states
+                          if entity_state is not None
+                          and entity_state.state not in ("unknown", "unavailable")
+                      ]
+                      if available_states:
+                          any_on = any(state_value == "on" for state_value in available_states)
+                      else:
+                          state.target_last_on = state.target_last_on or {}
+                          any_on = state.target_last_on.get("|".join(entity_ids), False)
+                      if any_on:
+                          await _async_turn_off(hass, state)
+                          _schedule_focus_reset(hass, state)
+                          return
+
+                      state.suppress_level_until = (
+                          time.monotonic() + TURN_ON_LEVEL_SUPPRESSION_SECONDS
+                      )
+                      await _async_turn_on(hass, state)
+                      _schedule_focus_reset(hass, state)
+
+
+                  def _load_initial_state(hass: HomeAssistant, state: BridgeState) -> None:
+                      """Prime cached switch state from Matter node data."""
+                      matter = get_matter(hass)
+                      node = matter.matter_client.get_node(state.node_id)
+                      endpoint = node.endpoints[1]
+                      onoff_cluster = endpoint.get_cluster(clusters.OnOff)
+                      level_cluster = endpoint.get_cluster(clusters.LevelControl)
+                      if onoff_cluster is not None:
+                          state.is_on = bool(getattr(onoff_cluster, "onOff", False))
+                      if level_cluster is not None:
+                          level = getattr(level_cluster, "currentLevel", None)
+                          if isinstance(level, int):
+                              state.brightness = _matter_to_ha_brightness(level)
+                              state.last_level_value = int(level)
+
+
+                  def _setup_bridge(hass: HomeAssistant, state: BridgeState) -> list[callable]:
+                      """Subscribe to switch entity state updates for one dimmer."""
+                      _load_initial_state(hass, state)
+
+                      @callback
+                      def onoff_updated(event: EventType, value: object) -> None:
+                          if not isinstance(value, bool):
+                              return
+                          now = time.monotonic()
+                          if _target_cycling_enabled(state) and not value:
+                              state.last_onoff_timestamp = now
+                              state.last_onoff_value = value
+                              _reset_hold_tracking(state)
+                              LOGGER.debug("%s ignoring off edge in target mode", state.name)
+                              return
+                          if now < state.ignore_onoff_until:
+                              LOGGER.info(
+                                  "%s ignoring switch state echo -> %s",
+                                  state.name,
+                                  value,
+                              )
+                              state.last_onoff_timestamp = now
+                              state.last_onoff_value = value
+                              state.is_on = value
+                              return
+                          if (
+                              state.last_onoff_value is not None
+                              and state.last_onoff_value != value
+                              and now - state.last_onoff_timestamp < ONOFF_DEBOUNCE_SECONDS
+                          ):
+                              LOGGER.debug("%s ignoring on/off bounce -> %s", state.name, value)
+                              return
+                          state.last_onoff_timestamp = now
+                          state.last_onoff_value = value
+                          state.is_on = value
+                          LOGGER.info("%s on/off -> %s", state.name, value)
+                          if _target_cycling_enabled(state):
+                              pending = state.pending_single_tap
+                              if pending is not None and not pending.done():
+                                  pending.cancel()
+                                  state.pending_single_tap = None
+                                  state.last_single_tap_completed_at = 0.0
+                                  hass.async_create_task(_async_cycle_target(hass, state))
+                                  return
+
+                              async def _delayed_single_tap() -> None:
+                                  try:
+                                      await asyncio.sleep(state.double_tap_window_seconds)
+                                      await _async_toggle_selected(hass, state)
+                                      state.last_single_tap_completed_at = time.monotonic()
+                                  except asyncio.CancelledError:
+                                      raise
+                                  finally:
+                                      state.pending_single_tap = None
+
+                              state.last_tap_timestamp = now
+                              state.pending_single_tap = hass.async_create_task(
+                                  _delayed_single_tap()
+                              )
+                              return
+
+                          if value:
+                              # Let adaptive_lighting choose the initial turn-on state.
+                              state.suppress_level_until = (
+                                  time.monotonic() + TURN_ON_LEVEL_SUPPRESSION_SECONDS
+                              )
+                              hass.async_create_task(_async_turn_on(hass, state))
+                          else:
+                              hass.async_create_task(_async_turn_off(hass, state))
+
+                      @callback
+                      def level_updated(event: EventType, value: object) -> None:
+                          if not isinstance(value, int):
+                              return
+                          now = time.monotonic()
+                          previous_value = state.last_level_value
+                          if (
+                              previous_value is not None
+                              and value == previous_value
+                              and now - state.last_level_timestamp < LEVEL_DEDUPE_WINDOW_SECONDS
+                          ):
+                              LOGGER.debug("%s ignoring duplicate level -> %s", state.name, value)
+                              return
+                          if (
+                              previous_value is not None
+                              and abs(value - previous_value) < BRIGHTNESS_DELTA_THRESHOLD
+                          ):
+                              LOGGER.debug("%s ignoring small level delta -> %s", state.name, value)
+                              state.last_level_value = value
+                              state.last_level_timestamp = now
+                              return
+                          state.last_level_value = value
+                          state.last_level_timestamp = now
+                          state.brightness = _matter_to_ha_brightness(value)
+                          LOGGER.info("%s brightness -> %s", state.name, state.brightness)
+                          if time.monotonic() < state.suppress_level_until:
+                              LOGGER.debug(
+                                  "%s ignoring immediate level update to preserve adaptive_lighting",
+                                  state.name,
+                              )
+                              _reset_hold_tracking(state)
+                              return
+                          if _target_cycling_enabled(state):
+                              direction = 0
+                              if previous_value is not None:
+                                  if value > previous_value:
+                                      direction = 1
+                                  elif value < previous_value:
+                                      direction = -1
+
+                              if direction == 0:
+                                  return
+
+                              if (
+                                  state.hold_direction != direction
+                                  or now - state.hold_started_at > HOLD_CYCLE_WINDOW_SECONDS
+                              ):
+                                  state.hold_direction = direction
+                                  state.hold_start_level = previous_value
+                                  state.hold_started_at = now
+                                  state.hold_update_count = 1
+                              else:
+                                  state.hold_update_count += 1
+
+                              start_level = (
+                                  state.hold_start_level
+                                  if state.hold_start_level is not None
+                                  else previous_value
+                              )
+                              reached_edge = (
+                                  value >= HOLD_CYCLE_HIGH_EDGE
+                                  if direction > 0
+                                  else value <= HOLD_CYCLE_LOW_EDGE
+                              )
+                              if (
+                                  start_level is not None
+                                  and state.hold_update_count >= HOLD_CYCLE_MIN_UPDATES
+                                  and reached_edge
+                                  and now - state.hold_started_at <= HOLD_CYCLE_WINDOW_SECONDS
+                              ):
+                                  _reset_hold_tracking(state)
+                                  state.suppress_level_until = (
+                                      now + TARGET_SWITCH_LEVEL_SUPPRESSION_SECONDS
+                                  )
+                                  hass.async_create_task(_async_cycle_target(hass, state))
+                                  return
+                          if state.is_on is not False:
+                              hass.async_create_task(
+                                  _async_turn_on(hass, state, brightness=state.brightness)
+                              )
+                              if _target_cycling_enabled(state):
+                                  _schedule_focus_reset(hass, state)
+
+                      @callback
+                      def state_updated(event: Event) -> None:
+                          new_state = event.data.get("new_state")
+                          old_state = event.data.get("old_state")
+                          if new_state is None:
+                              return
+
+                          if old_state is None or old_state.state != new_state.state:
+                              onoff_updated(
+                                  EventType.ATTRIBUTE_UPDATED,
+                                  new_state.state == "on",
+                              )
+
+                          old_brightness = (
+                              None
+                              if old_state is None
+                              else old_state.attributes.get("brightness")
+                          )
+                          new_brightness = new_state.attributes.get("brightness")
+                          if (
+                              new_brightness is not None
+                              and new_brightness != old_brightness
+                          ):
+                              matter_level = max(
+                                  1,
+                                  min(
+                                      254,
+                                      round((int(new_brightness) * 253 / 255) + 1),
+                                  ),
+                              )
+                              level_updated(EventType.ATTRIBUTE_UPDATED, matter_level)
+
+                      return [
+                          async_track_state_change_event(
+                              hass,
+                              [state.switch_entity_id],
+                              state_updated,
+                          )
+                      ]
+
+
+                  async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+                      """Set up the Matter dimmer bridge."""
+                      entries = config.get(DOMAIN, [])
+                      if not entries:
+                          return True
+
+                      domain_data = hass.data.setdefault(DOMAIN, {})
+                      domain_data["started"] = False
+                      domain_data["unsubs"] = []
+
+                      states = [
+                          BridgeState(
+                              name=entry[CONF_NAME],
+                              node_id=entry[CONF_NODE_ID],
+                              switch_entity_id=entry[CONF_SWITCH_ENTITY_ID],
+                              target_entity_ids=list(entry.get(CONF_TARGET_ENTITY_IDS, [])),
+                              target_selector=entry.get(CONF_TARGET_SELECTOR),
+                              targets=[
+                                  TargetSpec(
+                                      label=target[CONF_LABEL],
+                                      entity_ids=list(
+                                          target.get(CONF_ENTITY_IDS)
+                                          or [target[CONF_ENTITY_ID]]
+                                      ),
+                                  )
+                                  for target in entry.get(CONF_TARGETS, [])
+                              ]
+                              or None,
+                              double_tap_window_seconds=float(
+                                  entry.get(
+                                      CONF_DOUBLE_TAP_WINDOW_SECONDS,
+                                      DOUBLE_TAP_WINDOW_SECONDS,
+                                  )
+                              ),
+                          )
+                          for entry in entries
+                      ]
+
+                      async def _async_start(_: Event | None = None) -> None:
+                          if domain_data["started"]:
+                              return
+                          if MATTER_DOMAIN not in hass.data or not hass.data[MATTER_DOMAIN]:
+                              LOGGER.info("Matter not ready for dimmer bridge; retrying")
+                              async def _retry(_: object) -> None:
+                                  await _async_start()
+                              hass.loop.call_later(
+                                  RETRY_DELAY_SECONDS,
+                                  lambda: hass.async_create_task(_retry(None)),
+                              )
+                              return
+                          try:
+                              unsubs: list[callable] = []
+                              for state in states:
+                                  unsubs.extend(_setup_bridge(hass, state))
+                              domain_data["unsubs"] = unsubs
+                              domain_data["started"] = True
+                              LOGGER.info(
+                                  "Started Matter dimmer bridge for %s",
+                                  ", ".join(state.name for state in states),
+                              )
+                          except Exception:
+                              LOGGER.exception("Failed to start Matter dimmer bridge")
+                              async def _retry(_: object) -> None:
+                                  await _async_start()
+                              hass.loop.call_later(
+                                  RETRY_DELAY_SECONDS,
+                                  lambda: hass.async_create_task(_retry(None)),
+                              )
+
+                      if hass.is_running:
+                          hass.async_create_task(_async_start())
+                      else:
+                          hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _async_start)
+
+                      return True
+                  '''
+              ),
+              encoding="utf-8",
+          )
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: bootstrap-matter-dimmer-bridge
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          template = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
+          endpoint = Path("/config/custom_components/auth_oidc/endpoints/finish.py")
+          callback_file = Path("/config/custom_components/auth_oidc/endpoints/callback.py")
+          redirect_file = Path("/config/custom_components/auth_oidc/endpoints/redirect.py")
+          init_file = Path("/config/custom_components/auth_oidc/__init__.py")
+
+          if not template.exists():
+              raise SystemExit("auth_oidc finish.html not found")
+          if not endpoint.exists():
+              raise SystemExit("auth_oidc finish.py not found")
+          if not callback_file.exists():
+              raise SystemExit("auth_oidc callback.py not found")
+          if not redirect_file.exists():
+              raise SystemExit("auth_oidc redirect.py not found")
+          if not init_file.exists():
+              raise SystemExit("auth_oidc __init__.py not found")
+
+          template.write_text(
+              textwrap.dedent(
+                  """\
+                  {% extends "base.html" %}
+                  {% block title %}Logged in!{% endblock %}
+                  {% block head %}
+                  {{ super() }}
+                  {% endblock %}
+                  {% block content %}
+                  <div class="text-center">
+                      {% if show_browser_login %}
+                      <div class="my-6">
+                          <h2 class="text-xl font-semibold mb-6 text-gray-800">I want to login to this browser</h2>
+                          <form method="post">
+                              <input type="hidden" name="code" value="{{ browser_code }}">
+                              <button type="submit"
+                                  class="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                                  Login to Home Assistant in this browser
+                              </button>
+                          </form>
+                          {% if auto_submit %}
+                          <script>
+                              window.addEventListener("load", () => {
+                                  const form = document.querySelector("form[method='post']");
+                                  if (form) {
+                                      form.requestSubmit();
+                                  }
+                              });
+                          </script>
+                          {% endif %}
+                      </div>
+
+                      <hr class="my-12">
+                      {% endif %}
+
+                      <div class="my-6">
+                          <h2 class="text-xl font-semibold mb-4 text-gray-800">I am on a mobile device</h2>
+                          <p class="mb-4">Your one-time code is: <b class="text-blue-600 text-xl">{{ mobile_code }}</b></p>
+                          <p class="mb-4 text-sm">You have 5 minutes to use this code on any device.<br />The code can only
+                              be used once.</p>
+                          <p class="mb-4 text-sm">{{ mobile_instructions }}</p>
+                      </div>
+                  </div>
+                  {% endblock %}
+                  """
+              ),
+              encoding="utf-8",
+          )
+          print("auth_oidc finish template patched")
+
+          endpoint.write_text(
+              textwrap.dedent(
+                  '''\
+                  """Finish route to allow the user to view their code."""
+
+                  from aiohttp import web
+                  from homeassistant.components.http import HomeAssistantView
+
+                  from ..helpers import get_view
+
+                  PATH = "/auth/oidc/finish"
+                  TOKEN_HOST = "hass-get-token.sulibot.com"
+
+
+                  class OIDCFinishView(HomeAssistantView):
+                      """OIDC Plugin Finish View."""
+
+                      requires_auth = False
+                      url = PATH
+                      name = "auth:oidc:finish"
+
+                      async def get(self, request: web.Request) -> web.Response:
+                          """Show the finish screen to allow the user to view their code."""
+                          code = request.query.get("code")
+
+                          if not code:
+                              view_html = await get_view(
+                                  "error",
+                                  {"error": "Missing code to show the finish screen."},
+                              )
+                              return web.Response(text=view_html, content_type="text/html")
+
+                          host = (request.host or "").split(":")[0]
+                          is_token_host = host == TOKEN_HOST
+                          browser_code = code
+                          mobile_code = code
+                          show_browser_login = True
+                          auto_submit = not is_token_host
+                          mobile_instructions = (
+                              "Please type the code into your app manually. If you don't see a code input, select "
+                              "'Login with OpenID Connect (SSO)' first."
+                          )
+
+                          if is_token_host:
+                              show_browser_login = False
+
+                          view_html = await get_view(
+                              "finish",
+                              {
+                                  "auto_submit": auto_submit,
+                                  "browser_code": browser_code,
+                                  "mobile_code": mobile_code,
+                                  "mobile_instructions": mobile_instructions,
+                                  "show_browser_login": show_browser_login,
+                              },
+                          )
+                          return web.Response(text=view_html, content_type="text/html")
+
+                      async def post(self, request: web.Request) -> web.Response:
+                          """Receive response."""
+                          data = await request.post()
+                          code = data.get("code")
+
+                          if not code:
+                              return web.Response(text="No code received", status=500)
+
+                          return web.HTTPFound(
+                              location="/lovelace?storeToken=true",
+                              headers={
+                                  "set-cookie": "auth_oidc_code="
+                                  + code
+                                  + "; Path=/auth/login_flow; SameSite=Strict; HttpOnly; Max-Age=5",
+                              },
+                          )
+                  '''
+              ),
+              encoding="utf-8",
+          )
+          print("auth_oidc finish endpoint patched")
+
+          callback_file.write_text(
+              textwrap.dedent(
+                  '''\
+                  """Callback route to return the user to after external OIDC interaction."""
+
+                  import urllib.parse
+
+                  from aiohttp import web
+                  from homeassistant.components.auth import create_auth_code
+                  from homeassistant.components.http import KEY_HASS, HomeAssistantView
+
+                  from ..helpers import get_url, get_view
+                  from ..oidc_client import OIDCClient
+                  from ..provider import OpenIDAuthProvider
+
+                  PATH = "/auth/oidc/callback"
+                  APP_HOST = "hass-app.sulibot.com"
+                  DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
+                  DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
+
+
+                  class OIDCCallbackView(HomeAssistantView):
+                      """OIDC Plugin Callback View."""
+
+                      requires_auth = False
+                      url = PATH
+                      name = "auth:oidc:callback"
+
+                      def __init__(
+                          self,
+                          oidc_client: OIDCClient,
+                          oidc_provider: OpenIDAuthProvider,
+                          force_https: bool,
+                      ) -> None:
+                          self.oidc_client = oidc_client
+                          self.oidc_provider = oidc_provider
+                          self.force_https = force_https
+
+                      async def get(self, request: web.Request) -> web.Response:
+                          """Receive response."""
+
+                          params = request.rel_url.query
+                          oidc_code = params.get("code")
+                          state = params.get("state")
+
+                          if not (oidc_code and state):
+                              view_html = await get_view(
+                                  "error",
+                                  {
+                                      "error": "Missing code or state parameter.",
+                                  },
+                              )
+                              return web.Response(text=view_html, content_type="text/html")
+
+                          flow = self.oidc_client.flows.get(state, {})
+                          ha_client_id = flow.get("ha_client_id")
+                          ha_redirect_uri = flow.get("ha_redirect_uri")
+
+                          request_host = (request.host or "").split(":")[0]
+                          if request_host == APP_HOST:
+                              ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
+                              ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
+
+                          redirect_uri = get_url("/auth/oidc/callback", self.force_https)
+                          user_details = await self.oidc_client.async_complete_token_flow(
+                              redirect_uri, oidc_code, state
+                          )
+                          if user_details is None:
+                              view_html = await get_view(
+                                  "error",
+                                  {
+                                      "error": "Failed to get user details, "
+                                      + "see Home Assistant logs for more information.",
+                                  },
+                              )
+                              return web.Response(text=view_html, content_type="text/html")
+
+                          if user_details.get("role") == "invalid":
+                              view_html = await get_view(
+                                  "error",
+                                  {
+                                      "error": "User is not in the correct group to access Home Assistant, "
+                                      + "contact your administrator!",
+                                  },
+                              )
+                              return web.Response(text=view_html, content_type="text/html")
+
+                          if ha_client_id and ha_redirect_uri and ha_redirect_uri.startswith("homeassistant"):
+                              self.oidc_provider._user_meta[user_details["sub"]] = user_details
+                              credentials = await self.oidc_provider.async_get_or_create_credentials(
+                                  {"sub": user_details["sub"]}
+                              )
+                              auth_code = create_auth_code(
+                                  request.app[KEY_HASS], ha_client_id, credentials
+                              )
+                              query = urllib.parse.urlencode({"code": auth_code})
+                              separator = "&" if "?" in ha_redirect_uri else "?"
+                              return web.HTTPFound(f"{ha_redirect_uri}{separator}{query}")
+
+                          login_code = await self.oidc_provider.async_save_user_info(user_details)
+                          return web.HTTPFound(
+                              get_url("/auth/oidc/finish?code=" + login_code, self.force_https)
+                          )
+                  '''
+              ),
+              encoding="utf-8",
+          )
+          print("auth_oidc callback endpoint patched")
+
+          redirect_file.write_text(
+              textwrap.dedent(
+                  '''\
+                  """Redirect route to redirect the user to the external OIDC server,
+                  can either be linked to directly or accessed through the welcome page."""
+
+                  import urllib.parse
+
+                  from aiohttp import web
+                  from homeassistant.components.http import HomeAssistantView
+
+                  from ..helpers import get_url, get_view
+                  from ..oidc_client import OIDCClient
+
+                  PATH = "/auth/oidc/redirect"
+                  APP_HOST = "hass-app.sulibot.com"
+                  DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
+                  DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
+
+
+                  class OIDCRedirectView(HomeAssistantView):
+                      """OIDC Plugin Redirect View."""
+
+                      requires_auth = False
+                      url = PATH
+                      name = "auth:oidc:redirect"
+
+                      def __init__(self, oidc_client: OIDCClient, force_https: bool) -> None:
+                          self.oidc_client = oidc_client
+                          self.force_https = force_https
+
+                      async def get(self, request: web.Request) -> web.Response:
+                          """Receive response."""
+
+                          try:
+                              redirect_uri = get_url("/auth/oidc/callback", self.force_https)
+                              auth_url = await self.oidc_client.async_get_authorization_url(redirect_uri)
+
+                              if auth_url:
+                                  request_host = (request.host or "").split(":")[0]
+                                  ha_client_id = request.query.get("client_id")
+                                  ha_redirect_uri = request.query.get("redirect_uri")
+
+                                  if request_host == APP_HOST:
+                                      ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
+                                      ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
+
+                                  if ha_client_id or ha_redirect_uri:
+                                      parsed = urllib.parse.urlparse(auth_url)
+                                      state = urllib.parse.parse_qs(parsed.query).get("state", [None])[0]
+                                      if state and state in self.oidc_client.flows:
+                                          flow = self.oidc_client.flows[state]
+                                          if ha_client_id:
+                                              flow["ha_client_id"] = ha_client_id
+                                          if ha_redirect_uri:
+                                              flow["ha_redirect_uri"] = ha_redirect_uri
+
+                                  raise web.HTTPFound(auth_url)
+                          except RuntimeError:
+                              pass
+
+                          view_html = await get_view(
+                              "error",
+                              {"error": "Integration is misconfigured, discovery could not be obtained."},
+                          )
+                          return web.Response(text=view_html, content_type="text/html")
+
+                      async def post(self, request: web.Request) -> web.Response:
+                          """POST"""
+                          return await self.get(request)
+                  '''
+              ),
+              encoding="utf-8",
+          )
+          print("auth_oidc redirect endpoint patched")
+
+          init_content = init_file.read_text(encoding="utf-8")
+          init_content = init_content.replace(
+              "    hass.http.register_view(OIDCFinishView(provider))",
+              "    hass.http.register_view(OIDCFinishView())",
+          )
+          init_file.write_text(init_content, encoding="utf-8")
+          print("auth_oidc init patched")
+          PY
+        image: python:3.14-alpine
+        imagePullPolicy: IfNotPresent
+        name: patch-auth-oidc-finish
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /config
+          name: config
+        - mountPath: /config/.venv
+          name: config-cache
+        - mountPath: /tmp
+          name: tmp
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccount: home-assistant
+      serviceAccountName: home-assistant
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: home-assistant-authorize-page
+        name: authorize-page
+      - configMap:
+          defaultMode: 420
+          name: home-assistant-automations
+        name: automations-file
+      - name: config
+        persistentVolumeClaim:
+          claimName: home-assistant-config
+      - name: config-cache
+        persistentVolumeClaim:
+          claimName: home-assistant-config-cache
+      - configMap:
+          defaultMode: 420
+          name: home-assistant-configuration
+        name: configuration-file
+      - emptyDir: {}
+        name: tmp
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2026-03-21T05:30:43Z"
+    lastUpdateTime: "2026-04-15T23:39:26Z"
+    message: ReplicaSet "home-assistant-6755d6fb8f" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  - lastTransitionTime: "2026-04-16T02:43:30Z"
+    lastUpdateTime: "2026-04-16T02:43:30Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  observedGeneration: 428
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

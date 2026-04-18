@@ -46,9 +46,14 @@ spec:
                 CONFIG_FILE="/config/nzbget.conf"
                 echo "=== Init container starting ==="
 
-                mkdir -p "$MAIN_DIR" "$INTER_DIR" "$TEMP_DIR" \
+                COMPLETED_DIR="/data/usenet/completed"
+                mkdir -p "$MAIN_DIR" "$INTER_DIR" "$TEMP_DIR" "$COMPLETED_DIR" \
+                  "$COMPLETED_DIR/books" "$COMPLETED_DIR/audiobooks" "$COMPLETED_DIR/movies" \
+                  "$COMPLETED_DIR/tv" "$COMPLETED_DIR/courses" "$COMPLETED_DIR/sports" \
                   "$MAIN_DIR/nzb" "$MAIN_DIR/queue" "$MAIN_DIR/scripts"
-                chown -R 1000:1000 /config /data/usenet/intermediate
+                chown -R 1000:1000 /config /data/usenet/intermediate "$COMPLETED_DIR"
+                find "$COMPLETED_DIR" -type d -exec chmod 2775 {} \;
+                find "$COMPLETED_DIR" -type f -exec chmod 664 {} \;
 
                 if [ ! -s "$CONFIG_FILE" ]; then
                   cp /app/nzbget.conf "$CONFIG_FILE"
@@ -66,11 +71,16 @@ spec:
                 sed -i "s@^ScriptDir=.*@ScriptDir=\$${MainDir}/scripts@" "$CONFIG_FILE"
                 sed -i "s@^LockFile=.*@LockFile=\$${MainDir}/nzbget.lock@" "$CONFIG_FILE"
                 sed -i "s@^LogFile=.*@LogFile=\$${MainDir}/nzbget.log@" "$CONFIG_FILE"
+                if grep -q '^UMask=' "$CONFIG_FILE"; then
+                  sed -i "s@^UMask=.*@UMask=0002@" "$CONFIG_FILE"
+                else
+                  printf '\nUMask=0002\n' >> "$CONFIG_FILE"
+                fi
                 sed -i "s@^UnrarCmd=.*@UnrarCmd=unrar@" "$CONFIG_FILE"
                 sed -i "s@^SevenZipCmd=.*@SevenZipCmd=7z@" "$CONFIG_FILE"
                 sed -i "s@^ControlIP=.*@ControlIP=::@" "$CONFIG_FILE"
-                sed -i "s@^ControlUsername=.*@ControlUsername=$${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
-                sed -i "s@^ControlPassword=.*@ControlPassword=$${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
+                sed -i "s@^ControlUsername=.*@ControlUsername=${NZBGET__CONTROLUSERNAME}@" "$CONFIG_FILE"
+                sed -i "s@^ControlPassword=.*@ControlPassword=${NZBGET__CONTROLPASSWORD}@" "$CONFIG_FILE"
                 sed -i "s@^ControlPort=.*@ControlPort=6789@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Active=.*@Server1.Active=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Name=.*@Server1.Name=Eweka@" "$CONFIG_FILE"
@@ -80,11 +90,11 @@ spec:
                 sed -i "s@^Server1.Host=.*@Server1.Host=news.eweka.nl@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Encryption=.*@Server1.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Port=.*@Server1.Port=563@" "$CONFIG_FILE"
-                if [ -n "$${NZBGET__EWEKA_USERNAME:-}" ]; then
-                  sed -i "s@^Server1.Username=.*@Server1.Username=$${NZBGET__EWEKA_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__EWEKA_USERNAME:-}" ]; then
+                  sed -i "s@^Server1.Username=.*@Server1.Username=${NZBGET__EWEKA_USERNAME}@" "$CONFIG_FILE"
                 fi
-                if [ -n "$${NZBGET__EWEKA_PASSWORD:-}" ]; then
-                  sed -i "s@^Server1.Password=.*@Server1.Password=$${NZBGET__EWEKA_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__EWEKA_PASSWORD:-}" ]; then
+                  sed -i "s@^Server1.Password=.*@Server1.Password=${NZBGET__EWEKA_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server1.JoinGroup=.*@Server1.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server1.Connections=.*@Server1.Connections=0@" "$CONFIG_FILE"
@@ -119,11 +129,11 @@ spec:
                 sed -i "s@^Server2.Host=.*@Server2.Host=newswest.frugalusenet.com@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Encryption=.*@Server2.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Port=.*@Server2.Port=563@" "$CONFIG_FILE"
-                if [ -n "$${NZBGET__FRUGAL_USERNAME:-}" ]; then
-                  sed -i "s@^Server2.Username=.*@Server2.Username=$${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server2.Username=.*@Server2.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
                 fi
-                if [ -n "$${NZBGET__FRUGAL_PASSWORD:-}" ]; then
-                  sed -i "s@^Server2.Password=.*@Server2.Password=$${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server2.Password=.*@Server2.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server2.JoinGroup=.*@Server2.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Connections=.*@Server2.Connections=150@" "$CONFIG_FILE"
@@ -158,13 +168,13 @@ spec:
                 sed -i "s@^Server3.Host=.*@Server3.Host=bonus.frugalusenet.com@" "$CONFIG_FILE"
                 sed -i "s@^Server3.Encryption=.*@Server3.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server3.Port=.*@Server3.Port=563@" "$CONFIG_FILE"
-                if [ -n "$${NZBGET__FRUGAL_USERNAME:-}" ]; then
-                  sed -i "s@^Server3.Username=.*@Server3.Username=$${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_USERNAME:-}" ]; then
+                  sed -i "s@^Server3.Username=.*@Server3.Username=${NZBGET__FRUGAL_USERNAME}@" "$CONFIG_FILE"
                 elif ! grep -q '^Server3.Username=' "$CONFIG_FILE"; then
                   printf '\nServer3.Username=\n' >> "$CONFIG_FILE"
                 fi
-                if [ -n "$${NZBGET__FRUGAL_PASSWORD:-}" ]; then
-                  sed -i "s@^Server3.Password=.*@Server3.Password=$${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__FRUGAL_PASSWORD:-}" ]; then
+                  sed -i "s@^Server3.Password=.*@Server3.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 elif ! grep -q '^Server3.Password=' "$CONFIG_FILE"; then
                   printf '\nServer3.Password=\n' >> "$CONFIG_FILE"
                 fi
@@ -201,11 +211,11 @@ spec:
                 sed -i "s@^Server4.Host=.*@Server4.Host=usnews.blocknews.net@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Encryption=.*@Server4.Encryption=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Port=.*@Server4.Port=563@" "$CONFIG_FILE"
-                if [ -n "$${NZBGET__BLOCKNEWS_USERNAME:-}" ]; then
-                  sed -i "s@^Server4.Username=.*@Server4.Username=$${NZBGET__BLOCKNEWS_USERNAME}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__BLOCKNEWS_USERNAME:-}" ]; then
+                  sed -i "s@^Server4.Username=.*@Server4.Username=${NZBGET__BLOCKNEWS_USERNAME}@" "$CONFIG_FILE"
                 fi
-                if [ -n "$${NZBGET__BLOCKNEWS_PASSWORD:-}" ]; then
-                  sed -i "s@^Server4.Password=.*@Server4.Password=$${NZBGET__BLOCKNEWS_PASSWORD}@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__BLOCKNEWS_PASSWORD:-}" ]; then
+                  sed -i "s@^Server4.Password=.*@Server4.Password=${NZBGET__BLOCKNEWS_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server4.JoinGroup=.*@Server4.JoinGroup=no@" "$CONFIG_FILE"
                 sed -i "s@^Server4.Connections=.*@Server4.Connections=20@" "$CONFIG_FILE"
@@ -225,6 +235,36 @@ spec:
                   sed -i "s@^Category2.Unpack=.*@Category2.Unpack=yes@" "$CONFIG_FILE"
                 else
                   printf '\nCategory2.Unpack=yes\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category3.Name=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category3.Name=.*@Category3.Name=courses@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory3.Name=courses\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category3.DestDir=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category3.DestDir=.*@Category3.DestDir=\$${DestDir}/courses@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory3.DestDir=\$${DestDir}/courses\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category3.Unpack=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category3.Unpack=.*@Category3.Unpack=yes@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory3.Unpack=yes\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category4.Name=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category4.Name=.*@Category4.Name=sports@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory4.Name=sports\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category4.DestDir=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category4.DestDir=.*@Category4.DestDir=\$${DestDir}/sports@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory4.DestDir=\$${DestDir}/sports\n' >> "$CONFIG_FILE"
+                fi
+                if grep -q '^Category4.Unpack=' "$CONFIG_FILE"; then
+                  sed -i "s@^Category4.Unpack=.*@Category4.Unpack=yes@" "$CONFIG_FILE"
+                else
+                  printf '\nCategory4.Unpack=yes\n' >> "$CONFIG_FILE"
                 fi
                 sed -i "s@^ArticleCache=.*@ArticleCache=500@" "$CONFIG_FILE"
                 sed -i "s@^DirectWrite=.*@DirectWrite=yes@" "$CONFIG_FILE"
@@ -258,15 +298,15 @@ spec:
               repository: ghcr.io/home-operations/nzbget
               tag: 26.0.0@sha256:0185f0b026696bfbb89f29aecf777b721a8aa288da90ceb1021b6ee52c6de8f7
             command:
-              - /app/nzbget
-            args:
-              - --server
-              - --configfile
-              - /config/nzbget.conf
-              - -o
-              - OutputMode=log
-              - -o
-              - ControlPort=6789
+              - /bin/sh
+              - -c
+              - |
+                umask 0002
+                exec /app/nzbget \
+                  --server \
+                  --configfile /config/nzbget.conf \
+                  -o OutputMode=log \
+                  -o ControlPort=6789
             env:
               NZBGET__PORT: "6789"
               NZBGET__CONTROLIP: "::"
@@ -327,7 +367,3 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
-      tmp:
-        enabled: false
-      work:
-        enabled: false

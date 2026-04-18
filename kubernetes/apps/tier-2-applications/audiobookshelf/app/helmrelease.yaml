@@ -36,6 +36,8 @@ spec:
                   name: audiobookshelf-secret
                   optional: true
             env:
+              PUID: "1000"
+              PGID: "1000"
               TZ: America/Los_Angeles
               READARR__AUTH__METHOD: External
               READARR__AUTH__REQUIRED: DisabledForLocalAddresses
@@ -66,9 +68,12 @@ spec:
             securityContext:
               allowPrivilegeEscalation: true
               readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
               capabilities:
                 drop: ["ALL"]
-                add: ["SETGID", "SETUID"]
+                add: ["CHOWN", "SETGID", "SETUID"]
             resources:
               requests:
                 cpu: 100m

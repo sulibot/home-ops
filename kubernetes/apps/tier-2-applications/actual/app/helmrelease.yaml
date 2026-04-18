@@ -112,6 +112,8 @@ spec:
         parentRefs:
           - name: gateway-tunnel
             namespace: network
+          - name: gateway-internal
+            namespace: network
     persistence:
       data:
         existingClaim: "{{ .Release.Name }}-config"

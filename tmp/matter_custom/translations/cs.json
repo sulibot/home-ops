@@ -1,0 +1,662 @@
+{
+    "config": {
+        "abort": {
+            "addon_get_discovery_info_failed": "Nepoda\u0159ilo se z\u00edskat informace o zji\u0161\u0165ov\u00e1n\u00ed aplikace Matter Server.",
+            "addon_info_failed": "Nepoda\u0159ilo se z\u00edskat informace o aplikaci Matter Server.",
+            "addon_install_failed": "Nepoda\u0159ilo se nainstalovat aplikaci Matter Server.",
+            "addon_start_failed": "Nepoda\u0159ilo se spustit aplikaci Matter Server.",
+            "already_configured": "Za\u0159\u00edzen\u00ed je ji\u017e nastaveno",
+            "already_in_progress": "Nastaven\u00ed ji\u017e prob\u00edh\u00e1",
+            "cannot_connect": "Nepoda\u0159ilo se p\u0159ipojit",
+            "not_matter_addon": "Aplikace Discovered nen\u00ed ofici\u00e1ln\u00ed aplikac\u00ed Matter Server.",
+            "reconfiguration_successful": "Integrace Matter byla \u00fasp\u011b\u0161n\u011b p\u0159enastavena."
+        },
+        "error": {
+            "cannot_connect": "Nepoda\u0159ilo se p\u0159ipojit",
+            "invalid_server_version": "Server Matter nen\u00ed spr\u00e1vn\u00e1 verze",
+            "unknown": "Neo\u010dek\u00e1van\u00e1 chyba"
+        },
+        "flow_title": "{name}",
+        "progress": {
+            "install_addon": "Po\u010dkejte na dokon\u010den\u00ed instalace aplikace Matter Server. To m\u016f\u017ee trvat n\u011bkolik minut.",
+            "start_addon": "Po\u010dkejte, ne\u017e se spust\u00ed aplikace Matter Server. Tato aplikace je to, co poh\u00e1n\u00ed Matter v Home Assistantovi. To m\u016f\u017ee trvat n\u011bkolik sekund."
+        },
+        "step": {
+            "hassio_confirm": {
+                "title": "Nastavit integraci Matter s aplikac\u00ed Matter Server"
+            },
+            "install_addon": {
+                "title": "Instalace aplikace byla spu\u0161t\u011bna"
+            },
+            "manual": {
+                "data": {
+                    "url": "URL"
+                }
+            },
+            "on_supervisor": {
+                "data": {
+                    "use_addon": "Pou\u017e\u00edt ofici\u00e1ln\u00ed aplikaci Matter Server Supervizor"
+                },
+                "description": "Chcete pou\u017e\u00edvat ofici\u00e1ln\u00ed aplikaci Matter Server Supervizor?\n\nPokud ji\u017e Matter Server provozujete v jin\u00e9 aplikaci, ve vlastn\u00edm kontejneru, nativn\u011b atd., pak tuto volbu nevyb\u00edrejte.",
+                "title": "Vybrat zp\u016fsob p\u0159ipojen\u00ed"
+            },
+            "start_addon": {
+                "title": "Spou\u0161t\u011bn\u00ed aplikace."
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "actuator": {
+                "name": "Aktu\u00e1tor"
+            },
+            "alarm_door": {
+                "name": "Dve\u0159n\u00ed alarm"
+            },
+            "battery_alert": {
+                "name": "Upozorn\u011bn\u00ed na baterii"
+            },
+            "boost_state": {
+                "name": "Stav zv\u00fd\u0161en\u00ed"
+            },
+            "config_status_operational": {
+                "name": "Stav nastaven\u00ed"
+            },
+            "dishwasher_alarm_inflow": {
+                "name": "Alarm p\u0159\u00edtoku"
+            },
+            "end_of_service": {
+                "name": "Konec slu\u017eby"
+            },
+            "evse_charging_status": {
+                "name": "Stav nab\u00edjen\u00ed"
+            },
+            "evse_plug": {
+                "name": "Stav z\u00e1str\u010dky"
+            },
+            "evse_supply_state": {
+                "name": "Stav nap\u00e1jen\u00ed nab\u00edje\u010dky"
+            },
+            "hardware_fault": {
+                "name": "Chyba hardwaru"
+            },
+            "interconnected_co_alarm": {
+                "name": "Propojen\u00fd alarm CO"
+            },
+            "interconnected_smoke_alarm": {
+                "name": "Propojen\u00fd kou\u0159ov\u00fd alarm"
+            },
+            "muted": {
+                "name": "Ztlumeno"
+            },
+            "rain": {
+                "name": "D\u00e9\u0161\u0165"
+            },
+            "test_in_progress": {
+                "name": "Prob\u00edh\u00e1 test"
+            },
+            "thermostat_remote_sensing_local_temperature": {
+                "name": "Lok\u00e1ln\u00ed d\u00e1lkov\u00e9 sn\u00edm\u00e1n\u00ed teploty"
+            },
+            "thermostat_remote_sensing_occupancy": {
+                "name": "D\u00e1lkov\u00e9 sn\u00edm\u00e1n\u00ed obsazenosti"
+            },
+            "thermostat_remote_sensing_outdoor_temperature": {
+                "name": "D\u00e1lkov\u00e9 sn\u00edm\u00e1n\u00ed venkovn\u00ed teploty"
+            },
+            "valve_fault_blocked": {
+                "name": "Ventil zablokov\u00e1n"
+            },
+            "valve_fault_general_fault": {
+                "name": "Obecn\u00e1 z\u00e1vada"
+            },
+            "valve_fault_leaking": {
+                "name": "Net\u011bsnost ventilu"
+            },
+            "water_freeze": {
+                "name": "Zamrznut\u00ed vody"
+            },
+            "water_leak": {
+                "name": "\u00danik vody"
+            }
+        },
+        "button": {
+            "cancel_boost": {
+                "name": "Zru\u0161it zv\u00fd\u0161en\u00ed"
+            },
+            "pause": {
+                "name": "Pozastavit"
+            },
+            "reset_filter_condition": {
+                "name": "Resetovat stav filtru"
+            },
+            "resume": {
+                "name": "Pokra\u010dovat"
+            },
+            "self_test_request": {
+                "name": "Autotest"
+            },
+            "start": {
+                "name": "Spustit"
+            },
+            "stop": {
+                "name": "Zastavit"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Termostat"
+            }
+        },
+        "cover": {
+            "cover": {
+                "name": "Roleta"
+            }
+        },
+        "event": {
+            "button": {
+                "name": "Tla\u010d\u00edtko",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "initial_press": "Stisknuto",
+                            "long_press": "Dlouze dr\u017eeno",
+                            "long_release": "Uvoln\u011bn\u00ed po dlouh\u00e9m stisknut\u00ed",
+                            "multi_press_1": "Stisknuto jednou",
+                            "multi_press_2": "Stisknuto dvakr\u00e1t",
+                            "multi_press_3": "Stisknuto t\u0159ikr\u00e1t",
+                            "multi_press_4": "Stisknuto \u010dty\u0159ikr\u00e1t",
+                            "multi_press_5": "Stisknuto p\u011btkr\u00e1t",
+                            "multi_press_6": "Stisknuto \u0161estkr\u00e1t",
+                            "multi_press_7": "Stisknuto sedmkr\u00e1t",
+                            "multi_press_8": "Stisknuto osmkr\u00e1t",
+                            "short_release": "Uvoln\u011bn\u00ed po stisknut\u00ed",
+                            "switch_latched": "Sp\u00edna\u010d zaji\u0161t\u011bn"
+                        }
+                    }
+                }
+            }
+        },
+        "fan": {
+            "fan": {
+                "name": "Ventil\u00e1tor",
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "auto": "Automaticky",
+                            "high": "Vysok\u00fd",
+                            "low": "N\u00edzk\u00fd",
+                            "medium": "St\u0159edn\u00ed",
+                            "natural_wind": "P\u0159\u00edrodn\u00ed v\u00edtr",
+                            "sleep_wind": "V\u00e1nek"
+                        }
+                    }
+                }
+            }
+        },
+        "light": {
+            "light": {
+                "name": "Sv\u011btlo"
+            }
+        },
+        "lock": {
+            "lock": {
+                "name": "Z\u00e1mek"
+            }
+        },
+        "number": {
+            "altitude": {
+                "name": "Nadmo\u0159sk\u00e1 v\u00fd\u0161ka nad hladinou mo\u0159e"
+            },
+            "auto_relock_timer": {
+                "name": "Doba automatick\u00e9ho op\u011btovn\u00e9ho uzam\u010den\u00ed"
+            },
+            "cook_time": {
+                "name": "Doba va\u0159en\u00ed"
+            },
+            "hold_time": {
+                "name": "Doba \u010dek\u00e1n\u00ed"
+            },
+            "led_indicator_intensity_off": {
+                "name": "Intenzita vypnut\u00e9 LED diody"
+            },
+            "led_indicator_intensity_on": {
+                "name": "Intenzita zapnut\u00e9 LED diody"
+            },
+            "occupied_setback": {
+                "name": "Obsazen\u00fd odstup"
+            },
+            "off_transition_time": {
+                "name": "Doba p\u0159echodu pro vypnut\u00ed"
+            },
+            "on_level": {
+                "name": "\u00darove\u0148 p\u0159i zapnut\u00ed"
+            },
+            "on_off_transition_time": {
+                "name": "Doba p\u0159echodu pro Zapnuto/Vypnuto"
+            },
+            "on_transition_time": {
+                "name": "Doba p\u0159echodu pro zapnut\u00ed"
+            },
+            "pump_setpoint": {
+                "name": "Nastaven\u00e1 hodnota"
+            },
+            "speaker_setpoint": {
+                "name": "Hlasitost"
+            },
+            "temperature_offset": {
+                "name": "Kalibrace teploty"
+            },
+            "temperature_setpoint": {
+                "name": "Nastaven\u00ed teploty"
+            },
+            "user_code_temporary_disable_time": {
+                "name": "\u010cas do\u010dasn\u00e9ho zablokov\u00e1n\u00ed u\u017eivatelsk\u00e9ho k\u00f3du"
+            },
+            "valve_configuration_and_control_default_open_duration": {
+                "name": "V\u00fdchoz\u00ed doba otev\u0159en\u00ed"
+            },
+            "wrong_code_entry_limit": {
+                "name": "Chybn\u00fd limit k\u00f3du"
+            }
+        },
+        "select": {
+            "clean_mode": {
+                "name": "Re\u017eim \u00faklidu"
+            },
+            "device_energy_management_mode": {
+                "name": "Re\u017eim spr\u00e1vy energie"
+            },
+            "door_lock_operating_mode": {
+                "name": "Provozn\u00ed re\u017eim",
+                "state": {
+                    "no_remote_lock_unlock": "\u017d\u00e1dn\u00e9 vzd\u00e1len\u00e9 zamyk\u00e1n\u00ed/odemyk\u00e1n\u00ed",
+                    "normal": "Norm\u00e1ln\u00ed",
+                    "passage": "Pr\u016fchod",
+                    "privacy": "Soukrom\u00ed",
+                    "vacation": "Dovolen\u00e1"
+                }
+            },
+            "door_lock_sound_volume": {
+                "name": "Hlasitost zvuku",
+                "state": {
+                    "high": "Vysok\u00fd",
+                    "low": "N\u00edzk\u00fd",
+                    "medium": "St\u0159edn\u00ed",
+                    "silent": "Tich\u00fd"
+                }
+            },
+            "laundry_washer_number_of_rinses": {
+                "name": "Po\u010det m\u00e1ch\u00e1n\u00ed",
+                "state": {
+                    "extra": "Extra",
+                    "max": "Maximum",
+                    "normal": "Norm\u00e1ln\u00ed",
+                    "off": "Vypnuto"
+                }
+            },
+            "laundry_washer_spin_speed": {
+                "name": "Rychlost odst\u0159e\u010fov\u00e1n\u00ed"
+            },
+            "mode": {
+                "name": "Re\u017eim"
+            },
+            "power_level": {
+                "name": "\u00darove\u0148 v\u00fdkonu (W)"
+            },
+            "pump_operation_mode": {
+                "name": "re\u017eim",
+                "state": {
+                    "local": "M\u00edstn\u00ed",
+                    "maximum": "Maximum",
+                    "minimum": "Minimum",
+                    "normal": "Norm\u00e1ln\u00ed"
+                }
+            },
+            "sensitivity_level": {
+                "name": "Citlivost",
+                "state": {
+                    "high": "Vysok\u00fd",
+                    "low": "N\u00edzk\u00fd",
+                    "standard": "Standardn\u00ed"
+                }
+            },
+            "startup_on_off": {
+                "name": "Chov\u00e1n\u00ed zapnut\u00ed p\u0159i spu\u0161t\u011bn\u00ed",
+                "state": {
+                    "off": "Vypnuto",
+                    "on": "Zapnuto",
+                    "previous": "P\u0159edchoz\u00ed",
+                    "toggle": "P\u0159epnout"
+                }
+            },
+            "temperature_display_mode": {
+                "name": "Re\u017eim zobrazen\u00ed teploty"
+            },
+            "temperature_level": {
+                "name": "\u00darove\u0148 teploty"
+            },
+            "water_heater_mode": {
+                "name": "Re\u017eim oh\u0159\u00edva\u010de vody"
+            }
+        },
+        "sensor": {
+            "activated_carbon_filter_condition": {
+                "name": "Stav filtru s aktivn\u00edm uhl\u00edm"
+            },
+            "active_current": {
+                "name": "Aktivn\u00ed proud"
+            },
+            "air_quality": {
+                "name": "Kvalita vzduchu",
+                "state": {
+                    "extremely_poor": "Extr\u00e9mn\u011b \u0161patn\u00e1",
+                    "fair": "Slu\u0161n\u00e1",
+                    "good": "Dobr\u00e1",
+                    "moderate": "St\u0159edn\u00ed",
+                    "poor": "\u0160patn\u00e1",
+                    "very_poor": "Velmi \u0161patn\u00e1"
+                }
+            },
+            "apparent_current": {
+                "name": "Zd\u00e1nliv\u00fd proud"
+            },
+            "auto_close_time": {
+                "name": "\u010cas automatick\u00e9ho zav\u0159en\u00ed"
+            },
+            "battery_charge_state": {
+                "name": "Stav nabit\u00ed baterie",
+                "state": {
+                    "charging": "Nab\u00edjen\u00ed",
+                    "full_charge": "Pln\u00e9 nabit\u00ed",
+                    "not_charging": "Nenab\u00edj\u00ed se"
+                }
+            },
+            "battery_replacement_description": {
+                "name": "Typ baterie"
+            },
+            "battery_time_remaining": {
+                "name": "Zb\u00fdvaj\u00edc\u00ed \u010das"
+            },
+            "battery_time_to_full_charge": {
+                "name": "\u010cas do pln\u00e9ho nabit\u00ed"
+            },
+            "battery_voltage": {
+                "name": "Nap\u011bt\u00ed baterie"
+            },
+            "contamination_state": {
+                "name": "Stav kontaminace",
+                "state": {
+                    "critical": "Kritick\u00fd",
+                    "low": "N\u00edzk\u00fd",
+                    "normal": "Norm\u00e1ln\u00ed",
+                    "warning": "Varov\u00e1n\u00ed"
+                }
+            },
+            "current_phase": {
+                "name": "Aktu\u00e1ln\u00ed f\u00e1ze"
+            },
+            "door_closed_events": {
+                "name": "Ud\u00e1losti zav\u0159en\u00ed dve\u0159\u00ed"
+            },
+            "door_open_events": {
+                "name": "Ud\u00e1losti otev\u0159en\u00ed dve\u0159\u00ed"
+            },
+            "energy_exported": {
+                "name": "Exportovan\u00e1 energie"
+            },
+            "esa_opt_out_state": {
+                "name": "V\u00fdjimka z optimalizace energie",
+                "state": {
+                    "grid_opt_out": "S\u00ed\u0165",
+                    "local_opt_out": "M\u00edstn\u00ed",
+                    "no_opt_out": "Vypnuto",
+                    "opt_out": "M\u00edstn\u00ed a s\u00ed\u0165"
+                }
+            },
+            "esa_state": {
+                "name": "Energetick\u00fd stav spot\u0159ebi\u010de",
+                "state": {
+                    "fault": "Porucha",
+                    "offline": "Offline",
+                    "online": "Online",
+                    "paused": "Pozastaveno",
+                    "power_adjust_active": "Nastaven\u00ed v\u00fdkonu"
+                }
+            },
+            "estimated_end_time": {
+                "name": "Odhadovan\u00fd \u010das ukon\u010den\u00ed"
+            },
+            "estimated_heat_required": {
+                "name": "Pot\u0159ebn\u00e1 energie na vyt\u00e1p\u011bn\u00ed"
+            },
+            "eve_weather_trend": {
+                "name": "Trend po\u010das\u00ed",
+                "state": {
+                    "cloudy": "Obla\u010dno",
+                    "rainy": "De\u0161tivo",
+                    "stormy": "Bou\u0159livo",
+                    "sunny": "Slune\u010dno"
+                }
+            },
+            "evse_charge_current": {
+                "name": "Nab\u00edjec\u00ed proud"
+            },
+            "evse_circuit_capacity": {
+                "name": "Kapacita obvodu"
+            },
+            "evse_fault_state": {
+                "name": "Stav poruchy",
+                "state": {
+                    "contact_dry_failure": "Selh\u00e1n\u00ed such\u00e9ho kontaktu",
+                    "contact_wet_failure": "Selh\u00e1n\u00ed vlhk\u00e9ho kontaktu",
+                    "emergency_stop": "Nouzov\u00e9 zastaven\u00ed",
+                    "ev_disconnected": "EV odpojeno",
+                    "live_neutral_swap": "\u017div\u00e1/Neutr\u00e1ln\u00ed v\u00fdm\u011bna",
+                    "meter_failure": "Selh\u00e1n\u00ed m\u011b\u0159i\u010de",
+                    "no_error": "OK",
+                    "other": "Jin\u00e9 selh\u00e1n\u00ed",
+                    "over_current": "Nadproud",
+                    "over_temperature": "P\u0159eh\u0159\u00e1t\u00ed",
+                    "over_voltage": "P\u0159ep\u011bt\u00ed",
+                    "pilot_short_circuit": "Zkrat pilotu",
+                    "power_loss": "Ztr\u00e1ta nap\u00e1jen\u00ed",
+                    "power_quality": "Kvalita nap\u00e1jen\u00ed",
+                    "under_voltage": "Podp\u011bt\u00ed",
+                    "wrong_power_supply": "\u0160patn\u00e9 nap\u00e1jen\u00ed"
+                }
+            },
+            "evse_max_charge_current": {
+                "name": "Maxim\u00e1ln\u00ed nab\u00edjec\u00ed proud"
+            },
+            "evse_min_charge_current": {
+                "name": "Minim\u00e1ln\u00ed nab\u00edjec\u00ed proud"
+            },
+            "evse_soc": {
+                "name": "Stav nabit\u00ed"
+            },
+            "evse_user_max_charge_current": {
+                "name": "Maxim\u00e1ln\u00ed nab\u00edjec\u00ed proud u\u017eivatele"
+            },
+            "expiry_date": {
+                "name": "Datum vypr\u0161en\u00ed platnosti"
+            },
+            "flow": {
+                "name": "Pr\u016ftok"
+            },
+            "hepa_filter_condition": {
+                "name": "Stav HEPA filtru"
+            },
+            "nitrogen_dioxide": {
+                "name": "Oxid dusi\u010dit\u00fd"
+            },
+            "operational_error": {
+                "name": "Provozn\u00ed chyba",
+                "state": {
+                    "brush_jammed": "Zaseknut\u00fd kart\u00e1\u010d",
+                    "cannot_reach_target_area": "Nelze dos\u00e1hnout c\u00edlov\u00e9 oblasti",
+                    "command_invalid_in_state": "P\u0159\u00edkaz je v aktu\u00e1ln\u00edm stavu neplatn\u00fd",
+                    "dirty_water_tank_full": "Pln\u00e1 n\u00e1dr\u017e na \u0161pinavou vodu",
+                    "dirty_water_tank_missing": "Chyb\u00ed n\u00e1dr\u017e na \u0161pinavou vodu",
+                    "dust_bin_full": "Pln\u00fd z\u00e1sobn\u00edk na prach",
+                    "dust_bin_missing": "Chyb\u00ed z\u00e1sobn\u00edk na prach",
+                    "failed_to_find_charging_dock": "Nepoda\u0159ilo se naj\u00edt nab\u00edjec\u00ed dok",
+                    "low_battery": "Vybit\u00e1 baterie",
+                    "mop_cleaning_pad_missing": "Chyb\u00ed \u010distic\u00ed podlo\u017eka na mop",
+                    "navigation_sensor_obscured": "Naviga\u010dn\u00ed senzor je zakryt\u00fd",
+                    "no_error": "\u017d\u00e1dn\u00e1 chyba",
+                    "stuck": "Z\u00e1sek",
+                    "unable_to_complete_operation": "Nelze dokon\u010dit operaci",
+                    "unable_to_start_or_resume": "Nelze spustit nebo pokra\u010dovat",
+                    "water_tank_empty": "N\u00e1dr\u017e na vodu je pr\u00e1zdn\u00e1",
+                    "water_tank_lid_open": "Otev\u0159en\u00e9 v\u00edko n\u00e1dr\u017ee na vodu",
+                    "water_tank_missing": "Chyb\u00ed n\u00e1dr\u017e na vodu",
+                    "wheels_jammed": "Zaseknut\u00e1 kola"
+                }
+            },
+            "operational_state": {
+                "name": "Provozn\u00ed stav",
+                "state": {
+                    "charging": "Nab\u00edjen\u00ed",
+                    "docked": "V doku",
+                    "error": "Chyba",
+                    "paused": "Pozastaveno",
+                    "running": "B\u011b\u017e\u00ed",
+                    "seeking_charger": "Hled\u00e1 se nab\u00edje\u010dka",
+                    "stopped": "Zastaveno"
+                }
+            },
+            "outdoor_temperature": {
+                "name": "Venkovn\u00ed teplota"
+            },
+            "pi_heating_demand": {
+                "name": "Pot\u0159eba vyt\u00e1p\u011bn\u00ed"
+            },
+            "pump_control_mode": {
+                "name": "Re\u017eim ovl\u00e1d\u00e1n\u00ed",
+                "state": {
+                    "automatic": "Automaticky",
+                    "constant_flow": "Konstantn\u00ed pr\u016ftok",
+                    "constant_pressure": "Konstantn\u00ed tlak",
+                    "constant_speed": "Konstantn\u00ed rychlost",
+                    "constant_temperature": "Konstantn\u00ed teplota",
+                    "proportional_pressure": "Proporcion\u00e1ln\u00ed tlak"
+                }
+            },
+            "pump_speed": {
+                "name": "Rychlost ot\u00e1\u010den\u00ed"
+            },
+            "reactive_current": {
+                "name": "Jalov\u00fd proud"
+            },
+            "rms_current": {
+                "name": "Efektivn\u00ed proud"
+            },
+            "rms_voltage": {
+                "name": "Efektivn\u00ed nap\u011bt\u00ed"
+            },
+            "switch_current_position": {
+                "name": "Aktu\u00e1ln\u00ed poloha sp\u00edna\u010de"
+            },
+            "tank_percentage": {
+                "name": "Hladina tepl\u00e9 vody"
+            },
+            "tank_volume": {
+                "name": "Objem n\u00e1dr\u017ee"
+            },
+            "tvoc_level": {
+                "name": "\u00darove\u0148 TVOC",
+                "state": {
+                    "critical": "Kritick\u00e1",
+                    "high": "Vysok\u00fd",
+                    "low": "N\u00edzk\u00fd",
+                    "medium": "St\u0159edn\u00ed"
+                }
+            },
+            "valve_position": {
+                "name": "Poloha ventilu"
+            },
+            "voltage": {
+                "name": "Nap\u011bt\u00ed"
+            },
+            "window_covering_target_position": {
+                "name": "C\u00edlov\u00e1 otev\u00edrac\u00ed pozice"
+            }
+        },
+        "switch": {
+            "child_lock": {
+                "name": "D\u011btsk\u00e1 pojistka"
+            },
+            "evse_charging_switch": {
+                "name": "Povolit nab\u00edjen\u00ed"
+            },
+            "power": {
+                "name": "Nap\u00e1jen\u00ed"
+            },
+            "privacy_mode_button": {
+                "name": "Tla\u010d\u00edtko re\u017eimu soukrom\u00ed"
+            },
+            "speaker_mute": {
+                "name": "Ztlumit"
+            },
+            "switch": {
+                "name": "Sp\u00edna\u010d"
+            }
+        },
+        "vacuum": {
+            "vacuum": {
+                "name": "Vysava\u010d"
+            }
+        },
+        "valve": {
+            "valve": {
+                "name": "Ventil"
+            }
+        },
+        "water_heater": {
+            "water_heater": {
+                "name": "Oh\u0159\u00edva\u010d vody"
+            }
+        }
+    },
+    "issues": {
+        "server_version_version_too_new": {
+            "description": "Verze Matter Server, kterou aktu\u00e1ln\u011b pou\u017e\u00edv\u00e1te, je pro tuto verzi Home Assistanta p\u0159\u00edli\u0161 nov\u00e1. Chcete-li tento probl\u00e9m vy\u0159e\u0161it, aktualizujte Home Assistanta nebo downgradujte Matter Server na star\u0161\u00ed verzi.",
+            "title": "Je pot\u0159eba star\u0161\u00ed verze Matter Server"
+        },
+        "server_version_version_too_old": {
+            "description": "Verze serveru Matter, kterou aktu\u00e1ln\u011b pou\u017e\u00edv\u00e1te, je pro tuto verzi Home Assistanta p\u0159\u00edli\u0161 star\u00e1. Chcete-li tento probl\u00e9m vy\u0159e\u0161it, aktualizujte Matter Server na nejnov\u011bj\u0161\u00ed verzi.",
+            "title": "Je pot\u0159eba nov\u011bj\u0161\u00ed verze Matter Server"
+        }
+    },
+    "services": {
+        "open_commissioning_window": {
+            "description": "Umo\u017e\u0148uje p\u0159idat jedno z va\u0161ich za\u0159\u00edzen\u00ed do jin\u00e9 s\u00edt\u011b Matter otev\u0159en\u00edm okna pro uveden\u00ed do provozu pro toto za\u0159\u00edzen\u00ed Matter po dobu 60 sekund.",
+            "fields": {
+                "device_id": {
+                    "description": "Za\u0159\u00edzen\u00ed Matter, kter\u00e9 se p\u0159id\u00e1 do jin\u00e9 s\u00edt\u011b Matter.",
+                    "name": "Za\u0159\u00edzen\u00ed"
+                }
+            },
+            "name": "Otev\u0159\u00edt okno pro uveden\u00ed do provozu"
+        },
+        "water_heater_boost": {
+            "description": "Umo\u017e\u0148uje zv\u00fd\u0161en\u00ed teploty oh\u0159\u00edva\u010de vody po ur\u010ditou dobu.",
+            "fields": {
+                "duration": {
+                    "description": "Doba trv\u00e1n\u00ed zv\u00fd\u0161en\u00ed v sekund\u00e1ch.",
+                    "name": "Doba trv\u00e1n\u00ed"
+                },
+                "emergency_boost": {
+                    "description": "Zda povolit re\u017eim nouzov\u00e9ho zv\u00fd\u0161en\u00ed v\u00fdkonu.",
+                    "name": "Nouzov\u00e9 zv\u00fd\u0161en\u00ed"
+                },
+                "temporary_setpoint": {
+                    "description": "Do\u010dasn\u00e1 nastaven\u00e1 teplota ve stupn\u00edch Celsia b\u011bhem obdob\u00ed zv\u00fd\u0161en\u00ed teploty.",
+                    "name": "Do\u010dasn\u00e1 po\u017eadovan\u00e1 hodnota"
+                }
+            },
+            "name": "Zv\u00fd\u0161en\u00ed oh\u0159\u00edva\u010de vody"
+        }
+    }
+}

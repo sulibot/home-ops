@@ -20,6 +20,10 @@ live/
 │   ├── images/         # Build installer + ISO
 │   └── registry/       # Upload ISO to Proxmox
 │
+├── baremetal/          # Bare-metal Talos and PXE workflows
+│   ├── pxe/            # Host-profile driven PXE asset generation
+│   └── luna/           # Single-node Talos cluster on repurposed hardware
+│
 └── clusters/            # Multi-cluster deployments (NEW)
     ├── cluster-101/    # Production (sol)
     ├── cluster-102/    # Staging (luna)

@@ -1,0 +1,164 @@
+{
+    "config": {
+        "abort": {
+            "addon_get_discovery_info_failed": "\u05db\u05d9\u05e9\u05dc\u05d5\u05df \u05d1\u05e7\u05d1\u05dc\u05ea \u05de\u05d9\u05d3\u05e2 \u05e2\u05dc \u05d2\u05d9\u05dc\u05d5\u05d9 \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05e8\u05ea Matter.",
+            "addon_info_failed": "\u05db\u05d9\u05e9\u05dc\u05d5\u05df \u05d1\u05e7\u05d1\u05dc\u05ea \u05de\u05d9\u05d3\u05e2 \u05e2\u05dc \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05e8\u05ea Matter.",
+            "addon_install_failed": "\u05d4\u05ea\u05e7\u05e0\u05ea \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05e8\u05ea Matter \u05e0\u05db\u05e9\u05dc\u05d4.",
+            "addon_start_failed": "\u05d4\u05e4\u05e2\u05dc\u05ea \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05e8\u05ea Matter \u05e0\u05db\u05e9\u05dc\u05d4.",
+            "already_configured": "\u05ea\u05e6\u05d5\u05e8\u05ea \u05d4\u05d4\u05ea\u05e7\u05df \u05db\u05d1\u05e8 \u05e0\u05e7\u05d1\u05e2\u05d4",
+            "already_in_progress": "\u05d6\u05e8\u05d9\u05de\u05ea \u05d4\u05ea\u05e6\u05d5\u05e8\u05d4 \u05db\u05d1\u05e8 \u05de\u05ea\u05d1\u05e6\u05e2\u05ea",
+            "cannot_connect": "\u05d4\u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea \u05e0\u05db\u05e9\u05dc\u05d4",
+            "not_matter_addon": "\u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05d4\u05ea\u05d2\u05dc\u05d4 \u05d0\u05d9\u05e0\u05d5 \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05d4\u05e8\u05e9\u05de\u05d9 \u05e9\u05dc \u05e9\u05e8\u05ea Matter.",
+            "reconfiguration_successful": "\u05d4\u05d2\u05d3\u05d9\u05e8 \u05de\u05d7\u05d3\u05e9 \u05d1\u05d4\u05e6\u05dc\u05d7\u05d4 \u05d0\u05ea \u05e9\u05d9\u05dc\u05d5\u05d1 Matter."
+        },
+        "error": {
+            "cannot_connect": "\u05d4\u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea \u05e0\u05db\u05e9\u05dc\u05d4",
+            "invalid_server_version": "\u05e9\u05e8\u05ea Matter \u05d0\u05d9\u05e0\u05d5 \u05d4\u05d2\u05e8\u05e1\u05d4 \u05d4\u05e0\u05db\u05d5\u05e0\u05d4",
+            "unknown": "\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05dc\u05ea\u05d9 \u05e6\u05e4\u05d5\u05d9\u05d4"
+        },
+        "flow_title": "{name}",
+        "progress": {
+            "install_addon": "\u05d9\u05e9 \u05dc\u05d4\u05de\u05ea\u05d9\u05df \u05e2\u05d3 \u05e9\u05d4\u05ea\u05e7\u05e0\u05ea \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05dc \u05e9\u05e8\u05ea Matter \u05ea\u05e1\u05ea\u05d9\u05d9\u05dd. \u05e4\u05e2\u05d5\u05dc\u05d4 \u05d6\u05d5 \u05e2\u05e9\u05d5\u05d9\u05d4 \u05dc\u05d4\u05d9\u05de\u05e9\u05da \u05de\u05e1\u05e4\u05e8 \u05d3\u05e7\u05d5\u05ea.",
+            "start_addon": "\u05d9\u05e9 \u05dc\u05d4\u05de\u05ea\u05d9\u05df \u05d1\u05d6\u05de\u05df \u05e9\u05d4\u05ea\u05d5\u05e1\u05e3 \u05e9\u05e8\u05ea Matter \u05de\u05d5\u05e4\u05e2\u05dc. \u05d9\u05d9\u05e9\u05d5\u05dd \u05d6\u05d4 \u05d4\u05d5\u05d0 \u05de\u05d4 \u05e9\u05de\u05e4\u05e2\u05d9\u05dc \u05d0\u05ea Matter \u05d1-Home Assistant. \u05e4\u05e2\u05d5\u05dc\u05d4 \u05d6\u05d5 \u05e2\u05e9\u05d5\u05d9\u05d4 \u05dc\u05d4\u05d9\u05de\u05e9\u05da \u05de\u05e1\u05e4\u05e8 \u05e9\u05e0\u05d9\u05d5\u05ea."
+        },
+        "step": {
+            "hassio_confirm": {
+                "title": "\u05d4\u05d2\u05d3\u05e8\u05ea \u05e9\u05d9\u05dc\u05d5\u05d1 Matter \u05e2\u05dd \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05e9\u05e8\u05ea Matter"
+            },
+            "install_addon": {
+                "title": "\u05d4\u05ea\u05e7\u05e0\u05ea \u05d4\u05d9\u05d9\u05e9\u05d5\u05dd \u05d4\u05d7\u05dc\u05d4"
+            },
+            "manual": {
+                "data": {
+                    "url": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d0\u05ea\u05e8"
+                }
+            },
+            "on_supervisor": {
+                "data": {
+                    "use_addon": "\u05d9\u05e9 \u05dc\u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05d9\u05d9\u05e9\u05d5\u05dd \u05d4\u05e8\u05e9\u05de\u05d9 \u05e9\u05dc \u05de\u05e4\u05e7\u05d7 \u05e9\u05e8\u05ea Matter"
+                },
+                "description": "\u05d4\u05d0\u05dd \u05d1\u05e8\u05e6\u05d5\u05e0\u05da \u05dc\u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05ea\u05d5\u05e1\u05e3 \u05d4\u05e8\u05e9\u05de\u05d9 \u05e9\u05dc \u05de\u05e4\u05e7\u05d7 \u05e9\u05e8\u05ea Matter?\n\n\u05d0\u05dd \u05e9\u05e8\u05ea Matter \u05db\u05d1\u05e8 \u05de\u05d5\u05e4\u05e2\u05dc \u05d1\u05d9\u05d9\u05e9\u05d5\u05dd \u05d0\u05d7\u05e8, \u05d1\u05d2\u05d5\u05e8\u05dd \u05de\u05db\u05d9\u05dc \u05de\u05d5\u05ea\u05d0\u05dd \u05d0\u05d9\u05e9\u05d9\u05ea, \u05d1\u05d0\u05d5\u05e4\u05df \u05de\u05e7\u05d5\u05e8\u05d9 \u05d5\u05db\u05d5', \u05d0\u05d9\u05df \u05dc\u05d1\u05d7\u05d5\u05e8 \u05d1\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea \u05d6\u05d5.",
+                "title": "\u05d1\u05d7\u05d9\u05e8\u05ea \u05e9\u05d9\u05d8\u05ea \u05d7\u05d9\u05d1\u05d5\u05e8"
+            },
+            "start_addon": {
+                "title": "\u05d4\u05e4\u05e2\u05dc\u05ea \u05d9\u05d9\u05e9\u05d5\u05dd."
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "alarm_door": {
+                "name": "\u05d0\u05d6\u05e2\u05e7\u05ea \u05d3\u05dc\u05ea"
+            },
+            "battery_alert": {
+                "name": "\u05d4\u05ea\u05e8\u05d0\u05ea \u05e1\u05d5\u05dc\u05dc\u05d4"
+            },
+            "boost_state": {
+                "name": "\u05de\u05e6\u05d1 \u05d4\u05d2\u05d1\u05e8\u05d4"
+            },
+            "config_status_operational": {
+                "name": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05ea\u05e6\u05d5\u05e8\u05d4"
+            },
+            "dishwasher_alarm_inflow": {
+                "name": "\u05d0\u05d6\u05e2\u05e7\u05ea \u05d6\u05e8\u05d9\u05de\u05d4"
+            },
+            "end_of_service": {
+                "name": "\u05e1\u05d9\u05d5\u05dd \u05d4\u05e9\u05d9\u05e8\u05d5\u05ea"
+            },
+            "evse_charging_status": {
+                "name": "\u05de\u05e6\u05d1 \u05d8\u05e2\u05d9\u05e0\u05d4"
+            },
+            "evse_plug": {
+                "name": "\u05de\u05e6\u05d1 \u05ea\u05e7\u05e2"
+            },
+            "evse_supply_state": {
+                "name": "\u05de\u05e6\u05d1 \u05d0\u05e1\u05e4\u05e7\u05ea \u05de\u05d8\u05e2\u05df"
+            },
+            "hardware_fault": {
+                "name": "\u05ea\u05e7\u05dc\u05ea \u05d7\u05d5\u05de\u05e8\u05d4"
+            },
+            "interconnected_co_alarm": {
+                "name": "\u05d0\u05d6\u05e2\u05e7\u05ea CO \u05de\u05d7\u05d5\u05d1\u05e8\u05ea"
+            },
+            "interconnected_smoke_alarm": {
+                "name": "\u05d2\u05dc\u05d0\u05d9 \u05e2\u05e9\u05df \u05de\u05d7\u05d5\u05d1\u05e8\u05d9\u05dd"
+            },
+            "muted": {
+                "name": "\u05de\u05d5\u05e9\u05ea\u05e7"
+            },
+            "rain": {
+                "name": "\u05d2\u05e9\u05dd"
+            },
+            "test_in_progress": {
+                "name": "\u05d4\u05d1\u05d3\u05d9\u05e7\u05d4 \u05d1\u05e2\u05d9\u05e6\u05d5\u05de\u05d4"
+            },
+            "thermostat_remote_sensing_local_temperature": {
+                "name": "\u05d7\u05d9\u05e9\u05d4 \u05de\u05e8\u05d7\u05d5\u05e7 \u05e9\u05dc \u05d8\u05de\u05e4\u05e8\u05d8\u05d5\u05e8\u05d4 \u05de\u05e7\u05d5\u05de\u05d9\u05ea"
+            },
+            "thermostat_remote_sensing_occupancy": {
+                "name": "\u05d7\u05d9\u05e9\u05d4 \u05de\u05e8\u05d7\u05d5\u05e7 \u05e9\u05dc \u05ea\u05e4\u05d5\u05e1\u05d4"
+            },
+            "thermostat_remote_sensing_outdoor_temperature": {
+                "name": "\u05d7\u05d9\u05e9\u05d4 \u05de\u05e8\u05d7\u05d5\u05e7 \u05e9\u05dc \u05d8\u05de\u05e4\u05e8\u05d8\u05d5\u05e8\u05d4 \u05d7\u05d9\u05e6\u05d5\u05e0\u05d9\u05ea"
+            },
+            "valve_fault_blocked": {
+                "name": "\u05e9\u05e1\u05ea\u05d5\u05dd \u05d7\u05e1\u05d5\u05dd"
+            },
+            "valve_fault_general_fault": {
+                "name": "\u05ea\u05e7\u05dc\u05d4 \u05db\u05dc\u05dc\u05d9\u05ea"
+            },
+            "valve_fault_leaking": {
+                "name": "\u05e9\u05e1\u05ea\u05d5\u05dd \u05d3\u05d5\u05dc\u05e3"
+            },
+            "water_freeze": {
+                "name": "\u05e7\u05e4\u05d9\u05d0\u05ea \u05de\u05d9\u05dd"
+            },
+            "water_leak": {
+                "name": "\u05e0\u05d6\u05d9\u05dc\u05ea \u05de\u05d9\u05dd"
+            }
+        },
+        "button": {
+            "cancel_boost": {
+                "name": "\u05d1\u05d9\u05d8\u05d5\u05dc \u05e2\u05d5\u05e6\u05de\u05d4"
+            },
+            "pause": {
+                "name": "\u05d4\u05e9\u05d4\u05d9\u05d4"
+            },
+            "reset_filter_condition": {
+                "name": "\u05d0\u05d9\u05e4\u05d5\u05e1 \u05ea\u05e0\u05d0\u05d9 \u05de\u05e1\u05e0\u05df"
+            },
+            "resume": {
+                "name": "\u05dc\u05d4\u05de\u05e9\u05d9\u05da"
+            },
+            "self_test_request": {
+                "name": "\u05d1\u05d3\u05d9\u05e7\u05d4 \u05e2\u05e6\u05de\u05d9\u05ea"
+            },
+            "start": {
+                "name": "\u05d4\u05ea\u05d7\u05dc\u05d4"
+            },
+            "stop": {
+                "name": "\u05e2\u05e6\u05d9\u05e8\u05d4"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "\u05ea\u05e8\u05de\u05d5\u05e1\u05d8\u05d8"
+            }
+        },
+        "cover": {
+            "cover": {
+                "name": "\u05d5\u05d9\u05dc\u05d5\u05df"
+            }
+        },
+        "event": {
+            "button": {
+                "name": "\u05dc\u05d7\u05e6\u05df",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "initial_press": "\u05dc\u05d7\u05d5\u05e5",
+                            "long_press": "\u05de\u05d5\u05d7\u05d6\u05e7",
+                            "long_release": "\u05e9\u05d5\u05d7\u05e8\u05e8 \u05dc\u05d0\u05d7\u05e8 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e7",
+                            "multi_press_1": "\u05e0\u05dc\u05d7\u05e5 \u05e4\u05e2\u05dd \u05d0\u05d7\u05ea",
+                            "multi_press_2": "\u05e0\u05dc\u05d7\u05e5 \u05e4\u05e2\u05de\u05d9\u05d9\u05dd",
+                            "multi_press_3": "\u05e0\u05dc\u05d7\u05

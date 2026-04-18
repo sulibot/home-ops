@@ -1,0 +1,586 @@
+blueprint:
+  name: Bilresa Multi-Target Preset Controller
+  description: >
+    Reusable IKEA BILRESA Matter controller blueprint with three channels.
+
+    Channel model:
+    - channel 1: button + wheel zone 1
+    - channel 2: button + wheel zone 2
+    - channel 3: button + wheel zone 3
+
+    Behavior:
+    - single click: toggle target
+    - double click: reading preset
+    - triple click: max preset
+    - scroll: brightness down/up
+    - hold: color temperature shift
+
+    Requirements:
+    - enable event entities ending in (3), (6), (9)
+    - enable sensor entities ending in (1), (2), (4), (5), (7), (8)
+    - use helper light groups for multi-light targets
+
+    This blueprint intentionally uses explicit entity inputs instead of discovery.
+    That is the reliable trigger model for these Matter entities.
+  domain: automation
+  input:
+    button_ch1_entity:
+      name: Channel 1 button event entity
+      selector:
+        entity:
+          domain: event
+          multiple: false
+    hold_state_helper:
+      name: Hold direction state helper
+      description: Input text storing next hold direction as cooler,warmer,cooler
+      selector:
+        entity:
+          domain: input_text
+          multiple: false
+    scroll_up_ch1_entity:
+      name: Channel 1 scroll up sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    scroll_down_ch1_entity:
+      name: Channel 1 scroll down sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    button_ch2_entity:
+      name: Channel 2 button event entity
+      selector:
+        entity:
+          domain: event
+          multiple: false
+    scroll_up_ch2_entity:
+      name: Channel 2 scroll up sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    scroll_down_ch2_entity:
+      name: Channel 2 scroll down sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    button_ch3_entity:
+      name: Channel 3 button event entity
+      selector:
+        entity:
+          domain: event
+          multiple: false
+    scroll_up_ch3_entity:
+      name: Channel 3 scroll up sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    scroll_down_ch3_entity:
+      name: Channel 3 scroll down sensor
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    channel_1_target:
+      name: Channel 1 target
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    channel_2_target:
+      name: Channel 2 target
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    channel_3_target:
+      name: Channel 3 target
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    brightness_step_pct:
+      name: Scroll brightness step percentage
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    scroll_debounce_ms:
+      name: Scroll debounce milliseconds
+      default: 250
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 10
+          mode: slider
+          unit_of_measurement: ms
+    hold_repeat_ms:
+      name: Hold repeat milliseconds
+      default: 150
+      selector:
+        number:
+          min: 50
+          max: 1000
+          step: 10
+          mode: slider
+          unit_of_measurement: ms
+    min_color_temp_kelvin:
+      name: Minimum color temperature
+      default: 2200
+      selector:
+        number:
+          min: 1800
+          max: 5000
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    max_color_temp_kelvin:
+      name: Maximum color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    color_temp_step_kelvin:
+      name: Hold color temperature step
+      default: 150
+      selector:
+        number:
+          min: 50
+          max: 1000
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    reading_brightness_pct_channel_1:
+      name: Channel 1 reading brightness
+      default: 75
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    reading_color_temp_kelvin_channel_1:
+      name: Channel 1 reading color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    max_brightness_pct_channel_1:
+      name: Channel 1 max brightness
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    max_color_temp_kelvin_channel_1:
+      name: Channel 1 max color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    reading_brightness_pct_channel_2:
+      name: Channel 2 reading brightness
+      default: 75
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    reading_color_temp_kelvin_channel_2:
+      name: Channel 2 reading color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    max_brightness_pct_channel_2:
+      name: Channel 2 max brightness
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    max_color_temp_kelvin_channel_2:
+      name: Channel 2 max color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    reading_brightness_pct_channel_3:
+      name: Channel 3 reading brightness
+      default: 75
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    reading_color_temp_kelvin_channel_3:
+      name: Channel 3 reading color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    max_brightness_pct_channel_3:
+      name: Channel 3 max brightness
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+    max_color_temp_kelvin_channel_3:
+      name: Channel 3 max color temperature
+      default: 4000
+      selector:
+        number:
+          min: 2200
+          max: 6500
+          step: 50
+          mode: slider
+          unit_of_measurement: K
+    debug_logging:
+      name: Debug logging
+      default: false
+      selector:
+        boolean: {}
+
+mode: parallel
+max: 10
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input button_ch1_entity
+    id: button_ch1
+  - platform: state
+    entity_id: !input button_ch2_entity
+    id: button_ch2
+  - platform: state
+    entity_id: !input button_ch3_entity
+    id: button_ch3
+  - platform: state
+    entity_id: !input scroll_up_ch1_entity
+    to: "1"
+    id: scroll_up_ch1
+  - platform: state
+    entity_id: !input scroll_down_ch1_entity
+    to: "1"
+    id: scroll_down_ch1
+  - platform: state
+    entity_id: !input scroll_up_ch2_entity
+    to: "1"
+    id: scroll_up_ch2
+  - platform: state
+    entity_id: !input scroll_down_ch2_entity
+    to: "1"
+    id: scroll_down_ch2
+  - platform: state
+    entity_id: !input scroll_up_ch3_entity
+    to: "1"
+    id: scroll_up_ch3
+  - platform: state
+    entity_id: !input scroll_down_ch3_entity
+    to: "1"
+    id: scroll_down_ch3
+
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state is not none and
+         trigger.to_state.state not in ['unknown', 'unavailable'] }}
+
+variables:
+  button_ch1_entity: !input button_ch1_entity
+  button_ch2_entity: !input button_ch2_entity
+  button_ch3_entity: !input button_ch3_entity
+  hold_state_helper: !input hold_state_helper
+  channel_1_target: !input channel_1_target
+  channel_2_target: !input channel_2_target
+  channel_3_target: !input channel_3_target
+  brightness_step_pct: !input brightness_step_pct
+  scroll_debounce_ms: !input scroll_debounce_ms
+  hold_repeat_ms: !input hold_repeat_ms
+  min_color_temp_kelvin: !input min_color_temp_kelvin
+  max_color_temp_kelvin: !input max_color_temp_kelvin
+  color_temp_step_kelvin: !input color_temp_step_kelvin
+  debug_logging: !input debug_logging
+  target_entities: >
+    {% if trigger.id in ['button_ch1', 'scroll_up_ch1', 'scroll_down_ch1'] %}
+      {{ channel_1_target }}
+    {% elif trigger.id in ['button_ch2', 'scroll_up_ch2', 'scroll_down_ch2'] %}
+      {{ channel_2_target }}
+    {% else %}
+      {{ channel_3_target }}
+    {% endif %}
+  first_target_entity: >
+    {% if target_entities is string %}
+      {{ target_entities }}
+    {% else %}
+      {{ target_entities[0] }}
+    {% endif %}
+  event_type: >
+    {% if trigger.id == 'button_ch1' %}
+      {{ state_attr(button_ch1_entity, 'event_type') }}
+    {% elif trigger.id == 'button_ch2' %}
+      {{ state_attr(button_ch2_entity, 'event_type') }}
+    {% elif trigger.id == 'button_ch3' %}
+      {{ state_attr(button_ch3_entity, 'event_type') }}
+    {% else %}
+      none
+    {% endif %}
+  current_button_entity: >
+    {% if trigger.id == 'button_ch1' %}
+      {{ button_ch1_entity }}
+    {% elif trigger.id == 'button_ch2' %}
+      {{ button_ch2_entity }}
+    {% elif trigger.id == 'button_ch3' %}
+      {{ button_ch3_entity }}
+    {% elif trigger.id in ['scroll_up_ch1', 'scroll_down_ch1'] %}
+      {{ button_ch1_entity }}
+    {% elif trigger.id in ['scroll_up_ch2', 'scroll_down_ch2'] %}
+      {{ button_ch2_entity }}
+    {% else %}
+      {{ button_ch3_entity }}
+    {% endif %}
+  current_channel_index: >
+    {% if trigger.id in ['button_ch1', 'scroll_up_ch1', 'scroll_down_ch1'] %}
+      0
+    {% elif trigger.id in ['button_ch2', 'scroll_up_ch2', 'scroll_down_ch2'] %}
+      1
+    {% else %}
+      2
+    {% endif %}
+  hold_state_csv: >
+    {% set raw = states(hold_state_helper) %}
+    {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+      cooler,cooler,cooler
+    {% else %}
+      {{ raw }}
+    {% endif %}
+  current_hold_direction: >
+    {% set parts = hold_state_csv.split(',') %}
+    {% set idx = current_channel_index | int %}
+    {% if parts | count > idx %}
+      {{ parts[idx] }}
+    {% else %}
+      cooler
+    {% endif %}
+  first_target_color_temp_kelvin: >
+    {{ state_attr(first_target_entity, 'color_temp_kelvin') | int(default=min_color_temp_kelvin | int) }}
+  next_color_temp_kelvin: >
+    {% set current = first_target_color_temp_kelvin | int %}
+    {% set step = color_temp_step_kelvin | int %}
+    {% set low = min_color_temp_kelvin | int %}
+    {% set high = max_color_temp_kelvin | int %}
+    {% if current_hold_direction == 'cooler' %}
+      {{ [current + step, high] | min }}
+    {% else %}
+      {{ [current - step, low] | max }}
+    {% endif %}
+  hit_color_temp_limit: >
+    {{ (next_color_temp_kelvin | int) == (first_target_color_temp_kelvin | int) }}
+action:
+  - choose:
+      - conditions: "{{ debug_logging }}"
+        sequence:
+          - service: system_log.write
+            data:
+              level: warning
+              message: >
+                Bilresa reusable trigger={{ trigger.id }}
+                event_type={{ event_type }}
+                target={{ target_entities }}
+                hold_direction={{ current_hold_direction }}
+
+  - choose:
+      - conditions: "{{ trigger.id.startswith('scroll_up_') }}"
+        sequence:
+          - delay:
+              milliseconds: !input scroll_debounce_ms
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_step_pct: !input brightness_step_pct
+              transition: 0.0
+
+      - conditions: "{{ trigger.id.startswith('scroll_down_') }}"
+        sequence:
+          - delay:
+              milliseconds: !input scroll_debounce_ms
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_step_pct: >
+                {{ (brightness_step_pct | int) * -1 }}
+              transition: 0.0
+
+      - conditions: "{{ event_type == 'multi_press_1' }}"
+        sequence:
+          - service: light.toggle
+            target:
+              entity_id: "{{ target_entities }}"
+
+      - conditions: "{{ event_type == 'multi_press_2' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ trigger.id == 'button_ch1' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input reading_brightness_pct_channel_1
+                      color_temp_kelvin: !input reading_color_temp_kelvin_channel_1
+                      transition: 0.0
+              - conditions: "{{ trigger.id == 'button_ch2' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input reading_brightness_pct_channel_2
+                      color_temp_kelvin: !input reading_color_temp_kelvin_channel_2
+                      transition: 0.0
+              - conditions: "{{ trigger.id == 'button_ch3' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input reading_brightness_pct_channel_3
+                      color_temp_kelvin: !input reading_color_temp_kelvin_channel_3
+                      transition: 0.0
+
+      - conditions: "{{ event_type == 'multi_press_3' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ trigger.id == 'button_ch1' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input max_brightness_pct_channel_1
+                      color_temp_kelvin: !input max_color_temp_kelvin_channel_1
+                      transition: 0.0
+              - conditions: "{{ trigger.id == 'button_ch2' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input max_brightness_pct_channel_2
+                      color_temp_kelvin: !input max_color_temp_kelvin_channel_2
+                      transition: 0.0
+              - conditions: "{{ trigger.id == 'button_ch3' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness_pct: !input max_brightness_pct_channel_3
+                      color_temp_kelvin: !input max_color_temp_kelvin_channel_3
+                      transition: 0.0
+
+      - conditions: "{{ event_type == 'long_press' }}"
+        sequence:
+          - repeat:
+              while: >
+                {{ state_attr(current_button_entity, 'event_type') == 'long_press'
+                   and repeat.index < 100 }}
+              sequence:
+                - choose:
+                    - conditions: "{{ hit_color_temp_limit }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: "{{ target_entities }}"
+                        - delay:
+                            milliseconds: 120
+                        - service: light.turn_on
+                          target:
+                            entity_id: "{{ target_entities }}"
+                          data:
+                            brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                            color_temp_kelvin: "{{ first_target_color_temp_kelvin | int }}"
+                            transition: 0.0
+                    default:
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ target_entities }}"
+                        data:
+                          color_temp_kelvin: "{{ next_color_temp_kelvin | int }}"
+                          transition: 0.0
+                - delay:
+                    milliseconds: !input hold_repeat_ms
+      - conditions: "{{ event_type == 'long_release' }}"
+        sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: !input hold_state_helper
+            data:
+              value: >
+                {% set parts = hold_state_csv.split(',') %}
+                {% set normalized = [
+                  parts[0] if parts|count > 0 and parts[0] in ['cooler', 'warmer'] else 'cooler',
+                  parts[1] if parts|count > 1 and parts[1] in ['cooler', 'warmer'] else 'cooler',
+                  parts[2] if parts|count > 2 and parts[2] in ['cooler', 'warmer'] else 'cooler'
+                ] %}
+                {% set idx = current_channel_index | int %}
+                {% set replacement = 'warmer' if normalized[idx] == 'cooler' else 'cooler' %}
+                {% set ns = namespace(result=[]) %}
+                {% for value in normalized %}
+                  {% if loop.index0 == idx %}
+                    {% set ns.result = ns.result + [replacement] %}
+                  {% else %}
+                    {% set ns.result = ns.result + [value] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.result | join(',') }}

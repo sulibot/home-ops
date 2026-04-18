@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <head>
+    <title>Master Learning Feeds</title>
+  </head>
+  <body>
+    <outline text="Markets">
+      <outline text="Tech Markets">
+        <outline text="TechCrunch" type="rss" xmlUrl="https://techcrunch.com/feed/" htmlUrl="https://techcrunch.com/" />
+        <outline text="The Verge" type="rss" xmlUrl="https://www.theverge.com/rss/index.xml" htmlUrl="https://www.theverge.com/" />
+        <outline text="Ars Technica" type="rss" xmlUrl="https://feeds.arstechnica.com/arstechnica/index" htmlUrl="https://arstechnica.com/" />
+        <outline text="Bloomberg Technology" type="rss" xmlUrl="https://feeds.bloomberg.com/technology/news.rss" htmlUrl="https://www.bloomberg.com/technology" />
+      </outline>
+      <outline text="Bond and Credit">
+        <outline text="Calculated Risk" type="rss" xmlUrl="https://www.calculatedriskblog.com/feeds/posts/default?alt=rss" htmlUrl="https://www.calculatedriskblog.com/" />
+        <outline text="FRED Blog" type="rss" xmlUrl="https://fredblog.stlouisfed.org/feed/" htmlUrl="https://fredblog.stlouisfed.org/" />
+      </outline>
+    </outline>
+
+    <outline text="Macro">
+      <outline text="FRED Blog" type="rss" xmlUrl="https://fredblog.stlouisfed.org/feed/" htmlUrl="https://fredblog.stlouisfed.org/" />
+      <outline text="Calculated Risk" type="rss" xmlUrl="https://www.calculatedriskblog.com/feeds/posts/default?alt=rss" htmlUrl="https://www.calculatedriskblog.com/" />
+    </outline>
+
+    <outline text="Investing">
+      <outline text="Investor Education">
+        <outline text="SEC Ask Investor Ed" type="rss" xmlUrl="https://www.sec.gov/rss/ask_investor_ed/ask_investor_ed.xml" htmlUrl="https://www.sec.gov/rss/ask_investor_ed/ask_investor_ed.htm" />
+        <outline text="SEC Press Releases" type="rss" xmlUrl="https://www.sec.gov/news/pressreleases.rss" htmlUrl="https://www.sec.gov/news/pressreleases" />
+      </outline>
+      <outline text="Long-Term Thinking">
+        <outline text="A Wealth of Common Sense" type="rss" xmlUrl="https://awealthofcommonsense.com/feed/" htmlUrl="https://awealthofcommonsense.com/" />
+        <outline text="Of Dollars And Data" type="rss" xmlUrl="https://ofdollarsanddata.com/feed/" htmlUrl="https://ofdollarsanddata.com/" />
+      </outline>
+    </outline>
+
+    <outline text="Tech">
+      <outline text="TechCrunch" type="rss" xmlUrl="https://techcrunch.com/feed/" htmlUrl="https://techcrunch.com/" />
+      <outline text="The Verge" type="rss" xmlUrl="https://www.theverge.com/rss/index.xml" htmlUrl="https://www.theverge.com/" />
+      <outline text="Ars Technica" type="rss" xmlUrl="https://feeds.arstechnica.com/arstechnica/index" htmlUrl="https://arstechnica.com/" />
+      <outline text="Bloomberg Technology" type="rss" xmlUrl="https://feeds.bloomberg.com/technology/news.rss" htmlUrl="https://www.bloomberg.com/technology" />
+    </outline>
+
+    <outline text="DevOps">
+      <outline text="AWS News Blog" type="rss" xmlUrl="https://aws.amazon.com/blogs/aws/feed/" htmlUrl="https://aws.amazon.com/blogs/aws/" />
+      <outline text="Google Cloud DevOps and SRE" type="rss" xmlUrl="https://cloudblog.withgoogle.com/products/devops-sre/rss/" htmlUrl="https://cloud.google.com/blog/products/devops-sre" />
+      <outline text="CNCF Blog" type="rss" xmlUrl="https://www.cncf.io/feed/" htmlUrl="https://www.cncf.io/" />
+      <outline text="Docker Blog" type="rss" xmlUrl="https://www.docker.com/blog/feed/" htmlUrl="https://www.docker.com/blog/" />
+    </outline>
+
+    <outline text="Security">
+      <outline text="Krebs on Security" type="rss" xmlUrl="https://krebsonsecurity.com/feed/" htmlUrl="https://krebsonsecurity.com/" />
+      <outline text="Google Online Security Blog" type="rss" xmlUrl="https://security.googleblog.com/atom.xml" htmlUrl="https://security.googleblog.com/" />
+      <outline text="CISA Advisories" type="rss" xmlUrl="https://www.cisa.gov/cybersecurity-advisories/all.xml" htmlUrl="https://www.cisa.gov/cybersecurity-advisories" />
+      <outline text="Schneier on Security" type="rss" xmlUrl="https://www.schneier.com/feed/atom/" htmlUrl="https://www.schneier.com/" />
+    </outline>
+
+    <outline text="Geopolitics">
+      <outline text="Peter Zeihan Podcast" type="rss" xmlUrl="https://media.rss.com/zeihan/feed.xml" htmlUrl="https://rss.com/podcasts/zeihan/" />
+    </outline>
+
+    <outline text="Primary Sources">
+      <outline text="SEC Ask Investor Ed" type="rss" xmlUrl="https://www.sec.gov/rss/ask_investor_ed/ask_investor_ed.xml" htmlUrl="https://www.sec.gov/rss/ask_investor_ed/ask_investor_ed.htm" />
+      <outline text="SEC Press Releases" type="rss" xmlUrl="https://www.sec.gov/news/pressreleases.rss" htmlUrl="https://www.sec.gov/news/pressreleases" />
+      <outline text="CISA Advisories" type="rss" xmlUrl="https://www.cisa.gov/cybersecurity-advisories/all.xml" htmlUrl="https://www.cisa.gov/cybersecurity-advisories" />
+    </outline>
+  </body>
+</opml>

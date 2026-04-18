@@ -206,6 +206,8 @@ spec:
         parentRefs:
           - name: gateway-tunnel
             namespace: network
+          - name: gateway-internal
+            namespace: network
         rules:
           - backendRefs:
               - identifier: app

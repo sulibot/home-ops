@@ -1,0 +1,505 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "\u0397 \u03c3\u03c5\u03c3\u03ba\u03b5\u03c5\u03ae \u03ad\u03c7\u03b5\u03b9 \u03ae\u03b4\u03b7 \u03b4\u03b9\u03b1\u03bc\u03bf\u03c1\u03c6\u03c9\u03b8\u03b5\u03af",
+            "already_in_progress": "\u0397 \u03c1\u03bf\u03ae \u03b4\u03b9\u03b1\u03bc\u03cc\u03c1\u03c6\u03c9\u03c3\u03b7\u03c2 \u03b2\u03c1\u03af\u03c3\u03ba\u03b5\u03c4\u03b1\u03b9 \u03ae\u03b4\u03b7 \u03c3\u03b5 \u03b5\u03be\u03ad\u03bb\u03b9\u03be\u03b7",
+            "cannot_connect": "\u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7\u03c2",
+            "reconfiguration_successful": "\u0397 \u03b5\u03bd\u03c3\u03c9\u03bc\u03ac\u03c4\u03c9\u03c3\u03b7 Matter \u03b1\u03bd\u03b1\u03b4\u03b9\u03b1\u03bc\u03bf\u03c1\u03c6\u03ce\u03c6\u03b7\u03ba\u03b5 \u03b5\u03c0\u03b9\u03c4\u03c5\u03c7\u03ce\u03c2"
+        },
+        "error": {
+            "cannot_connect": "\u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7\u03c2",
+            "invalid_server_version": "\u039f Matter server \u03b4\u03b5\u03bd \u03b5\u03af\u03bd\u03b1\u03b9 \u03c3\u03c4\u03b7 \u03c3\u03c9\u03c3\u03c4\u03ae \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7",
+            "unknown": "\u039c\u03b7 \u03b1\u03bd\u03b1\u03bc\u03b5\u03bd\u03cc\u03bc\u03b5\u03bd\u03bf \u03c3\u03c6\u03ac\u03bb\u03bc\u03b1"
+        },
+        "flow_title": "{name}",
+        "step": {
+            "manual": {
+                "data": {
+                    "url": "URL"
+                }
+            },
+            "on_supervisor": {
+                "title": "\u0395\u03c0\u03b9\u03bb\u03ad\u03be\u03c4\u03b5 \u03bc\u03ad\u03b8\u03bf\u03b4\u03bf \u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7\u03c2"
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "battery_alert": {
+                "name": "\u0395\u03b9\u03b4\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7 \u03bc\u03c0\u03b1\u03c4\u03b1\u03c1\u03af\u03b1\u03c2"
+            },
+            "boost_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03b5\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7\u03c2"
+            },
+            "dishwasher_alarm_inflow": {
+                "name": "\u03a3\u03c5\u03bd\u03b1\u03b3\u03b5\u03c1\u03bc\u03cc\u03c2 \u03b5\u03b9\u03c3\u03c1\u03bf\u03ae\u03c2"
+            },
+            "end_of_service": {
+                "name": "\u039b\u03ae\u03be\u03b7 \u03c5\u03c0\u03b7\u03c1\u03b5\u03c3\u03af\u03b1\u03c2"
+            },
+            "evse_charging_status": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "evse_plug": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03b2\u03cd\u03c3\u03bc\u03b1\u03c4\u03bf\u03c2"
+            },
+            "evse_supply_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c4\u03c1\u03bf\u03c6\u03bf\u03b4\u03bf\u03c3\u03af\u03b1\u03c2 \u03c6\u03bf\u03c1\u03c4\u03b9\u03c3\u03c4\u03ae"
+            },
+            "hardware_fault": {
+                "name": "\u0392\u03bb\u03ac\u03b2\u03b7 \u03c5\u03bb\u03b9\u03ba\u03bf\u03cd"
+            },
+            "interconnected_co_alarm": {
+                "name": "\u0394\u03b9\u03b1\u03c3\u03c5\u03bd\u03b4\u03b5\u03b4\u03b5\u03bc\u03ad\u03bd\u03bf\u03c2 \u03c3\u03c5\u03bd\u03b1\u03b3\u03b5\u03c1\u03bc\u03cc\u03c2 CO"
+            },
+            "interconnected_smoke_alarm": {
+                "name": "\u0394\u03b9\u03b1\u03c3\u03c5\u03bd\u03b4\u03b5\u03b4\u03b5\u03bc\u03ad\u03bd\u03bf\u03c2 \u03c3\u03c5\u03bd\u03b1\u03b3\u03b5\u03c1\u03bc\u03cc\u03c2 \u03ba\u03b1\u03c0\u03bd\u03bf\u03cd"
+            },
+            "muted": {
+                "name": "\u03a3\u03b5 \u03c3\u03af\u03b3\u03b1\u03c3\u03b7"
+            },
+            "rain": {
+                "name": "\u0392\u03c1\u03bf\u03c7\u03ae"
+            },
+            "test_in_progress": {
+                "name": "\u0394\u03bf\u03ba\u03b9\u03bc\u03ae \u03c3\u03b5 \u03b5\u03be\u03ad\u03bb\u03b9\u03be\u03b7"
+            },
+            "thermostat_remote_sensing_occupancy": {
+                "name": "\u0395\u03be \u03b1\u03c0\u03bf\u03c3\u03c4\u03ac\u03c3\u03b5\u03c9\u03c2 \u03b1\u03bd\u03af\u03c7\u03bd\u03b5\u03c5\u03c3\u03b7 \u03ba\u03b1\u03c4\u03ac\u03bb\u03b7\u03c8\u03b7\u03c2"
+            },
+            "water_freeze": {
+                "name": "\u03a0\u03ac\u03b3\u03c9\u03bc\u03b1 \u03bd\u03b5\u03c1\u03bf\u03cd"
+            },
+            "water_leak": {
+                "name": "\u0394\u03b9\u03b1\u03c1\u03c1\u03bf\u03ae \u03bd\u03b5\u03c1\u03bf\u03cd"
+            }
+        },
+        "button": {
+            "pause": {
+                "name": "\u03a0\u03b1\u03cd\u03c3\u03b7"
+            },
+            "reset_filter_condition": {
+                "name": "\u0395\u03c0\u03b1\u03bd\u03b1\u03c6\u03bf\u03c1\u03ac \u03ba\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7\u03c2 \u03c6\u03af\u03bb\u03c4\u03c1\u03bf\u03c5"
+            },
+            "resume": {
+                "name": "\u03a3\u03c5\u03bd\u03ad\u03c7\u03b9\u03c3\u03b7"
+            },
+            "self_test_request": {
+                "name": "\u0391\u03c5\u03c4\u03bf\u03ad\u03bb\u03b5\u03b3\u03c7\u03bf\u03c2"
+            },
+            "start": {
+                "name": "\u0395\u03bd\u03b1\u03c1\u03be\u03b7"
+            },
+            "stop": {
+                "name": "\u0394\u03b9\u03b1\u03ba\u03bf\u03c0\u03ae"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "\u0398\u03b5\u03c1\u03bc\u03bf\u03c3\u03c4\u03ac\u03c4\u03b7\u03c2"
+            }
+        },
+        "cover": {
+            "cover": {
+                "name": "\u03a1\u03bf\u03bb\u03cc"
+            }
+        },
+        "event": {
+            "button": {
+                "name": "\u039a\u03bf\u03c5\u03bc\u03c0\u03af",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "initial_press": "\u03a0\u03b1\u03c4\u03b7\u03bc\u03ad\u03bd\u03bf",
+                            "long_press": "\u039a\u03c1\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 \u03c0\u03b1\u03c4\u03b7\u03bc\u03ad\u03bd\u03bf",
+                            "long_release": "\u0391\u03c0\u03b5\u03bb\u03b5\u03c5\u03b8\u03b5\u03c1\u03ce\u03b8\u03b7\u03ba\u03b5 \u03bc\u03b5\u03c4\u03ac \u03b1\u03c0\u03cc \u03c0\u03b1\u03c1\u03b1\u03c4\u03b5\u03c4\u03b1\u03bc\u03ad\u03bd\u03bf \u03c0\u03ac\u03c4\u03b7\u03bc\u03b1",
+                            "multi_press_1": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 1 \u03c6\u03bf\u03c1\u03ac",
+                            "multi_press_2": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 2 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_3": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 3 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_4": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 4 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_5": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 5 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_6": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 6 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_7": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 7 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "multi_press_8": "\u03a0\u03b1\u03c4\u03ae\u03b8\u03b7\u03ba\u03b5 8 \u03c6\u03bf\u03c1\u03ad\u03c2",
+                            "short_release": "\u0391\u03c0\u03b5\u03bb\u03b5\u03c5\u03b8\u03b5\u03c1\u03ce\u03b8\u03b7\u03ba\u03b5 \u03bc\u03b5\u03c4\u03ac \u03b1\u03c0\u03cc \u03c0\u03ac\u03c4\u03b7\u03bc\u03b1",
+                            "switch_latched": "\u0394\u03b9\u03b1\u03ba\u03cc\u03c0\u03c4\u03b7\u03c2 \u03ba\u03bb\u03b5\u03b9\u03b4\u03c9\u03bc\u03ad\u03bd\u03bf\u03c2"
+                        }
+                    }
+                }
+            }
+        },
+        "fan": {
+            "fan": {
+                "name": "\u0391\u03bd\u03b5\u03bc\u03b9\u03c3\u03c4\u03ae\u03c1\u03b1\u03c2",
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "auto": "\u0391\u03c5\u03c4\u03cc\u03bc\u03b1\u03c4\u03bf",
+                            "high": "\u03a5\u03c8\u03b7\u03bb\u03cc",
+                            "low": "\u03a7\u03b1\u03bc\u03b7\u03bb\u03cc",
+                            "medium": "\u039c\u03ad\u03c4\u03c1\u03b9\u03bf",
+                            "natural_wind": "\u03a6\u03c5\u03c3\u03b9\u03ba\u03cc\u03c2 \u03b1\u03ad\u03c1\u03b1\u03c2",
+                            "sleep_wind": "\u039d\u03c5\u03c7\u03c4\u03b5\u03c1\u03b9\u03bd\u03cc\u03c2 \u03b1\u03ad\u03c1\u03b1\u03c2"
+                        }
+                    }
+                }
+            }
+        },
+        "light": {
+            "light": {
+                "name": "\u03a6\u03c9\u03c2"
+            }
+        },
+        "lock": {
+            "lock": {
+                "name": "\u039a\u03bb\u03b5\u03af\u03b4\u03c9\u03bc\u03b1"
+            }
+        },
+        "number": {
+            "altitude": {
+                "name": "\u03a5\u03c8\u03cc\u03bc\u03b5\u03c4\u03c1\u03bf \u03c0\u03ac\u03bd\u03c9 \u03b1\u03c0\u03cc \u03c4\u03b7\u03bd \u03b5\u03c0\u03b9\u03c6\u03ac\u03bd\u03b5\u03b9\u03b1 \u03c4\u03b7\u03c2 \u03b8\u03ac\u03bb\u03b1\u03c3\u03c3\u03b1\u03c2"
+            },
+            "cook_time": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03bc\u03b1\u03b3\u03b5\u03b9\u03c1\u03ad\u03bc\u03b1\u03c4\u03bf\u03c2"
+            },
+            "led_indicator_intensity_off": {
+                "name": "\u0395\u03bd\u03c4\u03b1\u03c3\u03b7 \u03b1\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03cd LED"
+            },
+            "led_indicator_intensity_on": {
+                "name": "\u0395\u03bd\u03c4\u03b1\u03c3\u03b7 \u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03cd LED"
+            },
+            "off_transition_time": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03bc\u03b5\u03c4\u03ac\u03b2\u03b1\u03c3\u03b7\u03c2 \u03c3\u03b5 \u03b1\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc"
+            },
+            "on_level": {
+                "name": "\u0395\u03c0\u03af\u03c0\u03b5\u03b4\u03bf \u03ba\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7\u03c2 \"\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc\""
+            },
+            "on_off_transition_time": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03bc\u03b5\u03c4\u03ac\u03b2\u03b1\u03c3\u03b7\u03c2 \u03c3\u03b5 \u03b5\u03bd\u03b5\u03c1\u03b3\u03cc/\u03b1\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc"
+            },
+            "on_transition_time": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03bc\u03b5\u03c4\u03ac\u03b2\u03b1\u03c3\u03b7\u03c2 \u03c3\u03b5 \u03b5\u03bd\u03b5\u03c1\u03b3\u03cc"
+            },
+            "pump_setpoint": {
+                "name": "\u03a3\u03b7\u03bc\u03b5\u03af\u03bf \u03c1\u03cd\u03b8\u03bc\u03b9\u03c3\u03b7\u03c2"
+            },
+            "temperature_offset": {
+                "name": "\u0391\u03bd\u03c4\u03b9\u03c3\u03c4\u03ac\u03b8\u03bc\u03b9\u03c3\u03b7 \u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1\u03c2"
+            },
+            "temperature_setpoint": {
+                "name": "\u03a3\u03b7\u03bc\u03b5\u03af\u03bf \u03c1\u03cd\u03b8\u03bc\u03b9\u03c3\u03b7\u03c2 \u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1\u03c2"
+            }
+        },
+        "select": {
+            "device_energy_management_mode": {
+                "name": "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 \u03b4\u03b9\u03b1\u03c7\u03b5\u03af\u03c1\u03b9\u03c3\u03b7\u03c2 \u03b5\u03bd\u03ad\u03c1\u03b3\u03b5\u03b9\u03b1\u03c2"
+            },
+            "door_lock_sound_volume": {
+                "state": {
+                    "high": "\u03a5\u03c8\u03b7\u03bb\u03cc",
+                    "low": "\u03a7\u03b1\u03bc\u03b7\u03bb\u03cc",
+                    "medium": "\u039c\u03ad\u03c4\u03c1\u03b9\u03bf"
+                }
+            },
+            "laundry_washer_number_of_rinses": {
+                "name": "\u0391\u03c1\u03b9\u03b8\u03bc\u03cc\u03c2 \u03be\u03b5\u03b2\u03b3\u03b1\u03bb\u03bc\u03ac\u03c4\u03c9\u03bd",
+                "state": {
+                    "extra": "Extra",
+                    "max": "\u039c\u03ad\u03b3\u03b9\u03c3\u03c4\u03bf",
+                    "normal": "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03cc",
+                    "off": "\u0391\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc"
+                }
+            },
+            "laundry_washer_spin_speed": {
+                "name": "\u03a4\u03b1\u03c7\u03cd\u03c4\u03b7\u03c4\u03b1 \u03c0\u03b5\u03c1\u03b9\u03c3\u03c4\u03c1\u03bf\u03c6\u03ae\u03c2"
+            },
+            "mode": {
+                "name": "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1"
+            },
+            "pump_operation_mode": {
+                "name": "\u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1",
+                "state": {
+                    "local": "\u03a4\u03bf\u03c0\u03b9\u03ba\u03cc",
+                    "normal": "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03cc"
+                }
+            },
+            "sensitivity_level": {
+                "name": "\u0395\u03c5\u03b1\u03b9\u03c3\u03b8\u03b7\u03c3\u03af\u03b1",
+                "state": {
+                    "high": "\u03a5\u03c8\u03b7\u03bb\u03cc",
+                    "low": "\u03a7\u03b1\u03bc\u03b7\u03bb\u03cc",
+                    "standard": "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03cc"
+                }
+            },
+            "startup_on_off": {
+                "name": "\u03a3\u03c5\u03bc\u03c0\u03b5\u03c1\u03b9\u03c6\u03bf\u03c1\u03ac \u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7\u03c2 \u03ba\u03b1\u03c4\u03ac \u03c4\u03b7\u03bd \u03b5\u03ba\u03ba\u03af\u03bd\u03b7\u03c3\u03b7",
+                "state": {
+                    "off": "\u0391\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc",
+                    "on": "\u0395\u03bd\u03b5\u03c1\u03b3\u03cc",
+                    "previous": "\u03a0\u03c1\u03bf\u03b7\u03b3\u03bf\u03cd\u03bc\u03b5\u03bd\u03bf",
+                    "toggle": "\u0394\u03b9\u03b1\u03ba\u03cc\u03c0\u03c4\u03b7\u03c2"
+                }
+            },
+            "temperature_display_mode": {
+                "name": "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 \u03b1\u03c0\u03b5\u03b9\u03ba\u03cc\u03bd\u03b9\u03c3\u03b7\u03c2 \u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1\u03c2"
+            },
+            "temperature_level": {
+                "name": "\u0395\u03c0\u03af\u03c0\u03b5\u03b4\u03bf \u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1\u03c2"
+            },
+            "water_heater_mode": {
+                "name": "\u039b\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 \u03b8\u03b5\u03c1\u03bc\u03bf\u03c3\u03af\u03c6\u03c9\u03bd\u03b1"
+            }
+        },
+        "sensor": {
+            "activated_carbon_filter_condition": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c6\u03af\u03bb\u03c4\u03c1\u03bf\u03c5 \u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03cd \u03ac\u03bd\u03b8\u03c1\u03b1\u03ba\u03b1"
+            },
+            "active_current": {
+                "name": "\u0395\u03bd\u03b5\u03c1\u03b3\u03cc \u03c1\u03b5\u03cd\u03bc\u03b1"
+            },
+            "air_quality": {
+                "name": "\u03a0\u03bf\u03b9\u03cc\u03c4\u03b7\u03c4\u03b1 \u03b1\u03ad\u03c1\u03b1",
+                "state": {
+                    "extremely_poor": "\u0395\u03be\u03b1\u03b9\u03c1\u03b5\u03c4\u03b9\u03ba\u03ac \u03ba\u03b1\u03ba\u03ae",
+                    "good": "\u039a\u03b1\u03bb\u03ae",
+                    "moderate": "\u039c\u03ad\u03c4\u03c1\u03b9\u03b1",
+                    "poor": "\u039a\u03b1\u03ba\u03ae",
+                    "very_poor": "\u03a0\u03bf\u03bb\u03cd \u03ba\u03b1\u03ba\u03ae"
+                }
+            },
+            "apparent_current": {
+                "name": "\u03a6\u03b1\u03b9\u03bd\u03bf\u03bc\u03b5\u03bd\u03b9\u03ba\u03cc \u03c1\u03b5\u03cd\u03bc\u03b1"
+            },
+            "battery_charge_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2 \u03bc\u03c0\u03b1\u03c4\u03b1\u03c1\u03af\u03b1\u03c2",
+                "state": {
+                    "charging": "\u03a6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7",
+                    "full_charge": "\u03a0\u03bb\u03ae\u03c1\u03b7\u03c2 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7",
+                    "not_charging": "\u0394\u03b5 \u03c6\u03bf\u03c1\u03c4\u03af\u03b6\u03b5\u03b9"
+                }
+            },
+            "battery_replacement_description": {
+                "name": "\u03a4\u03cd\u03c0\u03bf\u03c2 \u03bc\u03c0\u03b1\u03c4\u03b1\u03c1\u03af\u03b1\u03c2"
+            },
+            "battery_time_remaining": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03c0\u03bf\u03c5 \u03b1\u03c0\u03bf\u03bc\u03ad\u03bd\u03b5\u03b9"
+            },
+            "battery_time_to_full_charge": {
+                "name": "\u03a7\u03c1\u03cc\u03bd\u03bf\u03c2 \u03b3\u03b9\u03b1 \u03c0\u03bb\u03ae\u03c1\u03b7 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7"
+            },
+            "battery_voltage": {
+                "name": "\u03a4\u03ac\u03c3\u03b7 \u03bc\u03c0\u03b1\u03c4\u03b1\u03c1\u03af\u03b1\u03c2"
+            },
+            "contamination_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03bc\u03cc\u03bb\u03c5\u03bd\u03c3\u03b7\u03c2",
+                "state": {
+                    "critical": "\u039a\u03c1\u03af\u03c3\u03b9\u03bc\u03bf",
+                    "low": "\u03a7\u03b1\u03bc\u03b7\u03bb\u03cc",
+                    "normal": "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03cc",
+                    "warning": "\u03a0\u03c1\u03bf\u03b5\u03b9\u03b4\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7"
+                }
+            },
+            "current_phase": {
+                "name": "\u03a4\u03c1\u03ad\u03c7\u03bf\u03c5\u03c3\u03b1 \u03c6\u03ac\u03c3\u03b7"
+            },
+            "esa_opt_out_state": {
+                "name": "\u0395\u03be\u03b1\u03af\u03c1\u03b5\u03c3\u03b7 \u03b1\u03c0\u03cc \u03c4\u03b7 \u03b2\u03b5\u03bb\u03c4\u03b9\u03c3\u03c4\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7 \u03b5\u03bd\u03ad\u03c1\u03b3\u03b5\u03b9\u03b1\u03c2",
+                "state": {
+                    "grid_opt_out": "\u0394\u03af\u03ba\u03c4\u03c5\u03bf",
+                    "local_opt_out": "\u03a4\u03bf\u03c0\u03b9\u03ba\u03cc",
+                    "no_opt_out": "\u0391\u03bd\u03b5\u03bd\u03b5\u03c1\u03b3\u03cc",
+                    "opt_out": "\u03a4\u03bf\u03c0\u03b9\u03ba\u03cc \u03ba\u03b1\u03b9 \u03b4\u03af\u03ba\u03c4\u03c5\u03bf"
+                }
+            },
+            "esa_state": {
+                "state": {
+                    "fault": "\u03a3\u03c6\u03ac\u03bb\u03bc\u03b1",
+                    "paused": "\u03a3\u03b5 \u03c0\u03b1\u03cd\u03c3\u03b7"
+                }
+            },
+            "estimated_end_time": {
+                "name": "\u0395\u03ba\u03c4\u03b9\u03bc\u03ce\u03bc\u03b5\u03bd\u03b7 \u03ce\u03c1\u03b1 \u03bb\u03ae\u03be\u03b7\u03c2"
+            },
+            "estimated_heat_required": {
+                "name": "\u0391\u03c0\u03b1\u03b9\u03c4\u03bf\u03cd\u03bc\u03b5\u03bd\u03b7 \u03b5\u03bd\u03ad\u03c1\u03b3\u03b5\u03b9\u03b1 \u03b8\u03ad\u03c1\u03bc\u03b1\u03bd\u03c3\u03b7\u03c2"
+            },
+            "eve_weather_trend": {
+                "name": "\u03a4\u03ac\u03c3\u03b7 \u03ba\u03b1\u03b9\u03c1\u03bf\u03cd",
+                "state": {
+                    "cloudy": "\u039d\u03b5\u03c6\u03b5\u03bb\u03ce\u03b4\u03b7\u03c2",
+                    "rainy": "\u0392\u03c1\u03bf\u03c7\u03b5\u03c1\u03cc\u03c2",
+                    "stormy": "\u039a\u03b1\u03c4\u03b1\u03b9\u03b3\u03af\u03b4\u03b1",
+                    "sunny": "\u0397\u03bb\u03b9\u03cc\u03bb\u03bf\u03c5\u03c3\u03c4\u03bf\u03c2"
+                }
+            },
+            "evse_charge_current": {
+                "name": "\u03a1\u03b5\u03cd\u03bc\u03b1 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "evse_circuit_capacity": {
+                "name": "\u03a7\u03c9\u03c1\u03b7\u03c4\u03b9\u03ba\u03cc\u03c4\u03b7\u03c4\u03b1 \u03ba\u03c5\u03ba\u03bb\u03ce\u03bc\u03b1\u03c4\u03bf\u03c2"
+            },
+            "evse_fault_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c3\u03c6\u03ac\u03bb\u03bc\u03b1\u03c4\u03bf\u03c2",
+                "state": {
+                    "contact_dry_failure": "\u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 - \u03be\u03b5\u03c1\u03ae \u03b5\u03c0\u03b1\u03c6\u03ae",
+                    "contact_wet_failure": "\u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 - \u03c5\u03b3\u03c1\u03ae \u03b5\u03c0\u03b1\u03c6\u03ae",
+                    "emergency_stop": "\u03a3\u03c4\u03ac\u03c3\u03b7 \u03ad\u03ba\u03c4\u03b1\u03ba\u03c4\u03b7\u03c2 \u03b1\u03bd\u03ac\u03b3\u03ba\u03b7\u03c2",
+                    "ev_disconnected": "\u03a4\u03bf EV \u03b1\u03c0\u03bf\u03c3\u03c5\u03bd\u03b4\u03ad\u03b8\u03b7\u03ba\u03b5",
+                    "meter_failure": "\u0392\u03bb\u03ac\u03b2\u03b7 \u03bc\u03b5\u03c4\u03c1\u03b7\u03c4\u03ae",
+                    "no_error": "\u0395\u03bd\u03c4\u03ac\u03be\u03b5\u03b9",
+                    "other": "\u0391\u03bb\u03bb\u03bf \u03c3\u03c6\u03ac\u03bb\u03bc\u03b1",
+                    "over_current": "\u03a5\u03c0\u03b5\u03c1\u03ad\u03bd\u03c4\u03b1\u03c3\u03b7",
+                    "over_temperature": "\u03a5\u03c0\u03b5\u03c1\u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1",
+                    "over_voltage": "\u03a5\u03c0\u03ad\u03c1\u03c4\u03b1\u03c3\u03b7",
+                    "power_loss": "\u0391\u03c0\u03ce\u03bb\u03b5\u03b9\u03b1 \u03b9\u03c3\u03c7\u03cd\u03bf\u03c2",
+                    "power_quality": "\u03a0\u03bf\u03b9\u03cc\u03c4\u03b7\u03c4\u03b1 \u03b9\u03c3\u03c7\u03cd\u03bf\u03c2",
+                    "under_voltage": "\u03a5\u03c0\u03cc\u03c4\u03b1\u03c3\u03b7",
+                    "wrong_power_supply": "\u039b\u03ac\u03b8\u03bf\u03c2 \u03c4\u03c1\u03bf\u03c6\u03bf\u03b4\u03bf\u03c4\u03b9\u03ba\u03cc"
+                }
+            },
+            "evse_max_charge_current": {
+                "name": "\u039c\u03ad\u03b3\u03b9\u03c3\u03c4\u03bf \u03c1\u03b5\u03cd\u03bc\u03b1 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "evse_min_charge_current": {
+                "name": "\u0395\u03bb\u03ac\u03c7\u03b9\u03c3\u03c4\u03bf \u03c1\u03b5\u03cd\u03bc\u03b1 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "evse_soc": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "evse_user_max_charge_current": {
+                "name": "\u039c\u03ad\u03b3\u03b9\u03c3\u03c4\u03bf \u03c1\u03b5\u03cd\u03bc\u03b1 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2 \u03c7\u03c1\u03ae\u03c3\u03c4\u03b7"
+            },
+            "expiry_date": {
+                "name": "\u0397\u03bc\u03b5\u03c1\u03bf\u03bc\u03b7\u03bd\u03af\u03b1 \u03bb\u03ae\u03be\u03b7\u03c2"
+            },
+            "flow": {
+                "name": "\u03a1\u03bf\u03ae"
+            },
+            "hepa_filter_condition": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03c6\u03af\u03bb\u03c4\u03c1\u03bf\u03c5 HEPA"
+            },
+            "nitrogen_dioxide": {
+                "name": "\u0394\u03b9\u03bf\u03be\u03b5\u03af\u03b4\u03b9\u03bf \u03c4\u03bf\u03c5 \u03b1\u03b6\u03ce\u03c4\u03bf\u03c5"
+            },
+            "operational_state": {
+                "name": "\u039a\u03b1\u03c4\u03ac\u03c3\u03c4\u03b1\u03c3\u03b7 \u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1\u03c2",
+                "state": {
+                    "charging": "\u03a6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7",
+                    "docked": "\u03a3\u03c4\u03b7 \u03b2\u03ac\u03c3\u03b7",
+                    "error": "\u03a3\u03c6\u03ac\u03bb\u03bc\u03b1",
+                    "paused": "\u03a3\u03b5 \u03c0\u03b1\u03cd\u03c3\u03b7",
+                    "running": "\u0395\u03ba\u03c4\u03b5\u03bb\u03b5\u03af\u03c4\u03b1\u03b9",
+                    "seeking_charger": "\u0391\u03bd\u03b1\u03b6\u03ae\u03c4\u03b7\u03c3\u03b7 \u03c6\u03bf\u03c1\u03c4\u03b9\u03c3\u03c4\u03ae",
+                    "stopped": "\u03a3\u03c4\u03b1\u03bc\u03ac\u03c4\u03b7\u03c3\u03b5"
+                }
+            },
+            "pump_control_mode": {
+                "state": {
+                    "proportional_pressure": "\u0391\u03bd\u03b1\u03bb\u03bf\u03b3\u03b9\u03ba\u03ae \u03c0\u03af\u03b5\u03c3\u03b7"
+                }
+            },
+            "pump_speed": {
+                "name": "\u03a4\u03b1\u03c7\u03cd\u03c4\u03b7\u03c4\u03b1 \u03c0\u03b5\u03c1\u03b9\u03c3\u03c4\u03c1\u03bf\u03c6\u03ae\u03c2"
+            },
+            "reactive_current": {
+                "name": "\u0391\u03b5\u03c1\u03b3\u03bf \u03c1\u03b5\u03cd\u03bc\u03b1"
+            },
+            "rms_current": {
+                "name": "\u0391\u03c0\u03bf\u03c4\u03b5\u03bb\u03b5\u03c3\u03bc\u03b1\u03c4\u03b9\u03ba\u03cc \u03c1\u03b5\u03cd\u03bc\u03b1"
+            },
+            "rms_voltage": {
+                "name": "\u0391\u03c0\u03bf\u03c4\u03b5\u03bb\u03b5\u03c3\u03bc\u03b1\u03c4\u03b9\u03ba\u03ae \u03c4\u03ac\u03c3\u03b7"
+            },
+            "switch_current_position": {
+                "name": "\u03a4\u03c1\u03ad\u03c7\u03bf\u03c5\u03c3\u03b1 \u03b8\u03ad\u03c3\u03b7 \u03b4\u03b9\u03b1\u03ba\u03cc\u03c0\u03c4\u03b7"
+            },
+            "tank_percentage": {
+                "name": "\u03a3\u03c4\u03ac\u03b8\u03bc\u03b7 \u03b6\u03b5\u03c3\u03c4\u03bf\u03cd \u03bd\u03b5\u03c1\u03bf\u03cd"
+            },
+            "tank_volume": {
+                "name": "\u039f\u03b3\u03ba\u03bf\u03c2 \u03b4\u03b5\u03be\u03b1\u03bc\u03b5\u03bd\u03ae\u03c2"
+            },
+            "tvoc_level": {
+                "state": {
+                    "high": "\u03a5\u03c8\u03b7\u03bb\u03cc",
+                    "low": "\u03a7\u03b1\u03bc\u03b7\u03bb\u03cc",
+                    "medium": "\u039c\u03ad\u03c4\u03c1\u03b9\u03bf"
+                }
+            },
+            "valve_position": {
+                "name": "\u0398\u03ad\u03c3\u03b7 \u03b2\u03b1\u03bb\u03b2\u03af\u03b4\u03b1\u03c2"
+            },
+            "voltage": {
+                "name": "\u03a4\u03ac\u03c3\u03b7"
+            }
+        },
+        "switch": {
+            "child_lock": {
+                "name": "\u039a\u03bb\u03b5\u03af\u03b4\u03c9\u03bc\u03b1 \u03b3\u03b9\u03b1 \u03c0\u03b1\u03b9\u03b4\u03b9\u03ac"
+            },
+            "evse_charging_switch": {
+                "name": "\u0395\u03bd\u03b5\u03c1\u03b3\u03bf\u03c0\u03bf\u03af\u03b7\u03c3\u03b7 \u03c6\u03cc\u03c1\u03c4\u03b9\u03c3\u03b7\u03c2"
+            },
+            "power": {
+                "name": "\u0399\u03c3\u03c7\u03cd\u03c2"
+            },
+            "switch": {
+                "name": "\u0394\u03b9\u03b1\u03ba\u03cc\u03c0\u03c4\u03b7\u03c2"
+            }
+        },
+        "vacuum": {
+            "vacuum": {
+                "name": "\u03a3\u03ba\u03bf\u03cd\u03c0\u03b1"
+            }
+        },
+        "valve": {
+            "valve": {
+                "name": "\u0392\u03b1\u03bb\u03b2\u03af\u03b4\u03b1"
+            }
+        },
+        "water_heater": {
+            "water_heater": {
+                "name": "\u0398\u03b5\u03c1\u03bc\u03bf\u03c3\u03af\u03c6\u03c9\u03bd\u03b1\u03c2"
+            }
+        }
+    },
+    "issues": {
+        "server_version_version_too_new": {
+            "description": "\u0397 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Matter Server \u03c0\u03bf\u03c5 \u03b5\u03ba\u03c4\u03b5\u03bb\u03b5\u03af\u03c4\u03b5 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7 \u03c3\u03c4\u03b9\u03b3\u03bc\u03ae \u03b5\u03af\u03bd\u03b1\u03b9 \u03c0\u03bf\u03bb\u03cd \u03bd\u03ad\u03b1 \u03b3\u03b9\u03b1 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7\u03bd \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Home Assistant. \u03a0\u03b1\u03c1\u03b1\u03ba\u03b1\u03bb\u03ce \u03b5\u03bd\u03b7\u03bc\u03b5\u03c1\u03ce\u03c3\u03c4\u03b5 \u03c4\u03bf Home Assistant \u03ae \u03c5\u03c0\u03bf\u03b2\u03b1\u03b8\u03bc\u03af\u03c3\u03c4\u03b5 \u03c4\u03bf\u03bd Matter Server \u03c3\u03b5 \u03c0\u03b1\u03bb\u03b1\u03b9\u03cc\u03c4\u03b5\u03c1\u03b7 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03b4\u03b9\u03bf\u03c1\u03b8\u03ce\u03c3\u03b5\u03c4\u03b5 \u03b1\u03c5\u03c4\u03cc \u03c4\u03bf \u03c0\u03c1\u03cc\u03b2\u03bb\u03b7\u03bc\u03b1.",
+            "title": "\u0391\u03c0\u03b1\u03b9\u03c4\u03b5\u03af\u03c4\u03b1\u03b9 \u03c0\u03b1\u03bb\u03b1\u03b9\u03cc\u03c4\u03b5\u03c1\u03b7 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Matter Server"
+        },
+        "server_version_version_too_old": {
+            "description": "\u0397 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Matter Server \u03c0\u03bf\u03c5 \u03b5\u03ba\u03c4\u03b5\u03bb\u03b5\u03af\u03c4\u03b1\u03b9 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7 \u03c3\u03c4\u03b9\u03b3\u03bc\u03ae \u03b5\u03af\u03bd\u03b1\u03b9 \u03c0\u03bf\u03bb\u03cd \u03c0\u03b1\u03bb\u03b9\u03ac \u03b3\u03b9\u03b1 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7\u03bd \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Home Assistant. \u03a0\u03b1\u03c1\u03b1\u03ba\u03b1\u03bb\u03ce \u03b5\u03bd\u03b7\u03bc\u03b5\u03c1\u03ce\u03c3\u03c4\u03b5 \u03c4\u03bf\u03bd Matter Server \u03c3\u03c4\u03b7\u03bd \u03c0\u03b9\u03bf \u03c0\u03c1\u03cc\u03c3\u03c6\u03b1\u03c4\u03b7 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03b4\u03b9\u03bf\u03c1\u03b8\u03ce\u03c3\u03b5\u03c4\u03b5 \u03b1\u03c5\u03c4\u03cc \u03c4\u03bf \u03c0\u03c1\u03cc\u03b2\u03bb\u03b7\u03bc\u03b1.",
+            "title": "\u0391\u03c0\u03b1\u03b9\u03c4\u03b5\u03af\u03c4\u03b1\u03b9 \u03bd\u03b5\u03cc\u03c4\u03b5\u03c1\u03b7 \u03ad\u03ba\u03b4\u03bf\u03c3\u03b7 \u03c4\u03bf\u03c5 Matter Server"
+        }
+    },
+    "services": {
+        "open_commissioning_window": {
+            "description": "\u0395\u03c0\u03b9\u03c4\u03c1\u03ad\u03c0\u03b5\u03b9 \u03c4\u03b7\u03bd \u03c0\u03c1\u03bf\u03c3\u03b8\u03ae\u03ba\u03b7 \u03bc\u03b9\u03b1\u03c2 \u03b1\u03c0\u03cc \u03c4\u03b9\u03c2 \u03c3\u03c5\u03c3\u03ba\u03b5\u03c5\u03ad\u03c2 \u03c3\u03b1\u03c2 \u03c3\u03b5 \u03ad\u03bd\u03b1 \u03ac\u03bb\u03bb\u03bf \u03b4\u03af\u03ba\u03c4\u03c5\u03bf Matter \u03b1\u03bd\u03bf\u03af\u03b3\u03bf\u03bd\u03c4\u03b1\u03c2 \u03c4\u03bf \u03c0\u03b1\u03c1\u03ac\u03b8\u03c5\u03c1\u03bf commissioning \u03b3\u03b9\u03b1 \u03b1\u03c5\u03c4\u03ae \u03c4\u03b7 \u03c3\u03c5\u03c3\u03ba\u03b5\u03c5\u03ae Matter \u03b3\u03b9\u03b1 60 \u03b4\u03b5\u03c5\u03c4\u03b5\u03c1\u03cc\u03bb\u03b5\u03c0\u03c4\u03b1.",
+            "fields": {
+                "device_id": {
+                    "description": "\u0397 \u03c3\u03c5\u03c3\u03ba\u03b5\u03c5\u03ae Matter \u03c0\u03bf\u03c5 \u03b8\u03ad\u03bb\u03b5\u03c4\u03b5 \u03bd\u03b1 \u03c0\u03c1\u03bf\u03c3\u03b8\u03ad\u03c3\u03b5\u03c4\u03b5 \u03c3\u03c4\u03bf \u03ac\u03bb\u03bb\u03bf \u03b4\u03af\u03ba\u03c4\u03c5\u03bf Matter.",
+                    "name": "\u03a3\u03c5\u03c3\u03ba\u03b5\u03c5\u03ae"
+                }
+            }
+        },
+        "water_heater_boost": {
+            "description": "\u0395\u03bd\u03b5\u03c1\u03b3\u03bf\u03c0\u03bf\u03b9\u03b5\u03af \u03c4\u03b7\u03bd \u03b5\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7 \u03c4\u03bf\u03c5 \u03b8\u03b5\u03c1\u03bc\u03bf\u03c3\u03af\u03c6\u03c9\u03bd\u03b1 \u03b3\u03b9\u03b1 \u03c3\u03c5\u03b3\u03ba\u03b5\u03ba\u03c1\u03b9\u03bc\u03ad\u03bd\u03b7 \u03c7\u03c1\u03bf\u03bd\u03b9\u03ba\u03ae \u03b4\u03b9\u03ac\u03c1\u03ba\u03b5\u03b9\u03b1.",
+            "fields": {
+                "duration": {
+                    "description": "\u0394\u03b9\u03ac\u03c1\u03ba\u03b5\u03b9\u03b1 \u03b5\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7\u03c2 \u03c3\u03b5 \u03b4\u03b5\u03c5\u03c4\u03b5\u03c1\u03cc\u03bb\u03b5\u03c0\u03c4\u03b1.",
+                    "name": "\u0394\u03b9\u03ac\u03c1\u03ba\u03b5\u03b9\u03b1"
+                },
+                "emergency_boost": {
+                    "description": "\u0395\u03ac\u03bd \u03b8\u03b1 \u03b5\u03bd\u03b5\u03c1\u03b3\u03bf\u03c0\u03bf\u03b9\u03b7\u03b8\u03b5\u03af \u03b7 \u03bb\u03b5\u03b9\u03c4\u03bf\u03c5\u03c1\u03b3\u03af\u03b1 \u03b5\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7\u03c2 \u03ad\u03ba\u03c4\u03b1\u03ba\u03c4\u03b7\u03c2 \u03b1\u03bd\u03ac\u03b3\u03ba\u03b7\u03c2.",
+                    "name": "\u0395\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7 \u03ad\u03ba\u03c4\u03b1\u03ba\u03c4\u03b7\u03c2 \u03b1\u03bd\u03ac\u03b3\u03ba\u03b7\u03c2"
+                },
+                "temporary_setpoint": {
+                    "description": "\u03a0\u03c1\u03bf\u03c3\u03c9\u03c1\u03b9\u03bd\u03cc \u03c3\u03b7\u03bc\u03b5\u03af\u03bf \u03c1\u03cd\u03b8\u03bc\u03b9\u03c3\u03b7\u03c2 \u03b8\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1\u03c2 \u03c3\u03b5 \u03b2\u03b1\u03b8\u03bc\u03bf\u03cd\u03c2 \u039a\u03b5\u03bb\u03c3\u03af\u03bf\u03c5 \u03ba\u03b1\u03c4\u03ac \u03c4\u03b7 \u03b4\u03b9\u03ac\u03c1\u03ba\u03b5\u03b9\u03b1 \u03c4\u03b7\u03c2 \u03c0\u03b5\u03c1\u03b9\u03cc\u03b4\u03bf\u03c5 \u03b5\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7\u03c2.",
+                    "name": "\u03a0\u03c1\u03bf\u03c3\u03c9\u03c1\u03b9\u03bd\u03cc \u03c3\u03b7\u03bc\u03b5\u03af\u03bf \u03c1\u03cd\u03b8\u03bc\u03b9\u03c3\u03b7\u03c2"
+                }
+            },
+            "name": "\u0395\u03bd\u03af\u03c3\u03c7\u03c5\u03c3\u03b7 \u03b8\u03b5\u03c1\u03bc\u03bf\u03c3\u03af\u03c6\u03c9\u03bd\u03b1"
+        }
+    }
+}

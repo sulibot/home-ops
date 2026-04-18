@@ -70,6 +70,8 @@ spec:
                 mkdir -p /data/torrents/music
                 mkdir -p /data/torrents/books
                 mkdir -p /data/torrents/audiobooks
+                mkdir -p /data/torrents/courses
+                mkdir -p /data/torrents/sports
                 mkdir -p /data/torrents/cross-seed
                 mkdir -p /data/torrents/flaresolverr
                 cat > /config/qBittorrent/categories.json <<'EOF'
@@ -79,6 +81,9 @@ spec:
                     },
                     "books": {
                         "save_path": "books"
+                    },
+                    "courses": {
+                        "save_path": "courses"
                     },
                     "cross-seed": {
                         "save_path": "cross-seed"
@@ -94,6 +99,9 @@ spec:
                     },
                     "music": {
                         "save_path": "music"
+                    },
+                    "sports": {
+                        "save_path": "sports"
                     },
                     "tv": {
                         "save_path": "tv"

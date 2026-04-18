@@ -44,11 +44,13 @@ variable "kubernetes_version" {
 variable "vip_ipv6" {
   description = "Control plane VIP IPv6 address"
   type        = string
+  default     = ""
 }
 
 variable "vip_ipv4" {
   description = "Control plane VIP IPv4 address"
   type        = string
+  default     = ""
 }
 
 variable "all_node_ips" {
@@ -57,6 +59,8 @@ variable "all_node_ips" {
     public_ipv4 = string
     public_ipv6 = string
     ip_suffix   = number
+    hostname    = optional(string)
+    machine_type = optional(string)
     # REMOVED - mesh network no longer needed for link-local migration
     # mesh_ipv4   = string
     # mesh_ipv6   = string
@@ -319,4 +323,16 @@ variable "apply_cilium_bgp_inline" {
   description = "Apply Cilium BGP CRs as Talos inline manifests. Keep false to let Flux own CR ordering after Cilium CRDs exist."
   type        = bool
   default     = false
+}
+
+variable "allow_scheduling_on_control_planes" {
+  description = "Allow workload scheduling on control plane nodes. Required for single-node clusters."
+  type        = bool
+  default     = false
+}
+
+variable "use_vip" {
+  description = "Configure a control plane VIP on control plane nodes. Disable for single-node clusters that use the node IP as the endpoint."
+  type        = bool
+  default     = true
 }

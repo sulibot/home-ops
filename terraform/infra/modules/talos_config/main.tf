@@ -1,14 +1,23 @@
 
 locals {
-  # Separate control plane and worker nodes based on naming convention
-  control_plane_nodes = {
+  normalized_nodes = {
     for name, ips in var.all_node_ips :
-    name => merge(ips, { hostname = name }) if can(regex("cp[0-9]+$", name))
+    name => merge(ips, {
+      hostname     = try(ips.hostname, name)
+      machine_type = try(ips.machine_type, can(regex("cp[0-9]+$", name)) ? "controlplane" : can(regex("wk[0-9]+$", name)) ? "worker" : "controlplane")
+    })
+  }
+
+  # Separate control plane and worker nodes based on explicit metadata first,
+  # with legacy cpNN / wkNN suffixes kept as a fallback for existing stacks.
+  control_plane_nodes = {
+    for name, ips in local.normalized_nodes :
+    name => ips if ips.machine_type == "controlplane"
   }
 
   worker_nodes = {
-    for name, ips in var.all_node_ips :
-    name => merge(ips, { hostname = name }) if can(regex("wk[0-9]+$", name))
+    for name, ips in local.normalized_nodes :
+    name => ips if ips.machine_type == "worker"
   }
 
   # BGP ASN base for this cluster (used to calculate per-node ASN)
@@ -140,7 +149,7 @@ locals {
 
   # Control Plane specific configuration
   api_server_cert_sans = distinct(concat(
-    [var.vip_ipv6, var.vip_ipv4],
+    compact([var.use_vip ? var.vip_ipv6 : "", var.use_vip ? var.vip_ipv4 : ""]),
     [for node in local.control_plane_nodes : node.public_ipv6],
     [for node in local.control_plane_nodes : node.public_ipv4],
     [for node in local.control_plane_nodes : "fd00:${var.cluster_id}:fe::${node.ip_suffix}"],
@@ -242,7 +251,7 @@ data "talos_machine_configuration" "controlplane" {
         kubelet  = local.common_kubelet
       }
       cluster = {
-        allowSchedulingOnControlPlanes = false
+        allowSchedulingOnControlPlanes = var.allow_scheduling_on_control_planes
         network                        = local.common_cluster_network
         proxy = {
           disabled = true # Cilium kube-proxy replacement
@@ -655,7 +664,7 @@ locals {
                     metric  = 150
                   },
                 ]
-                vip = node.machine_type == "controlplane" ? {
+                vip = var.use_vip && node.machine_type == "controlplane" ? {
                   ip = var.vip_ipv6
                 } : null
               },

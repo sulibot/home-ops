@@ -1,0 +1,22 @@
+{
+    "entity": {
+        "binary_sensor": {
+            "rain": {
+                "name": "Chuvia"
+            }
+        },
+        "select": {
+            "water_heater_mode": {
+                "name": "Modo do quentador da auga"
+            }
+        },
+        "sensor": {
+            "flow": {
+                "name": "Fluxo"
+            },
+            "tank_volume": {
+                "name": "Volume do dep\u00f3sito"
+            }
+        }
+    }
+}

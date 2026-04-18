@@ -1,0 +1,68 @@
+light_color_temp_helper:
+  alias: Light Color Temp Helper
+  mode: queued
+  fields:
+    mode:
+      required: true
+    min_color_temp:
+      required: true
+    max_color_temp:
+      required: true
+    color_temp_step:
+      required: true
+    target_light:
+      required: true
+    light_transition_duration:
+      required: false
+  sequence:
+    - variables:
+        current_color_temp: >-
+          {{ state_attr(target_light, 'color_temp_kelvin') | int(min_color_temp | int(2200)) }}
+        min_temp: "{{ min_color_temp | int(2200) }}"
+        max_temp: "{{ max_color_temp | int(4000) }}"
+        step: "{{ color_temp_step | int(100) }}"
+        next_color_temp: >-
+          {% if mode == 'down' %}
+            {{ [current_color_temp - step, min_temp] | max }}
+          {% else %}
+            {{ [current_color_temp + step, max_temp] | min }}
+          {% endif %}
+    - action: light.turn_on
+      target:
+        entity_id: "{{ target_light }}"
+      data:
+        color_temp_kelvin: "{{ next_color_temp | int }}"
+        transition: "{{ light_transition_duration | default(0.5) | float }}"
+
+light_color_hs_helper:
+  alias: Light Color HS Helper
+  mode: queued
+  fields:
+    target_light:
+      required: true
+    light_transition_duration:
+      required: false
+    color_hue_step:
+      required: true
+    color_saturation:
+      required: true
+    mode:
+      required: true
+  sequence:
+    - variables:
+        current_hs: "{{ state_attr(target_light, 'hs_color') or [0, color_saturation | float(100)] }}"
+        current_hue: "{{ current_hs[0] | float(0) }}"
+        next_hue: >-
+          {% if mode == 'down' %}
+            {{ (current_hue - (color_hue_step | float(6))) % 360 }}
+          {% else %}
+            {{ (current_hue + (color_hue_step | float(6))) % 360 }}
+          {% endif %}
+    - action: light.turn_on
+      target:
+        entity_id: "{{ target_light }}"
+      data:
+        hs_color:
+          - "{{ next_hue | float }}"
+          - "{{ color_saturation | float(100) }}"
+        transition: "{{ light_transition_duration | default(0.5) | float }}"

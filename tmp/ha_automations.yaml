@@ -1,0 +1,896 @@
+- id: bedroom_dimmer_mirrors_nanoleaf_bulbs
+  alias: Bedroom Dimmer Mirrors Bulbs
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+  condition:
+    - condition: template
+      value_template: "{{ trigger.to_state is not none }}"
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_locked
+          state: "off"
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_override
+          state: "on"
+  action:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.to_state.state == 'off' }}"
+          sequence:
+            - service: light.turn_off
+              target:
+                entity_id: light.bedroom_lights
+      default:
+        - service: light.turn_on
+          target:
+            entity_id: light.bedroom_lights
+          data:
+            brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+- id: bedroom_lights_lock_enable
+  alias: Bedroom Lights Lock Enable
+  trigger:
+    - platform: time
+      at: "19:30:00"
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.bedroom_lights_locked
+  mode: single
+- id: bedroom_lights_lock_disable
+  alias: Bedroom Lights Lock Disable
+  trigger:
+    - platform: time
+      at: "04:00:00"
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_locked
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_override
+    - service: timer.cancel
+      target:
+        entity_id:
+          - timer.bedroom_lights_press_window
+          - timer.bedroom_lights_override
+    - service: counter.reset
+      target:
+        entity_id: counter.bedroom_lights_press_count
+  mode: single
+- id: bedroom_lights_lock_override_detect_triple_press
+  alias: Bedroom Lights Lock Override Detect Triple Press
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_locked
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_override
+      state: "off"
+  action:
+    - variables:
+        press_window_active: "{{ is_state('timer.bedroom_lights_press_window', 'active') }}"
+        next_press_count: "{{ states('counter.bedroom_lights_press_count') | int(0) + 1 if is_state('timer.bedroom_lights_press_window', 'active') else 1 }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ press_window_active }}"
+          sequence:
+            - service: counter.increment
+              target:
+                entity_id: counter.bedroom_lights_press_count
+      default:
+        - service: counter.reset
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: counter.increment
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: timer.start
+          target:
+            entity_id: timer.bedroom_lights_press_window
+          data:
+            duration: "00:00:05"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ next_press_count >= 3 }}"
+          sequence:
+            - service: input_boolean.turn_on
+              target:
+                entity_id: input_boolean.bedroom_lights_override
+            - service: timer.start
+              target:
+                entity_id: timer.bedroom_lights_override
+              data:
+                duration: "00:30:00"
+            - service: timer.cancel
+              target:
+                entity_id: timer.bedroom_lights_press_window
+            - service: counter.reset
+              target:
+                entity_id: counter.bedroom_lights_press_count
+            - service: light.turn_on
+              target:
+                entity_id: light.bedroom_lights
+              data:
+                brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+- id: bedroom_lights_lock_override_reset_press_window
+  alias: Bedroom Lights Lock Override Reset Press Window
+  mode: single
+  trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.bedroom_lights_press_window
+  action:
+    - service: counter.reset
+      target:
+        entity_id: counter.bedroom_lights_press_count
+- id: bedroom_lights_lock_override_disable
+  alias: Bedroom Lights Lock Override Disable
+  mode: single
+  trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.bedroom_lights_override
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_override
+- id: bedroom_lights_lock_enforce_from_dimmer
+  alias: Bedroom Lights Lock Enforce From Dimmer
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_locked
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_override
+      state: "off"
+  action:
+    - service: light.turn_off
+      target:
+        entity_id: light.bedroom_lights
+- id: adaptive_lighting_disable_brightness_after_start
+  alias: Adaptive Lighting Disable Brightness After Start
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay: "00:00:20"
+    - service: switch.turn_off
+      target:
+        entity_id:
+          - switch.adaptive_lighting_adapt_brightness_living_room
+          - switch.adaptive_lighting_adapt_brightness_master
+          - switch.adaptive_lighting_adapt_brightness_bedroom
+          - switch.adaptive_lighting_adapt_brightness_dining_room
+- id: bedroom_morning_green_to_white_fade
+  alias: Bedroom Morning Green To White Fade
+  mode: single
+  trigger:
+    - platform: time
+      at: "07:00:00"
+  condition:
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+  action:
+    - service: light.turn_on
+      target:
+        entity_id: light.bedroom_lights
+      data:
+        rgb_color: [0, 255, 0]
+        brightness_pct: 1
+        transition: 1
+    - delay: "00:00:01"
+    - service: light.turn_on
+      target:
+        entity_id: light.bedroom_lights
+      data:
+        color_temp_kelvin: 4000
+        brightness_pct: 80
+        transition: 1800
+- id: bedroom_morning_adaptive_lighting_handoff
+  alias: Bedroom Morning Adaptive Lighting Handoff
+  mode: single
+  trigger:
+    - platform: time
+      at: "07:30:00"
+  condition:
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+  action:
+    - service: adaptive_lighting.set_manual_control
+      data:
+        entity_id: switch.adaptive_lighting_bedroom
+        lights:
+          - light.bedroom_lights
+        manual_control: false
+    - service: adaptive_lighting.apply
+      data:
+        entity_id: switch.adaptive_lighting_bedroom
+        lights:
+          - light.bedroom_lights
+        adapt_brightness: false
+        adapt_color: true
+
+- id: button_green_1_master
+  alias: Button_green_1 Master
+  use_blueprint:
+    path: sulibot/bilresa_multi_target_fast.yaml
+    input:
+      remote: 913eb22217db840f332b74696e80ed80
+      hold_state_helper: input_text.bilresa_hold_state_master_green_1
+      channel_1_target: light.master_lights
+      channel_2_target: light.kajplats_e26_ws_globe_1600lm
+      channel_3_target: light.kajplats_e26_ws_globe_1600lm_5
+      brightness_step_pct: 15
+      dim_turns_on: true
+      min_brightness_pct: 5
+      min_color_temp: 2200
+      max_color_temp: 4000
+      color_temp_step: 150
+      hold_repeat_ms: 150
+      click_transition: 0
+      debug_logging: true
+
+- id: button_orange_2_dining_ch1_button
+  alias: Button_orange_2 Dining Channel 1 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_3_6
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entity: light.dining_room_lights
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_3_6', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch1 button event_type={{ event_type }} target={{ target_entity }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entity }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_3_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_orange_2_dining_ch2_button
+  alias: Button_orange_2 Dining Channel 2 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_6_6
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entity: light.desk_lamp
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_6_6', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch2 button event_type={{ event_type }} target={{ target_entity }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entity }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_6_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_orange_2_dining_ch3_button
+  alias: Button_orange_2 Dining Channel 3 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_9_6
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entity: light.dining_room_fan
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_9_6', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch3 button event_type={{ event_type }} target={{ target_entity }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entity }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_9_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_orange_2_dining_ch1_scroll_up
+  alias: Button_orange_2 Dining Channel 1 Scroll Up
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: sensor.bilresa_scroll_wheel_current_switch_position_1_6
+    to: '1'
+  condition:
+  - condition: template
+    value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+  - condition: template
+    value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_2_6', '1') }}"
+  action:
+  - service: light.turn_on
+    target:
+      entity_id: light.dining_room_lights
+    data:
+      brightness_step_pct: 10
+      transition: 0
+- id: button_orange_2_dining_ch1_scroll_down
+  alias: Button_orange_2 Dining Channel 1 Scroll Down
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: sensor.bilresa_scroll_wheel_current_switch_position_2_6
+    to: '1'
+  condition:
+  - condition: template
+    value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+  - condition: template
+    value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_1_6', '1') }}"
+  action:
+  - service: light.turn_on
+    target:
+      entity_id: light.dining_room_lights
+    data:
+      brightness_step_pct: -10
+      transition: 0
+
+- id: button_orange_2_dining_ch2_scroll_up
+  alias: Button_orange_2 Dining Channel 2 Scroll Up
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_5_6
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch2 scroll_up target=light.desk_lamp"
+    - service: light.turn_on
+      target:
+        entity_id: light.desk_lamp
+      data:
+        brightness_step_pct: 15
+        transition: 0
+
+- id: button_orange_2_dining_ch2_scroll_down
+  alias: Button_orange_2 Dining Channel 2 Scroll Down
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_4_6
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch2 scroll_down target=light.desk_lamp"
+    - service: light.turn_on
+      target:
+        entity_id: light.desk_lamp
+      data:
+        brightness_step_pct: -15
+        transition: 0
+
+- id: button_orange_2_dining_ch3_scroll_up
+  alias: Button_orange_2 Dining Channel 3 Scroll Up
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_7_6
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch3 scroll_up target=light.dining_room_fan"
+    - service: light.turn_on
+      target:
+        entity_id: light.dining_room_fan
+      data:
+        brightness_step_pct: 15
+        transition: 0
+
+- id: button_orange_2_dining_ch3_scroll_down
+  alias: Button_orange_2 Dining Channel 3 Scroll Down
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_8_6
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Dining ch3 scroll_down target=light.dining_room_fan"
+    - service: light.turn_on
+      target:
+        entity_id: light.dining_room_fan
+      data:
+        brightness_step_pct: -15
+        transition: 0
+
+- id: button_white_2_living_room_ch1_button
+  alias: Button_white_2 Living Room Channel 1 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_3_7
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entities:
+      - light.kajplats_e26_ws_globe_1600lm_2
+      - light.kajplats_e26_ws_globe_1600lm_3
+      - light.kajplats_e26_ws_globe_1600lm_4
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_3_7', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch1 button event_type={{ event_type }} target={{ target_entities | join(',') }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entities }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entities }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entities }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_3_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr('light.kajplats_e26_ws_globe_1600lm_2', 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_white_2_living_room_ch2_button
+  alias: Button_white_2 Living Room Channel 2 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_6_7
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entity: light.kajplats_e26_ws_globe_1600lm_2
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_6_7', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch2 button event_type={{ event_type }} target={{ target_entity }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entity }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_6_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_white_2_living_room_ch3_button
+  alias: Button_white_2 Living Room Channel 3 Button
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: event.bilresa_scroll_wheel_button_9_7
+  condition:
+    - condition: template
+      value_template: >
+        {{ trigger.to_state is not none and
+           trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  variables:
+    target_entity: light.couch
+    event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_9_7', 'event_type') }}"
+    reading_brightness_pct: 75
+    reading_color_temp_kelvin: 4000
+    max_brightness_pct: 100
+    max_color_temp_kelvin: 4000
+  action:
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch3 button event_type={{ event_type }} target={{ target_entity }}"
+    - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+            - service: light.toggle
+              target:
+                entity_id: "{{ target_entity }}"
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ reading_brightness_pct }}"
+                color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ target_entity }}"
+              data:
+                brightness_pct: "{{ max_brightness_pct }}"
+                color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+                transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+            - repeat:
+                while: "{{ state_attr('event.bilresa_scroll_wheel_button_9_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %}
+                        {{ [current + 150, 4000] | min }}
+                      transition: 0
+                  - delay:
+                      milliseconds: 150
+
+- id: button_white_2_living_room_ch1_scroll_up
+  alias: Button_white_2 Living Room Channel 1 Scroll Up
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_1_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch1 scroll_up target=light.kajplats_e26_ws_globe_1600lm_2,light.kajplats_e26_ws_globe_1600lm_3,light.kajplats_e26_ws_globe_1600lm_4"
+    - service: light.turn_on
+      target:
+        entity_id:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+      data:
+        brightness_step_pct: 15
+        transition: 0
+
+- id: button_white_2_living_room_ch1_scroll_down
+  alias: Button_white_2 Living Room Channel 1 Scroll Down
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_2_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch1 scroll_down target=light.kajplats_e26_ws_globe_1600lm_2,light.kajplats_e26_ws_globe_1600lm_3,light.kajplats_e26_ws_globe_1600lm_4"
+    - service: light.turn_on
+      target:
+        entity_id:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+      data:
+        brightness_step_pct: -15
+        transition: 0
+
+- id: button_white_2_living_room_ch2_scroll_up
+  alias: Button_white_2 Living Room Channel 2 Scroll Up
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_5_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch2 scroll_up target=light.kajplats_e26_ws_globe_1600lm_2"
+    - service: light.turn_on
+      target:
+        entity_id: light.kajplats_e26_ws_globe_1600lm_2
+      data:
+        brightness_step_pct: 15
+        transition: 0
+
+- id: button_white_2_living_room_ch2_scroll_down
+  alias: Button_white_2 Living Room Channel 2 Scroll Down
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_4_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch2 scroll_down target=light.kajplats_e26_ws_globe_1600lm_2"
+    - service: light.turn_on
+      target:
+        entity_id: light.kajplats_e26_ws_globe_1600lm_2
+      data:
+        brightness_step_pct: -15
+        transition: 0
+
+- id: button_white_2_living_room_ch3_scroll_up
+  alias: Button_white_2 Living Room Channel 3 Scroll Up
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_7_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch3 scroll_up target=light.couch"
+    - service: light.turn_on
+      target:
+        entity_id: light.couch
+      data:
+        brightness_step_pct: 15
+        transition: 0
+
+- id: button_white_2_living_room_ch3_scroll_down
+  alias: Button_white_2 Living Room Channel 3 Scroll Down
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: sensor.bilresa_scroll_wheel_current_switch_position_8_7
+      to: "1"
+  action:
+    - delay:
+        milliseconds: 250
+    - service: system_log.write
+      data:
+        level: warning
+        message: "Living ch3 scroll_down target=light.couch"
+    - service: light.turn_on
+      target:
+        entity_id: light.couch
+      data:
+        brightness_step_pct: -15
+        transition: 0

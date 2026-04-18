@@ -1,0 +1,19 @@
+#!ipxe
+menu luna network boot
+item --gap --             ---------------- LUNA ----------------
+item luna01               Boot Talos for luna01
+item proxmox              Boot Proxmox installer
+item --gap --             ---------------- Tools ----------------
+item shell                Drop to iPXE shell
+choose --default luna01 --timeout 5000 target && goto ${target}
+
+:luna01
+chain luna01.ipxe
+
+
+:proxmox
+chain https://boot.netboot.xyz
+
+
+:shell
+shell

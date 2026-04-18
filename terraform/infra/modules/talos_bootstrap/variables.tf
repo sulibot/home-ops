@@ -48,3 +48,9 @@ variable "repo_root" {
   type        = string
   default     = ""
 }
+
+variable "output_directory" {
+  description = "Directory where kubeconfig and related Talos cluster artifacts should be written."
+  type        = string
+  default     = ""
+}

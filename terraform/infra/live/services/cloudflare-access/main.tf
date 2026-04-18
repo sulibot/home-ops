@@ -102,6 +102,7 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
 
 resource "cloudflare_zero_trust_organization" "this" {
   account_id                  = local.account_id
+  auth_domain                 = "sulibot.cloudflareaccess.com"
   allow_authenticate_via_warp = true
 }
 

@@ -1,0 +1,11 @@
+{
+    "entity": {
+        "sensor": {
+            "esa_state": {
+                "state": {
+                    "offline": "Offline"
+                }
+            }
+        }
+    }
+}

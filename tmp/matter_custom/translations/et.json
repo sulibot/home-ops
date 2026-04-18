@@ -1,0 +1,662 @@
+{
+    "config": {
+        "abort": {
+            "addon_get_discovery_info_failed": "Matter Serveri rakenduse tuvastusteabe hankimine nurjus.",
+            "addon_info_failed": "Matter Serveri rakenduse teabe hankimine nurjus.",
+            "addon_install_failed": "Matter Serveri rakenduse paigaldamine nurjus.",
+            "addon_start_failed": "Matter Serveri rakenduse k\u00e4ivitamine nurjus.",
+            "already_configured": "Seade on juba h\u00e4\u00e4lestatud",
+            "already_in_progress": "Seadistamine on juba k\u00e4imas",
+            "cannot_connect": "\u00dchendamine nurjus",
+            "not_matter_addon": "Avastatud lisandmoodul ei ole ametlik Matter Serveri rakendus.",
+            "reconfiguration_successful": "Matteri sidumise uuesti seadistamine \u00f5nnestus."
+        },
+        "error": {
+            "cannot_connect": "\u00dchendamine nurjus",
+            "invalid_server_version": "Matter'i server ei ole \u00f5ige versioon",
+            "unknown": "Ootamatu t\u00f5rge"
+        },
+        "flow_title": "{name}",
+        "progress": {
+            "install_addon": "Oota kuni Matter Serveri rakenduse paigaldamine l\u00f5peb. See v\u00f5ib v\u00f5tta mitu minutit.",
+            "start_addon": "Oota kuni Matter Serveri rakendus k\u00e4ivitub. See rakendus annab Home Assistantile Matter funktsiooni. See v\u00f5ib v\u00f5tta m\u00f5ne sekundi."
+        },
+        "step": {
+            "hassio_confirm": {
+                "title": "Seadista Matter'i sidumine Matter Serveri rakendusega"
+            },
+            "install_addon": {
+                "title": "Rakenduse paigaldamine on alanud"
+            },
+            "manual": {
+                "data": {
+                    "url": "URL"
+                }
+            },
+            "on_supervisor": {
+                "data": {
+                    "use_addon": "Kasuta ametlikku Matter Server Supervisori rakendust"
+                },
+                "description": "Kas soovid kasutada ametlikku Matter Server Supervisori rakendust? \n\n Kui kasutad Matter Serverit juba m\u00f5nes teises rakenduses, kohandatud konteineris, algses rakenduses jne. siis \u00e4ra seda valikut vali.",
+                "title": "Vali \u00fchendusviis"
+            },
+            "start_addon": {
+                "title": "Rakenduse k\u00e4ivitamine."
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "actuator": {
+                "name": "T\u00e4iturmehhanism"
+            },
+            "alarm_door": {
+                "name": "Ukse h\u00e4ire"
+            },
+            "battery_alert": {
+                "name": "Aku hoiatus"
+            },
+            "boost_state": {
+                "name": "V\u00f5imendatud olek"
+            },
+            "config_status_operational": {
+                "name": "Konfiguratsiooni olek"
+            },
+            "dishwasher_alarm_inflow": {
+                "name": "Sissevoolu h\u00e4ire"
+            },
+            "end_of_service": {
+                "name": "Teenuse l\u00f5pp"
+            },
+            "evse_charging_status": {
+                "name": "Laadimise olek"
+            },
+            "evse_plug": {
+                "name": "Laadimispistiku olek"
+            },
+            "evse_supply_state": {
+                "name": "Laadija toiteallika olek"
+            },
+            "hardware_fault": {
+                "name": "Riistvaraline t\u00f5rge"
+            },
+            "interconnected_co_alarm": {
+                "name": "Omavahel \u00fchendatud CO andur"
+            },
+            "interconnected_smoke_alarm": {
+                "name": "Omavahel \u00fchendatud suitsuandur"
+            },
+            "muted": {
+                "name": "Vaigistatud"
+            },
+            "rain": {
+                "name": "Vihm"
+            },
+            "test_in_progress": {
+                "name": "Test on pooleli"
+            },
+            "thermostat_remote_sensing_local_temperature": {
+                "name": "Kohalik temperatuuri kaugseire"
+            },
+            "thermostat_remote_sensing_occupancy": {
+                "name": "Kohaloleku kaugseire"
+            },
+            "thermostat_remote_sensing_outdoor_temperature": {
+                "name": "V\u00e4listemperatuuri kaugseire"
+            },
+            "valve_fault_blocked": {
+                "name": "Klapp blokeeritud"
+            },
+            "valve_fault_general_fault": {
+                "name": "\u00dcldine viga"
+            },
+            "valve_fault_leaking": {
+                "name": "Klapi lekkimine"
+            },
+            "water_freeze": {
+                "name": "Vee k\u00fclmumine"
+            },
+            "water_leak": {
+                "name": "Veeleke"
+            }
+        },
+        "button": {
+            "cancel_boost": {
+                "name": "T\u00fchista v\u00f5imendus"
+            },
+            "pause": {
+                "name": "Paus"
+            },
+            "reset_filter_condition": {
+                "name": "L\u00e4htesta filtri seisund"
+            },
+            "resume": {
+                "name": "J\u00e4tka"
+            },
+            "self_test_request": {
+                "name": "Enesetest"
+            },
+            "start": {
+                "name": "K\u00e4ivita"
+            },
+            "stop": {
+                "name": "Peata"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Termostaat"
+            }
+        },
+        "cover": {
+            "cover": {
+                "name": "Kardin"
+            }
+        },
+        "event": {
+            "button": {
+                "name": "Nupp",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "initial_press": "Vajutatud",
+                            "long_press": "All hoitud",
+                            "long_release": "Vabastatud p\u00e4rast all hoidmist",
+                            "multi_press_1": "Vajutatud \u00fcks kord",
+                            "multi_press_2": "Kaks korda vajutatud",
+                            "multi_press_3": "Vajutatud 3 korda",
+                            "multi_press_4": "Vajutatud 4 korda",
+                            "multi_press_5": "Vajutatud 5 korda",
+                            "multi_press_6": "Vajutatud 6 korda",
+                            "multi_press_7": "Vajutatud 7 korda",
+                            "multi_press_8": "Vajutatud 8 korda",
+                            "short_release": "Vabastatud p\u00e4rast vajutamist",
+                            "switch_latched": "L\u00fcliti on lukustatud"
+                        }
+                    }
+                }
+            }
+        },
+        "fan": {
+            "fan": {
+                "name": "Ventilaator",
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "auto": "Automaatne",
+                            "high": "K\u00f5rge",
+                            "low": "Madal",
+                            "medium": "Keskmine",
+                            "natural_wind": "Looduslik tuul",
+                            "sleep_wind": "\u00d6ine tuulutus"
+                        }
+                    }
+                }
+            }
+        },
+        "light": {
+            "light": {
+                "name": "Tuled"
+            }
+        },
+        "lock": {
+            "lock": {
+                "name": "Lukk"
+            }
+        },
+        "number": {
+            "altitude": {
+                "name": "K\u00f5rgus merepinnast"
+            },
+            "auto_relock_timer": {
+                "name": "Automaatse taaslukustamise aeg"
+            },
+            "cook_time": {
+                "name": "Toiduvalmistamise aeg"
+            },
+            "hold_time": {
+                "name": "Hoidmisaeg"
+            },
+            "led_indicator_intensity_off": {
+                "name": "LED-i v\u00e4ljal\u00fclitatud intensiivsus"
+            },
+            "led_indicator_intensity_on": {
+                "name": "LED-i intensiivsus"
+            },
+            "occupied_setback": {
+                "name": "H\u00f5ivatud tagasilangus"
+            },
+            "off_transition_time": {
+                "name": "V\u00e4ljal\u00fclitamise \u00fcleminekuaeg"
+            },
+            "on_level": {
+                "name": "Tase sissel\u00fclitamisel"
+            },
+            "on_off_transition_time": {
+                "name": "Sisse/v\u00e4lja \u00fclemineku aeg"
+            },
+            "on_transition_time": {
+                "name": "\u00dcleminekuaeg sissel\u00fclitamisel"
+            },
+            "pump_setpoint": {
+                "name": "Soovitud v\u00e4\u00e4rtus"
+            },
+            "speaker_setpoint": {
+                "name": "Helitugevus"
+            },
+            "temperature_offset": {
+                "name": "Temperatuuri nihe"
+            },
+            "temperature_setpoint": {
+                "name": "Soovitud temperatuur"
+            },
+            "user_code_temporary_disable_time": {
+                "name": "Kasutajakoodi ajutine keelamisaeg"
+            },
+            "valve_configuration_and_control_default_open_duration": {
+                "name": "Vaikimisi avamise kestus"
+            },
+            "wrong_code_entry_limit": {
+                "name": "Vale koodi piirang"
+            }
+        },
+        "select": {
+            "clean_mode": {
+                "name": "Puhastusre\u017eiim"
+            },
+            "device_energy_management_mode": {
+                "name": "Energiahaldusre\u017eiim"
+            },
+            "door_lock_operating_mode": {
+                "name": "T\u00f6\u00f6re\u017eiim",
+                "state": {
+                    "no_remote_lock_unlock": "Kaugjuhtimisega lukustamine/avamine puudub",
+                    "normal": "Tavaline re\u017eiim",
+                    "passage": "L\u00e4bip\u00e4\u00e4sure\u017eiim",
+                    "privacy": "Privaatsusre\u017eiim",
+                    "vacation": "Puhkusere\u017eiim"
+                }
+            },
+            "door_lock_sound_volume": {
+                "name": "Helitugevus",
+                "state": {
+                    "high": "K\u00f5rge",
+                    "low": "Madal",
+                    "medium": "Keskmine",
+                    "silent": "Vaikne"
+                }
+            },
+            "laundry_washer_number_of_rinses": {
+                "name": "Loputuskordade arv",
+                "state": {
+                    "extra": "Ekstra",
+                    "max": "Max",
+                    "normal": "Tavaline",
+                    "off": "V\u00e4ljas"
+                }
+            },
+            "laundry_washer_spin_speed": {
+                "name": "Tsentrifuugimise kiirus"
+            },
+            "mode": {
+                "name": "Re\u017eiim"
+            },
+            "power_level": {
+                "name": "V\u00f5imsus (W)"
+            },
+            "pump_operation_mode": {
+                "name": "re\u017eiim",
+                "state": {
+                    "local": "Kohalik",
+                    "maximum": "Maksimaalne",
+                    "minimum": "Minimaalne",
+                    "normal": "Tavaline"
+                }
+            },
+            "sensitivity_level": {
+                "name": "Tundlikkus",
+                "state": {
+                    "high": "K\u00f5rge",
+                    "low": "Madal",
+                    "standard": "Tavaline"
+                }
+            },
+            "startup_on_off": {
+                "name": "K\u00e4itumine sissel\u00fclitamisel",
+                "state": {
+                    "off": "V\u00e4ljas",
+                    "on": "Sees",
+                    "previous": "Eelmine",
+                    "toggle": "Muuda olekut"
+                }
+            },
+            "temperature_display_mode": {
+                "name": "Temperatuuri kuvamise re\u017eiim"
+            },
+            "temperature_level": {
+                "name": "Temperatuuri tase"
+            },
+            "water_heater_mode": {
+                "name": "Veesoojendi re\u017eiim"
+            }
+        },
+        "sensor": {
+            "activated_carbon_filter_condition": {
+                "name": "Aktiivs\u00f6efiltri seisund"
+            },
+            "active_current": {
+                "name": "Aktiivvool"
+            },
+            "air_quality": {
+                "name": "\u00d5hu kvaliteet",
+                "state": {
+                    "extremely_poor": "\u00c4\u00e4rmiselt vilets",
+                    "fair": "Talutav",
+                    "good": "Hea",
+                    "moderate": "M\u00f5\u00f5dukas",
+                    "poor": "Vilets",
+                    "very_poor": "V\u00e4ga vilets"
+                }
+            },
+            "apparent_current": {
+                "name": "N\u00e4iv vool"
+            },
+            "auto_close_time": {
+                "name": "Automaatse sulgumise aeg"
+            },
+            "battery_charge_state": {
+                "name": "Aku laetuse olek",
+                "state": {
+                    "charging": "Laadimine",
+                    "full_charge": "T\u00e4islaadimine",
+                    "not_charging": "Ei lae"
+                }
+            },
+            "battery_replacement_description": {
+                "name": "Aku t\u00fc\u00fcp"
+            },
+            "battery_time_remaining": {
+                "name": "J\u00e4relej\u00e4\u00e4nud aeg"
+            },
+            "battery_time_to_full_charge": {
+                "name": "Aeg t\u00e4islaadimiseni"
+            },
+            "battery_voltage": {
+                "name": "Aku pinge"
+            },
+            "contamination_state": {
+                "name": "Saastumise seisund",
+                "state": {
+                    "critical": "Kriitiline",
+                    "low": "Madal",
+                    "normal": "Tavaline",
+                    "warning": "Hoiatus"
+                }
+            },
+            "current_phase": {
+                "name": "Praegune faas"
+            },
+            "door_closed_events": {
+                "name": "Uste sulgumise s\u00fcndmused"
+            },
+            "door_open_events": {
+                "name": "Uste avanemise s\u00fcndmused"
+            },
+            "energy_exported": {
+                "name": "Eksporditud energia"
+            },
+            "esa_opt_out_state": {
+                "name": "Energia optimeerimisest loobumine",
+                "state": {
+                    "grid_opt_out": "V\u00f5rk",
+                    "local_opt_out": "Kohalik",
+                    "no_opt_out": "V\u00e4ljas",
+                    "opt_out": "Kohalik ja v\u00f5rgup\u00f5hine"
+                }
+            },
+            "esa_state": {
+                "name": "Seadme energiaolek",
+                "state": {
+                    "fault": "T\u00f5rge",
+                    "offline": "\u00dchenduseta",
+                    "online": "\u00dchendatud",
+                    "paused": "Peatatud",
+                    "power_adjust_active": "V\u00f5imsuse reguleerimine"
+                }
+            },
+            "estimated_end_time": {
+                "name": "Eeldatav l\u00f5puaeg"
+            },
+            "estimated_heat_required": {
+                "name": "Vajalik k\u00fctteenergia"
+            },
+            "eve_weather_trend": {
+                "name": "Ilmatrend",
+                "state": {
+                    "cloudy": "Pilvine",
+                    "rainy": "Vihmane",
+                    "stormy": "Tormine",
+                    "sunny": "P\u00e4ikeseline"
+                }
+            },
+            "evse_charge_current": {
+                "name": "Laadimisvool"
+            },
+            "evse_circuit_capacity": {
+                "name": "Vooluahela v\u00f5imsus"
+            },
+            "evse_fault_state": {
+                "name": "Rikke olek",
+                "state": {
+                    "contact_dry_failure": "Pingevaba kontakti t\u00f5rge",
+                    "contact_wet_failure": "Pingestatud kontakti t\u00f5rge",
+                    "emergency_stop": "H\u00e4daseiskamine",
+                    "ev_disconnected": "EV on lahti \u00fchendatud",
+                    "live_neutral_swap": "Faas/neutraal vahetuses",
+                    "meter_failure": "Arvesti rike",
+                    "no_error": "OK",
+                    "other": "Muu t\u00f5rge",
+                    "over_current": "Liiga suur vool",
+                    "over_temperature": "\u00dclekuumenemine",
+                    "over_voltage": "\u00dclepinge",
+                    "pilot_short_circuit": "Juhtkaabli l\u00fchis",
+                    "power_loss": "V\u00f5imsuse kadu",
+                    "power_quality": "Elektrienergia kvaliteet",
+                    "under_voltage": "Alapinge",
+                    "wrong_power_supply": "Vale toiteallikas"
+                }
+            },
+            "evse_max_charge_current": {
+                "name": "Maksimaalne laadimisvool"
+            },
+            "evse_min_charge_current": {
+                "name": "Minimaalne laadimisvool"
+            },
+            "evse_soc": {
+                "name": "Laadimise olek"
+            },
+            "evse_user_max_charge_current": {
+                "name": "Kasutaja maksimaalne laadimisvool"
+            },
+            "expiry_date": {
+                "name": "Aegumiskuup\u00e4ev"
+            },
+            "flow": {
+                "name": "Voog"
+            },
+            "hepa_filter_condition": {
+                "name": "Hepa filtri seisukord"
+            },
+            "nitrogen_dioxide": {
+                "name": "L\u00e4mmastikdioksiid"
+            },
+            "operational_error": {
+                "name": "K\u00e4itamist\u00f5rge",
+                "state": {
+                    "brush_jammed": "Hari on kinni kiilunud",
+                    "cannot_reach_target_area": "Ei j\u00f5ua sihtpiirkonda",
+                    "command_invalid_in_state": "K\u00e4sk on praeguses olekus kehtetu",
+                    "dirty_water_tank_full": "Musta vee paak on t\u00e4is",
+                    "dirty_water_tank_missing": "Musta vee paak puudub",
+                    "dust_bin_full": "Tolmukonteiner on t\u00e4is",
+                    "dust_bin_missing": "Tolmukonteiner puudub",
+                    "failed_to_find_charging_dock": "Laadimisdokki ei leitud",
+                    "low_battery": "Madal akutase",
+                    "mop_cleaning_pad_missing": "Mopi puhastuslapp puudub",
+                    "navigation_sensor_obscured": "Navigeerimisandur on varjatud",
+                    "no_error": "Vigu pole",
+                    "stuck": "Kinni j\u00e4\u00e4nud",
+                    "unable_to_complete_operation": "Toimingut ei saa l\u00f5pule viia",
+                    "unable_to_start_or_resume": "Ei saa alustada ega j\u00e4tkata",
+                    "water_tank_empty": "Veepaak on t\u00fchi",
+                    "water_tank_lid_open": "Veepaagi kaas on avatud",
+                    "water_tank_missing": "Veepaak puudub",
+                    "wheels_jammed": "Rattad on kinni j\u00e4\u00e4nud"
+                }
+            },
+            "operational_state": {
+                "name": "T\u00f6\u00f6re\u017eiim",
+                "state": {
+                    "charging": "Laadimine",
+                    "docked": "Laadimisjaamas",
+                    "error": "Viga",
+                    "paused": "Peatatud",
+                    "running": "T\u00f6\u00f6tab",
+                    "seeking_charger": "Laadija otsimine",
+                    "stopped": "Peatatud"
+                }
+            },
+            "outdoor_temperature": {
+                "name": "V\u00e4listemperatuur"
+            },
+            "pi_heating_demand": {
+                "name": "K\u00fcttevajadus"
+            },
+            "pump_control_mode": {
+                "name": "Juhtimisre\u017eiim",
+                "state": {
+                    "automatic": "Automaatne",
+                    "constant_flow": "Pidev voolamine",
+                    "constant_pressure": "P\u00fcsiv r\u00f5hk",
+                    "constant_speed": "P\u00fcsiv kiirus",
+                    "constant_temperature": "P\u00fcsiv temperatuur",
+                    "proportional_pressure": "Proportsionaalne r\u00f5hk"
+                }
+            },
+            "pump_speed": {
+                "name": "P\u00f6\u00f6rlemiskiirus"
+            },
+            "reactive_current": {
+                "name": "Reaktiivvool"
+            },
+            "rms_current": {
+                "name": "Efektiivne vool"
+            },
+            "rms_voltage": {
+                "name": "Efektiivne pinge"
+            },
+            "switch_current_position": {
+                "name": "L\u00fcliti praegune asend"
+            },
+            "tank_percentage": {
+                "name": "Kuuma vee tase"
+            },
+            "tank_volume": {
+                "name": "Paagi maht"
+            },
+            "tvoc_level": {
+                "name": "Lenduvate osakeste tase",
+                "state": {
+                    "critical": "Kriitiline",
+                    "high": "K\u00f5rge",
+                    "low": "Madal",
+                    "medium": "Keskmine"
+                }
+            },
+            "valve_position": {
+                "name": "Klapi asend"
+            },
+            "voltage": {
+                "name": "Pinge"
+            },
+            "window_covering_target_position": {
+                "name": "Sihtasend avamiseks"
+            }
+        },
+        "switch": {
+            "child_lock": {
+                "name": "Lapselukk"
+            },
+            "evse_charging_switch": {
+                "name": "Luba laadimine"
+            },
+            "power": {
+                "name": "V\u00f5imsus"
+            },
+            "privacy_mode_button": {
+                "name": "Privaatsusre\u017eiimi nupp"
+            },
+            "speaker_mute": {
+                "name": "Vaigista"
+            },
+            "switch": {
+                "name": "L\u00fcliti"
+            }
+        },
+        "vacuum": {
+            "vacuum": {
+                "name": "Tolmuimeja"
+            }
+        },
+        "valve": {
+            "valve": {
+                "name": "Ventiil"
+            }
+        },
+        "water_heater": {
+            "water_heater": {
+                "name": "Veesoojendi"
+            }
+        }
+    },
+    "issues": {
+        "server_version_version_too_new": {
+            "description": "Praegu kasutatav Matter Serveri versioon on selle Home Assistanti versiooni jaoks liiga uus. Selle probleemi lahendamiseks v\u00e4rskenda Home Assistanti v\u00f5i alanda Matter Server vanemale versioonile.",
+            "title": "Vajalik on Matter Serveri vanem versioon"
+        },
+        "server_version_version_too_old": {
+            "description": "Praegu kasutatav Matter Serveri versioon on selle Home Assistanti versiooni jaoks liiga vana. Selle probleemi lahendamiseks v\u00e4rskenda Matter Server uusimale versioonile.",
+            "title": "Vajalik on Matter Serveri uuem versioon"
+        }
+    },
+    "services": {
+        "open_commissioning_window": {
+            "description": "V\u00f5imaldab lisada \u00fche seadme teise Matteri v\u00f5rku, avades selle Matteri seadme kasutuselev\u00f5tu akna 60 sekundiks.",
+            "fields": {
+                "device_id": {
+                    "description": "Matteri seade mis lisatakse teise Matteri v\u00f5rku.",
+                    "name": "Seade"
+                }
+            },
+            "name": "Ava kasutuselev\u00f5tu aken"
+        },
+        "water_heater_boost": {
+            "description": "V\u00f5imaldab veesoojendi v\u00f5imendust teatud ajaks.",
+            "fields": {
+                "duration": {
+                    "description": "V\u00f5imenduse kestus sekundites.",
+                    "name": "Kestus"
+                },
+                "emergency_boost": {
+                    "description": "Kas lubada h\u00e4daolukorra v\u00f5imendusre\u017eiim.",
+                    "name": "H\u00e4daolukorra v\u00f5imendus"
+                },
+                "temporary_setpoint": {
+                    "description": "Ajutine s\u00e4ttetemperatuur Celsiuse j\u00e4rgi v\u00f5imendusperioodi ajal.",
+                    "name": "Ajutine seadepunkt"
+                }
+            },
+            "name": "Kiirenda vee soojendamist"
+        }
+    }
+}

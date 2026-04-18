@@ -1,0 +1,386 @@
+- id: bedroom_dimmer_mirrors_nanoleaf_bulbs
+  alias: Bedroom Dimmer Mirrors Bulbs
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+  condition:
+    - condition: template
+      value_template: "{{ trigger.to_state is not none }}"
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_locked
+          state: "off"
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_override
+          state: "on"
+  action:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.to_state.state == 'off' }}"
+          sequence:
+            - service: light.turn_off
+              target:
+                entity_id: light.bedroom_lights
+      default:
+        - service: light.turn_on
+          target:
+            entity_id: light.bedroom_lights
+          data:
+            brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+- id: bedroom_lights_lock_enable
+  alias: Bedroom Lights Lock Enable
+  trigger:
+    - platform: time
+      at: "19:30:00"
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.bedroom_lights_locked
+  mode: single
+- id: bedroom_lights_lock_disable
+  alias: Bedroom Lights Lock Disable
+  trigger:
+    - platform: time
+      at: "04:00:00"
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_locked
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_override
+    - service: timer.cancel
+      target:
+        entity_id:
+          - timer.bedroom_lights_press_window
+          - timer.bedroom_lights_override
+    - service: counter.reset
+      target:
+        entity_id: counter.bedroom_lights_press_count
+  mode: single
+- id: bedroom_lights_lock_override_detect_triple_press
+  alias: Bedroom Lights Lock Override Detect Triple Press
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_locked
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_override
+      state: "off"
+  action:
+    - variables:
+        press_window_active: "{{ is_state('timer.bedroom_lights_press_window', 'active') }}"
+        next_press_count: "{{ states('counter.bedroom_lights_press_count') | int(0) + 1 if is_state('timer.bedroom_lights_press_window', 'active') else 1 }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ press_window_active }}"
+          sequence:
+            - service: counter.increment
+              target:
+                entity_id: counter.bedroom_lights_press_count
+      default:
+        - service: counter.reset
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: counter.increment
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: timer.start
+          target:
+            entity_id: timer.bedroom_lights_press_window
+          data:
+            duration: "00:00:05"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ next_press_count >= 3 }}"
+          sequence:
+            - service: input_boolean.turn_on
+              target:
+                entity_id: input_boolean.bedroom_lights_override
+            - service: timer.start
+              target:
+                entity_id: timer.bedroom_lights_override
+              data:
+                duration: "00:30:00"
+            - service: timer.cancel
+              target:
+                entity_id: timer.bedroom_lights_press_window
+            - service: counter.reset
+              target:
+                entity_id: counter.bedroom_lights_press_count
+            - service: light.turn_on
+              target:
+                entity_id: light.bedroom_lights
+              data:
+                brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+- id: bedroom_lights_lock_override_reset_press_window
+  alias: Bedroom Lights Lock Override Reset Press Window
+  mode: single
+  trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.bedroom_lights_press_window
+  action:
+    - service: counter.reset
+      target:
+        entity_id: counter.bedroom_lights_press_count
+- id: bedroom_lights_lock_override_disable
+  alias: Bedroom Lights Lock Override Disable
+  mode: single
+  trigger:
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.bedroom_lights_override
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedroom_lights_override
+- id: bedroom_lights_lock_enforce_from_dimmer
+  alias: Bedroom Lights Lock Enforce From Dimmer
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: light.smart_wi_fi_dimmer_switch
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_locked
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.bedroom_lights_override
+      state: "off"
+  action:
+    - service: light.turn_off
+      target:
+        entity_id: light.bedroom_lights
+- id: adaptive_lighting_disable_brightness_after_start
+  alias: Adaptive Lighting Disable Brightness After Start
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay: "00:00:20"
+    - service: switch.turn_off
+      target:
+        entity_id:
+          - switch.adaptive_lighting_adapt_brightness_living_room
+          - switch.adaptive_lighting_adapt_brightness_master
+          - switch.adaptive_lighting_adapt_brightness_bedroom
+          - switch.adaptive_lighting_adapt_brightness_dining_room
+- id: bedroom_morning_green_to_white_fade
+  alias: Bedroom Morning Green To White Fade
+  mode: single
+  trigger:
+    - platform: time
+      at: "07:00:00"
+  condition:
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+  action:
+    - service: light.turn_on
+      target:
+        entity_id: light.bedroom_lights
+      data:
+        rgb_color: [0, 255, 0]
+        brightness_pct: 1
+        transition: 1
+    - delay: "00:00:01"
+    - service: light.turn_on
+      target:
+        entity_id: light.bedroom_lights
+      data:
+        color_temp_kelvin: 4000
+        brightness_pct: 80
+        transition: 1800
+- id: bedroom_morning_adaptive_lighting_handoff
+  alias: Bedroom Morning Adaptive Lighting Handoff
+  mode: single
+  trigger:
+    - platform: time
+      at: "07:30:00"
+  condition:
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+  action:
+    - service: adaptive_lighting.set_manual_control
+      data:
+        entity_id: switch.adaptive_lighting_bedroom
+        lights:
+          - light.bedroom_lights
+        manual_control: false
+    - service: adaptive_lighting.apply
+      data:
+        entity_id: switch.adaptive_lighting_bedroom
+        lights:
+          - light.bedroom_lights
+        adapt_brightness: false
+        adapt_color: true
+
+- id: button_green_1_master
+  alias: Button_green_1 Master
+  use_blueprint:
+    path: jhol-byte/Ikea_bilresa_scroll_wheel.yaml
+    input:
+      remote: 913eb22217db840f332b74696e80ed80
+      click_action_ch1:
+        - action: light.toggle
+          target:
+            entity_id: light.master_lights
+      on_hold_action_ch1:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.master_lights
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch1:
+        - light.master_lights
+      scroll_wheel_mode_ch1: "lights: dim"
+      scroll_wheel_mode_ext_ch1: relaxed
+      click_action_ch2:
+        - action: light.toggle
+          target:
+            entity_id: light.kajplats_e26_ws_globe_1600lm
+      on_hold_action_ch2:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.kajplats_e26_ws_globe_1600lm
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch2:
+        - light.kajplats_e26_ws_globe_1600lm
+      scroll_wheel_mode_ch2: "lights: dim"
+      scroll_wheel_mode_ext_ch2: relaxed
+      click_action_ch3:
+        - action: light.toggle
+          target:
+            entity_id: light.kajplats_e26_ws_globe_1600lm_5
+      on_hold_action_ch3:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.kajplats_e26_ws_globe_1600lm_5
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch3:
+        - light.kajplats_e26_ws_globe_1600lm_5
+      scroll_wheel_mode_ch3: "lights: dim"
+      scroll_wheel_mode_ext_ch3: relaxed
+      dim_step_pct: 10
+      dim_min_pct: 5
+      dim_turns_lights_on: false
+      min_color_temp: 2200
+      max_color_temp: 4000
+      color_temp_step: 100
+      color_hue_step: 6
+      color_saturation: 100
+      light_transition_duration: 0.5
+      on_hold_delay: 0.1
+      auto_reset_time_input_select_helpers: 0
+      volume_step_pct: 3.5
+      volume_use_up_down_for_instant: true
+      volume_max_pct: 70
+      max_queued_automation_calls: 10
+
+- id: button_orange_2_dining
+  alias: Button_orange_2 Dining
+  use_blueprint:
+    path: jhol-byte/Ikea_bilresa_scroll_wheel.yaml
+    input:
+      remote: aa05afc98256e8df2567d8775d3375ec
+      click_action_ch1:
+        - action: light.toggle
+          target:
+            entity_id: light.dining_room_lights
+      on_hold_action_ch1:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.dining_room_lights
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch1:
+        - light.dining_room_lights
+      scroll_wheel_mode_ch1: "lights: dim"
+      scroll_wheel_mode_ext_ch1: relaxed
+      click_action_ch2:
+        - action: light.toggle
+          target:
+            entity_id: light.desk_lamp
+      on_hold_action_ch2:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.desk_lamp
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch2:
+        - light.desk_lamp
+      scroll_wheel_mode_ch2: "lights: dim"
+      scroll_wheel_mode_ext_ch2: relaxed
+      click_action_ch3:
+        - action: light.toggle
+          target:
+            entity_id: light.dining_room_fan
+      on_hold_action_ch3:
+        - action: script.light_color_temp_helper
+          data:
+            mode: up
+            min_color_temp: 2200
+            max_color_temp: 4000
+            color_temp_step: 100
+            target_light: light.dining_room_fan
+            light_transition_duration: 0.5
+      scroll_wheel_target_ch3:
+        - light.dining_room_fan
+      scroll_wheel_mode_ch3: "lights: dim"
+      scroll_wheel_mode_ext_ch3: relaxed
+      dim_step_pct: 10
+      dim_min_pct: 5
+      dim_turns_lights_on: false
+      min_color_temp: 2200
+      max_color_temp: 4000
+      color_temp_step: 100
+      color_hue_step: 6
+      color_saturation: 100
+      light_transition_duration: 0.5
+      on_hold_delay: 0.1
+      auto_reset_time_input_select_helpers: 0
+      volume_step_pct: 3.5
+      volume_use_up_down_for_instant: true
+      volume_max_pct: 70
+      max_queued_automation_calls: 10

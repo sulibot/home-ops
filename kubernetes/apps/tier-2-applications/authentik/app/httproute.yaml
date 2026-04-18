@@ -10,6 +10,8 @@ spec:
   parentRefs:
     - name: gateway-tunnel
       namespace: network
+    - name: gateway-internal
+      namespace: network
   rules:
     - backendRefs:
         - name: authentik-server

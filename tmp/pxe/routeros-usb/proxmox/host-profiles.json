@@ -1,0 +1,1 @@
+{"luna01":{"description":"Boot Talos for luna01","hostname":"luna01","mac_address":"00:E0:67:25:96:C8","proxmox_enabled":true,"script_name":"luna01.ipxe","talos_enabled":true}}

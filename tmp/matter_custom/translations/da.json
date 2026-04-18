@@ -1,0 +1,31 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Enheden er allerede konfigureret",
+            "already_in_progress": "Konfigurationsflow er allerede i gang",
+            "reconfiguration_successful": "Matter-integrationen blev omkonfigureret."
+        },
+        "error": {
+            "cannot_connect": "Forbindelse mislykkedes",
+            "invalid_server_version": "Matter-serveren er ikke den korrekte version",
+            "unknown": "Uventet fejl"
+        },
+        "step": {
+            "manual": {
+                "data": {
+                    "url": "URL"
+                }
+            },
+            "on_supervisor": {
+                "title": "V\u00e6lg forbindelsesmetode"
+            }
+        }
+    },
+    "entity": {
+        "cover": {
+            "cover": {
+                "name": "Gardin/port"
+            }
+        }
+    }
+}

@@ -1,0 +1,301 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "El dispositiu ja est\u00e0 configurat",
+            "already_in_progress": "El flux de configuraci\u00f3 ja est\u00e0 en curs",
+            "cannot_connect": "Ha fallat la connexi\u00f3",
+            "reconfiguration_successful": "Integraci\u00f3 Matter reconfigurada correctament."
+        },
+        "error": {
+            "cannot_connect": "Ha fallat la connexi\u00f3",
+            "invalid_server_version": "El servidor de Matter no t\u00e9 la versi\u00f3 correcta",
+            "unknown": "Error inesperat"
+        },
+        "flow_title": "{name}",
+        "step": {
+            "manual": {
+                "data": {
+                    "url": "URL"
+                }
+            },
+            "on_supervisor": {
+                "title": "Selecci\u00f3 del m\u00e8tode de connexi\u00f3"
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "alarm_door": {
+                "name": "Alarma de la porta"
+            },
+            "battery_alert": {
+                "name": "Alerta de bateria"
+            },
+            "end_of_service": {
+                "name": "Fi del servei"
+            },
+            "hardware_fault": {
+                "name": "Error de maquinari"
+            },
+            "interconnected_co_alarm": {
+                "name": "Alarma de CO interconnectada"
+            },
+            "interconnected_smoke_alarm": {
+                "name": "Alarma de fum interconnectada"
+            },
+            "muted": {
+                "name": "Silenciat"
+            },
+            "rain": {
+                "name": "Pluja"
+            },
+            "test_in_progress": {
+                "name": "Test en curs"
+            },
+            "water_leak": {
+                "name": "Fuita d'aigua"
+            }
+        },
+        "button": {
+            "pause": {
+                "name": "Pausa"
+            },
+            "resume": {
+                "name": "Repr\u00e8n"
+            },
+            "start": {
+                "name": "Inicia"
+            },
+            "stop": {
+                "name": "Atura"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Term\u00f2stat"
+            }
+        },
+        "cover": {
+            "cover": {
+                "name": "Coberta"
+            }
+        },
+        "event": {
+            "button": {
+                "name": "Bot\u00f3",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "initial_press": "Premut",
+                            "long_press": "Mantingut premut",
+                            "long_release": "Alliberat despr\u00e9s de mantenir-se premut",
+                            "multi_press_1": "Premut una vegada",
+                            "multi_press_2": "Premut dues vegades",
+                            "multi_press_3": "Premut 3 vegades",
+                            "multi_press_4": "Premut 4 vegades",
+                            "multi_press_5": "Premut 5 vegades",
+                            "multi_press_6": "Premut 6 vegades",
+                            "multi_press_7": "Premut 7 vegades",
+                            "multi_press_8": "Premut 8 vegades",
+                            "short_release": "Alliberat despr\u00e9s d'estar premut"
+                        }
+                    }
+                }
+            }
+        },
+        "fan": {
+            "fan": {
+                "name": "Ventilador",
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "auto": "Auto",
+                            "high": "Alt/a",
+                            "low": "Baix/a",
+                            "medium": "Mitj\u00e0/na"
+                        }
+                    }
+                }
+            }
+        },
+        "light": {
+            "light": {
+                "name": "Llum"
+            }
+        },
+        "lock": {
+            "lock": {
+                "name": "Pany"
+            }
+        },
+        "number": {
+            "led_indicator_intensity_off": {
+                "name": "Intensitat de LED apagat"
+            },
+            "led_indicator_intensity_on": {
+                "name": "Intensitat de LED enc\u00e8s"
+            }
+        },
+        "select": {
+            "door_lock_operating_mode": {
+                "state": {
+                    "normal": "Normal"
+                }
+            },
+            "door_lock_sound_volume": {
+                "name": "Volum del so",
+                "state": {
+                    "high": "Alt/a",
+                    "low": "Baix/a",
+                    "medium": "Mitj\u00e0/na"
+                }
+            },
+            "laundry_washer_number_of_rinses": {
+                "state": {
+                    "normal": "Normal",
+                    "off": "OFF"
+                }
+            },
+            "mode": {
+                "name": "Mode"
+            },
+            "pump_operation_mode": {
+                "state": {
+                    "normal": "Normal"
+                }
+            },
+            "sensitivity_level": {
+                "name": "Sensibilitat",
+                "state": {
+                    "high": "Alt/a",
+                    "low": "Baix/a",
+                    "standard": "Est\u00e0ndard"
+                }
+            },
+            "startup_on_off": {
+                "state": {
+                    "off": "OFF",
+                    "on": "ON",
+                    "toggle": "Commuta"
+                }
+            }
+        },
+        "sensor": {
+            "battery_charge_state": {
+                "state": {
+                    "charging": "Carregant"
+                }
+            },
+            "contamination_state": {
+                "name": "Estat de contaminaci\u00f3",
+                "state": {
+                    "critical": "Cr\u00edtica",
+                    "low": "Baix/a",
+                    "normal": "Normal",
+                    "warning": "Alerta"
+                }
+            },
+            "door_open_events": {
+                "name": "Esdeveniments de porta oberta"
+            },
+            "esa_opt_out_state": {
+                "state": {
+                    "no_opt_out": "OFF"
+                }
+            },
+            "esa_state": {
+                "state": {
+                    "fault": "Error",
+                    "paused": "Pausat/ada"
+                }
+            },
+            "evse_soc": {
+                "name": "Estat de c\u00e0rrega"
+            },
+            "expiry_date": {
+                "name": "Data de caducitat"
+            },
+            "flow": {
+                "name": "Flux"
+            },
+            "nitrogen_dioxide": {
+                "name": "Di\u00f2xid de nitrogen"
+            },
+            "operational_error": {
+                "state": {
+                    "water_tank_lid_open": "Tapa del dip\u00f2sit d'aigua oberta"
+                }
+            },
+            "operational_state": {
+                "state": {
+                    "charging": "Carregant",
+                    "error": "Error",
+                    "paused": "Pausat/ada",
+                    "running": "En funcionament",
+                    "stopped": "Parat"
+                }
+            },
+            "outdoor_temperature": {
+                "name": "Temperatura exterior"
+            },
+            "switch_current_position": {
+                "name": "Posici\u00f3 actual de l'interruptor"
+            },
+            "tvoc_level": {
+                "state": {
+                    "high": "Alt/a",
+                    "low": "Baix/a",
+                    "medium": "Mitj\u00e0/na"
+                }
+            },
+            "valve_position": {
+                "name": "Posici\u00f3 de la v\u00e0lvula"
+            }
+        },
+        "switch": {
+            "evse_charging_switch": {
+                "name": "Activa la c\u00e0rrega"
+            },
+            "power": {
+                "name": "Pot\u00e8ncia"
+            },
+            "switch": {
+                "name": "Interruptor"
+            }
+        },
+        "vacuum": {
+            "vacuum": {
+                "name": "Aspirador"
+            }
+        },
+        "valve": {
+            "valve": {
+                "name": "V\u00e0lvula"
+            }
+        },
+        "water_heater": {
+            "water_heater": {
+                "name": "Escalfador d'aigua"
+            }
+        }
+    },
+    "issues": {
+        "server_version_version_too_new": {
+            "description": "La versi\u00f3 del servidor Matter que est\u00e0s executant actualment \u00e9s massa nova per a aquesta versi\u00f3 de Home Assistant. Actualitza Home Assistant a l'\u00faltima versi\u00f3 o instal\u00b7la una versi\u00f3 de Matter m\u00e9s antiga per resoldre aquest problema.",
+            "title": "Es necessita una versi\u00f3 del servidor Matter m\u00e9s antiga"
+        },
+        "server_version_version_too_old": {
+            "description": "La versi\u00f3 del servidor Matter que est\u00e0s executant actualment \u00e9s massa antiga per a aquesta versi\u00f3 de Home Assistant. Actualitza a l'\u00faltima versi\u00f3 per resoldre aquest problema.",
+            "title": "Es necessita una versi\u00f3 del servidor Matter m\u00e9s nova"
+        }
+    },
+    "services": {
+        "open_commissioning_window": {
+            "fields": {
+                "device_id": {
+                    "name": "Dispositiu"
+                }
+            }
+        }
+    }
+}

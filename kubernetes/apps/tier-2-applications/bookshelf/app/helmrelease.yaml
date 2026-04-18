@@ -31,7 +31,13 @@ spec:
             image:
               repository: ghcr.io/pennydreadful/bookshelf
               tag: hardcover-v0.4.19.82@sha256:9ccb2e9a5c446f5ec6bdcfa85a91dd7333314e1f46b8d37aeb052d3eb7acf449
+            envFrom:
+              - secretRef:
+                  name: bookshelf-secret
+                  optional: true
             env:
+              PUID: "1000"
+              PGID: "1000"
               TZ: America/Los_Angeles
               READARR__AUTH__METHOD: External
               READARR__AUTH__REQUIRED: DisabledForLocalAddresses
@@ -62,9 +68,12 @@ spec:
             securityContext:
               allowPrivilegeEscalation: true
               readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
               capabilities:
                 drop: ["ALL"]
-                add: ["SETGID", "SETUID"]
+                add: ["CHOWN", "SETGID", "SETUID"]
             resources:
               requests:
                 cpu: 100m
@@ -92,7 +101,8 @@ spec:
           - IPv4
         ports:
           http:
-            port: *port
+            port: 80
+            targetPort: *port
     route:
       app:
         hostnames:

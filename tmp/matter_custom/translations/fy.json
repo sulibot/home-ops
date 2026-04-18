@@ -1,0 +1,53 @@
+{
+    "entity": {
+        "fan": {
+            "fan": {
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "high": "Heech",
+                            "low": "Leech",
+                            "medium": "Gemiddeld"
+                        }
+                    }
+                }
+            }
+        },
+        "number": {
+            "altitude": {
+                "name": "Hichte boppe seenivo"
+            }
+        },
+        "select": {
+            "laundry_washer_number_of_rinses": {
+                "state": {
+                    "normal": "Normaal"
+                }
+            },
+            "sensitivity_level": {
+                "state": {
+                    "high": "Heech",
+                    "low": "Leech"
+                }
+            }
+        },
+        "sensor": {
+            "contamination_state": {
+                "state": {
+                    "low": "Leech",
+                    "normal": "Normaal"
+                }
+            },
+            "evse_fault_state": {
+                "state": {
+                    "no_error": "OK"
+                }
+            },
+            "operational_state": {
+                "state": {
+                    "stopped": "Stoppe"
+                }
+            }
+        }
+    }
+}
