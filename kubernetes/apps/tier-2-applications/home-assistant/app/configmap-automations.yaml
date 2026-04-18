@@ -1,0 +1,1181 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-automations
+  namespace: default
+data:
+  automations.yaml: |
+    ---
+    - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
+      alias: Bedroom Dimmer Mirrors Bulbs
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: light.smart_wi_fi_dimmer_switch
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none }}"
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_locked
+          state: 'off'
+        - condition: state
+          entity_id: input_boolean.bedroom_lights_override
+          state: 'on'
+      action:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'off' }}"
+          sequence:
+          - service: light.turn_off
+            target:
+              entity_id: light.bedroom_lights
+        default:
+        - service: light.turn_on
+          target:
+            entity_id: light.bedroom_lights
+          data:
+            brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+    - id: bedroom_lights_lock_enable
+      alias: Bedroom Lights Lock Enable
+      trigger:
+      - platform: time
+        at: '19:30:00'
+      action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.bedroom_lights_locked
+      mode: single
+    - id: bedroom_lights_lock_disable
+      alias: Bedroom Lights Lock Disable
+      trigger:
+      - platform: time
+        at: '04:00:00'
+      action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.bedroom_lights_locked
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.bedroom_lights_override
+      - service: timer.cancel
+        target:
+          entity_id:
+          - timer.bedroom_lights_press_window
+          - timer.bedroom_lights_override
+      - service: counter.reset
+        target:
+          entity_id: counter.bedroom_lights_press_count
+      mode: single
+    - id: bedroom_lights_lock_override_detect_triple_press
+      alias: Bedroom Lights Lock Override Detect Triple Press
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: light.smart_wi_fi_dimmer_switch
+        to: 'on'
+      condition:
+      - condition: state
+        entity_id: input_boolean.bedroom_lights_locked
+        state: 'on'
+      - condition: state
+        entity_id: input_boolean.bedroom_lights_override
+        state: 'off'
+      action:
+      - variables:
+          press_window_active: "{{ is_state('timer.bedroom_lights_press_window', 'active') }}"
+          next_press_count: "{{ states('counter.bedroom_lights_press_count') | int(0) + 1 if is_state('timer.bedroom_lights_press_window', 'active') else 1 }}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ press_window_active }}"
+          sequence:
+          - service: counter.increment
+            target:
+              entity_id: counter.bedroom_lights_press_count
+        default:
+        - service: counter.reset
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: counter.increment
+          target:
+            entity_id: counter.bedroom_lights_press_count
+        - service: timer.start
+          target:
+            entity_id: timer.bedroom_lights_press_window
+          data:
+            duration: '00:00:05'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ next_press_count >= 3 }}"
+          sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.bedroom_lights_override
+          - service: timer.start
+            target:
+              entity_id: timer.bedroom_lights_override
+            data:
+              duration: '00:30:00'
+          - service: timer.cancel
+            target:
+              entity_id: timer.bedroom_lights_press_window
+          - service: counter.reset
+            target:
+              entity_id: counter.bedroom_lights_press_count
+          - service: light.turn_on
+            target:
+              entity_id: light.bedroom_lights
+            data:
+              brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+    - id: bedroom_lights_lock_override_reset_press_window
+      alias: Bedroom Lights Lock Override Reset Press Window
+      mode: single
+      trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.bedroom_lights_press_window
+      action:
+      - service: counter.reset
+        target:
+          entity_id: counter.bedroom_lights_press_count
+    - id: bedroom_lights_lock_override_disable
+      alias: Bedroom Lights Lock Override Disable
+      mode: single
+      trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.bedroom_lights_override
+      action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.bedroom_lights_override
+    - id: bedroom_lights_lock_enforce_from_dimmer
+      alias: Bedroom Lights Lock Enforce From Dimmer
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: light.smart_wi_fi_dimmer_switch
+        to: 'on'
+      condition:
+      - condition: state
+        entity_id: input_boolean.bedroom_lights_locked
+        state: 'on'
+      - condition: state
+        entity_id: input_boolean.bedroom_lights_override
+        state: 'off'
+      action:
+      - service: light.turn_off
+        target:
+          entity_id: light.bedroom_lights
+    - id: adaptive_lighting_disable_brightness_after_start
+      alias: Adaptive Lighting Disable Brightness After Start
+      mode: single
+      trigger:
+      - platform: homeassistant
+        event: start
+      action:
+      - delay: '00:00:20'
+      - service: switch.turn_off
+        target:
+          entity_id:
+          - switch.adaptive_lighting_adapt_brightness_living_room
+          - switch.adaptive_lighting_adapt_brightness_master
+          - switch.adaptive_lighting_adapt_brightness_bedroom
+          - switch.adaptive_lighting_adapt_brightness_dining_room
+    - id: bedroom_morning_green_to_white_fade
+      alias: Bedroom Morning Green To White Fade
+      mode: single
+      trigger:
+      - platform: time
+        at: '07:00:00'
+      condition:
+      - condition: time
+        weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: light.bedroom_lights
+        data:
+          rgb_color:
+          - 0
+          - 255
+          - 0
+          brightness_pct: 1
+          transition: 1
+      - delay: '00:00:01'
+      - service: light.turn_on
+        target:
+          entity_id: light.bedroom_lights
+        data:
+          color_temp_kelvin: 4000
+          brightness_pct: 80
+          transition: 1800
+    - id: bedroom_morning_adaptive_lighting_handoff
+      alias: Bedroom Morning Adaptive Lighting Handoff
+      mode: single
+      trigger:
+      - platform: time
+        at: '07:30:00'
+      condition:
+      - condition: time
+        weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+      action:
+      - service: adaptive_lighting.set_manual_control
+        data:
+          entity_id: switch.adaptive_lighting_bedroom
+          lights:
+          - light.bedroom_lights
+          manual_control: false
+      - service: adaptive_lighting.apply
+        data:
+          entity_id: switch.adaptive_lighting_bedroom
+          lights:
+          - light.bedroom_lights
+          adapt_brightness: false
+          adapt_color: true
+    - id: button_green_1_master
+      alias: Button_green_1 Master
+      use_blueprint:
+        path: sulibot/bilresa_multi_target_fast.yaml
+        input:
+          button_ch1_entity: event.bilresa_scroll_wheel_button_3_8
+          hold_state_helper: input_text.bilresa_hold_state_master_green_1
+          scroll_up_ch1_entity: sensor.bilresa_scroll_wheel_current_switch_position_1_8
+          scroll_down_ch1_entity: sensor.bilresa_scroll_wheel_current_switch_position_2_8
+          button_ch2_entity: event.bilresa_scroll_wheel_button_6_8
+          scroll_up_ch2_entity: sensor.bilresa_scroll_wheel_current_switch_position_5_8
+          scroll_down_ch2_entity: sensor.bilresa_scroll_wheel_current_switch_position_4_8
+          button_ch3_entity: event.bilresa_scroll_wheel_button_9_8
+          scroll_up_ch3_entity: sensor.bilresa_scroll_wheel_current_switch_position_7_8
+          scroll_down_ch3_entity: sensor.bilresa_scroll_wheel_current_switch_position_8_8
+          channel_1_target: light.master_lights
+          channel_2_target: light.kajplats_e26_ws_globe_1600lm
+          channel_3_target: light.kajplats_e26_ws_globe_1600lm_5
+          brightness_step_pct: 15
+          min_brightness_pct: 5
+          hold_repeat_ms: 150
+          min_color_temp_kelvin: 2200
+          max_color_temp_kelvin: 4000
+          color_temp_step_kelvin: 150
+    - id: button_white_2_living_room_ch1_button
+      alias: Button_white_2 Living Room Channel 1 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_3_7
+      condition:
+      - condition: template
+        value_template: |
+          {{ trigger.to_state is not none and
+             trigger.to_state.state not in ['unknown', 'unavailable'] }}
+      variables:
+        target_entities:
+        - light.kajplats_e26_ws_globe_1600lm_2
+        - light.kajplats_e26_ws_globe_1600lm_3
+        - light.kajplats_e26_ws_globe_1600lm_4
+        event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_3_7', 'event_type') }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+      action:
+      - service: system_log.write
+        data:
+          level: warning
+          message: Living ch1 button event_type={{ event_type }} target={{ target_entities | join(',') }}
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(target_entities[0], 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entities }}"
+            - conditions: "{{ not is_state(target_entities[0], 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entities }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_3_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entities }}"
+                data:
+                  color_temp_kelvin: "{% set current = state_attr('light.kajplats_e26_ws_globe_1600lm_2', 'color_temp_kelvin') | int(default=2200) %} {{ [current + 150, 4000] | min }}\n"
+                  transition: 0
+              - delay:
+                  milliseconds: 150
+    - id: button_white_2_living_room_ch2_button
+      alias: Button_white_2 Living Room Channel 2 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_6_7
+      condition:
+      - condition: template
+        value_template: |
+          {{ trigger.to_state is not none and
+             trigger.to_state.state not in ['unknown', 'unavailable'] }}
+      variables:
+        target_entity: light.kajplats_e26_ws_globe_1600lm_2
+        event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_6_7', 'event_type') }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+      action:
+      - service: system_log.write
+        data:
+          level: warning
+          message: Living ch2 button event_type={{ event_type }} target={{ target_entity }}
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entity }}"
+            - conditions: "{{ not is_state(target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entity }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entity }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entity }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_6_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entity }}"
+                data:
+                  color_temp_kelvin: "{% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %} {{ [current + 150, 4000] | min }}\n"
+                  transition: 0
+              - delay:
+                  milliseconds: 150
+    - id: button_white_2_living_room_ch3_button
+      alias: Button_white_2 Living Room Channel 3 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_9_7
+      condition:
+      - condition: template
+        value_template: |
+          {{ trigger.to_state is not none and
+             trigger.to_state.state not in ['unknown', 'unavailable'] }}
+      variables:
+        target_entity: light.couch
+        event_type: "{{ state_attr('event.bilresa_scroll_wheel_button_9_7', 'event_type') }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+      action:
+      - service: system_log.write
+        data:
+          level: warning
+          message: Living ch3 button event_type={{ event_type }} target={{ target_entity }}
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entity }}"
+            - conditions: "{{ not is_state(target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entity }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entity }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entity }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_9_7', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entity }}"
+                data:
+                  color_temp_kelvin: "{% set current = state_attr(target_entity, 'color_temp_kelvin') | int(default=2200) %} {{ [current + 150, 4000] | min }}\n"
+                  transition: 0
+              - delay:
+                  milliseconds: 150
+    - id: button_white_2_living_room_ch1_scroll_up
+      alias: Button_white_2 Living Room Channel 1 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_1_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_2_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+        data:
+          brightness_step_pct: 10
+          transition: 0
+    - id: button_white_2_living_room_ch1_scroll_down
+      alias: Button_white_2 Living Room Channel 1 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_2_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_1_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+        data:
+          brightness_step_pct: -10
+          transition: 0
+    - id: button_white_2_living_room_ch2_scroll_up
+      alias: Button_white_2 Living Room Channel 2 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_5_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_4_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: light.kajplats_e26_ws_globe_1600lm_2
+        data:
+          brightness_step_pct: 10
+          transition: 0
+    - id: button_white_2_living_room_ch2_scroll_down
+      alias: Button_white_2 Living Room Channel 2 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_4_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_5_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: light.kajplats_e26_ws_globe_1600lm_2
+        data:
+          brightness_step_pct: -10
+          transition: 0
+    - id: button_white_2_living_room_ch3_scroll_up
+      alias: Button_white_2 Living Room Channel 3 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_7_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_8_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: light.couch
+        data:
+          brightness_step_pct: 10
+          transition: 0
+    - id: button_white_2_living_room_ch3_scroll_down
+      alias: Button_white_2 Living Room Channel 3 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_8_7
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_7_7', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: light.couch
+        data:
+          brightness_step_pct: -10
+          transition: 0
+    - id: button_orange_2_dining_ch1_button
+      alias: Button_orange_2 Dining Channel 1 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_3_6
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable'] }}"
+      variables:
+        target_entities: &1
+        - light.fan_1
+        - light.fan_2
+        - light.fan_3
+        - light.desk_lamp
+        event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state is not none else none }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+        hold_state_csv: "{{ states('input_text.bilresa_hold_state_living_white_2') if states('input_text.bilresa_hold_state_living_white_2') not in ['unknown','unavailable','none',''] else 'cooler,cooler,cooler' }}"
+        current_hold_direction: "{{ 'warmer' if is_state('input_boolean.bilresa_orange_2_ch1_warmer', 'on') else 'cooler' }}"
+        first_target_entity: "{{ target_entities[0] if target_entities is not string else target_entities }}"
+        hold_start_color_temp_kelvin: "{{ state_attr(first_target_entity, 'color_temp_kelvin') | int(default=2200) }}"
+        hold_repeat_ms: "{% set raw = states('input_text.bilresa_orange_2_hold_repeat_ms') %}{% set parsed = (raw | int(150)) if raw not in ['unknown','unavailable','none',''] else 150 %}{% set tuned = 100 if parsed == 150 else parsed %}{{ [1000, [50, tuned] | max] | min }}"
+      action:
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entities }}"
+            - conditions: "{{ not is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entities }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_3_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - variables:
+                  step_target_color_temp_kelvin: "{% set base = hold_start_color_temp_kelvin | int(2200) %}{% set offset = repeat.index * 150 %}{% if current_hold_direction == 'cooler' %}{{ [base + offset, 4000] | min }}{% else %}{{ [base - offset, 2200] | max }}{% endif %}"
+                  at_hold_limit: "{% if current_hold_direction == 'cooler' %}{{ (step_target_color_temp_kelvin | int) >= 4000 }}{% else %}{{ (step_target_color_temp_kelvin | int) <= 2200 }}{% endif %}"
+              - choose:
+                - conditions: "{{ at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - delay:
+                      milliseconds: 80
+                  - service: light.turn_off
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      transition: 0
+                  - delay:
+                      milliseconds: 220
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - choose:
+                    - conditions: "{{ current_hold_direction == 'cooler' }}"
+                      sequence:
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.bilresa_orange_2_ch1_warmer
+                    - conditions: "{{ current_hold_direction == 'warmer' }}"
+                      sequence:
+                      - service: input_boolean.turn_off
+                        target:
+                          entity_id: input_boolean.bilresa_orange_2_ch1_warmer
+                  - stop: Reached color temperature limit
+                - conditions: "{{ not at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+              - delay:
+                  milliseconds: "{{ hold_repeat_ms | int(150) }}"
+        - conditions: "{{ event_type == 'long_release' }}"
+          sequence: []
+    - id: button_orange_2_dining_ch2_button
+      alias: Button_orange_2 Dining Channel 2 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_6_6
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable'] }}"
+      variables:
+        target_entities: &2
+        - light.desk_lamp
+        event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state is not none else none }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+        hold_state_csv: "{{ states('input_text.bilresa_hold_state_living_white_2') if states('input_text.bilresa_hold_state_living_white_2') not in ['unknown','unavailable','none',''] else 'cooler,cooler,cooler' }}"
+        current_hold_direction: "{% set parts = hold_state_csv.split(',') %}{% set idx = 1 %}{{ parts[idx] if parts|count > idx and parts[idx] in ['cooler','warmer'] else 'cooler' }}"
+        first_target_entity: "{{ target_entities[0] if target_entities is not string else target_entities }}"
+        hold_start_color_temp_kelvin: "{{ state_attr(first_target_entity, 'color_temp_kelvin') | int(default=2200) }}"
+        hold_repeat_ms: "{% set raw = states('input_text.bilresa_orange_2_hold_repeat_ms') %}{% set parsed = (raw | int(150)) if raw not in ['unknown','unavailable','none',''] else 150 %}{% set tuned = 100 if parsed == 150 else parsed %}{{ [1000, [50, tuned] | max] | min }}"
+      action:
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entities }}"
+            - conditions: "{{ not is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entities }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_6_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - variables:
+                  step_target_color_temp_kelvin: "{% set base = hold_start_color_temp_kelvin | int(2200) %}{% set offset = repeat.index * 150 %}{% if current_hold_direction == 'cooler' %}{{ [base + offset, 4000] | min }}{% else %}{{ [base - offset, 2200] | max }}{% endif %}"
+                  at_hold_limit: "{% if current_hold_direction == 'cooler' %}{{ (step_target_color_temp_kelvin | int) >= 4000 }}{% else %}{{ (step_target_color_temp_kelvin | int) <= 2200 }}{% endif %}"
+              - choose:
+                - conditions: "{{ at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - delay:
+                      milliseconds: 80
+                  - service: light.turn_off
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      transition: 0
+                  - delay:
+                      milliseconds: 220
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - stop: Reached color temperature limit
+                - conditions: "{{ not at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+              - delay:
+                  milliseconds: "{{ hold_repeat_ms | int(150) }}"
+        - conditions: "{{ event_type == 'long_release' }}"
+          sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.bilresa_hold_state_living_white_2
+            data:
+              value: "{% set parts = hold_state_csv.split(',') %}{% set normalized = [parts[0] if parts|count > 0 and parts[0] in ['cooler','warmer'] else 'cooler', parts[1] if parts|count > 1 and parts[1] in ['cooler','warmer'] else 'cooler', parts[2] if parts|count > 2 and parts[2] in ['cooler','warmer'] else 'cooler'] %}{% set idx = 1 %}{% set replacement = 'warmer' if normalized[idx] == 'cooler' else 'cooler' %}{% set ns = namespace(result=[]) %}{% for value in normalized %}{% if loop.index0 == idx %}{% set ns.result = ns.result + [replacement] %}{% else %}{% set ns.result = ns.result + [value] %}{% endif %}{% endfor %}{{ ns.result | join(',') }}"
+    - id: button_orange_2_dining_ch3_button
+      alias: Button_orange_2 Dining Channel 3 Button
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: event.bilresa_scroll_wheel_button_9_6
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable'] }}"
+      variables:
+        target_entities: &3
+        - light.fan_1
+        - light.fan_2
+        - light.fan_3
+        event_type: "{{ trigger.to_state.attributes.event_type if trigger.to_state is not none else none }}"
+        reading_brightness_pct: 75
+        reading_color_temp_kelvin: 4000
+        max_brightness_pct: 100
+        max_color_temp_kelvin: 4000
+        hold_state_csv: "{{ states('input_text.bilresa_hold_state_living_white_2') if states('input_text.bilresa_hold_state_living_white_2') not in ['unknown','unavailable','none',''] else 'cooler,cooler,cooler' }}"
+        current_hold_direction: "{% set parts = hold_state_csv.split(',') %}{% set idx = 2 %}{{ parts[idx] if parts|count > idx and parts[idx] in ['cooler','warmer'] else 'cooler' }}"
+        first_target_entity: "{{ target_entities[0] if target_entities is not string else target_entities }}"
+        hold_start_color_temp_kelvin: "{{ state_attr(first_target_entity, 'color_temp_kelvin') | int(default=2200) }}"
+        hold_repeat_ms: "{% set raw = states('input_text.bilresa_orange_2_hold_repeat_ms') %}{% set parsed = (raw | int(150)) if raw not in ['unknown','unavailable','none',''] else 150 %}{% set tuned = 100 if parsed == 150 else parsed %}{{ [1000, [50, tuned] | max] | min }}"
+      action:
+      - choose:
+        - conditions: "{{ event_type == 'multi_press_1' }}"
+          sequence:
+          - choose:
+            - conditions: "{{ is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ target_entities }}"
+            - conditions: "{{ not is_state(first_target_entity, 'on') }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ target_entities }}"
+                data:
+                  brightness_pct: "{{ reading_brightness_pct }}"
+                  color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+                  transition: 0
+        - conditions: "{{ event_type == 'multi_press_2' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ reading_brightness_pct }}"
+              color_temp_kelvin: "{{ reading_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'multi_press_3' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: "{{ target_entities }}"
+            data:
+              brightness_pct: "{{ max_brightness_pct }}"
+              color_temp_kelvin: "{{ max_color_temp_kelvin }}"
+              transition: 0
+        - conditions: "{{ event_type == 'long_press' }}"
+          sequence:
+          - repeat:
+              while: "{{ state_attr('event.bilresa_scroll_wheel_button_9_6', 'event_type') == 'long_press' and repeat.index < 100 }}"
+              sequence:
+              - variables:
+                  step_target_color_temp_kelvin: "{% set base = hold_start_color_temp_kelvin | int(2200) %}{% set offset = repeat.index * 150 %}{% if current_hold_direction == 'cooler' %}{{ [base + offset, 4000] | min }}{% else %}{{ [base - offset, 2200] | max }}{% endif %}"
+                  at_hold_limit: "{% if current_hold_direction == 'cooler' %}{{ (step_target_color_temp_kelvin | int) >= 4000 }}{% else %}{{ (step_target_color_temp_kelvin | int) <= 2200 }}{% endif %}"
+              - choose:
+                - conditions: "{{ at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - delay:
+                      milliseconds: 80
+                  - service: light.turn_off
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      transition: 0
+                  - delay:
+                      milliseconds: 220
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      brightness: "{{ state_attr(first_target_entity, 'brightness') | int(default=255) }}"
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+                  - stop: Reached color temperature limit
+                - conditions: "{{ not at_hold_limit }}"
+                  sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entities }}"
+                    data:
+                      color_temp_kelvin: "{{ step_target_color_temp_kelvin | int(default=2200) }}"
+                      transition: 0
+              - delay:
+                  milliseconds: "{{ hold_repeat_ms | int(150) }}"
+        - conditions: "{{ event_type == 'long_release' }}"
+          sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.bilresa_hold_state_living_white_2
+            data:
+              value: "{% set parts = hold_state_csv.split(',') %}{% set normalized = [parts[0] if parts|count > 0 and parts[0] in ['cooler','warmer'] else 'cooler', parts[1] if parts|count > 1 and parts[1] in ['cooler','warmer'] else 'cooler', parts[2] if parts|count > 2 and parts[2] in ['cooler','warmer'] else 'cooler'] %}{% set idx = 2 %}{% set replacement = 'warmer' if normalized[idx] == 'cooler' else 'cooler' %}{% set ns = namespace(result=[]) %}{% for value in normalized %}{% if loop.index0 == idx %}{% set ns.result = ns.result + [replacement] %}{% else %}{% set ns.result = ns.result + [value] %}{% endif %}{% endfor %}{{ ns.result | join(',') }}"
+    - id: button_orange_2_dining_ch1_scroll_up
+      alias: Button_orange_2 Dining Channel 1 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_1_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_2_6', '1') }}"
+      action:
+      - service: light.turn_on
+        target:
+          entity_id: *1
+        data:
+          brightness_step_pct: 10
+          transition: 0
+    - id: button_orange_2_dining_ch1_scroll_down
+      alias: Button_orange_2 Dining Channel 1 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_2_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_1_6', '1') }}"
+      action:
+      - repeat:
+          for_each: *1
+          sequence:
+          - choose:
+            - conditions: "{{ not is_state(repeat.item, 'off') }}"
+              sequence:
+              - variables:
+                  min_brightness_pct: 5
+                  step_pct: 10
+                  current_brightness: "{{ state_attr(repeat.item, 'brightness') | int(255) }}"
+                  current_pct: "{{ ((current_brightness / 255) * 100) | round(0) | int }}"
+                  next_pct: "{{ [min_brightness_pct, (current_pct | int(100)) - step_pct] | max }}"
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: "{{ next_pct | int(min_brightness_pct) }}"
+                  transition: 0
+    - id: button_orange_2_dining_ch2_scroll_up
+      alias: Button_orange_2 Dining Channel 2 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_5_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_4_6', '1') }}"
+      action:
+      - repeat:
+          for_each: *2
+          sequence:
+          - variables:
+              step_pct: 10
+              current_brightness: "{{ state_attr(repeat.item, 'brightness') | int(0) }}"
+              current_pct: "{% if current_brightness > 0 %}{{ ((current_brightness / 255) * 100) | round(0) | int }}{% else %}0{% endif %}"
+              next_pct: "{{ [100, (current_pct | int(0)) + step_pct] | min }}"
+              hit_max: "{{ (current_pct | int(0)) >= 99 or (next_pct | int(0)) >= 100 }}"
+              current_color_temp: "{{ state_attr(repeat.item, 'color_temp_kelvin') | int(default=4000) }}"
+          - service: light.turn_on
+            target:
+              entity_id: "{{ repeat.item }}"
+            data:
+              brightness_pct: "{{ next_pct | int(100) }}"
+              transition: 0
+          - choose:
+            - conditions: "{{ hit_max }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ current_color_temp | int(4000) }}"
+                  transition: 0
+              - delay:
+                  milliseconds: 80
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  transition: 0
+              - delay:
+                  milliseconds: 220
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ current_color_temp | int(4000) }}"
+                  transition: 0
+    - id: button_orange_2_dining_ch2_scroll_down
+      alias: Button_orange_2 Dining Channel 2 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_4_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_5_6', '1') }}"
+      action:
+      - repeat:
+          for_each: *2
+          sequence:
+          - choose:
+            - conditions: "{{ not is_state(repeat.item, 'off') }}"
+              sequence:
+              - variables:
+                  min_brightness_pct: 5
+                  step_pct: 10
+                  current_brightness: "{{ state_attr(repeat.item, 'brightness') | int(255) }}"
+                  current_pct: "{{ ((current_brightness / 255) * 100) | round(0) | int }}"
+                  next_pct: "{{ [min_brightness_pct, (current_pct | int(100)) - step_pct] | max }}"
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: "{{ next_pct | int(min_brightness_pct) }}"
+                  transition: 0
+    - id: button_orange_2_dining_ch3_scroll_up
+      alias: Button_orange_2 Dining Channel 3 Scroll Up
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_7_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_8_6', '1') }}"
+      action:
+      - repeat:
+          for_each: *3
+          sequence:
+          - variables:
+              step_pct: 10
+              current_brightness: "{{ state_attr(repeat.item, 'brightness') | int(0) }}"
+              current_pct: "{% if current_brightness > 0 %}{{ ((current_brightness / 255) * 100) | round(0) | int }}{% else %}0{% endif %}"
+              next_pct: "{{ [100, (current_pct | int(0)) + step_pct] | min }}"
+              hit_max: "{{ (current_pct | int(0)) >= 99 or (next_pct | int(0)) >= 100 }}"
+              current_color_temp: "{{ state_attr(repeat.item, 'color_temp_kelvin') | int(default=4000) }}"
+          - service: light.turn_on
+            target:
+              entity_id: "{{ repeat.item }}"
+            data:
+              brightness_pct: "{{ next_pct | int(100) }}"
+              transition: 0
+          - choose:
+            - conditions: "{{ hit_max }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ current_color_temp | int(4000) }}"
+                  transition: 0
+              - delay:
+                  milliseconds: 80
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  transition: 0
+              - delay:
+                  milliseconds: 220
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ current_color_temp | int(4000) }}"
+                  transition: 0
+    - id: button_orange_2_dining_ch3_scroll_down
+      alias: Button_orange_2 Dining Channel 3 Scroll Down
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: sensor.bilresa_scroll_wheel_current_switch_position_8_6
+        to: '1'
+      condition:
+      - condition: template
+        value_template: "{{ this.attributes.last_triggered is none or (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered)) > 0.20 }}"
+      - condition: template
+        value_template: "{{ not is_state('sensor.bilresa_scroll_wheel_current_switch_position_7_6', '1') }}"
+      action:
+      - repeat:
+          for_each: *3
+          sequence:
+          - choose:
+            - conditions: "{{ not is_state(repeat.item, 'off') }}"
+              sequence:
+              - variables:
+                  min_brightness_pct: 5
+                  step_pct: 10
+                  current_brightness: "{{ state_attr(repeat.item, 'brightness') | int(255) }}"
+                  current_pct: "{{ ((current_brightness / 255) * 100) | round(0) | int }}"
+                  next_pct: "{{ [min_brightness_pct, (current_pct | int(100)) - step_pct] | max }}"
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness_pct: "{{ next_pct | int(min_brightness_pct) }}"
+                  transition: 0

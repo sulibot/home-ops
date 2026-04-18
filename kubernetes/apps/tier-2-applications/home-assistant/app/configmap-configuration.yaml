@@ -1,0 +1,353 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-configuration
+  namespace: default
+data:
+  configuration.yaml: |
+    Defaulted container "app" out of: app, bootstrap-auth-oidc (init), bootstrap-auth-oidc-deps (init), bootstrap-hacs (init), bootstrap-matter-dimmer-bridge (init), patch-auth-oidc-finish (init)
+    # Loads default set of integrations. Do not remove.
+    default_config:
+
+    # Load frontend themes from the themes folder
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
+    input_boolean:
+      bedroom_lights_locked:
+        name: Bedroom Lights Locked
+        icon: mdi:lock
+      bedroom_lights_override:
+        name: Bedroom Lights Override
+        icon: mdi:gesture-tap-button
+
+    counter:
+      bedroom_lights_press_count:
+        name: Bedroom Lights Press Count
+        initial: 0
+        step: 1
+
+    timer:
+      bedroom_lights_press_window:
+        name: Bedroom Lights Press Window
+        duration: "00:00:05"
+      bedroom_lights_override:
+        name: Bedroom Lights Override
+        duration: "00:30:00"
+
+    http:
+      use_x_forwarded_for: true
+      ip_ban_enabled: false
+      login_attempts_threshold: 5
+      trusted_proxies:
+        - fd00:69::/64
+        - fd00:42::/64
+        - fd00:101:224:3::/64
+        - fd00:101:224::/60
+        - 10.101.224.0/20
+
+    homeassistant:
+      # The iOS/mobile app persists HA's advertised internal/external URLs from
+      # discovery/onboarding. Keep both on the unified app/discovery hostname so
+      # the client does not pivot from local split-DNS onto the legacy browser host.
+      internal_url: https://hass-app.sulibot.com
+      external_url: https://hass-app.sulibot.com
+      auth_providers:
+        - type: homeassistant
+      customize:
+        light.living_room_switch:
+          friendly_name: Living room switch
+          icon: mdi:light-switch
+        light.living_room_lights:
+          icon: mdi:ceiling-light-multiple
+        light.master_switch:
+          friendly_name: Master Switch
+          icon: mdi:light-switch
+        light.master_lights:
+          icon: mdi:ceiling-light-multiple
+        light.smart_wi_fi_dimmer_switch:
+          friendly_name: Bedroom Wall Dimmer
+          icon: mdi:light-switch
+        light.bedroom_lights:
+          icon: mdi:ceiling-light-multiple
+        light.standing_lamp:
+          icon: mdi:floor-lamp
+        light.dining_room_fan:
+          icon: mdi:ceiling-fan-light
+        light.dining_room_lights:
+          icon: mdi:chandelier
+
+    auth_oidc:
+      additional_scopes:
+        - email
+      client_id: homeassistant-app
+      discovery_url: https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration
+      display_name: Authentik SSO
+      claims:
+        username: email
+      features:
+        automatic_user_linking: true
+        force_https: true
+
+    matter_dimmer_bridge:
+      - name: Living room switch
+        node_id: 7
+        switch_entity_id: light.living_room_switch
+        target_entity_ids:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+      - name: Master Switch
+        node_id: 6
+        switch_entity_id: light.master_switch
+        target_entity_ids:
+          - light.kajplats_e26_ws_globe_1600lm
+          - light.kajplats_e26_ws_globe_1600lm_5
+
+    google_assistant:
+      project_id: sulibot-home-assistant
+      service_account: !include SERVICE_ACCOUNT.json
+      report_state: true
+      expose_by_default: false
+      entity_config:
+        light.living_room_lights:
+          expose: true
+          room: Living Room
+          aliases:
+            - Living Room
+        light.kajplats_e26_ws_globe_1600lm_2:
+          expose: true
+          room: Living Room
+        light.kajplats_e26_ws_globe_1600lm_3:
+          expose: true
+          room: Living Room
+        light.kajplats_e26_ws_globe_1600lm_4:
+          expose: true
+          room: Living Room
+        light.living_room_switch:
+          expose: false
+        light.master_lights:
+          expose: true
+          room: Master
+          aliases:
+            - Master Lights
+            - Master Bedroom Lights
+        light.kajplats_e26_ws_globe_1600lm:
+          expose: true
+          room: Master
+        light.kajplats_e26_ws_globe_1600lm_5:
+          expose: true
+          room: Master
+        light.master_switch:
+          expose: false
+        light.bedroom_lights:
+          expose: true
+          room: Bedroom
+          aliases:
+            - Bedroom Lights
+        light.standing_lamp:
+          expose: true
+          room: Bedroom
+          aliases:
+            - Standing Lamp
+        light.essentials_a19_a60_6:
+          expose: true
+          room: Bedroom
+        light.essentials_a19_a60_7:
+          expose: true
+          room: Bedroom
+        light.essentials_a19_a60_8:
+          expose: false
+        light.essentials_a19_a60_9:
+          expose: false
+        light.smart_wi_fi_dimmer_switch:
+          expose: false
+        light.dining_room_lights:
+          expose: true
+          room: Dining Room
+          aliases:
+            - Dining Room Lights
+            - Dining Room Light
+        light.dining_room_fan:
+          expose: true
+          room: Dining Room
+          aliases:
+            - Dining Room Fan
+            - Dining Room Ceiling Light
+        light.fan_1:
+          expose: false
+        light.fan_2:
+          expose: false
+        light.fan_3:
+          expose: false
+        light.desk_lamp:
+          expose: true
+          room: Dining Room
+          aliases:
+            - Dining Room Desk Lamp
+        button.dining_room_button:
+          expose: true
+          room: Dining Room
+          aliases:
+            - Dining Room Button
+            - Dining Room Lights Button
+
+    adaptive_lighting:
+      - name: living_room
+        lights:
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+        prefer_rgb_color: false
+        transition: 5
+        initial_transition: 1
+        take_over_control: true
+        detect_non_ha_changes: false
+      - name: master
+        lights:
+          - light.kajplats_e26_ws_globe_1600lm
+          - light.kajplats_e26_ws_globe_1600lm_5
+        prefer_rgb_color: false
+        transition: 5
+        initial_transition: 1
+        take_over_control: true
+        detect_non_ha_changes: false
+      - name: bedroom
+        lights:
+          - light.bedroom_lights
+        prefer_rgb_color: false
+        transition: 5
+        initial_transition: 1
+        take_over_control: true
+        detect_non_ha_changes: false
+      - name: dining_room
+        lights:
+          - light.dining_room_lights
+        prefer_rgb_color: false
+        transition: 5
+        initial_transition: 1
+        take_over_control: true
+        detect_non_ha_changes: false
+
+    template:
+      - button:
+          - name: Dining Room Button
+            unique_id: dining_room_button
+            icon: mdi:gesture-tap-button
+            press:
+              action: light.toggle
+              target:
+                entity_id: light.dining_room_lights
+      - light:
+          - name: Living Room Lights
+            unique_id: living_room_lights_group
+            state: >-
+              {{ is_state('light.kajplats_e26_ws_globe_1600lm_2', 'on')
+                 or is_state('light.kajplats_e26_ws_globe_1600lm_3', 'on')
+                 or is_state('light.kajplats_e26_ws_globe_1600lm_4', 'on') }}
+            level: >-
+              {{ [
+                state_attr('light.kajplats_e26_ws_globe_1600lm_2', 'brightness') | int(0),
+                state_attr('light.kajplats_e26_ws_globe_1600lm_3', 'brightness') | int(0),
+                state_attr('light.kajplats_e26_ws_globe_1600lm_4', 'brightness') | int(0)
+              ] | max }}
+            turn_on:
+              action: light.turn_on
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm_2
+                  - light.kajplats_e26_ws_globe_1600lm_3
+                  - light.kajplats_e26_ws_globe_1600lm_4
+              data:
+                brightness: "{{ brightness | default(none) }}"
+                transition: "{{ transition | default(none) }}"
+            set_level:
+              action: light.turn_on
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm_2
+                  - light.kajplats_e26_ws_globe_1600lm_3
+                  - light.kajplats_e26_ws_globe_1600lm_4
+              data:
+                brightness: "{{ brightness }}"
+                transition: "{{ transition | default(none) }}"
+            turn_off:
+              action: light.turn_off
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm_2
+                  - light.kajplats_e26_ws_globe_1600lm_3
+                  - light.kajplats_e26_ws_globe_1600lm_4
+              data:
+                transition: "{{ transition | default(none) }}"
+          - name: Master Lights
+            unique_id: master_lights_group
+            state: >-
+              {{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
+                 or is_state('light.kajplats_e26_ws_globe_1600lm_5', 'on') }}
+            level: >-
+              {{ [
+                state_attr('light.kajplats_e26_ws_globe_1600lm', 'brightness') | int(0),
+                state_attr('light.kajplats_e26_ws_globe_1600lm_5', 'brightness') | int(0)
+              ] | max }}
+            turn_on:
+              action: light.turn_on
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm
+                  - light.kajplats_e26_ws_globe_1600lm_5
+              data:
+                brightness: "{{ brightness | default(none) }}"
+                transition: "{{ transition | default(none) }}"
+            set_level:
+              action: light.turn_on
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm
+                  - light.kajplats_e26_ws_globe_1600lm_5
+              data:
+                brightness: "{{ brightness }}"
+                transition: "{{ transition | default(none) }}"
+            turn_off:
+              action: light.turn_off
+              target:
+                entity_id:
+                  - light.kajplats_e26_ws_globe_1600lm
+                  - light.kajplats_e26_ws_globe_1600lm_5
+              data:
+                transition: "{{ transition | default(none) }}"
+
+    light:
+      - platform: group
+        unique_id: standing_lamp_group
+        name: Standing Lamp
+        entities:
+          - light.essentials_a19_a60_8
+          - light.essentials_a19_a60_9
+      - platform: group
+        unique_id: bedroom_lights_group
+        name: Bedroom Lights
+        entities:
+          - light.essentials_a19_a60_6
+          - light.essentials_a19_a60_7
+          - light.standing_lamp
+      - platform: group
+        unique_id: dining_room_fan_group
+        name: Dining Room Fan
+        entities:
+          - light.fan_1
+          - light.fan_2
+          - light.fan_3
+      - platform: group
+        unique_id: dining_room_lights_group
+        name: Dining Room Lights
+        entities:
+          - light.fan_1
+          - light.fan_2
+          - light.fan_3
+          - light.desk_lamp

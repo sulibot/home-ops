@@ -8,3 +8,5 @@ resources:
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   - ./vpa.yaml
+  - ./configmap-configuration.yaml
+  - ./configmap-automations.yaml
