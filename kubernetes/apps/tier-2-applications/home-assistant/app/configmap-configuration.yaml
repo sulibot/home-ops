@@ -6,7 +6,6 @@ metadata:
   namespace: default
 data:
   configuration.yaml: |
-    Defaulted container "app" out of: app, bootstrap-auth-oidc (init), bootstrap-auth-oidc-deps (init), bootstrap-hacs (init), bootstrap-matter-dimmer-bridge (init), patch-auth-oidc-finish (init)
     # Loads default set of integrations. Do not remove.
     default_config:
 
@@ -25,6 +24,43 @@ data:
       bedroom_lights_override:
         name: Bedroom Lights Override
         icon: mdi:gesture-tap-button
+      bilresa_orange_2_ch1_warmer:
+        name: Bilresa Orange 2 Ch1 Warmer
+      bilresa_green_1_ch1_warmer:
+        name: Bilresa Green 1 Ch1 Warmer
+      bilresa_orange_1_ch1_warmer:
+        name: Bilresa Orange 1 Ch1 Warmer
+      bilresa_white_1_ch1_warmer:
+        name: Bilresa White 1 Ch1 Warmer
+      bilresa_white_2_ch1_warmer:
+        name: Bilresa White 2 Ch1 Warmer
+
+    input_text:
+      bilresa_orange_2_hold_repeat_ms:
+        name: Bilresa Orange 2 Hold Repeat MS
+        initial: "150"
+        min: 1
+        max: 10
+      bilresa_hold_state_living_white_2:
+        name: Bilresa Hold State White 2
+        initial: "cooler,cooler,cooler"
+        min: 1
+        max: 50
+      bilresa_green_1_hold_state:
+        name: Bilresa Green 1 Hold State
+        initial: "cooler,cooler,cooler"
+        min: 1
+        max: 50
+      bilresa_orange_1_hold_state:
+        name: Bilresa Orange 1 Hold State
+        initial: "cooler,cooler,cooler"
+        min: 1
+        max: 50
+      bilresa_white_1_hold_state:
+        name: Bilresa White 1 Hold State
+        initial: "cooler,cooler,cooler"
+        min: 1
+        max: 50
 
     counter:
       bedroom_lights_press_count:
