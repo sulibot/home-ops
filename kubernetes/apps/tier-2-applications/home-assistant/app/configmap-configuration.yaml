@@ -383,8 +383,8 @@ data:
         unique_id: standing_lamp_group
         name: Standing Lamp
         entities:
-          - light.essentials_a19_a60_8
-          - light.essentials_a19_a60_9
+          - light.kajplats_e26_ws_globe_1600lm_8
+          - light.kajplats_e26_ws_globe_1600lm_9
       - platform: group
         unique_id: bedroom_lights_group
         name: Bedroom Lights
