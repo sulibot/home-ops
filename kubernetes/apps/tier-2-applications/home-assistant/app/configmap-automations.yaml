@@ -370,7 +370,8 @@ data:
           channel_2_target:
             - light.kajplats_e26_ws_globe_1600lm_2
           channel_3_target:
-            - light.couch
+            - light.kajplats_e26_ws_globe_1600lm_3
+            - light.kajplats_e26_ws_globe_1600lm_4
           brightness_step_pct: 10
           enforce_min_brightness_on_scroll_down: true
           min_brightness_pct: 5

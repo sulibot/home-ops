@@ -368,6 +368,18 @@ data:
 
     light:
       - platform: group
+        unique_id: couch_group
+        name: Couch
+        entities:
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+      - platform: group
+        unique_id: sofa_group
+        name: Sofa
+        entities:
+          - light.kajplats_e26_ws_globe_1600lm_6
+          - light.kajplats_e26_ws_globe_1600lm_7
+      - platform: group
         unique_id: standing_lamp_group
         name: Standing Lamp
         entities:
