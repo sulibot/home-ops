@@ -249,7 +249,7 @@ data:
           - light.kajplats_e26_ws_globe_1600lm_4
         prefer_rgb_color: false
         transition: 5
-        initial_transition: 1
+        initial_transition: 0
         take_over_control: true
         detect_non_ha_changes: false
       - name: master
@@ -258,7 +258,7 @@ data:
           - light.kajplats_e26_ws_globe_1600lm_5
         prefer_rgb_color: false
         transition: 5
-        initial_transition: 1
+        initial_transition: 0
         take_over_control: true
         detect_non_ha_changes: false
       - name: bedroom
@@ -266,7 +266,7 @@ data:
           - light.bedroom_lights
         prefer_rgb_color: false
         transition: 5
-        initial_transition: 1
+        initial_transition: 0
         take_over_control: true
         detect_non_ha_changes: false
       - name: dining_room
@@ -274,7 +274,7 @@ data:
           - light.dining_room_lights
         prefer_rgb_color: false
         transition: 5
-        initial_transition: 1
+        initial_transition: 0
         take_over_control: true
         detect_non_ha_changes: false
 

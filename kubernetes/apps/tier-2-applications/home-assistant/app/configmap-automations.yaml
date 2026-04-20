@@ -279,8 +279,8 @@ data:
           flash_on_max_brightness: true
           max_flash_rgb_color: [255, 255, 255]
           max_flash_ms: 220
-          scroll_debounce_ms: 200
-          press_debounce_ms: 350
+          scroll_debounce_ms: 100
+          press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_orange_1_master
       alias: Button Orange 1 Master
@@ -310,8 +310,8 @@ data:
           flash_on_max_brightness: true
           max_flash_rgb_color: [255, 255, 255]
           max_flash_ms: 220
-          scroll_debounce_ms: 200
-          press_debounce_ms: 350
+          scroll_debounce_ms: 100
+          press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_white_1_bedroom
       alias: Button White 1 Bedroom
@@ -345,8 +345,8 @@ data:
           flash_on_max_brightness: true
           max_flash_rgb_color: [255, 255, 255]
           max_flash_ms: 220
-          scroll_debounce_ms: 200
-          press_debounce_ms: 350
+          scroll_debounce_ms: 100
+          press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_white_2_living_room
       alias: Button White 2 Living Room
@@ -378,8 +378,8 @@ data:
           flash_on_max_brightness: true
           max_flash_rgb_color: [255, 255, 255]
           max_flash_ms: 220
-          scroll_debounce_ms: 200
-          press_debounce_ms: 350
+          scroll_debounce_ms: 100
+          press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_orange_2_dining_ch1_button
       alias: Button_orange_2 Dining Channel 1 Button

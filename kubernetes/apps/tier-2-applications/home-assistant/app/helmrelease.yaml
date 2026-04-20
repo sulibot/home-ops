@@ -295,7 +295,7 @@ spec:
                                 LOGGER.info("%s on/off -> %s", state.name, value)
                                 if value:
                                     # Let adaptive_lighting choose the initial turn-on state.
-                                    state.suppress_level_until = time.monotonic() + 2.0
+                                    state.suppress_level_until = time.monotonic() + 0.3
                                     hass.async_create_task(
                                         _async_turn_on(hass, state)
                                     )
