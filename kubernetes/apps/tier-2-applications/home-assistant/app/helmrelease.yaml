@@ -245,19 +245,25 @@ spec:
                             service_data: dict[str, object] = {"entity_id": state.target_entity_ids}
                             if brightness is not None:
                                 service_data["brightness"] = max(1, min(255, brightness))
-                            await hass.services.async_call(
-                                "light", "turn_on", service_data, blocking=True
-                            )
+                            try:
+                                await hass.services.async_call(
+                                    "light", "turn_on", service_data, blocking=True
+                                )
+                            except Exception:
+                                LOGGER.warning("%s turn_on failed", state.name, exc_info=True)
 
 
                         async def _async_turn_off(hass: HomeAssistant, state: BridgeState) -> None:
                             """Mirror dimmer off to target bulbs."""
-                            await hass.services.async_call(
-                                "light",
-                                "turn_off",
-                                {"entity_id": state.target_entity_ids},
-                                blocking=True,
-                            )
+                            try:
+                                await hass.services.async_call(
+                                    "light",
+                                    "turn_off",
+                                    {"entity_id": state.target_entity_ids},
+                                    blocking=True,
+                                )
+                            except Exception:
+                                LOGGER.warning("%s turn_off failed", state.name, exc_info=True)
 
 
                         def _load_initial_state(hass: HomeAssistant, state: BridgeState) -> None:
@@ -375,7 +381,7 @@ spec:
                                         unsubs.extend(_setup_bridge(hass, state))
                                     domain_data["unsubs"] = unsubs
                                     domain_data["started"] = True
-                                    LOGGER.info(
+                                    LOGGER.warning(
                                         "Started Matter dimmer bridge for %s",
                                         ", ".join(state.name for state in states),
                                     )
