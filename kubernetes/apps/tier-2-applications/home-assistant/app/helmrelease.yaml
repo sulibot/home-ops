@@ -245,16 +245,21 @@ spec:
                             service_data: dict[str, object] = {"entity_id": state.target_entity_ids}
                             if brightness is not None:
                                 service_data["brightness"] = max(1, min(255, brightness))
+                            t0 = time.monotonic()
+                            LOGGER.warning("%s TIMING: svc_start ON brightness=%s", state.name, brightness)
                             try:
                                 await hass.services.async_call(
                                     "light", "turn_on", service_data, blocking=True
                                 )
+                                LOGGER.warning("%s TIMING: svc_done +%.3fs", state.name, time.monotonic() - t0)
                             except Exception:
-                                LOGGER.warning("%s turn_on failed", state.name, exc_info=True)
+                                LOGGER.warning("%s TIMING: svc_error +%.3fs", state.name, time.monotonic() - t0, exc_info=True)
 
 
                         async def _async_turn_off(hass: HomeAssistant, state: BridgeState) -> None:
                             """Mirror dimmer off to target bulbs."""
+                            t0 = time.monotonic()
+                            LOGGER.warning("%s TIMING: svc_start OFF", state.name)
                             try:
                                 await hass.services.async_call(
                                     "light",
@@ -262,8 +267,9 @@ spec:
                                     {"entity_id": state.target_entity_ids},
                                     blocking=True,
                                 )
+                                LOGGER.warning("%s TIMING: svc_done +%.3fs", state.name, time.monotonic() - t0)
                             except Exception:
-                                LOGGER.warning("%s turn_off failed", state.name, exc_info=True)
+                                LOGGER.warning("%s TIMING: svc_error +%.3fs", state.name, time.monotonic() - t0, exc_info=True)
 
 
                         def _load_initial_state(hass: HomeAssistant, state: BridgeState) -> None:
@@ -292,7 +298,7 @@ spec:
                                 if not isinstance(value, bool):
                                     return
                                 state.is_on = value
-                                LOGGER.info("%s on/off -> %s", state.name, value)
+                                LOGGER.warning("%s TIMING: callback on/off=%s", state.name, value)
                                 if value:
                                     # Let adaptive_lighting choose the initial turn-on state.
                                     state.suppress_level_until = time.monotonic() + 0.3
@@ -307,7 +313,7 @@ spec:
                                 if not isinstance(value, int):
                                     return
                                 state.brightness = _matter_to_ha_brightness(value)
-                                LOGGER.info("%s brightness -> %s", state.name, state.brightness)
+                                LOGGER.warning("%s TIMING: callback level=%s brightness=%s", state.name, value, state.brightness)
                                 if time.monotonic() < state.suppress_level_until:
                                     LOGGER.debug(
                                         "%s ignoring immediate level update to preserve adaptive_lighting",
