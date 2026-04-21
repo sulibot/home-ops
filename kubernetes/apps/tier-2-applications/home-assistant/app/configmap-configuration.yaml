@@ -56,6 +56,11 @@ data:
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
+      bilresa_orange_2_hold_state:
+        name: Bilresa Orange 2 Hold State
+        initial: "cooler,cooler,cooler"
+        min: 1
+        max: 50
       bilresa_white_1_hold_state:
         name: Bilresa White 1 Hold State
         initial: "cooler,cooler,cooler"
