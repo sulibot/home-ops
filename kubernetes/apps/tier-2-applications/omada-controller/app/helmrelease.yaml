@@ -40,15 +40,25 @@ spec:
               SHOW_SERVER_LOGS: "true"
               SHOW_MONGODB_LOGS: "true"
             probes:
-              liveness:
+              liveness: &probes
                 enabled: true
-              readiness:
-                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 8043
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
               startup:
                 enabled: true
+                custom: true
                 spec:
-                  failureThreshold: 30
+                  tcpSocket:
+                    port: 8043
                   periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 90
             resources:
               requests:
                 cpu: 500m
