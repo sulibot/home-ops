@@ -181,6 +181,10 @@ spec:
         parentRefs:
           - name: gateway-internal
             namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8080
     persistence:
       config:
         existingClaim: "{{ .Release.Name }}-config"
