@@ -103,6 +103,16 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 64Mi
+    defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan30",
+              "namespace": "kube-system",
+              "ips": ["10.30.0.7/24", "fd00:30::7/64"]
+            }
+          ]
     service:
       app:
         controller: omada-controller
