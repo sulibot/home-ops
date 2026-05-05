@@ -43,6 +43,7 @@ resources:
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
   - ./ollama/ks.yaml
+  - ./omada-controller/ks.yaml
   - ./opencloud/ks.yaml
   - ./overseerr/ks.yaml
   - ./paperless/ks.yaml
