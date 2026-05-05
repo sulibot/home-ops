@@ -55,6 +55,43 @@ spec:
                 memory: 1200Mi
               limits:
                 memory: 2400Mi
+          # Cilium 1.19 has no BackendTLSPolicy support; this sidecar bridges the
+          # gateway's HTTP to Omada's HTTPS-only management port (self-signed cert).
+          # Replace with BackendTLSPolicy + cert-manager cert after upgrading to Cilium 1.20+.
+          proxy:
+            image:
+              repository: docker.io/library/nginx
+              tag: 1.27-alpine
+            command:
+              - /bin/sh
+              - -c
+              - |
+                cat > /etc/nginx/conf.d/default.conf << 'NGINX'
+                server {
+                  listen 8080;
+                  location / {
+                    proxy_pass https://127.0.0.1:8043;
+                    proxy_ssl_verify off;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection "upgrade";
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto https;
+                    proxy_read_timeout 600;
+                    proxy_connect_timeout 600;
+                    client_max_body_size 128m;
+                  }
+                }
+                NGINX
+                exec nginx -g 'daemon off;'
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 64Mi
     service:
       app:
         controller: omada-controller
@@ -63,9 +100,9 @@ spec:
           - IPv6
           - IPv4
         ports:
-          https:
-            port: 8043
-            targetPort: 8043
+          http:
+            port: 8080
+            targetPort: 8080
             protocol: TCP
       controller:
         controller: omada-controller
@@ -137,6 +174,13 @@ spec:
             port: 27217
             protocol: TCP
             targetPort: 27217
+    route:
+      app:
+        hostnames:
+          - "omada-controller.sulibot.com"
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
     persistence:
       config:
         existingClaim: "{{ .Release.Name }}-config"
