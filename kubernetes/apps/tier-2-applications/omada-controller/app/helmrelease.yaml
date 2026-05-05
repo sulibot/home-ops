@@ -194,11 +194,13 @@ spec:
         type: persistentVolumeClaim
         accessMode: ReadWriteOnce
         size: 10Gi
+        storageClass: csi-cephfs-config-sc
         globalMounts:
           - path: /opt/tplink/EAPController/work
       logs:
         type: persistentVolumeClaim
         accessMode: ReadWriteOnce
         size: 10Gi
+        storageClass: csi-cephfs-config-sc
         globalMounts:
           - path: /opt/tplink/EAPController/logs
