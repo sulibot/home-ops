@@ -100,12 +100,12 @@ spec:
               TZ: America/Los_Angeles
               SLSKD_APP_DIR: /config
               SLSKD_HTTP_PORT: &port 80
-              SLSKD_HTTP_ADDRESS: '::'
+              SLSKD_HTTP_IP_ADDRESS: '::'
               SLSKD_NO_AUTH: true
               SLSKD_NO_HTTPS: true
               SLSKD_NO_VERSION_CHECK: true
-              SLSKD_SLSK_LISTEN_PORT: 50429
-              SLSKD_SLSK_ADDRESS: '::'
+              SLSKD_SLSK_LISTEN_PORT: &slskPort 50429
+              SLSKD_SLSK_LISTEN_IP_ADDRESS: 0.0.0.0
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -158,6 +158,22 @@ spec:
               requests:
                 cpu: 5m
                 memory: 16Mi
+          peer-proxy:
+            image:
+              repository: docker.io/alpine/socat
+              tag: 1.8.0.3
+            args:
+              - TCP6-LISTEN:50429,ipv6only=1,fork,reuseaddr
+              - TCP4:127.0.0.1:50429
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
     defaultPodOptions:
       dnsConfig:
         options:
@@ -181,6 +197,23 @@ spec:
           http:
             port: *port
             targetPort: 8081
+      # Soulseek peer traffic needs a reachable TCP listen port. With NordVPN,
+      # this VIP is useful only if slskd is not advertising the NordVPN egress IP.
+      peer:
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: fd00:101:250::130,10.101.250.130
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        externalTrafficPolicy: Cluster
+        labels:
+          advertise: loadbalancer
+        ports:
+          slsk:
+            port: *slskPort
+            protocol: TCP
     route:
       app:
         hostnames:
@@ -197,12 +230,12 @@ spec:
         data:
           slskd.yml: |-
             web:
-              http:
-                address: '::'
+              ip_address: '::'
             soulseek:
-              connection:
-                address: 'server.slsknet.org'
-                port: 2271
+              address: vps.slsknet.org
+              port: 2271
+              listen_ip_address: 0.0.0.0
+              listen_port: 50429
             directories:
               downloads: /media/Downloads/soulseek/complete
               incomplete: /media/Downloads/soulseek/incomplete
