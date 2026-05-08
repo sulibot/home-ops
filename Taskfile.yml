@@ -2592,6 +2592,30 @@ tasks:
         echo "Recent Logs:"
         kubectl logs {{.CLI_ARGS}} --tail=50
 
+  debug:helm:
+    desc: '🔍 Troubleshoot a failing HelmRelease (deprecated, use debug:helmrelease)'
+    summary: |
+      Usage: task debug:helm -- <namespace> <release_name>
+    cmds:
+      - kubectl describe helmrelease {{.CLI_ARGS}}
+      - kubectl get pods -n {{index .CLI_ARGS 0}} -l app.kubernetes.io/instance={{index .CLI_ARGS 1}}
+      - flux logs --level=error -n flux-system deployment/helm-controller
+
+  debug:helmrelease:
+    desc: '🔍 Troubleshoot a failing HelmRelease'
+    summary: |
+      Usage: task debug:helm -- <namespace> <release_name>
+    cmds:
+      - kubectl describe helmrelease {{.CLI_ARGS}}
+      - kubectl get pods -n {{index .CLI_ARGS 0}} -l app.kubernetes.io/instance={{index .CLI_ARGS 1}}
+      - flux logs --level=error -n flux-system deployment/helm-controller
+
+      # Add more detailed steps for common issues
+      - echo "--- Pod Events for {{index .CLI_ARGS 1}} ---"
+      - kubectl get pods -n {{index .CLI_ARGS 0}} -l app.kubernetes.io/instance={{index .CLI_ARGS 1}} -o name | xargs -r kubectl describe -n {{index .CLI_ARGS 0}}
+      - echo "--- Pod Logs for {{index .CLI_ARGS 1}} ---"
+      - kubectl get pods -n {{index .CLI_ARGS 0}} -l app.kubernetes.io/instance={{index .CLI_ARGS 1}} -o name | xargs -r kubectl logs -n {{index .CLI_ARGS 0}} --tail=50 --all-containers
+
   debug:node:
     desc: 'Debug node issues'
     summary: |

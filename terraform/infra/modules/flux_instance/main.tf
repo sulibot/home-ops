@@ -161,7 +161,7 @@ locals {
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds"
-                  value = 60
+                  value = 120
                 }
               ])
             },
