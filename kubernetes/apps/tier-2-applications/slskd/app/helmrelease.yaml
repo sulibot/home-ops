@@ -40,8 +40,10 @@ spec:
                 mkdir -p /media/Downloads/soulseek/complete
                 mkdir -p /media/Downloads/soulseek/incomplete
                 mkdir -p /media/Downloads/soulseek/shared
+                mkdir -p /tmp/gluetun
                 echo "[init] Setting permissions"
                 chown -R 1000:1000 /media/Downloads/soulseek/complete /media/Downloads/soulseek/incomplete /media/Downloads/soulseek/shared 2>/dev/null || true
+                chown -R 1000:1000 /tmp/gluetun
                 echo "[init] Initialization complete"
             securityContext:
               runAsUser: 0
