@@ -43,7 +43,8 @@ resources:
   - ./notifier/ks.yaml
   - ./nzbget/ks.yaml
   - ./ollama/ks.yaml
-  - ./omada-controller/ks.yaml
+  # omada-controller disabled
+  # - ./omada-controller/ks.yaml
   - ./opencloud/ks.yaml
   - ./overseerr/ks.yaml
   - ./paperless/ks.yaml
@@ -59,8 +60,8 @@ resources:
   # - ./sabnzbd/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
-  # slskd disabled
-  # - ./slskd/ks.yaml
+  - ./slskd/ks.yaml
+  - ./soulsync/ks.yaml
   - ./smtp-relay/ks.yaml
   - ./sonarr-4k/ks.yaml
   - ./sonarr/ks.yaml
