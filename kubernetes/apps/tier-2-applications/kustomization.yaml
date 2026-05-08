@@ -37,6 +37,7 @@ resources:
   - ./matter-server/ks.yaml
   - ./miniflux/ks.yaml
   - ./n8n/ks.yaml
+  - ./navidrome/ks.yaml
   # mosquitto disabled
   # - ./mosquitto/ks.yaml
   - ./notifiarr/ks.yaml

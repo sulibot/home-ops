@@ -27,6 +27,30 @@ spec:
         type: statefulset
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          configure:
+            image:
+              repository: boulderbadgedad/soulsync
+              tag: latest@sha256:72b2bac96be6eb63003272adb590e08138ec14e01e7df428a0e0ab1833d9f2d0
+            command:
+              - python
+              - -c
+              - |
+                import json
+                from pathlib import Path
+
+                path = Path("/app/config/config.json")
+                if path.exists():
+                    config = json.loads(path.read_text())
+                else:
+                    config = {}
+
+                soulseek = config.setdefault("soulseek", {})
+                soulseek["slskd_url"] = "http://slskd-app.default.svc.cluster.local"
+                soulseek["download_path"] = "/app/downloads"
+                soulseek["transfer_path"] = "/app/Transfer"
+
+                path.write_text(json.dumps(config, indent=2) + "\n")
         containers:
           app:
             image:
@@ -92,15 +116,15 @@ spec:
             subPath: config
           - path: /app/logs
             subPath: logs
-          - path: /app/downloads
-            subPath: downloads
           - path: /app/data
             subPath: data
       media:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /app/Transfer
+          - path: /app/downloads
             subPath: data/media/soulseek/complete
+          - path: /app/Transfer
+            subPath: data/media/music
       tmp:
         type: emptyDir
