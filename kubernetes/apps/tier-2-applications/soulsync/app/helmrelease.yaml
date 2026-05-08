@@ -41,22 +41,12 @@ spec:
               PYTHONPATH: /app
               SOULSYNC_CONFIG_PATH: /app/config/config.json
             probes:
-              liveness: &probes
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - python
-                      - -c
-                      - |
-                        import socket
-                        socket.create_connection(("127.0.0.1", 8008), timeout=5).close()
-                  initialDelaySeconds: 60
-                  periodSeconds: 30
-                  timeoutSeconds: 10
-                  failureThreshold: 3
-              readiness: *probes
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+              startup:
+                enabled: false
             resources:
               requests:
                 cpu: 100m
