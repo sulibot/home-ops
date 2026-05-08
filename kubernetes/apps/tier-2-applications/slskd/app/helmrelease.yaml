@@ -90,14 +90,6 @@ spec:
 #              limits:
 #                memory: 1Gi
     defaultPodOptions:
-      annotations:
-        k8s.v1.cni.cncf.io/networks: |-
-          [{
-            "name": "vpn",
-            "namespace": "kube-system",
-            "ips": ["fd00:90::12/64"],
-            "mac": "c6:58:f2:a7:62:ce"
-          }]
       dnsConfig:
         options:
           - name: single-request

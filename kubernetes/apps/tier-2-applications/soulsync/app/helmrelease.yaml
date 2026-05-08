@@ -45,9 +45,13 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /
-                    port: 8888
+                  exec:
+                    command:
+                      - python
+                      - -c
+                      - |
+                        import socket
+                        socket.create_connection(("127.0.0.1", 8008), timeout=5).close()
                   initialDelaySeconds: 60
                   periodSeconds: 30
                   timeoutSeconds: 10
@@ -68,6 +72,9 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
+        ipFamilyPolicy: SingleStack
+        ipFamilies:
+          - IPv4
         ports:
           http:
             port: &port 8008
