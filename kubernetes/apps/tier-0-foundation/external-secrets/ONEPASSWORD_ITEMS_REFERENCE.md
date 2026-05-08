@@ -148,6 +148,7 @@ RADARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```yaml
 SLSKD_SLSK_USERNAME: "your-soulseek-username"
 SLSKD_SLSK_PASSWORD: "your-soulseek-password"
+SLSKD_API_KEY: "your-slskd-api-key"
 ```
 
 ### 18. smtp-relay
