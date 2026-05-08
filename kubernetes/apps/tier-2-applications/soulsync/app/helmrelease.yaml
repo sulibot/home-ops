@@ -32,11 +32,15 @@ spec:
             image:
               repository: boulderbadgedad/soulsync
               tag: latest@sha256:72b2bac96be6eb63003272adb590e08138ec14e01e7df428a0e0ab1833d9f2d0
+            envFrom:
+              - secretRef:
+                  name: slskd-secret
             command:
               - python
               - -c
               - |
                 import json
+                import os
                 from pathlib import Path
 
                 path = Path("/app/config/config.json")
@@ -47,6 +51,8 @@ spec:
 
                 soulseek = config.setdefault("soulseek", {})
                 soulseek["slskd_url"] = "http://slskd-app.default.svc.cluster.local"
+                if api_key := os.environ.get("SLSKD_API_KEY"):
+                    soulseek["api_key"] = api_key
                 soulseek["download_path"] = "/app/downloads"
                 soulseek["transfer_path"] = "/app/Transfer"
 
@@ -86,8 +92,9 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        ipFamilyPolicy: SingleStack
+        ipFamilyPolicy: PreferDualStack
         ipFamilies:
+          - IPv6
           - IPv4
         ports:
           http:
