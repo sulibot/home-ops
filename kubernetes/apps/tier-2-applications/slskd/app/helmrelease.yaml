@@ -48,6 +48,47 @@ spec:
               runAsGroup: 0
               runAsNonRoot: false
         containers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.41.1
+            env:
+              HEALTH_SERVER_ADDRESS: :9999
+            envFrom:
+              - secretRef:
+                  name: slskd-nordvpn-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              capabilities:
+                drop: ["ALL"]
+                add: ["NET_ADMIN"]
           app:
             image:
               repository: ghcr.io/slskd/slskd
@@ -99,6 +140,22 @@ spec:
                 memory: 128Mi
 #              limits:
 #                memory: 1Gi
+          proxy:
+            image:
+              repository: docker.io/alpine/socat
+              tag: 1.8.0.3
+            args:
+              - TCP6-LISTEN:8081,ipv6only=0,fork,reuseaddr
+              - TCP6:[::1]:80
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
     defaultPodOptions:
       dnsConfig:
         options:
@@ -114,9 +171,14 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
         ports:
           http:
             port: *port
+            targetPort: 8081
     route:
       app:
         hostnames:
@@ -153,6 +215,14 @@ spec:
                 - Thumbs.db$
                 - \.DS_Store$
     persistence:
+      dev-net-tun:
+        type: hostPath
+        hostPath: /dev/net/tun
+        hostPathType: CharDevice
+        advancedMounts:
+          slskd:
+            gluetun:
+              - path: /dev/net/tun
       config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
