@@ -151,6 +151,15 @@ SLSKD_SLSK_PASSWORD: "your-soulseek-password"
 SLSKD_API_KEY: "your-slskd-api-key"
 ```
 
+### 18. soulsync
+**Used by:** SoulSync Spotify playlist sync
+
+```yaml
+SPOTIFY_CLIENT_ID: "your-spotify-client-id"
+SPOTIFY_CLIENT_SECRET: "your-spotify-client-secret"
+SPOTIFY_REDIRECT_URI: "http://127.0.0.1:8888/callback"
+```
+
 ### 18. smtp-relay
 **Used by:** SMTP Relay
 

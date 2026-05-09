@@ -35,6 +35,8 @@ spec:
             envFrom:
               - secretRef:
                   name: slskd-secret
+              - secretRef:
+                  name: soulsync-secret
             command:
               - python
               - -c
@@ -55,6 +57,14 @@ spec:
                     soulseek["api_key"] = api_key
                 soulseek["download_path"] = "/app/downloads"
                 soulseek["transfer_path"] = "/app/Transfer"
+
+                spotify = config.setdefault("spotify", {})
+                if client_id := os.environ.get("SPOTIFY_CLIENT_ID"):
+                    spotify["client_id"] = client_id
+                if client_secret := os.environ.get("SPOTIFY_CLIENT_SECRET"):
+                    spotify["client_secret"] = client_secret
+                if redirect_uri := os.environ.get("SPOTIFY_REDIRECT_URI"):
+                    spotify["redirect_uri"] = redirect_uri
 
                 path.write_text(json.dumps(config, indent=2) + "\n")
         containers:
