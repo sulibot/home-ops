@@ -157,7 +157,7 @@ SLSKD_API_KEY: "your-slskd-api-key"
 ```yaml
 SPOTIFY_CLIENT_ID: "your-spotify-client-id"
 SPOTIFY_CLIENT_SECRET: "your-spotify-client-secret"
-SPOTIFY_REDIRECT_URI: "http://127.0.0.1:8888/callback"
+SPOTIFY_REDIRECT_URI: "https://soulsync.sulibot.com/callback"
 ```
 
 ### 18. smtp-relay
