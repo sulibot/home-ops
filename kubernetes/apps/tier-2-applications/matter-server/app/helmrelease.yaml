@@ -30,7 +30,7 @@ spec:
           enable-ipv6-rio:
             image:
               repository: busybox
-              tag: "1.36"
+              tag: "1.37"
             command:
               - sh
               - -lc
