@@ -244,7 +244,8 @@ spec:
                 mode: 750
             shares:
               directories:
-                - /media/Downloads/soulseek/shared
+                - /media/music
+                - /media/Downloads/soulseek/complete
               filters:
                 - \.ini$
                 - Thumbs.db$
@@ -275,5 +276,7 @@ spec:
         globalMounts:
           - path: /media/Downloads/soulseek
             subPath: data/media/soulseek
+          - path: /media/music
+            subPath: data/media/music
       tmp:
         type: emptyDir
