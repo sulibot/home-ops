@@ -68,9 +68,9 @@ spec:
             securityContext:
               allowPrivilegeEscalation: true
               readOnlyRootFilesystem: true
-              runAsNonRoot: true
-              runAsUser: 1000
-              runAsGroup: 1000
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
               capabilities:
                 drop: ["ALL"]
                 add: ["CHOWN", "SETGID", "SETUID"]
