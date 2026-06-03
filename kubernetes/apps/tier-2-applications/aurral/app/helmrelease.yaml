@@ -40,18 +40,10 @@ spec:
               - secretRef:
                   name: aurral-secret
             probes:
-              liveness: &probes
-                enabled: true
-                custom: true
-                spec:
-                  httpGet:
-                    path: /
-                    port: &port 3001
-                  initialDelaySeconds: 30
-                  periodSeconds: 30
-                  timeoutSeconds: 10
-                  failureThreshold: 3
-              readiness: *probes
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
@@ -75,7 +67,7 @@ spec:
       app:
         ports:
           http:
-            port: *port
+            port: 3001
 
     route:
       app:
@@ -87,7 +79,7 @@ spec:
         rules:
           - backendRefs:
               - identifier: app
-                port: *port
+                port: 3001
 
     persistence:
       data:
