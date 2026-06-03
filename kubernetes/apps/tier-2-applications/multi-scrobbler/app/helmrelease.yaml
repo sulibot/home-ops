@@ -37,9 +37,6 @@ spec:
               # Plex source: webhook at /api/webhook
               PLEX_NAME: Plex
               PLEX_URL: http://plex.default.svc.cluster.local:32400
-              # Spotify source: polling
-              SPOTIFY_NAME: Spotify
-              SPOTIFY_REDIRECT_URI: https://multi-scrobbler.sulibot.com/callback
               # Last.fm client
               LASTFM_NAME: LastFM
               LASTFM_REDIRECT_URI: https://multi-scrobbler.sulibot.com/lastfm/callback
