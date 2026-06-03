@@ -42,6 +42,7 @@ spec:
               LASTFM_REDIRECT_URI: https://multi-scrobbler.sulibot.com/lastfm/callback
               # ListenBrainz client
               LZ_NAME: ListenBrainz
+              LZ_URL: https://api.listenbrainz.org
             envFrom:
               - secretRef:
                   name: multi-scrobbler-secret
