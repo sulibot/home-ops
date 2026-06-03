@@ -49,7 +49,15 @@ spec:
                   name: multi-scrobbler-secret
             probes:
               liveness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 9078
+                  initialDelaySeconds: 180
+                  periodSeconds: 60
+                  failureThreshold: 3
               readiness:
                 enabled: false
               startup:
