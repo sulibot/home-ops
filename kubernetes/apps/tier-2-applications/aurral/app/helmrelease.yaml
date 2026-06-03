@@ -34,7 +34,7 @@ spec:
               NODE_OPTIONS: "--max-old-space-size=768"
               LIDARR_URL: http://lidarr.default.svc.cluster.local
               MUSICBRAINZ_CONTACT: sulibot@gmail.com
-              DOWNLOAD_FOLDER: /data/media/music/aurral
+              DOWNLOAD_FOLDER: /data/media/music_discovery
               WEEKLY_FLOW_FOLDER: /app/backend/data/weekly-flow
             envFrom:
               - secretRef:
@@ -98,8 +98,8 @@ spec:
         type: persistentVolumeClaim
         existingClaim: csi-cephfs-content-pvc
         globalMounts:
-          - path: /data/media/music/aurral
-            subPath: data/media/music/aurral
+          - path: /data/media/music_discovery
+            subPath: data/media/music_discovery
       tmp:
         type: emptyDir
         globalMounts:
