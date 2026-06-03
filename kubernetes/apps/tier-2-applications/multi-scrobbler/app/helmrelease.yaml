@@ -29,6 +29,8 @@ spec:
               tag: latest
             env:
               TZ: America/Los_Angeles
+              PUID: "1000"
+              PGID: "1000"
             envFrom:
               - secretRef:
                   name: multi-scrobbler-secret
@@ -56,11 +58,7 @@ spec:
 
     defaultPodOptions:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
 
     service:
       app:
