@@ -31,9 +31,8 @@ spec:
               TZ: America/Los_Angeles
               PUID: "1000"
               PGID: "1000"
-              # Navidrome source: ListenBrainz push (Navidrome sends to /1/ endpoint)
-              SOURCE_LZ_NAME: Navidrome
               # Plex source: webhook at /api/webhook
+              # (Navidrome pushes scrobbles via /1/ endpoint automatically - no source config needed)
               PLEX_NAME: Plex
               # Spotify source: polling
               SPOTIFY_NAME: Spotify
