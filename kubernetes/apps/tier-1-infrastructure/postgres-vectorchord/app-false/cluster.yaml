@@ -141,6 +141,11 @@ spec:
         ensure: present
         passwordSecret:
           name: miniflux-pg-password
+      - name: digarr
+        login: true
+        ensure: present
+        passwordSecret:
+          name: digarr-pg-password
       - name: n8n
         login: true
         ensure: present

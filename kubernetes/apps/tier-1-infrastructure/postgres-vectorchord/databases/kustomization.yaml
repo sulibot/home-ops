@@ -18,4 +18,5 @@ resources:
   - sonarr-log.yaml
   - sonarr-4k-main.yaml
   - sonarr-4k-log.yaml
+  - digarr.yaml
   - twenty.yaml

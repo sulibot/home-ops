@@ -1,0 +1,103 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: digarr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: digarr
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    controllers:
+      digarr:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/iuliandita/digarr
+              tag: 1.0.0-rc.6@sha256:834164cb70b411f28e0a51c4e918241bba8f997f09d30f330b371558cd40db33
+            env:
+              TZ: America/Los_Angeles
+              PORT: &port 3000
+              LIDARR_URL: http://lidarr.default.svc.cluster.local
+              AI_PROVIDER: openai
+              AI_MODEL: gpt-4o-mini
+              LISTENBRAINZ_USERNAME: sulibot
+              LASTFM_USERNAME: sulibot
+              DIGARR_DISABLE_REGISTRATION: "true"
+            envFrom:
+              - secretRef:
+                  name: digarr-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 3
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - digarr.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+
+    persistence:
+      backups:
+        existingClaim: digarr-config
+        globalMounts:
+          - path: /app/backups
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
