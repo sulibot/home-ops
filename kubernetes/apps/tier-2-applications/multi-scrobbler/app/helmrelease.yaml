@@ -58,6 +58,7 @@ spec:
 
     defaultPodOptions:
       securityContext:
+        runAsUser: 0
         fsGroup: 1000
 
     service:
