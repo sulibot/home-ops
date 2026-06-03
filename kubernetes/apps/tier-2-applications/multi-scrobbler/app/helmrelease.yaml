@@ -26,7 +26,7 @@ spec:
           app:
             image:
               repository: foxxmd/multi-scrobbler
-              tag: latest
+              tag: 0.14.1@sha256:7d50785dba6c97b81640643180b04e3aa48138b3a71c041277617c27d36011b3
             env:
               TZ: America/Los_Angeles
               PUID: "1000"
