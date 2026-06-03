@@ -40,9 +40,11 @@ spec:
               # Lower threshold to Last.fm's own 30s minimum (default 240s is too strict for history-based scrobbles)
               SOURCE_SCROBBLE_DURATION: "30"
               SOURCE_SCROBBLE_PERCENT: "0"
-              # Plex source: webhook at /api/webhook
+              # Plex source: webhook at /api/webhook — block non-music libraries
               PLEX_NAME: Plex
               PLEX_URL: http://plex.default.svc.cluster.local:32400
+              PLEX_LIBRARIES_ALLOW: Music
+              PLEX_USERS_ALLOW: sulibot
               # Last.fm client
               LASTFM_NAME: LastFM
               LASTFM_REDIRECT_URI: https://multi-scrobbler.sulibot.com/lastfm/callback
