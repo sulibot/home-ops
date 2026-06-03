@@ -40,6 +40,10 @@ spec:
               ND_LOGLEVEL: info
               ND_ENABLEDOWNLOADS: "true"
               ND_ENABLESHARING: "true"
+              ND_LISTENBRAINZ_BASEURL: http://multi-scrobbler.default.svc.cluster.local:9078
+            envFrom:
+              - secretRef:
+                  name: navidrome-secret
             probes:
               liveness: &probes
                 enabled: true

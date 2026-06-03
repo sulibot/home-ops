@@ -31,10 +31,18 @@ spec:
               TZ: America/Los_Angeles
               PUID: "1000"
               PGID: "1000"
-              LOG_LEVEL: debug
-              SUBSONIC_0_URL: http://navidrome.default.svc.cluster.local
-              SUBSONIC_0_NAME: Navidrome
-              LISTENBRAINZ_0_NAME: ListenBrainz
+              # Navidrome source: ListenBrainz push (Navidrome sends to /1/ endpoint)
+              SOURCE_LZ_NAME: Navidrome
+              # Plex source: webhook at /api/webhook
+              PLEX_NAME: Plex
+              # Spotify source: polling
+              SPOTIFY_NAME: Spotify
+              SPOTIFY_REDIRECT_URI: https://multi-scrobbler.sulibot.com/callback
+              # Last.fm client
+              LASTFM_NAME: LastFM
+              LASTFM_REDIRECT_URI: https://multi-scrobbler.sulibot.com/lastfm/callback
+              # ListenBrainz client
+              LZ_NAME: ListenBrainz
             envFrom:
               - secretRef:
                   name: multi-scrobbler-secret

@@ -66,11 +66,16 @@ spec:
                 if redirect_uri := os.environ.get("SPOTIFY_REDIRECT_URI"):
                     spotify["redirect_uri"] = redirect_uri
 
-                discover = config.setdefault("discover", {})
-                discover["your_artists_sources"] = "spotify"
-
                 lastfm = config.setdefault("lastfm", {})
+                if api_key := os.environ.get("LASTFM_API_KEY"):
+                    lastfm["api_key"] = api_key
+                if api_secret := os.environ.get("LASTFM_API_SECRET"):
+                    lastfm["api_secret"] = api_secret
+                # multi-scrobbler handles scrobbling; soulsync uses Last.fm only for discovery
                 lastfm["scrobble_enabled"] = False
+
+                discover = config.setdefault("discover", {})
+                discover["your_artists_sources"] = "spotify,lastfm"
 
                 path.write_text(json.dumps(config, indent=2) + "\n")
         containers:
