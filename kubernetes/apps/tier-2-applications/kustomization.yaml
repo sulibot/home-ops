@@ -10,6 +10,7 @@ resources:
   - ./atuin/ks.yaml
   - ./authentik/ks.yaml
   - ./authentik-outpost/ks.yaml
+  - ./aurral/ks.yaml
   - ./autobrr/ks.yaml
   - ./bookshelf/ks.yaml
   - ./calibre-web-automated/ks.yaml
@@ -33,8 +34,7 @@ resources:
   - ./karakeep/ks.yaml
   - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
-  # lidarr disabled; Navidrome/SoulSync now owns the music library flow
-  # - ./lidarr/ks.yaml
+  - ./lidarr/ks.yaml
   - ./matter-server/ks.yaml
   - ./miniflux/ks.yaml
   - ./multi-scrobbler/ks.yaml
