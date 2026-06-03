@@ -31,7 +31,7 @@ spec:
               tag: latest@sha256:c15021d52ac12673e16ce1e0efbde46dc49f512afb83445c7fe38b230ec835f0
             env:
               TZ: America/Los_Angeles
-              NODE_OPTIONS: "--max-old-space-size=768"
+              NODE_OPTIONS: "--max-old-space-size=1536"
               LIDARR_URL: http://lidarr.default.svc.cluster.local
               MUSICBRAINZ_CONTACT: sulibot@gmail.com
               DOWNLOAD_FOLDER: /data/media/music_discovery
@@ -61,7 +61,7 @@ spec:
                 cpu: 50m
                 memory: 256Mi
               limits:
-                memory: 2Gi
+                memory: 4Gi
 
     defaultPodOptions:
       securityContext:
