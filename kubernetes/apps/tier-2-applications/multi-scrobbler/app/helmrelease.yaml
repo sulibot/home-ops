@@ -46,6 +46,7 @@ spec:
               # ListenBrainz client
               LZ_NAME: ListenBrainz
               LZ_URL: https://api.listenbrainz.org
+              LZ_USER: sulibot
             envFrom:
               - secretRef:
                   name: multi-scrobbler-secret
@@ -56,10 +57,10 @@ spec:
                 spec:
                   httpGet:
                     path: /api/health
-                    port: &port 9078
-                  initialDelaySeconds: 15
+                    port: *port
+                  initialDelaySeconds: 30
                   periodSeconds: 30
-                  failureThreshold: 3
+                  failureThreshold: 5
               readiness:
                 enabled: false
               startup:
