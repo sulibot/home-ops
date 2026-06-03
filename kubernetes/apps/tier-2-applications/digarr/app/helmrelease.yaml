@@ -38,7 +38,6 @@ spec:
               LISTENBRAINZ_USERNAME: sulibot
               LASTFM_USERNAME: sulibot
               DIGARR_DISABLE_REGISTRATION: "true"
-              SPOTIFY_REDIRECT_URI: https://digarr.sulibot.com/api/auth/spotify/callback
               ALLOWED_ORIGIN: https://digarr.sulibot.com
             envFrom:
               - secretRef:
