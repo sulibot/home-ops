@@ -141,11 +141,6 @@ spec:
         ensure: present
         passwordSecret:
           name: miniflux-pg-password
-      - name: navidrome
-        login: true
-        ensure: present
-        passwordSecret:
-          name: navidrome-pg-password
       - name: n8n
         login: true
         ensure: present
