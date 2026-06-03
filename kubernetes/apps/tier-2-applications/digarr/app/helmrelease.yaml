@@ -38,6 +38,7 @@ spec:
               LISTENBRAINZ_USERNAME: sulibot
               LASTFM_USERNAME: sulibot
               DIGARR_DISABLE_REGISTRATION: "true"
+              ALLOWED_ORIGIN: https://digarr.sulibot.com
             envFrom:
               - secretRef:
                   name: digarr-secret
