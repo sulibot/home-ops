@@ -37,6 +37,9 @@ spec:
               # Spotify source: polling
               SPOTIFY_NAME: Spotify
               SPOTIFY_REDIRECT_URI: https://multi-scrobbler.sulibot.com/callback
+              # Lower threshold to Last.fm's own 30s minimum (default 240s is too strict for history-based scrobbles)
+              SOURCE_SCROBBLE_DURATION: "30"
+              SOURCE_SCROBBLE_PERCENT: "0"
               # Plex source: webhook at /api/webhook
               PLEX_NAME: Plex
               PLEX_URL: http://plex.default.svc.cluster.local:32400
