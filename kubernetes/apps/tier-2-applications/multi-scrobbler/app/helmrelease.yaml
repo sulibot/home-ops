@@ -34,6 +34,9 @@ spec:
               # Navidrome source: ListenBrainz endpoint ingress
               LZE_NAME: Navidrome
               LZE_USERNAME: sulibot
+              # Spotify source: polling
+              SPOTIFY_NAME: Spotify
+              SPOTIFY_REDIRECT_URI: https://multi-scrobbler.sulibot.com/callback
               # Plex source: webhook at /api/webhook
               PLEX_NAME: Plex
               PLEX_URL: http://plex.default.svc.cluster.local:32400
