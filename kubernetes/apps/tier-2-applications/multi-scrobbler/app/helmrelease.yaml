@@ -57,7 +57,7 @@ spec:
                 spec:
                   httpGet:
                     path: /api/health
-                    port: *port
+                    port: 9078
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   failureThreshold: 5
@@ -81,7 +81,7 @@ spec:
       app:
         ports:
           http:
-            port: *port
+            port: 9078
 
     route:
       app:
@@ -93,7 +93,7 @@ spec:
         rules:
           - backendRefs:
               - identifier: app
-                port: *port
+                port: 9078
 
     persistence:
       config:
