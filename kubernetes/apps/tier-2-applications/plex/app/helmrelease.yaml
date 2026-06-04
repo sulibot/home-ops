@@ -34,7 +34,7 @@ spec:
             env:
               TZ: America/Los_Angeles
               PLEX_ADVERTISE_URL: http://10.31.0.250:32400,http://10.101.250.120:32400,https://plex.sulibot.com:443
-              PLEX_NO_AUTH_NETWORKS: 10.31.0.0/24,fd00:31::/64
+              PLEX_NO_AUTH_NETWORKS: 10.30.0.0/24,10.31.0.0/24,fd00:30::/64,fd00:31::/64
               PLEX_CLAIM:
                 valueFrom:
                   secretKeyRef:
