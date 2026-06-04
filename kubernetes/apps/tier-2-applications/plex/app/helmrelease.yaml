@@ -65,16 +65,12 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 5
             securityContext:
-              allowPrivilegeEscalation: false
+              privileged: true
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
             resources:
               requests:
                 cpu: 100m
     defaultPodOptions:
-      resourceClaims:
-        - name: gpu
-          resourceClaimTemplateName: plex
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
           [
@@ -106,7 +102,6 @@ spec:
                     operator: In
                     values: ["xe"]
       securityContext:
-        runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
@@ -167,5 +162,10 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+      dri:
+        type: hostPath
+        hostPath: /dev/dri
+        globalMounts:
+          - path: /dev/dri
       tmp:
         type: emptyDir
