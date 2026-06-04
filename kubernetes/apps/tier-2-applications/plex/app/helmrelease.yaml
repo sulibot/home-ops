@@ -108,6 +108,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups: [44, 105]
     service:
       app:
         type: LoadBalancer
@@ -163,5 +164,10 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
+      dri:
+        type: hostPath
+        hostPath: /dev/dri
+        globalMounts:
+          - path: /dev/dri
       tmp:
         type: emptyDir
