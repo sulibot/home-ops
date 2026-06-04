@@ -8,5 +8,6 @@ resources:
   - ./manual-plex-config-rbd-pvc.yaml
   - ./ocirepository.yaml
   - ./resourceclaimtemplate.yaml
+# resourceclaimtemplate.yaml enables Intel GPU DRA for HW transcoding
 #  - ./manual-plex-config-pvc.yaml  # Break-glass PVC - VolSync manages lifecycle
   - ./vpa.yaml
