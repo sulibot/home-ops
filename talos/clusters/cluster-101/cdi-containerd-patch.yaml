@@ -1,0 +1,10 @@
+# Patch for worker nodes to enable CDI (Container Device Interface) in containerd
+# Required for Intel GPU DRA resource driver to inject GPU devices into pods
+# Apply with: talosctl machineconfig patch @cdi-containerd-patch.yaml -n <worker-ip>
+machine:
+  files:
+    - op: create
+      path: /etc/cri/conf.d/20-customization.part
+      content: |
+        [plugins."io.containerd.cri.v1.runtime"]
+          cdi_spec_dirs = ["/var/cdi/static", "/var/cdi/dynamic"]
