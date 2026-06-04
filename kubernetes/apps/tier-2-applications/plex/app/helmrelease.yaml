@@ -72,6 +72,9 @@ spec:
               requests:
                 cpu: 100m
     defaultPodOptions:
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: plex
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
           [
@@ -164,10 +167,5 @@ spec:
         globalMounts:
           - path: /data
             subPath: data
-      dri:
-        type: hostPath
-        hostPath: /dev/dri
-        globalMounts:
-          - path: /dev/dri
       tmp:
         type: emptyDir
