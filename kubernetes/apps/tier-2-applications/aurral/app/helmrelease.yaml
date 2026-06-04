@@ -54,6 +54,23 @@ spec:
                 memory: 256Mi
               limits:
                 memory: 4Gi
+          proxy:
+            image:
+              repository: docker.io/alpine/socat
+              tag: 1.8.0.3
+            command:
+              - sh
+              - -c
+              - socat TCP6-LISTEN:3001,ipv6only=1,fork,reuseaddr TCP4:127.0.0.1:3001
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
 
     defaultPodOptions:
       securityContext:
@@ -65,10 +82,6 @@ spec:
 
     service:
       app:
-        ipFamilyPolicy: PreferDualStack
-        ipFamilies:
-          - IPv4
-          - IPv6
         ports:
           http:
             port: 3001
