@@ -105,7 +105,7 @@ spec:
                   printf '\n%s\n' \
                     'Server2.Active=yes' \
                     'Server2.Name=Frugal West' \
-                    'Server2.Level=0' \
+                    'Server2.Level=1' \
                     'Server2.Optional=no' \
                     'Server2.Group=0' \
                     'Server2.Host=newswest.frugalusenet.com' \
@@ -115,7 +115,7 @@ spec:
                     'Server2.Password=' \
                     'Server2.JoinGroup=no' \
                     'Server2.Cipher=' \
-                    'Server2.Connections=150' \
+                    'Server2.Connections=50' \
                     'Server2.Retention=0' \
                     'Server2.CertVerification=strict' \
                     'Server2.IpVersion=auto' \
@@ -123,7 +123,7 @@ spec:
                 fi
                 sed -i "s@^Server2.Active=.*@Server2.Active=yes@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Name=.*@Server2.Name=Frugal West@" "$CONFIG_FILE"
-                sed -i "s@^Server2.Level=.*@Server2.Level=0@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Level=.*@Server2.Level=1@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Optional=.*@Server2.Optional=no@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Group=.*@Server2.Group=0@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Host=.*@Server2.Host=newswest.frugalusenet.com@" "$CONFIG_FILE"
@@ -136,7 +136,7 @@ spec:
                   sed -i "s@^Server2.Password=.*@Server2.Password=${NZBGET__FRUGAL_PASSWORD}@" "$CONFIG_FILE"
                 fi
                 sed -i "s@^Server2.JoinGroup=.*@Server2.JoinGroup=no@" "$CONFIG_FILE"
-                sed -i "s@^Server2.Connections=.*@Server2.Connections=150@" "$CONFIG_FILE"
+                sed -i "s@^Server2.Connections=.*@Server2.Connections=50@" "$CONFIG_FILE"
                 sed -i "s@^Server2.Retention=.*@Server2.Retention=0@" "$CONFIG_FILE"
                 sed -i "s@^Server2.CertVerification=.*@Server2.CertVerification=strict@" "$CONFIG_FILE"
                 sed -i "s@^Server2.IpVersion=.*@Server2.IpVersion=auto@" "$CONFIG_FILE"
@@ -222,6 +222,45 @@ spec:
                 sed -i "s@^Server4.Retention=.*@Server4.Retention=0@" "$CONFIG_FILE"
                 sed -i "s@^Server4.CertVerification=.*@Server4.CertVerification=strict@" "$CONFIG_FILE"
                 sed -i "s@^Server4.IpVersion=.*@Server4.IpVersion=auto@" "$CONFIG_FILE"
+                if ! grep -q '^Server5.Host=' "$CONFIG_FILE"; then
+                  printf '\n%s\n' \
+                    'Server5.Active=yes' \
+                    'Server5.Name=Newshosting' \
+                    'Server5.Level=0' \
+                    'Server5.Optional=no' \
+                    'Server5.Group=0' \
+                    'Server5.Host=news.newshosting.com' \
+                    'Server5.Encryption=yes' \
+                    'Server5.Port=563' \
+                    'Server5.Username=' \
+                    'Server5.Password=' \
+                    'Server5.JoinGroup=no' \
+                    'Server5.Cipher=' \
+                    'Server5.Connections=50' \
+                    'Server5.Retention=0' \
+                    'Server5.CertVerification=strict' \
+                    'Server5.IpVersion=auto' \
+                    'Server5.Notes=' >> "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server5.Active=.*@Server5.Active=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Name=.*@Server5.Name=Newshosting@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Level=.*@Server5.Level=0@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Optional=.*@Server5.Optional=no@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Group=.*@Server5.Group=0@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Host=.*@Server5.Host=news.newshosting.com@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Encryption=.*@Server5.Encryption=yes@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Port=.*@Server5.Port=563@" "$CONFIG_FILE"
+                if [ -n "${NZBGET__NEWSHOSTING_USERNAME:-}" ]; then
+                  sed -i "s@^Server5.Username=.*@Server5.Username=${NZBGET__NEWSHOSTING_USERNAME}@" "$CONFIG_FILE"
+                fi
+                if [ -n "${NZBGET__NEWSHOSTING_PASSWORD:-}" ]; then
+                  sed -i "s@^Server5.Password=.*@Server5.Password=${NZBGET__NEWSHOSTING_PASSWORD}@" "$CONFIG_FILE"
+                fi
+                sed -i "s@^Server5.JoinGroup=.*@Server5.JoinGroup=no@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Connections=.*@Server5.Connections=50@" "$CONFIG_FILE"
+                sed -i "s@^Server5.Retention=.*@Server5.Retention=0@" "$CONFIG_FILE"
+                sed -i "s@^Server5.CertVerification=.*@Server5.CertVerification=strict@" "$CONFIG_FILE"
+                sed -i "s@^Server5.IpVersion=.*@Server5.IpVersion=auto@" "$CONFIG_FILE"
                 sed -i "s@^Category1.Name=.*@Category1.Name=movies@" "$CONFIG_FILE"
                 sed -i "s@^Category1.DestDir=.*@Category1.DestDir=\$${DestDir}/movies@" "$CONFIG_FILE"
                 sed -i "s@^Category1.Unpack=.*@Category1.Unpack=yes@" "$CONFIG_FILE"
@@ -289,6 +328,8 @@ spec:
                 grep "^Server3.Connections=" "$CONFIG_FILE"
                 grep "^Server4.Host=" "$CONFIG_FILE"
                 grep "^Server4.Connections=" "$CONFIG_FILE"
+                grep "^Server5.Host=" "$CONFIG_FILE"
+                grep "^Server5.Connections=" "$CONFIG_FILE"
                 grep "^ArticleCache=" "$CONFIG_FILE"
                 grep "^DirectWrite=" "$CONFIG_FILE"
                 echo "=== Init container complete ==="
