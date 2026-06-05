@@ -25,6 +25,53 @@ spec:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.41.1
+            env:
+              HEALTH_SERVER_ADDRESS: :9999
+            envFrom:
+              - secretRef:
+                  name: aurral-nordvpn-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 2
+                  failureThreshold: 6
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              capabilities:
+                drop: ["ALL"]
+                add: ["NET_ADMIN"]
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
           app:
             image:
               repository: ghcr.io/lklynet/aurral
@@ -99,6 +146,14 @@ spec:
                 port: 3001
 
     persistence:
+      dev-net-tun:
+        type: hostPath
+        hostPath: /dev/net/tun
+        hostPathType: CharDevice
+        advancedMounts:
+          aurral:
+            gluetun:
+              - path: /dev/net/tun
       data:
         existingClaim: aurral-config
         globalMounts:
