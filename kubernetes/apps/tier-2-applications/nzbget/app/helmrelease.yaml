@@ -343,6 +343,13 @@ spec:
               - -c
               - |
                 umask 0002
+                CONFIG_FILE=/config/nzbget.conf
+                if [ -n "${NZBGET__NEWSHOSTING_USERNAME:-}" ]; then
+                  sed -i "s@^Server5.Username=.*@Server5.Username=${NZBGET__NEWSHOSTING_USERNAME}@" "$CONFIG_FILE"
+                fi
+                if [ -n "${NZBGET__NEWSHOSTING_PASSWORD:-}" ]; then
+                  sed -i "s@^Server5.Password=.*@Server5.Password=${NZBGET__NEWSHOSTING_PASSWORD}@" "$CONFIG_FILE"
+                fi
                 exec /app/nzbget \
                   --server \
                   --configfile /config/nzbget.conf \
