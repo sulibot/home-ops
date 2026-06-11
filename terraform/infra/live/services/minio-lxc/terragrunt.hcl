@@ -27,7 +27,7 @@ locals {
     "set -a && . /root/cloudflare.env && set +a",
     "/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >/dev/null",
     "/root/.acme.sh/acme.sh --issue --dns dns_cf -d ${local.service_domain} -d ${local.s3_domain} --keylength ec-256 --force",
-    "/root/.acme.sh/acme.sh --install-cert -d ${local.service_domain} --ecc --fullchain-file /etc/caddy/certs/${local.service_domain}.crt --key-file /etc/caddy/certs/${local.service_domain}.key",
+    "/root/.acme.sh/acme.sh --install-cert -d ${local.service_domain} --ecc --fullchain-file /etc/caddy/certs/${local.service_domain}.crt --key-file /etc/caddy/certs/${local.service_domain}.key --reloadcmd 'systemctl restart caddy'",
     "shred -u /root/cloudflare.env || rm -f /root/cloudflare.env",
     "chown root:caddy /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
     "chmod 640 /etc/caddy/certs/${local.service_domain}.crt /etc/caddy/certs/${local.service_domain}.key",
