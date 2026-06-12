@@ -50,6 +50,16 @@ spec:
                   timeoutSeconds: 10
                   failureThreshold: 3
               readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 5765
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
