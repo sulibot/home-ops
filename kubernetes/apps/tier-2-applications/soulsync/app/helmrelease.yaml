@@ -103,7 +103,7 @@ spec:
                 cpu: 100m
                 memory: 256Mi
               limits:
-                memory: 2Gi
+                memory: 3Gi
           proxy:
             image:
               repository: docker.io/alpine/socat
