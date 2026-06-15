@@ -38,6 +38,9 @@ spec:
               Sportarr__DataPath: /config
               SPORTARR_BRANCH: main
               TZ: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
             probes:
               liveness: &probes
                 enabled: true
