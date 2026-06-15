@@ -33,7 +33,19 @@ spec:
               - /bin/sh
               - -c
               - |-
-                coolconfig set net.content_security_policy "frame-ancestors 'self' https://opencloud.sulibot.com https://wopiserver.sulibot.com https://collabora.sulibot.com;"
+                awk '
+                  /<content_security_policy[ >]/ {
+                    print "\t\t<content_security_policy desc=\"Customize the CSP header by specifying one or more policy-directive, separated by semicolons.\">frame-ancestors '\''self'\'' https://opencloud.sulibot.com https://wopiserver.sulibot.com https://collabora.sulibot.com;</content_security_policy>"
+                    skip=1
+                    next
+                  }
+                  skip && /<\/content_security_policy>/ {
+                    skip=0
+                    next
+                  }
+                  !skip { print }
+                ' /etc/coolwsd/coolwsd.xml > /tmp/coolwsd.xml
+                mv /tmp/coolwsd.xml /etc/coolwsd/coolwsd.xml
                 exec /start-collabora-online.sh
             env:
               TZ: America/Los_Angeles
