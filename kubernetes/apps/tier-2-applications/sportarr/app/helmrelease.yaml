@@ -63,7 +63,7 @@ spec:
                     port: *port
                   periodSeconds: 10
                   timeoutSeconds: 1
-                  failureThreshold: 30
+                  failureThreshold: 120
             resources:
               requests:
                 cpu: 100m
