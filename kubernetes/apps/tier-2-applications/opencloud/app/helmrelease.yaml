@@ -153,6 +153,58 @@ spec:
     configMaps:
       config:
         data:
+          app-registry.yaml: |-
+            app_registry:
+              mimetypes:
+                - mime_type: application/vnd.oasis.opendocument.text
+                  extension: odt
+                  name: Document
+                  description: OpenDocument text document
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: application/vnd.oasis.opendocument.spreadsheet
+                  extension: ods
+                  name: Spreadsheet
+                  description: OpenDocument spreadsheet document
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: application/vnd.oasis.opendocument.presentation
+                  extension: odp
+                  name: Presentation
+                  description: OpenDocument presentation document
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                  extension: docx
+                  name: Microsoft Word
+                  description: Microsoft Word document
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                  extension: xlsx
+                  name: Microsoft Excel
+                  description: Microsoft Excel spreadsheet
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+                  extension: pptx
+                  name: Microsoft PowerPoint
+                  description: Microsoft PowerPoint presentation
+                  icon: ""
+                  default_app: Collabora
+                  allow_creation: true
+                - mime_type: text/markdown
+                  extension: md
+                  name: Markdown file
+                  description: Markdown file
+                  icon: ""
+                  default_app: ""
+                  allow_creation: true
           csp.yaml: |-
             directives:
               child-src:
@@ -210,6 +262,8 @@ spec:
         type: configMap
         identifier: config
         globalMounts:
+          - path: /etc/opencloud/app-registry.yaml
+            subPath: app-registry.yaml
           - path: /etc/opencloud/csp.yaml
             subPath: csp.yaml
       tmp:
