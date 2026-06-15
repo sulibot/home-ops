@@ -102,7 +102,7 @@ spec:
             resources:
               requests:
                 cpu: 50m
-                memory: 256Mi
+                memory: 192Mi
           collaboration:
             image:
               repository: docker.io/opencloudeu/opencloud-rolling
@@ -150,7 +150,7 @@ spec:
             resources:
               requests:
                 cpu: 25m
-                memory: 128Mi
+                memory: 64Mi
 
     service:
       app:
