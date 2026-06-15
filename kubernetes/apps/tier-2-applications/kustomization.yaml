@@ -16,6 +16,7 @@ resources:
   - ./bookshelf/ks.yaml
   - ./calibre-web-automated/ks.yaml
   - ./cloudbeaver/ks.yaml
+  - ./collabora/ks.yaml
   - ./cross-seed/ks.yaml
   # emby disabled
   # - ./emby/ks.yaml
