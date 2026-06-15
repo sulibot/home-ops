@@ -47,6 +47,7 @@ spec:
               TZ: America/Los_Angeles
               OC_URL: https://opencloud.sulibot.com
               OC_LOG_LEVEL: info
+              OC_ADD_RUN_SERVICES: collaboration
               OC_INSECURE: "false"
               OC_OIDC_ISSUER: "https://auth.sulibot.com/application/o/opencloud/"
               OC_OIDC_CLIENT_ID:
@@ -65,6 +66,12 @@ spec:
               PROXY_HTTP_ADDR: 0.0.0.0:9200
               PROXY_TLS: "false"
               PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
+              COLLABORATION_APP_NAME: CollaboraOnline
+              COLLABORATION_APP_PRODUCT: Collabora
+              COLLABORATION_APP_ADDR: https://collabora.sulibot.com
+              COLLABORATION_APP_INSECURE: "false"
+              COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
+              COLLABORATION_WOPI_SRC: https://wopiserver.sulibot.com
               WEB_OIDC_AUTHORITY: "https://auth.sulibot.com/application/o/opencloud/"
               WEB_OIDC_METADATA_URL: "https://auth.sulibot.com/application/o/opencloud/.well-known/openid-configuration"
               WEB_OIDC_CLIENT_ID:
@@ -102,55 +109,7 @@ spec:
             resources:
               requests:
                 cpu: 50m
-                memory: 192Mi
-          collaboration:
-            image:
-              repository: docker.io/opencloudeu/opencloud-rolling
-              tag: 5.2.0@sha256:c840de29b7287da070ffc9d5eb52a1b291a046877402bf70f387ccf56c820aee
-            command:
-              - /bin/sh
-              - -c
-              - "opencloud collaboration server"
-            env:
-              TZ: America/Los_Angeles
-              OC_URL: https://opencloud.sulibot.com
-              OC_LOG_LEVEL: info
-              COLLABORATION_APP_NAME: CollaboraOnline
-              COLLABORATION_APP_PRODUCT: Collabora
-              COLLABORATION_APP_ADDR: https://collabora.sulibot.com
-              COLLABORATION_APP_INSECURE: "false"
-              COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
-              COLLABORATION_WOPI_SRC: https://wopiserver.sulibot.com
-              OC_REVA_GATEWAY: eu.opencloud.api.gateway
-              MICRO_REGISTRY_ADDRESS: 127.0.0.1:9233
-            probes:
-              liveness: &collaborationProbes
-                enabled: true
-                custom: true
-                spec:
-                  tcpSocket:
-                    port: 9300
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 3
-              readiness: *collaborationProbes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  tcpSocket:
-                    port: 9300
-                  failureThreshold: 30
-                  periodSeconds: 10
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop: [ALL]
-            resources:
-              requests:
-                cpu: 25m
-                memory: 64Mi
+                memory: 256Mi
 
     service:
       app:
