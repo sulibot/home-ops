@@ -36,7 +36,7 @@ spec:
                 --o:ssl.enable=false
                 --o:ssl.termination=true
                 --o:net.post_allow.host[0]=.+
-                --o:net.frame_ancestors=https://opencloud.sulibot.com
+                --o:net.content_security_policy="frame-ancestors 'self' https://opencloud.sulibot.com https://wopiserver.sulibot.com https://collabora.sulibot.com;"
                 --o:storage.wopi.host[0]=wopiserver\.sulibot\.com
                 --o:server_name=collabora.sulibot.com
                 --o:logging.level=warning
