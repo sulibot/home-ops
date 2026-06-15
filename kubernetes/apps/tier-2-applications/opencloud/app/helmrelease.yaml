@@ -70,6 +70,7 @@ spec:
               COLLABORATION_APP_PRODUCT: Collabora
               COLLABORATION_APP_ADDR: https://collabora.sulibot.com
               COLLABORATION_APP_INSECURE: "false"
+              COLLABORATION_APP_PROOF_DISABLE: "true"
               COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
               COLLABORATION_WOPI_SRC: https://wopiserver.sulibot.com
               WEB_OIDC_AUTHORITY: "https://auth.sulibot.com/application/o/opencloud/"
