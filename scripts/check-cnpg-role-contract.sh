@@ -61,7 +61,7 @@ for spec in "${SPEC_FILES[@]}"; do
   for owner in "${owners[@]}"; do
     role_name="$(norm "$(yq eval ".spec.managed.roles[] | select(.name == \"${owner}\") | .name" "$spec" 2>/dev/null | head -n1)")"
     secret_name="$(norm "$(yq eval ".spec.managed.roles[] | select(.name == \"${owner}\") | .passwordSecret.name // \"\"" "$spec" 2>/dev/null | head -n1)")"
-    expected_secret="${owner}-pg-password"
+    expected_secret="${owner//_/-}-pg-password"
 
     if [ -z "$role_name" ]; then
       echo "[err] ${spec}: missing managed role for owner '${owner}'" >&2
