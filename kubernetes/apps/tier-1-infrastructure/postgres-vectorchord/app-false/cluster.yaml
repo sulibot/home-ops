@@ -151,6 +151,11 @@ spec:
         ensure: present
         passwordSecret:
           name: n8n-pg-password
+      - name: navidrome
+        login: true
+        ensure: present
+        passwordSecret:
+          name: navidrome-pg-password
       - name: freshrss
         login: true
         ensure: present
