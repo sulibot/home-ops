@@ -1,5 +1,5 @@
 resources:
-  - repo.yaml
+  - repos.yaml
   - secrets.yaml
   - git.yaml
   - apps.yaml
