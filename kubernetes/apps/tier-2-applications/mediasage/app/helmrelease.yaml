@@ -29,6 +29,12 @@ spec:
             image:
               repository: ghcr.io/ecwilsonaz/mediasage
               tag: latest@sha256:bec22809257abd149b91176bf29814b7bbf3e23bb547b599c7f7800b7ab2e4ea
+            # Image entrypoint hardcodes `--host 0.0.0.0` (IPv4-only). This cluster is
+            # dual-stack with IPv6 as the pod's primary address, so kubelet probes and
+            # the gateway route would get connection-refused. Bind dual-stack instead.
+            command: ["sh", "-c"]
+            args:
+              - "uvicorn backend.main:app --host :: --port 5765 --workers ${UVICORN_WORKERS:-1}"
             env:
               TZ: America/Los_Angeles
               PLEX_URL: http://plex.default.svc.cluster.local:32400
