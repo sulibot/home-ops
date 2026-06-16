@@ -1,0 +1,114 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: collabora
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: collabora
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    controllers:
+      collabora:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/collabora/code
+              tag: latest@sha256:9975b01bc6be098df25c433deadefac810948c1bba22f85bc1947e857d1282ab
+            command:
+              - /bin/sh
+              - -c
+              - |-
+                awk '
+                  /<content_security_policy[ >]/ {
+                    print "\t\t<content_security_policy desc=\"Customize the CSP header by specifying one or more policy-directive, separated by semicolons.\">frame-ancestors '\''self'\'' https://opencloud.sulibot.com https://wopiserver.sulibot.com https://collabora.sulibot.com;</content_security_policy>"
+                    skip=1
+                    next
+                  }
+                  skip && /<\/content_security_policy>/ {
+                    skip=0
+                    next
+                  }
+                  !skip { print }
+                ' /etc/coolwsd/coolwsd.xml > /tmp/coolwsd.xml
+                mv /tmp/coolwsd.xml /etc/coolwsd/coolwsd.xml
+                exec /start-collabora-online.sh
+            env:
+              TZ: America/Los_Angeles
+              aliasgroup1: https://wopiserver\.sulibot\.com:443
+              extra_params: >-
+                --o:ssl.enable=false
+                --o:ssl.termination=true
+                --o:net.post_allow.host[0]=.+
+                --o:storage.wopi.host[0]=wopiserver\.sulibot\.com
+                --o:server_name=collabora.sulibot.com
+                --o:logging.level=warning
+                --o:logging.level_startup=warning
+                --o:logging.disable_server_audit=true
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /hosting/discovery
+                    port: &port 9980
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /hosting/discovery
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 2Gi
+
+    service:
+      app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        hostnames:
+          - collabora.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
