@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: opencloud
+  name: collabora
   namespace: flux-system
   labels:
     layer: "applications"
@@ -11,15 +11,11 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: collabora
-      namespace: flux-system
-    - name: onepassword
-      namespace: flux-system
     - name: storage-ready
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/tier-2-applications/opencloud/app
+  path: ./kubernetes/apps/tier-2-applications/collabora/app
   prune: true
   sourceRef:
     kind: GitRepository
