@@ -75,7 +75,7 @@ spec:
           app:
             image:
               repository: ghcr.io/lklynet/aurral
-              tag: latest@sha256:c15021d52ac12673e16ce1e0efbde46dc49f512afb83445c7fe38b230ec835f0
+              tag: latest@sha256:b30405522fc107e6872d8947c11d75af75930b3c7b1577bb193b3d9fb4fe99b2
             env:
               TZ: America/Los_Angeles
               NODE_OPTIONS: "--max-old-space-size=1536"
