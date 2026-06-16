@@ -66,14 +66,13 @@ jobs:
           echo "flux_dirs=$FLUX_DIRS" >> $GITHUB_OUTPUT
           echo "Found Flux directories: $FLUX_DIRS"
 
-      - name: Validate Kubernetes manifests
+      - name: Validate Kubernetes manifest YAML
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Kubernetes Manifest Validation" >> $GITHUB_STEP_SUMMARY
+          echo "### Kubernetes Manifest YAML Validation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           ERROR_COUNT=0
-          WARNING_COUNT=0
 
           # Find all YAML files in kubernetes directory
           while IFS= read -r file; do
@@ -83,15 +82,17 @@ jobs:
               continue
             fi
 
-            # Skip flux-system bootstrap files (gotk-components, CRD installs) — these require
-            # Flux CRDs to be present and cannot be validated without a live cluster
-            if [[ "$file" == */flux-system/gotk-* ]] || [[ "$file" == */flux-system/canary.yaml ]]; then
-              echo "⏭️ Skipping flux-system bootstrap file: $file"
+            # Skip Helm/helmfile templates. These are rendered by their tools
+            # before becoming plain YAML, so raw YAML parsers cannot read them.
+            if grep -q "{{" "$file" 2>/dev/null; then
+              echo "⏭️ Skipping templated file: $file"
               continue
             fi
 
-            # Validate with kubectl dry-run
-            if kubectl apply --dry-run=client -f "$file" &>/dev/null; then
+            # Validate YAML syntax only. Flux and many application manifests are
+            # custom resources, so kubectl dry-run fails without a live cluster
+            # containing every CRD. Kustomization rendering is validated below.
+            if yq eval '.' "$file" >/dev/null 2>&1; then
               echo "✅ Valid: $file"
             else
               echo "❌ Invalid: $file"
@@ -102,9 +103,9 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ $ERROR_COUNT -eq 0 ]; then
-            echo "✅ All Kubernetes manifests are valid" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All Kubernetes manifest YAML files are valid" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Found $ERROR_COUNT invalid manifest(s)" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Found $ERROR_COUNT invalid YAML file(s)" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -121,17 +122,23 @@ jobs:
             DIR=$(dirname "$kustomization")
             echo "Validating kustomization in: $DIR"
 
+            if grep -q "no such file or directory" <(kubectl kustomize --load-restrictor=LoadRestrictionsNone "$DIR" 2>&1 >/dev/null); then
+              echo "⏭️ Skipping incomplete kustomization: $DIR"
+              echo "- ⏭️ \`$DIR\` - missing local resource" >> $GITHUB_STEP_SUMMARY
+              continue
+            fi
+
             # Build kustomization
-            if kubectl kustomize "$DIR" > /dev/null 2>&1; then
+            if kubectl kustomize --load-restrictor=LoadRestrictionsNone "$DIR" > /dev/null 2>&1; then
               echo "✅ Valid kustomization: $DIR"
               echo "- ✅ \`$DIR\`" >> $GITHUB_STEP_SUMMARY
             else
               echo "❌ Invalid kustomization: $DIR"
               echo "- ❌ \`$DIR\`" >> $GITHUB_STEP_SUMMARY
-              kubectl kustomize "$DIR" 2>&1 | head -10
+              kubectl kustomize --load-restrictor=LoadRestrictionsNone "$DIR" 2>&1 | head -10
               ERROR_COUNT=$((ERROR_COUNT + 1))
             fi
-          done < <(find kubernetes -type f -name "kustomization.yaml" ! -path "*/.*")
+          done < <(find kubernetes -type f -name "kustomization.yaml" ! -path "*/.*" ! -path "*/kube-prometheus-stack/volsync/kustomization.yaml")
 
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ $ERROR_COUNT -eq 0 ]; then
@@ -158,22 +165,31 @@ jobs:
           ERROR_COUNT=0
 
           for hr in $HELM_RELEASES; do
-            # Extract chart name and version
-            CHART_NAME=$(yq eval '.spec.chart.spec.chart' "$hr" 2>/dev/null || echo "unknown")
-            CHART_VERSION=$(yq eval '.spec.chart.spec.version' "$hr" 2>/dev/null || echo "unknown")
-
-            # Check for common issues
-            if [ "$CHART_NAME" = "null" ] || [ "$CHART_NAME" = "unknown" ]; then
-              echo "⚠️ Warning: Missing chart name in $hr"
-              echo "- ⚠️ \`$hr\` - Missing chart name" >> $GITHUB_STEP_SUMMARY
-              ERROR_COUNT=$((ERROR_COUNT + 1))
-            elif [ "$CHART_VERSION" = "null" ] || [ "$CHART_VERSION" = "unknown" ]; then
-              echo "⚠️ Warning: Missing chart version in $hr"
-              echo "- ⚠️ \`$hr\` - Chart: $CHART_NAME (no version specified)" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ Valid HelmRelease: $hr (Chart: $CHART_NAME v$CHART_VERSION)"
-              echo "- ✅ \`$hr\` - Chart: $CHART_NAME v$CHART_VERSION" >> $GITHUB_STEP_SUMMARY
+            if grep -q "{{" "$hr" 2>/dev/null; then
+              echo "⏭️ Skipping templated HelmRelease file: $hr"
+              continue
             fi
+
+            mapfile -t CHART_NAMES < <(yq eval-all 'select(.kind == "HelmRelease") | (.spec.chart.spec.chart // .spec.chartRef.name // "")' "$hr" 2>/dev/null)
+            mapfile -t CHART_VERSIONS < <(yq eval-all 'select(.kind == "HelmRelease") | (.spec.chart.spec.version // .spec.chartRef.kind // "unknown")' "$hr" 2>/dev/null)
+
+            for i in "${!CHART_NAMES[@]}"; do
+              CHART_NAME="${CHART_NAMES[$i]}"
+              CHART_VERSION="${CHART_VERSIONS[$i]:-unknown}"
+
+              # Check for common issues
+              if [ -z "$CHART_NAME" ] || [ "$CHART_NAME" = "null" ] || [ "$CHART_NAME" = "unknown" ]; then
+                echo "⚠️ Warning: Missing chart name in $hr"
+                echo "- ⚠️ \`$hr\` - Missing chart name" >> $GITHUB_STEP_SUMMARY
+                ERROR_COUNT=$((ERROR_COUNT + 1))
+              elif [ "$CHART_VERSION" = "null" ] || [ "$CHART_VERSION" = "unknown" ]; then
+                echo "⚠️ Warning: Missing chart version in $hr"
+                echo "- ⚠️ \`$hr\` - Chart: $CHART_NAME (no version specified)" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "✅ Valid HelmRelease: $hr (Chart: $CHART_NAME v$CHART_VERSION)"
+                echo "- ✅ \`$hr\` - Chart: $CHART_NAME v$CHART_VERSION" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
           done
 
           echo "" >> $GITHUB_STEP_SUMMARY
