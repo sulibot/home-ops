@@ -1,0 +1,109 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sportarr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: sportarr
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    controllers:
+      sportarr:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: sportarr/sportarr
+              tag: 4.0.1010.1090@sha256:c35de5937ad9356b88b7283b53dc9a0d2b194f817542be68461545ddeab1fac6
+            env:
+              PUID: "1000"
+              PGID: "1000"
+              UMASK: "022"
+              Sportarr__DataPath: /config
+              SPORTARR_BRANCH: main
+              TZ: America/Los_Angeles
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: &port 1867
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 120
+            resources:
+              requests:
+                cpu: 100m
+    defaultPodOptions:
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        ports:
+          http:
+            port: 80
+            targetPort: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.sulibot.com"
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+    persistence:
+      config:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /data
+            subPath: data
+      tmp:
+        type: emptyDir
