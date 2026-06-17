@@ -145,7 +145,7 @@ spec:
           proxy:
             image:
               repository: docker.io/alpine/socat
-              tag: 1.8.0.3
+              tag: 1.8.1.1
             args:
               - TCP6-LISTEN:8081,ipv6only=0,fork,reuseaddr
               - TCP6:[::1]:80
@@ -161,7 +161,7 @@ spec:
           peer-proxy:
             image:
               repository: docker.io/alpine/socat
-              tag: 1.8.0.3
+              tag: 1.8.1.1
             args:
               - TCP6-LISTEN:50429,ipv6only=1,fork,reuseaddr
               - TCP4:127.0.0.1:50429

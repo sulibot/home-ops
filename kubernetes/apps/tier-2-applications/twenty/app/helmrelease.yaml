@@ -38,7 +38,7 @@ spec:
           redis-proxy:
             image:
               repository: docker.io/alpine/socat
-              tag: 1.8.0.3
+              tag: 1.8.1.1
             command:
               - sh
               - -lc
@@ -98,7 +98,7 @@ spec:
           redis-proxy:
             image:
               repository: docker.io/alpine/socat
-              tag: 1.8.0.3
+              tag: 1.8.1.1
             command:
               - sh
               - -lc

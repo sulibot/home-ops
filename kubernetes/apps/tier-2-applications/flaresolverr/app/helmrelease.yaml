@@ -59,7 +59,7 @@ spec:
           proxy:
             image:
               repository: docker.io/alpine/socat
-              tag: 1.8.0.3
+              tag: 1.8.1.1
             args:
               - TCP6-LISTEN:8080,ipv6only=0,fork,reuseaddr
               - TCP6:[::1]:8191
