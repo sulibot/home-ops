@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: docker.io/deluan/navidrome
-              tag: 0.61.2
+              tag: 0.62.0
             env:
               TZ: America/Los_Angeles
               ND_PORT: &port 4533
