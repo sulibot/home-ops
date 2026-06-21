@@ -68,6 +68,9 @@ spec:
               requests:
                 cpu: 100m
     defaultPodOptions:
+      # Temporary: solwk01 currently has stale CephFS handles for this PVC.
+      nodeSelector:
+        kubernetes.io/hostname: solwk03
       dnsConfig:
         options:
           - name: single-request

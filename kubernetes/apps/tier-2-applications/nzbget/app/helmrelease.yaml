@@ -372,8 +372,11 @@ spec:
                 cpu: 100m
                 memory: 256Mi
               limits:
-                memory: 8Gi
+                memory: 12Gi
     defaultPodOptions:
+      # Temporary: avoid solwk01/solwk02 while Ceph CSI and stale pod cleanup settle.
+      nodeSelector:
+        kubernetes.io/hostname: solwk03
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

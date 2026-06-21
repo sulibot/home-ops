@@ -42,7 +42,7 @@ spec:
             command:
               - sh
               - -lc
-              - exec socat TCP-LISTEN:6379,fork,reuseaddr TCP6:[fd00:101:224::6309]:6379
+              - exec socat TCP-LISTEN:6379,fork,reuseaddr TCP6:valkey-primary.default.svc.cluster.local:6379
           app:
             image:
               repository: twentycrm/twenty
@@ -102,7 +102,7 @@ spec:
             command:
               - sh
               - -lc
-              - exec socat TCP-LISTEN:6379,fork,reuseaddr TCP6:[fd00:101:224::6309]:6379
+              - exec socat TCP-LISTEN:6379,fork,reuseaddr TCP6:valkey-primary.default.svc.cluster.local:6379
           app:
             image:
               repository: twentycrm/twenty
