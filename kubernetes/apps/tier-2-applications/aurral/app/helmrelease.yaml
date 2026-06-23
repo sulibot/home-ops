@@ -31,6 +31,7 @@ spec:
               tag: v3.41.1
             env:
               HEALTH_SERVER_ADDRESS: :9999
+              WIREGUARD_ALLOWED_IPS: 0.0.0.0/0
             envFrom:
               - secretRef:
                   name: aurral-nordvpn-secret
@@ -129,6 +130,10 @@ spec:
 
     service:
       app:
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv4
+          - IPv6
         ports:
           http:
             port: 3001

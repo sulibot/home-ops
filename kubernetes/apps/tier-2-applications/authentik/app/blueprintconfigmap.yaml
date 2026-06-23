@@ -1204,6 +1204,57 @@ data:
           enabled: true
           negate: false
           timeout: 30
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: aurral
+        attrs:
+          name: aurral
+          client_id: !Env AURRAL_OIDC_CLIENT_ID
+          client_secret: !Env AURRAL_OIDC_CLIENT_SECRET
+          redirect_uris:
+            - url: "https://aurral.sulibot.com/api/auth/oidc/callback"
+              matching_mode: strict
+            - url: "https://aurral.sulibot.com/auth/oidc/callback"
+              matching_mode: strict
+            - url: "https://aurral.sulibot.com/oidc/callback"
+              matching_mode: strict
+            - url: "https://aurral.sulibot.com/callback"
+              matching_mode: strict
+          authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: per_provider
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: aurral
+        attrs:
+          name: Aurral
+          slug: aurral
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, aurral]]
+          meta_launch_url: "https://aurral.sulibot.com"
+          policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, aurral]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, aurral]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
       # Home Assistant app — OIDC client for native app token exchange
       - model: authentik_providers_oauth2.oauth2provider
         state: present
