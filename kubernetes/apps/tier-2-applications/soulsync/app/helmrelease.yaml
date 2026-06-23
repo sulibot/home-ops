@@ -31,7 +31,7 @@ spec:
           configure:
             image:
               repository: boulderbadgedad/soulsync
-              tag: latest@sha256:cec7f4cec350f39ad8f370633b7cbeb9976bacf07cb0a101b6d26dee2d02dbf0
+              tag: 2.7.6@sha256:5d4f9f7b02c416d0d52f76aeb4103b67e53f1b4ae93f87b55a14f20c45f8c35c
             envFrom:
               - secretRef:
                   name: slskd-secret
@@ -82,7 +82,7 @@ spec:
           app:
             image:
               repository: boulderbadgedad/soulsync
-              tag: latest@sha256:cec7f4cec350f39ad8f370633b7cbeb9976bacf07cb0a101b6d26dee2d02dbf0
+              tag: 2.7.6@sha256:5d4f9f7b02c416d0d52f76aeb4103b67e53f1b4ae93f87b55a14f20c45f8c35c
             env:
               TZ: America/Los_Angeles
               PUID: "1000"
@@ -95,9 +95,25 @@ spec:
               liveness:
                 enabled: false
               readiness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8008
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
               startup:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8008
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 90
             resources:
               requests:
                 cpu: 100m
@@ -126,6 +142,9 @@ spec:
                 cpu: 5m
                 memory: 16Mi
     defaultPodOptions:
+      # Temporary: avoid solwk01 while CephFS-backed app data can stall during startup.
+      nodeSelector:
+        kubernetes.io/hostname: solwk03
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
