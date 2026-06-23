@@ -15,6 +15,8 @@ spec:
       namespace: flux-system
     - name: storage-ready
       namespace: flux-system
+    - name: authentik-outpost
+      namespace: flux-system
     - name: lidarr
       namespace: flux-system
   interval: 15m

@@ -39,6 +39,9 @@ spec:
               LASTFM_USERNAME: sulibot
               DIGARR_DISABLE_REGISTRATION: "true"
               ALLOWED_ORIGIN: https://digarr.sulibot.com
+              OIDC_ISSUER_URL: https://auth.sulibot.com/application/o/digarr/
+              OIDC_SCOPES: openid profile email
+              OIDC_TRUST_EMAIL_VERIFIED: "true"
             envFrom:
               - secretRef:
                   name: digarr-secret
@@ -67,6 +70,14 @@ spec:
                 memory: 512Mi
 
     defaultPodOptions:
+      hostAliases:
+        # Digarr rejects OIDC issuers that resolve to private/internal IPs.
+        - ip: "104.21.2.206"
+          hostnames:
+            - auth.sulibot.com
+        - ip: "172.67.152.231"
+          hostnames:
+            - auth.sulibot.com
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

@@ -1207,19 +1207,13 @@ data:
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
-          name: aurral
+          name: digarr
         attrs:
-          name: aurral
-          client_id: !Env AURRAL_OIDC_CLIENT_ID
-          client_secret: !Env AURRAL_OIDC_CLIENT_SECRET
+          name: digarr
+          client_id: !Env DIGARR_OIDC_CLIENT_ID
+          client_secret: !Env DIGARR_OIDC_CLIENT_SECRET
           redirect_uris:
-            - url: "https://aurral.sulibot.com/api/auth/oidc/callback"
-              matching_mode: strict
-            - url: "https://aurral.sulibot.com/auth/oidc/callback"
-              matching_mode: strict
-            - url: "https://aurral.sulibot.com/oidc/callback"
-              matching_mode: strict
-            - url: "https://aurral.sulibot.com/callback"
+            - url: "https://digarr.sulibot.com/api/v1/auth/oidc/callback"
               matching_mode: strict
           authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
@@ -1235,11 +1229,46 @@ data:
       - model: authentik_core.application
         state: present
         identifiers:
+          slug: digarr
+        attrs:
+          name: Digarr
+          slug: digarr
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, digarr]]
+          meta_launch_url: "https://digarr.sulibot.com"
+          policy_engine_mode: any
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, digarr]]
+          order: 0
+        attrs:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+          target: !Find [authentik_core.application, [slug, digarr]]
+          order: 0
+          enabled: true
+          negate: false
+          timeout: 30
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        identifiers:
+          name: aurral-proxy
+        attrs:
+          name: aurral-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: "https://aurral.sulibot.com"
+          internal_host: "http://aurral.default.svc.cluster.local:3001"
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
           slug: aurral
         attrs:
           name: Aurral
           slug: aurral
-          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, aurral]]
+          provider: !Find [authentik_providers_proxy.proxyprovider, [name, aurral-proxy]]
           meta_launch_url: "https://aurral.sulibot.com"
           policy_engine_mode: any
       - model: authentik_policies.policybinding
@@ -1317,6 +1346,8 @@ data:
           type: proxy
           providers:
             - !Find [authentik_providers_proxy.proxyprovider, [name, firefly-proxy]]
+            - !Find [authentik_providers_proxy.proxyprovider, [name, grimmory-proxy]]
+            - !Find [authentik_providers_proxy.proxyprovider, [name, aurral-proxy]]
           config:
             authentik_host: "https://auth.sulibot.com"
             log_level: info

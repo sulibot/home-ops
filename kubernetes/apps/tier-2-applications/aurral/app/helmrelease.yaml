@@ -84,6 +84,11 @@ spec:
               MUSICBRAINZ_CONTACT: sulibot@gmail.com
               DOWNLOAD_FOLDER: /data/media/music_discovery
               WEEKLY_FLOW_FOLDER: /app/backend/data/weekly-flow
+              TRUST_PROXY: "true"
+              AUTH_PROXY_ENABLED: "true"
+              AUTH_PROXY_HEADER: X-authentik-username
+              AUTH_PROXY_ADMIN_USERS: sulibot,admin
+              AUTH_PROXY_DEFAULT_ROLE: user
             envFrom:
               - secretRef:
                   name: aurral-secret
@@ -147,8 +152,8 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - identifier: app
-                port: 3001
+              - name: authentik-outpost
+                port: 9000
 
     persistence:
       dev-net-tun:
