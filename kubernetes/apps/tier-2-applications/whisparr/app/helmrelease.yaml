@@ -3,53 +3,51 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: whisper
+  name: whisparr
 spec:
   chartRef:
     kind: OCIRepository
-    name: whisper
+    name: whisparr
   interval: 1h
-  timeout: 15m
+  timeout: 10m
   maxHistory: 3
   install:
     remediation:
       retries: 5
-    timeout: 15m
+    timeout: 10m
   upgrade:
     cleanupOnFail: true
     remediation:
       retries: 5
       strategy: rollback
-    timeout: 15m
+    timeout: 10m
   values:
     controllers:
-      whisper:
+      whisparr:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: docker.io/onerahmet/openai-whisper-asr-webservice
-              tag: v1.9.1@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
+              repository: ghcr.io/hotio/whisparr
+              tag: v3-3.3.4-release.794@sha256:0bab72994828d5a8c9b890d3ee081cc802f7c8b2376a901ca5d4c48ab9230fc8
             env:
               TZ: America/Los_Angeles
-              ASR_MODEL: small
-              ASR_ENGINE: faster_whisper
-              ASR_MODEL_PATH: /cache/models
-              XDG_CACHE_HOME: /cache
-              HF_HOME: /cache/huggingface
-              MPLCONFIGDIR: /tmp/matplotlib
+              PUID: "1000"
+              PGID: "1000"
+              UMASK: "002"
+              WEBUI_PORTS: 6969/tcp
             probes:
               liveness: &probes
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /docs
-                    port: &port 9000
+                    path: /ping
+                    port: &port 6969
                   initialDelaySeconds: 30
-                  periodSeconds: 30
-                  timeoutSeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 2
                   failureThreshold: 3
               readiness: *probes
               startup:
@@ -57,31 +55,34 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /docs
+                    path: /ping
                     port: *port
                   periodSeconds: 10
-                  timeoutSeconds: 5
-                  failureThreshold: 90
+                  timeoutSeconds: 2
+                  failureThreshold: 30
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
               capabilities: {drop: ["ALL"]}
             resources:
               requests:
-                cpu: 500m
-                memory: 1Gi
+                cpu: 100m
+                memory: 512Mi
               limits:
-                memory: 4Gi
+                memory: 2Gi
     defaultPodOptions:
+      dnsConfig:
+        options:
+          - name: single-request
+          - name: single-request-reopen
+          - name: ndots
+            value: "1"
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        controller: whisper
+        controller: whisparr
         ipFamilyPolicy: PreferDualStack
         ipFamilies:
           - IPv6
@@ -102,11 +103,18 @@ spec:
               - identifier: app
                 port: 80
     persistence:
-      cache:
+      config:
         enabled: true
         existingClaim: "{{ .Release.Name }}-config"
         globalMounts:
-          - path: /cache
+          - path: /config
+      content:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: csi-cephfs-content-pvc
+        globalMounts:
+          - path: /data
+            subPath: data
       tmp:
         type: emptyDir
         globalMounts:

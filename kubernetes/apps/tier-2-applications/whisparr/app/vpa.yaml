@@ -2,12 +2,12 @@
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: whisper
+  name: whisparr
 spec:
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: whisper
+    name: whisparr
   updatePolicy:
     updateMode: "Auto"
     minReplicas: 1
@@ -17,8 +17,8 @@ spec:
         controlledResources: ["cpu", "memory"]
         controlledValues: RequestsOnly
         minAllowed:
-          cpu: 100m
-          memory: 512Mi
+          cpu: 50m
+          memory: 256Mi
         maxAllowed:
           cpu: "4"
-          memory: 8Gi
+          memory: 4Gi

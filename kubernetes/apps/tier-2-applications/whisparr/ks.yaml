@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: whisper
+  name: whisparr
   namespace: flux-system
   labels:
     layer: "applications"
@@ -24,11 +24,11 @@ spec:
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
-  path: ./kubernetes/apps/tier-2-applications/whisper/app
+  path: ./kubernetes/apps/tier-2-applications/whisparr/app
   postBuild:
     substitute:
-      APP: whisper
-      VOLSYNC_SCHEDULE: "19 * * * *"
+      APP: whisparr
+      VOLSYNC_SCHEDULE: "39 * * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

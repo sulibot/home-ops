@@ -76,7 +76,7 @@ resources:
   - ./twenty/ks.yaml
   - ./tqm/ks.yaml
   - ./vikunja/ks.yaml
-  - ./whisper/ks.yaml
+  - ./whisparr/ks.yaml
   # tuppr disabled
   # - ./tuppr/ks.yaml
   - ./volsync-repository-pvc/ks.yaml
