@@ -1,0 +1,113 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: whisper
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: whisper
+  interval: 1h
+  timeout: 15m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 15m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 15m
+  values:
+    controllers:
+      whisper:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/onerahmet/openai-whisper-asr-webservice
+              tag: v1.9.1@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
+            env:
+              TZ: America/Los_Angeles
+              ASR_MODEL: small
+              ASR_ENGINE: faster_whisper
+              ASR_MODEL_PATH: /cache/models
+              XDG_CACHE_HOME: /cache
+              HF_HOME: /cache/huggingface
+              MPLCONFIGDIR: /tmp/matplotlib
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /docs
+                    port: &port 9000
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /docs
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 90
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+              limits:
+                memory: 4Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: whisper
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies:
+          - IPv6
+          - IPv4
+        ports:
+          http:
+            port: 80
+            targetPort: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.sulibot.com"
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 80
+    persistence:
+      cache:
+        enabled: true
+        existingClaim: "{{ .Release.Name }}-config"
+        globalMounts:
+          - path: /cache
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
