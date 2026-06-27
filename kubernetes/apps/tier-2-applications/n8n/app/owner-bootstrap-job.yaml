@@ -12,7 +12,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: bootstrap
-          image: curlimages/curl:8.20.0
+          image: curlimages/curl:8.21.0
           imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
