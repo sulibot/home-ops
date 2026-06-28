@@ -1,0 +1,388 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cross-layer-storage-rules
+  namespace: observability
+spec:
+  groups:
+    - name: cross-layer-storage.recording
+      interval: 1m
+      rules:
+        - record: homeops:pod_fs_write_bytes:rate5m
+          expr: |
+            sum by (namespace, pod, node) (
+              rate(container_fs_writes_bytes_total{pod!="",container!="POD",container!=""}[5m])
+            )
+
+        - record: homeops:pod_fs_read_bytes:rate5m
+          expr: |
+            sum by (namespace, pod, node) (
+              rate(container_fs_reads_bytes_total{pod!="",container!="POD",container!=""}[5m])
+            )
+
+        - record: homeops:node_disk_io_time:rate5m
+          expr: |
+            sum by (instance, device) (
+              rate(node_disk_io_time_seconds_total[5m])
+            )
+
+        - record: homeops:nic_errors_drops:rate5m
+          expr: |
+            sum by (instance, device) (
+              rate(node_network_receive_errs_total[5m])
+              + rate(node_network_transmit_errs_total[5m])
+              + rate(node_network_receive_drop_total[5m])
+              + rate(node_network_transmit_drop_total[5m])
+            )
+
+        - record: homeops:ceph_recovery_bytes:rate5m
+          expr: |
+            sum(rate(ceph_osd_recovery_bytes[5m])) or vector(0)
+
+        - record: homeops:proxmox_vm_disk_write_bytes:rate5m
+          expr: |
+            sum by (id, node) (
+              rate(pve_disk_write_bytes{type=~"qemu|lxc"}[5m])
+            )
+
+        - record: homeops:proxmox_vm_disk_read_bytes:rate5m
+          expr: |
+            sum by (id, node) (
+              rate(pve_disk_read_bytes{type=~"qemu|lxc"}[5m])
+            )
+
+        - record: homeops:pod_pvc_write_bytes:rate5m
+          expr: |
+            homeops:pod_fs_write_bytes:rate5m
+            * on (namespace, pod, node) group_left(persistentvolumeclaim, workload, workload_kind)
+              homeops_kube_pod_pvc_info
+
+        - record: homeops:pod_pvc_read_bytes:rate5m
+          expr: |
+            homeops:pod_fs_read_bytes:rate5m
+            * on (namespace, pod, node) group_left(persistentvolumeclaim, workload, workload_kind)
+              homeops_kube_pod_pvc_info
+
+    - name: cross-layer-storage.alerts
+      interval: 1m
+      rules:
+        - alert: PodFilesystemWriteIOHigh
+          expr: |
+            topk(10, homeops:pod_fs_write_bytes:rate5m) > 100 * 1024 * 1024
+          for: 15m
+          labels:
+            severity: warning
+            layer: kubernetes
+            service: storage
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is writing more than 100 MiB/s"
+            description: |
+              Pod filesystem write IO is persistently high. Check whether this is an expected backup,
+              database compaction, media import, restore, or runaway workload before Ceph recovery or node pressure worsens.
+            runbook_url: "docs/runbooks/which-kubernetes-pod-is-causing-vm-disk-io.md"
+
+        - alert: KubernetesNodeDiskPressure
+          expr: |
+            kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            layer: kubernetes
+            service: storage
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} has DiskPressure"
+            description: |
+              The node is reporting DiskPressure. Pods may be evicted, image pulls may fail,
+              and local/container filesystem IO can mask or amplify Ceph-backed storage symptoms.
+            runbook_url: "docs/runbooks/which-kubernetes-pod-is-causing-vm-disk-io.md"
+
+        - alert: KubernetesNodeMemoryPressure
+          expr: |
+            kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            layer: kubernetes
+            service: compute
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} has MemoryPressure"
+            description: |
+              The node is reporting MemoryPressure. Confirm whether workload memory pressure,
+              kubelet instability, or VM/Proxmox host pressure is contributing to the incident.
+            runbook_url: "docs/runbooks/which-kubernetes-pod-is-causing-vm-disk-io.md"
+
+        - alert: HostDiskBusy
+          expr: |
+            homeops:node_disk_io_time:rate5m > 0.85
+          for: 15m
+          labels:
+            severity: warning
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "Disk {{ $labels.device }} on {{ $labels.instance }} is busy for more than 85% of wall time"
+            description: |
+              A physical disk is persistently busy. If this disk backs a Ceph OSD, compare with OSD apply/commit
+              latency, recovery/backfill activity, SMART data, and kernel disk errors.
+            runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
+
+        - alert: HostNetworkErrorsOrDrops
+          expr: |
+            homeops:nic_errors_drops:rate5m > 0
+          for: 10m
+          labels:
+            severity: warning
+            layer: hardware
+            service: network
+          annotations:
+            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} has errors or drops"
+            description: |
+              Network errors or drops can look like Ceph latency, VM stalls, or Kubernetes node instability.
+              Check link speed, duplex, switch counters, driver/firmware, and recent cable or topology changes.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: SmartDeviceCritical
+          expr: |
+            smartctl_device_smart_status != 1
+            or smartctl_device_status != 1
+            or smartctl_device_critical_warning != 0
+          for: 5m
+          labels:
+            severity: critical
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "SMART/NVMe critical health warning for {{ $labels.device }} on {{ $labels.instance }}"
+            description: |
+              A physical storage device is reporting failed SMART status, failed device status, or NVMe critical warning.
+              Correlate the device to any OSD, VM disk, or affected workload before replacement.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: SmartDeviceMediaErrors
+          expr: |
+            smartctl_device_media_errors > 0
+          for: 5m
+          labels:
+            severity: critical
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "SMART media errors on {{ $labels.device }} at {{ $labels.instance }}"
+            description: |
+              Media errors indicate possible disk failure. Check whether the device backs a Ceph OSD and whether
+              Ceph is degraded, recovering, or reporting slow ops.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: CephHealthError
+          expr: |
+            ceph_health_status == 2
+          for: 2m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph health is ERROR"
+            description: |
+              Ceph reports HEALTH_ERR. Check PG safety, OSD state, MON quorum, MDS state, and whether client IO
+              or hardware errors are contributing.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephHealthWarnPersistent
+          expr: |
+            ceph_health_status == 1
+          for: 15m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph health is WARN for more than 15 minutes"
+            description: |
+              Ceph reports persistent HEALTH_WARN. Review recovery, scrub, MDS, OSD, and capacity warnings before
+              the condition becomes user-impacting.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephPGDataSafetyRisk
+          expr: |
+            ceph_health_detail{name=~"PG_AVAILABILITY|PG_DEGRADED|PG_DAMAGED|PG_BACKFILL_FULL|PG_RECOVERY_FULL"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph PG data safety or availability risk: {{ $labels.name }}"
+            description: |
+              Ceph is reporting a PG-level data safety, availability, or recovery capacity condition.
+              Avoid disruptive maintenance and reduce competing client IO until the PG state is understood.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephPGRemappedPersistent
+          expr: |
+            ceph_health_detail{name=~"PG_DEGRADED|PG_AVAILABILITY|OBJECT_MISPLACED"} == 1
+          for: 30m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph PG remap/degraded condition is persistent: {{ $labels.name }}"
+            description: |
+              Ceph has not returned to a clean state within 30 minutes. Check whether recovery/backfill is making
+              progress or blocked by capacity, slow OSDs, client IO, or hardware issues.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephSlowOps
+          expr: |
+            ceph_health_detail{name=~"SLOW_OPS|BLUESTORE_SLOW_OP_ALERT|OSD_SLOW_PING_TIME_BACK|OSD_SLOW_PING_TIME_FRONT"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph slow operation condition: {{ $labels.name }}"
+            description: |
+              Ceph is reporting slow operations. Check whether the source is client IO, recovery/backfill,
+              physical disk latency, network loss, or host pressure.
+            runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
+
+        - alert: CephOSDDown
+          expr: |
+            ceph_osd_up == 0
+          for: 2m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph OSD {{ $labels.ceph_daemon }} is down"
+            description: |
+              An OSD is down. Check the hosting Proxmox node, physical disk, disk path, OSD logs,
+              and current PG data safety before taking repair action.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephOSDOutUnexpected
+          expr: |
+            ceph_osd_in == 0
+          for: 5m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph OSD {{ $labels.ceph_daemon }} is out"
+            description: |
+              An OSD is marked out. Confirm whether this is planned maintenance. If not, check data safety,
+              OSD/device health, and recovery/backfill status.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephMDSHealthDetail
+          expr: |
+            ceph_health_detail{name=~"MDS_.*|FS_.*"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            layer: ceph
+            service: cephfs
+          annotations:
+            summary: "CephFS/MDS health detail: {{ $labels.name }}"
+            description: |
+              Ceph is reporting an MDS or CephFS health issue. Check active/standby ranks, MDS logs,
+              metadata pool health, and whether CephFS clients are blocked.
+            runbook_url: "docs/runbooks/ceph-mds-crash.md"
+
+        - alert: CephMDSMetricsMissing
+          expr: |
+            absent(ceph_mds_metadata)
+          for: 10m
+          labels:
+            severity: critical
+            layer: ceph
+            service: cephfs
+          annotations:
+            summary: "Ceph MDS metrics are missing"
+            description: |
+              Ceph MDS metadata metrics are missing. Confirm whether the MDS crashed, failed over,
+              lost scrape coverage, or the Ceph manager Prometheus module stopped exposing MDS state.
+            runbook_url: "docs/runbooks/ceph-mds-crash.md"
+
+        - alert: CephRecoveryActiveWithHighPodWrites
+          expr: |
+            homeops:ceph_recovery_bytes:rate5m > 10 * 1024 * 1024
+            and
+            sum(homeops:pod_fs_write_bytes:rate5m) > 100 * 1024 * 1024
+          for: 10m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph recovery is active while Kubernetes write IO is high"
+            description: |
+              Recovery/backfill and client writes are competing. Identify the top pods, PVCs, VMs, and RBD images
+              before changing Ceph recovery throttles.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephRecoveryAppearsStuck
+          expr: |
+            ceph_health_detail{name=~"PG_DEGRADED|PG_AVAILABILITY|OBJECT_MISPLACED"} == 1
+            and homeops:ceph_recovery_bytes:rate5m < 1024 * 1024
+          for: 30m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph recovery appears stuck while PG health is not clean"
+            description: |
+              Ceph has PG/object health detail but recovery throughput is below 1 MiB/s for 30 minutes.
+              Check blocked PGs, full OSDs, down/out OSDs, slow devices, and client IO contention.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: ProxmoxAPITargetDown
+          expr: |
+            up{job=~".*proxmox.*|.*pve.*"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            layer: proxmox
+            service: monitoring
+          annotations:
+            summary: "Proxmox exporter target is down: {{ $labels.instance }}"
+            description: |
+              Proxmox API/exporter scrape is down. VM/host visibility may be incomplete during incident response.
+            runbook_url: "docs/runbooks/which-vm-is-causing-rbd-io.md"
+
+        - alert: ProxmoxNodeDown
+          expr: |
+            pve_up{type="node"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            layer: proxmox
+            service: compute
+          annotations:
+            summary: "Proxmox node {{ $labels.node }} is down according to pve-exporter"
+            description: |
+              A Proxmox node is down or unreachable. Check VM placement, Ceph OSDs on that host,
+              MON/MGR/MDS placement, and Kubernetes nodes running there.
+            runbook_url: "docs/runbooks/safe-shutdown-proxmox-node-during-ceph-recovery.md"
+
+        - alert: VMFilesystemWriteIOHigh
+          expr: |
+            homeops:proxmox_vm_disk_write_bytes:rate5m > 150 * 1024 * 1024
+          for: 15m
+          labels:
+            severity: warning
+            layer: proxmox
+            service: storage
+          annotations:
+            summary: "VM {{ $labels.id }} on {{ $labels.node }} is writing more than 150 MiB/s"
+            description: |
+              VM disk write IO is persistently high. If Ceph is recovering or slow, identify whether this VM maps
+              to a Kubernetes node and then drill down to pod/PVC ownership.
+            runbook_url: "docs/runbooks/which-vm-is-causing-rbd-io.md"

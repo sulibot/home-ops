@@ -73,6 +73,7 @@ resources:
   - ./gatus/ks.yaml
   - ./smartctl-exporter/ks.yaml
   - ./proxmox-observability/ks.yaml
+  - ./homeops-inventory-exporter/ks.yaml
   # kromgo disabled
   # - ./kromgo/ks.yaml
 

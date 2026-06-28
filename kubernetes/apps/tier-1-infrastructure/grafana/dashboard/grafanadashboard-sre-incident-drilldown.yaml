@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: sre-incident-drilldown
+  namespace: observability
+spec:
+  allowCrossNamespaceImport: true
+  folder: sre
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+    - datasourceName: victoria-logs
+      inputName: DS_VICTORIA_LOGS
+  configMapRef:
+    name: sre-incident-drilldown-dashboard
+    key: sre-incident-drilldown.json

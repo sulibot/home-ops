@@ -202,6 +202,20 @@ kubernetes/
 
 ***
 
+## Operations Documentation
+
+Operational docs live under [`docs/`](docs/README.md).
+
+Useful entry points:
+
+* [Runbooks](docs/runbooks/README.md)
+* [Observability Deployment Blueprint](docs/observability-deployment-blueprint.md)
+* [Observability, Monitoring, and Incident Reporting](docs/observability-monitoring-and-incident-reporting.md)
+* [Monitoring and Reporting Implementation](docs/monitoring-and-reporting-implementation.md)
+* [Backup system](docs/backup-system.md)
+
+***
+
 ## Contributing
 
 * Submit pull requests for new features or fixes.

@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeops-inventory-exporter
+  labels:
+    app.kubernetes.io/name: homeops-inventory-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: homeops-inventory-exporter
+  ports:
+    - name: metrics
+      port: 9808
+      targetPort: metrics

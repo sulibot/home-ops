@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/serviceaccount.json
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homeops-inventory-exporter
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/rbac.authorization.k8s.io/clusterrole.json
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homeops-inventory-exporter
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - persistentvolumeclaims
+      - persistentvolumes
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/rbac.authorization.k8s.io/clusterrolebinding.json
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homeops-inventory-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homeops-inventory-exporter
+subjects:
+  - kind: ServiceAccount
+    name: homeops-inventory-exporter
+    namespace: observability
