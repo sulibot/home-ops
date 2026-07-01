@@ -12,6 +12,7 @@ TMP_PATH = PROM_PATH.with_suffix(".prom.tmp")
 
 HOST = "{{ inventory_hostname }}"
 
+{% raw %}
 PATTERNS = {
     "sata_link_reset": re.compile(r"(?i)(hard resetting link|soft resetting link|SATA link down|link is slow to respond|COMRESET failed|limiting SATA link speed)"),
     "fpdma_error": re.compile(r"(?i)(failed command:.*FPDMA|FPDMA QUEUED|READ FPDMA QUEUED|WRITE FPDMA QUEUED)"),
@@ -99,3 +100,4 @@ def write_prom(state):
 
 if __name__ == "__main__":
     write_prom(collect())
+{% endraw %}
