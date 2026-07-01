@@ -71,3 +71,30 @@ spec:
       relabelings:
         - targetLabel: ceph_cluster
           replacement: proxmox
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: proxmox-node-exporter-targets
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: proxmox-node-exporter-targets
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_endpoint_hostname
+          targetLabel: host
+        - sourceLabels:
+            - __meta_kubernetes_endpoint_hostname
+          targetLabel: pve_node
+        - targetLabel: role
+          replacement: proxmox
