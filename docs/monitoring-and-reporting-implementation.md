@@ -24,10 +24,17 @@ The cross-layer storage rule file adds:
 - `KubernetesNodeMemoryPressure`
 - `HostDiskBusy`
 - `HostNetworkErrorsOrDrops`
+- `HostKernelStorageErrors`
+- `HostPCIeAERErrors`
 - `SmartDeviceCritical`
 - `SmartDeviceMediaErrors`
+- `SmartDeviceMediaErrorsIncreased`
+- `SmartDeviceAvailableSpareDecreased`
 - `CephHealthError`
 - `CephHealthWarnPersistent`
+- `CephRecentDaemonCrash`
+- `CephScrubOverdue`
+- `CephOSDUtilizationVarianceHigh`
 - `CephOSDDown`
 - `CephMDSMetricsMissing`
 - `CephRecoveryActiveWithHighPodWrites`
@@ -40,6 +47,15 @@ It also adds recording rules:
 - `homeops:pod_pvc_read_bytes:rate5m`
 - `homeops:node_disk_io_time:rate5m`
 - `homeops:nic_errors_drops:rate5m`
+- `homeops:ceph_osd_used_ratio`
+- `homeops:ceph_osd_used_ratio_variance`
+
+Host kernel storage error counters are provided by the Proxmox `node_exporter` Ansible role through node_exporter textfile metrics:
+
+```text
+homeops_host_kernel_storage_errors_total{host="pve01",category="sata_link_reset"}
+homeops_host_kernel_storage_errors_total{host="pve01",category="fpdma_error"}
+```
 
 These are intentionally conservative. The Kubernetes inventory exporter now provides pod/PVC/PV/Ceph CSI mapping metrics. The next implementation step is to extend the exporter with Proxmox VM disk to RBD image and Ceph OSD to physical disk mappings.
 

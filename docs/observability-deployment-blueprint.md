@@ -166,6 +166,7 @@ Audience: maintenance planning and root cause.
 Show:
 
 - SMART/NVMe critical warnings.
+- SMART/NVMe counter deltas.
 - Media errors.
 - Disk busy time.
 - Disk temperature.
@@ -174,7 +175,7 @@ Show:
 - Firmware/BIOS inventory.
 - Repeated offender table by host, slot, disk serial, NIC PCIe slot.
 
-Page on critical disk health. Keep temperature and wear warnings as warning/report unless they cross hard thresholds.
+Page on critical disk health and new SATA/FPDMA/ATA/NVMe kernel storage errors. Keep temperature and wear warnings as warning/report unless they cross hard thresholds.
 
 ### 7. Observability Platform Health
 
@@ -297,4 +298,3 @@ Without these join metrics, SREs can see symptoms. With them, SREs can see the s
 4. Build the Executive Cluster Health and Incident Drill-Down dashboards.
 5. Add daily report generation from Prometheus/Grafana.
 6. Tune alerts after two weeks of actual firing behavior.
-

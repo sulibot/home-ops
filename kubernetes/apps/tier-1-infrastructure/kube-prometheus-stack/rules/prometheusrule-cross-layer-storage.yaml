@@ -65,6 +65,14 @@ spec:
             * on (namespace, pod, node) group_left(persistentvolumeclaim, workload, workload_kind)
               homeops_kube_pod_pvc_info
 
+        - record: homeops:ceph_osd_used_ratio
+          expr: |
+            ceph_osd_stat_bytes_used / clamp_min(ceph_osd_stat_bytes, 1)
+
+        - record: homeops:ceph_osd_used_ratio_variance
+          expr: |
+            max(homeops:ceph_osd_used_ratio) - avg(homeops:ceph_osd_used_ratio)
+
     - name: cross-layer-storage.alerts
       interval: 1m
       rules:
@@ -143,6 +151,36 @@ spec:
               Check link speed, duplex, switch counters, driver/firmware, and recent cable or topology changes.
             runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
 
+        - alert: HostKernelStorageErrors
+          expr: |
+            increase(homeops_host_kernel_storage_errors_total{category=~"sata_link_reset|fpdma_error|ata_exception|io_error|nvme_timeout"}[10m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "Host {{ $labels.host }} has kernel storage errors: {{ $labels.category }}"
+            description: |
+              The Proxmox host journal contains new SATA, FPDMA, ATA, NVMe, or block I/O errors.
+              These often predict OSD slow ops, OSD crashes, or repeated node behavior before SMART hard-fails.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: HostPCIeAERErrors
+          expr: |
+            increase(homeops_host_kernel_storage_errors_total{category="pcie_aer"}[30m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+            layer: hardware
+            service: platform
+          annotations:
+            summary: "Host {{ $labels.host }} has PCIe AER/kernel bus errors"
+            description: |
+              PCIe AER errors can explain repeated NIC, HBA, NVMe, or SATA-path behavior.
+              Correlate with disk/NIC symptoms and BIOS/firmware changes.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
         - alert: SmartDeviceCritical
           expr: |
             smartctl_device_smart_status != 1
@@ -173,6 +211,36 @@ spec:
             description: |
               Media errors indicate possible disk failure. Check whether the device backs a Ceph OSD and whether
               Ceph is degraded, recovering, or reporting slow ops.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: SmartDeviceMediaErrorsIncreased
+          expr: |
+            increase(smartctl_device_media_errors[24h]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "SMART media error counter increased on {{ $labels.device }} at {{ $labels.instance }}"
+            description: |
+              SMART media errors increased during the last 24 hours. Treat this as predictive failure,
+              even if the device still passes the overall SMART health check.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: SmartDeviceAvailableSpareDecreased
+          expr: |
+            delta(smartctl_device_available_spare[24h]) < 0
+          for: 5m
+          labels:
+            severity: warning
+            layer: hardware
+            service: storage
+          annotations:
+            summary: "SMART/NVMe available spare decreased on {{ $labels.device }} at {{ $labels.instance }}"
+            description: |
+              Available spare decreased during the last 24 hours. This is a trend signal for review,
+              especially when paired with media errors, high disk busy time, or Ceph slow ops.
             runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
 
         - alert: CephHealthError
@@ -250,6 +318,36 @@ spec:
               physical disk latency, network loss, or host pressure.
             runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
 
+        - alert: CephRecentDaemonCrash
+          expr: |
+            ceph_health_detail{name=~"RECENT_CRASH|DAEMON_RECENT_CRASH"} == 1
+          for: 2m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph reports recent daemon crash: {{ $labels.name }}"
+            description: |
+              Ceph has recorded a recent daemon crash. Check whether the crash involved an OSD, MDS,
+              MON, or MGR and correlate with host kernel storage errors and SMART deltas.
+            runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
+
+        - alert: CephScrubOverdue
+          expr: |
+            ceph_health_detail{name=~"PG_NOT_SCRUBBED|PG_NOT_DEEP_SCRUBBED"} == 1
+          for: 30m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph scrub/deep-scrub overdue: {{ $labels.name }}"
+            description: |
+              Ceph reports PGs that have not scrubbed or deep-scrubbed on schedule.
+              Review whether recovery, client IO, or OSD latency is preventing maintenance work.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
         - alert: CephOSDDown
           expr: |
             ceph_osd_up == 0
@@ -278,6 +376,22 @@ spec:
             description: |
               An OSD is marked out. Confirm whether this is planned maintenance. If not, check data safety,
               OSD/device health, and recovery/backfill status.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephOSDUtilizationVarianceHigh
+          expr: |
+            homeops:ceph_osd_used_ratio_variance > 0.15
+            and max(homeops:ceph_osd_used_ratio) > 0.70
+          for: 30m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "Ceph OSD utilization variance is high"
+            description: |
+              The fullest OSD is more than 15 percentage points above the cluster average and above 70% used.
+              This can predict backfill pressure, uneven performance, and recovery constraints.
             runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
 
         - alert: CephMDSHealthDetail

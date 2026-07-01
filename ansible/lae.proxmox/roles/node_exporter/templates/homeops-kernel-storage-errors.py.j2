@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import json
+import os
+import re
+import subprocess
+import time
+from pathlib import Path
+
+STATE_PATH = Path("/var/lib/prometheus/node-exporter/homeops-kernel-storage-errors.state")
+PROM_PATH = Path("/var/lib/prometheus/node-exporter/homeops-kernel-storage-errors.prom")
+TMP_PATH = PROM_PATH.with_suffix(".prom.tmp")
+
+HOST = "{{ inventory_hostname }}"
+
+PATTERNS = {
+    "sata_link_reset": re.compile(r"(?i)(hard resetting link|soft resetting link|SATA link down|link is slow to respond|COMRESET failed|limiting SATA link speed)"),
+    "fpdma_error": re.compile(r"(?i)(failed command:.*FPDMA|FPDMA QUEUED|READ FPDMA QUEUED|WRITE FPDMA QUEUED)"),
+    "ata_exception": re.compile(r"(?i)(ata[0-9.]+: exception Emask|SError:|irq_stat|interface fatal error)"),
+    "io_error": re.compile(r"(?i)(blk_update_request: I/O error|Buffer I/O error|end_request: I/O error|critical medium error|I/O error, dev)"),
+    "nvme_timeout": re.compile(r"(?i)(nvme.*(timeout|reset|I/O.*error|controller is down|abort status))"),
+    "pcie_aer": re.compile(r"(?i)(AER:|PCIe Bus Error|corrected error received|uncorrected.*error)"),
+}
+
+
+def prom_escape(value):
+    return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
+def load_state():
+    if not STATE_PATH.exists():
+        return {"cursor": None, "counters": {name: 0 for name in PATTERNS}}
+    try:
+        state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"cursor": None, "counters": {name: 0 for name in PATTERNS}}
+    state.setdefault("counters", {})
+    for name in PATTERNS:
+        state["counters"].setdefault(name, 0)
+    return state
+
+
+def save_state(state):
+    STATE_PATH.write_text(json.dumps(state, sort_keys=True), encoding="utf-8")
+
+
+def journal_lines(cursor):
+    cmd = ["journalctl", "-k", "--no-pager", "--output=json", "--quiet"]
+    if cursor:
+        cmd.extend(["--after-cursor", cursor])
+    else:
+        cmd.extend(["--since", "24 hours ago"])
+
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=30)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or "journalctl failed")
+    return proc.stdout.splitlines()
+
+
+def collect():
+    state = load_state()
+    newest_cursor = state.get("cursor")
+
+    for raw in journal_lines(state.get("cursor")):
+        try:
+            entry = json.loads(raw)
+        except Exception:
+            continue
+
+        message = entry.get("MESSAGE", "")
+        newest_cursor = entry.get("__CURSOR", newest_cursor)
+        for name, pattern in PATTERNS.items():
+            if pattern.search(message):
+                state["counters"][name] += 1
+
+    state["cursor"] = newest_cursor
+    state["last_run"] = int(time.time())
+    save_state(state)
+    return state
+
+
+def write_prom(state):
+    lines = [
+        "# HELP homeops_host_kernel_storage_errors_total Kernel storage and bus error messages seen in the host journal.",
+        "# TYPE homeops_host_kernel_storage_errors_total counter",
+    ]
+    for category, value in sorted(state["counters"].items()):
+        lines.append(
+            f'homeops_host_kernel_storage_errors_total{{host="{prom_escape(HOST)}",category="{prom_escape(category)}"}} {int(value)}'
+        )
+    lines.extend([
+        "# HELP homeops_host_kernel_storage_error_collector_last_run_timestamp_seconds Last successful collector run timestamp.",
+        "# TYPE homeops_host_kernel_storage_error_collector_last_run_timestamp_seconds gauge",
+        f'homeops_host_kernel_storage_error_collector_last_run_timestamp_seconds{{host="{prom_escape(HOST)}"}} {int(state.get("last_run", 0))}',
+        "",
+    ])
+    TMP_PATH.write_text("\n".join(lines), encoding="utf-8")
+    os.replace(TMP_PATH, PROM_PATH)
+
+
+if __name__ == "__main__":
+    write_prom(collect())

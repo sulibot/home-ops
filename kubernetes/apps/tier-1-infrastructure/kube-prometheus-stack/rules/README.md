@@ -22,6 +22,28 @@ This directory contains repo-owned PrometheusRule resources for home-ops.
 - Ceph recovery throughput recording rule.
 - Disk busy and NIC error recording rules.
 - Alerts for Ceph safety, slow ops, recovery contention, OSD state, MDS health details, Kubernetes node pressure, SMART/NVMe health, and Proxmox visibility.
+- Predictor alerts for SATA/FPDMA/kernel storage errors, Ceph recent daemon crashes, scrub overdue conditions, OSD utilization variance, and SMART/NVMe counter deltas.
+
+## Host Kernel Storage Error Metrics
+
+SATA link resets, FPDMA errors, ATA exceptions, NVMe timeouts, block I/O errors, and PCIe AER events come from Proxmox host journals. They are exported through node_exporter textfile metrics installed by:
+
+`ansible/lae.proxmox/roles/node_exporter`
+
+The textfile metric is:
+
+```text
+homeops_host_kernel_storage_errors_total{host="pve01",category="fpdma_error"} 1
+```
+
+Categories:
+
+- `sata_link_reset`
+- `fpdma_error`
+- `ata_exception`
+- `io_error`
+- `nvme_timeout`
+- `pcie_aer`
 
 ## Noise Budget
 
@@ -37,4 +59,3 @@ Validation:
 ```bash
 kustomize build --load-restrictor LoadRestrictionsNone kubernetes/apps/tier-1-infrastructure/kube-prometheus-stack/rules
 ```
-

@@ -16,7 +16,10 @@ Decide whether firmware or hardware maintenance is safe and likely relevant to r
    - MCE.
    - EDAC.
    - ATA resets.
+   - SATA link resets.
+   - FPDMA errors.
    - NVMe timeouts.
+   - Block I/O errors.
    - NIC link flaps, drops, and errors.
 3. Pattern analysis:
    - Same host repeatedly affected?
@@ -37,5 +40,5 @@ Decide whether firmware or hardware maintenance is safe and likely relevant to r
    - OSDs up/in and PGs clean.
    - NIC speed/duplex correct.
    - No new kernel hardware errors.
+   - No new `homeops_host_kernel_storage_errors_total` increments.
    - Workload latency normal.
-

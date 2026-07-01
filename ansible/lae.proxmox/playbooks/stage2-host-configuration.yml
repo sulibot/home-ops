@@ -20,6 +20,6 @@
 #    - role: os_updates
 #    - role: fail2ban     # optional
     - role: snmpd        # optional
-#    - role: node_exporter # optional
+    - role: node_exporter # host metrics and storage-error textfile collector
 #    - role: log_forwarding
 #    - role: zfs_tuning   # optional

@@ -4,6 +4,73 @@
     name: prometheus-node-exporter
     state: present
 
+- name: Ensure node_exporter textfile collector directory exists
+  file:
+    path: /var/lib/prometheus/node-exporter
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+
+- name: Enable node_exporter textfile collector
+  copy:
+    dest: /etc/default/prometheus-node-exporter
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      ARGS="--collector.textfile.directory=/var/lib/prometheus/node-exporter"
+  notify: Restart prometheus-node-exporter
+
+- name: Install homeops kernel storage error collector
+  template:
+    src: homeops-kernel-storage-errors.py.j2
+    dest: /usr/local/sbin/homeops-kernel-storage-errors
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install homeops kernel storage error collector service
+  copy:
+    dest: /etc/systemd/system/homeops-kernel-storage-errors.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Collect kernel storage error counters for node_exporter
+      Documentation=file:/usr/local/sbin/homeops-kernel-storage-errors
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/homeops-kernel-storage-errors
+
+- name: Install homeops kernel storage error collector timer
+  copy:
+    dest: /etc/systemd/system/homeops-kernel-storage-errors.timer
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run homeops kernel storage error collector every minute
+
+      [Timer]
+      OnBootSec=2m
+      OnUnitActiveSec=1m
+      AccuracySec=15s
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Enable homeops kernel storage error collector timer
+  systemd:
+    name: homeops-kernel-storage-errors.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
 - name: Ensure node_exporter service is running
   systemd:
     name: prometheus-node-exporter
