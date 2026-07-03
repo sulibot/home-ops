@@ -83,7 +83,9 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Trust cluster-104 Cilium Gateway proxy ranges in Home Assistant:
   - `10.104.224.0/20`
   - `fd00:104:224::/60`
-- [ ] Deploy Zigbee/Z-Wave/Matter sidecars here if Home Assistant should not own the USB radio directly.
+- [x] Restore immediate Matter control by repointing the migrated Home Assistant Matter integration to `wss://matter-server.sulibot.com/ws`.
+- [ ] Move Matter server and its fabric data to cluster-104 so the old/main cluster is no longer in the Home Assistant control path. See [cluster-104 Matter server migration ticket](../../../../../docs/tickets/cluster-104-matter-server-migration.md).
+- [ ] Deploy Zigbee/Z-Wave sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
 - [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md):
   - fix BGP export from `talos01`/BIRD to RouterOS, or
