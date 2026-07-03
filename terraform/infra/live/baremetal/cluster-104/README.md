@@ -85,7 +85,7 @@ The physical port should keep native recovery while adding the cluster network:
   - `fd00:104:224::/60`
 - [ ] Deploy Zigbee/Z-Wave/Matter sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
-- [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane:
+- [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md):
   - fix BGP export from `talos01`/BIRD to RouterOS, or
   - codify the static routes in RouterOS Terraform once state is reconciled.
 - [ ] Resolve the migrated Home Assistant `uv was not found` warning if custom integrations need that package manager at runtime.
