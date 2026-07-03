@@ -20,7 +20,7 @@ spec:
     logLevel: debug
     policy: upsert-only
     registry: txt
-    txtOwnerId: default
+    txtOwnerId: cluster-104
     txtPrefix: k8s.
     sources:
       - service
