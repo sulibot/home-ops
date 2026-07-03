@@ -38,6 +38,8 @@ spec:
           env:
             - name: TZ
               value: America/Los_Angeles
+            - name: PYTHONPATH
+              value: /config/.venv/lib/python3.14/site-packages
           ports:
             - name: http
               containerPort: 8123
