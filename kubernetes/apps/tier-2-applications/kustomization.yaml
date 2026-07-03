@@ -38,7 +38,8 @@ resources:
   - ./kopia/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./lidarr/ks.yaml
-  - ./matter-server/ks.yaml
+  # matter-server migrated to bare-metal cluster-104
+  # - ./matter-server/ks.yaml
   - ./mediasage/ks.yaml
   - ./miniflux/ks.yaml
   - ./multi-scrobbler/ks.yaml

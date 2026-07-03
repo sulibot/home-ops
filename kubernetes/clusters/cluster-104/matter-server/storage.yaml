@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: matter-server-config
+  labels:
+    app.kubernetes.io/name: matter-server
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-matter
+  volumeMode: Filesystem
+  local:
+    path: /var/mnt/matter-server-data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - talos01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: matter-server-config
+  namespace: matter-server
+  labels:
+    app.kubernetes.io/name: matter-server
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-matter
+  volumeName: matter-server-config

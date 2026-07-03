@@ -173,6 +173,22 @@ variable "ipv4_dhcp_option_sets" {
   default = []
 }
 
+variable "ipv4_dhcp_option_matchers" {
+  description = "IPv4 DHCP option matchers."
+  type = list(object({
+    name          = string
+    server        = string
+    address_pool  = optional(string, "static-only")
+    code          = number
+    value         = string
+    matching_type = optional(string, "exact")
+    option_set    = optional(string)
+    disabled      = optional(bool, false)
+    comment       = optional(string, "")
+  }))
+  default = []
+}
+
 variable "ipv4_dhcp_servers" {
   description = "IPv4 DHCP servers."
   type = list(object({

@@ -12,6 +12,7 @@ Single-node Talos Kubernetes cluster on repurposed bare-metal hardware.
   - IPv4: `10.10.0.4`
   - IPv6: `fd00:10::4`
 - Cluster network: tagged `vlan104`
+- IoT/Matter attachment: tagged `vlan31`
 - Cluster endpoint IPs:
   - IPv4: `10.104.0.4`
   - IPv6: `fd00:104::4`
@@ -32,7 +33,8 @@ Notes:
   Proxmox SDN/vnet assumptions unless VM participation becomes a real
   requirement later.
 - Keep `vlan10` native/untagged for recovery/bootstrap. The real cluster
-  network is tagged `vlan104`.
+  network is tagged `vlan104`. Matter/IoT controller traffic uses tagged
+  `vlan31` on the same physical link.
 - Workloads are allowed on the control plane because this is a 1-node cluster.
 
 ## Addressing Alignment
@@ -55,7 +57,7 @@ The physical port should keep native recovery while adding the cluster network:
 
 | Port | Native/untagged | Tagged |
 | --- | --- | --- |
-| `talos01[ether5]` | `vlan10` recovery/PXE/bootstrap | `vlan104` cluster network |
+| `talos01[ether5]` | `vlan10` recovery/PXE/bootstrap | `vlan104` cluster network, `vlan31` Matter/IoT |
 
 ## Outstanding Issues
 
@@ -72,6 +74,7 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Apply the Home Assistant local-storage overlay directly to the cluster.
 - [x] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
+- [x] Add `vlan31` as a tagged IoT/Matter attachment on `talos01[ether5]` and configure Talos `enp1s0.31` as `10.31.0.6` / `fd00:31::6`.
 - [x] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
 - [x] Move USB radio hardware to `talos01` and identify the stable SONOFF Zigbee path: `/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231007151738-if00`.
 - [x] Expose Home Assistant through cluster-104 Cilium Gateways:
@@ -84,7 +87,8 @@ The physical port should keep native recovery while adding the cluster network:
   - `10.104.224.0/20`
   - `fd00:104:224::/60`
 - [x] Restore immediate Matter control by repointing the migrated Home Assistant Matter integration to `wss://matter-server.sulibot.com/ws`.
-- [ ] Move Matter server and its fabric data to cluster-104 so the old/main cluster is no longer in the Home Assistant control path. See [cluster-104 Matter server migration ticket](../../../../../docs/tickets/cluster-104-matter-server-migration.md).
+- [x] Move Matter server and its fabric data to cluster-104 so the old/main cluster is no longer in the Home Assistant control path. See [cluster-104 Matter server migration ticket](../../../../../docs/tickets/cluster-104-matter-server-migration.md).
+- [ ] Triage the remaining unavailable individual Matter bulb/button entities after the Matter server migration. The main Matter switch/group entities are online.
 - [ ] Deploy Zigbee/Z-Wave sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
 - [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md):

@@ -46,14 +46,15 @@ locals {
       comment      = "future bare-metal PXE slot on pve03"
     }
     slot05 = {
-      enabled      = true
-      hostname     = "luna01"
-      interface    = "luna01[ether5]"
-      dhcp_server  = "dhcp_vlan10"
-      ipv4_address = "10.10.0.4"
-      ipv6_address = "fd00:10::4"
-      mac_address  = "00:E0:67:25:96:C8"
-      comment      = "luna01 bare-metal PXE on vlan10"
+      enabled          = true
+      hostname         = "talos01"
+      interface        = "talos01[ether5]"
+      dhcp_server      = "dhcp_vlan10"
+      ipv4_address     = "10.10.0.4"
+      ipv6_address     = "fd00:10::4"
+      mac_address      = "00:E0:67:25:96:C8"
+      boot_file_option = "boot-file-pxe-bios"
+      comment          = "cluster-104 talos01 legacy PXE chain to iPXE on former pve04 hardware"
     }
   }
 
@@ -65,19 +66,18 @@ locals {
   baremetal_pxe_option_sets = [
     for inventory_name, port in local.active_baremetal_ports : {
       name    = "pxe-${port.hostname != "" ? port.hostname : inventory_name}"
-      options = ["boot-file-pxe-uefi", "next-server"]
+      options = [try(port.boot_file_option, "boot-file-pxe-uefi"), "next-server"]
       comment = port.comment
     }
   ]
 
   baremetal_pxe_leases = [
     for inventory_name, port in local.active_baremetal_ports : {
-      address         = port.ipv4_address
-      mac_address     = trimspace(port.mac_address) != "" ? port.mac_address : "00:00:00:00:00:00"
-      server          = port.dhcp_server
-      dhcp_option_set = "pxe-${port.hostname != "" ? port.hostname : inventory_name}"
-      disabled        = trimspace(port.mac_address) == ""
-      comment         = trimspace(port.mac_address) == "" ? "${port.comment} (set MAC before apply)" : port.comment
+      address     = port.ipv4_address
+      mac_address = trimspace(port.mac_address) != "" ? port.mac_address : "00:00:00:00:00:00"
+      server      = port.dhcp_server
+      disabled    = trimspace(port.mac_address) == ""
+      comment     = trimspace(port.mac_address) == "" ? "${port.comment} (set MAC before apply)" : port.comment
     }
   ]
 
@@ -316,9 +316,9 @@ inputs = {
     { bridge = "br-fabric", interface = "pve01[ether2]" },
     { bridge = "br-fabric", interface = "pve02[ether3]" },
     { bridge = "br-fabric", interface = "pve03[ether4]" },
-    { bridge = "br-fabric", interface = "luna01[ether5]" },
+    { bridge = "br-fabric", interface = "talos01[ether5]", pvid = 10 },
     { bridge = "br-fabric", interface = "wifi[ether6]", pvid = 30 },
-    { bridge = "br-fabric", interface = "ilom-pve03[ether7]" },
+    { bridge = "br-fabric", interface = "jetkvm-talos01[ether7]", pvid = 10 },
     { bridge = "br-fabric", interface = "spare[ether8]" },
   ]
 
@@ -326,34 +326,41 @@ inputs = {
     {
       bridge   = "br-fabric"
       vlan_ids = ["10"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]"]
+      untagged = ["talos01[ether5]", "jetkvm-talos01[ether7]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["1"]
       tagged   = ["br-fabric"]
-      untagged = ["pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+      untagged = ["pve01[ether2]", "pve02[ether3]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["30"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "spare[ether8]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "spare[ether8]"]
       untagged = ["wifi[ether6]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["31"]
-      tagged   = ["br-fabric", "wifi[ether6]", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "spare[ether8]"]
+      tagged   = ["br-fabric", "wifi[ether6]", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "talos01[ether5]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["200"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]", "ilom-pve03[ether7]", "spare[ether8]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "spare[ether8]"]
     },
     {
       bridge   = "br-fabric"
       vlan_ids = ["100"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "luna01[ether5]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]"]
+    },
+    {
+      bridge   = "br-fabric"
+      vlan_ids = ["104"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "talos01[ether5]"]
+      comment  = "cluster-104 home-control network"
     },
   ]
 
@@ -363,6 +370,7 @@ inputs = {
     { name = "vlan30", interface = "br-fabric", vlan_id = 30, comment = "WiFi Client Network" },
     { name = "vlan31", interface = "br-fabric", vlan_id = 31, comment = "WiFi IoT Devices" },
     { name = "vlan100", interface = "br-fabric", vlan_id = 100, comment = "kanidm" },
+    { name = "vlan104", interface = "br-fabric", vlan_id = 104, comment = "cluster-104 home-control" },
     { name = "vlan200", interface = "br-fabric", vlan_id = 200, comment = "VM/Container Standard LAN" },
   ]
 
@@ -379,7 +387,8 @@ inputs = {
     { list = "LAN", interface = "pve01[ether2]" },
     { list = "LAN", interface = "lo" },
     { list = "LAN", interface = "pve02[ether3]" },
-    { list = "LAN", interface = "luna01[ether5]" },
+    { list = "LAN", interface = "talos01[ether5]" },
+    { list = "LAN", interface = "vlan104" },
     { list = "LAN", interface = "vlan200" },
     { list = "LAN", interface = "vlan1" },
     { list = "LAN", interface = "lo_dns" },
@@ -445,6 +454,7 @@ inputs = {
     { address = "10.10.0.254/24", network = "10.10.0.0", interface = "vlan10" },
     { address = "10.1.0.254/24", network = "10.1.0.0", interface = "vlan1" },
     { address = "10.0.10.254/24", network = "10.0.10.0", interface = "vlan10" },
+    { address = "10.104.0.254/24", network = "10.104.0.0", interface = "vlan104", comment = "cluster-104 home-control" },
     { address = "10.200.0.254/24", network = "10.200.0.0", interface = "vlan200", comment = "Standard VM LAN" },
     { address = "10.255.0.254/32", network = "10.255.0.254", interface = "lo" },
   ]
@@ -454,6 +464,7 @@ inputs = {
     { name = "dhcp_pool_vlan31", ranges = ["10.31.0.30-10.31.0.240"] },
     { name = "dhcp_pool_vlan9", ranges = ["10.0.9.230-10.0.9.250"] },
     { name = "dhcp_pool_vlan10", ranges = ["10.10.0.230-10.10.0.250"] },
+    { name = "dhcp_pool_vlan104", ranges = ["10.104.0.230-10.104.0.250"] },
     { name = "dhcp_pool16", ranges = ["10.0.9.200-10.0.9.253"] },
     { name = "dhcp_pool_vlan200", ranges = ["10.200.0.201-10.200.0.250"] },
   ]
@@ -463,6 +474,7 @@ inputs = {
     { name = "next-server", code = 66, value = "'${local.pxe_server_ipv4}'" },
     { name = "boot-file-pxe-bios", code = 67, value = "0x756e64696f6e6c792e6b70786500" },
     { name = "boot-file-pxe-uefi", code = 67, value = "0x697078652e65666900" },
+    { name = "boot-file-ipxe-autoexec", code = 67, value = "0x6175746f657865632e6970786500" },
     { name = "bootfile-netbootxyz", code = 67, value = "'netboot.xyz.efi'" },
     { name = "next-server-netbootxyz", code = 66, value = "'${local.pxe_server_ipv4}'" },
   ]
@@ -471,8 +483,32 @@ inputs = {
     { name = "domain-search-set", options = ["domain-search"] },
     { name = "boot-pxe-bios", options = ["boot-file-pxe-bios", "next-server"] },
     { name = "boot-pxe-uefi", options = ["boot-file-pxe-uefi", "next-server"] },
+    { name = "boot-ipxe-autoexec", options = ["boot-file-ipxe-autoexec", "next-server"] },
     { name = "netboot.xyz", options = ["bootfile-netbootxyz", "next-server-netbootxyz"] },
   ], local.baremetal_pxe_option_sets)
+
+  ipv4_dhcp_option_matchers = [
+    {
+      name          = "ipxe-autoexec-vlan10"
+      server        = "dhcp_vlan10"
+      address_pool  = "static-only"
+      code          = 77
+      value         = "0x69505845"
+      matching_type = "exact"
+      option_set    = "boot-ipxe-autoexec"
+      comment       = "Chain iPXE clients to RouterOS USB autoexec script"
+    },
+    {
+      name          = "pxe-bios-vlan10"
+      server        = "dhcp_vlan10"
+      address_pool  = "static-only"
+      code          = 60
+      value         = "PXEClient"
+      matching_type = "substring"
+      option_set    = "boot-pxe-bios"
+      comment       = "Chain legacy PXE clients to iPXE"
+    },
+  ]
 
   ipv4_dhcp_servers = [
     {
@@ -508,6 +544,15 @@ inputs = {
       use_radius      = "no"
       use_reconfigure = false
     },
+    {
+      name            = "dhcp_vlan104"
+      interface       = "vlan104"
+      address_pool    = "dhcp_pool_vlan104"
+      lease_time      = "30m"
+      use_radius      = "no"
+      use_reconfigure = false
+      comment         = "cluster-104 home-control"
+    },
   ]
 
   ipv4_dhcp_server_networks = [
@@ -530,6 +575,13 @@ inputs = {
       domain     = "sulibot.com"
     },
     {
+      address    = "10.104.0.0/24"
+      gateway    = "10.104.0.254"
+      dns_server = ["10.104.0.254"]
+      domain     = "sulibot.com"
+      comment    = "cluster-104 home-control"
+    },
+    {
       address    = "10.200.0.0/24"
       gateway    = "10.200.0.254"
       dns_server = ["10.200.0.254"]
@@ -543,6 +595,8 @@ inputs = {
       address     = "10.10.0.53"
       mac_address = "44:B7:D0:D5:85:6B"
       client_id   = "1:44:b7:d0:d5:85:6b"
+      server      = "dhcp_vlan10"
+      comment     = "jetkvm-talos01 temporary KVM on ether7"
     },
     {
       address     = "10.30.0.5"
@@ -819,6 +873,12 @@ inputs = {
       advertise = true
       comment   = "Standard VM LAN IPv6"
     },
+    {
+      interface = "vlan104"
+      address   = "fd00:104::fffe/64"
+      advertise = true
+      comment   = "cluster-104 home-control IPv6"
+    },
   ]
 
   ipv6_neighbor_discovery = [
@@ -870,6 +930,18 @@ inputs = {
       ra_lifetime                   = "30m"
       ra_preference                 = "medium"
     },
+    {
+      interface                     = "vlan104"
+      advertise_dns                 = true
+      advertise_mac_address         = true
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:104::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "3m20s-10m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
   ]
 
   # ── IP SERVICES ───────────────────────────────────────────────────────────────
@@ -893,6 +965,7 @@ inputs = {
     { list = "NAT66-ULA", address = "fd00:101::/48", comment = "NAT66 ULA aggregate" },
     { list = "NAT66-ULA", address = "fd00:102::/48", comment = "NAT66 ULA aggregate" },
     { list = "NAT66-ULA", address = "fd00:103::/48", comment = "NAT66 ULA aggregate" },
+    { list = "NAT66-ULA", address = "fd00:104::/48", comment = "NAT66 ULA aggregate" },
   ]
 
   # ── IPv6 FIREWALL FILTER RULES ────────────────────────────────────────────────
@@ -974,7 +1047,11 @@ inputs = {
     { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:10::1", ttl = "5m" },
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
-    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by luna01" },
+    { name = "jetkvm-talos01.sulibot.com", type = "A", address = "10.10.0.53", ttl = "5m", comment = "JetKVM for talos01 on ether7" },
+    { name = "cluster-104.sulibot.com", type = "AAAA", address = "fd00:104::4", ttl = "5m", comment = "cluster-104 Kubernetes endpoint" },
+    { name = "cluster-104.sulibot.com", type = "A", address = "10.104.0.4", ttl = "5m", comment = "cluster-104 Kubernetes endpoint" },
+    { name = "talos01-cluster104.sulibot.com", type = "AAAA", address = "fd00:104::4", ttl = "5m", comment = "talos01 cluster-104 address" },
+    { name = "talos01-cluster104.sulibot.com", type = "A", address = "10.104.0.4", ttl = "5m", comment = "talos01 cluster-104 address" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },

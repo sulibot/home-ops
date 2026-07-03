@@ -300,7 +300,7 @@ The Kubernetes `matter-server` workload is self-managed and external to Home Ass
 It does not use the HA add-on version stream. The current server uses `matterjs-server`
 image tags, which have their own semver separate from the add-on's `8.2.x` numbering.
 Future stable upgrades should normally be a pinned image tag/digest bump in
-[`/Users/sulibot/repos/github/home-ops/kubernetes/apps/tier-2-applications/matter-server/app/helmrelease.yaml`](/Users/sulibot/repos/github/home-ops/kubernetes/apps/tier-2-applications/matter-server/app/helmrelease.yaml).
+[`/Users/sulibot/Documents/Codex/2026-07-02/fi/work/home-ops/kubernetes/clusters/cluster-104/matter-server/deployment.yaml`](/Users/sulibot/Documents/Codex/2026-07-02/fi/work/home-ops/kubernetes/clusters/cluster-104/matter-server/deployment.yaml).
 
 ### Thread / OTBR
 

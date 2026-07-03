@@ -11,3 +11,4 @@ resources:
   - ./external-dns
   - ./storage
   - ./home-assistant
+  - ./matter-server

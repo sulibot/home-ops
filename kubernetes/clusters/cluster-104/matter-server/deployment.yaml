@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matter-server
+  namespace: matter-server
+  labels:
+    app.kubernetes.io/name: matter-server
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: matter-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: matter-server
+        app.kubernetes.io/part-of: cluster-104
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: talos01
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: prepare-data
+          image: busybox:1.38
+          command:
+            - sh
+            - -lc
+            - |
+              mkdir -p /data /data/credentials/development/paa-root-certs
+              chown -R 1000:1000 /data
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: app
+          image: ghcr.io/matter-js/matterjs-server:0.5.7@sha256:e717ccaa60577c0d7aba1be835ddcaa48fb72d86aa2146280b13e773d8e3e02b
+          imagePullPolicy: IfNotPresent
+          args:
+            - --storage-path=/data
+            - --port=5580
+            - --primary-interface=enp1s0.31
+            - --log-level=debug
+          env:
+            - name: TZ
+              value: America/Los_Angeles
+            - name: PORT
+              value: "5580"
+            - name: LOG_LEVEL
+              value: debug
+            - name: PRIMARY_INTERFACE
+              value: enp1s0.31
+            - name: STORAGE_PATH
+              value: /data
+          ports:
+            - name: http
+              containerPort: 5580
+              protocol: TCP
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: matter-server-config
+        - name: tmp
+          emptyDir: {}

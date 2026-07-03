@@ -23,6 +23,28 @@ locals {
         ]
         vlans = [
           { vlanId = 104, mtu = 1500 },
+          { vlanId = 31, mtu = 1500 },
+        ]
+      },
+      {
+        interface = "enp1s0.31"
+        dhcp      = false
+        mtu       = 1500
+        addresses = [
+          "fd00:31::6/64",
+          "10.31.0.6/24",
+        ]
+        routes = [
+          {
+            network = "fd00:31::/64"
+            gateway = "fd00:31::fffe"
+            metric  = 512
+          },
+          {
+            network = "10.31.0.0/24"
+            gateway = "10.31.0.254"
+            metric  = 512
+          },
         ]
       },
     ]

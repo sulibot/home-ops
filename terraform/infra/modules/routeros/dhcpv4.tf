@@ -24,6 +24,20 @@ resource "routeros_ip_dhcp_server_option_set" "option_sets" {
   comment = each.value.comment
 }
 
+resource "routeros_ip_dhcp_server_option_matcher" "option_matchers" {
+  for_each = { for m in var.ipv4_dhcp_option_matchers : m.name => m }
+
+  name          = each.value.name
+  server        = each.value.server
+  address_pool  = each.value.address_pool
+  code          = each.value.code
+  value         = each.value.value
+  matching_type = each.value.matching_type
+  option_set    = each.value.option_set
+  disabled      = each.value.disabled
+  comment       = each.value.comment
+}
+
 resource "routeros_ip_dhcp_server" "servers" {
   for_each = { for s in var.ipv4_dhcp_servers : s.name => s }
 
