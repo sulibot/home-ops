@@ -4,10 +4,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ./namespace.yaml
-  - ./flux-system
-  - ./cilium-bgp
-  - ./network
-  - ./external-dns
-  - ./storage
-  - ./home-assistant
+  - namespace.yaml
+  - cilium-gatewayclassconfig.yaml
+  - gateway-internal.yaml
+  - gateway-tunnel.yaml
+  - home-assistant-routes.yaml

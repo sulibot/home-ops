@@ -1,0 +1,87 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns
+  namespace: network
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: external-dns
+    namespace: network
+  interval: 1h
+  values:
+    fullnameOverride: external-dns-mikrotik
+    domainFilters:
+      - sulibot.com
+    interval: 30s
+    logFormat: text
+    logLevel: debug
+    policy: upsert-only
+    registry: txt
+    txtOwnerId: default
+    txtPrefix: k8s.
+    sources:
+      - service
+      - gateway-httproute
+      - gateway-grpcroute
+    extraArgs:
+      - --managed-record-types=A
+      - --managed-record-types=AAAA
+      - --managed-record-types=CNAME
+      - --managed-record-types=TXT
+      - --managed-record-types=MX
+      - --managed-record-types=SRV
+      - --managed-record-types=NS
+    provider:
+      name: webhook
+      webhook:
+        image:
+          repository: ghcr.io/mirceanton/external-dns-provider-mikrotik
+          tag: v1.5.12@sha256:163f2e9577564215c42524fd145ca0168b441f2e1678d2bb7c50cfbf2e799a1e
+          pullPolicy: IfNotPresent
+        env:
+          - name: LOG_FORMAT
+            value: json
+          - name: LOG_LEVEL
+            value: debug
+          - name: MIKROTIK_BASEURL
+            valueFrom:
+              secretKeyRef:
+                name: mikrotik-credentials
+                key: MIKROTIK_BASEURL
+          - name: MIKROTIK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: mikrotik-credentials
+                key: MIKROTIK_USERNAME
+          - name: MIKROTIK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mikrotik-credentials
+                key: MIKROTIK_PASSWORD
+          - name: MIKROTIK_SKIP_TLS_VERIFY
+            valueFrom:
+              secretKeyRef:
+                name: mikrotik-credentials
+                key: MIKROTIK_SKIP_TLS_VERIFY
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http-webhook
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http-webhook
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 30

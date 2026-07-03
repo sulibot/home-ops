@@ -1,0 +1,117 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant-browser
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hass.sulibot.com
+  parentRefs:
+    - name: gateway-tunnel
+      namespace: network
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            statusCode: 302
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /auth/oidc/redirect
+    - backendRefs:
+        - name: home-assistant
+          port: 8123
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant-app
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hass-app.sulibot.com
+  parentRefs:
+    - name: gateway-internal
+      namespace: network
+  rules:
+    - backendRefs:
+        - name: home-assistant
+          port: 8123
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant-get-token
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hass-get-token.sulibot.com
+  parentRefs:
+    - name: gateway-internal
+      namespace: network
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            statusCode: 302
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /auth/oidc/redirect
+    - backendRefs:
+        - name: home-assistant
+          port: 8123
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant-local
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hass-local.sulibot.com
+  parentRefs:
+    - name: gateway-tunnel
+      namespace: network
+  rules:
+    - backendRefs:
+        - name: home-assistant
+          port: 8123
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-assistant-debug
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hass-debug.sulibot.com
+  parentRefs:
+    - name: gateway-tunnel
+      namespace: network
+  rules:
+    - backendRefs:
+        - name: home-assistant
+          port: 8123
