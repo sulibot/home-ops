@@ -70,9 +70,10 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Bootstrap Cilium on `cluster-104` with native routing CIDRs `10.104.0.0/16` and `fd00:104::/48`.
 - [x] Apply cluster-104 Cilium BGP resources for `talos01`, local bird2 peering, and the `10.104.250.0/24` / `fd00:104:250::/112` LoadBalancer pool.
 - [x] Apply the Home Assistant local-storage overlay directly to the cluster.
-- [ ] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
+- [x] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
 - [ ] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
-- [ ] Move USB radio hardware to `talos01`, identify stable device paths, and deploy Zigbee/Z-Wave/Matter sidecars here if needed.
+- [x] Move USB radio hardware to `talos01` and identify the stable SONOFF Zigbee path: `/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231007151738-if00`.
+- [ ] Deploy Zigbee/Z-Wave/Matter sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
 - [ ] Remove or redirect the main-cluster Home Assistant deployment after cutover.
