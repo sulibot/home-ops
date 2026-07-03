@@ -56,19 +56,22 @@ variable "vip_ipv4" {
 variable "all_node_ips" {
   description = "Map of all nodes with IP addresses (module will filter by type)"
   type = map(object({
-    public_ipv4 = string
-    public_ipv6 = string
-    ip_suffix   = number
-    hostname    = optional(string)
+    public_ipv4  = string
+    public_ipv6  = string
+    ip_suffix    = number
+    hostname     = optional(string)
     machine_type = optional(string)
+    # Extra Talos machine.network.interfaces entries for node-specific wiring,
+    # such as bare-metal VLAN trunks or recovery interfaces.
+    extra_interfaces = optional(any, [])
     # REMOVED - mesh network no longer needed for link-local migration
     # mesh_ipv4   = string
     # mesh_ipv6   = string
     # GPU passthrough configuration (optional, for worker nodes)
     gpu_passthrough = optional(object({
-      enabled     = bool                      # Enable GPU passthrough for this node
-      pci_address = string                    # PCI address of GPU (from cluster_core hostpci config)
-      driver      = optional(string, "i915")  # Kernel driver (i915, amdgpu, nvidia, etc.)
+      enabled     = bool                     # Enable GPU passthrough for this node
+      pci_address = string                   # PCI address of GPU (from cluster_core hostpci config)
+      driver      = optional(string, "i915") # Kernel driver (i915, amdgpu, nvidia, etc.)
       # Driver-specific parameters
       driver_params = optional(map(string), {
         "enable_display" = "0"
@@ -230,9 +233,9 @@ locals {
     i915 = {
       driver = "i915"
       kernel_params = {
-        "enable_display" = "0"  # Disable display output to prevent boot stall
-        "enable_guc"     = "3"  # Enable GuC/HuC firmware loading
-        "force_probe"    = "*"  # Force probe for all Intel GPUs
+        "enable_display" = "0" # Disable display output to prevent boot stall
+        "enable_guc"     = "3" # Enable GuC/HuC firmware loading
+        "force_probe"    = "*" # Force probe for all Intel GPUs
       }
       kernel_args = [
         "i915.enable_display=0",
@@ -244,7 +247,7 @@ locals {
     amdgpu = {
       driver = "amdgpu"
       kernel_params = {
-        "dc"    = "1"  # Display Core
+        "dc"            = "1" # Display Core
         "ppfeaturemask" = "0xffffffff"
       }
       kernel_args = [
@@ -254,7 +257,7 @@ locals {
     }
     # NVIDIA GPU (requires proprietary extension)
     nvidia = {
-      driver = "nvidia"
+      driver        = "nvidia"
       kernel_params = {}
       kernel_args = [
         "nvidia-drm.modeset=1"
@@ -323,6 +326,17 @@ variable "apply_cilium_bgp_inline" {
   description = "Apply Cilium BGP CRs as Talos inline manifests. Keep false to let Flux own CR ordering after Cilium CRDs exist."
   type        = bool
   default     = false
+}
+
+variable "user_volumes" {
+  description = "Talos user volumes to provision on each node."
+  type = list(object({
+    name                = string
+    disk_selector_match = string
+    min_size            = string
+    max_size            = optional(string)
+  }))
+  default = []
 }
 
 variable "allow_scheduling_on_control_planes" {

@@ -43,6 +43,30 @@ variable "bootstrap_run_token" {
   default     = ""
 }
 
+variable "direct_routing_device" {
+  description = "Optional network interface to use for Cilium direct routing."
+  type        = string
+  default     = ""
+}
+
+variable "ipv4_native_routing_cidr" {
+  description = "Optional IPv4 native routing CIDR override for Cilium."
+  type        = string
+  default     = ""
+}
+
+variable "ipv6_native_routing_cidr" {
+  description = "Optional IPv6 native routing CIDR override for Cilium."
+  type        = string
+  default     = ""
+}
+
+variable "operator_replicas" {
+  description = "Optional Cilium operator replica count override."
+  type        = number
+  default     = 0
+}
+
 locals {
   cilium_helmrelease_path = "${var.repo_root}/kubernetes/apps/tier-0-foundation/cilium/app/helmrelease.yaml"
   cilium_ocirepo_path     = "${var.repo_root}/kubernetes/apps/tier-0-foundation/cilium/app/ocirepository.yaml"
@@ -58,11 +82,15 @@ resource "null_resource" "bootstrap_cilium" {
     cilium_helmrelease_sha = filesha256(local.cilium_helmrelease_path)
     cilium_ocirepo_sha     = filesha256(local.cilium_ocirepo_path)
     cilium_bootstrap_sha   = filesha256(local.cilium_bootstrap_path)
+    direct_routing_device  = var.direct_routing_device
+    ipv4_native_cidr       = var.ipv4_native_routing_cidr
+    ipv6_native_cidr       = var.ipv6_native_routing_cidr
+    operator_replicas      = tostring(var.operator_replicas)
   }
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command = <<-EOT
+    command     = <<-EOT
       set -euo pipefail
 
       if [ ! -f "${var.kubeconfig_path}" ]; then
@@ -72,12 +100,14 @@ resource "null_resource" "bootstrap_cilium" {
 
       export KUBECONFIG="${var.kubeconfig_path}"
 
-      echo "Waiting for Kubernetes API readiness before Cilium bootstrap..."
-      timeout 300 bash -ec '
-        until kubectl get --raw=/readyz >/dev/null 2>&1; do
-          sleep 2
-        done
-      '
+echo "Waiting for Kubernetes API readiness before Cilium bootstrap..."
+for i in {1..150}; do
+  if kubectl --request-timeout=10s get --raw=/readyz >/dev/null 2>&1 || \
+     kubectl --request-timeout=10s get nodes >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
 
       CILIUM_VERSION="$(yq -r '.spec.chart.spec.version // ""' "${local.cilium_helmrelease_path}")"
       if [ -z "$CILIUM_VERSION" ] || [ "$CILIUM_VERSION" = "null" ]; then
@@ -92,8 +122,22 @@ resource "null_resource" "bootstrap_cilium" {
         echo "ERROR: unable to resolve Cilium chart version from HelmRelease/OCIRepository" >&2
         exit 1
       fi
+      if command -v helmfile >/dev/null 2>&1; then
+        HELMFILE=(helmfile)
+      elif command -v nix >/dev/null 2>&1; then
+        HELMFILE=(nix shell nixpkgs#helmfile --command helmfile)
+      else
+        echo "ERROR: helmfile is required. Install helmfile or make nix available." >&2
+        exit 1
+      fi
+
       echo "Installing Gateway API CRDs + Cilium CNI v$CILIUM_VERSION via bootstrap unit..."
-      CILIUM_VERSION="$CILIUM_VERSION" helmfile -f "${local.cilium_bootstrap_path}" sync
+      CILIUM_VERSION="$CILIUM_VERSION" \
+      CILIUM_DIRECT_ROUTING_DEVICE="${var.direct_routing_device}" \
+      CILIUM_IPV4_NATIVE_ROUTING_CIDR="${var.ipv4_native_routing_cidr}" \
+      CILIUM_IPV6_NATIVE_ROUTING_CIDR="${var.ipv6_native_routing_cidr}" \
+      CILIUM_OPERATOR_REPLICAS="${var.operator_replicas}" \
+      "$${HELMFILE[@]}" -f "${local.cilium_bootstrap_path}" sync
       echo "✓ Cilium bootstrap completed"
     EOT
   }

@@ -1,0 +1,93 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: cilium-lb-vips
+  labels:
+    advertise: cilium-lb
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector: {}
+      attributes:
+        communities:
+          large:
+            - "4200001000:0:200"
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: cilium-pod-cidrs
+  labels:
+    advertise: cilium-pod
+spec:
+  advertisements:
+    - advertisementType: PodCIDR
+      attributes:
+        communities:
+          large:
+            - "4200001000:0:100"
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: frr-local-mpbgp
+spec:
+  timers:
+    holdTimeSeconds: 9
+    keepAliveTimeSeconds: 3
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 120
+  transport:
+    peerPort: 179
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - cilium-lb
+              - cilium-pod
+    - afi: ipv6
+      safi: unicast
+      advertisements:
+        matchExpressions:
+          - key: advertise
+            operator: In
+            values:
+              - cilium-lb
+              - cilium-pod
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPNodeConfig
+metadata:
+  name: talos01
+spec:
+  bgpInstances:
+    - name: local-bird2
+      localASN: 4220104000
+      localPort: 1790
+      routerID: 10.104.254.4
+      peers:
+        - name: bird2-local
+          peerASN: 4210104004
+          peerAddress: "::1"
+          localAddress: "::1"
+          peerConfigRef:
+            name: frr-local-mpbgp
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: cluster-104-pool
+  namespace: kube-system
+spec:
+  blocks:
+    - cidr: 10.104.250.0/24
+    - cidr: fd00:104:250::/112

@@ -173,28 +173,41 @@ Current bridges:
 - `pve01[ether2]`
 - `pve02[ether3]`
 - `pve03[ether4]`
-- `luna01[ether5]`
+- `talos01[ether5]`
 - `wifi[ether6]`
   - `pvid=30`
-- `ilom-pve03[ether7]`
+- `jetkvm-talos01[ether7]`
 - `spare[ether8]`
 
 ### Bridge VLAN membership
 
 - `vlan1`
   - tagged: `br-fabric`
-  - untagged: `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`, `spare`
+  - untagged: `pve01`, `pve02`, `pve03`, `spare`
 - `vlan10`
-  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`
+  - untagged: `talos01`, `jetkvm-talos01`
+  - note: native recovery/PXE path for `talos01[ether5]`
 - `vlan30`
-  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `spare`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `talos01`, `spare`
   - untagged: `wifi[ether6]`
 - `vlan31`
-  - tagged: `br-fabric`, `wifi[ether6]`, `pve01`, `pve02`, `pve03`, `luna01`, `spare`
+  - tagged: `br-fabric`, `wifi[ether6]`, `pve01`, `pve02`, `pve03`, `talos01`, `spare`
 - `vlan100`
-  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `talos01`
 - `vlan200`
-  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `luna01`, `ilom-pve03`, `spare`
+  - tagged: `br-fabric`, `pve01`, `pve02`, `pve03`, `talos01`, `spare`
+
+Planned cluster alignment:
+
+- `cluster-101`: `vlan101` / `vnet101` / `10.101.0.0/16` / `fd00:101::/48`
+- `cluster-102`: `vlan102` / `vnet102` / `10.102.0.0/16` / `fd00:102::/48`
+- `cluster-103`: `vlan103` / `vnet103` / `10.103.0.0/16` / `fd00:103::/48`
+- `cluster-104`: `vlan104` bare metal / `10.104.0.0/16` / `fd00:104::/48`
+
+For `cluster-104`, keep `talos01[ether5]` native/untagged on `vlan10`
+for recovery and add tagged `vlan104` for the real cluster network. Do not add
+`vnet104` or copy Proxmox SDN assumptions unless VMs need to participate later.
 
 This is the intended AP trunk model.
 

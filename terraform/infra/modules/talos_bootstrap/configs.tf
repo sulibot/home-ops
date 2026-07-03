@@ -12,14 +12,14 @@ resource "null_resource" "kubeconfig" {
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      SRC="${var.repo_root}/talos/clusters/cluster-${var.cluster_id}/kubeconfig"
+      SRC="${local.output_directory}/kubeconfig"
       DST="$HOME/.kube/config"
       mkdir -p "$HOME/.kube"
       # Merge: new context replaces existing same-named entry, no duplicates
       KUBECONFIG="$SRC:$DST" kubectl config view --flatten > "$DST.new"
       mv "$DST.new" "$DST"
       chmod 0600 "$DST"
-      echo "✓ Kubeconfig merged to ~/.kube/config (context: sol)"
+      echo "✓ Kubeconfig merged to ~/.kube/config (context: ${local.cluster_name})"
     EOT
   }
 
@@ -41,7 +41,7 @@ EOF
       mkdir -p ~/.talos
       talosctl config merge "$TMP_FILE"
       rm "$TMP_FILE"
-      echo "✓ Talosconfig merged to ~/.talos/config (use: talosctl config context cluster-${var.cluster_id})"
+      echo "✓ Talosconfig merged to ~/.talos/config (use: talosctl config context ${local.cluster_name})"
     EOT
   }
 }

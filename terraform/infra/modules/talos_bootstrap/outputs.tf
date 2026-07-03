@@ -17,7 +17,7 @@ output "cluster_ready" {
 
 output "post_bootstrap_instructions" {
   description = "Manual steps required after cluster bootstrap"
-  value = <<-EOT
+  value       = <<-EOT
 
     ============================================================================
     CLUSTER BOOTSTRAP COMPLETE

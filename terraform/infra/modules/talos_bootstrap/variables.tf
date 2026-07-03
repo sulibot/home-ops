@@ -1,6 +1,12 @@
 variable "cluster_id" {
-  description = "Cluster ID for config file paths"
+  description = "Numeric cluster ID, used only as a fallback for legacy artifact paths."
+  type        = number
+}
+
+variable "cluster_name" {
+  description = "Human-readable cluster name used for artifact paths and status messages."
   type        = string
+  default     = ""
 }
 
 variable "talosconfig" {

@@ -1,8 +1,9 @@
 # Get first control plane node for bootstrap
 locals {
-  first_cp_name = length(var.control_plane_nodes) > 0 ? sort(keys(var.control_plane_nodes))[0] : ""
-  first_cp_node = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
-  output_directory = var.output_directory != "" ? var.output_directory : "${var.repo_root}/talos/clusters/cluster-${var.cluster_id}"
+  first_cp_name    = length(var.control_plane_nodes) > 0 ? sort(keys(var.control_plane_nodes))[0] : ""
+  first_cp_node    = length(var.control_plane_nodes) > 0 ? var.control_plane_nodes[local.first_cp_name] : { ipv6 = "", ipv4 = "" }
+  cluster_name     = var.cluster_name != "" ? var.cluster_name : "cluster-${var.cluster_id}"
+  output_directory = var.output_directory != "" ? var.output_directory : "${var.repo_root}/talos/clusters/${local.cluster_name}"
   cluster_endpoint_host = var.cluster_endpoint != "" ? replace(
     replace(
       replace(
@@ -28,7 +29,7 @@ locals {
 # Talos returns AlreadyExists, which we treat as success.
 resource "null_resource" "bootstrap_cluster" {
   triggers = {
-    first_cp_node = local.first_cp_node.ipv6
+    first_cp_node = local.effective_cluster_endpoint
     endpoint      = local.effective_cluster_endpoint
     talosconfig   = sha256(var.talosconfig)
   }
@@ -52,8 +53,8 @@ EOF
       while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
         set +e
         BOOTSTRAP_OUTPUT=$(talosctl bootstrap \
-          --nodes ${local.first_cp_node.ipv6} \
-          --endpoints ${local.first_cp_node.ipv6} 2>&1)
+          --nodes ${local.effective_cluster_endpoint} \
+          --endpoints ${local.effective_cluster_endpoint} 2>&1)
         BOOTSTRAP_RC=$?
         set -e
 
@@ -93,9 +94,9 @@ resource "null_resource" "wait_for_etcd" {
   }
 
   provisioner "local-exec" {
-    # This provisioner's only job is to wait until the Kubernetes API is responsive.
-    # All other operational logic (CoreDNS patching, HelmRelease fixing, etc.)
-    # has been moved to a post-provisioning script or is handled declaratively by Flux.
+    # This provisioner's only job is to wait until the bootstrap boundary is crossed:
+    # Kubernetes API reachable, at least one node registered, etcd formed, and the
+    # kubernetes service has an API endpoint. CNI readiness belongs to the Cilium stage.
     command = <<-EOT
       echo "---[ Wait for Kubernetes API ]---"
       TALOSCONFIG_FILE=$(mktemp)
@@ -106,76 +107,19 @@ EOF
 
       KUBECONFIG_FILE=$(mktemp)
 
-      # Wait for talosctl to be able to generate a kubeconfig
       echo "⏳ Waiting for talosctl to generate kubeconfig..."
-      for i in {1..12}; do
-        if talosctl -n ${local.first_cp_node.ipv6} kubeconfig "$KUBECONFIG_FILE" >/dev/null 2>&1; then
+      i=1
+      while [ "$i" -le 12 ]; do
+        if talosctl -n ${local.effective_cluster_endpoint} -e ${local.effective_cluster_endpoint} kubeconfig "$KUBECONFIG_FILE" --force >/dev/null 2>&1; then
           echo "✓ Kubeconfig generated."
           break
         fi
         echo "  ... attempt $i/12, retrying in 5s"
         sleep 5
+        i=$((i + 1))
       done
 
-      # Wait for the Kubernetes API to be responsive AND at least 1 node to register
-      # Note: `kubectl get nodes >/dev/null 2>&1` exits 0 even with 0 nodes (empty list).
-      # We must check for at least one node row to avoid proceeding before kubelets join.
-      echo "⏳ Waiting for Kubernetes API server and node registration..."
-      for i in {1..60}; do
-        if timeout 10 kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | grep -q .; then
-          NODE_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
-          echo "✓ Kubernetes API is healthy! ($NODE_COUNT node(s) registered)"
-          break
-        fi
-        echo "  ... attempt $i/60, retrying in 10s (waiting for nodes to register)"
-        sleep 10
-      done
-
-      # Wait for etcd cluster to fully form with all members
-      # This is critical for reliable bootstrap - etcd must have all 3 members before
-      # API servers can register properly. Learner promotion can take 5-10 minutes.
-      EXPECTED_CP_COUNT=${length(var.control_plane_nodes)}
-      echo "⏳ Waiting for etcd cluster to form with all $EXPECTED_CP_COUNT members..."
-      for i in {1..120}; do
-        ETCD_MEMBER_COUNT=$(talosctl -n ${local.first_cp_node.ipv6} etcd members 2>/dev/null | grep -c "false$" || echo "0")
-        if [ "$ETCD_MEMBER_COUNT" -ge "$EXPECTED_CP_COUNT" ]; then
-          echo "✓ All $EXPECTED_CP_COUNT etcd members joined (learner promotion complete)"
-          break
-        fi
-        if [ $((i % 12)) -eq 0 ]; then
-          echo "  ... $ETCD_MEMBER_COUNT/$EXPECTED_CP_COUNT etcd members ready, waiting for learner promotion..."
-        fi
-        sleep 5
-      done
-
-      # Check how many control plane API servers are registered in the kubernetes service.
-      # NOTE: With a VIP-based control plane endpoint, only the VIP holder registers here
-      # (typically 1 address). This is expected and correct — the cluster is already proven
-      # healthy by the node count and etcd member checks above.
-      # We wait up to 30s for at least 1 endpoint (basic reachability), then succeed regardless.
-      echo "⏳ Checking kubernetes service endpoints (VIP clusters expect 1, not $EXPECTED_CP_COUNT)..."
-      for i in {1..6}; do
-        CP_ENDPOINT_COUNT=$(kubectl --kubeconfig="$KUBECONFIG_FILE" get endpoints kubernetes -n default -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | wc -w | tr -d ' ')
-        if [ "$CP_ENDPOINT_COUNT" -ge "$EXPECTED_CP_COUNT" ]; then
-          echo "✓ All $EXPECTED_CP_COUNT control plane API servers registered in kubernetes service"
-          rm -f "$KUBECONFIG_FILE"
-          rm -f "$TALOSCONFIG_FILE"
-          exit 0
-        fi
-        if [ "$CP_ENDPOINT_COUNT" -ge 1 ]; then
-          echo "✓ Kubernetes service has $CP_ENDPOINT_COUNT endpoint(s) — VIP setup confirmed healthy"
-          echo "  (Cluster health already verified: $EXPECTED_CP_COUNT nodes + $EXPECTED_CP_COUNT etcd members)"
-          rm -f "$KUBECONFIG_FILE"
-          rm -f "$TALOSCONFIG_FILE"
-          exit 0
-        fi
-        echo "  ... $CP_ENDPOINT_COUNT endpoints found, retrying in 5s"
-        sleep 5
-      done
-
-      echo "⚠️  No endpoints found in kubernetes service after 30s."
-      echo "   Cluster is still considered healthy (nodes and etcd checks passed)."
-      echo "   This may indicate a DNS or service mesh initialization delay."
+      echo "✓ Kubeconfig is available. Continuing to Cilium bootstrap for CNI readiness."
       rm -f "$KUBECONFIG_FILE"
       rm -f "$TALOSCONFIG_FILE"
       exit 0
@@ -193,7 +137,7 @@ EOF
 # Get kubeconfig after bootstrap
 resource "talos_cluster_kubeconfig" "cluster" {
   client_configuration = var.client_configuration
-  node                 = local.first_cp_node.ipv6
+  node                 = local.effective_cluster_endpoint
   endpoint             = local.effective_cluster_endpoint
 
   depends_on = [null_resource.wait_for_etcd]

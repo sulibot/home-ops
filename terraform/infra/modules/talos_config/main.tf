@@ -79,21 +79,21 @@ locals {
     "net.ipv4.ip_forward"           = "1"
     "net.ipv6.conf.all.forwarding"  = "1"
     # Neighbor Discovery and ARP notifications for faster network convergence
-    "net.ipv6.conf.all.ndisc_notify"     = "1"
-    "net.ipv6.conf.default.ndisc_notify" = "1"
-    "net.ipv6.conf.ens18.ndisc_notify"   = "1"
-    "net.ipv6.conf.ens18.accept_ra"      = "2"
-    "net.ipv4.conf.all.arp_notify"       = "1"
-    "net.ipv4.conf.default.arp_notify"   = "1"
-    "net.ipv4.conf.ens18.arp_notify"     = "1"
-  }, var.enable_node_swap ? {
+    "net.ipv6.conf.all.ndisc_notify"                  = "1"
+    "net.ipv6.conf.default.ndisc_notify"              = "1"
+    "net.ipv6.conf.${var.bgp_interface}.ndisc_notify" = "1"
+    "net.ipv6.conf.${var.bgp_interface}.accept_ra"    = "2"
+    "net.ipv4.conf.all.arp_notify"                    = "1"
+    "net.ipv4.conf.default.arp_notify"                = "1"
+    "net.ipv4.conf.${var.bgp_interface}.arp_notify"   = "1"
+    }, var.enable_node_swap ? {
     "vm.swappiness" = tostring(var.swap_swappiness)
   } : {})
 
   common_features = {
     kubePrism = { enabled = true, port = 7445 }
     hostDNS = {
-      enabled              = true # Required for Talos Helm controller
+      enabled              = true  # Required for Talos Helm controller
       forwardKubeDNSToHost = false # Must be false for Cilium BPF Host Routing (Direct Mode)
     }
   }
@@ -140,6 +140,25 @@ locals {
       }
     }),
   ] : []
+
+  user_volume_config_patches = [
+    for volume in var.user_volumes : yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "UserVolumeConfig"
+      name       = volume.name
+      provisioning = merge(
+        {
+          diskSelector = {
+            match = volume.disk_selector_match
+          }
+          minSize = volume.min_size
+        },
+        try(volume.max_size, null) != null ? {
+          maxSize = volume.max_size
+        } : {}
+      )
+    })
+  ]
 
   common_cluster_network = {
     cni            = { name = "none" }                              # Cilium installed via bootstrap helmfile after CRDs
@@ -296,13 +315,13 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         controllerManager = {
           extraArgs = {
-            "node-cidr-mask-size-ipv4" = "24"  # Each node gets /24 from IPv4 pod CIDR (/20 → 16 nodes)
-            "node-cidr-mask-size-ipv6" = "64"  # Standard /64 per node - from /60 allows 16 nodes
+            "node-cidr-mask-size-ipv4" = "24" # Each node gets /24 from IPv4 pod CIDR (/20 → 16 nodes)
+            "node-cidr-mask-size-ipv6" = "64" # Standard /64 per node - from /60 allows 16 nodes
           }
         }
       }
     }),
-  ], local.swap_config_patches, local.registry_mirror_patches)
+  ], local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches)
 }
 
 # Generate worker machine configuration
@@ -364,7 +383,7 @@ EOF
         }
       }
     }),
-  ], local.swap_config_patches, local.registry_mirror_patches)
+  ], local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches)
 }
 
 # Generate per-node FRR config YAML for the extension
@@ -387,7 +406,7 @@ locals {
 
       # Direct protocol - imports directly connected routes
       protocol direct direct_routes {
-        interface "dummy0", "lo", "ens18";
+        interface "dummy0", "lo", "${var.bgp_interface}";
         ipv4 {
           import all;
         };
@@ -580,10 +599,10 @@ locals {
               {
                 name         = "bird2-local"
                 peerASN      = node.frr_asn
-                peerAddress  = "::1"           # Connect TO bird2 via localhost (port 179)
-                localAddress = "::1"           # Connect FROM localhost
+                peerAddress  = "::1" # Connect TO bird2 via localhost (port 179)
+                localAddress = "::1" # Connect FROM localhost
                 peerConfigRef = {
-                  name = "frr-local-mpbgp"     # Reuse existing peer config
+                  name = "frr-local-mpbgp" # Reuse existing peer config
                 }
               }
             ]
@@ -618,7 +637,7 @@ locals {
               "topology.kubernetes.io/region" = var.region
               "topology.kubernetes.io/zone"   = "cluster-${var.cluster_id}"
               # Per-node label (unique per node)
-              "bgp.frr.asn"                   = tostring(node.frr_asn)
+              "bgp.frr.asn" = tostring(node.frr_asn)
             },
             # Add GPU label if GPU passthrough is enabled for this node
             try(node.gpu_passthrough.enabled, false) ? {
@@ -633,7 +652,7 @@ locals {
             } : {}
           )
           network = {
-            hostname   = node.hostname
+            hostname = node.hostname
             interfaces = concat([
               {
                 interface = var.bgp_interface
@@ -676,7 +695,7 @@ locals {
                   "${node.cilium_bgp_ipv4}/32",  # Cilium/bird2 254
                 ]
               }
-              ], node.machine_type == "worker" ? [
+              ], try(node.extra_interfaces, []), node.machine_type == "worker" ? [
               {
                 # Templated role-wide standard: All workers have same VLAN config
                 # Change via apply/ stage when updating VLAN IDs cluster-wide
@@ -747,12 +766,16 @@ locals {
       # injects into the base machine_configuration, to avoid conflict with the
       # machine.network.hostname set in the per-node patch.
       machine_configuration = replace(
-        tostring(
-          node.machine_type == "controlplane" ?
-          data.talos_machine_configuration.controlplane.machine_configuration :
-          data.talos_machine_configuration.worker.machine_configuration
+        replace(
+          tostring(
+            node.machine_type == "controlplane" ?
+            data.talos_machine_configuration.controlplane.machine_configuration :
+            data.talos_machine_configuration.worker.machine_configuration
+          ),
+          "---\napiVersion: v1alpha1\nkind: HostnameConfig\nauto: stable\n",
+          ""
         ),
-        "---\napiVersion: v1alpha1\nkind: HostnameConfig\nauto: stable\n",
+        "        grubUseUKICmdline: true\n",
         ""
       )
 
@@ -767,8 +790,8 @@ ${yamlencode(local.node_config_patches[node_name])}
 ${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
 ${local.extension_service_configs[node_name]}
 EOT
-}
-}
+    }
+  }
 }
 
 # Generate client configuration (talosconfig)
