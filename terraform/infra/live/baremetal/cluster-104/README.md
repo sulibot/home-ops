@@ -72,7 +72,7 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Apply the Home Assistant local-storage overlay directly to the cluster.
 - [x] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
-- [ ] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
+- [x] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
 - [x] Move USB radio hardware to `talos01` and identify the stable SONOFF Zigbee path: `/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231007151738-if00`.
 - [ ] Deploy Zigbee/Z-Wave/Matter sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
