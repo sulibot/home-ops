@@ -26,10 +26,10 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
         fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: app
@@ -52,6 +52,11 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: sonoff-zigbee
+              mountPath: /dev/ttyACM0
+            - name: serial-by-id
+              mountPath: /dev/serial/by-id
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /
@@ -76,3 +81,11 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: home-assistant-config
+        - name: sonoff-zigbee
+          hostPath:
+            path: /dev/ttyACM0
+            type: CharDevice
+        - name: serial-by-id
+          hostPath:
+            path: /dev/serial/by-id
+            type: Directory
