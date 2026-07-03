@@ -74,6 +74,18 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
 - [x] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
 - [x] Move USB radio hardware to `talos01` and identify the stable SONOFF Zigbee path: `/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231007151738-if00`.
+- [x] Expose Home Assistant through cluster-104 Cilium Gateways:
+  - `gateway-internal`: `10.104.250.11`, `fd00:104:250::11`
+  - `gateway-tunnel`: `10.104.250.12`, `fd00:104:250::12`
+- [x] Move `hass*.sulibot.com` internal DNS ownership to cluster-104 ExternalDNS with TXT owner `cluster-104`.
+- [x] Remove or redirect the main-cluster Home Assistant deployment after cutover.
+- [x] Disable incomplete Google Assistant setup from the migrated Home Assistant config.
+- [x] Trust cluster-104 Cilium Gateway proxy ranges in Home Assistant:
+  - `10.104.224.0/20`
+  - `fd00:104:224::/60`
 - [ ] Deploy Zigbee/Z-Wave/Matter sidecars here if Home Assistant should not own the USB radio directly.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
-- [ ] Remove or redirect the main-cluster Home Assistant deployment after cutover.
+- [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane:
+  - fix BGP export from `talos01`/BIRD to RouterOS, or
+  - codify the static routes in RouterOS Terraform once state is reconciled.
+- [ ] Resolve the migrated Home Assistant `uv was not found` warning if custom integrations need that package manager at runtime.
