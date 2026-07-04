@@ -128,6 +128,36 @@ but the Bedroom KAJPLATS bulbs are still not reachable on Thread/Matter from
 Bedroom bulbs / fixture circuit so the bulbs rejoin Thread, then restart
 `matter-server` if Home Assistant does not automatically recover them.
 
+On `2026-07-04`, the live custom component
+`/config/custom_components/matter_dimmer_bridge/__init__.py` was patched on the
+PVC after a `matter-server` restart left Home Assistant subscribed to stale
+Matter client callbacks. The patch adds a watchdog that checks the active Home
+Assistant Matter client and rebinds dimmer subscriptions if the client changes.
+A backup was left on the PVC:
+
+- `/config/custom_components/matter_dimmer_bridge/__init__.py.backup-20260704T070603Z`
+
+Home Assistant was restarted after the patch and startup logs confirmed:
+
+```text
+Started Matter dimmer bridge for Living room switch, Master Switch, Bedroom Switch
+```
+
+Current validation after the restart:
+
+- HA direct VLAN access works on `http://10.30.0.251:8123/` and
+  `http://10.31.0.251:8123/`.
+- `light.master_switch`, `light.master_lights`, and both Master bulbs are
+  available and on.
+- `light.bedroom_switch` is available and on.
+- `light.bedroom_lights`, `light.sofa`, `light.standing_lamp`, and Bedroom
+  bulbs `0x10`, `0x11`, `0x19`, and `0x1b` are still unavailable in Home
+  Assistant.
+- Matter Server sees the Bedroom switch (`@1:1c`) on VLAN31 and keeps receiving
+  its subscription reports. The Bedroom bulb nodes are still failing Matter
+  reachability with stale/no Thread addresses, so this remains a device
+  reachability problem rather than a Home Assistant group mapping problem.
+
 ## Problem
 
 The older app-template Home Assistant config under
