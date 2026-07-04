@@ -82,7 +82,8 @@ Home Assistant has:
 Practical access paths:
 
 - Canonical HA app/discovery URL: `https://hass-app.sulibot.com`
-  This host is LAN-only on `gateway-internal` and is not published through Cloudflare.
+  This host resolves internally to the local gateway and externally through
+  Cloudflare Access with WARP required.
 - Legacy browser host: `https://hass.sulibot.com`
 - Debug-only local HA URL: `http://hass-debug.sulibot.com`
 - Direct IPv6 fallback HA URL: `http://[fd00:31::251]:8123`
@@ -91,10 +92,15 @@ Practical access paths:
 
 ### HTTP routes
 
-Home Assistant is internal-only in the intended design.
+Home Assistant human/app access is private-by-policy in the intended design.
 
-- No public Home Assistant route is part of the target topology.
-- The canonical endpoint is the VLAN 31 IPv6 address.
+- `hass.sulibot.com` is the browser endpoint.
+- `hass-app.sulibot.com` is the mobile/app auth endpoint.
+- Both endpoints are accessible directly on the home network through internal
+  DNS and externally only when the client is using approved Cloudflare WARP.
+- Google Assistant must use a separate, narrowly scoped hostname such as
+  `ha-google.sulibot.com`; do not expose the full HA UI for Google callbacks.
+- The canonical direct fallback endpoint is the VLAN 31 IPv6 address.
 - IPv4 remains valid as a compatibility path only.
 
 ## Authentication Model
@@ -109,9 +115,12 @@ Human browser and app access should use the unified Home Assistant app/discovery
 - direct IPv6 fallback: `http://[fd00:31::251]:8123`
 - direct IPv4 fallback: `http://10.31.0.251:8123`
 
-`hass-app.sulibot.com` is the canonical HA app/OIDC hostname and is intentionally internal-only.
-`hass-debug.sulibot.com` is the plain HTTP observation host for troubleshooting raw
-client behavior without the Cloudflare/browser/TLS layers involved.
+`hass-app.sulibot.com` is the canonical HA app/OIDC hostname and is
+internal-first, with external access allowed only through Cloudflare WARP.
+`hass.sulibot.com` and `hass-app.sulibot.com` have explicit Cloudflare Access
+applications requiring WARP for external access. `hass-debug.sulibot.com` is
+the plain HTTP observation host for troubleshooting raw client behavior without
+the Cloudflare/browser/TLS layers involved.
 
 ### Local access
 

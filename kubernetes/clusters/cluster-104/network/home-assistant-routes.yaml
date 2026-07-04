@@ -43,6 +43,8 @@ spec:
   parentRefs:
     - name: gateway-internal
       namespace: network
+    - name: gateway-tunnel
+      namespace: network
   rules:
     - backendRefs:
         - name: home-assistant

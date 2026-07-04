@@ -60,8 +60,13 @@ locals {
     "*.sulibot.com" = "Wildcard Browser Access"
   }
 
+  home_assistant_warp_only_apps = {
+    "hass.sulibot.com"       = "Home Assistant Browser"
+    "hass-app.sulibot.com"   = "Home Assistant App"
+  }
+
   warp_only_apps = {
-    "immich-app.sulibot.com" = "Immich"
+    "immich-app.sulibot.com"  = "Immich"
     "vikunja-app.sulibot.com" = "Vikunja"
   }
 
@@ -72,6 +77,7 @@ locals {
   tunnel_hostnames = distinct(concat(
     keys(local.bypass_apps),
     keys(local.email_only_apps),
+    keys(local.home_assistant_warp_only_apps),
     keys(local.warp_only_apps),
     keys(local.warp_email_apps),
   ))
@@ -225,6 +231,37 @@ resource "cloudflare_zero_trust_access_application" "email_only" {
         }
       }
     ]
+  }]
+}
+
+# ---------------------------------------------------------------------------
+# Home Assistant WARP-only apps
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "home_assistant_warp_only" {
+  for_each = local.home_assistant_warp_only_apps
+
+  account_id                 = local.account_id
+  name                       = "$${each.value} (WARP only)"
+  domain                     = each.key
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+  policies = [{
+    name       = "Allow via WARP"
+    decision   = "allow"
+    precedence = 1
+    include = [{
+      everyone = {}
+    }]
+    require = [{
+      auth_method = {
+        auth_method = "warp"
+      }
+    }]
   }]
 }
 
@@ -385,6 +422,7 @@ output "access_application_ids" {
   value = merge(
     { for k, v in cloudflare_zero_trust_access_application.bypass : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.email_only : k => v.id },
+    { for k, v in cloudflare_zero_trust_access_application.home_assistant_warp_only : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_only : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_email : k => v.id },
   )
