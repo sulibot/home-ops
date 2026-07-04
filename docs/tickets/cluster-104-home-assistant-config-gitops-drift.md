@@ -39,6 +39,24 @@ logs confirmed:
 Started Matter dimmer bridge for Living room switch
 ```
 
+The migration also left a stale entity-registry entry where
+`light.living_room_lights` pointed at the old template light. After adding the
+real YAML light group, Home Assistant initially created it as
+`light.living_room_lights_2`. The registry was corrected while Home Assistant
+was stopped:
+
+- backed up `/config/.storage/core.entity_registry`
+- removed the stale template `light.living_room_lights` entry
+- renamed the group `light.living_room_lights_2` entry back to
+  `light.living_room_lights`
+
+After restart, the live registry showed:
+
+```text
+light.living_room_lights platform=group unique_id=living_room_lights_group
+light.couch platform=group unique_id=couch_group
+```
+
 ## Problem
 
 The older app-template Home Assistant config under
