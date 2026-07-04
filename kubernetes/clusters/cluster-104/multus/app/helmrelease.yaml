@@ -1,0 +1,49 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: multus
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: multus
+  interval: 1h
+  timeout: 15m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  values:
+    cni:
+      binPath: /opt/cni/bin
+      netPath: /etc/cni/net.d
+    multus:
+      resources:
+        requests:
+          cpu: 200m
+          memory: 100Mi
+        limits:
+          cpu: 300m
+          memory: 150Mi
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: DaemonSet
+              name: kube-multus-ds
+            patch: |-
+              apiVersion: apps/v1
+              kind: DaemonSet
+              metadata:
+                name: kube-multus-ds
+              spec:
+                template:
+                  spec:
+                    volumes:
+                      - name: host-run-netns
+                        hostPath:
+                          path: /var/run/netns

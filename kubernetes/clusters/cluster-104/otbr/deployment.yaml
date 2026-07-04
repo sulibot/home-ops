@@ -1,0 +1,100 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otbr
+  namespace: otbr
+  labels:
+    app.kubernetes.io/name: otbr
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otbr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otbr
+        app.kubernetes.io/part-of: cluster-104
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: talos01
+      containers:
+        - name: app
+          image: openthread/border-router:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OT_RCP_DEVICE
+              value: spinel+hdlc+uart:///dev/ttyACM0?uart-baudrate=460800
+            - name: OT_INFRA_IF
+              value: enp1s0.31
+            - name: OT_THREAD_IF
+              value: wpan0
+            - name: OT_LOG_LEVEL
+              value: "7"
+            - name: OT_REST_LISTEN_ADDR
+              value: "::"
+            - name: OT_REST_LISTEN_PORT
+              value: "8081"
+            - name: THREAD_DATASET_TLV
+              valueFrom:
+                secretKeyRef:
+                  name: otbr-thread-dataset
+                  key: active-tlv
+          ports:
+            - name: rest
+              containerPort: 8081
+              protocol: TCP
+            - name: web
+              containerPort: 80
+              protocol: TCP
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -lc
+                  - |
+                    for i in $(seq 1 60); do
+                      if ot-ctl state >/dev/null 2>&1; then
+                        ot-ctl dataset set active "$THREAD_DATASET_TLV" || true
+                        ot-ctl dataset commit active || true
+                        ot-ctl ifconfig up || true
+                        ot-ctl thread start || true
+                        exit 0
+                      fi
+                      sleep 2
+                    done
+                    exit 0
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: ttyacm0
+              mountPath: /dev/ttyACM0
+            - name: tun
+              mountPath: /dev/net/tun
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/mnt/ha-data/otbr-data
+            type: DirectoryOrCreate
+        - name: ttyacm0
+          hostPath:
+            path: /dev/ttyACM0
+            type: CharDevice
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

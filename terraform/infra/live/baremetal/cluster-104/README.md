@@ -12,6 +12,7 @@ Single-node Talos Kubernetes cluster on repurposed bare-metal hardware.
   - IPv4: `10.10.0.4`
   - IPv6: `fd00:10::4`
 - Cluster network: tagged `vlan104`
+- LAN/media attachment: tagged `vlan30`
 - IoT/Matter attachment: tagged `vlan31`
 - Cluster endpoint IPs:
   - IPv4: `10.104.0.4`
@@ -33,8 +34,9 @@ Notes:
   Proxmox SDN/vnet assumptions unless VM participation becomes a real
   requirement later.
 - Keep `vlan10` native/untagged for recovery/bootstrap. The real cluster
-  network is tagged `vlan104`. Matter/IoT controller traffic uses tagged
-  `vlan31` on the same physical link.
+  network is tagged `vlan104`. Home Assistant uses Multus/macvlan secondary
+  attachments on tagged `vlan30` and `vlan31` for LAN discovery/control,
+  without moving its default route off the cluster network.
 - Workloads are allowed on the control plane because this is a 1-node cluster.
 
 ## Addressing Alignment
@@ -57,7 +59,7 @@ The physical port should keep native recovery while adding the cluster network:
 
 | Port | Native/untagged | Tagged |
 | --- | --- | --- |
-| `talos01[ether5]` | `vlan10` recovery/PXE/bootstrap | `vlan104` cluster network, `vlan31` Matter/IoT |
+| `talos01[ether5]` | `vlan10` recovery/PXE/bootstrap | `vlan104` cluster network, `vlan30` LAN/media, `vlan31` IoT/Matter |
 
 ## Outstanding Issues
 
@@ -75,6 +77,10 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
 - [x] Add `vlan31` as a tagged IoT/Matter attachment on `talos01[ether5]` and configure Talos `enp1s0.31` as `10.31.0.6` / `fd00:31::6`.
+- [x] Add `vlan30` as a tagged LAN/media attachment on `talos01[ether5]` and configure Talos `enp1s0.30`.
+- [x] Install Multus on cluster-104 and attach Home Assistant to `vlan30` and `vlan31` with static secondary addresses:
+  - `10.30.0.251`, `fd00:30::251`
+  - `10.31.0.251`, `fd00:31::251`
 - [x] Migrate Home Assistant `/config`, secrets, and OIDC settings from the main cluster.
 - [x] Move USB radio hardware to `talos01` and identify the stable SONOFF Zigbee path: `/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231007151738-if00`.
 - [x] Expose Home Assistant through cluster-104 Cilium Gateways:
@@ -86,10 +92,12 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Trust cluster-104 Cilium Gateway proxy ranges in Home Assistant:
   - `10.104.224.0/20`
   - `fd00:104:224::/60`
-- [x] Restore immediate Matter control by repointing the migrated Home Assistant Matter integration to `wss://matter-server.sulibot.com/ws`.
+- [x] Restore immediate Matter control by repointing the migrated Home Assistant Matter integration to `ws://matter-server.matter-server.svc.cluster.local:5580/ws`.
 - [x] Move Matter server and its fabric data to cluster-104 so the old/main cluster is no longer in the Home Assistant control path. See [cluster-104 Matter server migration ticket](../../../../../docs/tickets/cluster-104-matter-server-migration.md).
+- [x] Run OTBR on cluster-104 with the moved USB radio and point Home Assistant at `http://otbr.otbr.svc.cluster.local:8081`.
 - [ ] Triage the remaining unavailable individual Matter bulb/button entities after the Matter server migration. The main Matter switch/group entities are online.
-- [ ] Deploy Zigbee/Z-Wave sidecars here if Home Assistant should not own the USB radio directly.
+- [ ] Move the live `otbr-thread-dataset` secret into the repo secret workflow, without committing the Thread dataset in plaintext.
+- [ ] Decide whether Home Assistant should keep direct `/dev/ttyACM0` mounts now that OTBR owns the radio, or remove those mounts and make OTBR the only radio owner.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
 - [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md):
   - fix BGP export from `talos01`/BIRD to RouterOS, or

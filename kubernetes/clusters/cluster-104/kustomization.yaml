@@ -6,9 +6,11 @@ kind: Kustomization
 resources:
   - ./namespace.yaml
   - ./flux-system
+  - ./multus
   - ./cilium-bgp
   - ./network
   - ./external-dns
   - ./storage
   - ./home-assistant
   - ./matter-server
+  - ./otbr

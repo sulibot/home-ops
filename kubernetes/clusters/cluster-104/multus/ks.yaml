@@ -1,0 +1,55 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-104-multus
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: multus
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  interval: 15m
+  retryInterval: 30s
+  path: ./kubernetes/clusters/cluster-104/multus/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: kube-system
+  wait: true
+  timeout: 15m
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: multus
+      namespace: kube-system
+    - apiVersion: apiextensions.k8s.io/v1
+      kind: CustomResourceDefinition
+      name: network-attachment-definitions.k8s.cni.cncf.io
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-104-multus-networks
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: multus
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  dependsOn:
+    - name: cluster-104-multus
+      namespace: flux-system
+  interval: 15m
+  retryInterval: 30s
+  path: ./kubernetes/clusters/cluster-104/multus/networks
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: kube-system
+  wait: true
+  timeout: 5m

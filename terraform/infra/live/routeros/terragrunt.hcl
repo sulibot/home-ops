@@ -338,7 +338,7 @@ inputs = {
     {
       bridge   = "br-fabric"
       vlan_ids = ["30"]
-      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "spare[ether8]"]
+      tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "spare[ether8]", "talos01[ether5]"]
       untagged = ["wifi[ether6]"]
     },
     {

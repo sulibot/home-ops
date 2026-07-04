@@ -23,6 +23,7 @@ locals {
         ]
         vlans = [
           { vlanId = 104, mtu = 1500 },
+          { vlanId = 30, mtu = 1500 },
           { vlanId = 31, mtu = 1500 },
         ]
       },
