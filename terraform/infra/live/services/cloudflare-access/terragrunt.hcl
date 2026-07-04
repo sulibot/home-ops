@@ -46,6 +46,7 @@ locals {
   account_id = data.sops_file.secrets.data["cloudflare_account_id"]
   zone_id    = data.sops_file.secrets.data["cloudflare_zone_id"]
   tunnel_id  = data.sops_file.secrets.data["cloudflare_tunnel_id"]
+  cluster_104_tunnel_id = data.sops_file.secrets.data["cloudflare_tunnel_id_cluster_104"]
 
   bypass_apps = {
     "auth.sulibot.com" = "Authentik"
@@ -77,7 +78,6 @@ locals {
   tunnel_hostnames = distinct(concat(
     keys(local.bypass_apps),
     keys(local.email_only_apps),
-    keys(local.home_assistant_warp_only_apps),
     keys(local.warp_only_apps),
     keys(local.warp_email_apps),
   ))
@@ -111,6 +111,18 @@ resource "cloudflare_dns_record" "tunnel_host" {
   name    = each.value
   type    = "CNAME"
   content = "$${local.tunnel_id}.cfargotunnel.com"
+  ttl     = 1
+  proxied = true
+}
+
+# Home Assistant runs on cluster-104 and uses the cluster-104 tunnel origin.
+resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
+  for_each = local.home_assistant_warp_only_apps
+
+  zone_id = local.zone_id
+  name    = each.key
+  type    = "CNAME"
+  content = "$${local.cluster_104_tunnel_id}.cfargotunnel.com"
   ttl     = 1
   proxied = true
 }

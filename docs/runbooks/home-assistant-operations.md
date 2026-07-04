@@ -122,6 +122,11 @@ applications requiring WARP for external access. `hass-debug.sulibot.com` is
 the plain HTTP observation host for troubleshooting raw client behavior without
 the Cloudflare/browser/TLS layers involved.
 
+External Cloudflare traffic for `hass.sulibot.com` and `hass-app.sulibot.com`
+uses the dedicated `cluster-104` Cloudflare Tunnel, not the main cluster-101
+tunnel. Cloudflare Access policies remain account-wide Terraform-managed
+resources.
+
 ### Local access
 
 Home Assistant also uses `trusted_networks`:

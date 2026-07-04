@@ -9,6 +9,7 @@ resources:
   - ./multus
   - ./cilium-bgp
   - ./network
+  - ./cloudflare-tunnel
   - ./external-dns
   - ./storage
   - ./home-assistant
