@@ -127,6 +127,10 @@ uses the dedicated `cluster-104` Cloudflare Tunnel, not the main cluster-101
 tunnel. Cloudflare Access policies remain account-wide Terraform-managed
 resources.
 
+Remaining caveat: cluster-104 does not yet have External Secrets or Flux SOPS
+decryption, so `network/cloudflare-tunnel-secret` is live-only for now. This is
+tracked in `docs/tickets/cluster-104-cloudflare-tunnel-secret-gitops.md`.
+
 ### Local access
 
 Home Assistant also uses `trusted_networks`:
