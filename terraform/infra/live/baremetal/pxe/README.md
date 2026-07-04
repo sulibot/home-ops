@@ -13,18 +13,17 @@ ensures the UEFI bootloader binaries are present locally first:
 
 Current scope:
 
-- `luna01` Talos entry with MAC-based auto-selection
-- optional Proxmox/netboot entry for future reuse
-- generated assets written to `tmp/pxe/routeros-usb/proxmox`
+- `cluster-104` / `talos01` Talos entry with MAC-based auto-selection
+- generated assets written to `tmp/pxe/routeros-usb/talos`
 
 Intended RouterOS USB layout:
 
-- `usb1/proxmox/ipxe.efi`
-- `usb1/proxmox/snponly.efi`
-- `usb1/proxmox/autoexec.ipxe`
-- `usb1/proxmox/boot.ipxe`
-- `usb1/proxmox/luna01.ipxe`
+- `usb1/talos/ipxe.efi`
+- `usb1/talos/snponly.efi`
+- `usb1/talos/autoexec.ipxe`
+- `usb1/talos/boot.ipxe`
+- `usb1/talos/talos01.ipxe`
 
 RouterOS remains the PXE/TFTP stage-1 server on `10.10.0.254`. These generated
-files are shaped to match that model and can be synced onto `usb1/proxmox`
+files are shaped to match that model and can be synced onto `usb1/talos`
 without depending on another local boot server.

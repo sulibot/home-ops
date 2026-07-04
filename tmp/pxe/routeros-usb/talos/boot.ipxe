@@ -1,0 +1,17 @@
+#!ipxe
+menu cluster-104 network boot
+item --gap --             ---------------- TALOS01 ----------------
+item talos01              Boot cluster-104 Talos for talos01
+
+item --gap --             ---------------- Tools ----------------
+item shell                Drop to iPXE shell
+choose --default talos01 --timeout 5000 target && goto ${target}
+
+:talos01
+chain talos01.ipxe
+
+
+
+
+:shell
+shell

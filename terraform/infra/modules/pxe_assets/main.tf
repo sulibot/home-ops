@@ -63,7 +63,7 @@ chain ${var.host_profiles[name].script_name}
   host_auto_targets = join("\n", [
     for name in local.host_profile_names :
     trimspace(var.host_profiles[name].mac_address) != "" ?
-    format("iseq $${net0/mac} %s && goto %s", upper(var.host_profiles[name].mac_address), trimsuffix(var.host_profiles[name].script_name, ".ipxe")) :
+    format("iseq $${net0/mac} %s && chain %s", upper(var.host_profiles[name].mac_address), var.host_profiles[name].script_name) :
     ""
   ])
 

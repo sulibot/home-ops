@@ -1,0 +1,7 @@
+#!ipxe
+echo Boot profile: talos01
+echo Fetching Talos kernel and initramfs over HTTP
+imgfree
+kernel http://pxe.factory.talos.dev/image/f5e875a78190cdfa9a86313aed913e19ad5017aae95d9921cfad547b0cf23f13/v1.12.4/kernel-amd64 talos.platform=metal console=ttyS0,115200 slab_nomerge pti=on consoleblank=0 nvme_core.io_timeout=4294967295 printk.devkmsg=on module.sig_enforce=1 module.sig_enforce=0 apparmor=0 xe.force_probe=4680 init_on_alloc=0 init_on_free=0 intel_iommu=on iommu=pt mitigations=off module_blacklist=igc security=none sysctl.kernel.kexec_load_disabled=1 talos.auditd.disabled=1
+initrd http://pxe.factory.talos.dev/image/f5e875a78190cdfa9a86313aed913e19ad5017aae95d9921cfad547b0cf23f13/v1.12.4/initramfs-amd64.xz
+boot

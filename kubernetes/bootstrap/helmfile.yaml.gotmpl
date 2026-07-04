@@ -20,6 +20,24 @@ releases:
     version: {{ env "CILIUM_VERSION" }}
     values:
       - ../apps/tier-0-foundation/cilium/app/values.yaml
+{{- if env "CILIUM_DIRECT_ROUTING_DEVICE" }}
+      - devices:
+          - {{ env "CILIUM_DIRECT_ROUTING_DEVICE" | quote }}
+        nodePort:
+          directRoutingDevice: {{ env "CILIUM_DIRECT_ROUTING_DEVICE" | quote }}
+{{- end }}
+{{- if or (env "CILIUM_IPV4_NATIVE_ROUTING_CIDR") (env "CILIUM_IPV6_NATIVE_ROUTING_CIDR") }}
+      - {{- if env "CILIUM_IPV4_NATIVE_ROUTING_CIDR" }}
+        ipv4NativeRoutingCIDR: {{ env "CILIUM_IPV4_NATIVE_ROUTING_CIDR" | quote }}
+        {{- end }}
+        {{- if env "CILIUM_IPV6_NATIVE_ROUTING_CIDR" }}
+        ipv6NativeRoutingCIDR: {{ env "CILIUM_IPV6_NATIVE_ROUTING_CIDR" | quote }}
+        {{- end }}
+{{- end }}
+{{- if env "CILIUM_OPERATOR_REPLICAS" }}
+      - operator:
+          replicas: {{ env "CILIUM_OPERATOR_REPLICAS" }}
+{{- end }}
     wait: true
     timeout: 600
     hooks:

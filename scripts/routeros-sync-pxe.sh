@@ -6,10 +6,11 @@ export PATH="/opt/homebrew/bin:${PATH}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SECRETS_FILE="${REPO_ROOT}/terraform/infra/live/common/secrets.sops.yaml"
-ASSET_DIR="${ASSET_DIR:-${REPO_ROOT}/tmp/pxe/routeros-usb/proxmox}"
-ROUTEROS_DIR="${ROUTEROS_DIR:-usb1/proxmox}"
+ASSET_DIR="${ASSET_DIR:-${REPO_ROOT}/tmp/pxe/routeros-usb/talos}"
+ROUTEROS_DIR="${ROUTEROS_DIR:-usb1/talos}"
 IPXE_EFI_URL="${IPXE_EFI_URL:-https://boot.ipxe.org/x86_64-efi/ipxe.efi}"
 SNPONLY_EFI_URL="${SNPONLY_EFI_URL:-https://boot.ipxe.org/x86_64-efi/snponly.efi}"
+UNDIONLY_KPXE_URL="${UNDIONLY_KPXE_URL:-https://boot.ipxe.org/undionly.kpxe}"
 REFRESH_BOOTLOADERS="${REFRESH_BOOTLOADERS:-0}"
 ENABLE_BINARY_UPLOAD="${ENABLE_BINARY_UPLOAD:-0}"
 
@@ -187,6 +188,7 @@ echo "syncing RouterOS PXE assets from ${ASSET_DIR}"
 mkdir -p "${ASSET_DIR}"
 ensure_bootloader "ipxe.efi" "${IPXE_EFI_URL}"
 ensure_bootloader "snponly.efi" "${SNPONLY_EFI_URL}"
+ensure_bootloader "undionly.kpxe" "${UNDIONLY_KPXE_URL}"
 
 mapfile -t generated_files < <(find "${ASSET_DIR}" -maxdepth 1 -type f \( -name '*.ipxe' -o -name 'host-profiles.json' \) | sort)
 
@@ -203,7 +205,7 @@ if [[ "${ENABLE_BINARY_UPLOAD}" == "1" ]]; then
   upsert_file "${ASSET_DIR}/ipxe.efi"
   upsert_file "${ASSET_DIR}/snponly.efi"
 else
-  for bootloader in ipxe.efi snponly.efi; do
+  for bootloader in ipxe.efi snponly.efi undionly.kpxe; do
     if remote_file_exists "${ROUTEROS_DIR}/${bootloader}"; then
       echo "verified existing RouterOS bootloader ${ROUTEROS_DIR}/${bootloader}"
     else
@@ -216,6 +218,7 @@ fi
 declare -A desired_tftp=(
   ["ipxe.efi"]="${ROUTEROS_DIR}/ipxe.efi"
   ["snponly.efi"]="${ROUTEROS_DIR}/snponly.efi"
+  ["undionly.kpxe"]="${ROUTEROS_DIR}/undionly.kpxe"
   ["autoexec.ipxe"]="${ROUTEROS_DIR}/autoexec.ipxe"
   ["boot.ipxe"]="${ROUTEROS_DIR}/boot.ipxe"
 )

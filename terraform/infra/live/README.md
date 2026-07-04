@@ -22,7 +22,7 @@ live/
 │
 ├── baremetal/          # Bare-metal Talos and PXE workflows
 │   ├── pxe/            # Host-profile driven PXE asset generation
-│   └── luna/           # Single-node Talos cluster on repurposed hardware
+│   └── cluster-104/    # Single-node Home Assistant/home-control cluster
 │
 └── clusters/            # Multi-cluster deployments (NEW)
     ├── cluster-101/    # Production (sol)
@@ -80,7 +80,7 @@ vim cluster.hcl
 Edit these fields:
 ```hcl
 locals {
-  cluster_name = "luna"  # Change from "sol"
+  cluster_name = "luna"  # Example: change from "sol"
   cluster_id   = 102     # Change from 101
 
   network = {

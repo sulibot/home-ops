@@ -1,0 +1,1 @@
+{"talos01":{"description":"Boot cluster-104 Talos for talos01","hostname":"talos01","mac_address":"00:E0:67:25:96:C8","proxmox_enabled":false,"script_name":"talos01.ipxe","talos_enabled":true}}
