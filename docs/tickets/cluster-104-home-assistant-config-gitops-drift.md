@@ -158,6 +158,47 @@ Current validation after the restart:
   reachability with stale/no Thread addresses, so this remains a device
   reachability problem rather than a Home Assistant group mapping problem.
 
+On `2026-07-04`, Dining Room was reviewed with the same process. The underlying
+Dining devices were healthy:
+
+- `light.fan_1`
+- `light.fan_2`
+- `light.fan_3`
+- `light.desk_lamp`
+
+The stale Dining group entities existed in the entity registry, but the active
+PVC `/config/configuration.yaml` no longer defined them, so Home Assistant
+reported `light.dining_room_lights` and `light.dining_room_fan` as unavailable.
+The live PVC config was updated to restore:
+
+- `light.dining_room_fan`, grouping `light.fan_1`, `light.fan_2`, and
+  `light.fan_3`
+- `light.dining_room_lights`, grouping the three fan lights plus
+  `light.desk_lamp`
+- `button.dining_room_button`, a template button that toggles
+  `light.dining_room_lights`
+
+A backup was left on the PVC:
+
+- `/config/configuration.yaml.bak-codex-dining-20260704T071535Z`
+
+Home Assistant config check passed, the deployment was restarted, and validation
+after restart showed:
+
+```text
+light.dining_room_lights on
+light.dining_room_fan on
+light.desk_lamp on
+light.fan_1 on
+light.fan_2 on
+light.fan_3 on
+```
+
+The old Bilresa Dining automations still exist as stale registry entries but
+live `/config/automations.yaml` is currently empty. Reintroducing those
+automations should be handled deliberately as a separate migration step rather
+than by blindly restoring the legacy automation file.
+
 ## Problem
 
 The older app-template Home Assistant config under
