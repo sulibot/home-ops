@@ -18,10 +18,11 @@ cluster-104 local Matter PVC without re-pairing devices.
   `ws://matter-server.matter-server.svc.cluster.local:5580/ws`.
 - The cluster-104 Matter server reports the Home Assistant websocket connection
   and returns 27 Matter nodes.
-- Home Assistant starts the custom Matter dimmer bridge for:
-  - `Living room switch`
-  - `Master Switch`
-  - `Bedroom Switch`
+- Home Assistant starts the custom Matter dimmer bridge for `Living room switch`
+  from the live cluster-104 PVC-backed `/config/configuration.yaml`.
+- The legacy app-template Home Assistant config still defines additional
+  `Master Switch` and `Bedroom Switch` bridge entries, but that path is not the
+  active cluster-104 deployment.
 - Several primary control entities are online in the new Home Assistant:
   - `light.bedroom_switch`
   - `light.living_room_switch`
