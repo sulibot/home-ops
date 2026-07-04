@@ -31,6 +31,11 @@ cluster-104 local Matter PVC without re-pairing devices.
 - Thread bulb control was restored after clearing stale migrated address hints
   and seeding the Matter server cache with each KAJPLATS bulb's stable Thread
   mesh-local `fdf1:49b9:b55e:5844:*` address.
+- Living Room KAJPLATS nodes were validated after migration:
+  - `@1:2` / `TV right` is online.
+  - `@1:3` / `Couch left` required adding its live Thread RLOC hint
+    `fdf1:49b9:b55e:5844:0:ff:fe00:a400` before it reconnected.
+  - `@1:4` / `Couch right` is online.
 - The underlying follow-up is still open: OTBR/SRP/DNS-SD should refresh Thread
   operational addresses automatically after a border-router / cluster migration,
   instead of depending on manually seeded mesh-local Matter address hints.
@@ -83,7 +88,10 @@ The immediate repair was:
    files for the KAJPLATS bulb peers.
 2. Seed replacement address hints using the bulbs' stored Thread mesh-local
    `fdf1:49b9:b55e:5844:*` addresses.
-3. Restart `matter-server`.
+3. Add the live Thread RLOC for any bulb that had rejoined Thread as a router
+   but was still not being reached by Matter, for example `@1:3` /
+   `Couch left` at `fdf1:49b9:b55e:5844:0:ff:fe00:a400`.
+4. Restart `matter-server`.
 
 That restored Thread sessions and subscriptions for responding KAJPLATS nodes,
 but it is intentionally treated as operational debt. The durable fix should make
