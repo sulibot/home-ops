@@ -364,14 +364,11 @@ data:
           scroll_down_ch3_entity: sensor.bilresa_scroll_wheel_current_switch_position_8_7
           hold_state_helper: input_text.bilresa_hold_state_living_white_2
           channel_1_target:
-            - light.kajplats_e26_ws_globe_1600lm_2
-            - light.kajplats_e26_ws_globe_1600lm_3
-            - light.kajplats_e26_ws_globe_1600lm_4
+            - light.living_room_lights
           channel_2_target:
             - light.kajplats_e26_ws_globe_1600lm_2
           channel_3_target:
-            - light.kajplats_e26_ws_globe_1600lm_3
-            - light.kajplats_e26_ws_globe_1600lm_4
+            - light.couch
           brightness_step_pct: 10
           enforce_min_brightness_on_scroll_down: true
           min_brightness_pct: 5
