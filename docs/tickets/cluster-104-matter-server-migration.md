@@ -28,7 +28,12 @@ cluster-104 local Matter PVC without re-pairing devices.
   - `light.master_switch`
   - `light.living_room_lights`
   - `light.master_lights`
-- Many individual Matter bulb/button entities still report `unavailable`.
+- Thread bulb control was restored after clearing stale migrated address hints
+  and seeding the Matter server cache with each KAJPLATS bulb's stable Thread
+  mesh-local `fdf1:49b9:b55e:5844:*` address.
+- The underlying follow-up is still open: OTBR/SRP/DNS-SD should refresh Thread
+  operational addresses automatically after a border-router / cluster migration,
+  instead of depending on manually seeded mesh-local Matter address hints.
 
 ## Migration Result
 
@@ -55,9 +60,35 @@ cluster-104 local Matter PVC without re-pairing devices.
   - `light.master_switch`
   - `light.living_room_lights`
   - `light.master_lights`
-- [ ] Remaining unavailable Matter bulbs are triaged as either:
-  - actually offline/powered/unreachable devices, or
-  - Matter/Thread routing issues.
+- [x] Remaining unavailable Matter bulbs are triaged as a Matter/Thread address
+  rediscovery issue after the cluster-104 migration.
+- [x] Stale migrated KAJPLATS address hints were backed up under the Matter PVC:
+  `/data/server-1-fff1/address-backup-20260703222222`.
+- [x] KAJPLATS bulbs were given mesh-local Matter address hints from their
+  stored Thread Network Commissioning data.
+- [ ] Replace the mesh-local address seeding workaround with healthy
+  OTBR/SRP/DNS-SD rediscovery.
+
+## Follow-up: Thread Address Rediscovery
+
+During the migration, the Matter server retained stale Thread operational
+addresses for the KAJPLATS bulbs. The stale addresses pointed at old Thread OMR
+or old infrastructure prefixes such as `fdb7:*`, `fdac:*`, and
+`2600:1700:ab1a:500b:*`, while the new cluster-104 OTBR advertises
+`fd09:7aa3:6ab9::/64` on the `vlan31` infrastructure network.
+
+The immediate repair was:
+
+1. Back up and remove stale `nodes.peer*.endpoints.0.commissioning.addresses`
+   files for the KAJPLATS bulb peers.
+2. Seed replacement address hints using the bulbs' stored Thread mesh-local
+   `fdf1:49b9:b55e:5844:*` addresses.
+3. Restart `matter-server`.
+
+That restored Thread sessions and subscriptions for responding KAJPLATS nodes,
+but it is intentionally treated as operational debt. The durable fix should make
+the new OTBR and Matter server rediscover current Thread operational addresses
+without hand-maintained cache entries.
 
 ## Related Files
 
