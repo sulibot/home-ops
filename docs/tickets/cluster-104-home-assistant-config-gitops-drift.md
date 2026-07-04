@@ -57,6 +57,77 @@ light.living_room_lights platform=group unique_id=living_room_lights_group
 light.couch platform=group unique_id=couch_group
 ```
 
+On `2026-07-03`, the live `/config/configuration.yaml` was also updated for
+Master and Bedroom:
+
+- `matter_dimmer_bridge` starts for:
+  - `Living room switch`
+  - `Master Switch`
+  - `Bedroom Switch`
+- `light.master_lights` groups:
+  - `light.kajplats_e26_ws_globe_1600lm`
+  - `light.kajplats_e26_ws_globe_1600lm_5`
+- `light.sofa` groups:
+  - `light.kajplats_e26_ws_globe_1600lm_6`
+  - `light.kajplats_e26_ws_globe_1600lm_7`
+- `light.standing_lamp` groups:
+  - `light.kajplats_e26_ws_globe_1600lm_8`
+  - `light.kajplats_e26_ws_globe_1600lm_9`
+- `light.bedroom_lights` groups:
+  - `light.sofa`
+  - `light.standing_lamp`
+
+The stale template `light.master_lights` registry entry was removed while Home
+Assistant was stopped so the Git/YAML group could own the intended entity id.
+Backups were left on the PVC:
+
+- `/config/configuration.yaml.bak-codex-20260704T062604Z`
+- `/config/.storage/core.entity_registry.bak-codex-master-bedroom-20260704T062727Z`
+
+After restart, the live registry showed:
+
+```text
+light.master_lights platform=group unique_id=master_lights_group
+light.sofa platform=group unique_id=sofa_group
+light.standing_lamp platform=group unique_id=standing_lamp_group
+light.bedroom_lights platform=group unique_id=bedroom_lights_group
+```
+
+Master lights were online after this cleanup. Bedroom groups were correctly
+defined, but remained unavailable because all four underlying Bedroom Matter
+bulbs were unavailable:
+
+- `light.kajplats_e26_ws_globe_1600lm_6`
+- `light.kajplats_e26_ws_globe_1600lm_7`
+- `light.kajplats_e26_ws_globe_1600lm_8`
+- `light.kajplats_e26_ws_globe_1600lm_9`
+
+The Bedroom switch itself was online and on:
+
+```text
+light.bedroom_switch on
+number.bedroom_switch_on_level 255
+```
+
+Matter address hints were backed up and updated for Bedroom bulb nodes
+`16`, `17`, `25`, and `27`:
+
+- backup: `/data/server-1-fff1/address-backup-bedroom-20260704T062954Z`
+- added cached Thread RLOC hints alongside the mesh-local EID hints
+
+Matter Server was restarted after the address update. It initialized the
+Bedroom bulb nodes (`@1:10`, `@1:11`, `@1:19`, `@1:1b`) and attempted to connect
+to the new RLOC hints, but Home Assistant still reported the bulbs unavailable.
+A temporary host-network debug pod on `talos01` verified that known-good
+Living/Master Thread bulb addresses responded to ping, while the Bedroom bulb
+cached addresses did not.
+
+Remaining Bedroom issue: the Home Assistant YAML and entity ids are now aligned,
+but the Bedroom KAJPLATS bulbs are still not reachable on Thread/Matter from
+`talos01`. The likely next operational step is to physically power-cycle the
+Bedroom bulbs / fixture circuit so the bulbs rejoin Thread, then restart
+`matter-server` if Home Assistant does not automatically recover them.
+
 ## Problem
 
 The older app-template Home Assistant config under
