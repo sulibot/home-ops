@@ -128,6 +128,8 @@ terraform/infra/live/clusters/_shared/artifacts-schematic.json
 # Talos client config (per-user credentials)
 talos/clusters/**/talosconfig
 talos/clusters/**/kubeconfig
+talos/cluster-*/talosconfig
+talos/cluster-*/kubeconfig
 
 # Terragrunt-generated Terraform files for service LXC stacks
 terraform/infra/live/services/minio-lxc/main.tf
