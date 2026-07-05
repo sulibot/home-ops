@@ -166,11 +166,12 @@ Kubernetes.
 Use `sulaiman.ahmad@gmail.com` for the new Google-side setup. Do not reuse the
 old `sulibot@gmail.com` project or service account.
 
-1. In Google Cloud Console, create or select the new project for Home Assistant.
-2. Enable the HomeGraph API for that project.
-3. Create a service account in the project and download a JSON key.
-4. In the Actions Console, create a Smart Home project using the same Google
-   Cloud project.
+1. In the Google Home Developer Console, create a new project for Home Assistant
+   and save the generated project ID.
+2. Add a Cloud-to-Cloud integration for the project.
+3. In Google Cloud Console for that same project, create a service account with
+   the `Service Account Token Creator` role and download a JSON key.
+4. Enable the HomeGraph API for that same project.
 5. Configure account linking:
    - linking type: OAuth authorization code
    - authorization URL: `https://ha-google.sulibot.com/auth/authorize`
@@ -178,6 +179,8 @@ old `sulibot@gmail.com` project or service account.
    - client ID: any stable value, for example `https://oauth-redirect.googleusercontent.com/r/<project-id>`
    - client secret: any generated secret value
    - scopes: `email`, `name`
+   - "Have Google transmit Client ID and secret via HTTP basic auth header":
+     unchecked
 6. Configure fulfillment:
    - URL: `https://ha-google.sulibot.com/api/google_assistant`
 7. Replace `/config/SERVICE_ACCOUNT.json` in the Home Assistant PVC with the
