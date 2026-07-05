@@ -147,7 +147,55 @@ This is convenient, but it is a trust shortcut. Anyone on those subnets can bypa
 
 ### Google access
 
-No Google cloud-to-cloud endpoint is part of the current intended topology.
+Google Assistant cloud-to-cloud uses a dedicated endpoint:
+
+- endpoint: `https://ha-google.sulibot.com`
+- account-linking authorization URL:
+  `https://ha-google.sulibot.com/auth/authorize`
+- account-linking token URL:
+  `https://ha-google.sulibot.com/auth/token`
+- fulfillment URL:
+  `https://ha-google.sulibot.com/api/google_assistant`
+
+Cloudflare Access bypass is scoped only to those three paths. Other paths on
+`ha-google.sulibot.com` should still be protected by Access or unrouted by
+Kubernetes.
+
+### Google Assistant New Account Setup
+
+Use `sulaiman.ahmad@gmail.com` for the new Google-side setup. Do not reuse the
+old `sulibot@gmail.com` project or service account.
+
+1. In Google Cloud Console, create or select the new project for Home Assistant.
+2. Enable the HomeGraph API for that project.
+3. Create a service account in the project and download a JSON key.
+4. In the Actions Console, create a Smart Home project using the same Google
+   Cloud project.
+5. Configure account linking:
+   - linking type: OAuth authorization code
+   - authorization URL: `https://ha-google.sulibot.com/auth/authorize`
+   - token URL: `https://ha-google.sulibot.com/auth/token`
+   - client ID: any stable value, for example `https://oauth-redirect.googleusercontent.com/r/<project-id>`
+   - client secret: any generated secret value
+   - scopes: `email`, `name`
+6. Configure fulfillment:
+   - URL: `https://ha-google.sulibot.com/api/google_assistant`
+7. Replace `/config/SERVICE_ACCOUNT.json` in the Home Assistant PVC with the
+   downloaded service account JSON.
+8. Uncomment the `google_assistant:` block in `/config/configuration.yaml`.
+9. Set `google_assistant.project_id` to the new Google project ID if it differs
+   from the old value.
+10. Restart Home Assistant.
+11. Test account linking from Google Home using `sulaiman.ahmad@gmail.com`.
+
+Live cluster-104 status as of the endpoint cutover:
+
+- `ha-google.sulibot.com` DNS points at the cluster-104 Cloudflare Tunnel.
+- `cloudflared` routes `ha-google.sulibot.com` to the cluster-104 Gateway.
+- Gateway only routes `/auth/authorize`, `/auth/token`, and
+  `/api/google_assistant` to Home Assistant.
+- Home Assistant currently has the `google_assistant:` block commented out in
+  live `/config/configuration.yaml`.
 
 ## Security Posture
 

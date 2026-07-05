@@ -38,6 +38,13 @@ locals {
     "hass-app.sulibot.com" = "Home Assistant App"
   }
 
+  home_assistant_google_hostname = "ha-google.sulibot.com"
+  home_assistant_google_paths = [
+    "/auth/authorize",
+    "/auth/token",
+    "/api/google_assistant",
+  ]
+
   warp_only_apps = {
     "immich-app.sulibot.com"  = "Immich"
     "vikunja-app.sulibot.com" = "Vikunja"
@@ -89,7 +96,10 @@ resource "cloudflare_dns_record" "tunnel_host" {
 
 # Home Assistant runs on cluster-104 and uses the cluster-104 tunnel origin.
 resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
-  for_each = local.home_assistant_warp_only_apps
+  for_each = merge(
+    local.home_assistant_warp_only_apps,
+    { (local.home_assistant_google_hostname) = "Home Assistant Google" },
+  )
 
   zone_id = local.zone_id
   name    = each.key
@@ -245,6 +255,34 @@ resource "cloudflare_zero_trust_access_application" "home_assistant_warp_only" {
       auth_method = {
         auth_method = "warp"
       }
+    }]
+  }]
+}
+
+# Google Assistant cloud-to-cloud needs unauthenticated access to Home
+# Assistant's account-linking and smart-home fulfillment endpoints. Keep this
+# app path-scoped so the rest of the HA UI is not exposed through this hostname.
+resource "cloudflare_zero_trust_access_application" "home_assistant_google_bypass" {
+  account_id                 = local.account_id
+  name                       = "Home Assistant Google (path bypass)"
+  type                       = "self_hosted"
+  session_duration           = "1h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = true
+  destinations = [
+    for path in local.home_assistant_google_paths : {
+      type = "public"
+      uri  = "https://${local.home_assistant_google_hostname}${path}"
+    }
+  ]
+  policies = [{
+    name       = "Bypass Google Assistant endpoints"
+    decision   = "bypass"
+    precedence = 1
+    include = [{
+      everyone = {}
     }]
   }]
 }
@@ -407,6 +445,7 @@ output "access_application_ids" {
     { for k, v in cloudflare_zero_trust_access_application.bypass : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.email_only : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.home_assistant_warp_only : k => v.id },
+    { (local.home_assistant_google_hostname) = cloudflare_zero_trust_access_application.home_assistant_google_bypass.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_only : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_email : k => v.id },
   )
