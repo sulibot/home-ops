@@ -98,6 +98,9 @@ Home Assistant human/app access is private-by-policy in the intended design.
 - `hass-app.sulibot.com` is the mobile/app auth endpoint.
 - Both endpoints are accessible directly on the home network through internal
   DNS and externally only when the client is using approved Cloudflare WARP.
+- Both endpoints should serve the normal Home Assistant frontend directly; do
+  not force `/` to `/auth/oidc/redirect`, because Home Assistant does not expose
+  that path as a generic entrypoint.
 - Google Assistant must use a separate, narrowly scoped hostname such as
   `ha-google.sulibot.com`; do not expose the full HA UI for Google callbacks.
 - The canonical direct fallback endpoint is the VLAN 31 IPv6 address.
