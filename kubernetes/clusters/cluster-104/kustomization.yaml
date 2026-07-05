@@ -6,6 +6,7 @@ kind: Kustomization
 resources:
   - ./namespace.yaml
   - ./flux-system
+  - ../../apps/tier-0-foundation/external-secrets
   - ./multus
   - ./cilium-bgp
   - ./network

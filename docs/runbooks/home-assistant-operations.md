@@ -127,9 +127,10 @@ uses the dedicated `cluster-104` Cloudflare Tunnel, not the main cluster-101
 tunnel. Cloudflare Access policies remain account-wide Terraform-managed
 resources.
 
-Remaining caveat: cluster-104 does not yet have External Secrets or Flux SOPS
-decryption, so `network/cloudflare-tunnel-secret` is live-only for now. This is
-tracked in `docs/tickets/cluster-104-cloudflare-tunnel-secret-gitops.md`.
+`network/cloudflare-tunnel-secret` is managed by External Secrets from the
+`cloudflare` 1Password item. Cluster-104 uses its own 1Password Connect
+instance and the cluster-specific `CLOUDFLARE_TUNNEL_ID_CLUSTER_104` /
+`CLOUDFLARE_TUNNEL_SECRET_CLUSTER_104` fields.
 
 ### Local access
 

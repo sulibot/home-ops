@@ -17,6 +17,8 @@ spec:
       name: sops-age
   dependsOn:
     - name: flux-system
+    - name: external-secrets
+      namespace: flux-system
   healthChecks:
     - apiVersion: v1
       kind: Secret
