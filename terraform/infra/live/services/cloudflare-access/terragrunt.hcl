@@ -68,8 +68,10 @@ locals {
 
   home_assistant_google_hostname = "ha-google.sulibot.com"
   home_assistant_google_paths = [
-    "/auth/authorize",
-    "/auth/token",
+    "/auth/*",
+    "/frontend_latest/*",
+    "/static/*",
+    "/manifest.json",
     "/api/google_assistant",
   ]
 
@@ -288,8 +290,9 @@ resource "cloudflare_zero_trust_access_application" "home_assistant_warp_only" {
 }
 
 # Google Assistant cloud-to-cloud needs unauthenticated access to Home
-# Assistant's account-linking and smart-home fulfillment endpoints. Keep this
-# app path-scoped so the rest of the HA UI is not exposed through this hostname.
+# Assistant's account-linking UI, the frontend assets it loads, and smart-home
+# fulfillment. Keep this app path-scoped so the rest of the HA UI is not exposed
+# through this hostname.
 resource "cloudflare_zero_trust_access_application" "home_assistant_google_bypass" {
   account_id                 = local.account_id
   name                       = "Home Assistant Google (path bypass)"

@@ -157,9 +157,12 @@ Google Assistant cloud-to-cloud uses a dedicated endpoint:
 - fulfillment URL:
   `https://ha-google.sulibot.com/api/google_assistant`
 
-Cloudflare Access bypass is scoped only to those three paths. Other paths on
-`ha-google.sulibot.com` should still be protected by Access or unrouted by
-Kubernetes.
+Cloudflare Access bypass is scoped to the Google fulfillment endpoint plus the
+Home Assistant account-linking UI paths and static frontend assets it requires.
+The Cloudflare app intentionally stays within Cloudflare's destination limit;
+`/frontend_es5/*` is routed in Kubernetes but not bypassed in Access unless a
+legacy browser requires it. Other paths on `ha-google.sulibot.com` should still
+be protected by Access or unrouted by Kubernetes.
 
 ### Google Assistant New Account Setup
 
@@ -195,7 +198,7 @@ Live cluster-104 status as of the endpoint cutover:
 
 - `ha-google.sulibot.com` DNS points at the cluster-104 Cloudflare Tunnel.
 - `cloudflared` routes `ha-google.sulibot.com` to the cluster-104 Gateway.
-- Gateway only routes `/auth/authorize`, `/auth/token`, and
+- Gateway only routes `/auth/*`, HA frontend asset paths, `/manifest.json`, and
   `/api/google_assistant` to Home Assistant.
 - Home Assistant currently has the `google_assistant:` block commented out in
   live `/config/configuration.yaml`.

@@ -67,11 +67,20 @@ spec:
   rules:
     - matches:
         - path:
-            type: Exact
-            value: /auth/authorize
+            type: PathPrefix
+            value: /auth
+        - path:
+            type: PathPrefix
+            value: /frontend_latest
+        - path:
+            type: PathPrefix
+            value: /frontend_es5
+        - path:
+            type: PathPrefix
+            value: /static
         - path:
             type: Exact
-            value: /auth/token
+            value: /manifest.json
         - path:
             type: Exact
             value: /api/google_assistant
