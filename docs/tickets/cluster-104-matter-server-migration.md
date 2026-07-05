@@ -99,6 +99,31 @@ but it is intentionally treated as operational debt. The durable fix should make
 the new OTBR and Matter server rediscover current Thread operational addresses
 without hand-maintained cache entries.
 
+### 2026-07-05 Stale `fdb7` address repair
+
+After a Matter Server restart, several KAJPLATS bulbs were again unavailable in
+Home Assistant even though the cluster-104 OTBR had active routes for the
+`fdf1:49b9:b55e:5844::/64` Thread mesh. The affected Matter operational address
+hints still pointed at stale, unrouted `fdb7:*` addresses.
+
+The live Matter PVC address files were backed up to:
+
+- `/data/server-1-fff1/address-backup-stale-fdb7-20260705T183445Z`
+
+Then the address hints for peers `2`, `3`, `4`, and `5` were replaced with the
+current `fdf1:49b9:b55e:5844:*` addresses from each node's stored Network
+Commissioning data, and `matter-server` was restarted.
+
+Result:
+
+- `light.kajplats_e26_ws_globe_1600lm_2` / TV right recovered.
+- `light.kajplats_e26_ws_globe_1600lm_3` / Couch left recovered.
+- `light.kajplats_e26_ws_globe_1600lm_5` / Bed right recovered.
+- `light.kajplats_e26_ws_globe_1600lm_4` / Couch right remained unavailable;
+  OTBR did not show its extended MAC in the active router table at the time, so
+  it likely needs a physical bulb or fixture power cycle before Matter can
+  reconnect.
+
 ## Related Files
 
 - `kubernetes/clusters/cluster-104/matter-server/`
