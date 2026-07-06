@@ -416,16 +416,9 @@ inputs = {
   ]
 
   # ── DNS GLOBAL SETTINGS ──────────────────────────────────────────────────────
-  # Singleton — import ID "0". External-dns managed records (ttl=0s) are never touched.
-  dns_settings = {
-    allow_remote_requests  = true
-    cache_max_ttl          = "1d"
-    max_concurrent_queries = 200
-    mdns_repeat_ifaces     = ["vlan30", "vlan31"]
-    query_server_timeout   = "3s"
-    query_total_timeout    = "15s"
-    servers                = ["2606:4700:4700::1111", "2606:4700:4700::1001", "1.1.1.1"]
-  }
+  # Provider import is not supported for /ip/dns, so keep global DNS settings live-only.
+  # External-dns managed static records are still intentionally excluded separately.
+  dns_settings = null
 
   snmp = {
     enabled = true
@@ -626,9 +619,10 @@ inputs = {
     },
     {
       address     = "10.30.0.1"
-      mac_address = "90:09:D0:12:93:B7"
-      client_id   = "1:90:9:d0:12:93:b7"
+      mac_address = "A8:29:48:E4:06:90"
+      client_id   = "1:a8:29:48:e4:6:90"
       server      = "dhcp_vlan30"
+      comment     = "Omada EAP787"
     },
   ], local.baremetal_pxe_leases)
 
@@ -965,17 +959,8 @@ inputs = {
   ]
 
   # ── IP SERVICES ───────────────────────────────────────────────────────────────
-  # Static (non-dynamic) services only. Import by service name (e.g. "ssh").
-  ip_services = [
-    { name = "ftp", port = 21, disabled = true },
-    { name = "ssh", port = 22, address = "10.0.0.0/8,fd00::/8" },
-    { name = "telnet", port = 23, disabled = true },
-    { name = "www", port = 80, address = "0.0.0.0/0" },
-    { name = "www-ssl", port = 443, address = "10.0.0.0/8,fd00::/8", certificate = "ssl-web-management" },
-    { name = "winbox", port = 8291, address = "10.0.0.0/8,fd00::/8" },
-    { name = "api", port = 8728, disabled = true },
-    { name = "api-ssl", port = 8729, disabled = true },
-  ]
+  # Provider imports for built-in /ip/service entries are unreliable here; keep them live-only.
+  ip_services = []
 
   # ── IPv6 FIREWALL ADDRESS LISTS ───────────────────────────────────────────────
   ipv6_address_lists = [

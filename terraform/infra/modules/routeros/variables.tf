@@ -232,7 +232,7 @@ variable "ipv4_dhcp_servers" {
     delay_threshold            = optional(string)
     dhcp_option_set            = optional(string)
     disabled                   = optional(bool, false)
-    dynamic_lease_identifiers  = optional(string)
+    dynamic_lease_identifiers  = optional(string, "client-mac,client-id")
     insert_queue_before        = optional(string)
     lease_script               = optional(string)
     lease_time                 = optional(string)

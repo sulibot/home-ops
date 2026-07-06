@@ -203,8 +203,10 @@ Live cluster-104 status as of the endpoint cutover:
 - `cloudflared` routes `ha-google.sulibot.com` to the cluster-104 Gateway.
 - Gateway only routes `/auth/*`, HA frontend asset paths, `/manifest.json`, and
   `/api/google_assistant` to Home Assistant.
-- Home Assistant currently has the `google_assistant:` block commented out in
-  live `/config/configuration.yaml`.
+- Home Assistant has the `google_assistant:` block enabled with project
+  `sulibot-home-assistant-17e85`.
+- `/config/SERVICE_ACCOUNT.json` must come from the same Google project and
+  should be stored in 1Password long-term before the local download is removed.
 
 ## Security Posture
 
