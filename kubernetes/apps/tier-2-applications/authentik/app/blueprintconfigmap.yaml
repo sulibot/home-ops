@@ -105,6 +105,19 @@ data:
               --sb-local-hover: #e06b00;
               --sb-google: #2b7fe0;
               --sb-google-hover: #246fc3;
+              --pf-global--Color--100: var(--sb-text);
+              --pf-global--Color--200: var(--sb-muted);
+              --pf-global--primary-color--100: var(--sb-google);
+              --pf-global--link--Color: var(--sb-text);
+              --pf-v5-global--Color--100: var(--sb-text);
+              --pf-v5-global--Color--200: var(--sb-muted);
+              --pf-v5-global--primary-color--100: var(--sb-google);
+              --pf-v5-global--link--Color: var(--sb-text);
+              --pf-t--global--text--color--regular: var(--sb-text);
+              --pf-t--global--text--color--subtle: var(--sb-muted);
+              --pf-t--global--text--color--link--default: var(--sb-text);
+              --pf-t--global--background--color--primary--default: var(--sb-surface);
+              color: var(--sb-text) !important;
             }
             .pf-c-login__main {
               max-width: 460px !important;
@@ -209,7 +222,8 @@ data:
               border-color: var(--sb-local-hover) !important;
             }
             .pf-c-login__main-footer .source-button,
-            .pf-c-login__main-footer .pf-c-button {
+            .pf-c-login__main-footer .pf-c-button,
+            .pf-c-login__main a[href*="/source/oauth/login/google/"] {
               min-height: 52px !important;
               border-radius: 12px !important;
               background: var(--sb-google) !important;
@@ -221,9 +235,17 @@ data:
             .pf-c-login__main-footer .source-button:hover,
             .pf-c-login__main-footer .source-button:focus,
             .pf-c-login__main-footer .pf-c-button:hover,
-            .pf-c-login__main-footer .pf-c-button:focus {
+            .pf-c-login__main-footer .pf-c-button:focus,
+            .pf-c-login__main a[href*="/source/oauth/login/google/"]:hover,
+            .pf-c-login__main a[href*="/source/oauth/login/google/"]:focus {
               background: var(--sb-google-hover) !important;
               border-color: var(--sb-google-hover) !important;
+            }
+            .pf-c-login__main-footer .source-button *,
+            .pf-c-login__main-footer .pf-c-button *,
+            .pf-c-login__main a[href*="/source/oauth/login/google/"] * {
+              color: #fff !important;
+              fill: #fff !important;
             }
           flow_authentication: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       - model: authentik_brands.brand
