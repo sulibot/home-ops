@@ -98,6 +98,9 @@ Home Assistant human/app access is private-by-policy in the intended design.
 - `hass-app.sulibot.com` is the mobile/app auth endpoint.
 - Both endpoints are accessible directly on the home network through internal
   DNS and externally only when the client is using approved Cloudflare WARP.
+- `hass.sulibot.com/auth/authorize` redirects to `/auth/oidc/redirect` so
+  browser OAuth flows land in Authentik SSO instead of the `auth_oidc` plugin's
+  one-time-code form.
 - Both endpoints should serve the normal Home Assistant frontend directly; do
   not force `/` to `/auth/oidc/redirect`, because Home Assistant does not expose
   that path as a generic entrypoint.
