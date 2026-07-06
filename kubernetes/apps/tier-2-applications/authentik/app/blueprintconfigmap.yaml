@@ -221,7 +221,25 @@ data:
               background: var(--sb-local-hover) !important;
               border-color: var(--sb-local-hover) !important;
             }
-            .pf-c-login__main-footer .source-button,
+            ak-stage-identification::part(source-item) {
+              width: min(100%, 286px) !important;
+              min-height: 52px !important;
+              margin: 0 auto !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              gap: 12px !important;
+              border-radius: 12px !important;
+              background: #ffffff !important;
+              border: 1px solid #d8e2ee !important;
+              color: #172033 !important;
+              font-weight: 650 !important;
+              font-size: 17px !important;
+              box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22) !important;
+            }
+            ak-stage-identification::part(source-list) {
+              justify-content: center !important;
+            }
             .pf-c-login__main-footer .pf-c-button,
             .pf-c-login__main a[href*="/source/oauth/login/google/"] {
               min-height: 52px !important;
@@ -232,8 +250,13 @@ data:
               font-weight: 600 !important;
               font-size: 18px !important;
             }
-            .pf-c-login__main-footer .source-button:hover,
-            .pf-c-login__main-footer .source-button:focus,
+            ak-stage-identification::part(source-item):hover,
+            ak-stage-identification::part(source-item):focus {
+              background: #f8fbff !important;
+              border-color: #ffffff !important;
+              color: #111827 !important;
+              box-shadow: 0 0 0 3px rgba(97, 168, 255, 0.28), 0 8px 20px rgba(0, 0, 0, 0.22) !important;
+            }
             .pf-c-login__main-footer .pf-c-button:hover,
             .pf-c-login__main-footer .pf-c-button:focus,
             .pf-c-login__main a[href*="/source/oauth/login/google/"]:hover,
@@ -241,7 +264,11 @@ data:
               background: var(--sb-google-hover) !important;
               border-color: var(--sb-google-hover) !important;
             }
-            .pf-c-login__main-footer .source-button *,
+            ak-stage-identification::part(source-icon) {
+              width: 24px !important;
+              height: 24px !important;
+              flex: 0 0 auto !important;
+            }
             .pf-c-login__main-footer .pf-c-button *,
             .pf-c-login__main a[href*="/source/oauth/login/google/"] * {
               color: #fff !important;
