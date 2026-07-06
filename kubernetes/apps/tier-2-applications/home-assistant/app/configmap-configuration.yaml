@@ -135,6 +135,7 @@ data:
         username: email
       features:
         automatic_user_linking: true
+        default_redirect: true
         force_https: true
 
     matter_dimmer_bridge:

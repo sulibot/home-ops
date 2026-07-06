@@ -96,10 +96,75 @@ spec:
                 target = "/config/custom_components/auth_oidc"
                 manifest_path = os.path.join(target, "manifest.json")
 
+                def ensure_style_css():
+                    static_dir = os.path.join(target, "static")
+                    os.makedirs(static_dir, exist_ok=True)
+                    with open(os.path.join(static_dir, "style.css"), "w", encoding="utf-8") as handle:
+                        handle.write("""\
+                html,
+                body {
+                  min-height: 100%;
+                  margin: 0;
+                  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                  background: #111827;
+                  color: #111827;
+                }
+                body {
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 24px;
+                }
+                .bg-white {
+                  width: min(100%, 420px);
+                  background: #ffffff;
+                  border-radius: 12px;
+                  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+                  padding: 28px;
+                }
+                .text-center { text-align: center; }
+                #login-button {
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 44px;
+                  width: 100%;
+                  box-sizing: border-box;
+                  border-radius: 999px;
+                  background: #03a9d6;
+                  color: #ffffff;
+                  font-weight: 650;
+                  text-decoration: none;
+                  padding: 10px 18px;
+                }
+                #login-button:focus,
+                #login-button:hover {
+                  background: #0289b0;
+                }
+                #alternative-sign-in-link {
+                  color: #4b5563;
+                  text-decoration: none;
+                }
+                #alternative-sign-in-link:hover { text-decoration: underline; }
+                .mt-4 { margin-top: 1rem; }
+                .text-sm { font-size: 0.875rem; }
+                .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+                .font-bold { font-weight: 700; }
+                .tracking-wide { letter-spacing: 0.025em; }
+                .bg-gray-100 { background: #f3f4f6; }
+                .border { border: 1px solid #d1d5db; }
+                .rounded-lg { border-radius: 0.5rem; }
+                .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+                .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+                .inline-block { display: inline-block; }
+                .text-gray-600 { color: #4b5563; }
+                """)
+
                 if os.path.exists(manifest_path):
                     with open(manifest_path, "r", encoding="utf-8") as handle:
                         manifest = json.load(handle)
                     if manifest.get("version") == version.removeprefix("v"):
+                        ensure_style_css()
                         print(f"auth_oidc {version} already installed")
                         raise SystemExit(0)
 
@@ -129,6 +194,7 @@ spec:
                     with open(os.path.join(target, "manifest.json"), "w", encoding="utf-8") as handle:
                         json.dump(manifest, handle, indent=2)
                         handle.write("\n")
+                    ensure_style_css()
                 PY
             securityContext:
               allowPrivilegeEscalation: false
