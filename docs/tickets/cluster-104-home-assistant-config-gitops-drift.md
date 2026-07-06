@@ -128,6 +128,32 @@ but the Bedroom KAJPLATS bulbs are still not reachable on Thread/Matter from
 Bedroom bulbs / fixture circuit so the bulbs rejoin Thread, then restart
 `matter-server` if Home Assistant does not automatically recover them.
 
+On `2026-07-05`, the live cluster-104 PVC-backed
+`/config/configuration.yaml` was checked again after the Home Assistant cutover.
+The `Bedroom Lights` group still referenced stale `light.essentials_a19_a60_6`
+and `light.essentials_a19_a60_7` entities even though the active switch bridge
+and Matter registry use:
+
+- `light.kajplats_e26_ws_globe_1600lm_6` / Matter `@1:10` / `Sofa_left`
+- `light.kajplats_e26_ws_globe_1600lm_7` / Matter `@1:11` / `Sofa_right`
+
+The live PVC config and the repo template were updated so `Bedroom Lights`
+now groups the current Sofa bulbs plus `light.standing_lamp`. Home Assistant
+config check passed and the deployment was restarted. After restart:
+
+- Living Room switch and bulbs were online.
+- Master switch, Bed left, and Bed right were online.
+- `light.bedroom_switch` was online.
+- `light.bedroom_lights`, `light.sofa`, `light.standing_lamp`, and bedroom
+  bulb nodes `@1:10`, `@1:11`, `@1:19`, and `@1:1b` remained unavailable.
+- `light.dining_room_lights` was online because `light.desk_lamp` was online.
+- `light.dining_room_fan` and fan bulb nodes `@1:9`, `@1:a`, and `@1:b`
+  remained unavailable.
+
+Matter Server, its Kubernetes Service endpoints, and OTBR were healthy at the
+time, so the remaining bedroom/fan issue is tracked as per-device Matter/Thread
+reachability rather than a global cluster-104 or Home Assistant config failure.
+
 On `2026-07-04`, the live custom component
 `/config/custom_components/matter_dimmer_bridge/__init__.py` was patched on the
 PVC after a `matter-server` restart left Home Assistant subscribed to stale

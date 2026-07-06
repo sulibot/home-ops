@@ -394,8 +394,8 @@ data:
         unique_id: bedroom_lights_group
         name: Bedroom Lights
         entities:
-          - light.essentials_a19_a60_6
-          - light.essentials_a19_a60_7
+          - light.kajplats_e26_ws_globe_1600lm_6
+          - light.kajplats_e26_ws_globe_1600lm_7
           - light.standing_lamp
       - platform: group
         unique_id: dining_room_fan_group

@@ -124,6 +124,36 @@ Result:
   it likely needs a physical bulb or fixture power cycle before Matter can
   reconnect.
 
+### 2026-07-05 cluster-104 endpoint recovery
+
+After later HA testing, the Matter Server Kubernetes Service had no endpoints
+even though the Deployment still desired one replica. The old Matter pod had
+exited successfully and stayed in `Completed` state under the `Recreate`
+Deployment, leaving Home Assistant without a live Matter websocket target.
+
+The live recovery was:
+
+```bash
+kubectl delete pod -n matter-server --field-selector=status.phase=Succeeded
+kubectl rollout status deployment/matter-server -n matter-server --timeout=240s
+```
+
+After the replacement pod started, the `matter-server` Service had both IPv4 and
+IPv6 endpoints again, and Home Assistant recovered the Living Room, Master, and
+Bed right Matter lights. This should be treated as an operational caveat for the
+single-node host-network Matter deployment: if Matter shows unavailable globally,
+check for a `Completed` Matter pod and empty Service endpoints before chasing
+Thread device state.
+
+Final retest after the endpoint recovery:
+
+- online: Living Room switch, TV right, Couch left, Couch right, Master switch,
+  Bed left, Bed right, Bedroom switch, Dining Room Lights, Desk Lamp
+- still unavailable: Bedroom bulb nodes `@1:10`, `@1:11`, `@1:19`, `@1:1b`
+  and Dining fan bulb nodes `@1:9`, `@1:a`, `@1:b`
+- OTBR was `router` with active router neighbors, and the Matter pod and Service
+  endpoints were healthy.
+
 ## Related Files
 
 - `kubernetes/clusters/cluster-104/matter-server/`

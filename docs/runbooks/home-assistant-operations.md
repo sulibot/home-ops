@@ -382,7 +382,7 @@ Future stable upgrades should normally be a pinned image tag/digest bump in
 
 ### Thread / OTBR
 
-OTBR runs outside Kubernetes in a Proxmox LXC.
+OTBR runs on `cluster-104` as a host-network Kubernetes workload on `talos01`.
 
 Current endpoint:
 
@@ -398,8 +398,8 @@ The current Thread network is expected to be present and preferred before Matter
 Operational split:
 
 - HA and Matter Server are in Kubernetes
-- OTBR is not
-- Thread radio access remains outside Kubernetes, but Matter-over-Thread still depends on the pod network being able to route to the Thread OMR prefix.
+- OTBR is in Kubernetes and uses the USB Thread radio attached to `talos01`
+- Matter-over-Thread still depends on the pod network being able to route to the Thread OMR prefix.
 - The current static Thread OMR route workaround remains required until the Kubernetes networking model handles that path explicitly.
 
 ## Normal Operations
