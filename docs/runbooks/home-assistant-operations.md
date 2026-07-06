@@ -107,6 +107,13 @@ Home Assistant human/app access is private-by-policy in the intended design.
   that path as a generic entrypoint.
 - If an explicit SSO deep link is needed, use `/auth/oidc/welcome`, not the
   historical `storeToken=true` helper flow.
+- Home Assistant's normal logout clears the HA session, but `hass-oidc-auth`
+  does not currently drive IdP single logout from the built-in HA logout button.
+  To log out of Authentik/OIDC and switch Google users, use the Authentik OIDC
+  end-session endpoint:
+  `https://auth.sulibot.com/application/o/home-assistant-app/end-session/?post_logout_redirect_uri=https%3A%2F%2Fhass.sulibot.com%2F`.
+  The Authentik `default-provider-invalidation-flow` must include
+  `default-invalidation-logout` so that this clears the main Authentik session.
 - Google Assistant must use a separate, narrowly scoped hostname such as
   `ha-google.sulibot.com`; do not expose the full HA UI for Google callbacks.
 - The canonical direct fallback endpoint is the VLAN 31 IPv6 address.

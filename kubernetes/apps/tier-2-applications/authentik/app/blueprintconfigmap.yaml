@@ -66,6 +66,19 @@ data:
           target: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
+      # Provider OIDC logout should also clear the main Authentik session.
+      # Without this, RP-initiated logout only invalidates the provider/app
+      # session and the next login can silently reuse the previous Google user.
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          stage: !Find [authentik_stages_user_logout.userlogoutstage, [name, default-invalidation-logout]]
+          order: 10
+        attrs:
+          target: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          stage: !Find [authentik_stages_user_logout.userlogoutstage, [name, default-invalidation-logout]]
+          order: 10
       # Host-specific brand:
       # - auth.sulibot.com uses the shared authentication flow.
       - model: authentik_brands.brand

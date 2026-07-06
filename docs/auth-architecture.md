@@ -267,6 +267,28 @@ On a user's first Google login, Authentik runs `source-enrollment-silent`:
 
 **Known gotcha**: `PLAN_CONTEXT_PROMPT` moved from `authentik.flows.planner` to `authentik.stages.prompt.stage` in Authentik 2025.x. If the import path is wrong, enrollment fails with `"Aborting write to empty username"`, and the user sees `"Request has been denied"`.
 
+### Google account selection
+
+The Authentik Google source signs in whichever Google account the browser session
+hands back. If the browser is currently using the wrong Google identity, the
+Google callback can silently return that account and Authentik may deny access
+even though the intended user exists.
+
+For HA access, the intended Google/AuthentiK user is `sulibot@gmail.com`.
+If the login flow lands on another Google user, clear the Authentik session and
+force Google's account chooser:
+
+1. Open `https://auth.sulibot.com/if/flow/default-provider-invalidation-flow/`
+2. Then open `https://accounts.google.com/AccountChooser?continue=https%3A%2F%2Fauth.sulibot.com%2Fsource%2Foauth%2Flogin%2Fgoogle%2F`
+3. Choose `sulibot@gmail.com`
+4. Return to `https://hass.sulibot.com`
+
+The built-in Authentik Google OAuth source currently uses Authentik's provider
+defaults; do not assume changing the source `authorization_url` will force
+Google's `prompt=select_account` behavior. If we want account selection to be
+mandatory in the future, implement it as a deliberate Authentik source/provider
+change and verify the outgoing Google redirect includes `prompt=select_account`.
+
 ### Authentication flow behavior
 
 Two flow patterns are intentionally separated:
