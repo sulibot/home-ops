@@ -29,13 +29,10 @@ locals {
     "requests.sulibot.com"  = "Overseerr"
   }
 
-  email_only_apps = {
-    "*.sulibot.com" = "Wildcard Browser Access"
-  }
+  email_only_apps = {}
 
   home_assistant_warp_only_apps = {
-    "hass.sulibot.com"     = "Home Assistant Browser"
-    "hass-app.sulibot.com" = "Home Assistant App"
+    "hass.sulibot.com" = "Home Assistant Browser"
   }
 
   home_assistant_google_hostname = "ha-google.sulibot.com"
@@ -47,13 +44,44 @@ locals {
     "/api/google_assistant",
   ]
 
-  warp_only_apps = {
-    "immich-app.sulibot.com"  = "Immich"
-    "vikunja-app.sulibot.com" = "Vikunja"
-  }
+  warp_only_apps = {}
 
   warp_email_apps = {
     "immich.sulibot.com" = "Immich"
+  }
+
+  app_private_dns_overrides = {
+    "hass-app.sulibot.com" = {
+      ips        = ["10.104.250.11", "fd00:104:250::11"]
+      precedence = 100
+    }
+    "immich-app.sulibot.com" = {
+      ips        = ["10.101.250.11", "10.101.250.12", "fd00:101:250::11", "fd00:101:250::12"]
+      precedence = 101
+    }
+    "vikunja-app.sulibot.com" = {
+      ips        = ["10.101.250.11", "10.101.250.12", "fd00:101:250::11", "fd00:101:250::12"]
+      precedence = 102
+    }
+  }
+
+  warp_private_routes = {
+    "cluster-101-gateway-ipv4" = {
+      network   = "10.101.250.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "cluster-101-gateway-ipv6" = {
+      network   = "fd00:101:250::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "cluster-104-gateway-ipv4" = {
+      network   = "10.104.250.0/24"
+      tunnel_id = local.cluster_104_tunnel_id
+    }
+    "cluster-104-gateway-ipv6" = {
+      network   = "fd00:104:250::/64"
+      tunnel_id = local.cluster_104_tunnel_id
+    }
   }
 
   tunnel_hostnames = distinct(concat(
@@ -109,6 +137,34 @@ resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   content = "${local.cluster_104_tunnel_id}.cfargotunnel.com"
   ttl     = 1
   proxied = true
+}
+
+# WARP private app endpoints are not published as public DNS records and do
+# not use Cloudflare Access. WARP clients resolve them to private gateway IPs
+# and then route that private traffic through the matching Cloudflare Tunnel.
+resource "cloudflare_zero_trust_gateway_policy" "app_private_dns_override" {
+  for_each = local.app_private_dns_overrides
+
+  account_id  = local.account_id
+  name        = "Private app DNS: ${each.key}"
+  description = "Resolve ${each.key} to the private Gateway endpoint for WARP clients."
+  action      = "override"
+  filters     = ["dns"]
+  traffic     = format("dns.fqdn == %s", jsonencode(each.key))
+  precedence  = each.value.precedence
+
+  rule_settings = {
+    override_ips = each.value.ips
+  }
+}
+
+resource "cloudflare_zero_trust_tunnel_cloudflared_route" "app_private_route" {
+  for_each = local.warp_private_routes
+
+  account_id = local.account_id
+  tunnel_id  = each.value.tunnel_id
+  network    = each.value.network
+  comment    = "Private app endpoint route for ${each.key}"
 }
 
 # ---------------------------------------------------------------------------

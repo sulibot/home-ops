@@ -55,9 +55,22 @@ Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certif
 | `filestash.sulibot.com` | Filestash | CF Access externally; app-local auth on Filestash |
 | `hass.sulibot.com` | Home Assistant (legacy browser host) | Native OIDC via Authentik (`hass-oidc-auth`) |
 | `immich.sulibot.com` | Immich | Native OIDC via Authentik |
-| `vikunja-app.sulibot.com` | Vikunja (app) | App-safe endpoint, WARP required externally |
+| `vikunja.sulibot.com` | Vikunja | App-local/OIDC auth |
 | `plex.sulibot.com` | Plex | Plex account (no WARP requirement externally) |
 | `seerr.sulibot.com` | Jellyseerr | Plex/own auth (no WARP requirement externally) |
+
+### App-Private WARP Endpoints
+
+These hostnames are for non-browser/app clients. They are not Cloudflare Access
+applications and are not published as public Cloudflare DNS records. LAN clients
+resolve them through internal DNS; remote clients must use Cloudflare WARP
+private routing plus Gateway DNS overrides.
+
+| Hostname | App | Private endpoint |
+|----------|-----|------------------|
+| `hass-app.sulibot.com` | Home Assistant Companion App / app auth | `10.104.250.11`, `fd00:104:250::11` |
+| `immich-app.sulibot.com` | Immich mobile app | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
+| `vikunja-app.sulibot.com` | Vikunja app/API clients | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
 
 ### Apps on `gateway-internal` (LAN only)
 
@@ -79,6 +92,7 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 | `grafana.sulibot.com` | Grafana | Grafana auth (LAN route) |
 | `hass-app.sulibot.com` | Home Assistant (canonical app/discovery host) | Native OIDC via Authentik (`hass-oidc-auth`), LAN-only via split DNS |
 | `hass-get-token.sulibot.com` | Home Assistant token/finish helper | Native OIDC helper route, LAN-only via split DNS |
+| `immich-app.sulibot.com` | Immich app endpoint | App-safe endpoint; LAN/WARP-private only |
 | `jaeger.sulibot.com` | Jaeger | Internal ops endpoint (auth/config varies) |
 | `jellyseerr.sulibot.com` | Jellyseerr | Plex/own auth |
 | `requests.sulibot.com` | Jellyseerr (alias) | Plex/own auth |
@@ -103,6 +117,7 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 | `sonarr-4k.sulibot.com` | Sonarr (4K) | API key / local auth |
 | `tautulli.sulibot.com` | Tautulli | App-local auth |
 | `thelounge.sulibot.com` | The Lounge | App-local auth |
+| `vikunja-app.sulibot.com` | Vikunja app endpoint | App-safe endpoint; LAN/WARP-private only |
 | `victoria-logs.sulibot.com` | VictoriaLogs | Internal ops endpoint |
 | `zigbee.sulibot.com` | Zigbee UI/service | LAN trust / local auth |
 | `zwave.sulibot.com` | Z-Wave UI/service | LAN trust / local auth |
@@ -169,12 +184,50 @@ In Zero Trust -> Access -> Applications:
 
 | Application | Hostname(s) | Policy | Notes |
 |-------------|-------------|--------|-------|
-| `*.sulibot.com` | `*.sulibot.com` | Allow approved users | Wildcard browser/email gate for all non-bypass, non-app hosts |
 | `auth (bypass)` | `auth.sulibot.com` | Bypass | Required so Authentik OIDC endpoints are reachable for Cloudflare Access and app callbacks |
 | `auth + public bypass` | `auth.sulibot.com`, `atuin.sulibot.com`, `plex.sulibot.com`, `overseerr.sulibot.com`, `requests.sulibot.com` | Bypass | Publicly reachable through Tunnel; app handles auth |
-| `WARP-only apps` | `immich-app.sulibot.com`, `vikunja-app.sulibot.com` | WARP only | Requires an enrolled WARP client |
+| `Home Assistant Browser` | `hass.sulibot.com` | WARP required | Browser endpoint protected by Cloudflare Access; app clients should not use it |
 
-**Important**: `auth.sulibot.com` remains intentionally bypassed in Cloudflare Access. Browser-style hosts fall under the wildcard email gate unless explicitly bypassed. App-specific hosts use dedicated WARP-only policies.
+**Important**: `auth.sulibot.com` remains intentionally bypassed in Cloudflare Access. Do not use a wildcard Cloudflare Access application for `*.sulibot.com`; it turns DNS/cache mistakes into browser challenges for non-browser clients. App-specific hosts should either use explicit Cloudflare Access applications when browser challenges are acceptable, or WARP private routing/DNS when they are not.
+
+The app-private endpoints use WARP private routing, not Cloudflare Access:
+
+- `hass-app.sulibot.com`
+- `immich-app.sulibot.com`
+- `vikunja-app.sulibot.com`
+
+LAN clients resolve them through RouterOS/internal DNS. Remote clients resolve
+them through Cloudflare Gateway DNS overrides and reach them through Cloudflare
+Tunnel private routes. They should not have public proxied CNAME records or
+Access applications.
+
+### Externally Exposed Public Tunnel Hostnames
+
+Current public/proxied Cloudflare Tunnel DNS hostnames:
+
+- `actual.sulibot.com`
+- `atuin.sulibot.com`
+- `auth.sulibot.com`
+- `collabora.sulibot.com`
+- `external.sulibot.com`
+- `filebrowser.sulibot.com`
+- `firefly.sulibot.com`
+- `freshrss.sulibot.com`
+- `ha-google.sulibot.com`
+- `hass.sulibot.com`
+- `immich.sulibot.com`
+- `karakeep.sulibot.com`
+- `miniflux.sulibot.com`
+- `opencloud.sulibot.com`
+- `overseerr.sulibot.com`
+- `paperless.sulibot.com`
+- `plex.sulibot.com`
+- `requests.sulibot.com`
+- `seerr.sulibot.com`
+- `tunnel.sulibot.com`
+- `twenty.sulibot.com`
+- `vikunja.sulibot.com`
+- `wopiserver.sulibot.com`
 
 **Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`

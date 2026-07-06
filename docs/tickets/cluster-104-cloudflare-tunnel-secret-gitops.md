@@ -27,8 +27,9 @@ credentials manifest.
 - 1Password fields:
   - `CLOUDFLARE_TUNNEL_ID_CLUSTER_104`
   - `CLOUDFLARE_TUNNEL_SECRET_CLUSTER_104`
-- Public DNS for `hass.sulibot.com` and `hass-app.sulibot.com` points to the
-  cluster-104 tunnel
+- Public DNS for `hass.sulibot.com` points to the cluster-104 tunnel
+- `hass-app.sulibot.com` is intentionally internal/WARP-private only and should
+  not be published through Cloudflare Access
 - Kubernetes deployment:
   - `kubernetes/clusters/cluster-104/cloudflare-tunnel/`
 - Generated credential Secret:

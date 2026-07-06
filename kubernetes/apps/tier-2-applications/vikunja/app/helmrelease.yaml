@@ -97,13 +97,22 @@ spec:
             port: *port
 
     route:
-      app:
+      browser:
         hostnames:
           - vikunja.sulibot.com
-          - vikunja-app.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+      app:
+        hostnames:
+          - vikunja-app.sulibot.com
+        parentRefs:
           - name: gateway-internal
             namespace: network
         rules:

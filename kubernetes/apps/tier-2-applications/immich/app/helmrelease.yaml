@@ -116,10 +116,18 @@ spec:
         main:
           hostnames:
             - immich.sulibot.com
-            - immich-app.sulibot.com
           parentRefs:
             - name: gateway-tunnel
               namespace: network
+            - name: gateway-internal
+              namespace: network
+          rules:
+            - backendRefs:
+                - identifier: main
+        app:
+          hostnames:
+            - immich-app.sulibot.com
+          parentRefs:
             - name: gateway-internal
               namespace: network
           rules:

@@ -82,8 +82,8 @@ Home Assistant has:
 Practical access paths:
 
 - Canonical HA app/discovery URL: `https://hass-app.sulibot.com`
-  This host resolves internally to the local gateway and externally through
-  Cloudflare Access with WARP required.
+  This host is internal/WARP-private only and should not be published through
+  Cloudflare Access.
 - Legacy browser host: `https://hass.sulibot.com`
 - Debug-only local HA URL: `http://hass-debug.sulibot.com`
 - Direct IPv6 fallback HA URL: `http://[fd00:31::251]:8123`
@@ -97,7 +97,8 @@ Home Assistant human/app access is private-by-policy in the intended design.
 - `hass.sulibot.com` is the browser endpoint.
 - `hass-app.sulibot.com` is the mobile/app auth endpoint.
 - Both endpoints are accessible directly on the home network through internal
-  DNS and externally only when the client is using approved Cloudflare WARP.
+  DNS. External app access should use WARP private routing/DNS to the internal
+  endpoint, not Cloudflare Access.
 - Home Assistant uses `auth_oidc` upstream `v1.1.1`. Do not route-level
   rewrite `/auth/authorize`; the integration injects the Home Assistant auth
   page, sets its own `auth_oidc_state` cookie, and then redirects through
@@ -133,15 +134,16 @@ Human browser and app access should use the unified Home Assistant app/discovery
 
 `hass-app.sulibot.com` is the canonical HA app/OIDC hostname and is
 internal-first, with external access allowed only through Cloudflare WARP.
-`hass.sulibot.com` and `hass-app.sulibot.com` have explicit Cloudflare Access
-applications requiring WARP for external access. `hass-debug.sulibot.com` is
-the plain HTTP observation host for troubleshooting raw client behavior without
-the Cloudflare/browser/TLS layers involved.
+`hass.sulibot.com` has an explicit Cloudflare Access application requiring WARP
+for external browser access. `hass-app.sulibot.com` should not be a Cloudflare
+Access application, because Companion App and websocket clients do not handle
+Cloudflare Access browser challenges reliably. `hass-debug.sulibot.com` is the
+plain HTTP observation host for troubleshooting raw client behavior without the
+Cloudflare/browser/TLS layers involved.
 
-External Cloudflare traffic for `hass.sulibot.com` and `hass-app.sulibot.com`
-uses the dedicated `cluster-104` Cloudflare Tunnel, not the main cluster-101
-tunnel. Cloudflare Access policies remain account-wide Terraform-managed
-resources.
+External Cloudflare traffic for `hass.sulibot.com` uses the dedicated
+`cluster-104` Cloudflare Tunnel, not the main cluster-101 tunnel. Cloudflare
+Access policies remain account-wide Terraform-managed resources.
 
 `network/cloudflare-tunnel-secret` is managed by External Secrets from the
 `cloudflare` 1Password item. Cluster-104 uses its own 1Password Connect
