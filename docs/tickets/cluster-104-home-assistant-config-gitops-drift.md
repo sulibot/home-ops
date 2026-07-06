@@ -199,6 +199,35 @@ live `/config/automations.yaml` is currently empty. Reintroducing those
 automations should be handled deliberately as a separate migration step rather
 than by blindly restoring the legacy automation file.
 
+On `2026-07-05`, the live `/config/configuration.yaml` was missing the
+top-level `auth_oidc:` block even though `/config/custom_components/auth_oidc`
+was present. The HA login page therefore only offered `Trusted Networks` and
+`Home Assistant Local`, and `/auth/oidc/redirect` was not available as the
+expected SSO path.
+
+The live PVC config was backed up and patched:
+
+- backup: `/config/configuration.yaml.bak-before-oidc-auth-20260706T000904Z`
+- restored `auth_oidc` with the Authentik discovery URL:
+  `https://auth.sulibot.com/application/o/home-assistant-app/.well-known/openid-configuration`
+- installed the missing `joserfc==1.6.3` dependency into `/config/.venv`
+- Home Assistant config check passed and the deployment was restarted
+
+Validation after restart:
+
+```json
+{
+  "providers": [
+    {"name": "Authentik SSO", "type": "auth_oidc"},
+    {"name": "Trusted Networks", "type": "trusted_networks"},
+    {"name": "Home Assistant Local", "type": "homeassistant"}
+  ]
+}
+```
+
+`/auth/oidc/redirect` now returns a `302` to Authentik with
+`client_id=homeassistant-app`.
+
 ## Problem
 
 The older app-template Home Assistant config under
