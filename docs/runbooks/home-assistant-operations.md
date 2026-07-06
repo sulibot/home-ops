@@ -98,12 +98,15 @@ Home Assistant human/app access is private-by-policy in the intended design.
 - `hass-app.sulibot.com` is the mobile/app auth endpoint.
 - Both endpoints are accessible directly on the home network through internal
   DNS and externally only when the client is using approved Cloudflare WARP.
-- `hass.sulibot.com/auth/authorize` redirects to `/auth/oidc/redirect` so
-  browser OAuth flows land in Authentik SSO instead of the `auth_oidc` plugin's
-  one-time-code form.
+- Home Assistant uses `auth_oidc` upstream `v1.1.1`. Do not route-level
+  rewrite `/auth/authorize`; the integration injects the Home Assistant auth
+  page, sets its own `auth_oidc_state` cookie, and then redirects through
+  `/auth/oidc/redirect` safely.
 - Both endpoints should serve the normal Home Assistant frontend directly; do
   not force `/` to `/auth/oidc/redirect`, because Home Assistant does not expose
   that path as a generic entrypoint.
+- If an explicit SSO deep link is needed, use `/auth/oidc/welcome`, not the
+  historical `storeToken=true` helper flow.
 - Google Assistant must use a separate, narrowly scoped hostname such as
   `ha-google.sulibot.com`; do not expose the full HA UI for Google callbacks.
 - The canonical direct fallback endpoint is the VLAN 31 IPv6 address.
@@ -254,16 +257,19 @@ Avoid:
 
 ## Persistent Storage
 
-### PVCs
+### PVCs and caches
 
 Home Assistant uses:
 
 - `home-assistant-config`
   - mounted at `/config`
-- `home-assistant-config-cache`
-  - mounted at `/config/.venv`
 
-Storage class:
+Cluster-104 intentionally does not use the old Ceph-backed cache PVCs from the
+cluster-101 deployment. The OIDC plugin and Python dependencies are
+bootstrapped into disposable `emptyDir` cache paths, including `/config/.venv`.
+Those caches can be recreated from Git and the Internet after a pod restart.
+
+Storage class for the persistent config volume:
 
 - `csi-cephfs-config-sc`
 

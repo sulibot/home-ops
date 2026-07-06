@@ -92,7 +92,7 @@ spec:
                 import urllib.request
 
                 # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
-                version = "v0.6.5-alpha"
+                version = "v1.1.1"
                 target = "/config/custom_components/auth_oidc"
                 manifest_path = os.path.join(target, "manifest.json")
 
@@ -417,364 +417,6 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
-          patch-auth-oidc-finish:
-            image:
-              repository: python
-              tag: 3.14-alpine
-            command:
-              - /bin/sh
-              - -ec
-              - |
-                python - <<'PY'
-                from pathlib import Path
-                import textwrap
-
-                template = Path("/config/custom_components/auth_oidc/views/templates/finish.html")
-                endpoint = Path("/config/custom_components/auth_oidc/endpoints/finish.py")
-                callback_file = Path("/config/custom_components/auth_oidc/endpoints/callback.py")
-                redirect_file = Path("/config/custom_components/auth_oidc/endpoints/redirect.py")
-                init_file = Path("/config/custom_components/auth_oidc/__init__.py")
-
-                if not template.exists():
-                    raise SystemExit("auth_oidc finish.html not found")
-                if not endpoint.exists():
-                    raise SystemExit("auth_oidc finish.py not found")
-                if not callback_file.exists():
-                    raise SystemExit("auth_oidc callback.py not found")
-                if not redirect_file.exists():
-                    raise SystemExit("auth_oidc redirect.py not found")
-                if not init_file.exists():
-                    raise SystemExit("auth_oidc __init__.py not found")
-
-                template.write_text(
-                    textwrap.dedent(
-                        """\
-                        {% extends "base.html" %}
-                        {% block title %}Logged in!{% endblock %}
-                        {% block head %}
-                        {{ super() }}
-                        {% endblock %}
-                        {% block content %}
-                        <div class="text-center">
-                            {% if show_browser_login %}
-                            <div class="my-6">
-                                <h2 class="text-xl font-semibold mb-6 text-gray-800">I want to login to this browser</h2>
-                                <form method="post">
-                                    <input type="hidden" name="code" value="{{ browser_code }}">
-                                    <button type="submit"
-                                        class="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
-                                        Login to Home Assistant in this browser
-                                    </button>
-                                </form>
-                                {% if auto_submit %}
-                                <script>
-                                    window.addEventListener("load", () => {
-                                        const form = document.querySelector("form[method='post']");
-                                        if (form) {
-                                            form.requestSubmit();
-                                        }
-                                    });
-                                </script>
-                                {% endif %}
-                            </div>
-
-                            <hr class="my-12">
-                            {% endif %}
-
-                            <div class="my-6">
-                                <h2 class="text-xl font-semibold mb-4 text-gray-800">I am on a mobile device</h2>
-                                <p class="mb-4">Your one-time code is: <b class="text-blue-600 text-xl">{{ mobile_code }}</b></p>
-                                <p class="mb-4 text-sm">You have 5 minutes to use this code on any device.<br />The code can only
-                                    be used once.</p>
-                                <p class="mb-4 text-sm">{{ mobile_instructions }}</p>
-                            </div>
-                        </div>
-                        {% endblock %}
-                        """
-                    ),
-                    encoding="utf-8",
-                )
-                print("auth_oidc finish template patched")
-
-                endpoint.write_text(
-                    textwrap.dedent(
-                        '''\
-                        """Finish route to allow the user to view their code."""
-
-                        from aiohttp import web
-                        from homeassistant.components.http import HomeAssistantView
-
-                        from ..helpers import get_view
-
-                        PATH = "/auth/oidc/finish"
-                        TOKEN_HOST = "hass-get-token.sulibot.com"
-
-
-                        class OIDCFinishView(HomeAssistantView):
-                            """OIDC Plugin Finish View."""
-
-                            requires_auth = False
-                            url = PATH
-                            name = "auth:oidc:finish"
-
-                            async def get(self, request: web.Request) -> web.Response:
-                                """Show the finish screen to allow the user to view their code."""
-                                code = request.query.get("code")
-
-                                if not code:
-                                    view_html = await get_view(
-                                        "error",
-                                        {"error": "Missing code to show the finish screen."},
-                                    )
-                                    return web.Response(text=view_html, content_type="text/html")
-
-                                host = (request.host or "").split(":")[0]
-                                is_token_host = host == TOKEN_HOST
-                                browser_code = code
-                                mobile_code = code
-                                show_browser_login = True
-                                auto_submit = not is_token_host
-                                mobile_instructions = (
-                                    "Please type the code into your app manually. If you don't see a code input, select "
-                                    "'Login with OpenID Connect (SSO)' first."
-                                )
-
-                                if is_token_host:
-                                    show_browser_login = False
-
-                                view_html = await get_view(
-                                    "finish",
-                                    {
-                                        "auto_submit": auto_submit,
-                                        "browser_code": browser_code,
-                                        "mobile_code": mobile_code,
-                                        "mobile_instructions": mobile_instructions,
-                                        "show_browser_login": show_browser_login,
-                                    },
-                                )
-                                return web.Response(text=view_html, content_type="text/html")
-
-                            async def post(self, request: web.Request) -> web.Response:
-                                """Receive response."""
-                                data = await request.post()
-                                code = data.get("code")
-
-                                if not code:
-                                    return web.Response(text="No code received", status=500)
-
-                                return web.HTTPFound(
-                                    location="/lovelace?storeToken=true",
-                                    headers={
-                                        "set-cookie": "auth_oidc_code="
-                                        + code
-                                        + "; Path=/auth/login_flow; SameSite=Strict; HttpOnly; Max-Age=5",
-                                    },
-                                )
-                        '''
-                    ),
-                    encoding="utf-8",
-                )
-                print("auth_oidc finish endpoint patched")
-
-                callback_file.write_text(
-                    textwrap.dedent(
-                        '''\
-                        """Callback route to return the user to after external OIDC interaction."""
-
-                        import urllib.parse
-
-                        from aiohttp import web
-                        from homeassistant.components.auth import create_auth_code
-                        from homeassistant.components.http import KEY_HASS, HomeAssistantView
-
-                        from ..helpers import get_url, get_view
-                        from ..oidc_client import OIDCClient
-                        from ..provider import OpenIDAuthProvider
-
-                        PATH = "/auth/oidc/callback"
-                        APP_HOST = "hass-app.sulibot.com"
-                        DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
-                        DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
-
-
-                        class OIDCCallbackView(HomeAssistantView):
-                            """OIDC Plugin Callback View."""
-
-                            requires_auth = False
-                            url = PATH
-                            name = "auth:oidc:callback"
-
-                            def __init__(
-                                self,
-                                oidc_client: OIDCClient,
-                                oidc_provider: OpenIDAuthProvider,
-                                force_https: bool,
-                            ) -> None:
-                                self.oidc_client = oidc_client
-                                self.oidc_provider = oidc_provider
-                                self.force_https = force_https
-
-                            async def get(self, request: web.Request) -> web.Response:
-                                """Receive response."""
-
-                                params = request.rel_url.query
-                                oidc_code = params.get("code")
-                                state = params.get("state")
-
-                                if not (oidc_code and state):
-                                    view_html = await get_view(
-                                        "error",
-                                        {
-                                            "error": "Missing code or state parameter.",
-                                        },
-                                    )
-                                    return web.Response(text=view_html, content_type="text/html")
-
-                                flow = self.oidc_client.flows.get(state, {})
-                                ha_client_id = flow.get("ha_client_id")
-                                ha_redirect_uri = flow.get("ha_redirect_uri")
-
-                                request_host = (request.host or "").split(":")[0]
-                                if request_host == APP_HOST:
-                                    ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
-                                    ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
-
-                                redirect_uri = get_url("/auth/oidc/callback", self.force_https)
-                                user_details = await self.oidc_client.async_complete_token_flow(
-                                    redirect_uri, oidc_code, state
-                                )
-                                if user_details is None:
-                                    view_html = await get_view(
-                                        "error",
-                                        {
-                                            "error": "Failed to get user details, "
-                                            + "see Home Assistant logs for more information.",
-                                        },
-                                    )
-                                    return web.Response(text=view_html, content_type="text/html")
-
-                                if user_details.get("role") == "invalid":
-                                    view_html = await get_view(
-                                        "error",
-                                        {
-                                            "error": "User is not in the correct group to access Home Assistant, "
-                                            + "contact your administrator!",
-                                        },
-                                    )
-                                    return web.Response(text=view_html, content_type="text/html")
-
-                                if ha_client_id and ha_redirect_uri and ha_redirect_uri.startswith("homeassistant"):
-                                    self.oidc_provider._user_meta[user_details["sub"]] = user_details
-                                    credentials = await self.oidc_provider.async_get_or_create_credentials(
-                                        {"sub": user_details["sub"]}
-                                    )
-                                    auth_code = create_auth_code(
-                                        request.app[KEY_HASS], ha_client_id, credentials
-                                    )
-                                    query = urllib.parse.urlencode({"code": auth_code})
-                                    separator = "&" if "?" in ha_redirect_uri else "?"
-                                    return web.HTTPFound(f"{ha_redirect_uri}{separator}{query}")
-
-                                login_code = await self.oidc_provider.async_save_user_info(user_details)
-                                return web.HTTPFound(
-                                    get_url("/auth/oidc/finish?code=" + login_code, self.force_https)
-                                )
-                        '''
-                    ),
-                    encoding="utf-8",
-                )
-                print("auth_oidc callback endpoint patched")
-
-                redirect_file.write_text(
-                    textwrap.dedent(
-                        '''\
-                        """Redirect route to redirect the user to the external OIDC server,
-                        can either be linked to directly or accessed through the welcome page."""
-
-                        import urllib.parse
-
-                        from aiohttp import web
-                        from homeassistant.components.http import HomeAssistantView
-
-                        from ..helpers import get_url, get_view
-                        from ..oidc_client import OIDCClient
-
-                        PATH = "/auth/oidc/redirect"
-                        APP_HOST = "hass-app.sulibot.com"
-                        DEFAULT_APP_CLIENT_ID = "https://home-assistant.io/iOS"
-                        DEFAULT_APP_REDIRECT_URI = "homeassistant://auth-callback"
-
-
-                        class OIDCRedirectView(HomeAssistantView):
-                            """OIDC Plugin Redirect View."""
-
-                            requires_auth = False
-                            url = PATH
-                            name = "auth:oidc:redirect"
-
-                            def __init__(self, oidc_client: OIDCClient, force_https: bool) -> None:
-                                self.oidc_client = oidc_client
-                                self.force_https = force_https
-
-                            async def get(self, request: web.Request) -> web.Response:
-                                """Receive response."""
-
-                                try:
-                                    redirect_uri = get_url("/auth/oidc/callback", self.force_https)
-                                    auth_url = await self.oidc_client.async_get_authorization_url(redirect_uri)
-
-                                    if auth_url:
-                                        request_host = (request.host or "").split(":")[0]
-                                        ha_client_id = request.query.get("client_id")
-                                        ha_redirect_uri = request.query.get("redirect_uri")
-
-                                        if request_host == APP_HOST:
-                                            ha_client_id = ha_client_id or DEFAULT_APP_CLIENT_ID
-                                            ha_redirect_uri = ha_redirect_uri or DEFAULT_APP_REDIRECT_URI
-
-                                        if ha_client_id or ha_redirect_uri:
-                                            parsed = urllib.parse.urlparse(auth_url)
-                                            state = urllib.parse.parse_qs(parsed.query).get("state", [None])[0]
-                                            if state and state in self.oidc_client.flows:
-                                                flow = self.oidc_client.flows[state]
-                                                if ha_client_id:
-                                                    flow["ha_client_id"] = ha_client_id
-                                                if ha_redirect_uri:
-                                                    flow["ha_redirect_uri"] = ha_redirect_uri
-
-                                        raise web.HTTPFound(auth_url)
-                                except RuntimeError:
-                                    pass
-
-                                view_html = await get_view(
-                                    "error",
-                                    {"error": "Integration is misconfigured, discovery could not be obtained."},
-                                )
-                                return web.Response(text=view_html, content_type="text/html")
-
-                            async def post(self, request: web.Request) -> web.Response:
-                                """POST"""
-                                return await self.get(request)
-                        '''
-                    ),
-                    encoding="utf-8",
-                )
-                print("auth_oidc redirect endpoint patched")
-
-                init_content = init_file.read_text(encoding="utf-8")
-                init_content = init_content.replace(
-                    "    hass.http.register_view(OIDCFinishView(provider))",
-                    "    hass.http.register_view(OIDCFinishView())",
-                )
-                init_file.write_text(init_content, encoding="utf-8")
-                print("auth_oidc init patched")
-                PY
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              readOnlyRootFilesystem: false
           bootstrap-auth-oidc-deps:
             image:
               repository: python
@@ -790,12 +432,7 @@ spec:
 
                 # renovate: datasource=pypi depName=joserfc
                 version = "1.6.3"
-                packages = [
-                    "aiofiles",
-                    "jinja2",
-                    "bcrypt",
-                    f"joserfc=={version}",
-                ]
+                packages = ["aiofiles", "jinja2", f"joserfc=={version}"]
                 venv = "/config/.venv"
                 python_bin = os.path.join(venv, "bin", "python")
 
@@ -808,7 +445,7 @@ spec:
                             python_bin,
                             "-c",
                             (
-                                "import aiofiles, jinja2, bcrypt, joserfc; "
+                                "import aiofiles, jinja2, joserfc; "
                                 f"assert joserfc.__version__ == {version!r}"
                             ),
                         ]
@@ -819,7 +456,7 @@ spec:
                     pass
 
                 subprocess.check_call(
-                    [python_bin, "-m", "pip", "install", *packages]
+                    [python_bin, "-m", "pip", "install", "--no-deps", *packages]
                 )
                 PY
             securityContext:
@@ -844,6 +481,8 @@ spec:
               # Cilium Gateway/Envoy forwards from the cluster pod CIDRs.
               HASS_HTTP_TRUSTED_PROXY_4: fd00:101:224::/60
               HASS_HTTP_TRUSTED_PROXY_5: 10.101.224.0/20
+              HASS_HTTP_TRUSTED_PROXY_6: fd00:104:224::/60
+              HASS_HTTP_TRUSTED_PROXY_7: 10.104.224.0/20
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -902,16 +541,6 @@ spec:
           - name: gateway-tunnel
             namespace: network
         rules:
-          - matches:
-              - path:
-                  type: Exact
-                  value: /
-            filters:
-              - type: RequestRedirect
-                requestRedirect:
-                  path:
-                    type: ReplaceFullPath
-                    replaceFullPath: /auth/oidc/redirect
           - backendRefs:
               - name: home-assistant-direct
                 port: 8123
@@ -941,7 +570,7 @@ spec:
                 requestRedirect:
                   path:
                     type: ReplaceFullPath
-                    replaceFullPath: /auth/oidc/redirect
+                    replaceFullPath: /auth/oidc/welcome
           - backendRefs:
               - name: home-assistant-direct
                 port: 8123
@@ -990,38 +619,11 @@ spec:
               - path: /config/automations.yaml
                 subPath: automations.yaml
       config-cache:
-        enabled: true
-        existingClaim: "{{ .Release.Name }}-config-cache"
+        type: emptyDir
         globalMounts:
           - path: /config/.venv
       tmp:
         type: emptyDir
-      authorize-page:
-        enabled: true
-        type: configMap
-        identifier: authorize-page
-        advancedMounts:
-          home-assistant:
-            app:
-              - path: /usr/local/lib/python3.14/site-packages/hass_frontend/authorize.html
-                subPath: authorize.html
-    configMaps:
-      authorize-page:
-        enabled: true
-        data:
-          authorize.html: |
-            <!DOCTYPE html><html><head><title>Home Assistant</title><meta charset="utf-8"><link rel="manifest" href="/manifest.json" crossorigin="use-credentials"><link rel="icon" href="/static/icons/favicon.ico"><link rel="modulepreload" href="/frontend_latest/authorize.0f231e4ef07f5519.js" crossorigin="use-credentials"><meta name="viewport" content="width=device-width,user-scalable=no,viewport-fit=cover,initial-scale=1"><style>body{font-family:Roboto,Noto,sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-weight:400;margin:0;padding:0;height:100%}</style><style>html{background-color:var(--primary-background-color,#fafafa);color:var(--primary-text-color,#212121)}@media (prefers-color-scheme:dark){html{background-color:var(--primary-background-color,#111);color:var(--primary-text-color,#e1e1e1)}}body{box-sizing:border-box;padding:32px 0;display:flex;flex-wrap:wrap;align-items:center}.content{width:100%;max-width:400px;margin:0 auto;padding:0 16px;box-sizing:content-box}.header{display:flex;align-items:center;justify-content:center;margin-bottom:32px;padding-top:var(--safe-area-inset-top)}.header img{height:56px;width:56px}</style></head><body><script>
-            (() => {
-              if (window.location.host !== "hass-app.sulibot.com") {
-                return;
-              }
-              const params = new URLSearchParams(window.location.search);
-              if (!params.get("client_id") || !params.get("redirect_uri")) {
-                return;
-              }
-              window.location.replace(`/auth/oidc/redirect?$${params.toString()}`);
-            })();
-            </script><div class="content"><div class="header"><img src="/static/icons/favicon-192x192.png" alt="Home Assistant"></div><ha-authorize></ha-authorize></div><script>function _ls(d,e){var i=document.createElement("script");return e&&(i.crossOrigin="use-credentials"),i.src=d,document.head.appendChild(i)}"attachShadow"in Element.prototype||(_ls("/static/polyfills/webcomponents-bundle.js",!0),_ls("/static/polyfills/lit-polyfill-support.js",!0));var isModern=/Edge?\/(13[4-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Firefox\/(13[7-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Chrom(ium|e)\/(109|1[1-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|(Maci|X1{2}).+ Version\/(18\.([4-9]|\d{2,})|(19|[2-9]\d|\d{3,})\.\d+)([,.]\d+|)( \(\w+\)|)( Mobile\/\w+|) Safari\/|Chrome.+OPR\/(1{2}[89]|1[2-9]\d|[2-9]\d{2}|\d{4,})\.\d+\.\d+|(CPU[ +]OS|iPhone[ +]OS|CPU[ +]iPhone|CPU IPhone OS|CPU iPad OS)[ +]+(18[._]([4-9]|\d{2,})|(19|[2-9]\d|\d{3,})[._]\d+)([._]\d+|)|Android:?[ /-](13[5-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})(\.\d+|)(\.\d+|)|Mobile Safari.+OPR\/([89]\d|\d{3,})\.\d+\.\d+|Android.+Firefox\/(13[7-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Android.+Chrom(ium|e)\/(13[5-9]|1[4-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|SamsungBrowser\/(2[89]|[3-9]\d|\d{3,})\.\d+|Home As{2}istant\/[\d.]+ \(.+; macOS (1[3-9]|[2-9]\d|\d{3,})\.\d+(\.\d+)?\)/.test(navigator.userAgent)&&"findLast"in Array.prototype</script><script>if(-1===navigator.userAgent.indexOf("Android")){function _pf(o,t){var n=document.createElement("link");n.rel="preload",n.as="font",n.type="font/woff2",n.href=o,n.crossOrigin="anonymous",document.head.appendChild(n)}_pf("/static/fonts/roboto/Roboto-Regular.woff2"),_pf("/static/fonts/roboto/Roboto-Medium.woff2")}</script><script crossorigin="use-credentials">isModern&&(import("/frontend_latest/authorize.0f231e4ef07f5519.js"),window.latestJS=!0)</script><script>window.latestJS||_ls("/frontend_es5/authorize.63b2163e52dedf94.js",!0)</script><script crossorigin="use-credentials">window.latestJS&&(window.providersPromise=fetch("/auth/providers",{credentials:"same-origin"}))</script></body></html>
       # usb-zigbee:
       #   enabled: true
       #   type: hostPath

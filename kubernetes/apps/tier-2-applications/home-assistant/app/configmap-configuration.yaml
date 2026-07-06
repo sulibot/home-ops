@@ -91,6 +91,8 @@ data:
         - fd00:101:224:3::/64
         - fd00:101:224::/60
         - 10.101.224.0/20
+        - fd00:104:224::/60
+        - 10.104.224.0/20
 
     homeassistant:
       # The iOS/mobile app persists HA's advertised internal/external URLs from

@@ -14,19 +14,8 @@ spec:
     - name: gateway-tunnel
       namespace: network
   rules:
-    - matches:
-        - path:
-            type: Exact
-            value: /auth/authorize
-      filters:
-        - type: RequestRedirect
-          requestRedirect:
-            statusCode: 302
-            path:
-              type: ReplaceFullPath
-              replaceFullPath: /auth/oidc/redirect
     - backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -45,7 +34,7 @@ spec:
       namespace: network
   rules:
     - backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -83,7 +72,7 @@ spec:
             type: Exact
             value: /api/google_assistant
       backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -111,9 +100,9 @@ spec:
             statusCode: 302
             path:
               type: ReplaceFullPath
-              replaceFullPath: /auth/oidc/redirect
+              replaceFullPath: /auth/oidc/welcome
     - backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -132,7 +121,7 @@ spec:
       namespace: network
   rules:
     - backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -151,5 +140,5 @@ spec:
       namespace: network
   rules:
     - backendRefs:
-        - name: home-assistant
+        - name: home-assistant-direct
           port: 8123
