@@ -160,11 +160,29 @@ spec:
                 .text-gray-600 { color: #4b5563; }
                 """)
 
+                def ensure_google_host_skips_oidc():
+                    injected_page_path = os.path.join(target, "endpoints", "injected_auth_page.py")
+                    with open(injected_page_path, "r", encoding="utf-8") as handle:
+                        content = handle.read()
+
+                    marker = '        if req.host.split(":")[0] == "ha-google.sulibot.com":\n            return False\n\n'
+                    if marker in content:
+                        return
+
+                    needle = '        if req.query.get("skip_oidc_redirect") == "true":\n            return False\n\n'
+                    replacement = needle + marker
+                    if needle not in content:
+                        raise RuntimeError("Could not find OIDC redirect bypass insertion point")
+
+                    with open(injected_page_path, "w", encoding="utf-8") as handle:
+                        handle.write(content.replace(needle, replacement, 1))
+
                 if os.path.exists(manifest_path):
                     with open(manifest_path, "r", encoding="utf-8") as handle:
                         manifest = json.load(handle)
                     if manifest.get("version") == version.removeprefix("v"):
                         ensure_style_css()
+                        ensure_google_host_skips_oidc()
                         print(f"auth_oidc {version} already installed")
                         raise SystemExit(0)
 
@@ -195,6 +213,7 @@ spec:
                         json.dump(manifest, handle, indent=2)
                         handle.write("\n")
                     ensure_style_css()
+                    ensure_google_host_skips_oidc()
                 PY
             securityContext:
               allowPrivilegeEscalation: false

@@ -182,6 +182,10 @@ The Cloudflare app intentionally stays within Cloudflare's destination limit;
 legacy browser requires it. Other paths on `ha-google.sulibot.com` should still
 be protected by Access or unrouted by Kubernetes.
 
+`ha-google.sulibot.com` is not an OIDC/Authenik endpoint. The Home Assistant
+OIDC bootstrap patch explicitly disables OIDC auto-redirect on this hostname so
+Google account linking uses the Home Assistant local account flow.
+
 ### Google Assistant New Account Setup
 
 Use `sulaiman.ahmad@gmail.com` for the new Google-side setup. Do not reuse the
