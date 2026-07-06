@@ -204,15 +204,15 @@ data:
           room: Bedroom
           aliases:
             - Standing Lamp
-        light.essentials_a19_a60_6:
+        light.kajplats_e26_ws_globe_1600lm_6:
           expose: true
           room: Bedroom
-        light.essentials_a19_a60_7:
+        light.kajplats_e26_ws_globe_1600lm_7:
           expose: true
           room: Bedroom
-        light.essentials_a19_a60_8:
+        light.kajplats_e26_ws_globe_1600lm_8:
           expose: false
-        light.essentials_a19_a60_9:
+        light.kajplats_e26_ws_globe_1600lm_9:
           expose: false
         light.smart_wi_fi_dimmer_switch:
           expose: false
