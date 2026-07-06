@@ -130,7 +130,9 @@ generate "backend" {
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
     terraform {
-      backend "local" {}
+      backend "local" {
+        path = "${get_terragrunt_dir()}/.state/terraform.tfstate"
+      }
     }
   EOF
 }
@@ -156,6 +158,24 @@ inputs = {
     # redistribute="connected,static,bgp", default_originate="always"
     # All above use module defaults — match prod exactly.
   }
+
+  additional_bgp_connections = [
+    {
+      name           = "CLUSTER104_TALOS01"
+      local_asn      = local.network.routeros.pve_asn # talos01 expects PVE fabric AS 4200001000
+      remote_asn     = local.network.bgp.asn_base + (104 * 1000) + 4
+      remote_address = "fd00:104::4"
+      local_address  = "fd00:104::fffe"
+      local_role     = "ebgp"
+      afi            = "ip,ipv6"
+      connect        = true
+      listen         = false
+      multihop       = true
+      use_bfd        = false
+      hold_time      = "30s"
+      keepalive_time = "10s"
+    }
+  ]
 
   # ── FIREWALL ADDRESS LISTS ───────────────────────────────────────────────────
   # defconf: no_forward_ipv4 — referenced by forward chain drop rules

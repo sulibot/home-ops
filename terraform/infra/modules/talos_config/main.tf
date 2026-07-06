@@ -500,7 +500,7 @@ locals {
         local as ${node.frr_asn};
         source address ${node.public_ipv6};  # Use node's public IPv6 (fd00:101::X)
         neighbor fd00:${var.cluster_id}::fffe as ${var.bgp_remote_asn};
-        bfd on;
+${var.bgp_enable_bfd ? "        bfd on;" : "        # BFD disabled for this upstream peer."}
 
         ipv4 {
           import filter {

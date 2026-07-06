@@ -23,6 +23,30 @@ variable "bgp" {
   })
 }
 
+variable "additional_bgp_connections" {
+  description = "Additional explicit BGP connections that reuse the managed BGP template."
+  type = list(object({
+    name              = string
+    local_asn         = number
+    remote_asn        = number
+    remote_address    = string
+    local_address     = string
+    local_role        = optional(string, "ebgp")
+    afi               = optional(string, "ip,ipv6")
+    connect           = optional(bool, true)
+    listen            = optional(bool, false)
+    multihop          = optional(bool, true)
+    use_bfd           = optional(bool, false)
+    hold_time         = optional(string, "30s")
+    keepalive_time    = optional(string, "10s")
+    redistribute      = optional(string, "connected,static,bgp")
+    default_originate = optional(string, "always")
+    local_port        = optional(number, 0)
+    remote_port       = optional(number, 0)
+  }))
+  default = []
+}
+
 variable "firewall_filter_rules" {
   description = "IP firewall filter rules. Order is preserved by list index — position 0 is first on device."
   type = list(object({

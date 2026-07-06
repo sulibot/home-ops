@@ -16,6 +16,10 @@ resource "routeros_routing_bgp_template" "pve_fabric" {
   name = var.bgp.instance_name
   as   = tostring(var.bgp.local_asn)
   # router_id not supported on ROS 7.20.1 — omit; uses global router-id
+
+  lifecycle {
+    ignore_changes = [add_path_out]
+  }
 }
 
 resource "routeros_routing_bgp_connection" "edge" {
@@ -44,5 +48,46 @@ resource "routeros_routing_bgp_connection" "edge" {
   output {
     redistribute      = var.bgp.redistribute
     default_originate = var.bgp.default_originate
+  }
+
+  lifecycle {
+    ignore_changes = [add_path_out]
+  }
+}
+
+resource "routeros_routing_bgp_connection" "additional" {
+  for_each = { for connection in var.additional_bgp_connections : connection.name => connection }
+
+  name      = each.value.name
+  as        = tostring(each.value.local_asn)
+  templates = [routeros_routing_bgp_template.pve_fabric.name]
+
+  address_families = each.value.afi
+  connect          = each.value.connect
+  listen           = each.value.listen
+  multihop         = each.value.multihop
+  use_bfd          = each.value.use_bfd
+  hold_time        = each.value.hold_time
+  keepalive_time   = each.value.keepalive_time
+
+  remote {
+    address = each.value.remote_address
+    as      = tostring(each.value.remote_asn)
+    port    = each.value.remote_port
+  }
+
+  local {
+    address = each.value.local_address
+    port    = each.value.local_port
+    role    = each.value.local_role
+  }
+
+  output {
+    redistribute      = each.value.redistribute
+    default_originate = each.value.default_originate
+  }
+
+  lifecycle {
+    ignore_changes = [add_path_out]
   }
 }

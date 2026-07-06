@@ -33,10 +33,16 @@ Notes:
 - This is a bare-metal single-node profile. It intentionally does not inherit
   Proxmox SDN/vnet assumptions unless VM participation becomes a real
   requirement later.
+- The cluster has its own Talos Image Factory schematic under `schematic/`.
+  It excludes `qemu-guest-agent`; the shared artifact schematic can still be
+  used by VM-oriented clusters.
 - Keep `vlan10` native/untagged for recovery/bootstrap. The real cluster
   network is tagged `vlan104`. Home Assistant uses Multus/macvlan secondary
   attachments on tagged `vlan30` and `vlan31` for LAN discovery/control,
   without moving its default route off the cluster network.
+- BGP follows the same local Cilium-to-BIRD pattern as cluster-101, but
+  RouterOS peers directly with the bare-metal `talos01` node on `vlan104`
+  because there is no Proxmox FRR layer in this cluster.
 - Workloads are allowed on the control plane because this is a 1-node cluster.
 
 ## Addressing Alignment
@@ -76,6 +82,16 @@ The physical port should keep native recovery while adding the cluster network:
 - [x] Apply the Home Assistant local-storage overlay directly to the cluster.
 - [x] Bootstrap Flux on `cluster-104` and let it reconcile `kubernetes/clusters/cluster-104`.
 - [x] Resolve the final recovery VLAN posture: keep `vlan10` native/untagged on `talos01[ether5]` while `vlan104` is tagged.
+- [x] Remove `qemu-guest-agent` from the active Talos image by switching to the cluster-104 bare-metal schematic.
+- [x] Run `bird2` as the Talos BGP extension without `qemu-guest-agent`.
+- [x] Establish local Cilium-to-BIRD BGP peering on `::1`.
+- [x] Establish RouterOS-to-`talos01` BGP peering for cluster-104 routes:
+  - RouterOS connection: `CLUSTER104_TALOS01`
+  - RouterOS local AS: `4200001000`
+  - `talos01` remote AS: `4210104004`
+  - RouterOS local address: `fd00:104::fffe`
+  - `talos01` address: `fd00:104::4`
+  - BFD: disabled for this direct bare-metal peer
 - [x] Add `vlan31` as a tagged IoT/Matter attachment on `talos01[ether5]` and configure Talos `enp1s0.31` as `10.31.0.6` / `fd00:31::6`.
 - [x] Add `vlan30` as a tagged LAN/media attachment on `talos01[ether5]` and configure Talos `enp1s0.30`.
 - [x] Install Multus on cluster-104 and attach Home Assistant to `vlan30` and `vlan31` with static secondary addresses:
@@ -99,7 +115,5 @@ The physical port should keep native recovery while adding the cluster network:
 - [ ] Move the live `otbr-thread-dataset` secret into the repo secret workflow, without committing the Thread dataset in plaintext.
 - [ ] Decide whether Home Assistant should keep direct `/dev/ttyACM0` mounts now that OTBR owns the radio, or remove those mounts and make OTBR the only radio owner.
 - [ ] Add backup/restore coverage for the local `ha-data` user volume.
-- [ ] Replace the temporary RouterOS static routes for cluster-104 pod/LB ranges with the intended long-term control plane. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md):
-  - fix BGP export from `talos01`/BIRD to RouterOS, or
-  - codify the static routes in RouterOS Terraform once state is reconciled.
+- [x] Reconcile/import the live RouterOS `CLUSTER104_TALOS01` BGP connection into Terraform state and remove the temporary broad static routes after BGP covered pod/LB reachability. See [cluster-104 routing ticket](../../../../../docs/tickets/cluster-104-routeros-routing-debt.md).
 - [ ] Resolve the migrated Home Assistant `uv was not found` warning if custom integrations need that package manager at runtime.

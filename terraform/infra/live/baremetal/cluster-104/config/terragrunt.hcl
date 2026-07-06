@@ -12,7 +12,8 @@ locals {
   install_schematic_config = local.context.install_schematic
   ipv6_prefixes            = local.context.ipv6_prefixes
   network_infra            = local.context.network_infra
-  schematic_catalog        = local.context.artifacts_schematic_catalog
+  schematic_catalog_path   = "${get_repo_root()}/terraform/infra/live/baremetal/cluster-104/schematic/schematic.json"
+  schematic_catalog        = fileexists(local.schematic_catalog_path) ? jsondecode(file(local.schematic_catalog_path)) : {}
 
   node_ips = {
     (local.cluster_config.node.name) = {
@@ -69,12 +70,12 @@ terraform {
       "bash", "-c",
       <<-EOT
         set -euo pipefail
-        if [ ! -f "${local.context.artifacts_schematic_catalog_path}" ]; then
-          echo "ERROR: Artifact schematic catalog not found: ${local.context.artifacts_schematic_catalog_path}"
-          echo "Run: cd ${get_repo_root()}/terraform/infra/live/artifacts/schematic && terragrunt apply"
+        if [ ! -f "${local.schematic_catalog_path}" ]; then
+          echo "ERROR: cluster-104 bare-metal schematic catalog not found: ${local.schematic_catalog_path}"
+          echo "Run: cd ${get_repo_root()}/terraform/infra/live/baremetal/cluster-104/schematic && terragrunt apply"
           exit 1
         fi
-        echo "✓ Artifact schematic catalog found"
+        echo "✓ cluster-104 bare-metal schematic catalog found"
       EOT
     ]
   }
@@ -166,7 +167,7 @@ inputs = {
   bgp_asn_base                       = local.network_infra.bgp.asn_base
   bgp_remote_asn                     = local.network_infra.bgp.remote_asn
   bgp_interface                      = try(local.cluster_config.node.interface, local.network_infra.bgp.interface)
-  bgp_enable_bfd                     = local.network_infra.bgp.enable_bfd
+  bgp_enable_bfd                     = false
   bgp_advertise_loopbacks            = local.network_infra.bgp.advertise_loopbacks
   allow_scheduling_on_control_planes = true
   user_volumes                       = try(local.cluster_config.user_volumes, [])
