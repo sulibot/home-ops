@@ -229,6 +229,20 @@ Current public/proxied Cloudflare Tunnel DNS hostnames:
 - `vikunja.sulibot.com`
 - `wopiserver.sulibot.com`
 
+Approved remote-access browser apps:
+
+- `paperless.sulibot.com` - documents
+- `karakeep.sulibot.com` - bookmarks/read-it-later
+- `opencloud.sulibot.com` - files/cloud drive
+- `freshrss.sulibot.com` - RSS
+- `actual.sulibot.com` - budgeting
+- `atuin.sulibot.com` - shell history sync
+- `filebrowser.sulibot.com` - file browsing
+
+These are browser/public hostnames routed through Cloudflare Tunnel. The
+application should enforce its own Authentik/native authentication. Do not use
+this pattern for `*-app.sulibot.com` endpoints; those remain WARP-private.
+
 **Approved user emails** (Zero Trust -> Access -> Access Groups):
 - `bcwallace@gmail.com`
 - `bodawee@gmail.com`

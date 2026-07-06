@@ -59,6 +59,14 @@ locals {
 
   email_only_apps = {}
 
+  public_native_auth_apps = {
+    "actual.sulibot.com" = "Actual Budget"
+    "filebrowser.sulibot.com" = "FileBrowser"
+    "freshrss.sulibot.com" = "FreshRSS"
+    "opencloud.sulibot.com" = "OpenCloud"
+    "paperless.sulibot.com" = "Paperless"
+  }
+
   home_assistant_warp_only_apps = {
     "hass.sulibot.com"       = "Home Assistant Browser"
   }
@@ -115,6 +123,7 @@ locals {
   tunnel_hostnames = distinct(concat(
     keys(local.bypass_apps),
     keys(local.email_only_apps),
+    keys(local.public_native_auth_apps),
     keys(local.warp_only_apps),
     keys(local.warp_email_apps),
   ))
