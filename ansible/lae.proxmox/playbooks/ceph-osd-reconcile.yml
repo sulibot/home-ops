@@ -1,0 +1,14 @@
+---
+- name: Reconcile declared Ceph OSD layout
+  hosts: ceph_osd
+  become: true
+  gather_facts: false
+  vars:
+    ceph_osd_create_execute: false
+    ceph_osd_create_require_clean: true
+    ceph_osd_create_enforce_data_device: true
+    ceph_osd_create_enforce_class: true
+    ceph_osd_create_enforce_crush: true
+    ceph_osd_create_enforce_db: false
+  roles:
+    - ceph_osd_create

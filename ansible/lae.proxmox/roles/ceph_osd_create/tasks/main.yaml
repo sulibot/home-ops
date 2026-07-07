@@ -57,6 +57,7 @@
 
     data_exists=0
     [ -b "$data_device" ] && data_exists=1
+    expected_data_real="$(readlink -f "$data_device" 2>/dev/null || true)"
 
     db_exists=0
     {% if item.db_device is defined %}
@@ -68,11 +69,25 @@
     live_db=""
     live_wal=""
     live_devices=""
+    live_data_devices=""
+    data_matches=1
     if [ -n "$metadata_json" ]; then
       exists=1
       live_db="$(printf '%s\n' "$metadata_json" | jq -r '.bluefs_dedicated_db // "unknown"')"
       live_wal="$(printf '%s\n' "$metadata_json" | jq -r '.bluefs_dedicated_wal // "unknown"')"
       live_devices="$(printf '%s\n' "$metadata_json" | jq -r '.devices // "unknown"')"
+      live_data_devices="$(
+        ceph-volume lvm list --format json |
+          jq -r --arg id "$osd_id" '.[$id][]? | select(.type == "block") | .devices[]?' |
+          while IFS= read -r dev; do readlink -f "$dev" 2>/dev/null || printf '%s\n' "$dev"; done |
+          sort -u |
+          paste -sd, -
+      )"
+      if [ -n "$expected_data_real" ] && [ -n "$live_data_devices" ]; then
+        printf '%s\n' "$live_data_devices" | tr ',' '\n' | grep -Fx "$expected_data_real" >/dev/null || data_matches=0
+      else
+        data_matches=0
+      fi
     fi
 
     live_class="$(ceph osd crush get-device-class "osd.$osd_id" 2>/dev/null || true)"
@@ -98,6 +113,9 @@
       --arg live_db "$live_db" \
       --arg live_wal "$live_wal" \
       --arg live_devices "$live_devices" \
+      --arg expected_data_real "$expected_data_real" \
+      --arg live_data_devices "$live_data_devices" \
+      --argjson data_matches "$data_matches" \
       --arg drive_bucket "$drive_bucket" \
       --argjson crush_ok "$crush_ok" \
       '{
@@ -111,6 +129,9 @@
         live_db: $live_db,
         live_wal: $live_wal,
         live_devices: $live_devices,
+        expected_data_real: $expected_data_real,
+        live_data_devices: $live_data_devices,
+        data_matches: ($data_matches == 1),
         drive_bucket: $drive_bucket,
         crush_ok: ($crush_ok == 1)
       }'
@@ -128,6 +149,7 @@
       osd.{{ (item.stdout | from_json).osd_id }}
       exists={{ (item.stdout | from_json).exists }}
       data_exists={{ (item.stdout | from_json).data_exists }}
+      data_matches={{ (item.stdout | from_json).data_matches }}
       db_exists={{ (item.stdout | from_json).db_exists }}
       class={{ (item.stdout | from_json).live_class | default('') }}/{{ (item.stdout | from_json).expected_class }}
       live_db={{ (item.stdout | from_json).live_db | default('') }}
@@ -156,6 +178,21 @@
     label: "osd.{{ item.item.osd_id }}"
   when:
     - item.item.expected_bluefs_db | default(false) | bool
+
+- name: Fail if existing OSD data device does not match intent
+  ansible.builtin.assert:
+    that:
+      - (item.stdout | from_json).data_matches
+    fail_msg: >-
+      osd.{{ item.item.osd_id }} data device mismatch:
+      live={{ (item.stdout | from_json).live_data_devices }}
+      expected={{ (item.stdout | from_json).expected_data_real }}
+  loop: "{{ ceph_osd_create_inspection.results }}"
+  loop_control:
+    label: "osd.{{ item.item.osd_id }}"
+  when:
+    - ceph_osd_create_enforce_data_device | bool
+    - (item.stdout | from_json).exists
 
 - name: Fail if existing OSD class does not match intent
   ansible.builtin.assert:

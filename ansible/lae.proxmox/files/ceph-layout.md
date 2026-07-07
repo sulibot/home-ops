@@ -37,6 +37,12 @@ cd ansible/lae.proxmox
 ansible-playbook playbooks/ceph-layout-validate.yml
 ```
 
+Read-only OSD reconciliation report:
+
+```bash
+ansible-playbook playbooks/ceph-osd-reconcile.yml
+```
+
 Enforce DB attachment once migration is complete:
 
 ```bash
