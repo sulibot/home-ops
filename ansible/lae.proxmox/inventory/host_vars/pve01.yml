@@ -13,40 +13,49 @@ ceph_osd_ids:
 nvme_disk: /dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX
 optane_disk: /dev/disk/by-id/nvme-INTEL_SSDPE21D015TA_PHKE3425002P1P5CGN
 
-# first (nvme) OSD
-pve_ceph_osds_1:
+ceph_osds:
   - osd_id: 0
-    device:   /dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX-part1
+    data_device: /dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX-part1
     db_device: /dev/ceph-db-vg/osd0-db
-    class:    nvme
-# next six HDD-based OSDs
+    class: nvme
+    expected_bluefs_db: false
   - osd_id: 1
-    device:    /dev/disk/by-id/wwn-0x5000c500e86a05f5-part1
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86a05f5-part1
     db_device: /dev/ceph-db-vg/osd1-db
-    class:     hdd
+    class: hdd
+    drive_bucket: drive-pve01-1
+    expected_bluefs_db: true
   - osd_id: 2
-    device:    /dev/disk/by-id/wwn-0x5000c500e86a05f5-part2
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86a05f5-part2
     db_device: /dev/ceph-db-vg/osd2-db
-    class:     hdd
+    class: hdd
+    drive_bucket: drive-pve01-1
+    expected_bluefs_db: true
   - osd_id: 3
-    device:    /dev/disk/by-id/wwn-0x5000c500e86ac6ff-part1
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86ac6ff-part1
     db_device: /dev/ceph-db-vg/osd3-db
-    class:     hdd
+    class: hdd
+    drive_bucket: drive-pve01-2
+    expected_bluefs_db: true
   - osd_id: 4
-    device:    /dev/disk/by-id/wwn-0x5000c500e86ac6ff-part2
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86ac6ff-part2
     db_device: /dev/ceph-db-vg/osd4-db
-    class:     hdd
+    class: hdd
+    drive_bucket: drive-pve01-2
+    expected_bluefs_db: true
   - osd_id: 5
-    device:    /dev/disk/by-id/wwn-0x5000c500e86a1e37-part1
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86a1e37-part1
     db_device: /dev/ceph-db-vg/osd5-db
-    class:     hdd
+    class: hdd
+    drive_bucket: drive-pve01-3
+    expected_bluefs_db: true
   - osd_id: 6
-    device:    /dev/disk/by-id/wwn-0x5000c500e86a1e37-part2
+    data_device: /dev/disk/by-id/wwn-0x5000c500e86a1e37-part2
     db_device: /dev/ceph-db-vg/osd6-db
-    class:     hdd
-
+    class: hdd
+    drive_bucket: drive-pve01-3
+    expected_bluefs_db: true
 sata_disks:
   - /dev/disk/by-id/wwn-0x5000c500e86a05f5
   - /dev/disk/by-id/wwn-0x5000c500e86ac6ff
   - /dev/disk/by-id/wwn-0x5000c500e86a1e37
-

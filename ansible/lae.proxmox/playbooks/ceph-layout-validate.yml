@@ -1,0 +1,11 @@
+---
+- name: Validate Proxmox Ceph OSD layout intent
+  hosts: ceph_osd
+  become: true
+  gather_facts: false
+  vars:
+    ceph_layout_require_clean: false
+    ceph_layout_enforce_db: false
+    ceph_layout_enforce_crush: true
+  roles:
+    - ceph_layout_validate

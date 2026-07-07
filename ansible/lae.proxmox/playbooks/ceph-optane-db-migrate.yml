@@ -1,0 +1,11 @@
+---
+- name: Migrate HDD OSD BlueStore DB to Optane LVs
+  hosts: ceph_osd
+  become: true
+  gather_facts: false
+  serial: 1
+  vars:
+    ceph_optane_db_migrate_execute: false
+    ceph_optane_db_migrate_require_clean: true
+  roles:
+    - ceph_optane_db_migrate

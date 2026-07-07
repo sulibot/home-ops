@@ -1,0 +1,45 @@
+---
+- name: Validate canonical Ceph OSD inventory exists
+  ansible.builtin.assert:
+    that:
+      - ceph_osds is defined
+      - ceph_osds | length > 0
+    fail_msg: "ceph_osds must be defined for {{ inventory_hostname }}"
+
+- name: Check whether Ceph is safe for DB migration
+  ansible.builtin.shell: |
+    set -o pipefail
+    bad_pg_count="$(
+      ceph pg dump pgs_brief 2>/dev/null |
+        awk '/degraded|undersized|remapped|backfill|recover|peering|stale|incomplete/ {c++} END {print c+0}'
+    )"
+    osd_stat="$(ceph osd stat)"
+    total_osds="$(printf '%s\n' "$osd_stat" | awk '{print $1}')"
+    up_osds="$(printf '%s\n' "$osd_stat" | sed -n 's/.*: \([0-9][0-9]*\) up.*/\1/p')"
+    in_osds="$(printf '%s\n' "$osd_stat" | sed -n 's/.*up.* \([0-9][0-9]*\) in.*/\1/p')"
+    test "$bad_pg_count" -eq 0
+    test "$total_osds" = "$up_osds"
+    test "$total_osds" = "$in_osds"
+  args:
+    executable: /bin/bash
+  register: ceph_optane_clean_check
+  changed_when: false
+  failed_when: false
+
+- name: Refuse DB migration unless the cluster is clean
+  ansible.builtin.assert:
+    that:
+      - ceph_optane_clean_check.rc == 0
+    fail_msg: "Ceph is not fully active+clean/up/in; DB migration is blocked."
+  when: ceph_optane_db_migrate_require_clean | bool
+
+- name: Build list of HDD OSDs needing DB migration
+  ansible.builtin.set_fact:
+    ceph_optane_hdd_osds: "{{ ceph_osds | selectattr('expected_bluefs_db', 'defined') | selectattr('expected_bluefs_db') | list }}"
+
+- name: Process HDD OSD DB migrations one at a time
+  ansible.builtin.include_tasks: migrate_one.yml
+  loop: "{{ ceph_optane_hdd_osds }}"
+  loop_control:
+    loop_var: ceph_optane_osd
+    label: "osd.{{ ceph_optane_osd.osd_id }}"

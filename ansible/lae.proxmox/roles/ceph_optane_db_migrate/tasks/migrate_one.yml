@@ -1,0 +1,58 @@
+---
+- name: Read live OSD metadata
+  ansible.builtin.command: "ceph osd metadata {{ ceph_optane_osd.osd_id }} --format json"
+  register: ceph_optane_one_metadata
+  changed_when: false
+
+- name: Check declared DB LV
+  ansible.builtin.stat:
+    path: "{{ ceph_optane_osd.db_device }}"
+  register: ceph_optane_one_db_stat
+
+- name: Validate declared DB LV exists
+  ansible.builtin.assert:
+    that:
+      - ceph_optane_one_db_stat.stat.exists
+    fail_msg: "{{ ceph_optane_osd.db_device }} for osd.{{ ceph_optane_osd.osd_id }} does not exist."
+
+- name: Show planned DB migration
+  ansible.builtin.debug:
+    msg: >-
+      osd.{{ ceph_optane_osd.osd_id }}
+      live_db={{ (ceph_optane_one_metadata.stdout | from_json).bluefs_dedicated_db }}
+      target={{ ceph_optane_osd.db_device }}
+      execute={{ ceph_optane_db_migrate_execute }}
+
+- name: Migrate OSD DB with restart guard
+  when:
+    - ceph_optane_db_migrate_execute | bool
+    - ((ceph_optane_one_metadata.stdout | from_json).bluefs_dedicated_db | string) != '1'
+  block:
+    - name: Stop OSD before BlueFS DB migration
+      ansible.builtin.systemd:
+        name: "ceph-osd@{{ ceph_optane_osd.osd_id }}"
+        state: stopped
+
+    - name: Migrate BlueFS DB to Optane LV
+      ansible.builtin.shell: >-
+        ceph-volume lvm migrate
+        --osd-id {{ ceph_optane_osd.osd_id }}
+        --osd-fsid $(cat /var/lib/ceph/osd/ceph-{{ ceph_optane_osd.osd_id }}/fsid)
+        --from data
+        --target {{ ceph_optane_osd.db_device | regex_replace('^/dev/', '') }}
+      args:
+        executable: /bin/bash
+
+    - name: Start OSD after BlueFS DB migration
+      ansible.builtin.systemd:
+        name: "ceph-osd@{{ ceph_optane_osd.osd_id }}"
+        state: started
+  rescue:
+    - name: Try to restart OSD after failed DB migration
+      ansible.builtin.systemd:
+        name: "ceph-osd@{{ ceph_optane_osd.osd_id }}"
+        state: started
+
+    - name: Fail DB migration after OSD restart attempt
+      ansible.builtin.fail:
+        msg: "DB migration failed for osd.{{ ceph_optane_osd.osd_id }}; attempted to restart the OSD."

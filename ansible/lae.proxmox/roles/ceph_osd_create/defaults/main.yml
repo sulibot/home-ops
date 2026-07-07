@@ -1,0 +1,6 @@
+---
+ceph_osd_create_require_clean: true
+ceph_osd_create_execute: false
+ceph_osd_create_enforce_class: true
+ceph_osd_create_enforce_crush: true
+ceph_osd_create_enforce_db: false

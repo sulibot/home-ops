@@ -1,0 +1,108 @@
+---
+- name: Validate canonical Ceph OSD inventory exists
+  ansible.builtin.assert:
+    that:
+      - ceph_osds is defined
+      - ceph_osds | length > 0
+    fail_msg: "ceph_osds must be defined for {{ inventory_hostname }}"
+
+- name: Check whether Ceph is safe for layout-changing work
+  ansible.builtin.shell: |
+    set -o pipefail
+    bad_pg_count="$(
+      ceph pg dump pgs_brief 2>/dev/null |
+        awk '/degraded|undersized|remapped|backfill|recover|peering|stale|incomplete/ {c++} END {print c+0}'
+    )"
+    osd_stat="$(ceph osd stat)"
+    total_osds="$(printf '%s\n' "$osd_stat" | awk '{print $1}')"
+    up_osds="$(printf '%s\n' "$osd_stat" | sed -n 's/.*: \([0-9][0-9]*\) up.*/\1/p')"
+    in_osds="$(printf '%s\n' "$osd_stat" | sed -n 's/.*up.* \([0-9][0-9]*\) in.*/\1/p')"
+    test "$bad_pg_count" -eq 0
+    test "$total_osds" = "$up_osds"
+    test "$total_osds" = "$in_osds"
+  args:
+    executable: /bin/bash
+  register: ceph_layout_clean_check
+  changed_when: false
+  failed_when: false
+
+- name: Refuse layout work unless the cluster is clean
+  ansible.builtin.assert:
+    that:
+      - ceph_layout_clean_check.rc == 0
+    fail_msg: "Ceph is not fully active+clean/up/in; fix health before OSD layout changes."
+  when: ceph_layout_require_clean | bool
+
+- name: Check declared DB devices exist
+  ansible.builtin.stat:
+    path: "{{ item.db_device }}"
+  register: ceph_layout_db_stats
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd.{{ item.osd_id }} {{ item.db_device }}"
+  when:
+    - item.db_device is defined
+    - item.expected_bluefs_db | default(false) | bool
+
+- name: Validate declared DB devices exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: "{{ item.item.db_device }} for osd.{{ item.item.osd_id }} does not exist."
+  loop: "{{ ceph_layout_db_stats.results | default([]) }}"
+  loop_control:
+    label: "osd.{{ item.item.osd_id }}"
+  when:
+    - item.skipped is not defined
+
+- name: Read live OSD metadata
+  ansible.builtin.command: "ceph osd metadata {{ item.osd_id }} --format json"
+  register: ceph_layout_metadata
+  changed_when: false
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd.{{ item.osd_id }}"
+
+- name: Report live OSD DB status
+  ansible.builtin.debug:
+    msg: >-
+      osd.{{ item.item.osd_id }} class={{ item.item.class }}
+      expected_db={{ item.item.expected_bluefs_db | default(false) }}
+      live_db={{ (item.stdout | from_json).bluefs_dedicated_db | default('unknown') }}
+      live_wal={{ (item.stdout | from_json).bluefs_dedicated_wal | default('unknown') }}
+      live_devices={{ (item.stdout | from_json).devices | default('unknown') }}
+  loop: "{{ ceph_layout_metadata.results }}"
+  loop_control:
+    label: "osd.{{ item.item.osd_id }}"
+
+- name: Enforce expected BlueStore DB attachment
+  ansible.builtin.assert:
+    that:
+      - ((item.stdout | from_json).bluefs_dedicated_db | string) == '1'
+    fail_msg: "osd.{{ item.item.osd_id }} is expected to use dedicated DB but live metadata says it does not."
+  loop: "{{ ceph_layout_metadata.results }}"
+  loop_control:
+    label: "osd.{{ item.item.osd_id }}"
+  when:
+    - ceph_layout_enforce_db | bool
+    - item.item.expected_bluefs_db | default(false) | bool
+
+- name: Validate OSD lives under declared drive bucket
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph osd tree --format json |
+      jq -e --arg osd "osd.{{ item.osd_id }}" --arg bucket "{{ item.drive_bucket }}" '
+        .nodes as $nodes
+        | ($nodes[] | select(.name == $osd).id) as $osd_id
+        | ($nodes[] | select(.name == $bucket).children) as $children
+        | ($children | index($osd_id)) != null
+      '
+  args:
+    executable: /bin/bash
+  changed_when: false
+  loop: "{{ ceph_osds }}"
+  loop_control:
+    label: "osd.{{ item.osd_id }} -> {{ item.drive_bucket | default('no-drive-bucket') }}"
+  when:
+    - ceph_layout_enforce_crush | bool
+    - item.drive_bucket is defined

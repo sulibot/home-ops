@@ -1,0 +1,4 @@
+---
+ceph_layout_require_clean: true
+ceph_layout_enforce_db: false
+ceph_layout_enforce_crush: true

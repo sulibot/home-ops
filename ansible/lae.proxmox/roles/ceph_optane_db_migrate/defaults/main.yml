@@ -1,0 +1,3 @@
+---
+ceph_optane_db_migrate_execute: false
+ceph_optane_db_migrate_require_clean: true
