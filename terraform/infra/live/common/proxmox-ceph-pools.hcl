@@ -5,6 +5,18 @@ locals {
   #
   # Keep managed=false until the existing live pool has been imported.
   ceph_pools = {
+    ".mgr" = {
+      managed           = false
+      application       = "mgr"
+      size              = 3
+      min_size          = 2
+      pg_num            = 1
+      crush_rule        = "replicated_nvme"
+      pg_autoscale_mode = "on"
+      owner             = "ceph"
+      notes             = "Ceph manager system pool. Cataloged for inventory only; do not manage with Terraform."
+    }
+
     "rbd-vm" = {
       managed           = true
       application       = "rbd"
@@ -86,6 +98,8 @@ locals {
     "content_ec" = {
       managed           = false
       application       = "cephfs"
+      size              = 6
+      min_size          = 4
       erasure_coding    = "k=4,m=2,profile=ec_4_2_profile,device-class=hdd,failure-domain=drive"
       pg_num            = 256
       crush_rule        = "ec_4_2_host_then_drive"
