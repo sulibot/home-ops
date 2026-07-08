@@ -882,6 +882,12 @@ inputs = {
       comment   = "Gateway - Auto from PD"
     },
     {
+      interface = "vlan104"
+      address   = "fd00:104::fffe/64"
+      advertise = true
+      comment   = "cluster-104 home-control IPv6"
+    },
+    {
       interface = "vlan200"
       address   = "fd00:200::fffe/64"
       advertise = true

@@ -8,7 +8,7 @@ As of 2026-07-07, the stack had zero Terraform state entries and the plan wanted
 to create 207 resources. That was an adoption gap, not a safe apply plan.
 
 As of 2026-07-08, the first read-only import batches are complete. Do not run
-`terragrunt apply` yet: the remaining plan still contains 169 creates and some
+`terragrunt apply` yet: the remaining plan still contains 154 creates and some
 resource groups need import or modeling decisions before adoption.
 
 Planned create count by resource type:
@@ -48,6 +48,8 @@ Current import progress:
 | Count | Imported resource type |
 | ---: | --- |
 | 15 | `routeros_interface_list_member` |
+| 9 | `routeros_ip_address` |
+| 8 | `routeros_ipv6_address` |
 | 7 | system/IP/IPv6/SNMP singleton resources |
 | 7 | `routeros_interface_vlan` |
 | 7 | `routeros_bridge_port` |
@@ -64,8 +66,6 @@ Current remaining create count by resource type:
 | 16 | `routeros_ip_firewall_filter` |
 | 8 | `routeros_ipv6_dhcp_client` |
 | 8 | `routeros_ip_service` |
-| 8 | `routeros_ip_address` |
-| 7 | `routeros_ipv6_address` |
 | 6 | `routeros_routing_ospf_interface_template` |
 | 6 | `routeros_routing_filter_rule` |
 | 6 | `routeros_ipv6_firewall_addr_list` |
