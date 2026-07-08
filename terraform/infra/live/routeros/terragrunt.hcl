@@ -408,11 +408,11 @@ inputs = {
     { list = "LAN", interface = "lo" },
     { list = "LAN", interface = "pve02[ether3]" },
     { list = "LAN", interface = "talos01[ether5]" },
-    { list = "LAN", interface = "vlan104" },
     { list = "LAN", interface = "vlan200" },
     { list = "LAN", interface = "vlan1" },
     { list = "LAN", interface = "lo_dns" },
     { list = "LAN", interface = "wifi[ether6]" },
+    { list = "LAN", interface = "vlan104" },
   ]
 
   # ── DNS GLOBAL SETTINGS ──────────────────────────────────────────────────────
@@ -1049,10 +1049,10 @@ inputs = {
   # Only records with ttl=5m are managed here.
   # Records with ttl=0s are owned by Kubernetes external-dns — do NOT add them.
   dns_records = concat([
-    { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:10::1", ttl = "5m" },
-    { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
-    { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
-    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by luna01" },
+    { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::1", ttl = "5m" },
+    { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::2", ttl = "5m" },
+    { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::3", ttl = "5m" },
+    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by talos01" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },

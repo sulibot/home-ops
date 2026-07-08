@@ -8,8 +8,8 @@ As of 2026-07-07, the stack had zero Terraform state entries and the plan wanted
 to create 207 resources. That was an adoption gap, not a safe apply plan.
 
 As of 2026-07-08, the first read-only import batches are complete. Do not run
-`terragrunt apply` yet: the remaining plan still contains 171 creates and some
-of those represent live-vs-repo drift that should be reconciled before adoption.
+`terragrunt apply` yet: the remaining plan still contains 169 creates and some
+resource groups need import or modeling decisions before adoption.
 
 Planned create count by resource type:
 
@@ -47,10 +47,10 @@ Current import progress:
 
 | Count | Imported resource type |
 | ---: | --- |
-| 13 | `routeros_interface_list_member` |
+| 15 | `routeros_interface_list_member` |
 | 7 | system/IP/IPv6/SNMP singleton resources |
-| 6 | `routeros_interface_vlan` |
-| 5 | `routeros_bridge_port` |
+| 7 | `routeros_interface_vlan` |
+| 7 | `routeros_bridge_port` |
 | 2 | `routeros_bridge` |
 | 2 | `routeros_interface_list` |
 | 1 | `routeros_snmp_community` |
@@ -71,7 +71,7 @@ Current remaining create count by resource type:
 | 6 | `routeros_ipv6_firewall_addr_list` |
 | 6 | `routeros_ip_pool` |
 | 6 | `routeros_ip_dhcp_server_option` |
-| 6 | `routeros_bridge_vlan` |
+| 7 | `routeros_bridge_vlan` |
 | 5 | `routeros_ip_dhcp_server_option_set` |
 | 4 | `routeros_ipv6_neighbor_discovery` |
 | 4 | `routeros_ip_firewall_addr_list` |
@@ -80,8 +80,7 @@ Current remaining create count by resource type:
 | 4 | `routeros_ip_dhcp_server` |
 | 2 | `routeros_routing_ospf_instance` |
 | 2 | `routeros_routing_ospf_area` |
-| 2 | `routeros_bridge_port` |
-| 1 each | DNS settings, one interface-list member, BGP template/connection, NAT |
+| 1 each | DNS settings, BGP template/connection, NAT |
 
 Recommended adoption order:
 
@@ -106,10 +105,12 @@ Operational notes:
 - `routeros_ip_service` imports did not stick by service name or internal ID,
   even though the provider found candidate IDs. Leave management services out of
   apply plans until this provider/import behavior is resolved.
-- Live L2 inventory has drifted from Terraform: live uses `talos01[ether5]`,
-  `jetkvm-talos01[ether7]`, and VLAN 104, while Terraform still expects
-  `luna01[ether5]`, `ilom-pve03[ether7]`, and no VLAN 104. Reconcile this before
-  importing bridge VLAN membership or applying the router stack.
+- Source L2 inventory was reconciled on 2026-07-08 to match live
+  `talos01[ether5]`, `jetkvm-talos01[ether7]`, and VLAN 104.
+- Bridge VLAN membership still needs care. Live VLAN 1 exists as two RouterOS
+  rows, while the current module keys bridge VLANs by VLAN ID. Decide whether to
+  normalize live VLAN 1 into one row or change the module key before importing
+  bridge VLAN membership.
 - The Proxmox host `AAAA` records were manually corrected on 2026-07-07 to point
   at infra loopbacks `fd00:0:0:ffff::1/2/3`; the Terraform desired config now
   matches that.
