@@ -8,7 +8,7 @@ As of 2026-07-07, the stack had zero Terraform state entries and the plan wanted
 to create 207 resources. That was an adoption gap, not a safe apply plan.
 
 As of 2026-07-08, the first read-only import batches are complete. Do not run
-`terragrunt apply` yet: the remaining plan still contains 154 creates and some
+`terragrunt apply` yet: the remaining plan still contains 129 creates and some
 resource groups need import or modeling decisions before adoption.
 
 Planned create count by resource type:
@@ -51,8 +51,13 @@ Current import progress:
 | 9 | `routeros_ip_address` |
 | 8 | `routeros_ipv6_address` |
 | 7 | system/IP/IPv6/SNMP singleton resources |
+| 7 | `routeros_ip_pool` |
 | 7 | `routeros_interface_vlan` |
 | 7 | `routeros_bridge_port` |
+| 6 | `routeros_ip_dhcp_server_option` |
+| 5 | `routeros_ip_dhcp_server_option_set` |
+| 5 | `routeros_ip_dhcp_server_network` |
+| 5 | `routeros_ip_dhcp_server` |
 | 2 | `routeros_bridge` |
 | 2 | `routeros_interface_list` |
 | 1 | `routeros_snmp_community` |
@@ -66,18 +71,13 @@ Current remaining create count by resource type:
 | 16 | `routeros_ip_firewall_filter` |
 | 8 | `routeros_ipv6_dhcp_client` |
 | 8 | `routeros_ip_service` |
+| 7 | `routeros_bridge_vlan` |
 | 6 | `routeros_routing_ospf_interface_template` |
 | 6 | `routeros_routing_filter_rule` |
 | 6 | `routeros_ipv6_firewall_addr_list` |
-| 6 | `routeros_ip_pool` |
-| 6 | `routeros_ip_dhcp_server_option` |
-| 7 | `routeros_bridge_vlan` |
-| 5 | `routeros_ip_dhcp_server_option_set` |
 | 4 | `routeros_ipv6_neighbor_discovery` |
 | 4 | `routeros_ip_firewall_addr_list` |
-| 4 | `routeros_ip_dhcp_server_network` |
 | 4 | `routeros_ip_dhcp_server_lease` |
-| 4 | `routeros_ip_dhcp_server` |
 | 2 | `routeros_routing_ospf_instance` |
 | 2 | `routeros_routing_ospf_area` |
 | 1 each | DNS settings, BGP template/connection, NAT |
@@ -111,6 +111,10 @@ Operational notes:
   rows, while the current module keys bridge VLANs by VLAN ID. Decide whether to
   normalize live VLAN 1 into one row or change the module key before importing
   bridge VLAN membership.
+- DHCP pools, options, option sets, servers, and networks are adopted. DHCP
+  leases are not adopted yet: live has moved/changed some static assignments
+  compared with Terraform, and the Talos PXE lease differs from the generated
+  desired lease.
 - The Proxmox host `AAAA` records were manually corrected on 2026-07-07 to point
   at infra loopbacks `fd00:0:0:ffff::1/2/3`; the Terraform desired config now
   matches that.

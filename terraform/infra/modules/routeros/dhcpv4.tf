@@ -52,7 +52,7 @@ resource "routeros_ip_dhcp_server" "servers" {
   bootp_lease_time          = each.value.bootp_lease_time
   bootp_support             = each.value.bootp_support
   client_mac_limit          = each.value.client_mac_limit
-  comment                   = each.value.comment
+  comment                   = each.value.comment != "" ? each.value.comment : null
   conflict_detection        = each.value.conflict_detection
   delay_threshold           = each.value.delay_threshold
   dhcp_option_set           = each.value.dhcp_option_set

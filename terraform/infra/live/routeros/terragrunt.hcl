@@ -480,6 +480,7 @@ inputs = {
     { name = "dhcp_pool_vlan104", ranges = ["10.104.0.230-10.104.0.250"] },
     { name = "dhcp_pool16", ranges = ["10.0.9.200-10.0.9.253"] },
     { name = "dhcp_pool_vlan200", ranges = ["10.200.0.201-10.200.0.250"] },
+    { name = "dhcp_pool_vlan104", ranges = ["10.104.0.230-10.104.0.250"] },
   ]
 
   ipv4_dhcp_options = [
