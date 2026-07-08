@@ -5,7 +5,7 @@ terraform {
   required_providers {
     external = { source = "hashicorp/external", version = "~> 2.2" }
     null     = { source = "hashicorp/null", version = "~> 3.0" }
-    proxmox  = { source = "bpg/proxmox", version = "~> 0.98.0" }
+    proxmox  = { source = "bpg/proxmox", version = ">= 0.98.0, < 1.0.0" }
     routeros = { source = "terraform-routeros/routeros", version = "~> 1.99.0" }
     sops     = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
@@ -29,6 +29,7 @@ variable "proxmox" {
     vm_datastore = string
     node_primary = string
     nodes        = list(string)
+    migrate      = optional(bool, true)
   })
 }
 
@@ -87,7 +88,7 @@ variable "proxmox_ping_timeout_seconds" {
 }
 
 variable "proxmox_ha" {
-  description = "Optional Proxmox HA group configuration applied via ha-manager over SSH."
+  description = "Deprecated compatibility input. Proxmox HA is managed by terraform/infra/live/common/proxmox-ha."
   type = object({
     enabled         = optional(bool, false)
     group_name      = optional(string)
@@ -416,6 +417,7 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     local.hypervisors[each.value.index % length(local.hypervisors)],
     var.proxmox.node_primary
   )
+  migrate = var.proxmox.migrate
 
   # VM lifecycle management
   started         = true  # Ensure VM starts after creation
@@ -608,41 +610,14 @@ resource "null_resource" "proxmox_ha_rule" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -euo pipefail
-
-      SSH_HOST="${self.triggers.ssh_host}"
-      SSH_USER="${self.triggers.ssh_user}"
-      SSH_PORT="${self.triggers.ssh_port}"
-      SSH_KEY="$HOME/.ssh/id_ed25519"
-
-      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
-        set -euo pipefail
-
-        RULE_NAME="${self.triggers.rule_name}"
-        RULE_NODES="${self.triggers.nodes}"
-        RULE_STRICT="${self.triggers.strict}"
-        RULE_RESOURCES="${self.triggers.resources}"
-
-        if ha-manager rules list | awk 'NR > 1 {print $1}' | grep -qx "$RULE_NAME"; then
-          ha-manager rules set node-affinity "$RULE_NAME" --resources "$RULE_RESOURCES" --nodes "$RULE_NODES" --strict "$RULE_STRICT"
-        else
-          ha-manager rules add node-affinity "$RULE_NAME" --resources "$RULE_RESOURCES" --nodes "$RULE_NODES" --strict "$RULE_STRICT"
-        fi
-      ENDSSH
+      echo "cluster_core legacy Proxmox HA shim is disabled; BPG proxmox-ha stack owns '${self.triggers.rule_name}'."
     EOT
   }
 
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
-      set -euo pipefail
-
-      SSH_HOST="${self.triggers.ssh_host}"
-      SSH_USER="${self.triggers.ssh_user}"
-      SSH_PORT="${self.triggers.ssh_port}"
-      SSH_KEY="$HOME/.ssh/id_ed25519"
-
-      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "ha-manager rules remove '${self.triggers.rule_name}' || true"
+      echo "cluster_core legacy Proxmox HA shim destroy is disabled; preserving BPG-owned HA rule '${self.triggers.rule_name}'."
     EOT
   }
 
@@ -666,42 +641,14 @@ resource "null_resource" "proxmox_ha_membership" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      set -euo pipefail
-
-      SSH_HOST="${self.triggers.ssh_host}"
-      SSH_USER="${self.triggers.ssh_user}"
-      SSH_PORT="${self.triggers.ssh_port}"
-      SSH_KEY="$HOME/.ssh/id_ed25519"
-
-      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'ENDSSH'
-        set -euo pipefail
-
-        SID="${self.triggers.sid}"
-        STATE="${self.triggers.state}"
-        FAILBACK="${self.triggers.failback}"
-        MAX_RESTART="${self.triggers.max_restart}"
-        MAX_RELOCATE="${self.triggers.max_relocate}"
-
-        if ha-manager config | awk 'NF > 0 {print $1}' | grep -qx "$SID"; then
-          ha-manager set "$SID" --state "$STATE" --failback "$FAILBACK" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
-        else
-          ha-manager add "$SID" --state "$STATE" --failback "$FAILBACK" --max_restart "$MAX_RESTART" --max_relocate "$MAX_RELOCATE"
-        fi
-      ENDSSH
+      echo "cluster_core legacy Proxmox HA shim is disabled; BPG proxmox-ha stack owns '${self.triggers.sid}'."
     EOT
   }
 
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
-      set -euo pipefail
-
-      SSH_HOST="${self.triggers.ssh_host}"
-      SSH_USER="${self.triggers.ssh_user}"
-      SSH_PORT="${self.triggers.ssh_port}"
-      SSH_KEY="$HOME/.ssh/id_ed25519"
-
-      ssh -i "$SSH_KEY" -o IdentityAgent=none -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "ha-manager remove '${self.triggers.sid}' || true"
+      echo "cluster_core legacy Proxmox HA shim destroy is disabled; preserving BPG-owned HA resource '${self.triggers.sid}'."
     EOT
   }
 

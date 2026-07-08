@@ -63,15 +63,21 @@ variable "rt_import" {
   default     = "65000:1"
 }
 
+variable "apply_sdn_config" {
+  description = "Create the Proxmox SDN applier resource. Leave false for adoption/no-op plans; set true only when intentionally pushing SDN changes."
+  type        = bool
+  default     = false
+}
+
 variable "vnets" {
   description = "Map of VNets to create with their configuration"
   type = map(object({
-    alias       = string
-    vxlan_id    = number
-    subnet      = string
-    gateway     = string
-    subnet_v4   = optional(string)
-    gateway_v4  = optional(string)
+    alias      = string
+    vxlan_id   = number
+    subnet     = string
+    gateway    = string
+    subnet_v4  = optional(string)
+    gateway_v4 = optional(string)
   }))
 
   validation {

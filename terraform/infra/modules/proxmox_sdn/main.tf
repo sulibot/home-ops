@@ -2,13 +2,13 @@
 # Creates EVPN zone, VNets, and subnets for software-defined networking
 
 # EVPN Zone - uses FRR BGP on each PVE host
-resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
-  id         = var.zone_id
-  controller = "frr" # FRR controller running on each PVE host
-  vrf_vxlan  = var.vrf_vxlan
-  mtu        = var.mtu
-  nodes      = var.nodes
-  advertise_subnets = var.advertise_subnets
+resource "proxmox_sdn_zone_evpn" "main" {
+  id                         = var.zone_id
+  controller                 = "frr" # FRR controller running on each PVE host
+  vrf_vxlan                  = var.vrf_vxlan
+  mtu                        = var.mtu
+  nodes                      = var.nodes
+  advertise_subnets          = var.advertise_subnets
   disable_arp_nd_suppression = var.disable_arp_nd_suppression
 
   # Exit nodes for internet/external access via SNAT
@@ -34,76 +34,80 @@ resource "proxmox_virtual_environment_sdn_zone_evpn" "main" {
 }
 
 # VNets - one per cluster/workload type
-resource "proxmox_virtual_environment_sdn_vnet" "vnets" {
+resource "proxmox_sdn_vnet" "vnets" {
   for_each = var.vnets
 
   id    = each.key
-  zone  = proxmox_virtual_environment_sdn_zone_evpn.main.id
+  zone  = proxmox_sdn_zone_evpn.main.id
   alias = each.value.alias
   tag   = each.value.vxlan_id # VXLAN ID
 }
 
 # IPv4 Subnets (optional)
-resource "proxmox_virtual_environment_sdn_subnet" "ipv4_subnets" {
+resource "proxmox_sdn_subnet" "ipv4_subnets" {
   for_each = {
     for k, v in var.vnets : k => v
     if v.subnet_v4 != null
   }
 
-  vnet    = proxmox_virtual_environment_sdn_vnet.vnets[each.key].id
+  vnet    = proxmox_sdn_vnet.vnets[each.key].id
   cidr    = each.value.subnet_v4
   gateway = each.value.gateway_v4
   snat    = false
 
-  depends_on = [proxmox_virtual_environment_sdn_vnet.vnets]
+  depends_on = [proxmox_sdn_vnet.vnets]
 }
 
 # ULA Subnets - Stable internal IPv6 addressing
 # These addresses persist even if ISP changes delegated prefix
-resource "proxmox_virtual_environment_sdn_subnet" "ula_subnets" {
+resource "proxmox_sdn_subnet" "ula_subnets" {
   for_each = var.vnets
 
-  vnet    = proxmox_virtual_environment_sdn_vnet.vnets[each.key].id
+  vnet    = proxmox_sdn_vnet.vnets[each.key].id
   cidr    = each.value.subnet
   gateway = each.value.gateway
-  snat    = false  # No SNAT - VMs use their real GUA addresses
+  snat    = false # No SNAT - VMs use their real GUA addresses
 
-  depends_on = [proxmox_virtual_environment_sdn_vnet.vnets]
+  depends_on = [proxmox_sdn_vnet.vnets]
 }
 
 # GUA Subnets - Internet-routable IPv6 using AT&T delegated prefixes
 # VMs get both ULA (stable) and GUA (internet-routable) addresses via SLAAC
-resource "proxmox_virtual_environment_sdn_subnet" "gua_subnets" {
+resource "proxmox_sdn_subnet" "gua_subnets" {
   for_each = var.delegated_prefixes
 
-  vnet    = proxmox_virtual_environment_sdn_vnet.vnets[each.key].id
+  vnet    = proxmox_sdn_vnet.vnets[each.key].id
   cidr    = each.value.prefix
   gateway = each.value.gateway
   snat    = false
 
-  depends_on = [proxmox_virtual_environment_sdn_vnet.vnets]
+  depends_on = [proxmox_sdn_vnet.vnets]
 }
 
 # Applier - triggers SDN configuration application
-resource "proxmox_virtual_environment_sdn_applier" "main" {
+resource "proxmox_sdn_applier" "main" {
+  count = var.apply_sdn_config ? 1 : 0
+
   lifecycle {
     replace_triggered_by = [
-      proxmox_virtual_environment_sdn_zone_evpn.main,
-      proxmox_virtual_environment_sdn_vnet.vnets,
-      proxmox_virtual_environment_sdn_subnet.ipv4_subnets,
-      proxmox_virtual_environment_sdn_subnet.ula_subnets,
-      proxmox_virtual_environment_sdn_subnet.gua_subnets,
+      proxmox_sdn_zone_evpn.main,
+      proxmox_sdn_vnet.vnets,
+      proxmox_sdn_subnet.ipv4_subnets,
+      proxmox_sdn_subnet.ula_subnets,
+      proxmox_sdn_subnet.gua_subnets,
     ]
   }
 }
 
 # Reminder - notify user to run Ansible after SDN changes
 resource "null_resource" "ansible_reminder_trigger" {
-  depends_on = [proxmox_virtual_environment_sdn_applier.main]
+  count = var.apply_sdn_config ? 1 : 0
+
+  depends_on = [proxmox_sdn_applier.main]
 
   triggers = {
     # Re-run this provisioner whenever the SDN applier resource is replaced.
-    sdn_applier_id = proxmox_virtual_environment_sdn_applier.main.id
+    sdn_applier_id = proxmox_sdn_applier.main[0].id
   }
 
   provisioner "local-exec" {

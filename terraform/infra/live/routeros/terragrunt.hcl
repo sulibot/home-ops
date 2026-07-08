@@ -1052,11 +1052,7 @@ inputs = {
     { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:10::1", ttl = "5m" },
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:10::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:10::3", ttl = "5m" },
-    { name = "jetkvm-talos01.sulibot.com", type = "A", address = "10.10.0.53", ttl = "5m", comment = "JetKVM for talos01 on ether7" },
-    { name = "cluster-104.sulibot.com", type = "AAAA", address = "fd00:104::4", ttl = "5m", comment = "cluster-104 Kubernetes endpoint" },
-    { name = "cluster-104.sulibot.com", type = "A", address = "10.104.0.4", ttl = "5m", comment = "cluster-104 Kubernetes endpoint" },
-    { name = "talos01-cluster104.sulibot.com", type = "AAAA", address = "fd00:104::4", ttl = "5m", comment = "talos01 cluster-104 address" },
-    { name = "talos01-cluster104.sulibot.com", type = "A", address = "10.104.0.4", ttl = "5m", comment = "talos01 cluster-104 address" },
+    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by luna01" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },

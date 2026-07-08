@@ -21,6 +21,7 @@ variable "proxmox" {
     node_name    = string
     datastore_id = string
     vm_datastore = string
+    migrate      = optional(bool, true)
   })
 }
 

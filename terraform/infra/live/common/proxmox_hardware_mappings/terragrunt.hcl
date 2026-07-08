@@ -74,23 +74,7 @@ locals {
     }
   }
 
-  # ---------------------------------------------------------------------------
-  # USB Mappings for Home Assistant Zigbee/Thread Radio
-  # ---------------------------------------------------------------------------
-  usb_mappings = [
-    {
-      name    = "sonoff-zigbee"
-      comment = "Sonoff ZBDongle-E Thread/Matter Radio (1a86:55d4)"
-      maps = [
-        # Map by Vendor:Product ID. This allows Proxmox to find the device
-        # regardless of which USB port it's plugged into on the specified node.
-        # Check `lsusb` on your PVE hosts to confirm the ID.
-        { node = "pve01", id = "1a86:55d4" },
-        { node = "pve02", id = "1a86:55d4" },
-        { node = "pve03", id = "1a86:55d4" },
-      ]
-    }
-  ]
+  usb_mappings = []
 
   usb_mapping_ids = {
     for mapping in local.usb_mappings :

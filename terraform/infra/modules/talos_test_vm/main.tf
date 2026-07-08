@@ -280,6 +280,7 @@ resource "proxmox_virtual_environment_vm" "talos" {
   vm_id     = var.vm_id
   name      = var.vm_name
   node_name = var.proxmox.node_name
+  migrate   = var.proxmox.migrate
 
   started         = true
   stop_on_destroy = true

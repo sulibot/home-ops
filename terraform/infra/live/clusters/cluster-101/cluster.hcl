@@ -26,6 +26,7 @@ locals {
     enabled      = true
     group_name   = "sol-k8s"
     restricted   = true
+    nodes        = ["pve01", "pve02"]
     nofailback   = true
     state        = "started"
     max_restart  = 3

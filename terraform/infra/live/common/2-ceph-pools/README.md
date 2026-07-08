@@ -3,9 +3,9 @@
 This stack is the Terraform boundary for Proxmox/Ceph pool objects managed through
 the `bpg/proxmox` provider.
 
-This stack uses the latest pre-1.0 `bpg/proxmox` provider because
-`proxmox_ceph_pool` is not available in the older `~> 0.98.0` pin used by some
-legacy modules.
+This stack uses the shared latest pre-1.0 `bpg/proxmox` provider constraint
+because `proxmox_ceph_pool` requires a newer provider than the older 0.98-only
+pin previously used by some stacks.
 
 It intentionally does not manage:
 

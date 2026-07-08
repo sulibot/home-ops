@@ -9,7 +9,7 @@ terraform {
     }
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.98.0"
+      version = ">= 0.98.0, < 1.0.0"
     }
     sops = {
       source  = "carlpett/sops"
@@ -170,6 +170,6 @@ output "talos_version" {
 }
 
 output "kubernetes_version" {
-  value       = "v1.31.4"  # Default K8s version for Talos v1.8.2
+  value       = "v1.31.4" # Default K8s version for Talos v1.8.2
   description = "Recommended Kubernetes version for this Talos version"
 }

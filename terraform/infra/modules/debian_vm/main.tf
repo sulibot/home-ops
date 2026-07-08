@@ -1,6 +1,6 @@
 terraform {
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.98.0" }
+    proxmox = { source = "bpg/proxmox", version = ">= 0.98.0, < 1.0.0" }
     null    = { source = "hashicorp/null", version = "~> 3.0" }
     sops    = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
@@ -20,13 +20,13 @@ locals {
 
   # Cloud-init network config
   network_config = templatefile("${path.module}/templates/cloud-init-network.yaml.tpl", {
-    network      = var.network
-    dns_servers  = var.dns_servers
+    network     = var.network
+    dns_servers = var.dns_servers
   })
 }
 
 # Download Debian cloud image to Proxmox
-resource "proxmox_virtual_environment_download_file" "debian_image" {
+resource "proxmox_download_file" "debian_image" {
   content_type = "import"
   datastore_id = var.proxmox.datastore_id
   node_name    = var.proxmox.node_name
@@ -65,7 +65,7 @@ resource "proxmox_virtual_environment_file" "cloud_init_network" {
 # Debian VM
 resource "proxmox_virtual_environment_vm" "debian" {
   depends_on = [
-    proxmox_virtual_environment_download_file.debian_image,
+    proxmox_download_file.debian_image,
     proxmox_virtual_environment_file.cloud_init_user_data,
     proxmox_virtual_environment_file.cloud_init_network
   ]
@@ -73,6 +73,7 @@ resource "proxmox_virtual_environment_vm" "debian" {
   vm_id     = var.vm_id
   name      = var.vm_name
   node_name = var.proxmox.node_name
+  migrate   = var.proxmox.migrate
 
   started         = true
   stop_on_destroy = true
@@ -100,7 +101,7 @@ resource "proxmox_virtual_environment_vm" "debian" {
   # Boot disk - clone from cloud image
   disk {
     datastore_id = var.proxmox.vm_datastore
-    file_id      = proxmox_virtual_environment_download_file.debian_image.id
+    file_id      = proxmox_download_file.debian_image.id
     interface    = "scsi0"
     size         = var.vm_resources.disk_gb
     cache        = "none"

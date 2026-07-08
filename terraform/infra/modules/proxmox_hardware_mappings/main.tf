@@ -4,7 +4,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.97"
+      version = ">= 0.98.0, < 1.0.0"
     }
     sops = {
       source  = "carlpett/sops"
@@ -14,7 +14,7 @@ terraform {
 }
 
 # Create PCI hardware mappings for GPU passthrough
-resource "proxmox_virtual_environment_hardware_mapping_pci" "pci" {
+resource "proxmox_hardware_mapping_pci" "pci" {
   for_each = { for mapping in var.pci_mappings : mapping.name => mapping }
 
   name             = each.value.name
@@ -34,7 +34,7 @@ resource "proxmox_virtual_environment_hardware_mapping_pci" "pci" {
 }
 
 # Create USB hardware mappings for device passthrough
-resource "proxmox_virtual_environment_hardware_mapping_usb" "usb" {
+resource "proxmox_hardware_mapping_usb" "usb" {
   for_each = { for mapping in var.usb_mappings : mapping.name => mapping }
 
   name    = each.value.name

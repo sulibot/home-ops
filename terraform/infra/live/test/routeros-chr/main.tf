@@ -3,7 +3,7 @@ terraform {
   backend "local" {}
 
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.98.0" }
+    proxmox = { source = "bpg/proxmox", version = ">= 0.98.0, < 1.0.0" }
     sops    = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
 }

@@ -1,6 +1,6 @@
 terraform {
   required_providers {
-    proxmox = { source = "bpg/proxmox", version = "~> 0.98.0" }
+    proxmox = { source = "bpg/proxmox", version = ">= 0.98.0, < 1.0.0" }
     null    = { source = "hashicorp/null", version = "~> 3.0" }
   }
 }
@@ -9,13 +9,13 @@ locals {
   node_names = toset([for c in values(var.containers) : c.node_name])
 
   template_file_ids = var.template.download ? {
-    for name, c in var.containers : name => proxmox_virtual_environment_download_file.lxc_template[c.node_name].id
+    for name, c in var.containers : name => proxmox_download_file.lxc_template[c.node_name].id
     } : {
     for name, _ in var.containers : name => var.template.file_id
   }
 }
 
-resource "proxmox_virtual_environment_download_file" "lxc_template" {
+resource "proxmox_download_file" "lxc_template" {
   for_each = var.template.download ? local.node_names : []
 
   content_type = "vztmpl"
