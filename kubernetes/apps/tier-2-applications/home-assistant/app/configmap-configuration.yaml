@@ -317,7 +317,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_4
               data:
                 brightness: "{{ brightness | default(none) }}"
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
             set_level:
               action: light.turn_on
               target:
@@ -327,7 +327,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_4
               data:
                 brightness: "{{ brightness }}"
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
             turn_off:
               action: light.turn_off
               target:
@@ -336,7 +336,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_3
                   - light.kajplats_e26_ws_globe_1600lm_4
               data:
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
           - name: Master Lights
             unique_id: master_lights_group
             state: >-
@@ -355,7 +355,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_5
               data:
                 brightness: "{{ brightness | default(none) }}"
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
             set_level:
               action: light.turn_on
               target:
@@ -364,7 +364,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_5
               data:
                 brightness: "{{ brightness }}"
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
             turn_off:
               action: light.turn_off
               target:
@@ -372,7 +372,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm
                   - light.kajplats_e26_ws_globe_1600lm_5
               data:
-                transition: "{{ transition | default(none) }}"
+                transition: "{{ transition | default(0, true) | float }}"
 
     light:
       - platform: group

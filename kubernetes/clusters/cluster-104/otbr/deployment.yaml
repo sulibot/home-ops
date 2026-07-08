@@ -73,6 +73,7 @@ spec:
                         ot-ctl dataset commit active || true
                         ot-ctl ifconfig up || true
                         ot-ctl thread start || true
+                        ot-ctl srp server auto enable || true
                         exit 0
                       fi
                       sleep 2

@@ -184,6 +184,61 @@ Current validation after the restart:
   reachability with stale/no Thread addresses, so this remains a device
   reachability problem rather than a Home Assistant group mapping problem.
 
+On `2026-07-06`, Bedroom was checked again after the physical lights were
+reported on but unavailable in Home Assistant. Current state:
+
+- `light.bedroom_switch` is available and on.
+- `light.bedroom_lights`, `light.sofa`, `light.standing_lamp`, and the four
+  Bedroom KAJPLATS bulbs are unavailable in Home Assistant.
+- Matter Server still knows the bulb nodes (`@1:10`, `@1:11`, `@1:19`,
+  `@1:1b`), but all four were unavailable and failed reads with `Operation
+  aborted`.
+- The cached address hints for peers `16`, `17`, `25`, and `27` still pointed
+  at stale `fdb7:*` Thread addresses. They were backed up to
+  `/data/server-1-fff1/address-backup-bedroom-stale-fdb7-20260707T002047Z`
+  and removed.
+- After restarting `matter-server`, the stale address hints stayed removed, but
+  Matter Server still reported `Resolving (no address known)` for the Bedroom
+  bulb nodes and did not rediscover fresh addresses.
+- OTBR remained healthy as a router on the current Thread network, with extended
+  PAN ID `c0d45ec1c7111ca2`, PAN ID `0xbd99`, channel `20`, mesh-local prefix
+  `fdf1:49b9:b55e:5844::/64`, and infrastructure prefix
+  `fd09:7aa3:6ab9:0::/64`.
+
+Remaining Bedroom issue: the bulbs are electrically on, but not discoverable to
+the Matter fabric. The next operational step is to physically power-cycle the
+Bedroom bulbs / fixture circuit so the bulbs reboot and re-advertise on Thread,
+then re-check Matter Server. If they still do not appear with fresh addresses,
+the next repair is to re-pair those four Bedroom bulbs rather than editing Home
+Assistant group config.
+
+After the Bedroom bulbs were physically restarted, Matter Server was still not
+able to rediscover the nodes with no cached addresses. The prior known-good
+`fdf1:49b9:b55e:5844:*` mesh-local address hints from
+`/data/server-1-fff1/address-backup-bedroom-20260704T062954Z` were reseeded
+for peers `16`, `17`, `25`, and `27`, with a pre-change backup at
+`/data/server-1-fff1/address-backup-bedroom-reseed-before-20260707T003857Z`.
+After restarting `matter-server`, direct Matter reads succeeded:
+
+```text
+@1:10 on=True level=42
+@1:11 on=True level=191
+@1:19 on=True level=203
+@1:1b on=True level=203
+```
+
+Home Assistant then showed all Bedroom entities online/on:
+
+```text
+light.bedroom_lights on
+light.sofa on
+light.standing_lamp on
+light.kajplats_e26_ws_globe_1600lm_6 on
+light.kajplats_e26_ws_globe_1600lm_7 on
+light.kajplats_e26_ws_globe_1600lm_8 on
+light.kajplats_e26_ws_globe_1600lm_9 on
+```
+
 On `2026-07-04`, Dining Room was reviewed with the same process. The underlying
 Dining devices were healthy:
 
@@ -254,16 +309,79 @@ Validation after restart:
 `/auth/oidc/redirect` now returns a `302` to Authentik with
 `client_id=homeassistant-app`.
 
+On `2026-07-07`, Home Assistant room-switch and IKEA BILRESA button behavior
+was reviewed after Matter Server / Thread migration work.
+
+Changes applied:
+
+- `matter_dimmer_bridge` now watches for a replaced Matter client and rebinds
+  subscriptions after Matter Server restarts.
+- The watcher is started with `hass.async_create_background_task(...)` so it no
+  longer blocks Home Assistant startup completion.
+- Template light transition values were changed from string/`none` rendering to
+  a numeric default:
+  `{{ transition | default(0, true) | float }}`.
+
+Live validation:
+
+- Home Assistant restarted cleanly.
+- The bridge logged:
+  `Started Matter dimmer bridge for Living room switch, Master Switch, Bedroom Switch`.
+- After a Matter Server restart, the bridge logged:
+  `Matter dimmer bridge rebinding to new Matter client`.
+- Matter nodes for the room switches are online:
+  - `6`: Master Switch
+  - `7`: Living room switch
+  - `28`: Bedroom Switch
+
+Remaining IKEA / Matter device issue:
+
+- IKEA BILRESA button nodes are paired and their Matter endpoints load, but they
+  remain unavailable until they wake and resolve on the current Thread network.
+- Current BILRESA Matter nodes:
+  `14`, `15`, `18`, `19`, `20`, `23`, `24`, `26`, `29`.
+- Their stale address hints were backed up and cleared:
+  `/data/server-1-fff1/address-backup-bilresa-reseed-before-20260707T050850Z`.
+- After pressing one IKEA BILRESA, OTBR showed sleepy child
+  `7201aeaa63bd1eca` at RLOC16 `0x4802`, which mapped to Matter peer `24`
+  / `@1:18` / `BILRESA scroll wheel`.
+- Peer `24` was repaired by backing up its empty address hint and seeding the
+  current Thread RLOC address:
+  `/data/server-1-fff1/address-backup-peer24-current-rloc-20260707T061849Z`
+  and `fdf1:49b9:b55e:5844:0:ff:fe00:4802`.
+- After restarting Matter Server, peer `24` connected and established a
+  subscription. Other BILRESA nodes still need the same wake/identify/reseed
+  flow or re-pairing if they do not expose a current Thread address.
+- The Home Assistant entity registry had BILRESA
+  `sensor.bilresa_scroll_wheel_current_switch_position*` entities disabled by
+  the Matter integration, while the BILRESA automation blueprint depends on
+  those sensors for wheel/scroll dimming. The registry was backed up to
+  `/config/.storage/core.entity_registry.bak-bilresa-enable-switch-position-20260707T062653Z`,
+  the BILRESA switch-position sensors were enabled, and Home Assistant was
+  restarted. A post-restart registry check showed `0` disabled BILRESA
+  switch-position sensors.
+
+Remaining Bed right / Master target issue:
+
+- Matter node `5` remains unavailable and is the likely source of `Bed right`
+  / `light.kajplats_e26_ws_globe_1600lm_5` operation failures.
+- Its address hint was backed up and cleared:
+  `/data/server-1-fff1/address-backup-peer5-reseed-before-20260707T051257Z`.
+- It is now also waiting on Matter rediscovery as
+  `Resolving (no address known)`.
+
 ## Problem
 
-The older app-template Home Assistant config under
-`kubernetes/apps/tier-2-applications/home-assistant/app/` still records much of
-the desired YAML intent, but that path is not the active deployment for
-cluster-104. The active deployment is:
+The Home Assistant workload is owned by the shared app HelmRelease under
+`kubernetes/apps/tier-2-applications/home-assistant/app/`, while cluster-104 owns
+the local persistence and routing. The active cluster-104 state is:
 
-- `kubernetes/clusters/cluster-104/home-assistant/deployment.yaml`
+- workload: `kubernetes/apps/tier-2-applications/home-assistant/app/`
 - PVC: `home-assistant-config`
 - mount: `/config`
+- cluster-local storage/routes:
+  `kubernetes/clusters/cluster-104/storage/home-assistant-local-pv.yaml` and
+  `kubernetes/clusters/cluster-104/network/home-assistant-routes.yaml`
 
 As a result, a future rebuild or restore can lose live YAML changes unless the
 PVC backup is restored exactly or the desired runtime config is codified for
@@ -298,7 +416,7 @@ cluster-104.
 
 ## Related Files
 
-- `kubernetes/clusters/cluster-104/home-assistant/deployment.yaml`
-- `kubernetes/clusters/cluster-104/storage/home-assistant-local-pv.yaml`
-- `docs/runbooks/home-assistant-operations.md`
 - `kubernetes/apps/tier-2-applications/home-assistant/app/`
+- `kubernetes/clusters/cluster-104/storage/home-assistant-local-pv.yaml`
+- `kubernetes/clusters/cluster-104/network/home-assistant-routes.yaml`
+- `docs/runbooks/home-assistant-operations.md`

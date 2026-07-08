@@ -13,6 +13,5 @@ resources:
   - ./cloudflare-tunnel
   - ./external-dns
   - ./storage
-  - ./home-assistant
   - ./matter-server
   - ./otbr

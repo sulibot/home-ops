@@ -71,6 +71,12 @@ locals {
     var.installer_image != "" ? { image = var.installer_image } : {}
   )
 
+  common_interface_sysctls = length(regexall("\\.", var.bgp_interface)) == 0 ? {
+    "net.ipv6.conf.${var.bgp_interface}.ndisc_notify" = "1"
+    "net.ipv6.conf.${var.bgp_interface}.accept_ra"    = "2"
+    "net.ipv4.conf.${var.bgp_interface}.arp_notify"   = "1"
+  } : {}
+
   common_sysctls = merge({
     "fs.inotify.max_user_watches"   = "1048576"
     "fs.inotify.max_user_instances" = "8192"
@@ -79,15 +85,14 @@ locals {
     "net.ipv4.ip_forward"           = "1"
     "net.ipv6.conf.all.forwarding"  = "1"
     # Neighbor Discovery and ARP notifications for faster network convergence
-    "net.ipv6.conf.all.ndisc_notify"                  = "1"
-    "net.ipv6.conf.default.ndisc_notify"              = "1"
-    "net.ipv6.conf.${var.bgp_interface}.ndisc_notify" = "1"
-    "net.ipv6.conf.${var.bgp_interface}.accept_ra"    = "2"
-    "net.ipv4.conf.all.arp_notify"                    = "1"
-    "net.ipv4.conf.default.arp_notify"                = "1"
-    "net.ipv4.conf.${var.bgp_interface}.arp_notify"   = "1"
-    }, var.enable_node_swap ? {
-    "vm.swappiness" = tostring(var.swap_swappiness)
+    "net.ipv6.conf.all.ndisc_notify"     = "1"
+    "net.ipv6.conf.default.ndisc_notify" = "1"
+    "net.ipv4.conf.all.arp_notify"       = "1"
+    "net.ipv4.conf.default.arp_notify"   = "1"
+    },
+    local.common_interface_sysctls,
+    var.enable_node_swap ? {
+      "vm.swappiness" = tostring(var.swap_swappiness)
   } : {})
 
   common_features = {

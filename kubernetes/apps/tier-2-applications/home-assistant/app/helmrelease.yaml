@@ -262,6 +262,7 @@ spec:
 
                         from __future__ import annotations
 
+                        import asyncio
                         import logging
                         import time
                         from dataclasses import dataclass
@@ -443,6 +444,7 @@ spec:
                             domain_data = hass.data.setdefault(DOMAIN, {})
                             domain_data["started"] = False
                             domain_data["unsubs"] = []
+                            domain_data["matter_client"] = None
 
                             states = [
                                 BridgeState(
@@ -455,8 +457,6 @@ spec:
                             ]
 
                             async def _async_start(_: Event | None = None) -> None:
-                                if domain_data["started"]:
-                                    return
                                 if MATTER_DOMAIN not in hass.data or not hass.data[MATTER_DOMAIN]:
                                     LOGGER.info("Matter not ready for dimmer bridge; retrying")
                                     async def _retry(_: object) -> None:
@@ -466,11 +466,26 @@ spec:
                                         lambda: hass.async_create_task(_retry(None)),
                                     )
                                     return
+                                matter = get_matter(hass)
+                                matter_client = matter.matter_client
+                                if domain_data["started"] and domain_data["matter_client"] is matter_client:
+                                    return
+                                if domain_data["started"]:
+                                    LOGGER.warning("Matter dimmer bridge rebinding to new Matter client")
+                                    for unsub in domain_data["unsubs"]:
+                                        try:
+                                            unsub()
+                                        except Exception:
+                                            LOGGER.debug("Failed to unsubscribe Matter dimmer callback", exc_info=True)
+                                    domain_data["started"] = False
+                                    domain_data["unsubs"] = []
+                                    domain_data["matter_client"] = None
                                 try:
                                     unsubs: list[callable] = []
                                     for state in states:
                                         unsubs.extend(_setup_bridge(hass, state))
                                     domain_data["unsubs"] = unsubs
+                                    domain_data["matter_client"] = matter_client
                                     domain_data["started"] = True
                                     LOGGER.warning(
                                         "Started Matter dimmer bridge for %s",
@@ -485,10 +500,19 @@ spec:
                                         lambda: hass.async_create_task(_retry(None)),
                                     )
 
+                            async def _async_watch_matter_client() -> None:
+                                while True:
+                                    await asyncio.sleep(RETRY_DELAY_SECONDS)
+                                    await _async_start()
+
                             if hass.is_running:
                                 hass.async_create_task(_async_start())
                             else:
                                 hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _async_start)
+                            hass.async_create_background_task(
+                                _async_watch_matter_client(),
+                                "matter_dimmer_bridge_matter_client_watch",
+                            )
 
                             return True
                         '''

@@ -154,9 +154,39 @@ Final retest after the endpoint recovery:
 - OTBR was `router` with active router neighbors, and the Matter pod and Service
   endpoints were healthy.
 
+### 2026-07-07 BILRESA peer 24 recovery
+
+The IKEA BILRESA buttons were paired but unavailable after the cluster-104
+Matter/Thread migration because their Matter Server address hints were empty or
+stale. Pressing one button proved that the radio path was alive: OTBR saw sleepy
+child `7201aeaa63bd1eca` at RLOC16 `0x4802`. That hardware address mapped to
+Matter peer `24` (`@1:18`, `BILRESA scroll wheel`) in the stored
+Network Commissioning data.
+
+The live repair was:
+
+1. Enable OTBR SRP server auto mode and add it to OTBR startup:
+   `ot-ctl srp server auto enable`.
+2. Back up peer `24`'s address hint to:
+   `/data/server-1-fff1/address-backup-peer24-current-rloc-20260707T061849Z`.
+3. Seed peer `24` with the current Thread RLOC address:
+   `fdf1:49b9:b55e:5844:0:ff:fe00:4802`.
+4. Restart `matter-server`.
+
+After the restart, Matter Server connected to `@1:18`, read the BILRESA
+attributes, and established a subscription. This confirms the BILRESA issue is
+the same class of migrated Thread operational address problem seen with the
+bulbs, not a Home Assistant automation-only failure.
+
+Remaining BILRESA peers still need a physical wake/identify pass and either
+automatic rediscovery or the same temporary address-hint repair. The durable
+follow-up remains replacing manual address hints with healthy OTBR/SRP/DNS-SD
+rediscovery.
+
 ## Related Files
 
 - `kubernetes/clusters/cluster-104/matter-server/`
 - `kubernetes/apps/tier-2-applications/kustomization.yaml`
-- `kubernetes/clusters/cluster-104/home-assistant/`
+- `kubernetes/apps/tier-2-applications/home-assistant/app/`
+- `kubernetes/clusters/cluster-104/storage/home-assistant-local-pv.yaml`
 - `terraform/infra/live/baremetal/cluster-104/README.md`
