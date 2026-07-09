@@ -249,6 +249,8 @@ data:
             - Dining Room Button
             - Dining Room Lights Button
 
+    # Adaptive Lighting itself is installed and updated by HACS. Keep only the
+    # desired room/profile configuration here so behavior is reproducible.
     adaptive_lighting:
       - name: living_room
         lights:

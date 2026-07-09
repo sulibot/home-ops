@@ -43,6 +43,7 @@ spec:
                 import urllib.request
                 import zipfile
 
+                # renovate: datasource=github-releases depName=hacs/integration
                 version = "2.0.5"
                 target = "/config/custom_components/hacs"
                 manifest_path = os.path.join(target, "manifest.json")
