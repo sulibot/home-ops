@@ -13,8 +13,9 @@
 # /routing/bgp/template — use routeros_routing_bgp_template accordingly.
 
 resource "routeros_routing_bgp_template" "pve_fabric" {
-  name = var.bgp.instance_name
-  as   = tostring(var.bgp.local_asn)
+  name         = var.bgp.instance_name
+  as           = tostring(var.bgp.local_asn)
+  add_path_out = "none"
   # router_id not supported on ROS 7.20.1 — omit; uses global router-id
 
   lifecycle {
@@ -34,6 +35,7 @@ resource "routeros_routing_bgp_connection" "edge" {
   use_bfd          = var.bgp.use_bfd
   hold_time        = var.bgp.hold_time
   keepalive_time   = var.bgp.keepalive_time
+  add_path_out     = "none"
 
   remote {
     address = var.bgp.remote_range

@@ -187,123 +187,9 @@ inputs = {
   ]
 
   # ── FIREWALL FILTER ──────────────────────────────────────────────────────────
-  # defconf ruleset extracted from prod (rule 0 skipped — dynamic fasttrack counter).
-  # List index = rule position on device.
-  firewall_filter_rules = [
-    {
-      comment  = "defconf: accept ICMP after RAW"
-      chain    = "input"
-      action   = "accept"
-      protocol = "icmp"
-    },
-    {
-      comment          = "defconf: accept established,related,untracked"
-      chain            = "input"
-      action           = "accept"
-      connection_state = "established,related,untracked"
-    },
-    {
-      comment           = "defconf: drop all not coming from LAN"
-      chain             = "input"
-      action            = "drop"
-      in_interface_list = "!LAN"
-    },
-    {
-      comment      = "defconf: accept all that matches IPSec policy"
-      chain        = "forward"
-      action       = "accept"
-      ipsec_policy = "in,ipsec"
-      disabled     = true
-    },
-    {
-      comment       = "Allow personal devices to reach IoT"
-      chain         = "forward"
-      action        = "accept"
-      in_interface  = "vlan30"
-      out_interface = "vlan31"
-    },
-    {
-      comment          = "defconf: fasttrack"
-      chain            = "forward"
-      action           = "fasttrack-connection"
-      connection_state = "established,related"
-      hw_offload       = true
-    },
-    {
-      comment          = "defconf: accept established,related, untracked"
-      chain            = "forward"
-      action           = "accept"
-      connection_state = "established,related,untracked"
-    },
-    {
-      comment          = "defconf: drop invalid"
-      chain            = "forward"
-      action           = "drop"
-      connection_state = "invalid"
-    },
-    {
-      comment              = "defconf:  drop all from WAN not DSTNATed"
-      chain                = "forward"
-      action               = "drop"
-      connection_state     = "new"
-      connection_nat_state = "!dstnat"
-      in_interface_list    = "WAN"
-    },
-    {
-      comment          = "defconf: drop bad forward IPs"
-      chain            = "forward"
-      action           = "drop"
-      src_address_list = "no_forward_ipv4"
-    },
-    {
-      comment          = "defconf: drop bad forward IPs"
-      chain            = "forward"
-      action           = "drop"
-      dst_address_list = "no_forward_ipv4"
-    },
-    {
-      comment       = "Allow SSDP discovery from personal to IoT"
-      chain         = "forward"
-      action        = "accept"
-      protocol      = "udp"
-      dst_port      = "1900"
-      in_interface  = "vlan30"
-      out_interface = "vlan31"
-    },
-    {
-      comment       = "Allow SSDP discovery from IoT to personal"
-      chain         = "forward"
-      action        = "accept"
-      protocol      = "udp"
-      dst_port      = "1900"
-      in_interface  = "vlan31"
-      out_interface = "vlan30"
-    },
-    {
-      comment       = "Allow IGMP between personal and IoT"
-      chain         = "forward"
-      action        = "accept"
-      protocol      = "igmp"
-      in_interface  = "vlan30"
-      out_interface = "vlan31"
-    },
-    {
-      comment       = "Allow IGMP between IoT and personal"
-      chain         = "forward"
-      action        = "accept"
-      protocol      = "igmp"
-      in_interface  = "vlan31"
-      out_interface = "vlan30"
-    },
-    {
-      comment          = "Block new IoT connections to personal devices"
-      chain            = "forward"
-      action           = "drop"
-      in_interface     = "vlan31"
-      out_interface    = "vlan30"
-      connection_state = "new"
-    },
-  ]
+  # Unmanaged during adoption. Live has duplicated historical filter rows and
+  # order-sensitive policy; model after cleanup/export review.
+  firewall_filter_rules = []
 
   # ── FIREWALL NAT ─────────────────────────────────────────────────────────────
   firewall_nat_rules = [
@@ -378,6 +264,7 @@ inputs = {
     },
     {
       bridge   = "br-fabric"
+      comment  = "cluster-104 home-control network"
       vlan_ids = ["104"]
       tagged   = ["br-fabric", "pve01[ether2]", "pve02[ether3]", "pve03[ether4]", "talos01[ether5]"]
       comment  = "cluster-104 home-control network"
@@ -940,6 +827,18 @@ inputs = {
       ra_preference                 = "medium"
     },
     {
+      interface                     = "vlan104"
+      advertise_dns                 = true
+      advertise_mac_address         = true
+      managed_address_configuration = false
+      other_configuration           = true
+      dns                           = "fd00:104::fffe"
+      ra_delay                      = "3s"
+      ra_interval                   = "3m20s-10m"
+      ra_lifetime                   = "30m"
+      ra_preference                 = "medium"
+    },
+    {
       interface                     = "vlan200"
       advertise_dns                 = true
       advertise_mac_address         = false
@@ -981,63 +880,8 @@ inputs = {
   ]
 
   # ── IPv6 FIREWALL FILTER RULES ────────────────────────────────────────────────
-  # Rule 0 on device is dynamic fasttrack6 counter (D flag) — skipped.
-  # Device indices 1-30 → TF keys 0-29.
-  ipv6_firewall_filter_rules = [
-    # 0 (*1E) — log rules for observability (no comment field, log-prefix only)
-    { chain = "forward", action = "log", src_address = "fd00:101::/64", log_prefix = "VM_OUT" },
-    { chain = "forward", action = "log", dst_address = "fd00:101::6/128", log_prefix = "TEST_TO_VM" },
-    # 5 (*16)
-    { chain = "forward", action = "fasttrack-connection", connection_state = "established,related", comment = "IPv6 fasttrack for performance" },
-    # 6 (*1)
-    { chain = "input", action = "accept", protocol = "icmpv6", comment = "defconf: accept ICMPv6 after RAW" },
-    # 7 (*18)
-    { chain = "forward", action = "accept", connection_state = "established,related,untracked", comment = "Accept established IPv6" },
-    # 8 (*2)
-    { chain = "input", action = "accept", connection_state = "established,related,untracked", comment = "defconf: accept established,related,untracked" },
-    # 9 (*3)
-    { chain = "input", action = "accept", protocol = "udp", dst_port = "33434-33534", comment = "defconf: accept UDP traceroute" },
-    # 10 (*4)
-    { chain = "input", action = "accept", protocol = "udp", src_address = "fe80::/10", dst_port = "546", comment = "defconf: accept DHCPv6-Client prefix delegation." },
-    # 11 (*5)
-    { chain = "input", action = "accept", protocol = "udp", dst_port = "500,4500", comment = "defconf: accept IKE" },
-    # 12 (*6)
-    { chain = "input", action = "accept", protocol = "ipsec-ah", comment = "defconf: accept IPSec AH" },
-    # 13 (*7)
-    { chain = "input", action = "accept", protocol = "ipsec-esp", comment = "defconf: accept IPSec ESP" },
-    # 14 (*8)
-    { chain = "input", action = "drop", in_interface_list = "!LAN", comment = "defconf: drop all not coming from LAN" },
-    # 15 (*9)
-    { chain = "forward", action = "accept", connection_state = "established,related,untracked", comment = "defconf: accept established,related,untracked" },
-    # 16 (*A)
-    { chain = "forward", action = "drop", connection_state = "invalid", comment = "defconf: drop invalid" },
-    # 17 (*B)
-    { chain = "forward", action = "drop", src_address_list = "no_forward_ipv6", comment = "defconf: drop bad forward IPs" },
-    # 18 (*C)
-    { chain = "forward", action = "drop", dst_address_list = "no_forward_ipv6", comment = "defconf: drop bad forward IPs" },
-    # 19 (*D)
-    { chain = "forward", action = "drop", protocol = "icmpv6", hop_limit = "equal:1", comment = "defconf: rfc4890 drop hop-limit=1" },
-    # 20 (*E)
-    { chain = "forward", action = "accept", protocol = "icmpv6", comment = "defconf: accept ICMPv6 after RAW" },
-    # 21 (*F)
-    { chain = "forward", action = "accept", protocol = "139", comment = "defconf: accept HIP" },
-    # 22 (*10)
-    { chain = "forward", action = "accept", protocol = "udp", dst_port = "500,4500", comment = "defconf: accept IKE" },
-    # 23 (*11)
-    { chain = "forward", action = "accept", protocol = "ipsec-ah", comment = "defconf: accept AH" },
-    # 24 (*12)
-    { chain = "forward", action = "accept", protocol = "ipsec-esp", comment = "defconf: accept ESP" },
-    # 25 (*13)
-    { chain = "forward", action = "accept", ipsec_policy = "in,ipsec", comment = "defconf: accept all that matches IPSec policy" },
-    # 26 (*15)
-    { chain = "forward", action = "accept", src_address = "fd00:10::/64", comment = "Allow PVE management network" },
-    # 27 (*14)
-    { chain = "forward", action = "drop", in_interface_list = "!LAN", comment = "defconf: drop everything else not coming from LAN" },
-    # 28 (*19)
-    { chain = "forward", action = "drop", connection_state = "invalid", comment = "Drop invalid IPv6" },
-    # 29 (*1A)
-    { chain = "input", action = "drop", src_address = "::/128", comment = "Drop unspecified IPv6" },
-  ]
+  # Unmanaged during adoption for the same reason as IPv4 firewall filters.
+  ipv6_firewall_filter_rules = []
 
   # ── ROUTING FILTER RULES ──────────────────────────────────────────────────────
   routing_filter_rules = [
@@ -1059,7 +903,6 @@ inputs = {
     { name = "pve01.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::1", ttl = "5m" },
     { name = "pve02.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::2", ttl = "5m" },
     { name = "pve03.sulibot.com", type = "AAAA", address = "fd00:0:0:ffff::3", ttl = "5m" },
-    { name = "pve04.sulibot.com", type = "AAAA", address = "fd00:10::4", ttl = "5m", disabled = true, comment = "legacy name for former pve04, replaced by talos01" },
     # VIP naming (front door) for LB failover/anycast work.
     { name = "kanidm-vip.sulibot.com", type = "AAAA", address = "fd00:100::60", ttl = "5m" },
     { name = "kanidm-vip.sulibot.com", type = "A", address = "10.100.0.60", ttl = "5m" },
