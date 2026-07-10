@@ -65,7 +65,7 @@ locals {
       size              = 3
       min_size          = 2
       pg_num            = 32
-      crush_rule        = "replicated_rule"
+      crush_rule        = "replicated_nvme"
       pg_autoscale_mode = "off"
       owner             = "terraform"
       notes             = "CephFS resources metadata pool; filesystem creation remains outside this module."
@@ -76,8 +76,8 @@ locals {
       application       = "cephfs"
       size              = 3
       min_size          = 2
-      pg_num            = 32
-      crush_rule        = "replicated_rule"
+      pg_num            = 256
+      crush_rule        = "replicated_hdd"
       pg_autoscale_mode = "on"
       owner             = "terraform"
       notes             = "CephFS content replicated data pool."
@@ -114,7 +114,7 @@ locals {
       size              = 3
       min_size          = 2
       pg_num            = 16
-      crush_rule        = "replicated_rule"
+      crush_rule        = "replicated_hdd"
       pg_autoscale_mode = "on"
       owner             = "terraform"
       notes             = "CephFS config data pool."
@@ -126,7 +126,7 @@ locals {
       size              = 3
       min_size          = 2
       pg_num            = 8
-      crush_rule        = "replicated_rule"
+      crush_rule        = "replicated_nvme"
       pg_autoscale_mode = "on"
       owner             = "terraform"
       notes             = "CephFS config metadata pool."
@@ -138,7 +138,7 @@ locals {
       size              = 3
       min_size          = 2
       pg_num            = 16
-      crush_rule        = "replicated_rule"
+      crush_rule        = "replicated_hdd"
       pg_autoscale_mode = "on"
       owner             = "terraform"
       notes             = "CephFS backups data pool."
@@ -150,7 +150,7 @@ locals {
       size              = 3
       min_size          = 2
       pg_num            = 8
-      crush_rule        = "replicated_rule"
+      crush_rule        = "replicated_nvme"
       pg_autoscale_mode = "on"
       owner             = "terraform"
       notes             = "CephFS backups metadata pool."
