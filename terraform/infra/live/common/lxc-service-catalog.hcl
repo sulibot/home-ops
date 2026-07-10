@@ -103,5 +103,49 @@ locals {
       ipv4      = "10.100.0.64/24"
       ipv6      = "fd00:100::64/64"
     }
+
+    tail = {
+      role      = "tailscale"
+      tenant_id = 100
+      network = {
+        bridge       = "vnet100"
+        vlan_id      = null
+        ipv4_gateway = "10.100.0.254"
+        ipv6_gateway = "fd00:100::fffe"
+      }
+      storage = {
+        vm_datastore = "rbd-vm"
+      }
+      sizing = {
+        cpu_cores = 1
+        memory_mb = 512
+        swap_mb   = 256
+        disk_gb   = 8
+      }
+      instances = {
+        tail01 = {
+          node_name = "pve01"
+          vm_id     = 100065
+          hostname  = "tail01"
+          ipv4      = "10.100.0.65/24"
+          ipv6      = "fd00:100::65/64"
+        }
+        tail02 = {
+          node_name = "pve02"
+          vm_id     = 100066
+          hostname  = "tail02"
+          ipv4      = "10.100.0.66/24"
+          ipv6      = "fd00:100::66/64"
+        }
+      }
+      tailscale = {
+        tag                 = "tag:infra"
+        advertise_exit_node = true
+        advertise_routes = [
+          "10.0.0.0/8",
+          "fc00::/7",
+        ]
+      }
+    }
   }
 }

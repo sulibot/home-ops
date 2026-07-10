@@ -134,6 +134,8 @@ talos/cluster-*/kubeconfig
 # Terragrunt-generated Terraform files for service LXC stacks
 terraform/infra/live/services/minio-lxc/main.tf
 terraform/infra/live/services/minio-lxc/providers.tf
+terraform/infra/live/services/tailscale-lxc/main.tf
+terraform/infra/live/services/tailscale-lxc/providers.tf
 terraform/infra/live/services/zot-lxc/main.tf
 terraform/infra/live/services/zot-lxc/providers.tf
 
