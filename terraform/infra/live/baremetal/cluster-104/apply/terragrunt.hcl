@@ -11,7 +11,7 @@ locals {
   kubernetes_api_ready = local.kubeconfig_exists && trimspace(run_cmd(
     "bash",
     "-lc",
-    "KUBECONFIG='${local.kubeconfig_path}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
+    "KUBECONFIG='${local.kubeconfig_path}' kubectl --request-timeout=8s get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
   )) == "true"
   forced_talos_apply_mode    = trimspace(get_env("TALOS_APPLY_MODE", ""))
   default_talos_apply_mode   = local.kubernetes_api_ready ? try(local.cluster_config.talos_apply_mode, "staged_if_needing_reboot") : "auto"

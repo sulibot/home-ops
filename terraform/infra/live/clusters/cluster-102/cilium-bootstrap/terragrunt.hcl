@@ -14,7 +14,7 @@ locals {
   kubernetes_api_ready = local.has_cluster_kubeconfig && trimspace(run_cmd(
     "bash",
     "-lc",
-    "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
+    "KUBECONFIG='${local.cluster_kubeconfig}' kubectl --request-timeout=8s get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
   )) == "true"
 }
 

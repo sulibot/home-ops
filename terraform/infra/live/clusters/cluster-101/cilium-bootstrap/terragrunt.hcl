@@ -14,17 +14,17 @@ locals {
   kubernetes_api_ready = local.has_cluster_kubeconfig && trimspace(run_cmd(
     "bash",
     "-lc",
-    "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
+    "KUBECONFIG='${local.cluster_kubeconfig}' kubectl --request-timeout=8s get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
   )) == "true"
   cilium_daemonset_exists = local.kubernetes_api_ready && trimspace(run_cmd(
     "bash",
     "-lc",
-    "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl -n kube-system get daemonset cilium >/dev/null 2>&1 && echo true || echo false"
+    "KUBECONFIG='${local.cluster_kubeconfig}' kubectl --request-timeout=8s -n kube-system get daemonset cilium >/dev/null 2>&1 && echo true || echo false"
   )) == "true"
   cluster_uid = local.kubernetes_api_ready ? trimspace(run_cmd(
     "bash",
     "-lc",
-    "KUBECONFIG='${local.cluster_kubeconfig}' timeout 8 kubectl get namespace kube-system -o jsonpath='{.metadata.uid}' 2>/dev/null || true"
+    "KUBECONFIG='${local.cluster_kubeconfig}' kubectl --request-timeout=8s get namespace kube-system -o jsonpath='{.metadata.uid}' 2>/dev/null || true"
   )) : ""
 }
 
