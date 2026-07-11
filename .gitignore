@@ -30,6 +30,10 @@ terraform.*
 **/.terragrunt-cache/
 terragrunt_rendered.json
 
+# Generated backend.tf files can bake in literal S3/MinIO credentials
+# (Terraform backend blocks can't reference variables or data sources).
+**/backend.tf
+
 # Talos/OS Images (cached locally, don't commit large binaries)
 *.iso
 *.img
