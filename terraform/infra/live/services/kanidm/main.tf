@@ -16,7 +16,7 @@ variable "region" {
 
 locals {
   ssh_public_key            = file(pathexpand("~/.ssh/id_ed25519.pub"))
-  kanidm_unix_auth_commands = ["mkdir -p /etc/kanidm", "apt-get install -y -qq --no-install-recommends kanidm-unixd-clients \u003e/dev/null 2\u003e\u00261 || apt-get install -y -qq --no-install-recommends kanidm-unixd \u003e/dev/null", "cat \u003e /etc/kanidm/config \u003c\u003c'CFG'\nuri = \"https://idm.sulibot.com\"\nCFG", "cat \u003e /etc/kanidm/unixd \u003c\u003c'CFG'\nversion = \"2\"\n[kanidm]\npam_allowed_login_groups = [\"posix_group\"]\nCFG", "chmod 600 /etc/kanidm/config /etc/kanidm/unixd", "systemctl enable --now kanidm-unixd \u003e/dev/null 2\u003e\u00261 || true", "systemctl enable --now kanidm-unixd-tasks \u003e/dev/null 2\u003e\u00261 || true"]
+  kanidm_unix_auth_commands = ["mkdir -p /etc/kanidm", "chmod 755 /etc/kanidm", "apt-get install -y -qq --no-install-recommends kanidm-unixd-clients \u003e/dev/null 2\u003e\u00261 || apt-get install -y -qq --no-install-recommends kanidm-unixd \u003e/dev/null", "cat \u003e /etc/kanidm/config \u003c\u003c'CFG'\nuri = \"https://idm.sulibot.com\"\nCFG", "cat \u003e /etc/kanidm/unixd \u003c\u003c'CFG'\nversion = \"2\"\n[kanidm]\npam_allowed_login_groups = [\"posix_group\"]\nCFG", "chmod 600 /etc/kanidm/config /etc/kanidm/unixd", "systemctl enable --now kanidm-unixd \u003e/dev/null 2\u003e\u00261 || true", "systemctl enable --now kanidm-unixd-tasks \u003e/dev/null 2\u003e\u00261 || true"]
   kanidm_domain             = "idm.sulibot.com"
   kanidm_origin             = "https://idm.sulibot.com"
   kanidm_vip4               = "10.100.0.60"
@@ -569,3 +569,4 @@ resource "null_resource" "kanidm_post_deploy_validation" {
     SHELL
   }
 }
+

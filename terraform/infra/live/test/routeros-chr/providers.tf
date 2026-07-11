@@ -2,7 +2,7 @@
 provider "sops" {}
 
 data "sops_file" "proxmox" {
-  source_file = "/Users/sulibot/repos/github/home-ops/terraform/infra/live/common/secrets.sops.yaml"
+  source_file = "/Users/sulibot/code/home-ops/terraform/infra/live/common/secrets.sops.yaml"
 }
 
 provider "proxmox" {

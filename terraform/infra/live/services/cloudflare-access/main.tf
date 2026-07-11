@@ -169,6 +169,7 @@ resource "cloudflare_zero_trust_gateway_policy" "app_private_dns_override" {
   name        = "Private app DNS: ${each.key}"
   description = "Resolve ${each.key} to the private Gateway endpoint for WARP clients."
   action      = "override"
+  enabled     = true
   filters     = ["dns"]
   traffic     = format("dns.fqdn == %s", jsonencode(each.key))
   precedence  = each.value.precedence
@@ -373,16 +374,15 @@ resource "cloudflare_zero_trust_access_application" "home_assistant_google_bypas
 resource "cloudflare_zero_trust_access_application" "warp_only" {
   for_each = local.warp_only_apps
 
-  account_id                  = local.account_id
-  name                        = "${each.value} (WARP only)"
-  domain                      = each.key
-  type                        = "self_hosted"
-  session_duration            = "24h"
-  auto_redirect_to_identity   = false
-  allow_authenticate_via_warp = true
-  enable_binding_cookie       = false
-  http_only_cookie_attribute  = false
-  options_preflight_bypass    = false
+  account_id                 = local.account_id
+  name                       = "${each.value} (WARP only)"
+  domain                     = each.key
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
   policies = [{
     name       = "Allow via WARP"
     decision   = "allow"
