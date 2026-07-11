@@ -22,7 +22,7 @@ locals {
       application       = "rbd"
       size              = 3
       min_size          = 2
-      pg_num            = 128
+      pg_num            = 32
       crush_rule        = "replicated_nvme"
       pg_autoscale_mode = "on"
       force_destroy     = false
@@ -37,7 +37,7 @@ locals {
       application       = "rbd"
       size              = 3
       min_size          = 2
-      pg_num            = 128
+      pg_num            = 32
       crush_rule        = "replicated_hdd"
       pg_autoscale_mode = "on"
       force_destroy     = false
