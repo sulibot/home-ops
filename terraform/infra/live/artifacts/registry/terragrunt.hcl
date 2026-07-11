@@ -5,6 +5,31 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+generate "providers" {
+  path      = "providers.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<EOF2
+provider "sops" {}
+
+data "sops_file" "proxmox" {
+  source_file = "${local.secrets_file}"
+}
+
+provider "proxmox" {
+  endpoint = data.sops_file.proxmox.data["pve_endpoint"]
+  username = "root@pam"
+  password = data.sops_file.proxmox.data["pve_password"]
+  insecure = true
+
+  ssh {
+    agent       = false
+    username    = "root"
+    private_key = file(pathexpand("~/.ssh/id_ed25519"))
+  }
+}
+EOF2
+}
+
 terraform {
   source = "../../../modules/talos_proxmox_image"
 
@@ -42,10 +67,13 @@ locals {
   proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
   versions      = read_terragrunt_config(find_in_parent_folders("common/versions.hcl")).locals
   schematic     = read_terragrunt_config(find_in_parent_folders("common/install-schematic.hcl")).locals
+  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 }
 
 inputs = {
   talos_version           = local.versions.talos_version
+  kubernetes_version      = local.versions.kubernetes_version
   talos_platform          = local.versions.talos_platform
   talos_architecture      = local.versions.talos_architecture
   talos_extra_kernel_args = local.schematic.install_kernel_args

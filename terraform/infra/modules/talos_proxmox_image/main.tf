@@ -87,6 +87,11 @@ variable "file_name_prefix" {
   description = "Prefix for uploaded image name"
 }
 
+variable "kubernetes_version" {
+  type        = string
+  description = "Kubernetes version bundled/recommended for this Talos version"
+}
+
 # Create Talos factory schematic using official provider
 resource "talos_image_factory_schematic" "this" {
   schematic = yamlencode({
@@ -170,6 +175,6 @@ output "talos_version" {
 }
 
 output "kubernetes_version" {
-  value       = "v1.31.4" # Default K8s version for Talos v1.8.2
+  value       = var.kubernetes_version
   description = "Recommended Kubernetes version for this Talos version"
 }
