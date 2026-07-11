@@ -45,10 +45,7 @@ dependency "talos_config" {
       client_key         = "mock-key"
     }
     cluster_endpoint  = format("https://[fd00:%d::10]:6443", local.tenant_id)
-    machine_configs   = {}
     control_plane_ips = {}
-    all_node_names    = []
-    all_node_ips      = {}
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
