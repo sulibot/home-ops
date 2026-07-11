@@ -1,6 +1,6 @@
 #!ipxe
 menu cluster-104 network boot
-item --gap --             ---------------- TALOS01 ----------------
+item --gap --             ---------------- CLUSTER-104 ----------------
 item talos01              Boot cluster-104 Talos for talos01
 
 item --gap --             ---------------- Tools ----------------

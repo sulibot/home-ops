@@ -3,8 +3,8 @@ locals {
   normalized_nodes = {
     for name, ips in var.all_node_ips :
     name => merge(ips, {
-      hostname     = try(ips.hostname, name)
-      machine_type = try(ips.machine_type, can(regex("cp[0-9]+$", name)) ? "controlplane" : can(regex("wk[0-9]+$", name)) ? "worker" : "controlplane")
+      hostname     = ips.hostname != null ? ips.hostname : name
+      machine_type = ips.machine_type != null ? ips.machine_type : (can(regex("cp[0-9]+$", name)) ? "controlplane" : can(regex("wk[0-9]+$", name)) ? "worker" : "controlplane")
     })
   }
 
