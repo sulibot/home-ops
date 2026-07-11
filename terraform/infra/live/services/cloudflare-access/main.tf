@@ -21,26 +21,26 @@ locals {
   cluster_104_tunnel_id = data.sops_file.secrets.data["cloudflare_tunnel_id_cluster_104"]
 
   bypass_apps = {
-    "auth.sulibot.com"      = "Authentik"
-    "atuin.sulibot.com"     = "Atuin"
-    "karakeep.sulibot.com"  = "Karakeep"
-    "plex.sulibot.com"      = "Plex"
-    "overseerr.sulibot.com" = "Overseerr"
-    "requests.sulibot.com"  = "Overseerr"
+    "auth.sulibot.com"     = "Authentik"
+    "plex.sulibot.com"     = "Plex"
+    "seerr.sulibot.com"    = "Seerr"
+    "requests.sulibot.com" = "Seerr"
   }
 
   email_only_apps = {}
 
-  public_native_auth_apps = {
-    "actual.sulibot.com"      = "Actual Budget"
-    "filebrowser.sulibot.com" = "FileBrowser"
-    "freshrss.sulibot.com"    = "FreshRSS"
-    "opencloud.sulibot.com"   = "OpenCloud"
-    "paperless.sulibot.com"   = "Paperless"
-  }
+  # Native-auth apps that used to sit here unauthenticated by Cloudflare (relying
+  # solely on their own Authentik OIDC login) now all require WARP -- see
+  # warp_only_apps below. Kept as an empty map for the pattern's sake.
+  public_native_auth_apps = {}
 
-  home_assistant_warp_only_apps = {
-    "hass.sulibot.com" = "Home Assistant Browser"
+  # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel ID
+  # from the main cluster-101 tunnel) but still want the standard WARP-only
+  # Access gate.
+  cluster_104_warp_only_apps = {
+    "hass.sulibot.com"            = "Home Assistant Browser"
+    "music-assistant.sulibot.com" = "Music Assistant"
+    "ma.sulibot.com"              = "Music Assistant"
   }
 
   home_assistant_google_hostname = "ha-google.sulibot.com"
@@ -52,7 +52,16 @@ locals {
     "/api/google_assistant",
   ]
 
-  warp_only_apps = {}
+  # Browser-facing external web apps, gated on cluster-101's main tunnel.
+  warp_only_apps = {
+    "karakeep.sulibot.com"    = "Karakeep"
+    "atuin.sulibot.com"       = "Atuin"
+    "actual.sulibot.com"      = "Actual Budget"
+    "filebrowser.sulibot.com" = "FileBrowser"
+    "freshrss.sulibot.com"    = "FreshRSS"
+    "opencloud.sulibot.com"   = "OpenCloud"
+    "paperless.sulibot.com"   = "Paperless"
+  }
 
   warp_email_apps = {
     "immich.sulibot.com" = "Immich"
@@ -133,10 +142,11 @@ resource "cloudflare_dns_record" "tunnel_host" {
   proxied = true
 }
 
-# Home Assistant runs on cluster-104 and uses the cluster-104 tunnel origin.
+# Home Assistant and Music Assistant run on cluster-104 and use the
+# cluster-104 tunnel origin (a separate tunnel ID from cluster-101's).
 resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   for_each = merge(
-    local.home_assistant_warp_only_apps,
+    local.cluster_104_warp_only_apps,
     { (local.home_assistant_google_hostname) = "Home Assistant Google" },
   )
 
@@ -296,11 +306,11 @@ resource "cloudflare_zero_trust_access_application" "email_only" {
 }
 
 # ---------------------------------------------------------------------------
-# Home Assistant WARP-only apps
+# Cluster-104 WARP-only apps (Home Assistant, Music Assistant)
 # ---------------------------------------------------------------------------
 
-resource "cloudflare_zero_trust_access_application" "home_assistant_warp_only" {
-  for_each = local.home_assistant_warp_only_apps
+resource "cloudflare_zero_trust_access_application" "cluster_104_warp_only" {
+  for_each = local.cluster_104_warp_only_apps
 
   account_id                 = local.account_id
   name                       = "${each.value} (WARP only)"
@@ -438,9 +448,12 @@ resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
   }
 }
 
-resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_europa" {
+# Named "iot" (not "europa") -- the europa SSID is being retired in favor of
+# iot, and this resource tracks the network by its durable role, not the
+# transient SSID name.
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_iot" {
   account_id = local.account_id
-  name       = "Home trusted europa"
+  name       = "Home trusted iot"
   type       = "tls"
   config = {
     tls_sockaddr = "10.31.0.254:443"
@@ -451,7 +464,7 @@ resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_europa" {
 resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   account_id  = local.account_id
   name        = "Home trusted"
-  description = "Exclude local private networks from WARP when on io or europa."
+  description = "Exclude local private networks from WARP when on io or iot."
   precedence  = 10
 
   service_mode_v2   = { mode = "warp" }
@@ -459,7 +472,7 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
 
   match = trimspace(replace(<<-EOT
     network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
-    or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_europa.name}"
+    or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_iot.name}"
   EOT
   , "\n", " "))
 }
@@ -478,6 +491,33 @@ resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "ho
       "fd00:0:0:ffff::53",
     ]
   }]
+}
+
+# Default (fallback) profile -- applies whenever the device is NOT on a
+# "Home trusted" network above, i.e. "external". Split Tunnel Include mode
+# restricts the WARP tunnel to sulibot.com traffic only, so general internet
+# browsing never routes through Cloudflare.
+resource "cloudflare_zero_trust_device_default_profile" "external" {
+  account_id = local.account_id
+
+  service_mode_v2   = { mode = "warp" }
+  allow_mode_switch = false
+
+  include = concat(
+    [
+      { host = "sulibot.com", description = "sulibot.com apex" },
+      { host = "*.sulibot.com", description = "All sulibot.com apps" },
+      { host = "sulibot.cloudflareaccess.com", description = "Zero Trust Access auth domain -- required in Include mode" },
+      { address = "162.159.36.12/32", description = "Cloudflare Gateway block page" },
+      { address = "162.159.46.12/32", description = "Cloudflare Gateway block page" },
+    ],
+    [
+      for name, route in local.warp_private_routes : {
+        address     = route.network
+        description = "Private app endpoint route: ${name}"
+      }
+    ]
+  )
 }
 
 
@@ -512,7 +552,7 @@ output "access_application_ids" {
   value = merge(
     { for k, v in cloudflare_zero_trust_access_application.bypass : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.email_only : k => v.id },
-    { for k, v in cloudflare_zero_trust_access_application.home_assistant_warp_only : k => v.id },
+    { for k, v in cloudflare_zero_trust_access_application.cluster_104_warp_only : k => v.id },
     { (local.home_assistant_google_hostname) = cloudflare_zero_trust_access_application.home_assistant_google_bypass.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_only : k => v.id },
     { for k, v in cloudflare_zero_trust_access_application.warp_email : k => v.id },
@@ -521,4 +561,18 @@ output "access_application_ids" {
 
 output "identity_provider_id" {
   value = cloudflare_zero_trust_access_identity_provider.authentik.id
+}
+
+# ---------------------------------------------------------------------------
+# State-safe renames
+# ---------------------------------------------------------------------------
+
+moved {
+  from = cloudflare_zero_trust_access_application.home_assistant_warp_only
+  to   = cloudflare_zero_trust_access_application.cluster_104_warp_only
+}
+
+moved {
+  from = cloudflare_zero_trust_device_managed_networks.home_trusted_europa
+  to   = cloudflare_zero_trust_device_managed_networks.home_trusted_iot
 }

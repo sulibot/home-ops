@@ -54,7 +54,6 @@ resources:
   # omada-controller disabled
   # - ./omada-controller/ks.yaml
   - ./opencloud/ks.yaml
-  - ./overseerr/ks.yaml
   - ./paperless/ks.yaml
   - ./paperless-gpt/ks.yaml
   - ./plex/ks.yaml
