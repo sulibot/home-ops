@@ -26,7 +26,10 @@ locals {
   effective_talos_apply_mode = local.forced_talos_apply_mode != "" ? local.forced_talos_apply_mode : local.default_talos_apply_mode
 }
 
-skip = !local.cluster_enabled
+exclude {
+  if      = !local.cluster_enabled
+  actions = ["all"]
+}
 
 dependency "talos_config" {
   config_path = "../config"
@@ -48,6 +51,11 @@ dependency "talos_config" {
 
 terraform {
   source = "../../../../modules/talos_apply_config"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 }
 
 inputs = {

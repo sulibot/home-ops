@@ -20,7 +20,10 @@ locals {
 # Skip secrets module unless explicitly requested
 # - On destroy: skip unless TALOS_DESTROY_SECRETS=1
 # - On apply/plan: skip unless TALOS_REGENERATE_SECRETS=1
-skip = !local.cluster_enabled || local.skip_destroy || local.skip_apply
+exclude {
+  if      = !local.cluster_enabled || local.skip_destroy || local.skip_apply
+  actions = ["all"]
+}
 
 include "root" {
   path = find_in_parent_folders("root.hcl")
@@ -28,6 +31,11 @@ include "root" {
 
 terraform {
   source = "../../../../modules/talos_secrets"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 
   # Export and encrypt cluster secrets for reuse
   after_hook "export_secrets" {

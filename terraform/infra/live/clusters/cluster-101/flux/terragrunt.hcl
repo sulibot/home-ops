@@ -23,7 +23,10 @@ locals {
   has_cluster_kubeconfig            = fileexists(local.cluster_kubeconfig)
 }
 
-skip = !local.cluster_enabled
+exclude {
+  if      = !local.cluster_enabled
+  actions = ["all"]
+}
 
 dependencies {
   paths = ["../bootstrap", "../cilium-bootstrap"]
@@ -42,6 +45,11 @@ dependency "bootstrap" {
 
 terraform {
   source = "../../../../modules//flux_stack"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 
   before_hook "refresh_kubeconfig" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import"]

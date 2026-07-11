@@ -61,10 +61,18 @@ locals {
   secrets_file = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 }
 
-skip = !local.cluster_enabled
+exclude {
+  if      = !local.cluster_enabled
+  actions = ["all"]
+}
 
 terraform {
   source = "../../../../modules/cluster_core"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 
   before_hook "validate_artifact_registry_catalog" {
     commands = ["apply", "plan"]

@@ -17,7 +17,10 @@ locals {
   schematic_catalog        = local.context.artifacts_schematic_catalog
 }
 
-skip = !local.cluster_enabled
+exclude {
+  if      = !local.cluster_enabled
+  actions = ["all"]
+}
 
 # Depend on compute module to get VM IP addresses and network configuration
 # This is an internal cluster dependency and safe for run-all.
@@ -66,6 +69,11 @@ dependency "secrets" {
 
 terraform {
   source = "../../../../modules/talos_config"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 
   before_hook "validate_artifact_schematic_catalog" {
     commands = ["apply"]

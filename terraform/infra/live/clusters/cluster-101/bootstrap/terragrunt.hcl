@@ -20,10 +20,13 @@ locals {
 
 # Safety/perf: Skip bootstrap on repeat run-all only when API is actually reachable.
 # Set TALOS_BOOTSTRAP_MODE=true to force running bootstrap explicitly.
-skip = !local.cluster_enabled || (
-  !local.bootstrap_mode &&
-  local.kubernetes_api_ready
-)
+exclude {
+  if = !local.cluster_enabled || (
+    !local.bootstrap_mode &&
+    local.kubernetes_api_ready
+  )
+  actions = ["all"]
+}
 
 dependencies {
   paths = ["../apply"]
@@ -50,6 +53,11 @@ dependency "talos_config" {
 
 terraform {
   source = "../../../../modules/talos_bootstrap"
+
+  before_hook "enforce_cluster_enabled" {
+    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+  }
 
   before_hook "refresh_cluster_creds" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import"]
