@@ -1,75 +1,18 @@
-# Apply Talos machine configurations to running nodes
-# This step ONLY applies configs - it does NOT bootstrap the cluster
-# Safe to run repeatedly (used by run-all)
-
+# Thin wrapper: all real configuration lives in the shared unit template.
+# Cluster-specific values come from ../cluster.hcl, which the template reads.
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-locals {
-  cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
-  tenant_id      = local.cluster_config.tenant_id
-  context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
-
-  cluster_enabled   = try(local.cluster_config.enabled, true)
-  kubeconfig_path   = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
-  kubeconfig_exists = fileexists(local.kubeconfig_path)
-  kubernetes_api_ready = local.kubeconfig_exists && trimspace(run_cmd(
-    "bash",
-    "-lc",
-    "KUBECONFIG='${local.kubeconfig_path}' kubectl --request-timeout=8s get --raw=/readyz >/dev/null 2>&1 && echo true || echo false"
-  )) == "true"
-  bootstrap_complete         = local.kubernetes_api_ready
-  forced_talos_apply_mode    = trimspace(get_env("TALOS_APPLY_MODE", ""))
-  requested_talos_apply_mode = try(local.cluster_config.talos_apply_mode, local.context.talos_apply_mode_default)
-  default_talos_apply_mode   = local.bootstrap_complete ? local.requested_talos_apply_mode : "auto"
-  effective_talos_apply_mode = local.forced_talos_apply_mode != "" ? local.forced_talos_apply_mode : local.default_talos_apply_mode
+include "unit" {
+  path           = "${get_terragrunt_dir()}/../../_shared/units/apply.hcl"
+  merge_strategy = "deep"
+  expose         = true
 }
 
+# Terragrunt does not merge exclude blocks from included files, so the block
+# lives here; the condition itself is computed in the shared template.
 exclude {
-  if      = !local.cluster_enabled
+  if      = include.unit.locals.exclude_unit
   actions = ["all"]
-}
-
-dependency "talos_config" {
-  config_path = "../config"
-
-  mock_outputs = {
-    talosconfig = "mock"
-    client_configuration = {
-      ca_certificate     = "mock-ca"
-      client_certificate = "mock-cert"
-      client_key         = "mock-key"
-    }
-    machine_apply_configs = {}
-    control_plane_ips     = {}
-    all_node_names        = []
-    all_node_ips          = {}
-  }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
-}
-
-terraform {
-  source = "../../../../modules/talos_apply_config"
-
-  before_hook "enforce_cluster_enabled" {
-    commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
-    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
-  }
-}
-
-inputs = {
-  cluster_id           = local.tenant_id
-  talosconfig          = dependency.talos_config.outputs.talosconfig
-  client_configuration = dependency.talos_config.outputs.client_configuration
-  machine_configs      = dependency.talos_config.outputs.machine_apply_configs
-  all_node_names       = dependency.talos_config.outputs.all_node_names
-  all_node_ips         = dependency.talos_config.outputs.all_node_ips
-  apply_mode           = local.effective_talos_apply_mode
-
-  on_destroy = {
-    reset    = false
-    reboot   = false
-    graceful = true
-  }
 }
