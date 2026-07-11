@@ -24,7 +24,6 @@ locals {
 
   cluster_paths = {
     cluster-101 = "${get_repo_root()}/terraform/infra/live/clusters/cluster-101/cluster.hcl"
-    cluster-102 = "${get_repo_root()}/terraform/infra/live/clusters/cluster-102/cluster.hcl"
   }
 
   clusters = {

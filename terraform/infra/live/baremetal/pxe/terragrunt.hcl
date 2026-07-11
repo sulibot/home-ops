@@ -24,6 +24,17 @@ locals {
 terraform {
   source = "../../../modules/pxe_assets"
 
+  # Refuse to render boot scripts from placeholder catalog values. A missing
+  # artifacts-schematic.json once baked a fake schematic ID into a live PXE
+  # script; fail loudly instead.
+  before_hook "validate_schematic_catalog" {
+    commands = ["plan", "apply"]
+    execute = [
+      "bash", "-c",
+      "if [ ! -f '${get_repo_root()}/terraform/infra/live/clusters/_shared/artifacts-schematic.json' ]; then echo 'ERROR: artifacts-schematic.json missing. Run: cd ${get_repo_root()}/terraform/infra/live/artifacts/schematic && terragrunt apply' >&2; exit 1; fi",
+    ]
+  }
+
   after_hook "sync_routeros_assets" {
     commands = ["apply"]
     execute = [

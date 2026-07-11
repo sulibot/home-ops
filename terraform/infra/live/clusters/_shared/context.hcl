@@ -13,20 +13,29 @@ locals {
   artifacts_registry_catalog_path  = "${get_repo_root()}/terraform/infra/live/clusters/_shared/artifacts-registry.json"
   artifacts_schematic_catalog_path = "${get_repo_root()}/terraform/infra/live/clusters/_shared/artifacts-schematic.json"
 
-  artifacts_registry_catalog = fileexists(local.artifacts_registry_catalog_path) ? jsondecode(file(local.artifacts_registry_catalog_path)) : {
+  # Readiness flags so consuming units can fail fast (before_hook) instead of
+  # silently baking placeholder IDs into real artifacts (this happened once:
+  # a placeholder schematic ID ended up in a live PXE boot script).
+  artifacts_registry_catalog_ready  = fileexists(local.artifacts_registry_catalog_path)
+  artifacts_schematic_catalog_ready = fileexists(local.artifacts_schematic_catalog_path)
+
+  # The fallback values are deliberately poisonous/self-describing: any file or
+  # resource they leak into is obviously broken and greppable. Consumers that
+  # write IDs into real artifacts MUST gate on the *_ready flags above.
+  artifacts_registry_catalog = local.artifacts_registry_catalog_ready ? jsondecode(file(local.artifacts_registry_catalog_path)) : {
     talos_image_file_ids = {
-      pve01 = "resources:iso/mock-talos-image.iso"
+      pve01 = "resources:iso/INVALID-RUN-artifacts-registry-first.iso"
     }
-    talos_image_file_name = "mock-talos-image.iso"
-    talos_image_id        = "mock-schematic-id"
+    talos_image_file_name = "INVALID-RUN-artifacts-registry-first.iso"
+    talos_image_id        = "INVALID-RUN-artifacts-registry-first"
     talos_version         = local.versions.talos_version
     kubernetes_version    = local.versions.kubernetes_version
-    generated_at          = "mock"
+    generated_at          = "missing"
   }
 
-  artifacts_schematic_catalog = fileexists(local.artifacts_schematic_catalog_path) ? jsondecode(file(local.artifacts_schematic_catalog_path)) : {
-    schematic_id = "mock-schematic-id"
-    generated_at = "mock"
+  artifacts_schematic_catalog = local.artifacts_schematic_catalog_ready ? jsondecode(file(local.artifacts_schematic_catalog_path)) : {
+    schematic_id = "INVALID-RUN-artifacts-schematic-first"
+    generated_at = "missing"
   }
 
   vm_sizing = {
