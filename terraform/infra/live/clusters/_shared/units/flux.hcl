@@ -20,7 +20,7 @@ locals {
   secrets                           = yamldecode(sops_decrypt_file("${get_repo_root()}/terraform/infra/live/common/secrets.sops.yaml"))
   cluster_kubeconfig                = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
   cluster_talosconfig               = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/talosconfig"
-  bootstrap_node_ipv4               = "10.${local.tenant_id}.0.11"
+  bootstrap_node_ipv4               = local.cluster_config.bootstrap_node_ipv4
   has_cluster_kubeconfig            = fileexists(local.cluster_kubeconfig)
   # Condition consumed by the child stub's exclude block. Terragrunt does
   # not merge exclude blocks from included files, so the stub declares the
@@ -31,7 +31,7 @@ locals {
 
 
 dependencies {
-  paths = ["../bootstrap", "../cilium-bootstrap"]
+  paths = ["${get_terragrunt_dir()}/../bootstrap", "${get_terragrunt_dir()}/../cilium-bootstrap"]
 }
 
 dependency "bootstrap" {
@@ -50,7 +50,7 @@ terraform {
 
   before_hook "enforce_cluster_enabled" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
-    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-${local.tenant_id} is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
   }
 
   before_hook "refresh_kubeconfig" {
@@ -58,7 +58,7 @@ terraform {
     execute = [
       "bash",
       "-lc",
-      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE=\"10.$TENANT_ID.0.11\"; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
+      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE='${local.bootstrap_node_ipv4}'; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
     ]
   }
 }
@@ -76,7 +76,7 @@ inputs = {
   kubeconfig_content                = local.has_cluster_kubeconfig ? file(local.cluster_kubeconfig) : dependency.bootstrap.outputs.kubeconfig
   sops_age_key                      = get_env("SOPS_AGE_KEY_FILE", "") != "" ? file(get_env("SOPS_AGE_KEY_FILE")) : ""
   repo_root                         = get_repo_root()
-  kubernetes_api_host               = "fd00:${local.tenant_id}::10"
+  kubernetes_api_host               = local.cluster_config.kubernetes_api_host
   bootstrap_mode                    = local.bootstrap_mode
   cnpg_new_db                       = local.cnpg_new_db
   cnpg_restore_mode                 = local.cnpg_restore_mode

@@ -6,6 +6,7 @@
 locals {
   cluster_config = read_terragrunt_config(find_in_parent_folders("cluster.hcl")).locals
   tenant_id      = local.cluster_config.tenant_id
+  bootstrap_node_ipv4 = local.cluster_config.bootstrap_node_ipv4
 
   cluster_enabled        = try(local.cluster_config.enabled, true)
   bootstrap_mode         = trimspace(lower(get_env("TALOS_BOOTSTRAP_MODE", "false"))) == "true"
@@ -37,7 +38,7 @@ locals {
 # Bootstrap unit runs for first build, and can be forced in explicit bootstrap mode.
 
 dependencies {
-  paths = ["../bootstrap"]
+  paths = ["${get_terragrunt_dir()}/../bootstrap"]
 }
 
 dependency "bootstrap" {
@@ -55,7 +56,7 @@ terraform {
 
   before_hook "enforce_cluster_enabled" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
-    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-${local.tenant_id} is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
   }
 
   before_hook "refresh_kubeconfig" {
@@ -63,7 +64,7 @@ terraform {
     execute = [
       "bash",
       "-lc",
-      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE=\"10.$TENANT_ID.0.11\"; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
+      "set -euo pipefail; REPO_ROOT='${get_repo_root()}'; TENANT_ID='${local.tenant_id}'; CLUSTER_DIR=\"$REPO_ROOT/talos/clusters/cluster-$TENANT_ID\"; TALOSCONFIG_SRC=\"$CLUSTER_DIR/talosconfig\"; KUBECONFIG_REPO=\"$CLUSTER_DIR/kubeconfig\"; KUBECONFIG_USER=\"$HOME/.kube/config\"; TALOSCONFIG_USER=\"$HOME/.talos/config\"; BOOTSTRAP_NODE='${local.bootstrap_node_ipv4}'; if [ -f \"$TALOSCONFIG_SRC\" ]; then mkdir -p \"$HOME/.kube\" \"$HOME/.talos\"; cp \"$TALOSCONFIG_SRC\" \"$TALOSCONFIG_USER\"; chmod 600 \"$TALOSCONFIG_USER\" || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_REPO\" --merge=false --force >/dev/null 2>&1 || true; talosctl --talosconfig \"$TALOSCONFIG_SRC\" --nodes \"$BOOTSTRAP_NODE\" --endpoints \"$BOOTSTRAP_NODE\" kubeconfig \"$KUBECONFIG_USER\" --force >/dev/null 2>&1 || true; fi"
     ]
   }
 }

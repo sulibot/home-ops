@@ -5,7 +5,7 @@ include "root" {
 }
 
 include "unit" {
-  path           = "${get_terragrunt_dir()}/../../_shared/units/config-vm.hcl"
+  path           = "${get_terragrunt_dir()}/../../_shared/units/flux.hcl"
   merge_strategy = "deep"
   expose         = true
 }

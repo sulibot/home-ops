@@ -5,13 +5,18 @@
 # common/proxmox-infrastructure.hcl
 
 locals {
-  enabled          = true
-  cluster_name     = "sol" # Human-readable cluster name
-  tenant_id        = 101   # Universal tenant identifier
-  cluster_id       = 101   # Compatibility alias for module inputs expecting cluster_id
-  controlplanes    = 3
-  workers          = 3
-  talos_apply_mode = "staged_if_needing_reboot"
+  # ── Cluster contract (required by clusters/_shared/units templates) ────────
+  enabled             = true
+  cluster_name        = "sol" # Human-readable cluster name
+  cluster_id          = 101   # Canonical cluster identity: state paths, output dirs, naming
+  tenant_id           = 101   # Network tenancy: 10.<tenant>.x.x / fd00:<tenant>:: / vnet<tenant> (equals cluster_id unless segments ever diverge)
+  bootstrap_node_ipv4 = "10.101.0.11"  # First control-plane node; used by kubeconfig/talosconfig refresh hooks
+  kubernetes_api_host = "fd00:101::10" # API endpoint host controllers pin to (VIP on VM clusters, node IP on metal)
+  talos_apply_mode    = "staged_if_needing_reboot"
+
+  # ── VM-platform sizing (consumed by the compute provisioning unit) ─────────
+  controlplanes = 3
+  workers       = 3
   network = {
     bridge_public = "vmbr0" # Legacy: used when use_sdn = false
     vlan_public   = 101     # Legacy: used when use_sdn = false

@@ -1,4 +1,4 @@
-# Shared unit template: config
+# Shared unit template: config-vm (VM/Proxmox clusters; metal clusters use config-metal)
 # Included by each cluster's config/terragrunt.hcl. All cluster-specific values
 # come from that cluster's cluster.hcl (found via find_in_parent_folders),
 # so this file must stay cluster-agnostic.
@@ -74,7 +74,7 @@ terraform {
 
   before_hook "enforce_cluster_enabled" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
-    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-101 is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-${local.tenant_id} is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
   }
 
   before_hook "validate_artifact_schematic_catalog" {
