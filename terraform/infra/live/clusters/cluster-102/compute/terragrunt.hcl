@@ -171,7 +171,7 @@ terraform {
   # Automatically generate talenv.yaml after successful apply
   after_hook "generate_talenv" {
     commands     = ["apply"]
-    execute      = ["bash", "-c", "cd ${get_repo_root()} && mkdir -p talos/clusters/cluster-${local.tenant_id} && cd ${get_terragrunt_dir()} && terragrunt output -raw talenv_yaml 2>/dev/null | yq eval '... style=\"\"' - > ${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/talenv.yaml"]
+    execute      = ["bash", "-c", "set -euo pipefail; cd ${get_repo_root()} && mkdir -p talos/clusters/cluster-${local.tenant_id} && cd ${get_terragrunt_dir()} && terragrunt output -raw talenv_yaml 2>/dev/null | yq -y '.' - > /tmp/talenv-${local.tenant_id}.yaml && mv /tmp/talenv-${local.tenant_id}.yaml ${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/talenv.yaml"]
     run_on_error = false
   }
 }
