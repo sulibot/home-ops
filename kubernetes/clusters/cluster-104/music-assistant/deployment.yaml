@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: music-assistant
+  namespace: default
+  labels:
+    app.kubernetes.io/name: music-assistant
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: music-assistant
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: music-assistant
+        app.kubernetes.io/part-of: cluster-104
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+            {
+              "name": "vlan30",
+              "namespace": "kube-system",
+              "ips": ["10.30.0.252/24", "fd00:30::252/64"]
+            }
+          ]
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: talos01
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: prepare-data
+          image: busybox:1.38
+          command:
+            - sh
+            - -lc
+            - |
+              mkdir -p /data /data/.cache
+              chown -R 1000:1000 /data
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        - name: configure-network
+          image: ghcr.io/music-assistant/server:2.9.5
+          command:
+            - python
+            - -c
+            - |
+              import json
+              from pathlib import Path
+
+              path = Path("/data/settings.json")
+              data = json.loads(path.read_text()) if path.exists() and path.stat().st_size else {}
+              core = data.setdefault("core", {})
+              streams = core.setdefault("streams", {"domain": "streams"})
+              streams.setdefault("domain", "streams")
+              streams.setdefault("values", {})["publish_ip"] = "10.30.0.252"
+              webserver = core.setdefault("webserver", {"domain": "webserver"})
+              webserver.setdefault("domain", "webserver")
+              webserver.setdefault("values", {})["base_url"] = "https://music-assistant.sulibot.com"
+              path.write_text(json.dumps(data, indent=2) + "\n")
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: app
+          image: ghcr.io/music-assistant/server:2.9.5
+          imagePullPolicy: IfNotPresent
+          args:
+            - --log-level=info
+          env:
+            - name: TZ
+              value: America/Los_Angeles
+            - name: LOG_LEVEL
+              value: info
+          ports:
+            - name: web
+              containerPort: 8095
+              protocol: TCP
+            - name: streams
+              containerPort: 8097
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: web
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            tcpSocket:
+              port: web
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: music-assistant-config
+        - name: tmp
+          emptyDir: {}

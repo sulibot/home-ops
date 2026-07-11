@@ -252,7 +252,7 @@ data:
           adapt_brightness: false
           adapt_color: true
     - id: button_green_1_master
-      alias: Button Green 1 Master
+      alias: Master Bedroom Green Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
         input:
@@ -283,7 +283,7 @@ data:
           press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_orange_1_master
-      alias: Button Orange 1 Master
+      alias: Master Bedroom Orange Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
         input:
@@ -314,7 +314,7 @@ data:
           press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_white_1_bedroom
-      alias: Button White 1 Bedroom
+      alias: Sebby Bedroom White Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
         input:
@@ -349,7 +349,7 @@ data:
           press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_white_2_living_room
-      alias: Button White 2 Living Room
+      alias: Living Room White Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
         input:
@@ -379,7 +379,7 @@ data:
           press_debounce_ms: 150
           hold_repeat_ms: 150
     - id: button_orange_2_master
-      alias: Button Orange 2 Master
+      alias: Dining Room Orange Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
         input:

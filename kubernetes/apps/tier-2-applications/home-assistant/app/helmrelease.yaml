@@ -728,6 +728,15 @@ spec:
             app:
               - path: /config/automations.yaml
                 subPath: automations.yaml
+      scripts-file:
+        enabled: true
+        type: configMap
+        name: home-assistant-scripts
+        advancedMounts:
+          home-assistant:
+            app:
+              - path: /config/scripts.yaml
+                subPath: scripts.yaml
       config-cache:
         type: emptyDir
         globalMounts:

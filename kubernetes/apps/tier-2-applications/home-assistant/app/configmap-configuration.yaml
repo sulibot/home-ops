@@ -19,66 +19,66 @@ data:
 
     input_boolean:
       bedroom_lights_locked:
-        name: Bedroom Lights Locked
+        name: Sebby Bedroom Lights Locked
         icon: mdi:lock
       bedroom_lights_override:
-        name: Bedroom Lights Override
+        name: Sebby Bedroom Lights Override
         icon: mdi:gesture-tap-button
       bilresa_orange_2_ch1_warmer:
-        name: Bilresa Orange 2 Ch1 Warmer
+        name: Dining Room Orange Button Ch1 Warmer
       bilresa_green_1_ch1_warmer:
-        name: Bilresa Green 1 Ch1 Warmer
+        name: Master Bedroom Green Button Ch1 Warmer
       bilresa_orange_1_ch1_warmer:
-        name: Bilresa Orange 1 Ch1 Warmer
+        name: Master Bedroom Orange Button Ch1 Warmer
       bilresa_white_1_ch1_warmer:
-        name: Bilresa White 1 Ch1 Warmer
+        name: Sebby Bedroom White Button Ch1 Warmer
       bilresa_white_2_ch1_warmer:
-        name: Bilresa White 2 Ch1 Warmer
+        name: Living Room White Button Ch1 Warmer
 
     input_text:
       bilresa_orange_2_hold_repeat_ms:
-        name: Bilresa Orange 2 Hold Repeat MS
+        name: Dining Room Orange Button Hold Repeat MS
         initial: "150"
         min: 1
         max: 10
       bilresa_hold_state_living_white_2:
-        name: Bilresa Hold State White 2
+        name: Living Room White Button Hold State
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
       bilresa_green_1_hold_state:
-        name: Bilresa Green 1 Hold State
+        name: Master Bedroom Green Button Hold State
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
       bilresa_orange_1_hold_state:
-        name: Bilresa Orange 1 Hold State
+        name: Master Bedroom Orange Button Hold State
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
       bilresa_orange_2_hold_state:
-        name: Bilresa Orange 2 Hold State
+        name: Dining Room Orange Button Hold State
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
       bilresa_white_1_hold_state:
-        name: Bilresa White 1 Hold State
+        name: Sebby Bedroom White Button Hold State
         initial: "cooler,cooler,cooler"
         min: 1
         max: 50
 
     counter:
       bedroom_lights_press_count:
-        name: Bedroom Lights Press Count
+        name: Sebby Bedroom Lights Press Count
         initial: 0
         step: 1
 
     timer:
       bedroom_lights_press_window:
-        name: Bedroom Lights Press Window
+        name: Sebby Bedroom Lights Press Window
         duration: "00:00:05"
       bedroom_lights_override:
-        name: Bedroom Lights Override
+        name: Sebby Bedroom Lights Override
         duration: "00:30:00"
 
     http:
@@ -104,21 +104,31 @@ data:
         - type: homeassistant
       customize:
         light.living_room_switch:
-          friendly_name: Living room switch
+          friendly_name: Living Room Wall Dimmer
           icon: mdi:light-switch
         light.living_room_lights:
+          friendly_name: Living Room Lights
           icon: mdi:ceiling-light-multiple
         light.master_switch:
-          friendly_name: Master Switch
+          friendly_name: Master Bedroom Wall Dimmer
           icon: mdi:light-switch
         light.master_lights:
+          friendly_name: Master Bedroom Lights
           icon: mdi:ceiling-light-multiple
         light.smart_wi_fi_dimmer_switch:
-          friendly_name: Bedroom Wall Dimmer
+          friendly_name: Sebby Bedroom Wall Dimmer
+          icon: mdi:light-switch
+        light.bedroom_switch:
+          friendly_name: Sebby Bedroom Wall Dimmer
           icon: mdi:light-switch
         light.bedroom_lights:
+          friendly_name: Sebby Bedroom Lights
           icon: mdi:ceiling-light-multiple
+        light.sofa:
+          friendly_name: Sebby Bedroom Sofa Lights
+          icon: mdi:sofa
         light.standing_lamp:
+          friendly_name: Sebby Bedroom Standing Lamp
           icon: mdi:floor-lamp
         light.dining_room_fan:
           icon: mdi:ceiling-fan-light
@@ -139,20 +149,20 @@ data:
         force_https: true
 
     matter_dimmer_bridge:
-      - name: Living room switch
+      - name: Living Room Wall Dimmer
         node_id: 7
         switch_entity_id: light.living_room_switch
         target_entity_ids:
           - light.kajplats_e26_ws_globe_1600lm_2
           - light.kajplats_e26_ws_globe_1600lm_3
           - light.kajplats_e26_ws_globe_1600lm_4
-      - name: Master Switch
+      - name: Master Bedroom Wall Dimmer
         node_id: 6
         switch_entity_id: light.master_switch
         target_entity_ids:
           - light.kajplats_e26_ws_globe_1600lm
           - light.kajplats_e26_ws_globe_1600lm_5
-      - name: Bedroom Switch
+      - name: Sebby Bedroom Wall Dimmer
         node_id: 28
         switch_entity_id: light.bedroom_switch
         target_entity_ids:
@@ -171,48 +181,69 @@ data:
           expose: true
           room: Living Room
           aliases:
-            - Living Room
+            - Living Room Lights
         light.kajplats_e26_ws_globe_1600lm_2:
           expose: true
           room: Living Room
+          aliases:
+            - TV Right
+            - Living Room TV Right
         light.kajplats_e26_ws_globe_1600lm_3:
           expose: true
           room: Living Room
+          aliases:
+            - Couch Left
+            - Living Room Couch Left
         light.kajplats_e26_ws_globe_1600lm_4:
           expose: true
           room: Living Room
+          aliases:
+            - Couch Right
+            - Living Room Couch Right
         light.living_room_switch:
           expose: false
         light.master_lights:
           expose: true
-          room: Master
+          room: Master Bedroom
           aliases:
-            - Master Lights
             - Master Bedroom Lights
         light.kajplats_e26_ws_globe_1600lm:
           expose: true
-          room: Master
+          room: Master Bedroom
+          aliases:
+            - Bed Left
+            - Master Bedroom Bed Left
         light.kajplats_e26_ws_globe_1600lm_5:
           expose: true
-          room: Master
+          room: Master Bedroom
+          aliases:
+            - Bed Right
+            - Master Bedroom Bed Right
         light.master_switch:
           expose: false
         light.bedroom_lights:
           expose: true
-          room: Bedroom
+          room: Sebby Bedroom
           aliases:
-            - Bedroom Lights
+            - Sebby Bedroom Lights
         light.standing_lamp:
           expose: true
-          room: Bedroom
+          room: Sebby Bedroom
           aliases:
             - Standing Lamp
+            - Sebby Bedroom Standing Lamp
         light.kajplats_e26_ws_globe_1600lm_6:
           expose: true
-          room: Bedroom
+          room: Sebby Bedroom
+          aliases:
+            - Sofa Left
+            - Sebby Bedroom Sofa Left
         light.kajplats_e26_ws_globe_1600lm_7:
           expose: true
-          room: Bedroom
+          room: Sebby Bedroom
+          aliases:
+            - Sofa Right
+            - Sebby Bedroom Sofa Right
         light.kajplats_e26_ws_globe_1600lm_8:
           expose: false
         light.kajplats_e26_ws_globe_1600lm_9:
@@ -243,11 +274,80 @@ data:
           aliases:
             - Dining Room Desk Lamp
         button.dining_room_button:
-          expose: true
+          expose: false
           room: Dining Room
           aliases:
             - Dining Room Button
             - Dining Room Lights Button
+        script.group_living_room_speakers:
+          expose: true
+          room: Living Room
+          aliases:
+            - Group Living Room Speakers
+            - Group Living Room and Patio
+        script.stop_living_room_music:
+          expose: true
+          room: Living Room
+          aliases:
+            - Stop Living Room Music
+        script.kqed_radio_living_room:
+          expose: true
+          room: Living Room
+          aliases:
+            - Living Room KQED
+            - KQED Living Room
+        script.kqed_radio_kitchen:
+          expose: true
+          room: Kitchen
+          aliases:
+            - Kitchen KQED
+            - KQED Kitchen
+        script.kqed_radio_dining_room:
+          expose: true
+          room: Dining Room
+          aliases:
+            - Dining Room KQED
+            - KQED Dining Room
+        script.kqed_radio_master_bedroom:
+          expose: true
+          room: Master Bedroom
+          aliases:
+            - Master Bedroom KQED
+            - KQED Master Bedroom
+        script.group_sebby_bedroom_speakers:
+          expose: true
+          room: Sebby Bedroom
+          aliases:
+            - Group Sebby Bedroom Speakers
+            - Group Sebby's Speakers
+        script.kqed_radio_sebby_bedroom:
+          expose: true
+          room: Sebby Bedroom
+          aliases:
+            - Sebby Bedroom KQED
+            - KQED Sebby Bedroom
+        script.sebby_sleep_music:
+          expose: true
+          room: Sebby Bedroom
+          aliases:
+            - Sebby Sleep Music
+            - Sleep Music
+        script.sebby_white_noise:
+          expose: true
+          room: Sebby Bedroom
+          aliases:
+            - Sebby White Noise
+            - White Noise
+            - Sleep Noise
+        script.stop_sebby_music:
+          expose: true
+          room: Sebby Bedroom
+          aliases:
+            - Stop Sebby Music
+        script.stop_all_music:
+          expose: true
+          aliases:
+            - Stop All Music
 
     # Adaptive Lighting itself is installed and updated by HACS. Keep only the
     # desired room/profile configuration here so behavior is reproducible.
@@ -339,7 +439,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_4
               data:
                 transition: "{{ transition | default(0, true) | float }}"
-          - name: Master Lights
+          - name: Master Bedroom Lights
             unique_id: master_lights_group
             state: >-
               {{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
@@ -379,25 +479,25 @@ data:
     light:
       - platform: group
         unique_id: couch_group
-        name: Couch
+        name: Living Room Couch Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_3
           - light.kajplats_e26_ws_globe_1600lm_4
       - platform: group
         unique_id: sofa_group
-        name: Sofa
+        name: Sebby Bedroom Sofa Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_6
           - light.kajplats_e26_ws_globe_1600lm_7
       - platform: group
         unique_id: standing_lamp_group
-        name: Standing Lamp
+        name: Sebby Bedroom Standing Lamp
         entities:
           - light.kajplats_e26_ws_globe_1600lm_8
           - light.kajplats_e26_ws_globe_1600lm_9
       - platform: group
         unique_id: bedroom_lights_group
-        name: Bedroom Lights
+        name: Sebby Bedroom Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_6
           - light.kajplats_e26_ws_globe_1600lm_7
