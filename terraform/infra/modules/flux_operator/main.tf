@@ -14,32 +14,32 @@ resource "null_resource" "wait_cilium_ready" {
       # Wait for Cilium DaemonSet to exist (created by Talos inline manifests)
       # Fresh bootstrap takes >2 minutes before inline manifests are applied
       echo "  Checking for Cilium DaemonSet..."
-      timeout 300 bash -c '
-        until kubectl --kubeconfig="$KUBECONFIG" get daemonset cilium -n kube-system >/dev/null 2>&1; do
-          echo "    ⏳ Waiting for Cilium DaemonSet to be created..."
-          sleep 5
-        done
-      '
+      SECONDS=0
+      until kubectl --kubeconfig="$KUBECONFIG" get daemonset cilium -n kube-system >/dev/null 2>&1; do
+        [ "$SECONDS" -lt 300 ] || { echo "timed out waiting for Cilium DaemonSet" >&2; exit 1; }
+        echo "    ⏳ Waiting for Cilium DaemonSet to be created..."
+        sleep 5
+      done
       echo "  ✓ Cilium DaemonSet exists"
 
       # Wait for Cilium pods to be scheduled (kubectl wait fails with "no matching resources" if zero pods exist)
       # Pods may not be scheduled if nodes haven't registered yet or have taints Cilium can't tolerate
       echo "  Waiting for Cilium pods to be scheduled..."
-      timeout 300 bash -c '
-        DIAG_DONE=0
-        COUNT=0
-        until kubectl --kubeconfig="$KUBECONFIG" get pods -l k8s-app=cilium -n kube-system --no-headers 2>/dev/null | grep -q .; do
-          COUNT=$((COUNT + 1))
-          if [ "$COUNT" -eq 12 ] && [ "$DIAG_DONE" -eq 0 ]; then
-            echo "    [diag] No Cilium pods after 60s - node/DS state:"
-            kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide 2>/dev/null || echo "      (kubectl get nodes failed)"
-            kubectl --kubeconfig="$KUBECONFIG" get ds cilium -n kube-system -o wide 2>/dev/null || echo "      (kubectl get ds failed)"
-            DIAG_DONE=1
-          fi
-          echo "    ⏳ Waiting for Cilium pods to be scheduled..."
-          sleep 5
-        done
-      '
+      SECONDS=0
+      DIAG_DONE=0
+      COUNT=0
+      until kubectl --kubeconfig="$KUBECONFIG" get pods -l k8s-app=cilium -n kube-system --no-headers 2>/dev/null | grep -q .; do
+        [ "$SECONDS" -lt 300 ] || { echo "timed out waiting for Cilium pods to be scheduled" >&2; exit 1; }
+        COUNT=$((COUNT + 1))
+        if [ "$COUNT" -eq 12 ] && [ "$DIAG_DONE" -eq 0 ]; then
+          echo "    [diag] No Cilium pods after 60s - node/DS state:"
+          kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide 2>/dev/null || echo "      (kubectl get nodes failed)"
+          kubectl --kubeconfig="$KUBECONFIG" get ds cilium -n kube-system -o wide 2>/dev/null || echo "      (kubectl get ds failed)"
+          DIAG_DONE=1
+        fi
+        echo "    ⏳ Waiting for Cilium pods to be scheduled..."
+        sleep 5
+      done
       echo "  ✓ Cilium pods scheduled"
 
       # Wait for Cilium pods to be ready (handles image pull delays)

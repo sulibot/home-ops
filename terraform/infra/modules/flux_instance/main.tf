@@ -53,11 +53,11 @@ resource "null_resource" "wait_fluxinstance_crd" {
     command = <<-EOT
       set -euo pipefail
       echo "Waiting for flux-system namespace..."
-      timeout 300 bash -c '
-        until kubectl --kubeconfig="$KUBECONFIG" get namespace flux-system >/dev/null 2>&1; do
-          sleep 2
-        done
-      '
+      SECONDS=0
+      until kubectl --kubeconfig="$KUBECONFIG" get namespace flux-system >/dev/null 2>&1; do
+        [ "$SECONDS" -lt 300 ] || { echo "timed out waiting for flux-system namespace" >&2; exit 1; }
+        sleep 2
+      done
       echo "Waiting for FluxInstance CRD..."
       kubectl --kubeconfig="$KUBECONFIG" wait --for=condition=Established \
         crd/fluxinstances.fluxcd.controlplane.io --timeout=300s
@@ -342,12 +342,12 @@ resource "null_resource" "suspend_flux_system" {
       echo "Suspending flux-system to prevent premature app deployment..."
 
       # Wait for flux-system Kustomization to exist (created by FluxInstance)
-      timeout 30 bash -c '
-        until kubectl --kubeconfig="$KUBECONFIG" get kustomization flux-system -n flux-system >/dev/null 2>&1; do
-          echo "  ⏳ Waiting for flux-system Kustomization to be created..."
-          sleep 1
-        done
-      '
+      SECONDS=0
+      until kubectl --kubeconfig="$KUBECONFIG" get kustomization flux-system -n flux-system >/dev/null 2>&1; do
+        [ "$SECONDS" -lt 30 ] || { echo "timed out waiting for flux-system Kustomization" >&2; exit 1; }
+        echo "  ⏳ Waiting for flux-system Kustomization to be created..."
+        sleep 1
+      done
 
       # Suspend it immediately
       kubectl --kubeconfig="$KUBECONFIG" patch kustomization flux-system -n flux-system \
@@ -445,13 +445,19 @@ resource "null_resource" "wait_helm_cache_ready" {
 
       # Try to wait for canary to have observedGeneration != -1
       # This proves helm-controller cache is synced and processing resources
-      if timeout 90 bash -c '
-        until [ "$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease flux-cache-canary -n flux-system -o jsonpath='\''{.status.observedGeneration}'\'' 2>/dev/null)" != "-1" ] && \
-              [ "$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease flux-cache-canary -n flux-system -o jsonpath='\''{.status.observedGeneration}'\'' 2>/dev/null)" != "" ]; do
-          echo "  ⏳ Waiting for helm-controller cache..."
-          sleep 2
-        done
-      '; then
+      CANARY_SECONDS=0
+      CANARY_READY=0
+      while [ "$CANARY_SECONDS" -lt 90 ]; do
+        gen="$(kubectl --kubeconfig="$KUBECONFIG" get helmrelease flux-cache-canary -n flux-system -o jsonpath='{.status.observedGeneration}' 2>/dev/null)"
+        if [ -n "$gen" ] && [ "$gen" != "-1" ]; then
+          CANARY_READY=1
+          break
+        fi
+        echo "  ⏳ Waiting for helm-controller cache..."
+        sleep 2
+        CANARY_SECONDS=$((CANARY_SECONDS + 2))
+      done
+      if [ "$CANARY_READY" -eq 1 ]; then
         echo "✓ helm-controller cache is ready (canary observedGeneration != -1)"
       else
         echo "⚠️  Canary timeout - falling back to time-based wait (45s)"
