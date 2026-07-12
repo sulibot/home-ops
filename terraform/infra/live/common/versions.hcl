@@ -25,6 +25,7 @@ locals {
     time       = "~> 0.13.1"
     routeros   = "~> 1.99.0"
     cloudflare = "~> 4.0"
+    tailscale  = "~> 0.21"
   }
 
   # Application versions
