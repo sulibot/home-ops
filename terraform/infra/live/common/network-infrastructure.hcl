@@ -1,15 +1,19 @@
 locals {
+  # Source of truth for domain/DNS/NTP: site.yaml -> site.json
+  # (scripts/sync-site-facts.sh). Edit site.yaml, not here.
+  site = jsondecode(file("${get_repo_root()}/site.json"))
+
   # Base domain for all infrastructure FQDNs
-  base_domain = "sulibot.com"
+  base_domain = local.site.domain
 
   # DNS configuration (centralized infrastructure)
   dns_servers = {
-    ipv6 = "fd00:0:0:ffff::53"
-    ipv4 = "10.255.0.53"
+    ipv6 = local.site.dns_servers.ipv6
+    ipv4 = local.site.dns_servers.ipv4
   }
 
   # NTP configuration - use internal DNS server which also provides NTP
-  ntp_servers = ["fd00:0:0:ffff::53", "10.255.0.53"]
+  ntp_servers = local.site.ntp_servers
 
   # BGP configuration
   bgp = {

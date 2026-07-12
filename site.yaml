@@ -1,0 +1,105 @@
+# Site facts: the single cross-toolchain source of truth.
+#
+# Edit THIS file, then run: scripts/sync-site-facts.sh
+# (regenerates site.json, which Terragrunt/Nix consume, and INVENTORY.md).
+# CI fails if the generated files are stale.
+#
+# Derivation conventions (see terraform/infra/ARCHITECTURE.md):
+#   ipv4    = 10.<tenant>.0.<suffix>       ipv6  = fd00:<tenant>::<suffix>
+#   vm_id   = tenant*1000 + suffix         gw    = .254 / ::fffe
+#   bridge  = vnet<tenant> (sdn) | vmbr0 + vlan <tenant> (vlan)
+# Per-entry `override:` beats any derived value; comment why when you use one.
+
+domain: sulibot.com
+
+dns_servers:
+  ipv4: 10.255.0.53
+  ipv6: fd00:0:0:ffff::53
+
+ntp_servers:
+  - fd00:0:0:ffff::53
+  - 10.255.0.53
+
+proxmox:
+  # Deliberately pve02, not pve01: remote terragrunt runs enter via the tail01
+  # subnet router (an LXC on pve01), and the EVPN anycast gateway currently
+  # cannot hairpin routed traffic between a vnet LXC and services on its own
+  # host (TCP connects, payload never flows). tail01 -> pve02 works. If that
+  # SDN bug gets fixed, this can go back to pve01.
+  api_endpoint: https://10.10.0.2:8006/api2/json
+  primary_node: pve01
+  nodes:
+    pve01: { mgmt_ip: 10.10.0.1 }
+    pve02: { mgmt_ip: 10.10.0.2 }
+    pve03: { mgmt_ip: 10.10.0.3 }
+
+# Network tenants. mode drives bridge derivation: sdn -> vnet<id>, vlan -> vmbr0 tag <id>.
+tenants:
+  100: { purpose: "core service LXCs (kanidm, pki, tailscale)", mode: sdn }
+  101: { purpose: "cluster-101 (sol)", mode: sdn }
+  104: { purpose: "cluster-104 (baremetal)", mode: sdn }
+  200: { purpose: "shared infra (minio, zot, nixos guests)", mode: vlan }
+
+# T-shirt sizes for service guests.
+sizes:
+  micro: { cpu_cores: 1, memory_mb: 512,   swap_mb: 256, disk_gb: 8 }
+  small: { cpu_cores: 2, memory_mb: 2048,  swap_mb: 512, disk_gb: 16 }
+  build: { cpu_cores: 6, memory_mb: 16384, swap_mb: 0,   disk_gb: 100 }
+
+# Service guest inventory (LXC + standalone VMs).
+# Everything else about an entry is derived; see conventions above.
+# os: debian (default; SSH-provisioned) | nixos (configured by nix/hosts/<hostname>).
+services:
+  kanidm:
+    role: kanidm
+    tenant: 100
+    size: small
+    # HA triplet; per-container placement/addressing stays in its terragrunt
+    # heredoc by design (see ARCHITECTURE.md, Deferred).
+    multi_instance: true
+
+  minio:
+    role: minio
+    tenant: 200
+    suffix: 52
+    node: pve02
+    size: small
+    hostname: minio01
+
+  zot:
+    role: zot
+    tenant: 200
+    suffix: 51
+    node: pve02
+    size: small
+    hostname: zot01
+    override:
+      disk_gb: 20 # registry cache needs headroom over the small size
+
+  pki:
+    role: pki
+    tenant: 100
+    suffix: 64
+    node: pve01
+    size: small
+    hostname: pki01
+
+  tail:
+    role: tailscale
+    tenant: 100
+    size: micro
+    instances:
+      tail01: { suffix: 65, node: pve01 }
+      tail02: { suffix: 66, node: pve02 }
+
+  nixtest:
+    role: nixtest
+    os: nixos
+    tenant: 200
+    suffix: 202
+    node: pve02
+    size: micro
+    hostname: nixtest01
+    override:
+      memory_mb: 1024 # nix builds want a little more than micro's 512
+      swap_mb: 0

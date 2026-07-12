@@ -1,25 +1,25 @@
 locals {
+  # Source of truth: site.yaml -> site.json (scripts/sync-site-facts.sh).
+  # This file is the Terraform-facing adapter; edit site.yaml, not here.
+  site = jsondecode(file("${get_repo_root()}/site.json"))
+
   # Proxmox cluster nodes
-  proxmox_nodes = ["pve01", "pve02", "pve03"]
+  proxmox_nodes = keys(local.site.proxmox.nodes)
 
   # Primary node for initial operations
-  proxmox_primary_node = "pve01"
+  proxmox_primary_node = local.site.proxmox.primary_node
 
   # Fully qualified hostnames
   proxmox_hostnames = {
-    pve01 = "pve01.sulibot.com"
-    pve02 = "pve02.sulibot.com"
-    pve03 = "pve03.sulibot.com"
+    for name, node in local.site.proxmox.nodes : name => "${name}.${local.site.domain}"
   }
 
-  # Management-plane API endpoint (internal address; avoids public DNS/CF path)
-  api_endpoint = "https://10.10.0.1:8006/api2/json"
+  # Management-plane API endpoint (see site.yaml for why it points at pve02)
+  api_endpoint = local.site.proxmox.api_endpoint
 
   # Management-network SSH addresses for direct node access (provisioners)
   ssh_hosts = {
-    pve01 = "10.10.0.1"
-    pve02 = "10.10.0.2"
-    pve03 = "10.10.0.3"
+    for name, node in local.site.proxmox.nodes : name => node.mgmt_ip
   }
 
   # Storage configuration

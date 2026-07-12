@@ -1,5 +1,10 @@
 # Baseline for every homelab NixOS guest, LXC or VM.
 { lib, pkgs, ... }:
+let
+  # Cross-toolchain site facts (edit site.yaml at the repo root, then run
+  # scripts/sync-site-facts.sh)
+  site = builtins.fromJSON (builtins.readFile ../../site.json);
+in
 {
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
@@ -23,8 +28,8 @@
   ];
 
   networking.nameservers = [
-    "fd00:0:0:ffff::53"
-    "10.255.0.53"
+    site.dns_servers.ipv6
+    site.dns_servers.ipv4
   ];
 
   environment.systemPackages = with pkgs; [
