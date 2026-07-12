@@ -136,9 +136,9 @@ locals {
         nesting = true
         keyctl  = true
       }
-      ipv4_address    = "${local.minio_class.ipv4}"
+      ipv4_address    = "${local.minio_class.ipv4_cidr}"
       ipv4_gateway    = "${local.minio_class.network.ipv4_gateway}"
-      ipv6_address    = "${local.minio_class.ipv6}"
+      ipv6_address    = "${local.minio_class.ipv6_cidr}"
       ipv6_gateway    = "${local.minio_class.network.ipv6_gateway}"
       ssh_public_keys = [local.ssh_public_key]
       tags            = ["storage", "minio", "lxc", "trixie"]
@@ -235,7 +235,7 @@ resource "null_resource" "minio_caddy_frontend" {
     type        = "ssh"
     user        = "root"
     private_key = file(pathexpand("~/.ssh/id_ed25519"))
-    host        = "${replace(local.minio_class.ipv4, "/24", "")}"
+    host        = "${local.minio_class.ipv4}"
     timeout     = "10m"
   }
 
@@ -254,7 +254,7 @@ EOT
 resource "routeros_ip_dns_record" "minio_host_ipv4" {
   name    = local.host_domain
   type    = "A"
-  address = "${replace(local.minio_class.ipv4, "/24", "")}"
+  address = "${local.minio_class.ipv4}"
   ttl     = "5m"
   comment = "managed by terraform minio-lxc"
 }
@@ -262,7 +262,7 @@ resource "routeros_ip_dns_record" "minio_host_ipv4" {
 resource "routeros_ip_dns_record" "minio_host_ipv6" {
   name    = local.host_domain
   type    = "AAAA"
-  address = "${replace(local.minio_class.ipv6, "/64", "")}"
+  address = "${local.minio_class.ipv6}"
   ttl     = "5m"
   comment = "managed by terraform minio-lxc"
 }

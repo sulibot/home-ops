@@ -238,6 +238,12 @@ resource "cloudflare_zero_trust_gateway_policy" "app_private_dns_override" {
   }
 }
 
+# Internal DNS for the -app hostnames is deliberately NOT managed here: each
+# cluster's external-dns-mikrotik publishes them to RouterOS from the
+# HTTPRoutes (with its TXT ownership registry), so internal records track the
+# real gateway addresses automatically. This block only manages the WARP-side
+# Gateway overrides. Do not add static RouterOS records for these names --
+# unowned records block external-dns from writing its own (owner-id mismatch).
 resource "cloudflare_zero_trust_tunnel_cloudflared_route" "app_private_route" {
   for_each = local.warp_private_routes
 

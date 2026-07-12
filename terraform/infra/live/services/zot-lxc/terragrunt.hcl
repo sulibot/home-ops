@@ -130,9 +130,9 @@ locals {
         nesting = true
         keyctl  = true
       }
-      ipv4_address    = "${local.zot_class.ipv4}"
+      ipv4_address    = "${local.zot_class.ipv4_cidr}"
       ipv4_gateway    = "${local.zot_class.network.ipv4_gateway}"
-      ipv6_address    = "${local.zot_class.ipv6}"
+      ipv6_address    = "${local.zot_class.ipv6_cidr}"
       ipv6_gateway    = "${local.zot_class.network.ipv6_gateway}"
       ssh_public_keys = [local.ssh_public_key]
       tags            = ["registry", "zot", "lxc", "trixie"]
@@ -217,7 +217,7 @@ resource "null_resource" "zot_caddy_frontend" {
     type        = "ssh"
     user        = "root"
     private_key = file(pathexpand("~/.ssh/id_ed25519"))
-    host        = "${replace(local.zot_class.ipv4, "/24", "")}"
+    host        = "${local.zot_class.ipv4}"
     timeout     = "10m"
   }
 
@@ -236,7 +236,7 @@ EOT
 resource "routeros_ip_dns_record" "zot_host_ipv4" {
   name    = local.host_domain
   type    = "A"
-  address = "${replace(local.zot_class.ipv4, "/24", "")}"
+  address = "${local.zot_class.ipv4}"
   ttl     = "5m"
   comment = "managed by terraform zot-lxc"
 }
@@ -244,7 +244,7 @@ resource "routeros_ip_dns_record" "zot_host_ipv4" {
 resource "routeros_ip_dns_record" "zot_host_ipv6" {
   name    = local.host_domain
   type    = "AAAA"
-  address = "${replace(local.zot_class.ipv6, "/64", "")}"
+  address = "${local.zot_class.ipv6}"
   ttl     = "5m"
   comment = "managed by terraform zot-lxc"
 }

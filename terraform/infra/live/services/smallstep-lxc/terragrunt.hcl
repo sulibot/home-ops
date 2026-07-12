@@ -142,9 +142,9 @@ locals {
         nesting = true
         keyctl  = true
       }
-      ipv4_address    = "${local.pki_class.ipv4}"
+      ipv4_address    = "${local.pki_class.ipv4_cidr}"
       ipv4_gateway    = "${local.pki_class.network.ipv4_gateway}"
-      ipv6_address    = "${local.pki_class.ipv6}"
+      ipv6_address    = "${local.pki_class.ipv6_cidr}"
       ipv6_gateway    = "${local.pki_class.network.ipv6_gateway}"
       ssh_public_keys = [local.ssh_public_key]
       tags            = ["identity", "pki", "smallstep", "lxc", "trixie"]
@@ -243,7 +243,7 @@ resource "null_resource" "smallstep_caddy_frontend" {
     type        = "ssh"
     user        = "root"
     private_key = file(pathexpand("~/.ssh/id_ed25519"))
-    host        = "${replace(local.pki_class.ipv4, "/24", "")}"
+    host        = "${local.pki_class.ipv4}"
     timeout     = "10m"
   }
 
@@ -262,7 +262,7 @@ EOT
 resource "routeros_ip_dns_record" "smallstep_host_ipv4" {
   name    = local.host_domain
   type    = "A"
-  address = "${replace(local.pki_class.ipv4, "/24", "")}"
+  address = "${local.pki_class.ipv4}"
   ttl     = "5m"
   comment = "managed by terraform smallstep-lxc"
 }
@@ -270,7 +270,7 @@ resource "routeros_ip_dns_record" "smallstep_host_ipv4" {
 resource "routeros_ip_dns_record" "smallstep_host_ipv6" {
   name    = local.host_domain
   type    = "AAAA"
-  address = "${replace(local.pki_class.ipv6, "/64", "")}"
+  address = "${local.pki_class.ipv6}"
   ttl     = "5m"
   comment = "managed by terraform smallstep-lxc"
 }
@@ -310,11 +310,11 @@ resource "null_resource" "smallstep_1password_sync" {
           --format json | jq -r '.id')"
       fi
 
-      ROOT_CRT="$(timeout 20 ssh $SSH_OPTS root@${replace(local.pki_class.ipv4, "/24", "")} 'cat /etc/step-ca/certs/root_ca.crt')"
-      INTERMEDIATE_CRT="$(timeout 20 ssh $SSH_OPTS root@${replace(local.pki_class.ipv4, "/24", "")} 'cat /etc/step-ca/certs/intermediate_ca.crt')"
-      INTERMEDIATE_KEY_B64="$(timeout 20 ssh $SSH_OPTS root@${replace(local.pki_class.ipv4, "/24", "")} 'base64 -w0 /etc/step-ca/secrets/intermediate_ca_key')"
-      FINGERPRINT="$(timeout 20 ssh $SSH_OPTS root@${replace(local.pki_class.ipv4, "/24", "")} 'step certificate fingerprint /etc/step-ca/certs/root_ca.crt')"
-      CA_JSON_B64="$(timeout 20 ssh $SSH_OPTS root@${replace(local.pki_class.ipv4, "/24", "")} 'base64 -w0 /etc/step-ca/config/ca.json')"
+      ROOT_CRT="$(timeout 20 ssh $SSH_OPTS root@${local.pki_class.ipv4} 'cat /etc/step-ca/certs/root_ca.crt')"
+      INTERMEDIATE_CRT="$(timeout 20 ssh $SSH_OPTS root@${local.pki_class.ipv4} 'cat /etc/step-ca/certs/intermediate_ca.crt')"
+      INTERMEDIATE_KEY_B64="$(timeout 20 ssh $SSH_OPTS root@${local.pki_class.ipv4} 'base64 -w0 /etc/step-ca/secrets/intermediate_ca_key')"
+      FINGERPRINT="$(timeout 20 ssh $SSH_OPTS root@${local.pki_class.ipv4} 'step certificate fingerprint /etc/step-ca/certs/root_ca.crt')"
+      CA_JSON_B64="$(timeout 20 ssh $SSH_OPTS root@${local.pki_class.ipv4} 'base64 -w0 /etc/step-ca/config/ca.json')"
 
       timeout 20 op item edit "$ITEM_ID" \
         --vault="${local.onepassword_vault}" \

@@ -92,9 +92,9 @@ variable "region" {
         nesting = true
         keyctl  = true
       }
-      ipv4_address    = "${instance.ipv4}"
+      ipv4_address    = "${instance.ipv4_cidr}"
       ipv4_gateway    = "${local.tail_class.network.ipv4_gateway}"
-      ipv6_address    = "${instance.ipv6}"
+      ipv6_address    = "${instance.ipv6_cidr}"
       ipv6_gateway    = "${local.tail_class.network.ipv6_gateway}"
       ssh_public_keys = [local.ssh_public_key]
       tags            = ["tailscale", "lxc", "trixie"]

@@ -69,9 +69,9 @@ inputs = {
       disk_gb      = local.nixtest_class.sizing.disk_gb
       bridge       = local.nixtest_class.network.bridge
       vlan_id      = local.nixtest_class.network.vlan_id
-      ipv4_address = local.nixtest_class.ipv4
+      ipv4_address = local.nixtest_class.ipv4_cidr
       ipv4_gateway = local.nixtest_class.network.ipv4_gateway
-      ipv6_address = local.nixtest_class.ipv6
+      ipv6_address = local.nixtest_class.ipv6_cidr
       ipv6_gateway = local.nixtest_class.network.ipv6_gateway
       tags         = ["nixos", "lxc", "pilot"]
     }
