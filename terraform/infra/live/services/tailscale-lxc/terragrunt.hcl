@@ -10,11 +10,7 @@ locals {
   tail_class    = local.lxc_catalog.services.tail
   credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  pve_ssh_hosts = {
-    pve01 = "10.10.0.1"
-    pve02 = "10.10.0.2"
-    pve03 = "10.10.0.3"
-  }
+  pve_ssh_hosts = local.proxmox_infra.ssh_hosts
 }
 
 generate "providers" {
@@ -28,7 +24,7 @@ data "sops_file" "secrets" {
 }
 
 provider "proxmox" {
-  endpoint = "https://10.10.0.1:8006/api2/json"
+  endpoint = "${local.proxmox_infra.api_endpoint}"
   username = "root@pam"
   password = data.sops_file.secrets.data["pve_password"]
   insecure = true

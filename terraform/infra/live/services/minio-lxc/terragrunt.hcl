@@ -50,7 +50,7 @@ data "sops_file" "secrets" {
 }
 
 provider "proxmox" {
-  endpoint = "https://10.10.0.1:8006/api2/json"
+  endpoint = "${local.proxmox_infra.api_endpoint}"
   username = "root@pam"
   password = data.sops_file.secrets.data["pve_password"]
   insecure = true

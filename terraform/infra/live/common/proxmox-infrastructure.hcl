@@ -12,6 +12,16 @@ locals {
     pve03 = "pve03.sulibot.com"
   }
 
+  # Management-plane API endpoint (internal address; avoids public DNS/CF path)
+  api_endpoint = "https://10.10.0.1:8006/api2/json"
+
+  # Management-network SSH addresses for direct node access (provisioners)
+  ssh_hosts = {
+    pve01 = "10.10.0.1"
+    pve02 = "10.10.0.2"
+    pve03 = "10.10.0.3"
+  }
+
   # Storage configuration
   storage = {
     datastore_id = "resources" # For ISO, snippets, cloud-init
