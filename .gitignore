@@ -155,3 +155,5 @@ FRR/
 
 # Local Claude/Codex app settings
 .claude/settings.json
+terraform/infra/live/services/nixtest-lxc/providers.tf
+terraform/infra/live/services/nixbuild-vm/providers.tf

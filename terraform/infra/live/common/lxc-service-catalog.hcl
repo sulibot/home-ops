@@ -147,5 +147,33 @@ locals {
         ]
       }
     }
+
+    # NixOS pilot LXC. os=nixos means: no SSH bash provisioning; system
+    # config lives in nix/hosts/<hostname> and deploys via nixos-rebuild.
+    nixtest = {
+      role      = "nixtest"
+      os        = "nixos"
+      tenant_id = 200
+      network = {
+        bridge       = "vmbr0"
+        vlan_id      = 200
+        ipv4_gateway = "10.200.0.254"
+        ipv6_gateway = "fd00:200::fffe"
+      }
+      storage = {
+        vm_datastore = "rbd-vm"
+      }
+      sizing = {
+        cpu_cores = 1
+        memory_mb = 1024
+        swap_mb   = 0
+        disk_gb   = 8
+      }
+      node_name = "pve02"
+      vm_id     = 200202
+      hostname  = "nixtest01"
+      ipv4      = "10.200.0.202/24"
+      ipv6      = "fd00:200::202/64"
+    }
   }
 }
