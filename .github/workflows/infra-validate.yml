@@ -1,0 +1,46 @@
+name: Infra Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'site.yaml'
+      - 'site.json'
+      - 'INVENTORY.md'
+      - 'terraform/infra/**'
+      - 'nix/**'
+      - 'scripts/sync-site-facts.sh'
+      - 'scripts/validate-infra.sh'
+      - '.github/workflows/infra-validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'site.yaml'
+      - 'site.json'
+      - 'INVENTORY.md'
+      - 'terraform/infra/**'
+      - 'nix/**'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate infra parameter layers
+    runs-on: self-hosted
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          command -v terragrunt || { echo "terragrunt required on runner"; exit 1; }
+          command -v tofu || command -v terraform || { echo "tofu/terraform required on runner"; exit 1; }
+          command -v yq || pip3 install --user yq
+          command -v jq || { echo "jq required on runner"; exit 1; }
+
+      - name: Validate
+        run: ./scripts/validate-infra.sh

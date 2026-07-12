@@ -9,15 +9,13 @@ locals {
   talos_apply_mode    = "auto"
 
   # ── Metal-platform node inventory (consumed by the config-metal unit) ──────
-  # Map keyed by node name so additional bare-metal nodes are one entry each.
-  nodes = {
+  # Map keyed by node name; addressing is derived from ip_suffix per the
+  # site conventions (10.<tenant>.0.<suffix> / fd00:<tenant>::<suffix>), so
+  # an additional bare-metal node is one entry: suffix + hardware facts.
+  node_specs = {
     talos01 = {
-      name         = "talos01"
-      hostname     = "talos01"
       machine_type = "controlplane"
       ip_suffix    = 4
-      public_ipv4  = "10.104.0.4"
-      public_ipv6  = "fd00:104::4"
       interface    = "enp1s0.104"
       extra_interfaces = [
         {
@@ -57,6 +55,15 @@ locals {
         },
       ]
       }
+  }
+
+  nodes = {
+    for name, spec in local.node_specs : name => merge(spec, {
+      name        = name
+      hostname    = name
+      public_ipv4 = "10.${local.tenant_id}.0.${spec.ip_suffix}"
+      public_ipv6 = "fd00:${local.tenant_id}::${spec.ip_suffix}"
+    })
   }
 
   network = {
