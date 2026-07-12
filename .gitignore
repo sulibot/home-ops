@@ -108,6 +108,7 @@ ansible.log
 *.patch
 *.diff
 *.lock
+!nix/flake.lock
 *.bak
 
 # Generated Talos configs
