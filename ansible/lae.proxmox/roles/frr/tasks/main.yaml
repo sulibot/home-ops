@@ -139,6 +139,49 @@
   notify: restart frr
   tags: frr
 
+# Masking frr@sdn is NOT enough: pve-network still regenerates
+# /etc/frr/frr.conf AND /etc/frr/daemons at boot (overlay-only, ospfd=no),
+# which took the whole fabric down after the 2026-07-12 power event
+# (docs/tickets/pve-frr-power-event-20260712.md). Two guards:
+#   1. The same rendered config also lands in frr.conf.local, which
+#      pve-network merges into anything it regenerates.
+#   2. A systemd ExecStartPre re-enables ospfd in the daemons file on
+#      every FRR start.
+- name: Deploy FRR configuration - frr.conf.local (survives PVE SDN regeneration)
+  ansible.builtin.template:
+    src: frr-pve.conf.j2
+    dest: /etc/frr/frr.conf.local
+    owner: frr
+    group: frr
+    mode: '0640'
+  notify: restart frr
+  tags: frr
+
+- name: Create frr.service drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/frr.service.d
+    state: directory
+    mode: '0755'
+  tags: frr
+
+- name: Guard ospfd against PVE daemons-file regeneration
+  ansible.builtin.copy:
+    content: |
+      # PVE SDN regenerates /etc/frr/daemons at boot with ospfd=no, but the
+      # v4 underlay (VTEP loopback routes) requires OSPFv2. Re-enable before
+      # every FRR start. See docs/tickets/pve-frr-power-event-20260712.md
+      [Service]
+      ExecStartPre=/usr/bin/sed -i "s/^ospfd=no/ospfd=yes/" /etc/frr/daemons
+    dest: /etc/systemd/system/frr.service.d/10-enable-ospfd.conf
+    mode: '0644'
+  notify: restart frr
+  tags: frr
+
+- name: Reload systemd for frr drop-in
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: frr
+
 - name: Store FRR configuration hash for integrity verification
   ansible.builtin.stat:
     path: /etc/frr/frr.conf
