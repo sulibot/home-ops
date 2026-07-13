@@ -14,8 +14,13 @@ locals {
     for name, node in local.site.proxmox.nodes : name => "${name}.${local.site.domain}"
   }
 
-  # Management-plane API endpoint (see site.yaml for why it points at pve02)
-  api_endpoint = local.site.proxmox.api_endpoint
+  # Management-plane API endpoint. Optional in site.yaml -- scripts/sync-site-facts.sh
+  # materializes it from primary_node's mgmt_ip when absent; try() here is a
+  # defensive fallback for the same derivation in case site.json is stale.
+  api_endpoint = try(
+    local.site.proxmox.api_endpoint,
+    "https://${local.site.proxmox.nodes[local.site.proxmox.primary_node].mgmt_ip}:8006/api2/json",
+  )
 
   # Management-network SSH addresses for direct node access (provisioners)
   ssh_hosts = {

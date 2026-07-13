@@ -21,11 +21,14 @@ ntp_servers:
   - 10.255.0.53
 
 proxmox:
+  # api_endpoint is optional -- omit it and it derives from primary_node's
+  # mgmt_ip (https://<mgmt_ip>:8006/api2/json). Only set it explicitly to
+  # override that, e.g. temporarily pointing at a different node.
+  #
   # The old "must point at pve02" workaround is retired: the EVPN hairpin bug
   # (vnet LXC unable to reach services on its own host) was root-caused to
   # tcp_early_demux hijacking VRF-forwarded flows and is fixed via sysctl on
   # all nodes (see docs/tickets/pve-frr-power-event-20260712.md).
-  api_endpoint: https://10.10.0.1:8006/api2/json
   primary_node: pve01
   nodes:
     pve01: { mgmt_ip: 10.10.0.1 }

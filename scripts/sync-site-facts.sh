@@ -21,6 +21,16 @@ site = json.load(open('site.json'))
 tenants = {int(k): v for k, v in site['tenants'].items()}
 sizes = site['sizes']
 
+# api_endpoint is optional in site.yaml: derive it from primary_node's
+# mgmt_ip when absent, then materialize the resolved value into site.json
+# (and its nix/ copy) so Terragrunt/Nix consumers don't need fallback logic.
+proxmox = site['proxmox']
+if 'api_endpoint' not in proxmox:
+    primary_ip = proxmox['nodes'][proxmox['primary_node']]['mgmt_ip']
+    proxmox['api_endpoint'] = f"https://{primary_ip}:8006/api2/json"
+    json.dump(site, open('site.json', 'w'), indent=2)
+    json.dump(site, open('nix/site.json', 'w'), indent=2)
+
 def derive(tenant, suffix):
     return {
         'ipv4': f"10.{tenant}.0.{suffix}",

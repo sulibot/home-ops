@@ -9,7 +9,6 @@
     "10.255.0.53"
   ],
   "proxmox": {
-    "api_endpoint": "https://10.10.0.1:8006/api2/json",
     "primary_node": "pve01",
     "nodes": {
       "pve01": {
@@ -21,7 +20,8 @@
       "pve03": {
         "mgmt_ip": "10.10.0.3"
       }
-    }
+    },
+    "api_endpoint": "https://10.10.0.1:8006/api2/json"
   },
   "tenants": {
     "100": {
