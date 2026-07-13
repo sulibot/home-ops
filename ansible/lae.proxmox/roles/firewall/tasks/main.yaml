@@ -18,3 +18,21 @@
     - inventory_hostname == 'pve01'
     - firewall_config.changed
   changed_when: true
+
+# Deploy on every node (unlike cluster.fw, nftables.conf is per-host, not
+# shared via /etc/pve). Clamps TCP MSS on vmbr0 egress so the EVPN exit-node
+# path stays safe even as vnet MTU grows beyond 1500 for internal fabric
+# traffic. See docs/tickets/pve-frr-power-event-20260712.md
+- name: Deploy nftables MSS clamp for exit-node egress
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: nftables_config
+
+- name: Apply nftables ruleset if changed
+  ansible.builtin.command: nft -f /etc/nftables.conf
+  when: nftables_config.changed
+  changed_when: true

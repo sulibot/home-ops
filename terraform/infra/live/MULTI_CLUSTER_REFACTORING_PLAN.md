@@ -308,7 +308,7 @@ dependency "image" {
     talos_image_file_name = "mock-talos-image.iso"
     talos_image_id        = "mock-schematic-id"
     talos_version         = "v1.11.5"
-    kubernetes_version    = "v1.31.4"
+    kubernetes_version    = "v1.34.1"
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }

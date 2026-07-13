@@ -22,7 +22,7 @@ variable "talos_version" {
 
 variable "kubernetes_version" {
   type        = string
-  description = "Kubernetes version (e.g., 1.31.4)"
+  description = "Kubernetes version (e.g., 1.34.1)"
 }
 
 variable "official_extensions" {
@@ -104,12 +104,12 @@ locals {
 # They share the same extensions and configuration
 resource "null_resource" "build_images" {
   triggers = {
-    talos_version        = var.talos_version
-    official_extensions  = join(",", var.official_extensions)
-    custom_extensions    = join(",", var.custom_extensions)
-    kernel_args          = join(",", var.kernel_args)
-    installer_registry   = var.installer_registry
-    iso_output_dir       = var.iso_output_dir
+    talos_version       = var.talos_version
+    official_extensions = join(",", var.official_extensions)
+    custom_extensions   = join(",", var.custom_extensions)
+    kernel_args         = join(",", var.kernel_args)
+    installer_registry  = var.installer_registry
+    iso_output_dir      = var.iso_output_dir
   }
 
   provisioner "local-exec" {

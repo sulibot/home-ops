@@ -198,9 +198,9 @@ variable "talos_version" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version (e.g., v1.31.4)"
+  description = "Kubernetes version (e.g., v1.34.1)"
   type        = string
-  default     = "v1.31.4"
+  default     = "v1.34.1"
 }
 
 locals {

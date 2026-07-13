@@ -106,7 +106,7 @@ All versions are centrally managed in `infra/live/common/versions.hcl`:
 locals {
   # Talos and Kubernetes versions
   talos_version      = "v1.11.5"
-  kubernetes_version = "v1.31.4"
+  kubernetes_version = "v1.34.1"
 
   # Terraform provider versions
   provider_versions = {

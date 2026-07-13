@@ -145,3 +145,60 @@ fabric-routed) failed into systemd start-limit backoff → CephFS mounts failed
   leaving most of the underlay's headroom unused.
 - Consider a UPS or staggered-boot policy: all three nodes rebooting
   simultaneously is the worst case for a self-hosted routing fabric.
+- **MTU increase (2026-07-13)**: raised the EVPN zone's vnet MTU from 1450 to
+  8950 (mesh underlay is 9000, minus 50B VXLAN/IPv4 overhead) via
+  `terraform/infra/live/common/network-infrastructure.hcl`. Paired with a new
+  TCP MSS clamp (`oifname "vmbr0" tcp flags syn tcp option maxseg size set
+  rt mtu`) deployed via `ansible/lae.proxmox/roles/firewall` to all three
+  nodes, so north-south TCP through the exit-node path stays safe regardless
+  of vnet MTU or which node currently holds the exit-node role - confirmed
+  live (SYN egressing vmbr0 showed `mss 1410`, well below what the new vnet
+  MTU would otherwise produce). Verified: physical mesh handles 8900-byte DF
+  pings cleanly node-to-node; cross-node pod-to-pod traffic at the existing
+  (unchanged) pod MTU has 0% loss; quorum/Ceph/BGP undisturbed by the SDN
+  reload. Neither Talos VMs nor Cilium pod interfaces have been reconfigured
+  for jumbo frames yet - that's separate future work, so no live traffic
+  today actually exercises the new headroom.
+  Also forced a live exit-node primary failover (pve01 -> pve02 -> back to
+  pve01) to validate the MSS clamp under failover; quorum/Ceph/node-Ready
+  state were unaffected throughout.
+- **New finding, surfaced during the above failover test (2026-07-13,
+  unresolved)**: the cluster-101 kube-apiserver VIP (`fd00:101::10`, a
+  Talos-native control-plane VIP) stopped being reachable from pve01/pve02
+  partway through the failover test and did not recover on its own. Root
+  cause is narrower than it first looked:
+  - The VIP was confirmed still correctly bound and answering on its current
+    holder (`solcp03`, via `talosctl get addressstatuses` showing
+    `ens18/fd00:101::10/128`), and reachable from pve03 (the VIP's own node)
+    with 0% loss.
+  - It was absent from every node's L2VPN EVPN table (both Type-2 MAC/IP and
+    Type-5 IP-prefix) - `show bgp l2vpn evpn route` returns nothing for it
+    anywhere, including on pve03. `show bgp l2vpn evpn route type prefix`
+    returns zero routes cluster-wide, suggesting Type-5 export
+    (`advertise ipv4/ipv6 unicast`) was never configured in any node's
+    `vrf_evpnz1` BGP instance in the first place - a pre-existing gap, not a
+    regression from today's changes.
+  - pve01/pve02 could not resolve it via ND either: with ARP/ND suppression
+    enabled, an unknown destination gets an immediate synthetic "Address
+    unreachable" from the local gateway rather than a flooded NS, so nothing
+    triggers (re)learning once the EVPN route is missing - a chicken-and-egg
+    condition. A local round-trip ping sourced from pve03's own gateway to
+    the VIP succeeded, proving the dataplane path itself works, but did not
+    produce a new Type-2 route or ND cache entry afterward.
+  - **This is not a regression from the MTU/MSS-clamp work**: neither change
+    touches ARP/ND suppression, EVPN route-type export, or VIP election.
+    It closely resembles the already-documented "stale ND cache after an SDN
+    reload" pattern above, but this time the flush-based fix didn't resolve
+    it, pointing at a real gap in Type-5 export config rather than pure
+    cache staleness.
+  - **Cluster itself was never impacted**: `kubectl get nodes` against any
+    individual node IP (e.g. `https://[fd00:101::11]:6443`) showed all 6
+    nodes Ready throughout, and cross-node pod-to-pod traffic was unaffected.
+    Only the convenience VIP path was down.
+  - **Not chased further live** given the risk of continued production EVPN
+    experimentation without a clear resolution path. Follow-up: either add
+    explicit `advertise ipv4 unicast` / `advertise ipv6 unicast` under each
+    node's `vrf_evpnz1` BGP instance (so eBGP-learned VRF routes, not just
+    connected/SVI ones, export as Type-5) and test in a controlled way, or
+    determine why Talos's VIP failover doesn't produce a snoop-able
+    NS/NA exchange that FRR's ARP/ND suppression can learn from.

@@ -1,0 +1,24 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter;
+	}
+	chain forward {
+		type filter hook forward priority filter;
+
+		# Clamp TCP MSS on traffic egressing via vmbr0 (the EVPN exit-node
+		# path to RouterOS, fixed at MTU 1500 on all nodes). This lets vnet
+		# MTU exceed 1500 for internal east-west fabric traffic without
+		# breaking north-south TCP flows, and stays correct regardless of
+		# which node currently holds the exit-node role since the rule is
+		# identical on all three. See
+		# docs/tickets/pve-frr-power-event-20260712.md
+		oifname "vmbr0" tcp flags syn tcp option maxseg size set rt mtu
+	}
+	chain output {
+		type filter hook output priority filter;
+	}
+}

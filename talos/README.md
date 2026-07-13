@@ -130,7 +130,7 @@ Update `terraform/infra/live/common/versions.hcl`:
 ```hcl
 locals {
   talos_version      = "v1.11.5"
-  kubernetes_version = "v1.31.4"
+  kubernetes_version = "v1.34.1"
   cilium_version     = "1.16.5"
 }
 ```

@@ -234,7 +234,7 @@ Centralized version management for all clusters:
 ```hcl
 locals {
   talos_version      = "v1.11.5"      # Talos Linux version
-  kubernetes_version = "1.31.4"       # Kubernetes version
+  kubernetes_version = "1.34.1"       # Kubernetes version
   talos_platform     = "nocloud"      # Platform for boot ISO
   talos_architecture = "amd64"        # CPU architecture
   cilium_version     = "1.18.4"       # Cilium CNI version
