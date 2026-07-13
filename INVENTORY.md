@@ -11,7 +11,7 @@ Derived values are materialized here so they stay greppable.
 | pve02 | 10.10.0.2 | pve02.sulibot.com |
 | pve03 | 10.10.0.3 | pve03.sulibot.com |
 
-API endpoint: `https://10.10.0.2:8006/api2/json`
+API endpoint: `https://10.10.0.1:8006/api2/json`
 
 ## Network tenants
 

@@ -21,12 +21,11 @@ ntp_servers:
   - 10.255.0.53
 
 proxmox:
-  # Deliberately pve02, not pve01: remote terragrunt runs enter via the tail01
-  # subnet router (an LXC on pve01), and the EVPN anycast gateway currently
-  # cannot hairpin routed traffic between a vnet LXC and services on its own
-  # host (TCP connects, payload never flows). tail01 -> pve02 works. If that
-  # SDN bug gets fixed, this can go back to pve01.
-  api_endpoint: https://10.10.0.2:8006/api2/json
+  # The old "must point at pve02" workaround is retired: the EVPN hairpin bug
+  # (vnet LXC unable to reach services on its own host) was root-caused to
+  # tcp_early_demux hijacking VRF-forwarded flows and is fixed via sysctl on
+  # all nodes (see docs/tickets/pve-frr-power-event-20260712.md).
+  api_endpoint: https://10.10.0.1:8006/api2/json
   primary_node: pve01
   nodes:
     pve01: { mgmt_ip: 10.10.0.1 }

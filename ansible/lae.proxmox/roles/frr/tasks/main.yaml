@@ -84,6 +84,32 @@
     reload: true
   tags: frr
 
+# Early demux short-circuits the FIB lookup for packets matching an existing
+# local socket. With VRFs this hijacks flows that should be FORWARDED: a vnet
+# guest talking to its own host completed the TCP handshake (SYN has no
+# socket yet, so it routes correctly) and then every subsequent packet was
+# delivered to the mis-scoped socket instead of forwarded - "TCP connects,
+# payload never flows". Disabling early demux is the kernel VRF
+# documentation's recommendation and fixed it outright.
+# Diagnosis: docs/tickets/pve-frr-power-event-20260712.md
+- name: Disable TCP early demux (breaks VRF hairpin flows)
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_early_demux
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
+- name: Disable UDP early demux (same VRF interaction)
+  ansible.posix.sysctl:
+    name: net.ipv4.udp_early_demux
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
 # ============================================================================
 # BACKUP CURRENT CONFIGURATION
 # ============================================================================
