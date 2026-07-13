@@ -49,6 +49,8 @@ locals {
       "10.10.0.0/24",       # PVE management
       "10.100.0.0/24",      # tenant-100 service LXCs
       "fd00:100::/64",      # tenant-100 service LXCs (v6)
+      "10.200.0.0/24",      # tenant-200 LXCs (MinIO tf-state, zot)
+      "fd00:200::/64",      # tenant-200 LXCs (v6)
       "10.255.0.0/24",      # infra loopbacks + DNS
       "fd00:0:0:ffff::/64", # infra loopbacks + DNS (v6)
       "10.101.0.0/24",      # cluster-101 nodes + API VIP
