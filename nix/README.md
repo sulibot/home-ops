@@ -17,7 +17,18 @@ Tracks `nixos-25.11` (same as the workstation `nix-config` repo).
 2. Catalog entry (`os = "nixos"`) + a `live/services/<name>/terragrunt.hcl`
    using `modules/proxmox_nixos_lxc` → `terragrunt apply`.
 3. `nix/hosts/<hostname>/default.nix` importing `profiles/lxc.nix`.
-4. Deploy (and every change after):
+4. First boot: the template comes up with no network and no sshd (ostype
+   `unmanaged` means PVE injects nothing). Bootstrap once from the PVE node:
+   ```
+   pct exec <vmid> -- /run/current-system/sw/bin/bash -c "
+     ip link set eth0 up; ip addr add <ipv4-cidr> dev eth0
+     ip route add default via <gw>; echo nameserver 10.255.0.53 > /etc/resolv.conf
+     export NIX_CONFIG='experimental-features = nix-command flakes'
+     export PATH=/run/current-system/sw/bin:\$PATH
+     nixos-rebuild switch --flake github:sulibot/home-ops?dir=nix#<hostname>"
+   ```
+   The flake config makes networking + sshd declarative from then on.
+5. Deploy (every change after):
    ```
    nixos-rebuild switch --flake ./nix#<hostname> \
      --target-host root@<ip> --build-host root@<ip>
@@ -27,7 +38,8 @@ Tracks `nixos-25.11` (same as the workstation `nix-config` repo).
 
 1. Unit using `modules/proxmox_nixos_vm` → `terragrunt apply` (boots a Debian
    bootstrap image with your SSH key).
-2. Host file importing `profiles/vm.nix` + a `disko` disk layout.
+2. Host file importing `profiles/vm.nix` + a `disko` disk layout
+   (virtio disks are `/dev/vda`, not sda).
 3. First install (once — wipes the disk, installs NixOS, builds on target):
    ```
    nix run github:nix-community/nixos-anywhere -- \
