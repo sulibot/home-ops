@@ -132,12 +132,14 @@ locals {
       ips        = ["10.104.250.11", "fd00:104:250::11"]
       precedence = 100
     }
+    # gateway-internal only (.11): the -app HTTPRoutes do not attach to
+    # gateway-tunnel (.12), so pointing clients there would 404.
     "immich-app.sulibot.com" = {
-      ips        = ["10.101.250.11", "10.101.250.12", "fd00:101:250::11", "fd00:101:250::12"]
+      ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 101
     }
     "vikunja-app.sulibot.com" = {
-      ips        = ["10.101.250.11", "10.101.250.12", "fd00:101:250::11", "fd00:101:250::12"]
+      ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 102
     }
   }
@@ -274,6 +276,7 @@ resource "cloudflare_zero_trust_access_identity_provider" "authentik" {
 
 resource "cloudflare_zero_trust_organization" "this" {
   account_id                  = local.account_id
+  name                        = "sulibot.cloudflareaccess.com"
   auth_domain                 = "sulibot.cloudflareaccess.com"
   allow_authenticate_via_warp = true
 }
@@ -305,7 +308,9 @@ resource "cloudflare_zero_trust_access_policy" "warp_enrollment" {
 resource "cloudflare_zero_trust_access_application" "warp_enrollment" {
   account_id                = local.account_id
   type                      = "warp"
-  name                      = "WARP device enrollment"
+  # Cloudflare force-renames warp-type apps to "Warp Login App" server-side;
+  # any other name here just produces perpetual plan drift.
+  name                      = "Warp Login App"
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.authentik.id]
   auto_redirect_to_identity = true
   policies = [{
