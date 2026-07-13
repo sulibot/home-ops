@@ -38,7 +38,7 @@
 
 {# Tenant prefix lists (adjust as needed) #}
 {% set TENANT_V4_LIST = tenant_v4_list | default(["10.100.0.0/24","10.101.0.0/24","10.102.0.0/24","10.103.0.0/24"]) %}
-{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/32","fd00:101::/32","fd00:102::/32","fd00:103::/32"]) %}
+{% set TENANT_V6_LIST = tenant_v6_list | default(["fd00:100::/48","fd00:101::/48","fd00:102::/48","fd00:103::/48"]) %}
 {% set TENANT_LOOPBACK_V6_LIST = tenant_loopback_v6_list | default(["fd00:100:fe::/64","fd00:101:fe::/64","fd00:102:fe::/64","fd00:103:fe::/64"]) %}
 {% set TENANT_GUA_V6_LIST = tenant_gua_v6_list | default(["2600:1700:ab1a:500e::/64","2600:1700:ab1a:500d::/64","2600:1700:ab1a:500c::/64","2600:1700:ab1a:500b::/64"]) %}
 
@@ -110,17 +110,22 @@ ipv6 prefix-list PL_TENANT_GUA_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} l
 !
 
 {# --- K8s --- #}
-ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} le 64
-ip prefix-list PL_K8S_PODS_V4 seq 5 permit {{ K8S_PODS_V4 }} le 24
+ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} ge 64 le 64
+ip prefix-list PL_K8S_PODS_V4 seq 5 permit {{ K8S_PODS_V4 }} ge 24 le 24
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 5 permit {{ K8S_VIPS_V6_A }} le 128
 ipv6 prefix-list PL_K8S_VIPS_V6 seq 15 permit {{ K8S_VIPS_V6_B }} le 128
 ipv6 prefix-list PL_K8S_LOOPBACKS_V6 seq 5 permit {{ K8S_LOOPBACKS_V6 }} le 128
 ip prefix-list PL_K8S_SERVICES_V4 seq 5 permit {{ K8S_SERVICES_V4 }} le 32
 ipv6 prefix-list PL_K8S_SERVICES_V6 seq 5 permit {{ K8S_SERVICES_V6 }} le 128
 !
-{# VM next-hop filter - only advertise VIPs when next-hop is VM-side (owner PVE) #}
-ipv6 prefix-list PL_VM_NH_V6 seq 10 permit fd00:100::/64 le 128
-ipv6 prefix-list PL_VM_NH_V6 seq 20 permit fd00:101::/64 le 128
+{# VM next-hop filter - only advertise VIPs when next-hop is VM-side (owner PVE).
+   Scoped to BGP-capable tenants only (vm_nh_v6_list = bgp_dynamic_neighbors
+   tenants); a tenant with no BGP speakers can't legitimately be a VM
+   next-hop for anything. #}
+{% set VM_NH_V6_LIST = vm_nh_v6_list | default(["fd00:101::/64"]) %}
+{% for p in VM_NH_V6_LIST %}
+ipv6 prefix-list PL_VM_NH_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} le 128
+{% endfor %}
 !
 
 {# =====================================================================
@@ -381,7 +386,6 @@ exit
 !
 interface lo
  ip ospf area 0.0.0.0
- no ip ospf passive
  ipv6 ospf6 area 0.0.0.0
 exit
 !
@@ -411,7 +415,6 @@ exit
 router bgp {{ LOCAL_AS }}
  bgp router-id {{ infra_ip4 }}
  no bgp default ipv4-unicast
- no bgp network import-check
  bgp bestpath as-path multipath-relax
  bgp graceful-restart
  !
@@ -425,7 +428,7 @@ router bgp {{ LOCAL_AS }}
  neighbor EDGE remote-as {{ EDGE_AS }}
  neighbor EDGE description EDGE_RouterOS_MP-BGP
  neighbor EDGE update-source {{ infra_ip6 }}
- neighbor EDGE ebgp-multihop 255
+ neighbor EDGE ebgp-multihop 5
  neighbor EDGE timers 10 30
  neighbor EDGE bfd profile EDGE_BFD
  neighbor EDGE capability extended-nexthop
@@ -449,7 +452,6 @@ router bgp {{ LOCAL_AS }}
  address-family ipv6 unicast
   neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
-  neighbor IBGP next-hop-self
   neighbor IBGP route-map RM_IBGP_IN in
   neighbor EDGE route-map RM_EDGE_EXPORT_V6 out
   redistribute connected route-map RM_CONNECTED_TO_BGP_V6

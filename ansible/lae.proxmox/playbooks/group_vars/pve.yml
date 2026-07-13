@@ -537,32 +537,50 @@ TENANT_VLANS: []
 
 # Tenant VNets configuration for radvd and IP addressing
 # Each vnet has ULA prefix and optionally a GUA prefix from AT&T PD
+#
+# bgp_dynamic_neighbors: true means the tenant runs its own BGP speakers
+# (Talos bird2 nodes) that dial in as dynamic VMS peers. Only set this for
+# tenants that actually run a cluster - it directly controls the FRR VMS
+# `bgp listen range` attack surface (see frr-pve.conf.j2): any host on a
+# tenant with this set to true can open a BGP session into vrf_evpnz1 and
+# propose routes. vnet100 (kanidm/pki/tailscale service LXCs) and the
+# currently-unprovisioned vnet102/103 must stay false.
 tenant_vnets:
   - name: vnet100
     id: 100
     ipv4_subnet: "10.100.0.0/24"
     ula_prefix: "fd00:100::/64"
     gua_prefix: "2600:1700:ab1a:500e::/64"
+    bgp_dynamic_neighbors: false
   - name: vnet101
     id: 101
     ipv4_subnet: "10.101.0.0/24"
     ula_prefix: "fd00:101::/64"
     gua_prefix: "2600:1700:ab1a:500d::/64"
+    bgp_dynamic_neighbors: true
   - name: vnet102
     id: 102
     ipv4_subnet: "10.102.0.0/24"
     ula_prefix: "fd00:102::/64"
     gua_prefix: "2600:1700:ab1a:500c::/64"
+    bgp_dynamic_neighbors: false
   - name: vnet103
     id: 103
     ipv4_subnet: "10.103.0.0/24"
     ula_prefix: "fd00:103::/64"
     gua_prefix: "2600:1700:ab1a:500b::/64"
+    bgp_dynamic_neighbors: false
 
-# FRR dynamic-neighbor listen ranges are derived from tenant VNets to keep the
-# configuration DRY and automatically include new tenant VLANs.
-vms_listen_v4_list: "{{ tenant_vnets | map(attribute='ipv4_subnet') | list }}"
-vms_listen_v6_list: "{{ tenant_vnets | map(attribute='ula_prefix') | list }}"
+# FRR dynamic-neighbor listen ranges, scoped to BGP-capable tenants only (see
+# bgp_dynamic_neighbors above). v4 is intentionally empty: Talos bird2 peers
+# dial in over IPv6 (ULA) only - no cluster currently needs a v4 listen
+# range, so none is opened.
+vms_listen_v4_list: []
+vms_listen_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+
+# VM next-hop trust filter (PL_VM_NH_V6): same BGP-capable-tenant scoping as
+# the listen ranges above.
+vm_nh_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
 
 # Legacy compatibility - VNet IDs list for templates that still use it
 VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"

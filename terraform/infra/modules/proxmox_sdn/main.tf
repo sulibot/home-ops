@@ -13,8 +13,12 @@ resource "proxmox_sdn_zone_evpn" "main" {
 
   # Exit nodes for internet/external access via SNAT
   # All PVE nodes act as exit nodes for redundancy
-  exit_nodes               = var.exit_nodes
-  exit_nodes_local_routing = false # Use VRF routing to support multi-node reachability
+  exit_nodes = var.exit_nodes
+  # Required for PVE hosts and EVPN guests to exchange TCP with each other
+  # (adds the xvrf veth pair between the default and evpn VRFs). With this
+  # off, a guest could not reach services on its own node (e.g. tail01 ->
+  # pve01:8006), which broke remote terraform runs entering via tailscale.
+  exit_nodes_local_routing = true
   primary_exit_node        = var.primary_exit_node
 
   # Import default route from RouterOS into VRF

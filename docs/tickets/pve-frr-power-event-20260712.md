@@ -80,10 +80,68 @@ fabric-routed) failed into systemd start-limit backoff → CephFS mounts failed
   Verified from tail01→pve01 and tail02→pve02 (both HTTP 200). The
   `api_endpoint`→pve02 workaround is retired; site.yaml points back at
   pve01.
-- **New finding (separate)**: an IPv6 forwarding loop for cluster-101 pod
-  prefixes (`fd00:101:224::/60`) between the default vrf and the edge -
-  steady `ip6_forward` IP_INHDR/hop-limit-exceeded drops and ICMP6
-  time-exceeded loops on pve01. Harmless-looking but constant; worth a look
-  at the RM_EDGE export/import maps for the pod aggregate.
+- ~~**IPv6 forwarding loop for cluster-101 pod prefixes**~~ **SOLVED
+  (2026-07-13)**: `PL_K8S_PODS_V6`/`PL_K8S_PODS_V4` accepted the cluster-wide
+  aggregate (`fd00:101:224::/60 le 64`, `10.101.224.0/20 le 24`) as well as
+  the per-node `/64`/`/24` routes. When a specific node route was briefly
+  absent, BGP fell back to accepting the aggregate itself from a neighbor,
+  and two nodes disagreeing on who owns the aggregate ping-ponged packets
+  until TTL/hop-limit exhaustion. Fixed by tightening both prefix-lists to
+  `ge 64 le 64` / `ge 24 le 24` (exact per-node length only, aggregate
+  rejected) on all three nodes. Verified post-fix: `show bgp ... fd00:101:224::/60`
+  returns "Network not in table" in both the vrf and global tables; only
+  the specific `/64` routes remain. Applied to the ansible template too.
+- **EVPN hardening pass (2026-07-13)**, prompted by re-reviewing the fabric
+  after the above: the ansible template
+  (`roles/frr/templates/frr-pve.conf.j2`) had drifted from the live
+  design in ways that would have caused real regressions on the next
+  ansible run — this was the same class of risk as the SDN regeneration
+  bug, just self-inflicted instead of PVE-inflicted:
+  - `PL_TENANT_V6` default mask was `/32` (template) vs `/48` (live) - a
+    stale/wrong default that was never actually deployed.
+  - `PL_VM_NH_V6` had a second entry for tenant-100 (kanidm/pki/tailscale,
+    no BGP speakers) that live never had.
+  - Template added `neighbor IBGP next-hop-self` under the v6 AF, which
+    live does not have. This would have broken `RM_EDGE_EXPORT_V6 permit
+    20`'s next-hop-based VIP-export filter (it depends on the *original*
+    VM-side next-hop surviving iBGP, not being rewritten to the local
+    infra loopback).
+  - VMS dynamic-neighbor listen ranges: template opened one per tenant
+    (100/101/102/103, v4+v6 = 8 ranges); live only listens on
+    `fd00:101::/64` (the one tenant that actually runs BGP speakers).
+    Running the template as-is would have let any host on vnet100
+    (identity/PKI services) or the unprovisioned vnet102/103 open a BGP
+    session into `vrf_evpnz1` - a real attack-surface expansion, not just
+    drift. Fixed with a new `bgp_dynamic_neighbors` flag per tenant vnet
+    in `group_vars/pve.yml`, `false` everywhere except vnet101; the
+    listen ranges and `PL_VM_NH_V6` are now derived from it. `vms_listen_v4_list`
+    is explicitly `[]` - Talos bird2 peers only ever use IPv6, live never
+    opened a v4 listen range and now the template doesn't either.
+  Also applied to both places: `ebgp-multihop 255→5` (loopback-to-loopback
+  over a routed IGP path never needs 255, and it hides TTL-loop symptoms -
+  exactly the class of bug found above), loopback interfaces set OSPF-passive
+  (no adjacency needed on a stub), and a dead `no bgp network import-check`
+  line removed (no `network` statements exist in this AS).
+
+  Investigated and **explicitly ruled out** as not needing a fix: unfiltered
+  `redistribute connected` in the vrf BGP AFs looked like it might leak
+  the `xvrf_evpnz1`/`xvrfp_evpnz1` point-to-point link addresses to VM
+  peers or the global table, but `RM_VMS_OUT_V4/V6` (exact-match on
+  `PL_DEFAULT_V4/V6`) and `RM_VRF_TO_GLOBAL_V4/V6` (matched against
+  `PL_TENANT_V4/V6`, which doesn't cover `10.255.x.x`/`fd00:255:...`)
+  already filter it out downstream. No change made.
+
+  Live changes applied to all three nodes and verified (fabric BGP sessions,
+  quorum, Ceph HEALTH_OK, all cluster-101/104 nodes Ready); dead
+  `rt-import 65000:1` removed from the SDN zone (confirmed zero live routes
+  ever carried that RT - actual RTs are auto-derived per-VNI, e.g.
+  `60904:10101`). Template re-verified to render **byte-for-byte identical**
+  (mod whitespace) to the corrected live config on all three nodes - the
+  next ansible run reproduces the fabric instead of breaking it.
+
+  Deliberately deferred (separate maintenance-window work, not drift/bugs):
+  moving the VTEP underlay to OSPFv6-only to remove the `ospfd` dependency
+  entirely, and raising vnet MTU from 1450 toward the mesh's 9000 to stop
+  leaving most of the underlay's headroom unused.
 - Consider a UPS or staggered-boot policy: all three nodes rebooting
   simultaneously is the worst case for a self-hosted routing fabric.
