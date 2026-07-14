@@ -13,9 +13,9 @@ spec:
         - alert: ObservabilityScrapeCoverageLow
           expr: |
             (
-              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"} == 1)
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"} == 1)
               /
-              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"})
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"})
             ) < 0.90
           for: 15m
           labels:
@@ -33,9 +33,9 @@ spec:
         - alert: ObservabilityScrapeCoverageCritical
           expr: |
             (
-              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"} == 1)
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"} == 1)
               /
-              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|victoria-logs-server|fluent-bit"})
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"})
             ) < 0.70
           for: 10m
           labels:
@@ -45,7 +45,7 @@ spec:
             summary: "Observability scrape coverage below 70%"
             description: |
               Observability platform is degraded to the point where incident triage will be unreliable.
-              Prioritize restoring Prometheus, Alertmanager, Grafana, VictoriaLogs, and Fluent Bit targets.
+              Prioritize restoring Prometheus, Alertmanager, Grafana, Loki, and Fluent Bit targets.
 
         - alert: PrometheusTSDBStorageForecast24h
           expr: |
@@ -75,32 +75,32 @@ spec:
               Prometheus storage usage is persistently high.
               Validate retention, scrape interval, and high-cardinality workloads before compaction pressure increases.
 
-        - alert: VictoriaLogsDiskForecast24h
+        - alert: LokiDiskForecast24h
           expr: |
-            predict_linear(vl_free_disk_space_bytes{path="/storage"}[6h], 24 * 3600) < 0
+            predict_linear(kubelet_volume_stats_available_bytes{namespace="observability",persistentvolumeclaim="storage-loki-0"}[6h], 24 * 3600) < 0
           for: 15m
           labels:
             severity: warning
             component: observability
           annotations:
-            summary: "VictoriaLogs projected to exceed 95% disk usage within 24h"
+            summary: "Loki projected to exhaust PVC free space within 24h"
             description: |
-              VictoriaLogs storage growth trend indicates disk exhaustion risk in the next 24 hours.
+              Loki storage growth trend indicates disk exhaustion risk in the next 24 hours.
               Adjust retention and/or increase disk capacity before ingestion is impacted.
 
-        - alert: VictoriaLogsPVCFreeSpaceLow
+        - alert: LokiPVCFreeSpaceLow
           expr: |
-            kubelet_volume_stats_available_bytes{namespace="observability",persistentvolumeclaim="server-volume-victoria-logs-server-0"}
-            / kubelet_volume_stats_capacity_bytes{namespace="observability",persistentvolumeclaim="server-volume-victoria-logs-server-0"} < 0.20
+            kubelet_volume_stats_available_bytes{namespace="observability",persistentvolumeclaim="storage-loki-0"}
+            / kubelet_volume_stats_capacity_bytes{namespace="observability",persistentvolumeclaim="storage-loki-0"} < 0.20
           for: 15m
           labels:
             severity: warning
             component: logging
           annotations:
-            summary: "Victoria Logs PVC free space below 20%"
+            summary: "Loki PVC free space below 20%"
             description: |
-              Victoria Logs is close to exhausting its configured storage budget.
-              Reduce retention, lower ingestion, or expand the Git-managed PVC before the backend becomes read-only.
+              Loki is close to exhausting its configured storage budget.
+              Reduce retention, lower ingestion, or expand the PVC before the backend becomes read-only.
 
         - alert: FluentBitOutputErrors
           expr: |
@@ -113,7 +113,7 @@ spec:
             summary: "Fluent Bit output errors detected"
             description: |
               Fluent Bit is experiencing output errors for at least 10 minutes.
-              Verify VictoriaLogs endpoint health and Fluent Bit output configuration.
+              Verify the Loki endpoint health and Fluent Bit output configuration.
 
         - alert: FluentBitOutputRetriesHigh
           expr: |
@@ -126,7 +126,7 @@ spec:
             summary: "Fluent Bit output retries are elevated"
             description: |
               Fluent Bit is retrying log delivery persistently.
-              Investigate Victoria Logs latency, network reachability, or sustained ingestion spikes before local buffers fill.
+              Investigate Loki latency, network reachability, or sustained ingestion spikes before local buffers fill.
 
         - alert: FluentBitDroppedRecords
           expr: |

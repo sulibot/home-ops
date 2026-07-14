@@ -160,9 +160,18 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Victoria Logs (cluster)
+  - name: Loki (cluster)
     group: infra-internal
-    url: http://victoria-logs-server.observability.svc:9428/health
+    url: http://loki.observability.svc:3100/ready
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Tempo (cluster)
+    group: infra-internal
+    url: http://tempo.observability.svc:3200/ready
     interval: 1m
     client:
       timeout: 5s

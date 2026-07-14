@@ -1,0 +1,91 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: observability
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: loki
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # Single-binary, filesystem-backed mode - no object storage (S3/minio)
+    # needed at this scale. Verified via `helm template` against these exact
+    # values: renders to one StatefulSet (1 replica) + a lightweight canary
+    # DaemonSet, no memcached sidecars.
+    deploymentMode: SingleBinary
+
+    loki:
+      auth_enabled: false
+      commonConfig:
+        replication_factor: 1
+      storage:
+        type: filesystem
+      schemaConfig:
+        configs:
+          - from: "2024-01-01"
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: loki_index_
+              period: 24h
+      limits_config:
+        retention_period: 168h # 7d - lightweight footprint over long retention
+      compactor:
+        retention_enabled: true
+
+    singleBinary:
+      replicas: 1
+      persistence:
+        enabled: true
+        storageClass: csi-cephfs-config-sc
+        size: 20Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 768Mi
+
+    # Zero out the SimpleScalable-mode components; SingleBinary mode doesn't use them.
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+
+    minio:
+      enabled: false
+
+    # In-memory caching layers are an optimization for larger multi-tenant
+    # deployments; skip them at homelab scale to avoid two extra memcached pods.
+    resultsCache:
+      enabled: false
+    chunksCache:
+      enabled: false
+
+    # No nginx gateway needed in front of a single pod.
+    gateway:
+      enabled: false
+
+    monitoring:
+      serviceMonitor:
+        enabled: true
+      selfMonitoring:
+        enabled: false
+        grafanaAgent:
+          installOperator: false
+      lokiCanary:
+        enabled: true

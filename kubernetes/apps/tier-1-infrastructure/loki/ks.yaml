@@ -3,35 +3,25 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: otel-collector
+  name: loki
   namespace: flux-system
   labels:
     layer: "observability"
-    component: distributed-tracing
+    component: observability
     critical: "false"
 spec:
   dependsOn:
-    - name: otel-collector-helm-repo
+    - name: storage-ready
       namespace: flux-system
-    - name: kube-prometheus-stack
-      namespace: flux-system
-    - name: tempo
-      namespace: flux-system
-    - name: loki
+    - name: grafana
       namespace: flux-system
   interval: 15m
-  retryInterval: 1m
-  path: ./kubernetes/apps/tier-1-infrastructure/otel-collector/app
+  retryInterval: 30s
+  path: ./kubernetes/apps/tier-1-infrastructure/loki/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
   targetNamespace: observability
-  wait: true
-  timeout: 10m
-  healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: otel-collector
-      namespace: observability
+  wait: false

@@ -3,12 +3,14 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
-  name: victoria-logs
+  name: tempo
 spec:
   interval: 15m
   layerSelector:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 0.11.27
-  url: oci://ghcr.io/victoriametrics/helm-charts/victoria-logs-single
+    tag: 2.2.3
+  # The classic oci://ghcr.io/grafana/helm-charts/tempo chart is deprecated
+  # (migrated to grafana-community as of Jan 2026); use the maintained mirror.
+  url: oci://ghcr.io/grafana-community/helm-charts/tempo

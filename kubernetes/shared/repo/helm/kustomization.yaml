@@ -11,7 +11,6 @@ resources:
   - akeyless-helmrepository.yaml
   - bjw-s-repo.yaml
   - istio-helmrepository.yaml
-  - jaegertracing-helmrepository.yaml
   - kiali-helmrepository.yaml
   # Add other Helm repositories here
 

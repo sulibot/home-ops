@@ -84,9 +84,9 @@ spec:
           spike_limit_percentage: null
 
       exporters:
-        # Traces -> Jaeger (OTLP-native ingestion, enabled on the all-in-one deployment)
-        otlp/jaeger:
-          endpoint: jaeger.observability.svc.cluster.local:4317
+        # Traces -> Tempo (OTLP-native ingestion)
+        otlp/tempo:
+          endpoint: tempo.observability.svc.cluster.local:4317
           tls:
             insecure: true
 
@@ -96,9 +96,9 @@ spec:
           tls:
             insecure: true
 
-        # Logs -> VictoriaLogs native OTLP ingestion
-        otlphttp/victorialogs:
-          logs_endpoint: http://victoria-logs-server.observability.svc.cluster.local:9428/insert/opentelemetry/v1/logs
+        # Logs -> Loki native OTLP ingestion
+        otlphttp/loki:
+          logs_endpoint: http://loki.observability.svc.cluster.local:3100/otlp/v1/logs
           tls:
             insecure: true
 
@@ -107,7 +107,7 @@ spec:
           traces:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [otlp/jaeger]
+            exporters: [otlp/tempo]
           metrics:
             receivers: [otlp]
             processors: [memory_limiter, batch]
@@ -115,4 +115,4 @@ spec:
           logs:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [otlphttp/victorialogs]
+            exporters: [otlphttp/loki]
