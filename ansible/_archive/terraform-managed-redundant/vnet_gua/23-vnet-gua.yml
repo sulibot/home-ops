@@ -1,0 +1,12 @@
+---
+- name: Fetch delegated GUA prefix from RouterOS
+  hosts: routeros
+  gather_facts: false
+  roles:
+    - role: vnet_gua
+
+- name: Update Proxmox SDN GUA subnets
+  hosts: pve
+  become: true
+  roles:
+    - role: vnet_gua

@@ -1,0 +1,194 @@
+---
+# SDN zone name - sourced from network_facts (network-infrastructure.hcl
+# locals.sdn.zone_id) instead of being independently hardcoded in both the
+# frr and interfaces role templates (each had its own "evpnz1" default).
+vrf_zone: "{{ network_facts.sdn_zone_id }}"
+vrf_name: "vrf_{{ network_facts.sdn_zone_id }}"
+
+# Public Interface Configuration
+public_interfaces:
+  pve01:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve02:
+    slaves: [enp4s0]
+    mode: active-backup
+    primary: enp4s0
+    xmit_hash_policy: layer3+4
+
+  pve03:
+    slaves: [enp61s0]
+    mode: active-backup
+    primary: enp61s0
+    xmit_hash_policy: layer3+4
+
+  pve04:
+    slaves: [enp1s0]
+    mode: active-backup
+    primary: enp1s0
+    xmit_hash_policy: layer3+4
+
+# NTP Configuration
+# ntp_servers comes from group_vars/all.yml (site_facts.ntp_servers) - this
+# used to be a third, independently-drifted copy of the same list.
+ntp_manage_config: true
+
+# Proxmox Cluster Settings
+pve_group: pve
+pve_cluster_enabled: yes
+pve_cluster_clustername: "{{ pve_group }}"
+pve_repository_line:        "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription" # apt-repository configuration - change to enterprise if needed (although TODO further configuration may be needed)
+pve_remove_subscription_warning: true # patches the subscription warning messages in proxmox if you are using the community edition
+
+# Host Management
+pve_manage_hosts_enabled: yes
+pve_reboot_on_kernel_update: true
+pve_reboot_on_kernel_update_timeout: 3600 # timeout in seconds for the reboot
+
+# pve_watchdog: ipmi
+pve_cluster_addr0: "{{ ansible_service_host }}"
+
+# Ceph Configuration
+pve_ceph_enabled: true
+pve_ceph_network: "fc00:20::/64"
+pve_ceph_cluster_network: "fc00:21::/64"
+pve_ceph_repository_line:   "deb http://download.proxmox.com/debian/ceph-squid trixie no-subscription"
+
+# ZFS & ZED
+pve_zfs_enabled: true
+pve_zfs_zed_email: "sulibot@gmail.com"
+
+# Additional Package & Upgrade Settings
+pve_extra_packages: []
+pve_run_system_upgrades: true
+
+# PCI Passthrough Settings
+pve_pcie_ovmf_enabled: false
+pve_pci_device_ids: []
+pve_vfio_blacklist_drivers: []
+
+# Storage Management
+pve_zfs_create_volumes: []
+
+# Datacenter & Authentication
+# OIDC realm ("idm") is Terraform-owned: terraform/infra/live/common/proxmox-realms.
+# pve_oidc_* vars removed here along with the retired proxmox_oidc role -
+# see ansible/_archive/terraform-managed-redundant/README.md.
+
+# Ceph Cluster Mon/Mgr groups (consumed by roles/ceph_cluster_init)
+pve_ceph_nodes: "{{ pve_group }}"
+pve_ceph_mon_group: "{{ pve_group }}"
+pve_ceph_mgr_group: "{{ pve_group }}"
+pve_ceph_mds_group: "{{ pve_group }}"
+
+# Ceph pool/CRUSH-rule declarations, CRUSH tunables, and CRUSH bucket
+# layout used to live here as draft vars (_pve_ceph_buckets,
+# _pve_ceph_crush_rules, pve_ceph_tunables) but were never consumed by any
+# role - Ceph pool declarations are Terraform-owned:
+# terraform/infra/live/common/2-ceph-pools (see
+# terraform/infra/live/common/proxmox-bpg-management-plan.md, "Already
+# Covered Outside The 1-7 List"). Removed as dead weight.
+
+# PVE RBAC (Terraform role/user/ACL/token) is Terraform-owned:
+# terraform/infra/live/common/proxmox-access. pve_roles/pve_users/
+# pve_groups/pve_acls/pve_tokens below were the vars for the now-retired
+# pve_accounts role - see
+# ansible/_archive/terraform-managed-redundant/README.md.
+
+# Mesh links configuration for iBGP
+mesh_links:
+  pve01:
+    - iface: enp1s0f0np0
+      peer_id: 3
+    - iface: enp1s0f1np1
+      peer_id: 2
+  pve02:
+    - iface: enp1s0f0np0
+      peer_id: 1
+    - iface: enp1s0f1np1
+      peer_id: 3
+  pve03:
+    - iface: enp1s0f0np0
+      peer_id: 1
+    - iface: enp1s0f1np1
+      peer_id: 2
+  pve04: []
+
+# Edge BGP Configuration (RouterOS) - sourced from network_facts
+# (terraform/infra/live/common/network-infrastructure.hcl locals.routeros).
+#
+# NOTE: the template (frr-pve.conf.j2) actually reads lowercase
+# edge_as/edge_v4/edge_v6, each with its own hardcoded `| default(...)`
+# fallback baked into the template. The old EDGE_ASN/EDGE_V4_PEER/
+# EDGE_V6_PEER names defined here were never wired to anything - the
+# template silently used its own defaults instead, which happened to match.
+# Renamed to the names the template actually consumes so this is no longer
+# a dead/unused variable.
+edge_as: "{{ network_facts.routeros.local_asn }}"
+edge_v4: "{{ network_facts.routeros.loopback_ipv4 }}"  # RouterOS loopback IPv4
+edge_v6: "{{ network_facts.routeros.loopback_ipv6 }}"  # RouterOS loopback IPv6
+
+# Tenant VLANs (required by FRR template)
+TENANT_VLANS: []
+
+# Tenant VNets configuration for radvd and IP addressing
+# Each vnet has ULA prefix and optionally a GUA prefix from AT&T PD
+#
+# bgp_dynamic_neighbors: true means the tenant runs its own BGP speakers
+# (Talos bird2 nodes) that dial in as dynamic VMS peers. Only set this for
+# tenants that actually run a cluster - it directly controls the FRR VMS
+# `bgp listen range` attack surface (see frr-pve.conf.j2): any host on a
+# tenant with this set to true can open a BGP session into vrf_evpnz1 and
+# propose routes. vnet100 (kanidm/pki/tailscale service LXCs) and the
+# currently-unprovisioned vnet102/103 must stay false.
+tenant_vnets:
+  - name: vnet100
+    id: 100
+    ipv4_subnet: "10.100.0.0/24"
+    ula_prefix: "fd00:100::/64"
+    gua_prefix: "2600:1700:ab1a:500e::/64"
+    bgp_dynamic_neighbors: false
+  - name: vnet101
+    id: 101
+    ipv4_subnet: "10.101.0.0/24"
+    ula_prefix: "fd00:101::/64"
+    gua_prefix: "2600:1700:ab1a:500d::/64"
+    bgp_dynamic_neighbors: true
+  - name: vnet102
+    id: 102
+    ipv4_subnet: "10.102.0.0/24"
+    ula_prefix: "fd00:102::/64"
+    gua_prefix: "2600:1700:ab1a:500c::/64"
+    bgp_dynamic_neighbors: false
+  - name: vnet103
+    id: 103
+    ipv4_subnet: "10.103.0.0/24"
+    ula_prefix: "fd00:103::/64"
+    gua_prefix: "2600:1700:ab1a:500b::/64"
+    bgp_dynamic_neighbors: false
+
+# FRR dynamic-neighbor listen ranges, scoped to BGP-capable tenants only (see
+# bgp_dynamic_neighbors above). v4 is intentionally empty: Talos bird2 peers
+# dial in over IPv6 (ULA) only - no cluster currently needs a v4 listen
+# range, so none is opened.
+vms_listen_v4_list: []
+vms_listen_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+
+# VM next-hop trust filter (PL_VM_NH_V6): same BGP-capable-tenant scoping as
+# the listen ranges above.
+vm_nh_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+
+# Legacy compatibility - VNet IDs list for templates that still use it
+VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"
+
+# Legacy compatibility - IPv4 subnets dictionary
+VNET_V4_SUBNETS: "{{ dict(tenant_vnets | map(attribute='id') | zip(tenant_vnets | map(attribute='ipv4_subnet'))) }}"
+
+# Legacy compatibility - ULA prefixes dictionary
+VNET_ULA_SUBNETS: "{{ dict(tenant_vnets | map(attribute='id') | zip(tenant_vnets | map(attribute='ula_prefix'))) }}"
+
+# Legacy compatibility - GUA prefixes dictionary (only for vnets with gua_prefix defined)
+VNET_GUA_PREFIXES: "{{ dict(tenant_vnets | selectattr('gua_prefix', 'defined') | map(attribute='id') | zip(tenant_vnets | selectattr('gua_prefix', 'defined') | map(attribute='gua_prefix'))) }}"

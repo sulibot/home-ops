@@ -1,0 +1,15 @@
+---
+# Only apply account/RBAC changes from the cluster's first PVE node - PVE
+# replicates pveum state cluster-wide, so running this on every node would
+# just be redundant API calls against the same cluster.
+pve_accounts_init_node: "{{ groups[pve_group | default('pve')][0] }}"
+
+# API connection - community.proxmox modules talk to the Proxmox API
+# (unlike lae.proxmox's bundled modules, which ran pveum locally over SSH).
+# Supply these via SOPS/vault, not plaintext group_vars.
+proxmox_api_host: "{{ site_facts.proxmox.primary_node }}"
+# proxmox_api_user / proxmox_api_token_id / proxmox_api_token_secret:
+# intentionally undefined here - set via an encrypted vars file.
+
+pve_pools: []
+pve_groups: []

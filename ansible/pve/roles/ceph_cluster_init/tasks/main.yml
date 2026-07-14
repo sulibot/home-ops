@@ -1,0 +1,36 @@
+---
+# Replaces lae.proxmox's ceph.yml import (ansible/_archive/lae.proxmox-legacy).
+# Scope is deliberately narrow: pveceph init + mon/mgr bootstrap only. OSD
+# creation, pools, CRUSH rules, and CephFS already have their own dedicated,
+# validated roles (ceph_osd_create, ceph_layout_validate, cephfs_from_pools)
+# with their own idempotency checks - this role does not duplicate them.
+
+- name: Create initial Ceph cluster config
+  ansible.builtin.command: >-
+    pveceph init --network {{ pve_ceph_network }}
+    {% if pve_ceph_cluster_network is defined %}--cluster-network {{ pve_ceph_cluster_network }}{% endif %}
+  args:
+    creates: /etc/ceph/ceph.conf
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+
+- name: Create initial Ceph monitor
+  ansible.builtin.command: pveceph mon create
+  args:
+    creates: "/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/"
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  register: _ceph_initial_mon
+  failed_when: _ceph_initial_mon.rc != 0
+
+- name: Create additional Ceph monitors
+  ansible.builtin.command: pveceph mon create
+  args:
+    creates: "/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/"
+  when:
+    - "inventory_hostname != groups[ceph_mon_group][0]"
+    - "inventory_hostname in groups[ceph_mon_group]"
+
+- name: Create Ceph managers
+  ansible.builtin.command: pveceph mgr create
+  args:
+    creates: "/var/lib/ceph/mgr/ceph-{{ ansible_hostname }}/"
+  when: "inventory_hostname in groups[ceph_mgr_group]"

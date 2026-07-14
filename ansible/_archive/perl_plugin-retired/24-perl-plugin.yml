@@ -1,0 +1,11 @@
+---
+# Deploys custom PVE SDN BGP controller Perl modules - see
+# ansible/pve/roles/perl_plugin/README (TODO: diff against stock PVE .pm
+# files on a live node before relying on this in a fresh build; see
+# ansible/_archive notes referenced in the refactor plan).
+- name: Configure perl_plugin
+  hosts: pve
+  become: true
+
+  roles:
+    - role: perl_plugin

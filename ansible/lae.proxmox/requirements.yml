@@ -1,5 +1,0 @@
-# requirements.yml
-collections:
-  - name: community.general
-  - name: community.routeros
-  - name: ansible.netcommon

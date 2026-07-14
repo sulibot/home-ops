@@ -1,0 +1,80 @@
+---
+# Replaces lae.proxmox's accounts.yml import (ansible/_archive/lae.proxmox-legacy),
+# using the community.proxmox collection - the maintained successor to
+# community.general's proxmox_user/proxmox_group/proxmox_acl modules
+# (deprecated there in 11.0, redirect-only by 15.0).
+#
+# Unlike lae's bundled modules (which ran `pveum` locally), these talk to
+# the Proxmox API, so proxmox_api_user/token vars must be set from an
+# encrypted vars file - see defaults/main.yml.
+
+- name: Configure Proxmox pools
+  community.proxmox.proxmox_pool:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    poolid: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ pve_pools }}"
+  when: inventory_hostname == pve_accounts_init_node
+
+- name: Configure Proxmox roles
+  community.proxmox.proxmox_role:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    roleid: "{{ item.name }}"
+    privs: "{{ item.privileges }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ pve_roles }}"
+  when: inventory_hostname == pve_accounts_init_node
+
+- name: Configure Proxmox groups
+  community.proxmox.proxmox_group:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    groupid: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ pve_groups }}"
+  when: inventory_hostname == pve_accounts_init_node
+
+- name: Configure Proxmox user accounts
+  community.proxmox.proxmox_user:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    userid: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    enable: "{{ item.enable | default(omit) }}"
+    groups: "{{ item.groups | default([]) }}"
+    comment: "{{ item.comment | default(omit) }}"
+    email: "{{ item.email | default(omit) }}"
+    firstname: "{{ item.firstname | default(omit) }}"
+    lastname: "{{ item.lastname | default(omit) }}"
+    password: "{{ item.password | default(omit) }}"
+    expire: "{{ item.expire | default(omit) }}"
+  loop: "{{ pve_users }}"
+  when: inventory_hostname == pve_accounts_init_node
+  no_log: true
+
+- name: Configure Proxmox ACLs
+  # pve_acls entries are flat: {path, roles: [role names], users/groups: [ids]}
+  community.proxmox.proxmox_access_acl:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    path: "{{ item.path }}"
+    roles: "{{ item.roles }}"
+    state: "{{ item.state | default('present') }}"
+    groups: "{{ item.groups | default([]) }}"
+    users: "{{ item.users | default([]) }}"
+  loop: "{{ pve_acls }}"
+  when: inventory_hostname == pve_accounts_init_node
