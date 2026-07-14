@@ -151,7 +151,10 @@ terraform/infra/live/services/tailscale-config/main.tf
 terraform/infra/live/services/tailscale-config/providers.tf
 
 # FRR extension symlink (links to separate repository)
-FRR/
+# Anchored to repo root - unanchored "FRR/" matched ansible/pve/roles/frr/
+# case-insensitively on macOS/APFS and silently excluded that role from
+# `git add`.
+/FRR/
 
 # Local dev environment (contains OP_SERVICE_ACCOUNT_TOKEN path)
 .envrc

@@ -1,0 +1,234 @@
+---
+# roles/frr/tasks/main.yaml
+# Ownership Policy:
+#   - FRR: All routing and control-plane logic (IS-IS, BGP, EVPN, VRFs, policy)
+#   - Proxmox SDN: L2/VXLAN/VRF device plumbing ONLY
+#   - frr@sdn.service: MUST be masked (never enabled, even after upgrades)
+
+# ============================================================================
+# PRE-FLIGHT CHECKS: Verify SDN is not managing FRR
+# ============================================================================
+
+- name: Check if frr@sdn.service exists and is running (pre-flight check)
+  ansible.builtin.systemd:
+    name: frr@sdn.service
+  register: frr_sdn_status
+  failed_when: false
+  changed_when: false
+  tags: frr
+
+- name: Fail if frr@sdn.service is running
+  ansible.builtin.fail:
+    msg: |
+      CRITICAL: frr@sdn.service is running!
+      This service MUST be masked to prevent SDN from managing FRR.
+
+      Immediate action required:
+        systemctl stop frr@sdn.service
+        systemctl mask frr@sdn.service
+
+      Re-run this playbook after masking the service.
+  when:
+    - frr_sdn_status.status is defined
+    - frr_sdn_status.status.ActiveState == 'active'
+  tags: frr
+
+- name: Stop and mask frr@sdn.service to prevent SDN from managing FRR (upgrade-safe)
+  ansible.builtin.systemd:
+    name: frr@sdn.service
+    state: stopped
+    enabled: false
+    masked: true
+  tags: frr
+
+- name: Verify frr@sdn.service is masked
+  ansible.builtin.command: systemctl is-enabled frr@sdn.service
+  register: frr_sdn_enabled
+  changed_when: false
+  failed_when: frr_sdn_enabled.stdout | trim != "masked"
+  when: frr_sdn_status.status is defined
+  tags: frr
+
+# ============================================================================
+# CONFIGURATION INTEGRITY: Hash verification tripwire
+# ============================================================================
+
+- name: Check if FRR configuration file exists
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+  register: frr_conf_exists
+  tags: frr
+
+- name: Generate SHA256 hash of current FRR configuration
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+    checksum_algorithm: sha256
+  register: frr_conf_stat
+  when: frr_conf_exists.stat.exists
+  tags: frr
+
+- name: Read stored configuration hash
+  ansible.builtin.slurp:
+    path: /etc/frr/.frr.conf.ansible-hash
+  register: stored_hash
+  failed_when: false
+  changed_when: false
+  tags: frr
+
+- name: Enable l3mdev socket accept for VRF cross-delivery
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_l3mdev_accept
+    value: '1'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
+# Early demux short-circuits the FIB lookup for packets matching an existing
+# local socket. With VRFs this hijacks flows that should be FORWARDED: a vnet
+# guest talking to its own host completed the TCP handshake (SYN has no
+# socket yet, so it routes correctly) and then every subsequent packet was
+# delivered to the mis-scoped socket instead of forwarded - "TCP connects,
+# payload never flows". Disabling early demux is the kernel VRF
+# documentation's recommendation and fixed it outright.
+# Diagnosis: docs/tickets/pve-frr-power-event-20260712.md
+- name: Disable TCP early demux (breaks VRF hairpin flows)
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_early_demux
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
+- name: Disable UDP early demux (same VRF interaction)
+  ansible.posix.sysctl:
+    name: net.ipv4.udp_early_demux
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/99-frr-vrf.conf
+    reload: true
+  tags: frr
+
+# ============================================================================
+# BACKUP CURRENT CONFIGURATION
+# ============================================================================
+
+- name: Create FRR backup directory
+  ansible.builtin.file:
+    path: /etc/frr/_backup
+    state: directory
+    mode: '0755'
+    owner: frr
+    group: frr
+  tags: frr
+
+- name: Generate timestamp for backup
+  ansible.builtin.set_fact:
+    frr_backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  tags: frr
+
+- name: Backup current frr.conf before deployment
+  ansible.builtin.copy:
+    src: /etc/frr/frr.conf
+    dest: "/etc/frr/_backup/frr.conf.{{ frr_backup_timestamp }}"
+    remote_src: true
+    mode: '0644'
+  when: frr_conf_exists.stat.exists
+  tags: frr
+
+- name: Backup current daemons file before deployment
+  ansible.builtin.copy:
+    src: /etc/frr/daemons
+    dest: "/etc/frr/_backup/daemons.{{ frr_backup_timestamp }}"
+    remote_src: true
+    mode: '0644'
+  tags: frr
+
+# ============================================================================
+# FRR CONFIGURATION DEPLOYMENT
+# ============================================================================
+
+- name: Deploy FRR configuration - daemons
+  ansible.builtin.template:
+    src: daemons-pve.j2
+    dest: /etc/frr/daemons
+    mode: '0644'
+  notify: restart frr
+  tags: frr
+
+- name: Deploy FRR configuration - frr.conf
+  ansible.builtin.template:
+    src: frr-pve.conf.j2
+    dest: /etc/frr/frr.conf
+    mode: '0644'
+  notify: restart frr
+  tags: frr
+
+# Masking frr@sdn is NOT enough: pve-network still regenerates
+# /etc/frr/frr.conf AND /etc/frr/daemons at boot (overlay-only, ospfd=no),
+# which took the whole fabric down after the 2026-07-12 power event
+# (docs/tickets/pve-frr-power-event-20260712.md). Two guards:
+#   1. The same rendered config also lands in frr.conf.local, which
+#      pve-network merges into anything it regenerates.
+#   2. A systemd ExecStartPre re-enables ospfd in the daemons file on
+#      every FRR start.
+- name: Deploy FRR configuration - frr.conf.local (survives PVE SDN regeneration)
+  ansible.builtin.template:
+    src: frr-pve.conf.j2
+    dest: /etc/frr/frr.conf.local
+    owner: frr
+    group: frr
+    mode: '0640'
+  notify: restart frr
+  tags: frr
+
+- name: Create frr.service drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/frr.service.d
+    state: directory
+    mode: '0755'
+  tags: frr
+
+- name: Guard ospfd against PVE daemons-file regeneration
+  ansible.builtin.copy:
+    content: |
+      # PVE SDN regenerates /etc/frr/daemons at boot with ospfd=no, but the
+      # v4 underlay (VTEP loopback routes) requires OSPFv2. Re-enable before
+      # every FRR start. See docs/tickets/pve-frr-power-event-20260712.md
+      [Service]
+      ExecStartPre=/usr/bin/sed -i "s/^ospfd=no/ospfd=yes/" /etc/frr/daemons
+    dest: /etc/systemd/system/frr.service.d/10-enable-ospfd.conf
+    mode: '0644'
+  notify: restart frr
+  tags: frr
+
+- name: Reload systemd for frr drop-in
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: frr
+
+- name: Store FRR configuration hash for integrity verification
+  ansible.builtin.stat:
+    path: /etc/frr/frr.conf
+    checksum_algorithm: sha256
+  register: frr_conf_new_stat
+  tags: frr
+
+- name: Save configuration hash to tripwire file
+  ansible.builtin.copy:
+    content: "{{ frr_conf_new_stat.stat.checksum }}\n"
+    dest: /etc/frr/.frr.conf.ansible-hash
+    mode: '0644'
+  tags: frr
+
+# ============================================================================
+# SERVICE MANAGEMENT
+# ============================================================================
+
+- name: Restart and enable FRR
+  ansible.builtin.systemd:
+    name: frr
+    state: restarted
+    enabled: true
+  tags: frr
