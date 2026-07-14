@@ -64,21 +64,20 @@ spec:
     groupInterval: 5m
     groupWait: 1m
 
-  timeIntervals:
+  # NOTE: the installed AlertmanagerConfig CRD (prometheus-operator 0.89.0)
+  # supports neither a `location`/timezone field nor a top-level `timeIntervals`
+  # key - the field is `muteTimeIntervals`, and times are UTC-only. 21:00-08:00
+  # America/Los_Angeles is currently UTC-7 (PDT) => 04:00-15:00 UTC, a single
+  # non-wrapping range. This will drift by ~1h during PST (Nov-Mar) until
+  # prometheus-operator is upgraded to a CRD version with `location` support.
+  muteTimeIntervals:
     - name: quiet-hours
       timeIntervals:
         - times:
-            - startTime: "21:00"
-              endTime: "23:59"
+            - startTime: "04:00"
+              endTime: "15:00"
           weekdays:
             - "monday:sunday"
-          location: America/Los_Angeles
-        - times:
-            - startTime: "00:00"
-              endTime: "08:00"
-          weekdays:
-            - "monday:sunday"
-          location: America/Los_Angeles
 
   inhibitRules:
     - equal:
