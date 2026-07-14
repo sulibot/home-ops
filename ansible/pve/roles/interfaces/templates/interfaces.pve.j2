@@ -195,4 +195,37 @@ iface xvrfp_{{ vrf_zone }} inet manual
     post-up   ip addr add {{ pipe_v4_vrf }}/31 dev $IFACE 2>/dev/null || true
     pre-down  ip addr del {{ pipe_v4_vrf }}/31 dev $IFACE 2>/dev/null || true
 
+{% if HAS_MESH %}
+# ------------------------------------------------------------------------------
+# 5. TENANT-101 PER-NODE BGP PEER-TARGET ADDRESS (ENG-10 / kube-vip BGP mode)
+# ------------------------------------------------------------------------------
+# Proxmox SDN creates vnet101 with a single shared anycast gateway
+# (fd00:101::fffe) identical on all 3 nodes - there is no way for a client
+# to dial a *specific* PVE node's vrf_evpnz1 BGP instance individually,
+# which is what a multi-peer BGP client (e.g. kube-vip in BGP mode) needs
+# to get a route installed on every node instead of just whichever one an
+# anycast-addressed session happens to land on.
+#
+# First attempt (secondary IP directly on vnet101) failed: all 3 nodes
+# share vnet101's identical anycast MAC by design, and EVPN's duplicate-
+# address/MAC-mobility detection correctly suppresses cross-node
+# propagation of "the same MAC claiming different IPs from 3 VTEPs" - it
+# looks identical to a flapping-MAC misconfiguration. No reboot/restart
+# fixes this; it's EVPN working as designed against the wrong mechanism.
+#
+# Fix: a dedicated dummy interface per node with its own unique MAC,
+# bridged into vnet101 as a normal member - same pattern as lo-infra/
+# lo-svcs below, just attached to the tenant-101 L2 domain instead of the
+# general infra one. A unique MAC means a normal, distinct Type-2 entry,
+# no different from any other host on the segment.
+auto peer101
+iface peer101 inet6 manual
+    pre-up    ip link add peer101 type dummy 2>/dev/null || true
+    pre-up    ip link set peer101 address 02:00:00:00:01:{{ '%02x' | format(node_id) }} 2>/dev/null || true
+    post-up   ip link set peer101 master vnet101 2>/dev/null || true
+    post-up   ip link set peer101 up 2>/dev/null || true
+    post-up   ip -6 addr add fd00:101::fffd:{{ node_id }}/64 dev peer101 2>/dev/null || true
+    pre-down  ip -6 addr del fd00:101::fffd:{{ node_id }}/64 dev peer101 2>/dev/null || true
+{% endif %}
+
 source /etc/network/interfaces.d/*
