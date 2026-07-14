@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-linear-bridge
+  labels:
+    app.kubernetes.io/name: alertmanager-linear-bridge
+spec:
+  selector:
+    app.kubernetes.io/name: alertmanager-linear-bridge
+  ports:
+    - name: http
+      port: 9096
+      targetPort: http

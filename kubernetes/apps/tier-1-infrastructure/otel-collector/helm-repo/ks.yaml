@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: otel-collector-helm-repo
+  namespace: flux-system
+  labels:
+    layer: infrastructure
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/tier-1-infrastructure/otel-collector/helm-repo
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

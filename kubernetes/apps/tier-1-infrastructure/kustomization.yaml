@@ -58,9 +58,11 @@ resources:
   - ./victoria-logs/ks.yaml
   - ./fluent-bit/ks.yaml
   - ./grafana/ks.yaml
-  # jaeger disabled - requires Istio for full functionality
-  # - ./jaeger/helm-repo/ks.yaml
-  # - ./jaeger/ks.yaml
+  # jaeger re-enabled: all-in-one works standalone via OTLP, Istio not required
+  - ./jaeger/helm-repo/ks.yaml
+  - ./jaeger/ks.yaml
+  - ./otel-collector/helm-repo/ks.yaml
+  - ./otel-collector/ks.yaml
   # kiali disabled - requires Istio service mesh
   # - ./kiali/helm-repo/ks.yaml
   # - ./kiali/ks.yaml
@@ -74,6 +76,7 @@ resources:
   - ./smartctl-exporter/ks.yaml
   - ./proxmox-observability/ks.yaml
   - ./homeops-inventory-exporter/ks.yaml
+  - ./alertmanager-linear-bridge/ks.yaml
   # kromgo disabled
   # - ./kromgo/ks.yaml
 

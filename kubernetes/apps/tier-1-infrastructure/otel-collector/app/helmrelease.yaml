@@ -1,0 +1,117 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: opentelemetry-collector
+      # NOTE: pin verified against https://github.com/open-telemetry/opentelemetry-helm-charts
+      # before merge; Renovate will track updates afterward.
+      version: 0.110.0
+      sourceRef:
+        kind: HelmRepository
+        name: opentelemetry
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    mode: deployment
+    replicaCount: 1
+
+    image:
+      repository: otel/opentelemetry-collector-contrib
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 384Mi
+
+    ports:
+      otlp-grpc:
+        enabled: true
+        containerPort: 4317
+        servicePort: 4317
+        protocol: TCP
+      otlp-http:
+        enabled: true
+        containerPort: 4318
+        servicePort: 4318
+        protocol: TCP
+      # Disable ports we don't use to keep the footprint minimal
+      jaeger-compact:
+        enabled: false
+      jaeger-thrift:
+        enabled: false
+      jaeger-grpc:
+        enabled: false
+      zipkin:
+        enabled: false
+
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+        # Prometheus/kube-state-metrics stay on their existing ServiceMonitor
+        # scrape path; this collector is for OTLP-native app telemetry only.
+        prometheus: null
+        jaeger: null
+        zipkin: null
+
+      processors:
+        batch: {}
+        memory_limiter:
+          check_interval: 5s
+          limit_mib: 300
+          spike_limit_mib: 75
+
+      exporters:
+        # Traces -> Jaeger (OTLP-native ingestion, enabled on the all-in-one deployment)
+        otlp/jaeger:
+          endpoint: jaeger.observability.svc.cluster.local:4317
+          tls:
+            insecure: true
+
+        # Metrics -> Prometheus native OTLP receiver
+        otlphttp/prometheus:
+          metrics_endpoint: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/api/v1/otlp/v1/metrics
+          tls:
+            insecure: true
+
+        # Logs -> VictoriaLogs native OTLP ingestion
+        otlphttp/victorialogs:
+          logs_endpoint: http://victoria-logs-server.observability.svc.cluster.local:9428/insert/opentelemetry/v1/logs
+          tls:
+            insecure: true
+
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlp/jaeger]
+          metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlphttp/prometheus]
+          logs:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlphttp/victorialogs]

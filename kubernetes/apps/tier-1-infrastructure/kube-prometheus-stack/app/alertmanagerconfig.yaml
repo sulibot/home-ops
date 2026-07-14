@@ -27,11 +27,30 @@ spec:
           - name: alertname
             value: Watchdog
             matchType: =
+      # Linear is the durable work log: always create/update a ticket for
+      # actionable severities, regardless of time of day.
+      - receiver: linear
+        continue: true
+        matchers:
+          - name: severity
+            value: warning|critical
+            matchType: =~
+      # Critical always interrupts, day or night.
       - receiver: pushover
         continue: true
         matchers:
           - name: severity
             value: critical
+            matchType: =
+      # Warning-level pages are muted overnight; the Linear ticket above still
+      # captures them for review in the morning.
+      - receiver: pushover
+        continue: true
+        muteTimeIntervals:
+          - quiet-hours
+        matchers:
+          - name: severity
+            value: warning
             matchType: =
       - receiver: email
         matchers:
@@ -44,6 +63,22 @@ spec:
       - job
     groupInterval: 5m
     groupWait: 1m
+
+  timeIntervals:
+    - name: quiet-hours
+      timeIntervals:
+        # MANUAL STEP: set `location` to your IANA timezone (e.g. America/New_York);
+        # Alertmanager defaults to UTC otherwise. Adjust start/end to taste.
+        - times:
+            - startTime: "22:00"
+              endTime: "23:59"
+          weekdays:
+            - "monday:sunday"
+        - times:
+            - startTime: "00:00"
+              endTime: "07:00"
+          weekdays:
+            - "monday:sunday"
 
   inhibitRules:
     - equal:
@@ -60,6 +95,10 @@ spec:
 
   receivers:
     - name: blackhole
+    - name: linear
+      webhookConfigs:
+        - url: http://alertmanager-linear-bridge.observability.svc.cluster.local:9096/webhook
+          sendResolved: true
     - name: buddy-heartbeat
       webhookConfigs:
         - httpConfig:
