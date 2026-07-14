@@ -30,11 +30,11 @@ spec:
           env:
             - name: PORT
               value: "9096"
+            # MANUAL STEP: replace with the Linear team ID that should own
+            # alert-generated issues (Linear -> Team settings -> General).
+            # Not secret, so kept as a plain value rather than in the vault.
             - name: LINEAR_TEAM_ID
-              valueFrom:
-                secretKeyRef:
-                  name: alertmanager-linear-bridge-secret
-                  key: LINEAR_TEAM_ID
+              value: "REPLACE_ME_LINEAR_TEAM_ID"
             - name: LINEAR_API_KEY
               valueFrom:
                 secretKeyRef:
