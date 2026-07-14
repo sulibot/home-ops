@@ -10,9 +10,9 @@ spec:
   chart:
     spec:
       chart: opentelemetry-collector
-      # NOTE: pin verified against https://github.com/open-telemetry/opentelemetry-helm-charts
-      # before merge; Renovate will track updates afterward.
-      version: 0.110.0
+      # Verified against the live chart index (open-telemetry.github.io/opentelemetry-helm-charts)
+      # as the latest release; Renovate will track updates afterward.
+      version: 0.165.0
       sourceRef:
         kind: HelmRepository
         name: opentelemetry
@@ -41,16 +41,12 @@ spec:
         memory: 384Mi
 
     ports:
-      otlp-grpc:
-        enabled: true
-        containerPort: 4317
-        servicePort: 4317
-        protocol: TCP
+      # Default keys are "otlp"/"otlp-http" (not "otlp-grpc"); override those
+      # directly and drop hostPort so this Deployment doesn't bind node ports.
+      otlp:
+        hostPort: null
       otlp-http:
-        enabled: true
-        containerPort: 4318
-        servicePort: 4318
-        protocol: TCP
+        hostPort: null
       # Disable ports we don't use to keep the footprint minimal
       jaeger-compact:
         enabled: false
@@ -81,6 +77,11 @@ spec:
           check_interval: 5s
           limit_mib: 300
           spike_limit_mib: 75
+          # The chart's default config sets limit_percentage/spike_limit_percentage;
+          # Helm deep-merges maps by key, and the memory_limiter processor rejects
+          # having both *_mib and *_percentage set. Null them out explicitly.
+          limit_percentage: null
+          spike_limit_percentage: null
 
       exporters:
         # Traces -> Jaeger (OTLP-native ingestion, enabled on the all-in-one deployment)
