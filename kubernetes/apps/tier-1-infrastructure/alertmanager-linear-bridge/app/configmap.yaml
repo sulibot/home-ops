@@ -45,17 +45,19 @@ data:
         return body["data"]
 
     def find_issue(tag):
+        # issueSearch is deprecated by the Linear API; use a filtered issues()
+        # query instead, scoped to our team and an exact title substring match.
         data = linear_graphql(
             """
-            query($term: String!) {
-              issueSearch(term: $term, first: 10) {
+            query($teamId: ID!, $tag: String!) {
+              issues(filter: { team: { id: { eq: $teamId } }, title: { contains: $tag } }, first: 10) {
                 nodes { id identifier title state { name } }
               }
             }
             """,
-            {"term": tag},
+            {"teamId": LINEAR_TEAM_ID, "tag": tag},
         )
-        for node in data.get("issueSearch", {}).get("nodes", []) or []:
+        for node in data.get("issues", {}).get("nodes", []) or []:
             if tag in node.get("title", ""):
                 return node
         return None
