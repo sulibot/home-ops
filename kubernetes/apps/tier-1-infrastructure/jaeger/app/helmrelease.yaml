@@ -48,6 +48,9 @@ spec:
         - --memory.max-traces=10000
         - --query.base-path=/
         - --collector.zipkin.host-port=:9411
+        - --collector.otlp.enabled=true
+        - --collector.otlp.grpc.host-port=:4317
+        - --collector.otlp.http.host-port=:4318
 
       # Service configuration
       service:
@@ -63,11 +66,21 @@ spec:
             port: 14250
             protocol: TCP
             targetPort: 14250
-          # Zipkin collector (for Istio)
+          # Zipkin collector (unused directly; kept for compatibility)
           - name: zipkin
             port: 9411
             protocol: TCP
             targetPort: 9411
+          # OTLP gRPC (receives traces from otel-collector)
+          - name: otlp-grpc
+            port: 4317
+            protocol: TCP
+            targetPort: 4317
+          # OTLP HTTP
+          - name: otlp-http
+            port: 4318
+            protocol: TCP
+            targetPort: 4318
 
     # Additional service for collector (referenced by Istio)
     collector:

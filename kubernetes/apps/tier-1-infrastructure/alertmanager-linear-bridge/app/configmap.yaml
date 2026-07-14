@@ -1,0 +1,182 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-linear-bridge
+data:
+  bridge.py: |
+    #!/usr/bin/env python3
+    import json
+    import os
+    import socket
+    import sys
+    import urllib.error
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    PORT = int(os.environ.get("PORT", "9096"))
+    LINEAR_API_KEY = os.environ.get("LINEAR_API_KEY", "")
+    LINEAR_TEAM_ID = os.environ.get("LINEAR_TEAM_ID", "")
+    LINEAR_API_URL = "https://api.linear.app/graphql"
+
+    SEVERITY_PRIORITY = {
+        "critical": 1,  # Urgent
+        "warning": 3,   # Normal
+    }
+
+    def log(msg):
+        print(msg, file=sys.stderr, flush=True)
+
+    def linear_graphql(query, variables):
+        payload = json.dumps({"query": query, "variables": variables}).encode("utf-8")
+        request = urllib.request.Request(
+            LINEAR_API_URL,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": LINEAR_API_KEY,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        if body.get("errors"):
+            raise RuntimeError(f"Linear API error: {body['errors']}")
+        return body["data"]
+
+    def find_issue(tag):
+        # issueSearch is deprecated by the Linear API; use a filtered issues()
+        # query instead, scoped to our team and an exact title substring match.
+        data = linear_graphql(
+            """
+            query($teamId: ID!, $tag: String!) {
+              issues(filter: { team: { id: { eq: $teamId } }, title: { contains: $tag } }, first: 10) {
+                nodes { id identifier title state { name } }
+              }
+            }
+            """,
+            {"teamId": LINEAR_TEAM_ID, "tag": tag},
+        )
+        for node in data.get("issues", {}).get("nodes", []) or []:
+            if tag in node.get("title", ""):
+                return node
+        return None
+
+    def create_issue(title, description, priority):
+        data = linear_graphql(
+            """
+            mutation($input: IssueCreateInput!) {
+              issueCreate(input: $input) {
+                success
+                issue { id identifier }
+              }
+            }
+            """,
+            {
+                "input": {
+                    "teamId": LINEAR_TEAM_ID,
+                    "title": title,
+                    "description": description,
+                    "priority": priority,
+                }
+            },
+        )
+        return data["issueCreate"]["issue"]
+
+    def comment_issue(issue_id, body):
+        linear_graphql(
+            """
+            mutation($input: CommentCreateInput!) {
+              commentCreate(input: $input) { success }
+            }
+            """,
+            {"input": {"issueId": issue_id, "body": body}},
+        )
+
+    def instance_label(labels):
+        return (
+            labels.get("instance")
+            or labels.get("namespace")
+            or labels.get("job")
+            or ""
+        )
+
+    def handle_alert(alert):
+        status = alert.get("status", "firing")
+        labels = alert.get("labels", {}) or {}
+        annotations = alert.get("annotations", {}) or {}
+        fingerprint = alert.get("fingerprint", "")
+        alertname = labels.get("alertname", "alert")
+        severity = labels.get("severity", "none")
+        instance = instance_label(labels)
+        tag = f"[fp:{fingerprint[:12]}]"
+        title = f"{alertname}: {instance} {tag}" if instance else f"{alertname} {tag}"
+
+        existing = find_issue(tag) if fingerprint else None
+
+        if existing:
+            note = (
+                f"Still firing.\n\n{annotations.get('description') or annotations.get('summary') or ''}"
+                if status == "firing"
+                else "Resolved."
+            )
+            comment_issue(existing["id"], note)
+            log(f"commented on {existing['identifier']} ({status})")
+            return
+
+        if status != "firing":
+            # Nothing to do: alert resolved before a ticket ever existed for it.
+            return
+
+        description = (
+            f"{annotations.get('description') or annotations.get('summary') or 'No description'}\n\n"
+            f"Severity: {severity}\n"
+            f"Labels: {json.dumps(labels, sort_keys=True)}"
+        )
+        priority = SEVERITY_PRIORITY.get(severity, 0)
+        issue = create_issue(title, description, priority)
+        log(f"created {issue['identifier']}")
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/healthz":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/webhook":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length)
+            try:
+                payload = json.loads(body.decode("utf-8"))
+                for alert in payload.get("alerts", []) or []:
+                    try:
+                        handle_alert(alert)
+                    except (urllib.error.URLError, RuntimeError, KeyError) as exc:
+                        log(f"error handling alert: {exc}")
+                self.send_response(200)
+                self.end_headers()
+            except Exception as exc:  # noqa: BLE001 - report failure, let Alertmanager retry
+                log(f"error handling webhook: {exc}")
+                self.send_response(500)
+                self.end_headers()
+
+        def log_message(self, fmt, *args):
+            return
+
+    class IPv6HTTPServer(ThreadingHTTPServer):
+        address_family = socket.AF_INET6
+
+    if __name__ == "__main__":
+        if not LINEAR_API_KEY or not LINEAR_TEAM_ID:
+            log("WARNING: LINEAR_API_KEY/LINEAR_TEAM_ID not set; webhook will fail")
+        server = IPv6HTTPServer(("::", PORT), Handler)
+        server.serve_forever()
