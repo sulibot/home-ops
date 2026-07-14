@@ -67,18 +67,18 @@ spec:
   timeIntervals:
     - name: quiet-hours
       timeIntervals:
-        # MANUAL STEP: set `location` to your IANA timezone (e.g. America/New_York);
-        # Alertmanager defaults to UTC otherwise. Adjust start/end to taste.
         - times:
-            - startTime: "22:00"
+            - startTime: "21:00"
               endTime: "23:59"
           weekdays:
             - "monday:sunday"
+          location: America/Los_Angeles
         - times:
             - startTime: "00:00"
-              endTime: "07:00"
+              endTime: "08:00"
           weekdays:
             - "monday:sunday"
+          location: America/Los_Angeles
 
   inhibitRules:
     - equal:
