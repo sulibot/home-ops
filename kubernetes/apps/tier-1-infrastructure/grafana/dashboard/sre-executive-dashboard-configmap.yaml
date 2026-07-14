@@ -663,7 +663,7 @@ data:
         },
         {
           "datasource": {
-            "type": "victoriametrics-logs-datasource",
+            "type": "loki",
             "uid": "${DS_VICTORIA_LOGS}"
           },
           "gridPos": {

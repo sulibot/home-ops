@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tempo
+  namespace: observability
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: tempo
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    # Single-binary mode, local filesystem storage backend - no object
+    # storage needed at this scale. OTLP (4317/4318) is enabled by default
+    # in this chart; verified via `helm template` against these values.
+    tempo:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+      retention: 72h
+
+    persistence:
+      enabled: true
+      storageClassName: csi-cephfs-config-sc
+      size: 10Gi
+
+    serviceMonitor:
+      enabled: true

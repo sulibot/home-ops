@@ -14,7 +14,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-    - datasourceName: victoria-logs
+    - datasourceName: loki
       inputName: DS_VICTORIA_LOGS
   configMapRef:
     name: sre-executive-dashboard

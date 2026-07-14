@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: jaeger
+  name: tempo
   namespace: flux-system
   labels:
     layer: "observability"
@@ -11,23 +11,17 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: jaeger-helm-repo
+    - name: storage-ready
       namespace: flux-system
-    # - name: istio
-    #   namespace: flux-system
+    - name: grafana
+      namespace: flux-system
   interval: 15m
-  retryInterval: 1m
-  path: ./kubernetes/apps/tier-1-infrastructure/jaeger/app
+  retryInterval: 30s
+  path: ./kubernetes/apps/tier-1-infrastructure/tempo/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
   targetNamespace: observability
-  wait: true
-  timeout: 10m
-  healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: jaeger
-      namespace: observability
+  wait: false

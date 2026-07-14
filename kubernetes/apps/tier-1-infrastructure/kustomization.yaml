@@ -55,12 +55,11 @@ resources:
   # - ./kube-prometheus-stack/volsync/ks.yaml
   # external-secrets dashboard disabled: referenced configmap is not created by current chart values
   # - ../tier-0-foundation/external-secrets/external-secrets/dashboard/ks.yaml
-  - ./victoria-logs/ks.yaml
+  - ./loki/ks.yaml
   - ./fluent-bit/ks.yaml
   - ./grafana/ks.yaml
-  # jaeger re-enabled: all-in-one works standalone via OTLP, Istio not required
-  - ./jaeger/helm-repo/ks.yaml
-  - ./jaeger/ks.yaml
+  # LGTM stack: Tempo (traces) + Loki (logs, above) + Grafana + Prometheus
+  - ./tempo/ks.yaml
   - ./otel-collector/helm-repo/ks.yaml
   - ./otel-collector/ks.yaml
   # kiali disabled - requires Istio service mesh

@@ -139,13 +139,17 @@ spec:
 
       outputs: |-
         [OUTPUT]
-          name http
+          name loki
           match kubernetes.*
-          host victoria-logs-server.observability.svc
-          port 9428
-          uri /insert/jsonline?_stream_fields=stream_class,stream,namespace,pod,container,node,app&_msg_field=log&_time_field=date
-          format json_lines
-          json_date_format iso8601
+          host loki.observability.svc
+          port 3100
+          # Loki penalizes high-cardinality labels (unlike VictoriaLogs' stream
+          # fields): keep only low-cardinality dimensions as labels. pod/container/
+          # node/stream stay in the JSON log line body - still queryable via
+          # LogQL's `| json`, just not indexed as separate streams.
+          label_keys $namespace,$app,$stream_class
+          labels job=fluentbit
+          line_format json
           compress gzip
           workers 2
           storage.total_limit_size 1G

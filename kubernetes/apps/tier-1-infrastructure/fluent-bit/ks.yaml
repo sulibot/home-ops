@@ -11,7 +11,7 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: victoria-logs
+    - name: loki
       namespace: flux-system
     - name: grafana
       namespace: flux-system
