@@ -112,7 +112,6 @@ ip -6 route add default via fd00:101::fffe dev eth1            # Default route
 | `fd00:10::1/64` | pve01 | vmbr0.10 | SSH, web UI, API access |
 | `fd00:10::2/64` | pve02 | vmbr0.10 | SSH, web UI, API access |
 | `fd00:10::3/64` | pve03 | vmbr0.10 | SSH, web UI, API access |
-| `fd00:10::4/64` | pve04 | vmbr0.10 | SSH, web UI, API access (future) |
 | `fd00:10::fffe/64` | RouterOS | VLAN 10 | Default gateway, DNS, NTP |
 
 **VLAN:** 10 (native on vmbr0)
@@ -181,7 +180,6 @@ ip -6 route add default via fd00:101::fffe dev eth1            # Default route
 | `fd00:0:0:ffff::1/128` | pve01 | dummy_underlay | BGP peering source, router ID |
 | `fd00:0:0:ffff::2/128` | pve02 | dummy_underlay | BGP peering source, router ID |
 | `fd00:0:0:ffff::3/128` | pve03 | dummy_underlay | BGP peering source, router ID |
-| `fd00:0:0:ffff::4/128` | pve04 | dummy_underlay | BGP peering source, router ID (future) |
 | `fd00:0:0:ffff::fffe/128` | RouterOS | Loopback | BGP peer for PVE hosts |
 
 **Purpose:** BGP session source IPs, stable identifiers

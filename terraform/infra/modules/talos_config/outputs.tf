@@ -106,6 +106,29 @@ output "bgp_asn_assignments" {
   sensitive = false
 }
 
+output "kube_vip_bgp_anycast" {
+  description = "Rendered kube-vip BGP anycast settings for review."
+  value = {
+    enabled = local.kube_vip_bgp_anycast.enabled
+    vip     = local.kube_vip_bgp_anycast.vip
+    image   = local.kube_vip_bgp_anycast.image
+    kubeconfig = {
+      path               = local.kube_vip_bgp_anycast.k8s_config_file
+      kubernetes_address = local.kube_vip_bgp_anycast.kubernetes_address
+    }
+    local_asn = local.kube_vip_bgp_anycast.local_asn
+    nodes = {
+      for node_name, node in local.all_nodes : node_name => {
+        source_ip      = node.kube_vip_bgp_ipv6
+        peer_address   = node.cilium_bgp_ipv6
+        peer_asn       = node.frr_asn
+        router_id_ipv4 = node.kube_vip_bgp_router_id
+      } if node.machine_type == "controlplane"
+    }
+  }
+  sensitive = false
+}
+
 output "cilium_bgp_node_configs_yaml" {
   description = "Generated CiliumBGPNodeConfig resources for per-node loopback peering"
   value       = local.cilium_bgp_node_configs_yaml

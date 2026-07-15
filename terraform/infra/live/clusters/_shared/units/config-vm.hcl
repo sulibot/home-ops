@@ -74,7 +74,7 @@ terraform {
 
   before_hook "enforce_cluster_enabled" {
     commands = ["init", "validate", "plan", "apply", "destroy", "refresh", "import", "output", "state", "console"]
-    execute = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-${local.tenant_id} is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
+    execute  = ["bash", "-c", "if [ \"${local.cluster_enabled}\" != \"true\" ]; then echo 'ERROR: cluster-${local.tenant_id} is disabled (enabled=false in cluster.hcl). This module is excluded from run-all by design; refusing a direct single-unit command here too. Set enabled=true first if this is intentional.' >&2; exit 1; fi"]
   }
 
   before_hook "validate_artifact_schematic_catalog" {
@@ -241,6 +241,7 @@ inputs = {
   gua_gateway       = local.ipv6_prefixes.delegated_gateways["vnet${local.tenant_id}"]
   kernel_args       = local.install_schematic_config.install_kernel_args
   system_extensions = concat(local.install_schematic_config.install_system_extensions, local.install_schematic_config.install_custom_extensions)
+  talos_logging     = try(local.cluster_config.talos_logging, { enabled = false })
 
   enable_node_swap      = local.context.talos_defaults.enable_node_swap
   kubelet_swap_behavior = local.context.talos_defaults.kubelet_swap_behavior
@@ -267,6 +268,8 @@ inputs = {
       dependency.nodes.outputs.k8s_network_config.pods_ipv6,
     ]
   }
+
+  kube_vip_bgp_anycast = try(local.cluster_config.kube_vip_bgp_anycast, {})
 
   machine_secrets      = dependency.secrets.outputs.machine_secrets
   client_configuration = dependency.secrets.outputs.client_configuration

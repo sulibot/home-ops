@@ -123,8 +123,22 @@ ipv6 prefix-list PL_K8S_SERVICES_V6 seq 5 permit {{ K8S_SERVICES_V6 }} le 128
    tenants); a tenant with no BGP speakers can't legitimately be a VM
    next-hop for anything. #}
 {% set VM_NH_V6_LIST = vm_nh_v6_list | default(["fd00:101::/64"]) %}
+{% set VMS_LOCAL_PREF_ANYCAST_V6 = vms_local_pref_anycast_v6 | default([]) %}
+{% set VMS_ANYCAST_NS = namespace(local_next_hops=[]) %}
+{% for item in VMS_LOCAL_PREF_ANYCAST_V6 %}
+{% set local_next_hop = item.local_next_hops[inventory_hostname] | default('') %}
+{% if local_next_hop %}
+{% set VMS_ANYCAST_NS.local_next_hops = VMS_ANYCAST_NS.local_next_hops + [local_next_hop] %}
+{% endif %}
+{% endfor %}
 {% for p in VM_NH_V6_LIST %}
 ipv6 prefix-list PL_VM_NH_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} le 128
+{% endfor %}
+{% for item in VMS_LOCAL_PREF_ANYCAST_V6 %}
+ipv6 prefix-list PL_VMS_LOCALPREF_ANYCAST_V6 seq {{ 10 + loop.index0*10 }} permit {{ item.prefix }}
+{% endfor %}
+{% for p in VMS_ANYCAST_NS.local_next_hops | unique %}
+ipv6 prefix-list PL_VMS_LOCALPREF_NH_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }}
 {% endfor %}
 !
 
@@ -144,6 +158,14 @@ bgp large-community-list standard CL_K8S_PUBLIC_AND_IBGP permit {{ LOCAL_AS }}:0
 ===================================================================== #}
 
 {# --- iBGP Inbound Policy (Tag routes learned via iBGP) --- #}
+{% if VMS_LOCAL_PREF_ANYCAST_V6 | length > 0 %}
+route-map RM_IBGP_IN permit 5
+ match ipv6 address prefix-list PL_VMS_LOCALPREF_ANYCAST_V6
+ set large-community {{ LOCAL_AS }}:0:900 additive
+ set local-preference {{ vms_local_pref_anycast_v6_ibgp_preference | default(100) }}
+exit
+!
+{% endif %}
 route-map RM_IBGP_IN permit 10
  set large-community {{ LOCAL_AS }}:0:900 additive
 exit
@@ -297,6 +319,14 @@ route-map RM_VMS_IN_V6 deny 6
  match ipv6 address prefix-list PL_K8S_PODS_V6
 exit
 !
+{% if VMS_LOCAL_PREF_ANYCAST_V6 | length > 0 and VMS_ANYCAST_NS.local_next_hops | length > 0 %}
+route-map RM_VMS_IN_V6 permit 8
+ match ipv6 address prefix-list PL_VMS_LOCALPREF_ANYCAST_V6
+ match ipv6 next-hop prefix-list PL_VMS_LOCALPREF_NH_V6
+ set local-preference {{ vms_local_pref_anycast_v6_local_preference | default(500) }}
+exit
+!
+{% endif %}
 route-map RM_VMS_IN_V6 permit 15
  match ipv6 address prefix-list PL_TENANT_GUA_V6
 exit

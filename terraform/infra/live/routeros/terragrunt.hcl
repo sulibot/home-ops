@@ -54,7 +54,7 @@ locals {
       ipv6_address     = "fd00:10::4"
       mac_address      = "00:E0:67:25:96:C8"
       boot_file_option = "boot-file-pxe-bios"
-      comment          = "cluster-104 talos01 legacy PXE chain to iPXE on former pve04 hardware"
+      comment          = "cluster-104 talos01 legacy PXE chain to iPXE"
     }
   }
 

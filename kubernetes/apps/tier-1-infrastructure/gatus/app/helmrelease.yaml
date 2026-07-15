@@ -118,6 +118,10 @@ spec:
         existingClaim: gatus-config
         globalMounts:
           - path: /config
+      data:
+        type: emptyDir
+        globalMounts:
+          - path: /data
       config-file:
         type: configMap
         name: "{{ .Release.Name }}-configmap"

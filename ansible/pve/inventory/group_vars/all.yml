@@ -32,9 +32,11 @@ timezone: UTC
 # VM swappiness tuning
 vm_swappiness: 10
 
-# Log-forwarding (rsyslog RELP) target
-log_forwarding_target: logserver.sulibot.com
+# Log-forwarding target for PVE/Ceph host journals. This is the Cilium
+# LoadBalancer VIP for observability/fluent-bit-infra.
+log_forwarding_target: "10.101.250.125"
 log_forwarding_port: 2514
+log_forwarding_protocol: tcp
 
 # (optional) any overrides for the community post-install script
 #post_pve_install_url: "https://…/post-pve-install.sh"

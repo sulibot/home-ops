@@ -1,0 +1,620 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-control-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  sre-home-control-health.json: |-
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "text": "DOWN"
+                    },
+                    "1": {
+                      "color": "green",
+                      "text": "UP"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant|Home Assistant\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "home-assistant",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Home Assistant",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "text": "DOWN"
+                    },
+                    "1": {
+                      "color": "green",
+                      "text": "UP"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant Dashboard|Home Assistant Dashboard\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "ha-dashboard",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "HA Dashboard",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "text": "DOWN"
+                    },
+                    "1": {
+                      "color": "green",
+                      "text": "UP"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Music Assistant|Music Assistant\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "music-assistant",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Music Assistant",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "text": "DOWN"
+                    },
+                    "1": {
+                      "color": "green",
+                      "text": "UP"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "max(up{cluster=\"cluster-104\",service=\"hubble-metrics\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "hubble",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "104 Hubble Scrape",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "gatus_results_endpoint_success{group=~\"cluster-104|cluster-104-apps\"}",
+              "legendFormat": "{{name}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "104 Endpoint Timeline",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "id": 6,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum by (reason) (rate(hubble_drop_total{cluster=\"cluster-104\"}[5m])) or vector(0)",
+              "legendFormat": "{{reason}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "104 Hubble Drops",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 11
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum by (verdict, type) (rate(hubble_flows_processed_total{cluster=\"cluster-104\"}[5m])) or vector(0)",
+              "legendFormat": "{{verdict}} {{type}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "104 Flow Verdicts",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 20,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 11
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "sum by (app) (count_over_time({cluster=\"cluster-104\",app=~\"home-assistant|music-assistant|matter-server|otbr\"} |~ \"(?i)(error|warn|failed|timeout|drop|unavailable)\" [$__interval]))",
+              "legendFormat": "{{app}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Home-Control Warning/Error Logs",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 18
+          },
+          "id": 9,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "{cluster=\"cluster-104\",app=~\"home-assistant|music-assistant|matter-server|otbr\"} |~ \"(?i)(error|warn|failed|timeout|drop|unavailable)\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Recent Home-Control Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 18
+          },
+          "id": 10,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "editorMode": "code",
+              "expr": "{cluster=\"cluster-104\",stream_class=\"event\",event_namespace=~\"default|matter-server|otbr|network|observer|kube-system\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "104 Kubernetes Events",
+          "type": "logs"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": [
+        "sre",
+        "cluster-104",
+        "home-control"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "SRE Home Control Health",
+      "uid": "sre-home-control-health",
+      "version": 1,
+      "weekStart": ""
+    }

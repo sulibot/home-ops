@@ -9,6 +9,7 @@ spec:
     kind: OCIRepository
     name: fluent-bit
   interval: 1h
+  timeout: 15m
   values:
     config:
       service: |-
@@ -154,7 +155,6 @@ spec:
           workers 2
           storage.total_limit_size 1G
           retry_limit false
-          log_response_payload false
     dashboards:
       enabled: true
     serviceMonitor:

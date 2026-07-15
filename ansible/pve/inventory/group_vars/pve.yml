@@ -25,12 +25,6 @@ public_interfaces:
     primary: enp61s0
     xmit_hash_policy: layer3+4
 
-  pve04:
-    slaves: [enp1s0]
-    mode: active-backup
-    primary: enp1s0
-    xmit_hash_policy: layer3+4
-
 # NTP Configuration
 # ntp_servers comes from group_vars/all.yml (site_facts.ntp_servers) - this
 # used to be a third, independently-drifted copy of the same list.
@@ -115,7 +109,6 @@ mesh_links:
       peer_id: 1
     - iface: enp1s0f1np1
       peer_id: 2
-  pve04: []
 
 # Edge BGP Configuration (RouterOS) - sourced from network_facts
 # (terraform/infra/live/common/network-infrastructure.hcl locals.routeros).
@@ -180,6 +173,20 @@ vms_listen_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map
 # VM next-hop trust filter (PL_VM_NH_V6): same BGP-capable-tenant scoping as
 # the listen ranges above.
 vm_nh_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+
+# ENG-14: anycast control-plane VIPs that should prefer the locally hosted
+# control-plane VM on each PVE node. The VIP itself is advertised by kube-vip
+# through the Talos bird2 relay; this policy prevents an iBGP-returned remote
+# copy of the same /128 from winning over the local CP next-hop.
+vms_local_pref_anycast_v6:
+  - name: cluster101_apiserver
+    prefix: "fd00:101::10/128"
+    local_next_hops:
+      pve01: "fd00:101::11/128"
+      pve02: "fd00:101::12/128"
+      pve03: "fd00:101::13/128"
+vms_local_pref_anycast_v6_local_preference: 500
+vms_local_pref_anycast_v6_ibgp_preference: 100
 
 # Legacy compatibility - VNet IDs list for templates that still use it
 VNET_IDS: "{{ tenant_vnets | map(attribute='id') | list }}"

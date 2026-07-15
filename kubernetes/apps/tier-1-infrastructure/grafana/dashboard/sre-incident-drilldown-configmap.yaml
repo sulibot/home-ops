@@ -379,6 +379,185 @@ data:
         },
         {
           "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(hubble_drop_total[5m])) by (reason) or vector(0)",
+              "legendFormat": "drop {{reason}}",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(hubble_dns_queries_total[5m])) by (rcode) or vector(0)",
+              "legendFormat": "dns {{rcode}}",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(hubble_flows_processed_total[5m])) by (type) or vector(0)",
+              "legendFormat": "flow {{type}}",
+              "refId": "C"
+            }
+          ],
+          "title": "Hubble Flows, Drops, and DNS",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\"}[5m])) by (service_name) or vector(0)",
+              "legendFormat": "{{service_name}} rps",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\",http_response_status_code=~\"5..\"}[5m])) by (service_name) or vector(0)",
+              "legendFormat": "{{service_name}} errors",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"authentik|plex\"}[5m])) by (le, service_name)) or vector(0)",
+              "legendFormat": "{{service_name}} p95",
+              "refId": "C"
+            }
+          ],
+          "title": "Beyla Authentik and Plex RED",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.0.0",
+          "targets": [
+            {
+              "expr": "homeops_ceph_osd_device_info",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ceph OSD Device Inventory",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_VICTORIA_LOGS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 32
+          },
+          "id": 10,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{stream_class=\"event\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Kubernetes Events",
+          "type": "logs"
+        },
+        {
+          "datasource": {
             "type": "loki",
             "uid": "${DS_VICTORIA_LOGS}"
           },
@@ -386,9 +565,40 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 40
           },
-          "id": 7,
+          "id": 11,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{stream_class=\"host\",source_type=~\"pve|talos\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "PVE, Ceph, and Talos Host Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_VICTORIA_LOGS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 48
+          },
+          "id": 12,
           "options": {
             "dedupStrategy": "none",
             "enableLogDetails": true,

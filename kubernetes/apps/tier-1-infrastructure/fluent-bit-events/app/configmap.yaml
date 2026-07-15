@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-events
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+      Daemon Off
+      Flush 1
+      Log_Level info
+      HTTP_Server On
+      HTTP_Listen 0.0.0.0
+      HTTP_Port 2022
+      Health_Check On
+      storage.path /var/lib/fluent-bit-events/buffers/
+      storage.sync normal
+      storage.checksum off
+      storage.max_chunks_up 64
+      storage.backlog.mem_limit 32M
+
+    [INPUT]
+      Name kubernetes_events
+      Alias kubernetes-events
+      Tag kubernetes.event
+      kube_url https://kubernetes.default.svc
+      kube_retention_time 1h
+      db /var/lib/fluent-bit-events/events.db
+      db.journal_mode DELETE
+      db.sync normal
+      storage.type filesystem
+
+    [FILTER]
+      Name lua
+      Match kubernetes.event
+      Script /fluent-bit/scripts/kubernetes_event_labels.lua
+      Call kubernetes_event_labels
+
+    [OUTPUT]
+      Name loki
+      Match kubernetes.event
+      Host loki.observability.svc
+      Port 3100
+      label_keys $cluster,$stream_class,$app,$event_namespace,$involved_kind,$involved_namespace,$event_reason,$event_type
+      labels job=fluentbit-events
+      line_format json
+      compress gzip
+      workers 2
+      storage.total_limit_size 512M
+      retry_limit false
+
+  kubernetes_event_labels.lua: |
+    function kubernetes_event_labels(tag, timestamp, record)
+      local metadata = record["metadata"] or {}
+      local involved = record["involvedObject"] or record["regarding"] or {}
+      local event_namespace = metadata["namespace"] or involved["namespace"] or "cluster"
+      local involved_kind = involved["kind"] or ""
+      local involved_namespace = involved["namespace"] or event_namespace
+      local involved_name = involved["name"] or ""
+      local reason = record["reason"] or ""
+      local event_type = record["type"] or record["eventType"] or ""
+      local message = record["message"] or record["note"] or ""
+
+      record["cluster"] = "cluster-101"
+      record["stream_class"] = "event"
+      record["app"] = "kubernetes-event"
+      record["event_namespace"] = event_namespace
+      record["event_uid"] = metadata["uid"] or ""
+      record["involved_kind"] = involved_kind
+      record["involved_namespace"] = involved_namespace
+      record["involved_name"] = involved_name
+      record["event_reason"] = reason
+      record["event_type"] = event_type
+
+      if record["log"] == nil then
+        record["log"] = string.format("%s %s/%s %s: %s", involved_kind, involved_namespace, involved_name, reason, message)
+      end
+
+      return 1, timestamp, record
+    end

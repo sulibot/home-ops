@@ -14,6 +14,6 @@
     - host_limits  # /etc/security limits
     - snmpd        # optional
     - node_exporter # host metrics and storage-error textfile collector
+    - log_forwarding # PVE/Ceph host logs to Loki receiver
     # - disk_wipe      # optional - deliberately not run by default
     # - fail2ban       # optional
-    # - log_forwarding # optional

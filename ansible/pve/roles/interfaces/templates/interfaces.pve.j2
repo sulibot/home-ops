@@ -4,7 +4,7 @@
 {# vmbr0.10 mgmt/transit IPv4: prefer site_facts (site.json, the same value
    Terraform's proxmox.api_endpoint reads) over the derived 10.10.0.{{node_id}}
    formula, so the two can't drift apart. Falls back to the formula for nodes
-   not present in site.json (e.g. pve04, which isn't a Terraform-managed node). #}
+   not present in site.json. #}
 {% set mgmt_v4 = site_facts.proxmox.nodes[inventory_hostname].mgmt_ip
                   if (site_facts is defined and inventory_hostname in site_facts.proxmox.nodes)
                   else "10.10.0." ~ node_id %}

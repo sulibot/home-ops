@@ -26,8 +26,8 @@ The final 2026-07-10 adoption pass then made unmanaged/problem areas explicit:
 IPv4/IPv6 firewall filter rules are excluded until cleanup, `ip_service`
 resources are excluded because provider import fails, and `ip_dns` global
 settings are excluded because the singleton is not importable. The disabled
-legacy `pve04` AAAA record was removed from desired state because it does not
-exist live.
+legacy Proxmox utility-host AAAA record was removed from desired state because
+it does not exist live.
 
 Planned create count by resource type:
 
@@ -125,8 +125,8 @@ Operational notes:
 - Static DNS has duplicate disabled legacy A records on the router. Resolve
   duplicates before importing DNS records into a `type-name` keyed Terraform map.
 - All desired static DNS records that existed live were imported. The disabled
-  legacy `AAAA-pve04.sulibot.com` desired record was removed because it does
-  not currently exist live.
+  legacy Proxmox utility-host AAAA record was removed because it does not
+  currently exist live.
 - The provider reports `routeros_ip_dns` does not support import. Treat DNS
   global settings as a reviewed apply-only adoption step.
 - `routeros_ip_service` resources are unmanaged. Imports did not stick by

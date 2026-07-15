@@ -57,11 +57,16 @@ resources:
   # - ../tier-0-foundation/external-secrets/external-secrets/dashboard/ks.yaml
   - ./loki/ks.yaml
   - ./fluent-bit/ks.yaml
+  - ./fluent-bit-infra/ks.yaml
+  - ./fluent-bit-events/ks.yaml
   - ./grafana/ks.yaml
   # LGTM stack: Tempo (traces) + Loki (logs, above) + Grafana + Prometheus
   - ./tempo/ks.yaml
-  - ./otel-collector/helm-repo/ks.yaml
-  - ./otel-collector/ks.yaml
+  - ./beyla/ks.yaml
+  # OTel collector deferred until an SDK-based app needs OTLP fanout.
+  # Beyla exports Prometheus metrics directly and traces directly to Tempo.
+  # - ./otel-collector/helm-repo/ks.yaml
+  # - ./otel-collector/ks.yaml
   # kiali disabled - requires Istio service mesh
   # - ./kiali/helm-repo/ks.yaml
   # - ./kiali/ks.yaml

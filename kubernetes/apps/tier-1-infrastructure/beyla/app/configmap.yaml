@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beyla
+data:
+  beyla-config.yml: |
+    log_level: INFO
+    log_format: json
+
+    attributes:
+      kubernetes:
+        enable: true
+        meta_restrict_local_node: true
+
+    discovery:
+      instrument:
+        - name: authentik
+          k8s_namespace: default
+          k8s_deployment_name: authentik-server
+          open_ports: "9000"
+        - name: plex
+          k8s_namespace: default
+          k8s_pod_name: plex-*
+          open_ports: "32400"
+
+    routes:
+      ignored_patterns:
+        - /-/health/live/
+        - /-/health/ready/
+        - /health
+        - /identity
+        - /metrics
+
+    otel_traces_export:
+      endpoint: http://tempo.observability.svc.cluster.local:4318
+      protocol: http/protobuf
+      sampler:
+        name: parentbased_traceidratio
+        arg: "1.0"
+
+    prometheus_export:
+      port: 9090
+      path: /metrics

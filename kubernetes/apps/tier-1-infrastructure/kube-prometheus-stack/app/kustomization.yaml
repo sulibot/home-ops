@@ -9,4 +9,5 @@ resources:
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   - ./vpa.yaml
-  # prometheusrule-pods.yaml moved to rules/ (requires PrometheusRule CRD from kps HelmRelease)
+  # PrometheusRule/ScrapeConfig resources live in rules/ because their CRDs
+  # are installed by the kube-prometheus-stack HelmRelease.

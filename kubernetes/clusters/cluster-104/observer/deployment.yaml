@@ -1,0 +1,81 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus-observer
+  namespace: observer
+  labels:
+    app.kubernetes.io/name: gatus-observer
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gatus-observer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gatus-observer
+        app.kubernetes.io/part-of: cluster-104
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:v5.35.0@sha256:21609f31be8c4e680ce3004b24276305666239c99aff58391503f3fb6142f39d
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: /config
+            - name: TZ
+              value: America/Los_Angeles
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: gatus-observer-config
+        - name: data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

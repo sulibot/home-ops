@@ -18,6 +18,7 @@ This directory contains repo-owned Grafana dashboards managed by the Grafana Ope
 |---|---|---|
 | SRE Executive Cluster Health | `sre-executive-dashboard-configmap.yaml` | Daily glance: safety, pressure, top IO, hardware red flags, active alerts, logs. |
 | SRE Incident Drill-Down | `sre-incident-drilldown-configmap.yaml` | Active response: write IO versus recovery, Ceph safety, top pods/VMs/disks, alerts, logs. |
+| SRE Home Control Health | `home-control-dashboard-configmap.yaml` | Home Assistant, Music Assistant, cluster-104 Hubble flows, and related logs/events. |
 
 ## Editing Workflow
 
@@ -38,5 +39,4 @@ kustomize build --load-restrictor LoadRestrictionsNone kubernetes/apps/tier-1-in
 - Panels that require knowing obscure metric names to interpret.
 - Alert panels without runbook links in the underlying alert rules.
 - Log panels that show raw high-volume application logs by default.
-- Adding Loki alongside Victoria Logs without a specific workflow gap.
-
+- Adding another datastore or board without a specific workflow gap.

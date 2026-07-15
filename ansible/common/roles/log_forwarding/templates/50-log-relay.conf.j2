@@ -1,2 +1,16 @@
-module(load="omrelp")
-action(type="omrelp" target="logserver.sulibot.com" port="2514")
+# Managed by Ansible. Forward PVE, Ceph, FRR, corosync, and kernel/syslog
+# messages to the Kubernetes observability receiver.
+#
+# The receiver is fluent-bit-infra in the observability namespace.
+action(
+  type="omfwd"
+  target="{{ log_forwarding_target }}"
+  port="{{ log_forwarding_port | default(2514) }}"
+  protocol="{{ log_forwarding_protocol | default('tcp') }}"
+  template="RSYSLOG_SyslogProtocol23Format"
+  TCP_Framing="octet-counted"
+  action.resumeRetryCount="-1"
+  queue.type="LinkedList"
+  queue.filename="homeops-observability-forward"
+  queue.saveOnShutdown="on"
+)

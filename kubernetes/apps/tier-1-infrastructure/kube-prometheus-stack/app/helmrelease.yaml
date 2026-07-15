@@ -9,6 +9,7 @@ spec:
     kind: OCIRepository
     name: kube-prometheus-stack
   interval: 1h
+  timeout: 15m
   install:
     crds: Create
   upgrade:
@@ -69,10 +70,6 @@ spec:
         ruleSelectorNilUsesHelmValues: false
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
-        # Accept OTLP metrics directly from otel-collector at /api/v1/otlp/v1/metrics
-        additionalArgs:
-          - name: web.enable-otlp-receiver
-            value: "true"
         retention: 14d
         retentionSize: 50GB
         resources:

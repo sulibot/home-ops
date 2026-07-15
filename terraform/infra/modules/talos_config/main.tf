@@ -29,6 +29,9 @@ locals {
   # Cilium Cluster-wide ASN: 4220<cluster>000
   cilium_asn_cluster = 4220000000 + var.cluster_id * 1000
 
+  # kube-vip Cluster-wide ASN: 4220<cluster>100
+  kube_vip_asn_cluster = 4220000000 + var.cluster_id * 1000 + 100
+
   # Combine all nodes with metadata (ip_suffix comes from input, rename to node_suffix for clarity)
   all_nodes = merge(
     { for k, v in local.control_plane_nodes : k => merge(v, {
@@ -37,6 +40,10 @@ locals {
       # Cilium/bird2 shared loopback (on dummy0) - uses fe and 254
       cilium_bgp_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      # Separate loopback source for kube-vip -> bird2 BGP, avoiding ::1
+      # conflicts with the Cilium BGP control-plane session.
+      kube_vip_bgp_ipv6      = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix + 100)
+      kube_vip_bgp_router_id = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101011 for cluster 101, node 11)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) },
@@ -46,6 +53,10 @@ locals {
       # Cilium/bird2 shared loopback (on dummy0) - uses fe and 254
       cilium_bgp_ipv6 = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix)
       cilium_bgp_ipv4 = format("10.%d.254.%d", var.cluster_id, v.ip_suffix)
+      # Separate loopback source for kube-vip -> bird2 BGP. Workers do not run
+      # kube-vip, but keeping the shape uniform simplifies per-node rendering.
+      kube_vip_bgp_ipv6      = format("fd00:%d:fe::%d", var.cluster_id, v.ip_suffix + 100)
+      kube_vip_bgp_router_id = format("10.%d.253.%d", var.cluster_id, v.ip_suffix)
       # Per-node ASN: base + 3-digit node_suffix (e.g., 4210101021 for cluster 101, node 21)
       frr_asn = local.frr_asn_base_cluster + v.ip_suffix
     }) }
@@ -61,6 +72,29 @@ locals {
   # These are applied as inline manifests so BGP is functional immediately at boot
   cilium_bgp_config_yaml = var.cilium_bgp_config_path != "" && try(fileexists(var.cilium_bgp_config_path), false) ? file(var.cilium_bgp_config_path) : ""
   cilium_lb_pool_yaml    = var.cilium_lb_pool_path != "" && try(fileexists(var.cilium_lb_pool_path), false) ? file(var.cilium_lb_pool_path) : ""
+
+  kube_vip_bgp_anycast = {
+    enabled                                = var.kube_vip_bgp_anycast.enabled
+    image                                  = var.kube_vip_bgp_anycast.image
+    vip                                    = coalesce(var.kube_vip_bgp_anycast.vip, var.vip_ipv6)
+    interface                              = var.kube_vip_bgp_anycast.interface
+    vip_subnet                             = var.kube_vip_bgp_anycast.vip_subnet
+    local_asn                              = coalesce(var.kube_vip_bgp_anycast.local_asn, local.kube_vip_asn_cluster)
+    bgp_multihop                           = var.kube_vip_bgp_anycast.bgp_multihop
+    port                                   = var.kube_vip_bgp_anycast.port
+    log_level                              = var.kube_vip_bgp_anycast.log_level
+    k8s_config_file                        = var.kube_vip_bgp_anycast.k8s_config_file
+    kubernetes_address                     = var.kube_vip_bgp_anycast.kubernetes_address
+    health_check_address                   = var.kube_vip_bgp_anycast.health_check_address
+    health_check_ca_path                   = var.kube_vip_bgp_anycast.health_check_ca_path
+    health_check_period_seconds            = var.kube_vip_bgp_anycast.health_check_period_seconds
+    health_check_timeout_seconds           = var.kube_vip_bgp_anycast.health_check_timeout_seconds
+    health_check_failure_threshold         = var.kube_vip_bgp_anycast.health_check_failure_threshold
+    prometheus_server                      = var.kube_vip_bgp_anycast.prometheus_server
+    enable_services                        = var.kube_vip_bgp_anycast.enable_services
+    enable_leader_election                 = var.kube_vip_bgp_anycast.enable_leader_election
+    use_global_scope_when_binding_loopback = var.kube_vip_bgp_anycast.use_global_scope_when_binding_loopback
+  }
 
   # Common configuration to avoid repetition
   common_install = merge(
@@ -228,6 +262,35 @@ locals {
     })
   ] : []
 
+  talos_service_logging_patches = try(var.talos_logging.enabled, false) ? [
+    yamlencode({
+      machine = {
+        logging = {
+          destinations = [
+            {
+              endpoint = var.talos_logging.endpoint
+              format   = "json_lines"
+              extraTags = {
+                cluster    = var.cluster_name
+                cluster_id = tostring(var.cluster_id)
+                source     = "talos"
+              }
+            }
+          ]
+        }
+      }
+    })
+  ] : []
+
+  talos_kernel_logging_patches = try(var.talos_logging.enabled, false) ? [
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "KmsgLogConfig"
+      name       = "homeops-remote-log"
+      url        = coalesce(var.talos_logging.kernel_endpoint, var.talos_logging.endpoint)
+    })
+  ] : []
+
   reuse_machine_secrets          = var.machine_secrets != null && var.client_configuration != null
   generated_machine_secrets      = try(talos_machine_secrets.cluster[0].machine_secrets, null)
   generated_client_configuration = try(talos_machine_secrets.cluster[0].client_configuration, null)
@@ -326,7 +389,7 @@ data "talos_machine_configuration" "controlplane" {
         }
       }
     }),
-  ], local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate worker machine configuration
@@ -388,7 +451,7 @@ EOF
         }
       }
     }),
-  ], local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate per-node FRR config YAML for the extension
@@ -416,7 +479,16 @@ locals {
           import all;
         };
         ipv6 {
+%{if local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane"~}
+          import filter {
+            # kube-vip binds the anycast VIP to lo, but upstream advertisement
+            # must remain gated by kube-vip's health-checked BGP protocol.
+            if net = ${local.kube_vip_bgp_anycast.vip}/128 then reject;
+            accept;
+          };
+%{else~}
           import all;
+%{endif~}
         };
       }
 
@@ -499,6 +571,28 @@ locals {
         };
       }
 
+%{if local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane"}
+      # BGP - kube-vip control-plane anycast VIP via local bird2 relay
+      # kube-vip connects from a per-node dummy0 address so it does not share
+      # the Cilium ::1 neighbor identity. bird2 imports only the apiserver VIP
+      # and exports it upstream with the same Public community used by service VIPs.
+      protocol bgp kube_vip {
+        description "kube-vip BGP anycast control-plane VIP";
+        passive on;
+        multihop 2;
+        local as ${node.frr_asn};
+        neighbor ${coalesce(var.kube_vip_bgp_anycast.source_ip, node.kube_vip_bgp_ipv6)} as ${local.kube_vip_bgp_anycast.local_asn};
+
+        ipv6 {
+          import filter {
+            if net = ${local.kube_vip_bgp_anycast.vip}/128 then accept;
+            reject;
+          };
+          export none;
+        };
+      }
+%{endif}
+
       # BGP - Upstream Peering (same as FRR - ULA addresses)
       protocol bgp upstream {
         description "PVE ULA Anycast Gateway";
@@ -514,6 +608,13 @@ ${var.bgp_enable_bfd ? "        bfd on;" : "        # BFD disabled for this upst
             accept;
           };
           export filter {
+%{if local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane"}
+            # The local kube-vip BGP source address is only for the node-local
+            # session to bird2 and should not become an upstream host route.
+            if proto = "direct_routes" then {
+              if net = ${coalesce(var.kube_vip_bgp_anycast.source_ip, node.kube_vip_bgp_ipv6)}/128 then reject;
+            }
+%{endif}
             # Tag Loopbacks (protocol direct_routes) as Public (Community :200)
             if proto = "direct_routes" then {
               bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
@@ -562,6 +663,17 @@ ${var.bgp_enable_bfd ? "        bfd on;" : "        # BFD disabled for this upst
             if proto = "lb_pool_v6" then {
               accept;
             }
+%{if local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane"}
+            # Tag kube-vip's control-plane anycast VIP as Public (:200).
+            # Only this exact /128 is accepted from the kube_vip protocol.
+            if proto = "kube_vip" then {
+              if net = ${local.kube_vip_bgp_anycast.vip}/128 then {
+                bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
+                accept;
+              }
+              reject;
+            }
+%{endif}
             # Tag Pod CIDRs (from Cilium) as Internal (Community :100)
             # This is CRITICAL for FRR to accept the pod routes via RM_VMS_IN_V6
             if proto = "cilium" then {
@@ -616,6 +728,213 @@ locals {
       }
     })
   ])
+}
+
+locals {
+  kube_vip_bgp_static_pods = {
+    for node_name, node in local.all_nodes : node_name => {
+      apiVersion = "v1"
+      kind       = "Pod"
+      metadata = {
+        name      = "kube-vip"
+        namespace = "kube-system"
+        labels = {
+          "app.kubernetes.io/name"      = "kube-vip"
+          "app.kubernetes.io/component" = "control-plane-vip"
+          "home-ops.sulibot.com/owner"  = "terraform-talos-config"
+        }
+      }
+      spec = {
+        hostNetwork       = true
+        dnsPolicy         = "ClusterFirstWithHostNet"
+        priorityClassName = "system-node-critical"
+        restartPolicy     = "Always"
+        tolerations = [
+          {
+            operator = "Exists"
+          }
+        ]
+        containers = [
+          {
+            name            = "kube-vip"
+            image           = local.kube_vip_bgp_anycast.image
+            imagePullPolicy = "IfNotPresent"
+            args            = ["manager"]
+            env = concat([
+              {
+                name  = "cp_enable"
+                value = "true"
+              },
+              {
+                name  = "svc_enable"
+                value = tostring(local.kube_vip_bgp_anycast.enable_services)
+              },
+              {
+                name  = "vip_arp"
+                value = "false"
+              },
+              {
+                name  = "bgp_enable"
+                value = "true"
+              },
+              {
+                name  = "vip_leaderelection"
+                value = tostring(local.kube_vip_bgp_anycast.enable_leader_election)
+              },
+              {
+                name  = "address"
+                value = local.kube_vip_bgp_anycast.vip
+              },
+              {
+                name  = "vip_interface"
+                value = local.kube_vip_bgp_anycast.interface
+              },
+              {
+                name  = "vip_subnet"
+                value = local.kube_vip_bgp_anycast.vip_subnet
+              },
+              {
+                name  = "vip_interfaceloglobal"
+                value = tostring(local.kube_vip_bgp_anycast.use_global_scope_when_binding_loopback)
+              },
+              {
+                name  = "port"
+                value = tostring(local.kube_vip_bgp_anycast.port)
+              },
+              {
+                name  = "vip_loglevel"
+                value = local.kube_vip_bgp_anycast.log_level
+              },
+              {
+                name  = "k8s_config_file"
+                value = local.kube_vip_bgp_anycast.k8s_config_file
+              },
+              {
+                name  = "kubernetes_addr"
+                value = local.kube_vip_bgp_anycast.kubernetes_address
+              },
+              {
+                name  = "bgp_as"
+                value = tostring(local.kube_vip_bgp_anycast.local_asn)
+              },
+              {
+                name  = "bgp_routerid"
+                value = coalesce(var.kube_vip_bgp_anycast.router_id_ipv4, node.kube_vip_bgp_router_id)
+              },
+              {
+                name  = "bgp_peeraddress"
+                value = coalesce(var.kube_vip_bgp_anycast.peer_address, node.cilium_bgp_ipv6)
+              },
+              {
+                name  = "bgp_peeras"
+                value = tostring(coalesce(var.kube_vip_bgp_anycast.peer_asn, node.frr_asn))
+              },
+              {
+                name  = "bgp_peerpass"
+                value = ""
+              },
+              {
+                name  = "bgp_multihop"
+                value = tostring(local.kube_vip_bgp_anycast.bgp_multihop)
+              },
+              {
+                name  = "bgp_sourceip"
+                value = coalesce(var.kube_vip_bgp_anycast.source_ip, node.kube_vip_bgp_ipv6)
+              },
+              {
+                name  = "control_plane_health_check_address"
+                value = local.kube_vip_bgp_anycast.health_check_address
+              },
+              {
+                name  = "control_plane_health_check_period_seconds"
+                value = tostring(local.kube_vip_bgp_anycast.health_check_period_seconds)
+              },
+              {
+                name  = "control_plane_health_check_timeout_seconds"
+                value = tostring(local.kube_vip_bgp_anycast.health_check_timeout_seconds)
+              },
+              {
+                name  = "control_plane_health_check_failure_threshold"
+                value = tostring(local.kube_vip_bgp_anycast.health_check_failure_threshold)
+              },
+              {
+                name  = "prometheus_server"
+                value = local.kube_vip_bgp_anycast.prometheus_server
+              },
+              ], local.kube_vip_bgp_anycast.health_check_ca_path != "" ? [
+              {
+                name  = "control_plane_health_check_ca_path"
+                value = local.kube_vip_bgp_anycast.health_check_ca_path
+              }
+            ] : [])
+            resources = {
+              requests = {
+                cpu    = "10m"
+                memory = "32Mi"
+              }
+            }
+            securityContext = {
+              capabilities = {
+                add = [
+                  "NET_ADMIN",
+                  "NET_RAW",
+                ]
+              }
+            }
+            volumeMounts = concat([
+              {
+                name      = "kubeconfig"
+                mountPath = "/etc/kubernetes/admin.conf"
+                readOnly  = true
+              },
+              {
+                name      = "kubeconfig"
+                mountPath = local.kube_vip_bgp_anycast.k8s_config_file
+                readOnly  = true
+              },
+              {
+                name      = "kubelet-client-current"
+                mountPath = "/var/lib/kubelet/pki/kubelet-client-current.pem"
+                readOnly  = true
+              }
+              ], local.kube_vip_bgp_anycast.health_check_ca_path != "" ? [
+              {
+                name      = "kubernetes-ca"
+                mountPath = local.kube_vip_bgp_anycast.health_check_ca_path
+                readOnly  = true
+              }
+              ] : []
+            )
+          }
+        ]
+        volumes = concat([
+          {
+            name = "kubeconfig"
+            hostPath = {
+              path = local.kube_vip_bgp_anycast.k8s_config_file
+              type = "File"
+            }
+          },
+          {
+            name = "kubelet-client-current"
+            hostPath = {
+              path = "/var/lib/kubelet/pki/kubelet-client-current.pem"
+              type = "File"
+            }
+          }
+          ], local.kube_vip_bgp_anycast.health_check_ca_path != "" ? [
+          {
+            name = "kubernetes-ca"
+            hostPath = {
+              path = local.kube_vip_bgp_anycast.health_check_ca_path
+              type = "File"
+            }
+          }
+          ] : []
+        )
+      }
+    } if node.machine_type == "controlplane"
+  }
 }
 
 # Pre-render extension service configs per node for use in config patches
@@ -695,10 +1014,15 @@ locals {
               {
                 # Per-node: unique loopback address for Cilium/bird2 BGP identity
                 interface = "dummy0"
-                addresses = [
-                  "${node.cilium_bgp_ipv6}/128", # Cilium/bird2 fe - FIRST for nodeIP
-                  "${node.cilium_bgp_ipv4}/32",  # Cilium/bird2 254
-                ]
+                addresses = concat(
+                  [
+                    "${node.cilium_bgp_ipv6}/128", # Cilium/bird2 fe - FIRST for nodeIP
+                    "${node.cilium_bgp_ipv4}/32",  # Cilium/bird2 254
+                  ],
+                  local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane" ? [
+                    "${node.kube_vip_bgp_ipv6}/128",
+                  ] : []
+                )
               }
               ], try(node.extra_interfaces, []), node.machine_type == "worker" ? [
               {
@@ -735,6 +1059,9 @@ locals {
             }
           }
         },
+        local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane" ? {
+          pods = [local.kube_vip_bgp_static_pods[node_name]]
+        } : {},
         # Add GPU kernel module configuration if GPU passthrough is enabled
         # This is merged INTO the machine block to avoid shallow merge overwriting nodeLabels
         try(node.gpu_passthrough.enabled, false) && node.machine_type == "worker" ? {

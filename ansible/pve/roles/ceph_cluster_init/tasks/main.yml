@@ -34,3 +34,20 @@
   args:
     creates: "/var/lib/ceph/mgr/ceph-{{ ansible_hostname }}/"
   when: "inventory_hostname in groups[ceph_mgr_group]"
+
+- name: Check enabled Ceph mgr modules
+  ansible.builtin.command: ceph mgr module ls -f json
+  register: _ceph_mgr_modules
+  changed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+# Required for kube-prometheus-stack's ceph-mgr-targets ServiceMonitor
+# (kubernetes/apps/tier-1-infrastructure/proxmox-observability) to scrape
+# anything - the module ships with Ceph but is disabled by default.
+- name: Enable Ceph prometheus mgr module
+  ansible.builtin.command: ceph mgr module enable prometheus
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "'prometheus' not in (_ceph_mgr_modules.stdout | from_json).enabled_modules"
+  run_once: true
