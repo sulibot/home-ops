@@ -1,9 +1,4 @@
 ---
-connectivity:
-  checker:
-    target: "[2606:4700:4700::1111]:53"
-    interval: 1m
-
 endpoints:
   - name: Cloudflare
     group: connectivity
@@ -86,6 +81,36 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
+  - name: Home Assistant Dashboard (external)
+    group: apps-external
+    url: https://hass-app.sulibot.com/lovelace/default_view
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Music Assistant (external)
+    group: apps-external
+    url: https://music-assistant.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Plex (external)
+    group: apps-external
+    url: https://plex.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
   - name: Firefly (external)
     group: apps-external
     url: https://firefly.sulibot.com/
@@ -143,19 +168,16 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Home Assistant (cluster)
-    group: infra-internal
-    url: http://home-assistant.default.svc.cluster.local:8123/
-    interval: 1m
-    client:
-      timeout: 5s
-    conditions:
-      - "[STATUS] >= 200"
-      - "[STATUS] < 500"
-
   - name: Firefly (cluster)
     group: infra-internal
-    url: tcp://firefly-app.default.svc.cluster.local:8080
+    url: tcp://firefly.default.svc.cluster.local:8080
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Plex (cluster)
+    group: infra-internal
+    url: tcp://plex.default.svc.cluster.local:32400
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
@@ -166,6 +188,15 @@ endpoints:
     interval: 1m
     client:
       timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Loki Gateway
+    group: infra-internal
+    url: https://loki.sulibot.com/ready
+    interval: 1m
+    client:
+      timeout: 10s
     conditions:
       - "[STATUS] == 200"
 
@@ -187,12 +218,265 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
 
+  - name: Postgres Vectorchord RW
+    group: datastores
+    url: tcp://postgres-vectorchord-rw.default.svc.cluster.local:5432
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Valkey Primary
+    group: datastores
+    url: tcp://valkey-primary.default.svc.cluster.local:6379
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Valkey Metrics
+    group: datastores
+    url: http://valkey-metrics.default.svc.cluster.local:9121/metrics
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Grafana (gateway)
+    group: observability
+    url: https://grafana.sulibot.com/api/health
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Prometheus (gateway)
+    group: observability
+    url: https://prometheus.sulibot.com/-/ready
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Alertmanager (gateway)
+    group: observability
+    url: https://alertmanager.sulibot.com/-/ready
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Prometheus (cluster)
+    group: observability
+    url: http://prometheus-operated.observability.svc.cluster.local:9090/-/ready
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Alertmanager (cluster)
+    group: observability
+    url: http://alertmanager-operated.observability.svc.cluster.local:9093/-/ready
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Cluster 101 API VIP
+    group: cluster-101
+    url: tcp://[fd00:101::10]:6443
+    interval: 30s
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 solcp01 API
+    group: cluster-101
+    url: tcp://[fd00:101::11]:6443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 solcp02 API
+    group: cluster-101
+    url: tcp://[fd00:101::12]:6443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 solcp03 API
+    group: cluster-101
+    url: tcp://[fd00:101::13]:6443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 Gateway Internal
+    group: cluster-101
+    url: tcp://[fd00:101:250::11]:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 Gateway Tunnel
+    group: cluster-101
+    url: tcp://[fd00:101:250::12]:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 101 Hubble Metrics
+    group: cluster-101
+    url: http://hubble-metrics.kube-system.svc.cluster.local:9965/metrics
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Cluster 104 API
+    group: cluster-104
+    url: tcp://10.104.0.4:6443
+    interval: 30s
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 104 Gateway Internal
+    group: cluster-104-internal
+    url: tcp://[fd00:104:250::11]:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 104 Gateway Tunnel
+    group: cluster-104-internal
+    url: tcp://[fd00:104:250::12]:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Cluster 104 Hubble Metrics
+    group: cluster-104
+    url: https://hubble-104.sulibot.com/metrics
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Cluster 104 Home Assistant
+    group: cluster-104-apps
+    url: https://hass.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Cluster 104 Home Assistant Dashboard
+    group: cluster-104-apps
+    url: https://hass-app.sulibot.com/lovelace/default_view
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Cluster 104 Music Assistant
+    group: cluster-104-apps
+    url: https://music-assistant.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: RouterOS API
+    group: network
+    url: tcp://10.30.0.254:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: PVE01 API
+    group: pve
+    url: tcp://[fd00:10::1]:8006
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: PVE02 API
+    group: pve
+    url: tcp://[fd00:10::2]:8006
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: PVE03 API
+    group: pve
+    url: tcp://[fd00:10::3]:8006
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Proxmox Exporter
+    group: pve
+    url: http://pve-exporter.observability.svc.cluster.local:9221/metrics
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: PVE01 Node Exporter
+    group: pve
+    url: http://[fd00:10::1]:9100/metrics
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: PVE02 Node Exporter
+    group: pve
+    url: http://[fd00:10::2]:9100/metrics
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: PVE03 Node Exporter
+    group: pve
+    url: http://[fd00:10::3]:9100/metrics
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Ceph MGR Metrics
+    group: storage
+    url: tcp://ceph-mgr-targets.observability.svc.cluster.local:9283
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
 metrics: true
 
 storage:
   type: sqlite
   caching: true
-  path: ${GATUS_CONFIG_PATH}/gatus.db
+  path: /data/gatus.db
 
 ui:
   title: Status | Sulibot

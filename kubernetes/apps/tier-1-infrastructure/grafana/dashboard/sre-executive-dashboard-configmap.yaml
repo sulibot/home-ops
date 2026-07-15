@@ -67,6 +67,10 @@ data:
                     "2": {
                       "color": "red",
                       "text": "ERR"
+                    },
+                    "4": {
+                      "color": "purple",
+                      "text": "NO SCRAPE"
                     }
                   },
                   "type": "value"
@@ -86,6 +90,10 @@ data:
                   {
                     "color": "red",
                     "value": 2
+                  },
+                  {
+                    "color": "purple",
+                    "value": 4
                   }
                 ]
               },
@@ -118,7 +126,7 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "max(ceph_health_status) or vector(0)",
+              "expr": "max(ceph_health_status) or (absent(ceph_health_status) * 4)",
               "legendFormat": "Ceph health",
               "refId": "A"
             }
@@ -310,7 +318,7 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "sum(smartctl_device_smart_status != 1 or smartctl_device_status != 1 or smartctl_device_critical_warning != 0 or smartctl_device_media_errors > 0) or vector(0)",
+              "expr": "sum(smartctl_device_smartctl_exit_status != 0) or vector(0)",
               "legendFormat": "critical disks",
               "refId": "A"
             }
@@ -462,7 +470,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "sum(rate(ceph_osd_recovery_bytes[5m])) or vector(0)",
+              "expr": "homeops:ceph_recovery_bytes:rate5m",
               "legendFormat": "ceph recovery/backfill",
               "refId": "C"
             }
@@ -515,14 +523,14 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(10, homeops:pod_pvc_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
+              "expr": "topk(10, homeops:pod_workload_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
               "refId": "A"
             }
           ],
-          "title": "Top Pod/PVC Writers",
+          "title": "Top Pod/Workload Writers",
           "transformations": [
             {
               "id": "organize",
@@ -664,7 +672,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,
@@ -712,6 +720,6 @@ data:
       "timezone": "browser",
       "title": "SRE Executive Cluster Health",
       "uid": "sre-executive-cluster-health",
-      "version": 1,
+      "version": 2,
       "weekStart": ""
     }

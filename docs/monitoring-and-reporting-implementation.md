@@ -43,8 +43,8 @@ It also adds recording rules:
 
 - `homeops:pod_fs_write_bytes:rate5m`
 - `homeops:pod_fs_read_bytes:rate5m`
-- `homeops:pod_pvc_write_bytes:rate5m`
-- `homeops:pod_pvc_read_bytes:rate5m`
+- `homeops:pod_workload_write_bytes:rate5m`
+- `homeops:pod_workload_read_bytes:rate5m`
 - `homeops:node_disk_io_time:rate5m`
 - `homeops:nic_errors_drops:rate5m`
 - `homeops:ceph_osd_used_ratio`

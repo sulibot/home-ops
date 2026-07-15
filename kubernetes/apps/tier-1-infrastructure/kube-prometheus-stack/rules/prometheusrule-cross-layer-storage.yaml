@@ -53,17 +53,33 @@ spec:
               rate(pve_disk_read_bytes{type=~"qemu|lxc"}[5m])
             )
 
-        - record: homeops:pod_pvc_write_bytes:rate5m
+        - record: homeops:pod_workload_write_bytes:rate5m
           expr: |
             homeops:pod_fs_write_bytes:rate5m
-            * on (namespace, pod, node) group_left(persistentvolumeclaim, workload, workload_kind)
-              homeops_kube_pod_pvc_info
+            * on (namespace, pod, node) group_left(workload, workload_kind)
+              max by (namespace, pod, node, workload, workload_kind) (
+                label_replace(
+                  label_replace(
+                    homeops_kube_pod_pvc_info,
+                    "namespace", "$1", "exported_namespace", "(.*)"
+                  ),
+                  "pod", "$1", "exported_pod", "(.*)"
+                )
+              )
 
-        - record: homeops:pod_pvc_read_bytes:rate5m
+        - record: homeops:pod_workload_read_bytes:rate5m
           expr: |
             homeops:pod_fs_read_bytes:rate5m
-            * on (namespace, pod, node) group_left(persistentvolumeclaim, workload, workload_kind)
-              homeops_kube_pod_pvc_info
+            * on (namespace, pod, node) group_left(workload, workload_kind)
+              max by (namespace, pod, node, workload, workload_kind) (
+                label_replace(
+                  label_replace(
+                    homeops_kube_pod_pvc_info,
+                    "namespace", "$1", "exported_namespace", "(.*)"
+                  ),
+                  "pod", "$1", "exported_pod", "(.*)"
+                )
+              )
 
         - record: homeops:ceph_osd_used_ratio
           expr: |

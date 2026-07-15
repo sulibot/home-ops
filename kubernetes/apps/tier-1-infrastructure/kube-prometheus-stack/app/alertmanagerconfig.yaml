@@ -68,16 +68,15 @@ spec:
   # supports neither a `location`/timezone field nor a top-level `timeIntervals`
   # key - the field is `muteTimeIntervals`, and times are UTC-only. 21:00-08:00
   # America/Los_Angeles is currently UTC-7 (PDT) => 04:00-15:00 UTC, a single
-  # non-wrapping range. This will drift by ~1h during PST (Nov-Mar) until
-  # prometheus-operator is upgraded to a CRD version with `location` support.
+  # non-wrapping range. With no weekday selector this applies every day. This
+  # will drift by ~1h during PST (Nov-Mar) until prometheus-operator is upgraded
+  # to a CRD version with `location` support.
   muteTimeIntervals:
     - name: quiet-hours
       timeIntervals:
         - times:
             - startTime: "04:00"
               endTime: "15:00"
-          weekdays:
-            - "monday:sunday"
 
   inhibitRules:
     - equal:
@@ -151,4 +150,17 @@ spec:
           requireTLS: false
           sendResolved: true
           text: |-
-            {{ template "default.message" . }}
+            {{- range .Alerts }}
+            [{{ .Status | toUpper }}] {{ .Labels.alertname }}
+            {{- if .Annotations.summary }}
+            Summary: {{ .Annotations.summary }}
+            {{- end }}
+            {{- if .Annotations.description }}
+            Description: {{ .Annotations.description }}
+            {{- end }}
+            Labels:
+            {{- range .Labels.SortedPairs }}
+              {{ .Name }}={{ .Value }}
+            {{- end }}
+
+            {{- end }}

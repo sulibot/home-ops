@@ -12,21 +12,24 @@ It currently exports:
 - `homeops_kube_pod_pvc_info`
 - `homeops_kube_pvc_pv_info`
 - `homeops_kube_pv_ceph_info`
+- `homeops_pve_host_info`
+- `homeops_ceph_osd_device_info`
 
 ## Scope
 
-Current scope is Kubernetes API inventory only:
+Current scope covers Kubernetes API inventory plus static PVE/Ceph host inventory:
 
 - Nodes.
 - Pods.
 - PVCs.
 - PVs.
 - CSI fields from PV specs.
+- PVE host service addresses.
+- Ceph OSD data device, DB LV, host, class, and drive-bucket mapping.
 
 Future scope can add:
 
 - Proxmox VM disk to RBD image mapping.
-- Ceph OSD to physical disk mapping.
 - PG acting set mapping.
 
 Do not add high-cardinality data such as per-file paths, per-RADOS-object data, or every Kubernetes label.
@@ -37,6 +40,10 @@ Do not add high-cardinality data such as per-file paths, per-RADOS-object data, 
 - Keep labels stable and low-cardinality.
 - Prefer explicit mapping metrics over clever PromQL.
 - Add new metrics only when a dashboard, alert, or runbook uses them.
+- The Prometheus recording rules enrich pod-level cAdvisor filesystem IO with
+  workload identity from this exporter. They intentionally do not split bytes
+  per PVC because cAdvisor exposes pod/container filesystem counters, not a
+  reliable per-PVC byte attribution.
 - If this grows beyond a few Kubernetes/Proxmox/Ceph collectors, split collectors into separate modules or move to a built image.
 
 ## Validation
@@ -44,4 +51,3 @@ Do not add high-cardinality data such as per-file paths, per-RADOS-object data, 
 ```bash
 kustomize build kubernetes/apps/tier-1-infrastructure/homeops-inventory-exporter/app
 ```
-

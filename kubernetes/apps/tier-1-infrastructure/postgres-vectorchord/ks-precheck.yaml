@@ -16,6 +16,7 @@ spec:
   retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/postgres-vectorchord/recovery-precheck-${CNPG_RECOVERY_MODE:=false}
   prune: true
+  force: true
   sourceRef:
     kind: GitRepository
     name: flux-system

@@ -104,8 +104,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sum(homeops:proxmox_vm_disk_write_bytes:rate5m) or vector(0)",
-              "legendFormat": "proxmox vm writes",
+              "expr": "sum(increase(pve_scrape_target_errors_total[5m])) or vector(0)",
+              "legendFormat": "pve scrape errors",
               "refId": "B"
             },
             {
@@ -114,7 +114,7 @@ data:
               "refId": "C"
             }
           ],
-          "title": "Write IO vs Recovery",
+          "title": "Write IO vs Recovery / PVE Scrape Errors",
           "type": "timeseries"
         },
         {
@@ -186,22 +186,22 @@ data:
           },
           "targets": [
             {
-              "expr": "ceph_health_status or vector(0)",
+              "expr": "ceph_health_status or (absent(ceph_health_status) * 4)",
               "legendFormat": "ceph health",
               "refId": "A"
             },
             {
-              "expr": "sum(ceph_osd_up == 0) or vector(0)",
+              "expr": "sum(ceph_osd_up == 0) or (absent(ceph_osd_up) * 4)",
               "legendFormat": "osds down",
               "refId": "B"
             },
             {
-              "expr": "sum(ceph_osd_in == 0) or vector(0)",
+              "expr": "sum(ceph_osd_in == 0) or (absent(ceph_osd_in) * 4)",
               "legendFormat": "osds out",
               "refId": "C"
             },
             {
-              "expr": "sum(ceph_health_detail{name=~\"PG_.*|OBJECT_.*|SLOW_OPS|BLUESTORE_.*|MDS_.*|FS_.*\"}) or vector(0)",
+              "expr": "sum(ceph_health_detail{name=~\"PG_.*|OBJECT_.*|SLOW_OPS|BLUESTORE_.*|MDS_.*|FS_.*\"}) or (absent(ceph_health_detail) * 4)",
               "legendFormat": "health details",
               "refId": "D"
             }
@@ -242,13 +242,13 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(15, homeops:pod_pvc_write_bytes:rate5m)",
+              "expr": "topk(15, homeops:pod_workload_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "format": "table",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Top Kubernetes Pod/PVC Writers",
+          "title": "Top Kubernetes Pod/Workload Writers",
           "type": "table"
         },
         {
@@ -284,13 +284,13 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(15, homeops:proxmox_vm_disk_write_bytes:rate5m)",
+              "expr": "topk(15, increase(pve_scrape_target_errors_total[15m]))",
               "format": "table",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Top Proxmox VM Writers",
+          "title": "PVE Scrape Target Errors",
           "type": "table"
         },
         {
@@ -379,16 +379,226 @@ data:
         },
         {
           "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(hubble_drop_total[5m])) by (reason) or vector(0)",
+              "legendFormat": "drop {{reason}}",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(hubble_http_requests_total[5m])) by (method) or vector(0)",
+              "legendFormat": "http {{method}}",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(hubble_flows_processed_total[5m])) by (type) or vector(0)",
+              "legendFormat": "flow {{type}}",
+              "refId": "C"
+            }
+          ],
+          "title": "Hubble Flows, Drops, and HTTP",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\"}[5m])) by (service_name) or vector(0)",
+              "legendFormat": "{{service_name}} rps",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\",http_response_status_code=~\"5..\"}[5m])) by (service_name) or vector(0)",
+              "legendFormat": "{{service_name}} errors",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{service_name=~\"authentik|plex\"}[5m])) by (le, service_name)) or vector(0)",
+              "legendFormat": "{{service_name}} p95",
+              "refId": "C"
+            }
+          ],
+          "title": "Beyla Authentik and Plex RED",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 32
+          },
+          "id": 9,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "11.0.0",
+          "targets": [
+            {
+              "expr": "homeops_ceph_osd_device_info",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ceph OSD Device Inventory",
+          "type": "table"
+        },
+        {
+          "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 32
+          },
+          "id": 10,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{stream_class=\"event\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Kubernetes Events",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 40
           },
-          "id": 7,
+          "id": 11,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "expr": "{stream_class=\"infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd)\"",
+              "refId": "A"
+            }
+          ],
+          "title": "PVE, Ceph, Talos, and Infra Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 48
+          },
+          "id": 12,
           "options": {
             "dedupStrategy": "none",
             "enableLogDetails": true,
@@ -428,5 +638,5 @@ data:
       "timezone": "browser",
       "title": "SRE Incident Drill-Down",
       "uid": "sre-incident-drilldown",
-      "version": 1
+      "version": 2
     }
