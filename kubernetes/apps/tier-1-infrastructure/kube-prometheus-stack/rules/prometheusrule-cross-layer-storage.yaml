@@ -154,7 +154,19 @@ spec:
 
         - alert: HostNetworkErrorsOrDrops
           expr: |
-            homeops:nic_errors_drops:rate5m > 0
+            (
+              sum by (instance, device) (
+                rate(node_network_receive_errs_total[5m])
+                + rate(node_network_transmit_errs_total[5m])
+              ) > 0
+            )
+            or
+            (
+              sum by (instance, device) (
+                rate(node_network_receive_drop_total[5m])
+                + rate(node_network_transmit_drop_total[5m])
+              ) > 1
+            )
           for: 10m
           labels:
             severity: warning

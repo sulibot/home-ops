@@ -2,21 +2,21 @@
 endpoints:
   - name: Cloudflare
     group: connectivity
-    url: icmp://2606:4700:4700::1111
+    url: icmp://1.1.1.1
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
   - name: Google
     group: connectivity
-    url: icmp://2001:4860:4860::8888
+    url: icmp://8.8.8.8
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
   - name: Quad9
     group: connectivity
-    url: icmp://[2620:fe::fe]
+    url: icmp://9.9.9.9
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
@@ -347,20 +347,6 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Cluster 104 Gateway Internal
-    group: cluster-104-internal
-    url: tcp://[fd00:104:250::11]:443
-    interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
-  - name: Cluster 104 Gateway Tunnel
-    group: cluster-104-internal
-    url: tcp://[fd00:104:250::12]:443
-    interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
   - name: Cluster 104 Hubble Metrics
     group: cluster-104
     url: https://hubble-104.sulibot.com/metrics
@@ -409,21 +395,21 @@ endpoints:
 
   - name: PVE01 API
     group: pve
-    url: tcp://[fd00:10::1]:8006
+    url: tcp://10.10.0.1:8006
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
   - name: PVE02 API
     group: pve
-    url: tcp://[fd00:10::2]:8006
+    url: tcp://10.10.0.2:8006
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
   - name: PVE03 API
     group: pve
-    url: tcp://[fd00:10::3]:8006
+    url: tcp://10.10.0.3:8006
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
@@ -439,7 +425,7 @@ endpoints:
 
   - name: PVE01 Node Exporter
     group: pve
-    url: http://[fd00:10::1]:9100/metrics
+    url: http://10.10.0.1:9100/metrics
     interval: 1m
     client:
       timeout: 10s
@@ -448,7 +434,7 @@ endpoints:
 
   - name: PVE02 Node Exporter
     group: pve
-    url: http://[fd00:10::2]:9100/metrics
+    url: http://10.10.0.2:9100/metrics
     interval: 1m
     client:
       timeout: 10s
@@ -457,7 +443,7 @@ endpoints:
 
   - name: PVE03 Node Exporter
     group: pve
-    url: http://[fd00:10::3]:9100/metrics
+    url: http://10.10.0.3:9100/metrics
     interval: 1m
     client:
       timeout: 10s
