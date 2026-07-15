@@ -926,7 +926,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: gate-check
-          image: public.ecr.aws/bitnami/kubectl:1.34.1
+          image: alpine/k8s:1.34.1
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
