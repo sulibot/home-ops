@@ -83,11 +83,15 @@ spec:
               readOnlyRootFilesystem: false
           wait-for-mariadb:
             image:
-              repository: docker.io/wait4x/wait4x
-              tag: 3.6.0
-            args:
-              - mysql
-              - grimmory:$(DATABASE_PASSWORD)@tcp(127.0.0.1:3306)/grimmory
+              repository: docker.io/library/mariadb
+              tag: 11.8
+            command:
+              - sh
+              - -c
+              - |
+                until mariadb-admin ping --host=127.0.0.1 --port=3306 --user=grimmory --password="${DATABASE_PASSWORD}" --silent; do
+                  sleep 2
+                done
             env:
               DATABASE_PASSWORD:
                 valueFrom:

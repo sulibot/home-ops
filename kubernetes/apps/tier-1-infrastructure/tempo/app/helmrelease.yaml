@@ -23,12 +23,13 @@ spec:
     # storage needed at this scale. OTLP (4317/4318) is enabled by default
     # in this chart; verified via `helm template` against these values.
     tempo:
+      memBallastSizeMbs: 256
       resources:
         requests:
           cpu: 50m
-          memory: 128Mi
+          memory: 256Mi
         limits:
-          memory: 512Mi
+          memory: 1Gi
       retention: 72h
 
     persistence:

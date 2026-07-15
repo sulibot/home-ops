@@ -168,19 +168,9 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Home Assistant (cluster)
-    group: infra-internal
-    url: http://home-assistant.default.svc.cluster.local:8123/
-    interval: 1m
-    client:
-      timeout: 5s
-    conditions:
-      - "[STATUS] >= 200"
-      - "[STATUS] < 500"
-
   - name: Firefly (cluster)
     group: infra-internal
-    url: tcp://firefly-app.default.svc.cluster.local:8080
+    url: tcp://firefly.default.svc.cluster.local:8080
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
@@ -222,6 +212,29 @@ endpoints:
   - name: Gatus API (cluster)
     group: infra-internal
     url: http://gatus.observability.svc/health
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Postgres Vectorchord RW
+    group: datastores
+    url: tcp://postgres-vectorchord-rw.default.svc.cluster.local:5432
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Valkey Primary
+    group: datastores
+    url: tcp://valkey-primary.default.svc.cluster.local:6379
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Valkey Metrics
+    group: datastores
+    url: http://valkey-metrics.default.svc.cluster.local:9121/metrics
     interval: 1m
     client:
       timeout: 5s

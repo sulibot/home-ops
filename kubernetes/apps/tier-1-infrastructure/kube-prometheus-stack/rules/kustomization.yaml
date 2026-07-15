@@ -6,6 +6,7 @@ resources:
   - ./scrapeconfig-cluster104-hubble.yaml
   - ../app/alertmanagerconfig.yaml
   - ./prometheusrule-cross-layer-storage.yaml
+  - ./prometheusrule-datastores.yaml
   - ./prometheusrule-flux.yaml
   - ./prometheusrule-observability.yaml
   - ./prometheusrule-pods.yaml

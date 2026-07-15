@@ -10,7 +10,7 @@ spec:
       rules:
         - alert: GatusEndpointDown
           expr: |-
-            gatus_results_endpoint_success{group=~"external|services|core|apps-external|infra-internal|observability|cluster-101|cluster-104|cluster-104-apps|network|pve|storage"} == 0
+            gatus_results_endpoint_success{group=~"external|services|core|apps-external|infra-internal|observability|datastores|cluster-101|cluster-104|cluster-104-apps|network|pve|storage"} == 0
           for: 5m
           annotations:
             summary: >-
