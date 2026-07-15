@@ -35,5 +35,6 @@ spec:
         pod-recommendation-min-memory-mb: "64"
         recommendation-margin-fraction: "0.15"
     updater:
+      enabled: false
       extraArgs:
         min-replicas: "1"
