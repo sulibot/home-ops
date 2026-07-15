@@ -51,3 +51,33 @@
     - "inventory_hostname == groups[ceph_mon_group][0]"
     - "'prometheus' not in (_ceph_mgr_modules.stdout | from_json).enabled_modules"
   run_once: true
+
+- name: Read Ceph prometheus mgr bind address
+  ansible.builtin.command: ceph config get mgr mgr/prometheus/server_addr
+  register: _ceph_prometheus_server_addr
+  changed_when: false
+  failed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Bind Ceph prometheus mgr metrics on IPv6 wildcard
+  ansible.builtin.command: ceph config set mgr mgr/prometheus/server_addr ::
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_prometheus_server_addr.stdout | trim != '::'"
+  run_once: true
+
+- name: Read Ceph prometheus mgr port
+  ansible.builtin.command: ceph config get mgr mgr/prometheus/server_port
+  register: _ceph_prometheus_server_port
+  changed_when: false
+  failed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Set Ceph prometheus mgr metrics port
+  ansible.builtin.command: ceph config set mgr mgr/prometheus/server_port 9283
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_prometheus_server_port.stdout | trim != '9283'"
+  run_once: true
