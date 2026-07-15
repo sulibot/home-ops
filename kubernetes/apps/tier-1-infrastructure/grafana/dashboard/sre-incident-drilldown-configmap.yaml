@@ -186,22 +186,22 @@ data:
           },
           "targets": [
             {
-              "expr": "ceph_health_status or vector(3)",
+              "expr": "ceph_health_status or (absent(ceph_health_status) * 4)",
               "legendFormat": "ceph health",
               "refId": "A"
             },
             {
-              "expr": "sum(ceph_osd_up == 0) or vector(0)",
+              "expr": "sum(ceph_osd_up == 0) or (absent(ceph_osd_up) * 4)",
               "legendFormat": "osds down",
               "refId": "B"
             },
             {
-              "expr": "sum(ceph_osd_in == 0) or vector(0)",
+              "expr": "sum(ceph_osd_in == 0) or (absent(ceph_osd_in) * 4)",
               "legendFormat": "osds out",
               "refId": "C"
             },
             {
-              "expr": "sum(ceph_health_detail{name=~\"PG_.*|OBJECT_.*|SLOW_OPS|BLUESTORE_.*|MDS_.*|FS_.*\"}) or vector(0)",
+              "expr": "sum(ceph_health_detail{name=~\"PG_.*|OBJECT_.*|SLOW_OPS|BLUESTORE_.*|MDS_.*|FS_.*\"}) or (absent(ceph_health_detail) * 4)",
               "legendFormat": "health details",
               "refId": "D"
             }
@@ -242,7 +242,7 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(15, homeops:pod_pvc_write_bytes:rate5m)",
+              "expr": "topk(15, homeops:pod_pvc_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -528,7 +528,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,
@@ -559,7 +559,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,
@@ -580,17 +580,17 @@ data:
           },
           "targets": [
             {
-              "expr": "{stream_class=\"host\",source_type=~\"pve|talos\"}",
+              "expr": "{stream_class=\"infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd)\"",
               "refId": "A"
             }
           ],
-          "title": "PVE, Ceph, and Talos Host Logs",
+          "title": "PVE, Ceph, Talos, and Infra Logs",
           "type": "logs"
         },
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,

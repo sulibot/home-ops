@@ -39,14 +39,14 @@ data:
           "title": "Open Loki Explore",
           "tooltip": "Open Grafana Explore with the Loki datasource",
           "type": "link",
-          "url": "/explore?orgId=1&left=%7B%22datasource%22:%22${DS_VICTORIA_LOGS}%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bstream_class%3D~%5C%22$app_stream_class%5C%22%7D%20%7C~%20%5C%22$search%5C%22%22%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D"
+          "url": "/explore?orgId=1&left=%7B%22datasource%22:%22${DS_LOKI}%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bstream_class%3D~%5C%22$app_stream_class%5C%22%7D%20%7C~%20%5C%22$search%5C%22%22%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D"
         }
       ],
       "panels": [
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -95,7 +95,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$search\" [$__range])) or vector(0)",
               "queryType": "range",
@@ -108,7 +108,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -161,7 +161,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$severity\" [$__range])) or vector(0)",
               "queryType": "range",
@@ -174,7 +174,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -223,7 +223,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "sum(count_over_time({stream_class=\"event\",event_namespace=~\"$event_namespace\"} |~ \"$search\" [$__range])) or vector(0)",
               "queryType": "range",
@@ -236,7 +236,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -285,20 +285,20 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
-              "expr": "sum(count_over_time({stream_class=\"host\",source_type=~\"$source_type\"} |~ \"$search\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({stream_class=~\"$infra_stream_class\"} |~ \"$search\" [$__range])) or vector(0)",
               "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "Host Log Lines",
+          "title": "Infrastructure Log Lines",
           "type": "stat"
         },
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -376,7 +376,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "sum by (stream_class) (count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$search\" [$__interval]))",
               "legendFormat": "{{stream_class}}",
@@ -390,7 +390,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {
@@ -468,7 +468,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "topk(15, sum by (app) (count_over_time({app=~\"$app\",namespace=~\"$namespace\"} |~ \"$search\" [$__interval])))",
               "legendFormat": "{{app}}",
@@ -482,7 +482,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {},
@@ -509,7 +509,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "{app=~\"$app\",namespace=~\"$namespace\",stream_class=~\"$app_stream_class\"} |~ \"$search\"",
               "queryType": "range",
@@ -522,7 +522,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {},
@@ -549,7 +549,7 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
               "expr": "{stream_class=\"event\",event_namespace=~\"$event_namespace\"} |~ \"$search\"",
               "queryType": "range",
@@ -562,7 +562,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "fieldConfig": {
             "defaults": {},
@@ -589,14 +589,14 @@ data:
             {
               "datasource": {
                 "type": "loki",
-                "uid": "${DS_VICTORIA_LOGS}"
+                "uid": "${DS_LOKI}"
               },
-              "expr": "{stream_class=\"host\",source_type=~\"$source_type\"} |~ \"$search\"",
+              "expr": "{stream_class=~\"$infra_stream_class\"} |~ \"$search\"",
               "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "PVE / Talos Host Logs",
+          "title": "Infrastructure Logs",
           "type": "logs"
         }
       ],
@@ -618,7 +618,7 @@ data:
             },
             "datasource": {
               "type": "loki",
-              "uid": "${DS_VICTORIA_LOGS}"
+              "uid": "${DS_LOKI}"
             },
             "definition": "label_values(namespace)",
             "hide": 0,
@@ -643,7 +643,7 @@ data:
             },
             "datasource": {
               "type": "loki",
-              "uid": "${DS_VICTORIA_LOGS}"
+              "uid": "${DS_LOKI}"
             },
             "definition": "label_values(app)",
             "hide": 0,
@@ -668,7 +668,7 @@ data:
             },
             "datasource": {
               "type": "loki",
-              "uid": "${DS_VICTORIA_LOGS}"
+              "uid": "${DS_LOKI}"
             },
             "definition": "label_values(stream_class)",
             "hide": 0,
@@ -693,7 +693,7 @@ data:
             },
             "datasource": {
               "type": "loki",
-              "uid": "${DS_VICTORIA_LOGS}"
+              "uid": "${DS_LOKI}"
             },
             "definition": "label_values(event_namespace)",
             "hide": 0,
@@ -718,16 +718,16 @@ data:
             },
             "datasource": {
               "type": "loki",
-              "uid": "${DS_VICTORIA_LOGS}"
+              "uid": "${DS_LOKI}"
             },
-            "definition": "label_values(source_type)",
+            "definition": "label_values(stream_class)",
             "hide": 0,
             "includeAll": true,
-            "label": "Host source",
+            "label": "Stream class",
             "multi": true,
-            "name": "source_type",
+            "name": "infra_stream_class",
             "options": [],
-            "query": "label_values(source_type)",
+            "query": "label_values(stream_class)",
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,

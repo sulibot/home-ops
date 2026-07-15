@@ -67,6 +67,10 @@ data:
                     "2": {
                       "color": "red",
                       "text": "ERR"
+                    },
+                    "4": {
+                      "color": "purple",
+                      "text": "NO SCRAPE"
                     }
                   },
                   "type": "value"
@@ -86,6 +90,10 @@ data:
                   {
                     "color": "red",
                     "value": 2
+                  },
+                  {
+                    "color": "purple",
+                    "value": 4
                   }
                 ]
               },
@@ -118,7 +126,7 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "max(ceph_health_status) or vector(3)",
+              "expr": "max(ceph_health_status) or (absent(ceph_health_status) * 4)",
               "legendFormat": "Ceph health",
               "refId": "A"
             }
@@ -664,7 +672,7 @@ data:
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_VICTORIA_LOGS}"
+            "uid": "${DS_LOKI}"
           },
           "gridPos": {
             "h": 8,

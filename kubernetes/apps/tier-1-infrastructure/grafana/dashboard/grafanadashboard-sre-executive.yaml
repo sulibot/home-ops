@@ -15,7 +15,7 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
     - datasourceName: loki
-      inputName: DS_VICTORIA_LOGS
+      inputName: DS_LOKI
   configMapRef:
     name: sre-executive-dashboard
     key: sre-executive-cluster-health.json
