@@ -523,14 +523,14 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(10, homeops:pod_pvc_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
+              "expr": "topk(10, homeops:pod_workload_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "format": "table",
               "instant": true,
               "legendFormat": "__auto",
               "refId": "A"
             }
           ],
-          "title": "Top Pod/PVC Writers",
+          "title": "Top Pod/Workload Writers",
           "transformations": [
             {
               "id": "organize",

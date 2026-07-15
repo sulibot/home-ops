@@ -33,7 +33,8 @@ Remaining gap:
 
 Covered:
 
-- PVE API metrics through `pve-exporter`.
+- PVE API metrics through `pve-exporter` when the exporter can authenticate and
+  reach the Proxmox API.
 - PVE node-exporter metrics from `pve01`, `pve02`, and `pve03`.
 - Static scrape targets for Proxmox API and node-exporter in `proxmox-observability`.
 - Proxmox visibility alerts in the cross-layer storage rule set.
@@ -42,6 +43,10 @@ Covered:
 
 Remaining gaps:
 
+- Live validation on 2026-07-15 showed all Proxmox API scrape targets returning
+  HTTP 500 from `pve-exporter`. Treat Proxmox API dashboards as degraded until
+  the exporter secret/API permissions are corrected and `pve_up`/PVE inventory
+  metrics return.
 - Proxmox VM disk to Ceph RBD image mapping is not exported yet.
 - VM-to-Kubernetes node placement depends on labels or annotations consumed by `homeops-inventory-exporter`; missing labels reduce correlation quality.
 
@@ -49,7 +54,8 @@ Remaining gaps:
 
 Covered:
 
-- Ceph manager Prometheus metrics from the Proxmox/Ceph nodes.
+- Ceph manager Prometheus metrics from the Proxmox/Ceph nodes when the Ceph MGR
+  Prometheus module is listening on the configured endpoint.
 - Ceph health, OSD, MDS, recovery, and utilization alerting through the cross-layer storage rules.
 - Ceph dashboards and SRE incident panels.
 - Kubernetes PVC/PV/Ceph CSI relationships through `homeops-inventory-exporter`.
@@ -59,6 +65,10 @@ Covered:
 
 Remaining gaps:
 
+- Live validation on 2026-07-15 showed `fd00:10::1-3:9283` refusing
+  connections. Treat Ceph dashboards and Ceph health alerts as telemetry
+  degraded until the MGR Prometheus module is enabled/reachable on at least one
+  manager endpoint.
 - OSD serial and physical bay mapping is not exported.
 - PG acting set mapping is not exported.
 - Host kernel storage error metrics depend on the Proxmox node-exporter textfile collector being installed and healthy on each PVE node.
@@ -145,11 +155,37 @@ boards answer an active workflow.
 
 ## Immediate Findings
 
-The PVE/Ceph metric design is good enough for first-pass incident attribution: host, VM, Ceph health, recovery, OSD, disk, and Kubernetes workload signals exist.
+The PVE/Ceph metric design is good enough for first-pass incident attribution:
+host, VM, Ceph health, recovery, OSD, disk, and Kubernetes workload signals are
+modeled in repo. Today the live scrape state is not good enough: Proxmox API
+scrapes return 500, Ceph MGR metrics refuse connections, and SNMP targets time
+out. Dashboards should surface this as telemetry impairment, not as empty
+healthy panels.
 
-It is now enough for first-pass root-cause tracing back to PVE/Ceph without immediately shelling into hosts: metrics, host logs, Ceph daemon logs, and OSD device joins are all represented in the correlated path. VM disk to RBD and PG acting-set joins remain follow-up work.
+It is close to enough for first-pass root-cause tracing back to PVE/Ceph without
+immediately shelling into hosts: host logs, Ceph daemon logs, OSD device joins,
+and hardware-adjacent metrics are represented in the correlated path. PVE/Ceph
+scrape health must be fixed before the metrics side can be trusted. VM disk to
+RBD and PG acting-set joins remain follow-up work.
 
-The live observability plane showed control-plane/API latency during this review. Kubernetes events reported repeated pod sandbox creation failures where Multus timed out talking to the Kubernetes API service. That is a strong signal to add Talos and PVE host logs, because the current stack shows the symptom but not the lower-level cause.
+The live observability plane showed API-server pain during this review:
+`KubeAPIErrorBudgetBurn` is firing, and API-proxy/port-forward paths were
+unreliable while public/internal Gateway routes for Prometheus, Grafana, Loki,
+and Gatus were healthy. That is a strong reason to keep Talos and PVE host logs
+first-class, because Kubernetes metrics often show the symptom before the
+lower-level cause.
+
+The live Alertmanager path is degraded. Pushover rejects the configured
+`PUSHOVER_ALERTMGR` value as an invalid application token, and the Linear bridge
+can comment on existing issues but cannot create new issues while the Linear
+workspace is over its active issue limit. The repo email receiver now uses an
+inline template instead of a missing `default.message` template.
+
+Gatus is now curated rather than auto-discovered. The `gatus-sidecar`
+auto-discovery path produced stale root-path checks for services such as Loki
+that intentionally answer on `/ready`, not `/`. The primary status page now
+uses the repo-owned endpoint list and stores runtime state under `/data`, while
+Prometheus keeps the durable metric history.
 
 ## Gap Closure Order
 

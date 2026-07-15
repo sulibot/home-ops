@@ -150,4 +150,17 @@ spec:
           requireTLS: false
           sendResolved: true
           text: |-
-            {{ template "default.message" . }}
+            {{- range .Alerts }}
+            [{{ .Status | toUpper }}] {{ .Labels.alertname }}
+            {{- if .Annotations.summary }}
+            Summary: {{ .Annotations.summary }}
+            {{- end }}
+            {{- if .Annotations.description }}
+            Description: {{ .Annotations.description }}
+            {{- end }}
+            Labels:
+            {{- range .Labels.SortedPairs }}
+              {{ .Name }}={{ .Value }}
+            {{- end }}
+
+            {{- end }}

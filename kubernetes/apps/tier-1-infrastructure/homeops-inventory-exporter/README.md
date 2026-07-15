@@ -40,6 +40,10 @@ Do not add high-cardinality data such as per-file paths, per-RADOS-object data, 
 - Keep labels stable and low-cardinality.
 - Prefer explicit mapping metrics over clever PromQL.
 - Add new metrics only when a dashboard, alert, or runbook uses them.
+- The Prometheus recording rules enrich pod-level cAdvisor filesystem IO with
+  workload identity from this exporter. They intentionally do not split bytes
+  per PVC because cAdvisor exposes pod/container filesystem counters, not a
+  reliable per-PVC byte attribution.
 - If this grows beyond a few Kubernetes/Proxmox/Ceph collectors, split collectors into separate modules or move to a built image.
 
 ## Validation

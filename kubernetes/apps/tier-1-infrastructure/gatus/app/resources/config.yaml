@@ -348,14 +348,14 @@ endpoints:
       - "[CONNECTED] == true"
 
   - name: Cluster 104 Gateway Internal
-    group: cluster-104
+    group: cluster-104-internal
     url: tcp://[fd00:104:250::11]:443
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
   - name: Cluster 104 Gateway Tunnel
-    group: cluster-104
+    group: cluster-104-internal
     url: tcp://[fd00:104:250::12]:443
     interval: 1m
     conditions:
@@ -437,12 +437,30 @@ endpoints:
     conditions:
       - "[STATUS] == 200"
 
-  - name: PVE Node Exporters
+  - name: PVE01 Node Exporter
     group: pve
-    url: http://proxmox-node-exporter-targets.observability.svc.cluster.local:9100/metrics
+    url: http://[fd00:10::1]:9100/metrics
     interval: 1m
     client:
-      timeout: 5s
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: PVE02 Node Exporter
+    group: pve
+    url: http://[fd00:10::2]:9100/metrics
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: PVE03 Node Exporter
+    group: pve
+    url: http://[fd00:10::3]:9100/metrics
+    interval: 1m
+    client:
+      timeout: 10s
     conditions:
       - "[STATUS] == 200"
 

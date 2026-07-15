@@ -242,13 +242,13 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(15, homeops:pod_pvc_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
+              "expr": "topk(15, homeops:pod_workload_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "format": "table",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Top Kubernetes Pod/PVC Writers",
+          "title": "Top Kubernetes Pod/Workload Writers",
           "type": "table"
         },
         {

@@ -20,7 +20,7 @@ spec:
 
         - alert: GatusEndpointWarning
           expr: |-
-            gatus_results_endpoint_success{group=~"internal|connectivity|buddy"} == 0
+            gatus_results_endpoint_success{group=~"internal|connectivity|buddy|cluster-104-internal"} == 0
           for: 5m
           annotations:
             summary: >-

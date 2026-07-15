@@ -1156,7 +1156,7 @@ data:
           },
           "targets": [
             {
-              "expr": "topk(25, homeops:pod_pvc_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
+              "expr": "topk(25, homeops:pod_workload_write_bytes:rate5m or homeops:pod_fs_write_bytes:rate5m)",
               "refId": "A",
               "instant": true,
               "range": false,
