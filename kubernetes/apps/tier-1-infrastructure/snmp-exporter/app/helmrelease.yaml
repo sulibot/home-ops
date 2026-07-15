@@ -11,25 +11,32 @@ spec:
   interval: 1h
   values:
     fullnameOverride: *app
+    # Infra-device SNMP reachability is currently only reliable from solwk01.
+    # solwk02/solwk03 lose or time out UDP/161 traffic to RouterOS/APC/Dell.
+    nodeSelector:
+      kubernetes.io/hostname: solwk01
     serviceMonitor:
       enabled: true
       params:
-        - name: apcups
+        # APC UPS fd00:1::80/10.1.0.80 and Dell fd00:1::82/10.1.0.82
+        # did not answer SNMPv2 sysDescr from solwk01 on 2026-07-15. Keep
+        # them out of active scraping until device-side SNMP is confirmed.
+        - name: routeros-system
           module:
-            - apcups
-          target: fd00:1::80
+            - system
+          target: udp6://[fd00:30::fffe]:161
           auth:
             - public_v2
-        - name: dell
+        - name: routeros-interfaces
           module:
-            - dell
-          target: fd00:1::82
+            - if_mib
+          target: udp6://[fd00:30::fffe]:161
           auth:
             - public_v2
-        - name: routeros
+        - name: routeros-mikrotik
           module:
             - mikrotik
-          target: fd00:30::fffe
+          target: udp6://[fd00:30::fffe]:161
           auth:
             - public_v2
       path: /snmp

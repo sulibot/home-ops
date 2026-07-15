@@ -674,7 +674,7 @@ locals {
                 )
                 # Templated cluster standard: Default route pattern uses cluster_id
                 # Change via apply/ stage when updating gateway pattern cluster-wide
-                routes = [
+                routes = concat([
                   # IPv4: static route (no RA for IPv4) - will be overridden by BGP
                   {
                     network = "0.0.0.0/0"
@@ -687,7 +687,22 @@ locals {
                     gateway = "fe80::${var.cluster_id}:fffe"
                     metric  = 150
                   },
-                ]
+                  ], [
+                  # Etcd and BGP identities use per-node loopbacks. The upstream
+                  # fabric learns them via BGP, but Talos nodes need explicit
+                  # host routes for east-west traffic before BGP converges.
+                  for cp_name, cp in local.all_nodes : {
+                    network = "${cp.cilium_bgp_ipv6}/128"
+                    gateway = cp.public_ipv6
+                    metric  = 32
+                  } if cp.machine_type == "controlplane" && cp_name != node_name
+                  ], [
+                  for cp_name, cp in local.all_nodes : {
+                    network = "${cp.cilium_bgp_ipv4}/32"
+                    gateway = cp.public_ipv4
+                    metric  = 32
+                  } if cp.machine_type == "controlplane" && cp_name != node_name
+                ])
                 vip = var.use_vip && node.machine_type == "controlplane" ? {
                   ip = var.vip_ipv6
                 } : null

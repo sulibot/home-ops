@@ -19,9 +19,12 @@ metadata:
   name: proxmox-api-targets
 subsets:
   - addresses:
-      - ip: fd00:10::1
-      - ip: fd00:10::2
-      - ip: fd00:10::3
+      # Use the PVE management IPv4 addresses for API scraping. Pod-sourced
+      # traffic to the PVE IPv6 API addresses is not uniformly reachable across
+      # the EVPN fabric, while these management addresses are stable.
+      - ip: 10.10.0.1
+      - ip: 10.10.0.2
+      - ip: 10.10.0.3
     ports:
       - name: https
         port: 8006
