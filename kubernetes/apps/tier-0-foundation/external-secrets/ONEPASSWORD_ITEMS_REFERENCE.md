@@ -114,11 +114,11 @@ PROWLARR_API_KEY: "your-prowlarr-api-key"
 
 ```yaml
 PUSHOVER_USER_KEY: "your-pushover-user-key"
-PUSHOVER_ALERTMANAGER_TOKEN: "your-alertmanager-pushover-application-token"
-PUSHOVER_GATUS_TOKEN: "your-gatus-pushover-application-token"
-PUSHOVER_JELLYSEERR_TOKEN: "your-jellyseerr-pushover-application-token"
-PUSHOVER_RADARR_TOKEN: "your-radarr-pushover-application-token"
-PUSHOVER_SONARR_TOKEN: "your-sonarr-pushover-application-token"
+PUSHOVER_ALERTMGR: "your-alertmanager-pushover-application-token"
+PUSHOVER_GATUS: "your-gatus-pushover-application-token"
+PUSHOVER_JELLYSEERR: "your-jellyseerr-pushover-application-token"
+PUSHOVER_RADARR: "your-radarr-pushover-application-token"
+PUSHOVER_SONARR: "your-sonarr-pushover-application-token"
 ```
 
 ### 14. qui
