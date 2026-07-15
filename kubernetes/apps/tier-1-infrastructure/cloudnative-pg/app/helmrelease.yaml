@@ -19,7 +19,7 @@ spec:
       clusterWide: true
       create: true
       data: {}
-      maxConcurrentReconciles: 10
+      maxConcurrentReconciles: 3
       name: cnpg-controller-manager-config
       secret: false
     containerSecurityContext:
@@ -532,13 +532,20 @@ spec:
     tolerations: []
     webhook:
       livenessProbe:
-        initialDelaySeconds: 3
+        initialDelaySeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
       mutating:
         create: true
         failurePolicy: Fail
       port: 9443
       readinessProbe:
-        initialDelaySeconds: 3
+        initialDelaySeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+      startupProbe:
+        failureThreshold: 12
+        periodSeconds: 5
       validating:
         create: true
         failurePolicy: Fail

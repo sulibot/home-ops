@@ -17,3 +17,18 @@ spec:
     name: cnpg-plugin-barman-cloud
     namespace: default
   interval: 1h0m0s
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: cnpg-plugin-barman-cloud
+            patch: |
+              - op: remove
+                path: /spec/template/spec/containers/0/args/5
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe/timeoutSeconds
+                value: 5
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe/failureThreshold
+                value: 6

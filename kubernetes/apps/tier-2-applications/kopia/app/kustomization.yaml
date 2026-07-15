@@ -8,7 +8,6 @@ resources:
   - ./kopia-repository-pv.yaml  # Re-attach existing 200GB Kopia repository
   - ./kopia-repository-pvc.yaml
   - ./kopia-repository-subvolume-secret.yaml
-  - ./kopia-init-job.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   - ./vpa.yaml

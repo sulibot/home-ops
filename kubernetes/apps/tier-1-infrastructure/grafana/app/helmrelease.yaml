@@ -16,5 +16,11 @@ spec:
   values:
     dashboard:
       enabled: true
+    livenessProbe:
+      failureThreshold: 6
+      timeoutSeconds: 5
+    readinessProbe:
+      failureThreshold: 6
+      timeoutSeconds: 5
     serviceMonitor:
       enabled: true

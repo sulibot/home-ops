@@ -25,6 +25,12 @@ spec:
     timeout: 10m
   values:
     leaderElect: true
+    livenessProbe:
+      enabled: true
+      spec:
+        timeoutSeconds: 5
+        failureThreshold: 6
+        initialDelaySeconds: 20
     serviceMonitor:
       enabled: true
     grafanaDashboard:
