@@ -5,8 +5,10 @@ kind: Kustomization
 resources:
   - ../app/grafanadashboard.yaml
   - ./grafanadashboard-home-control.yaml
+  - ./grafanadashboard-loki-logs-explorer.yaml
   - ./grafanadashboard-sre-incident-drilldown.yaml
   - ./grafanadashboard-sre-executive.yaml
   - ./home-control-dashboard-configmap.yaml
+  - ./loki-logs-explorer-dashboard-configmap.yaml
   - ./sre-incident-drilldown-configmap.yaml
   - ./sre-executive-dashboard-configmap.yaml
