@@ -135,12 +135,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(vpa_updater_evicted_pods_total)",
-              "legendFormat": "evicted pods",
+              "expr": "sum(vpa_recommender_aggregate_container_states_count)",
+              "legendFormat": "container states",
               "refId": "A"
             }
           ],
-          "title": "Total VPA Evictions",
+          "title": "Known VPA Container States",
           "type": "stat"
         },
         {
@@ -190,12 +190,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(vpa_updater_controlled_pods_total)",
-              "legendFormat": "controlled pods",
+              "expr": "max(up{job=\"vpa-recommender-metrics\"})",
+              "legendFormat": "recommender",
               "refId": "A"
             }
           ],
-          "title": "Controlled Pods",
+          "title": "Recommender Up",
           "type": "stat"
         },
         {
@@ -245,12 +245,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(vpa_updater_evictable_pods_total)",
-              "legendFormat": "evictable pods",
+              "expr": "sum(up{job=~\"vpa-.*-metrics\"})",
+              "legendFormat": "components",
               "refId": "A"
             }
           ],
-          "title": "Currently Evictable Pods",
+          "title": "VPA Components Scraped",
           "type": "stat"
         },
         {
@@ -328,12 +328,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (step) (rate(vpa_updater_execution_latency_seconds_count[5m]))",
-              "legendFormat": "{{step}}",
+              "expr": "sum(rate(vpa_recommender_recommendation_latency_seconds_count[5m]))",
+              "legendFormat": "recommendations",
               "refId": "A"
             }
           ],
-          "title": "Updater Loop Rate by Step",
+          "title": "Recommendation Calculation Rate",
           "type": "timeseries"
         },
         {
@@ -413,12 +413,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (step) (rate(vpa_updater_execution_latency_seconds_sum[5m])) / sum by (step) (rate(vpa_updater_execution_latency_seconds_count[5m]))",
-              "legendFormat": "{{step}}",
+              "expr": "sum(rate(vpa_recommender_recommendation_latency_seconds_sum[5m])) / clamp_min(sum(rate(vpa_recommender_recommendation_latency_seconds_count[5m])), 1)",
+              "legendFormat": "avg",
               "refId": "A"
             }
           ],
-          "title": "Updater Avg Step Latency (5m)",
+          "title": "Recommendation Avg Latency (5m)",
           "type": "timeseries"
         },
         {
@@ -498,12 +498,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (update_mode) (vpa_quality_cpu_recommendations_cores_count)",
-              "legendFormat": "{{update_mode}}",
+              "expr": "vpa_recommender_aggregate_container_states_count",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "CPU Recommendation Samples by Update Mode",
+          "title": "Aggregate Container States by Recommender",
           "type": "timeseries"
         },
         {
@@ -583,12 +583,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (update_mode) (vpa_quality_cpu_recommendations_cores_sum) / sum by (update_mode) (vpa_quality_cpu_recommendations_cores_count)",
-              "legendFormat": "{{update_mode}}",
+              "expr": "histogram_quantile(0.99, sum(rate(vpa_recommender_recommendation_latency_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p99",
               "refId": "A"
             }
           ],
-          "title": "Average CPU Recommendation by Update Mode",
+          "title": "Recommendation p99 Latency",
           "type": "timeseries"
         },
         {
@@ -668,12 +668,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (update_mode) (vpa_quality_mem_recommendation_lower_equal_usage_diffs_bytes_sum) / sum by (update_mode) (vpa_quality_mem_recommendation_lower_equal_usage_diffs_bytes_count)",
-              "legendFormat": "{{update_mode}}",
+              "expr": "sum(rate(vpa_recommender_recommendation_latency_seconds_count[5m])) or vector(0)",
+              "legendFormat": "calculations",
               "refId": "A"
             }
           ],
-          "title": "Avg Memory Recommendation Shortfall",
+          "title": "Recommendation Calculations",
           "type": "timeseries"
         },
         {
@@ -753,12 +753,12 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (applied) (vpa_admission_controller_admission_pods_total)",
-              "legendFormat": "applied={{applied}}",
+              "expr": "up{job=~\"vpa-.*-metrics\"}",
+              "legendFormat": "{{job}}",
               "refId": "A"
             }
           ],
-          "title": "Admission Controller Pod Decisions",
+          "title": "VPA Component Scrapes",
           "type": "timeseries"
         },
         {
@@ -838,17 +838,17 @@ data:
           },
           "targets": [
             {
-              "expr": "container_memory_working_set_bytes{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\"}",
-              "legendFormat": "matter-server usage",
+              "expr": "topk(10, sum by (namespace, pod) (container_memory_working_set_bytes{container!=\"\",image!=\"\"}))",
+              "legendFormat": "{{namespace}}/{{pod}} usage",
               "refId": "A"
             },
             {
-              "expr": "kube_pod_container_resource_requests{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\",resource=\"memory\",unit=\"byte\"}",
-              "legendFormat": "matter-server request",
+              "expr": "topk(10, sum by (namespace, pod) (kube_pod_container_resource_requests{resource=\"memory\",unit=\"byte\"}))",
+              "legendFormat": "{{namespace}}/{{pod}} request",
               "refId": "B"
             }
           ],
-          "title": "Matter Server Memory: Usage vs Request",
+          "title": "Top Pod Memory: Usage vs Request",
           "type": "timeseries"
         },
         {
@@ -928,17 +928,17 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\"}[5m])",
-              "legendFormat": "matter-server usage",
+              "expr": "topk(10, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",image!=\"\"}[5m])))",
+              "legendFormat": "{{namespace}}/{{pod}} usage",
               "refId": "A"
             },
             {
-              "expr": "kube_pod_container_resource_requests{namespace=\"matter-server\",pod=~\"matter-server-.*\",container=\"app\",resource=\"cpu\",unit=\"core\"}",
-              "legendFormat": "matter-server request",
+              "expr": "topk(10, sum by (namespace, pod) (kube_pod_container_resource_requests{resource=\"cpu\",unit=\"core\"}))",
+              "legendFormat": "{{namespace}}/{{pod}} request",
               "refId": "B"
             }
           ],
-          "title": "Matter Server CPU: Usage vs Request",
+          "title": "Top Pod CPU: Usage vs Request",
           "type": "timeseries"
         }
       ],
@@ -960,6 +960,6 @@ data:
       "timezone": "browser",
       "title": "Vertical Pod Autoscaler",
       "uid": "vpa-overview",
-      "version": 1,
+      "version": 2,
       "weekStart": ""
     }

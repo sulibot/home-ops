@@ -82,7 +82,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant|Home Assistant\"}) or vector(0)",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant|Home Assistant \\\\(external\\\\)\"}) or vector(0)",
               "instant": true,
               "legendFormat": "home-assistant",
               "range": false,
@@ -156,7 +156,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant Dashboard|Home Assistant Dashboard\"}) or vector(0)",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Home Assistant Dashboard|Home Assistant Dashboard \\\\(external\\\\)\"}) or vector(0)",
               "instant": true,
               "legendFormat": "ha-dashboard",
               "range": false,
@@ -230,7 +230,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Music Assistant|Music Assistant\"}) or vector(0)",
+              "expr": "min(gatus_results_endpoint_success{name=~\"Cluster 104 Music Assistant|Music Assistant \\\\(external\\\\)\"}) or vector(0)",
               "instant": true,
               "legendFormat": "music-assistant",
               "range": false,
@@ -304,7 +304,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "max(up{cluster=\"cluster-104\",service=\"hubble-metrics\"}) or vector(0)",
+              "expr": "min(gatus_results_endpoint_success{name=\"Cluster 104 Hubble Metrics\"}) or vector(0)",
               "instant": true,
               "legendFormat": "hubble",
               "range": false,
@@ -615,6 +615,6 @@ data:
       "timezone": "",
       "title": "SRE Home Control Health",
       "uid": "sre-home-control-health",
-      "version": 1,
+      "version": 2,
       "weekStart": ""
     }

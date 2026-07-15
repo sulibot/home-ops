@@ -104,8 +104,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sum(homeops:proxmox_vm_disk_write_bytes:rate5m) or vector(0)",
-              "legendFormat": "proxmox vm writes",
+              "expr": "sum(increase(pve_scrape_target_errors_total[5m])) or vector(0)",
+              "legendFormat": "pve scrape errors",
               "refId": "B"
             },
             {
@@ -114,7 +114,7 @@ data:
               "refId": "C"
             }
           ],
-          "title": "Write IO vs Recovery",
+          "title": "Write IO vs Recovery / PVE Scrape Errors",
           "type": "timeseries"
         },
         {
@@ -186,7 +186,7 @@ data:
           },
           "targets": [
             {
-              "expr": "ceph_health_status or vector(0)",
+              "expr": "ceph_health_status or vector(3)",
               "legendFormat": "ceph health",
               "refId": "A"
             },
@@ -284,13 +284,13 @@ data:
           "pluginVersion": "11.0.0",
           "targets": [
             {
-              "expr": "topk(15, homeops:proxmox_vm_disk_write_bytes:rate5m)",
+              "expr": "topk(15, increase(pve_scrape_target_errors_total[15m]))",
               "format": "table",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Top Proxmox VM Writers",
+          "title": "PVE Scrape Target Errors",
           "type": "table"
         },
         {
@@ -417,8 +417,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sum(rate(hubble_dns_queries_total[5m])) by (rcode) or vector(0)",
-              "legendFormat": "dns {{rcode}}",
+              "expr": "sum(rate(hubble_http_requests_total[5m])) by (method) or vector(0)",
+              "legendFormat": "http {{method}}",
               "refId": "B"
             },
             {
@@ -427,7 +427,7 @@ data:
               "refId": "C"
             }
           ],
-          "title": "Hubble Flows, Drops, and DNS",
+          "title": "Hubble Flows, Drops, and HTTP",
           "type": "timeseries"
         },
         {
@@ -638,5 +638,5 @@ data:
       "timezone": "browser",
       "title": "SRE Incident Drill-Down",
       "uid": "sre-incident-drilldown",
-      "version": 1
+      "version": 2
     }
