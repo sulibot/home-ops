@@ -16,21 +16,14 @@ ACTIONS_RUNNER_PRIVATE_KEY: |
   -----END RSA PRIVATE KEY-----
 ```
 
-### 2. alertmanager
-**Used by:** Kube Prometheus Stack Alertmanager
-
-```yaml
-ALERTMANAGER_PUSHOVER_TOKEN: "your-pushover-app-token"
-```
-
-### 3. autobrr
+### 2. autobrr
 **Used by:** Autobrr
 
 ```yaml
 AUTOBRR_SESSION_SECRET: "random-secret-string-here"
 ```
 
-### 4. cloudflare
+### 3. cloudflare
 **Used by:** Cloudflare DNS, Cloudflare Tunnel
 
 ```yaml
@@ -41,7 +34,7 @@ CLOUDFLARE_TUNNEL_ID: "your-tunnel-id"
 CLOUDFLARE_TUNNEL_SECRET: "your-tunnel-secret"
 ```
 
-### 5. cross-seed
+### 4. cross-seed
 **Used by:** Cross-seed
 
 ```yaml
@@ -49,32 +42,30 @@ CROSS_SEED_API_KEY: "your-cross-seed-api-key"
 CROSS_SEED_PORT: "2468"
 ```
 
-### 6. flux
+### 5. flux
 **Used by:** Flux GitHub Status Token
 
 ```yaml
 FLUX_GITHUB_TOKEN: "ghp_yourGitHubPersonalAccessToken"
 ```
 
-### 7. gatus
-**Used by:** Gatus, Alertmanager
+### 6. gatus
+**Used by:** Gatus, Alertmanager heartbeat
 
 ```yaml
 BUDDY_DDNS_HOSTNAME: "ddns.example.com"
 BUDDY_HEARTBEAT_TOKEN: "your-heartbeat-token"
-BUDDY_PUSHOVER_TOKEN: "your-pushover-token"
-BUDDY_PUSHOVER_USER_KEY: "your-pushover-user-key"
 BUDDY_STATUS_HOSTNAME: "status.example.com"
 ```
 
-### 8. grafana
+### 7. grafana
 **Used by:** Grafana
 
 ```yaml
 GF_SECURITY_ADMIN_PASSWORD: "your-admin-password"
 ```
 
-### 9. home-assistant
+### 8. home-assistant
 **Used by:** Home Assistant
 
 ```yaml
@@ -88,22 +79,21 @@ HASS_LONGITUDE: "-74.0060"
 HASS_PIRATE_WEATHER_API_KEY: "your-pirate-weather-api-key"
 ```
 
-### 10. jellyseerr
-**Used by:** Jellyseerr, Notifier
+### 9. jellyseerr
+**Used by:** Jellyseerr
 
 ```yaml
 JELLYSEERR_API_KEY: "your-jellyseerr-api-key"
-JELLYSEERR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
-### 11. plex
+### 10. plex
 **Used by:** Plex Off-Deck Tool
 
 ```yaml
 PLEX_TOKEN: "your-plex-token"
 ```
 
-### 12. nordvpn
+### 11. nordvpn
 **Used by:** qBittorrent VPN sidecar
 
 ```yaml
@@ -112,21 +102,26 @@ WIREGUARD_PRIVATE_KEY: "<your-nordvpn-wireguard-private-key>"
 SERVER_COUNTRIES: "United States"
 ```
 
-### 13. prowlarr
+### 12. prowlarr
 **Used by:** Prowlarr, Cross-seed
 
 ```yaml
 PROWLARR_API_KEY: "your-prowlarr-api-key"
 ```
 
-### 14. pushover
-**Used by:** Notifier, Alertmanager
+### 13. pushover
+**Used by:** Alertmanager, Gatus, Notifier
 
 ```yaml
 PUSHOVER_USER_KEY: "your-pushover-user-key"
+PUSHOVER_ALERTMANAGER_TOKEN: "your-alertmanager-pushover-application-token"
+PUSHOVER_GATUS_TOKEN: "your-gatus-pushover-application-token"
+PUSHOVER_JELLYSEERR_TOKEN: "your-jellyseerr-pushover-application-token"
+PUSHOVER_RADARR_TOKEN: "your-radarr-pushover-application-token"
+PUSHOVER_SONARR_TOKEN: "your-sonarr-pushover-application-token"
 ```
 
-### 15. qui
+### 14. qui
 **Used by:** qBittorrent UI, Cross-seed
 
 ```yaml
@@ -134,12 +129,11 @@ QUI_SESSION_SECRET: "random-session-secret"
 QUI_CLIENT_API_KEY: "your-qui-api-key"
 ```
 
-### 16. radarr
-**Used by:** Radarr, Recyclarr, Cross-seed, Notifier
+### 15. radarr
+**Used by:** Radarr, Recyclarr, Cross-seed
 
 ```yaml
 RADARR_API_KEY: "your-radarr-api-key"
-RADARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
 ### 17. slskd
@@ -235,11 +229,10 @@ password: "<generated-admin-password>"
 ```
 
 ### 20. sonarr
-**Used by:** Sonarr, Recyclarr, Cross-seed, Notifier
+**Used by:** Sonarr, Recyclarr, Cross-seed
 
 ```yaml
 SONARR_API_KEY: "your-sonarr-api-key"
-SONARR_PUSHOVER_TOKEN: "your-pushover-token"
 ```
 
 ### 21. tautulli
