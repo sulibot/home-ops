@@ -118,16 +118,21 @@ spec:
           match kubernetes.*
           exclude log no changes since last reconcilation
 
+        # Drop info-level lines only for infra namespaces. grep's `regex` rule
+        # is keep-only-matching, so pairing regex+exclude silently dropped every
+        # non-infra record; AND-ed excludes express "infra AND info" correctly.
         [FILTER]
           name grep
           match kubernetes.*
-          regex namespace ^(kube-system|flux-system|observability|network)$
+          logical_op and
+          exclude namespace ^(kube-system|flux-system|observability|network)$
           exclude log (?i)\"level\":\"info\"
 
         [FILTER]
           name grep
           match kubernetes.*
-          regex namespace ^(kube-system|flux-system|observability|network)$
+          logical_op and
+          exclude namespace ^(kube-system|flux-system|observability|network)$
           exclude log (?i)\blevel=info\b
 
       customParsers: |-
