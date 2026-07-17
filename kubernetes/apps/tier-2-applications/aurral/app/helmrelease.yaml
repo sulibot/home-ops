@@ -79,7 +79,10 @@ spec:
               tag: latest@sha256:b30405522fc107e6872d8947c11d75af75930b3c7b1577bb193b3d9fb4fe99b2
             env:
               TZ: America/Los_Angeles
-              NODE_OPTIONS: "--max-old-space-size=1536"
+              # --experimental-loader: aurral is ESM ("type": "module");
+              # the operator-injected --require hook is CJS-only and produces
+              # zero spans without OTel's ESM loader hook alongside it.
+              NODE_OPTIONS: "--max-old-space-size=1536 --experimental-loader=/otel-auto-instrumentation-nodejs/node_modules/@opentelemetry/instrumentation/hook.mjs"
               # Keep service.name aligned with the Loki `app` label (trace->logs join)
               OTEL_SERVICE_NAME: aurral
               LIDARR_URL: http://lidarr.default.svc.cluster.local
