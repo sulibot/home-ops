@@ -505,6 +505,17 @@ locals {
         route ${var.loadbalancers_ipv6} blackhole;
       }
 
+      # Originate this node's own /128. Every PVE host has the same connected
+      # fd00:<cluster>::/64 on its local bridge and there is no stretched L2,
+      # so cross-host traffic to a node IP blackholes in the sender's local
+      # bridge unless a more-specific BGP host route exists. The blackhole
+      # never reaches the kernel (kernel_v6 exports only proto upstream);
+      # local delivery uses the kernel local table.
+      protocol static node_host_v6 {
+        ipv6;
+        route ${node.public_ipv6}/128 blackhole;
+      }
+
       # Kernel protocol for IPv4 - imports/exports routes from/to kernel
       protocol kernel kernel_v4 {
         ipv4 {
@@ -661,6 +672,13 @@ ${var.bgp_enable_bfd ? "        bfd on;" : "        # BFD disabled for this upst
             # can route to the LoadBalancer pool before Cilium handles a
             # specific VIP inside the cluster.
             if proto = "lb_pool_v6" then {
+              accept;
+            }
+            # Node host route (:200 public, like loopbacks). Required for
+            # cross-host apiserver->kubelet and pod->apiserver traffic; see
+            # node_host_v6 above.
+            if proto = "node_host_v6" then {
+              bgp_large_community.add((${var.bgp_remote_asn}, 0, 200));
               accept;
             }
 %{if local.kube_vip_bgp_anycast.enabled && node.machine_type == "controlplane"}
