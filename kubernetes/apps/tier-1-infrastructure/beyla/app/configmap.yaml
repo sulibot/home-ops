@@ -15,12 +15,9 @@ data:
 
     discovery:
       instrument:
-        # Explicit names kept for the two original services: the SRE triage
-        # dashboard queries service_name=~"authentik|plex".
-        - name: authentik
-          k8s_namespace: default
-          k8s_deployment_name: authentik-server
-          open_ports: "9000"
+        # authentik and sonarr are SDK-instrumented via the OTel Operator
+        # (deeper traces, exemplars, trace IDs in logs) and are deliberately
+        # NOT in this list — Beyla fills the gaps, SDK where there's value.
         - name: plex
           k8s_namespace: default
           k8s_pod_name: plex-*
@@ -44,9 +41,6 @@ data:
           k8s_pod_name: immich-*
 
         # Media automation (*arr pipeline)
-        - k8s_namespace: default
-          k8s_deployment_name: sonarr
-          open_ports: "8989"
         - k8s_namespace: default
           k8s_deployment_name: sonarr-4k
           open_ports: "8989"
