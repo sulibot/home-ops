@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cephfs-mount-doctor
+  namespace: ceph-csi
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: cephfs-mount-doctor
+        spec:
+          restartPolicy: Never
+          serviceAccountName: cephfs-mount-doctor
+          containers:
+            - name: mount-doctor
+              image: alpine/k8s:1.34.1
+              command: ["bash", "/scripts/mount-doctor.sh"]
+              env:
+                - name: AUTO_FIX
+                  value: "true"
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          volumes:
+            - name: script
+              configMap:
+                name: cephfs-mount-doctor
+                defaultMode: 0o555

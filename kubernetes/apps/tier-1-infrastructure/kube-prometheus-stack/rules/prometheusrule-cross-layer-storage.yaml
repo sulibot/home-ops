@@ -361,6 +361,45 @@ spec:
               MON, or MGR and correlate with host kernel storage errors and SMART deltas.
             runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
 
+        - alert: CephCSINodePluginRestartsHigh
+          # 2026-07-17 incident leading indicator: an MDS crash left solwk01
+          # and solwk03's CephFS sessions dead for ~19h before manual
+          # discovery. Both nodes' nodeplugins had 40-135 restarts by then;
+          # a healthy node plugin should almost never restart.
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="ceph-csi", container=~"csi-cephfsplugin|csi-rbdplugin"}[1h]) > 3
+          for: 10m
+          labels:
+            severity: warning
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "ceph-csi node plugin restarting repeatedly on {{ $labels.node }}"
+            description: |
+              {{ $labels.pod }} has restarted more than 3 times in the last hour. This preceded a ~19h
+              silent CephFS session outage on 2026-07-17 (kubelet health checks never caught it - the
+              app stayed Ready while its storage was dead). Check `ceph tell mds.* session ls` for
+              this node's client sessions and consider running the cephfs-mount-doctor CronJob
+              manually if pods on this node report storage errors.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephFSMountDoctorFailing
+          expr: |
+            kube_job_status_failed{namespace="ceph-csi", job_name=~"cephfs-mount-doctor-.*"} > 0
+          for: 0m
+          labels:
+            severity: critical
+            layer: ceph
+            service: storage
+          annotations:
+            summary: "cephfs-mount-doctor found a dead CephFS session it could not auto-heal"
+            description: |
+              The mount-doctor CronJob found at least one pod with a dead CephFS kernel-client
+              session and could not remediate it automatically (delete failed, or AUTO_FIX is
+              disabled). Check the Job's logs in Loki ({namespace="ceph-csi", app="cephfs-mount-doctor"})
+              for the affected pod and node.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
         - alert: CephScrubOverdue
           expr: |
             ceph_health_detail{name=~"PG_NOT_SCRUBBED|PG_NOT_DEEP_SCRUBBED"} == 1

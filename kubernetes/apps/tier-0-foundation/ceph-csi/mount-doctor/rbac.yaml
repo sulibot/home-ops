@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cephfs-mount-doctor
+  namespace: ceph-csi
+---
+# Cluster-scoped because a dead CephFS session on a node can affect a pod in
+# any namespace; this only ever reads pods and deletes the specific ones
+# found to have a session-less mount (see mount-doctor.sh for the exact
+# detection logic - it never deletes based on anything else).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cephfs-mount-doctor
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cephfs-mount-doctor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cephfs-mount-doctor
+subjects:
+  - kind: ServiceAccount
+    name: cephfs-mount-doctor
+    namespace: ceph-csi

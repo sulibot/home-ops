@@ -43,3 +43,7 @@ resources:
   - ./shared-storage/app/csi-cephfs-content-pv-retain.yaml
   - ./shared-storage/app/csi-cephfs-content-pvc.yaml
 
+  # CephFS mount-doctor: detects and auto-heals dead kernel-client sessions
+  # after an MDS crash/failover (see 2026-07-17 incident, ENG-282)
+  - ./mount-doctor
+
