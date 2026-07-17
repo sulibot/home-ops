@@ -1040,7 +1040,12 @@ locals {
                     metric  = 32
                   } if cp.machine_type == "controlplane" && cp_name != node_name
                 ])
-                vip = var.use_vip && node.machine_type == "controlplane" ? {
+                # With kube-vip BGP anycast, the VIP must NOT also sit on the
+                # main interface: all CPs holding it makes Linux rule-8 source
+                # selection pick the VIP for CP->CP traffic, and the peer CP
+                # delivers replies to itself (blackhole). lo-bound kube-vip
+                # never wins source selection, so only it may own the VIP.
+                vip = var.use_vip && node.machine_type == "controlplane" && !local.kube_vip_bgp_anycast.enabled ? {
                   ip = var.vip_ipv6
                 } : null
               },
