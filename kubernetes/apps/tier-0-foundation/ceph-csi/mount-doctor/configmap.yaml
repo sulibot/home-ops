@@ -39,11 +39,14 @@ data:
 
     while read -r pod node; do
       [ -z "$pod" ] && continue
+      # </dev/null is required: kubectl exec (even without -i) can still
+      # consume the outer `while read` loop's stdin, silently truncating
+      # the plugin list after the first iteration.
       broken=$(kubectl -n ceph-csi exec "$pod" -c csi-cephfsplugin -- sh -c '
         for m in $(mount | grep "type ceph" | awk "{print \$3}"); do
           ls "$m" >/dev/null 2>&1 || echo "$m"
         done
-      ' 2>/dev/null)
+      ' 2>/dev/null </dev/null)
 
       if [ -z "$broken" ]; then
         echo "node=$node plugin=$pod status=healthy"
