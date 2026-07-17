@@ -75,8 +75,11 @@ spec:
 #                memory: 2Gi
     defaultPodOptions:
       annotations:
-        # OTel SDK auto-injection (.NET) via the operator's shared spec
+        # OTel SDK auto-injection (.NET) via the operator's shared spec.
+        # Image is Alpine: the glibc (linux-x64) profiler silently fails to
+        # load; select the musl build explicitly.
         instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
+        instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
       dnsConfig:
         options:
           - name: single-request
