@@ -28,13 +28,15 @@ spec:
         value: otlp
       - name: OTEL_LOGS_EXPORTER
         value: none
-      # authentik uses django-tenants (migrate_schemas command). The Django
-      # instrumentor's app-registry patching races django-tenants' command
-      # autodiscovery on startup ("Unknown command: migrate_schemas"),
-      # crash-looping gunicorn. Disabling just this instrumentor keeps
-      # psycopg/redis/http/wsgi spans, propagation, and resource attrs intact.
-      - name: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
-        value: django
+      # authentik bootstraps Django programmatically (no manage.py, no
+      # DJANGO_SETTINGS_MODULE env). Zero-code instrumentation needs it set
+      # explicitly or app/command registry population races the instrumentor's
+      # import hooks (opentelemetry-python-contrib#2495) - surfaced here as
+      # django-tenants' migrate_schemas command "not found", crash-looping
+      # gunicorn. With it set, the full Django instrumentor (request spans,
+      # RED metrics, exemplars) can stay enabled.
+      - name: DJANGO_SETTINGS_MODULE
+        value: authentik.root.settings
   dotnet:
     env:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
