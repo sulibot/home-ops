@@ -80,6 +80,8 @@ spec:
             env:
               TZ: America/Los_Angeles
               NODE_OPTIONS: "--max-old-space-size=1536"
+              # Keep service.name aligned with the Loki `app` label (trace->logs join)
+              OTEL_SERVICE_NAME: aurral
               LIDARR_URL: http://lidarr.default.svc.cluster.local
               MUSICBRAINZ_CONTACT: sulibot@gmail.com
               DOWNLOAD_FOLDER: /data/media/music_discovery
@@ -126,6 +128,12 @@ spec:
                 memory: 16Mi
 
     defaultPodOptions:
+      annotations:
+        # OTel Node.js SDK auto-injection (pure-JS, no native profiler -
+        # avoids the musl/.NET landmines that killed the sonarr pilot).
+        # Scoped to the app container; gluetun/socat stay untouched.
+        instrumentation.opentelemetry.io/inject-nodejs: "observability/default"
+        instrumentation.opentelemetry.io/container-names: "app"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

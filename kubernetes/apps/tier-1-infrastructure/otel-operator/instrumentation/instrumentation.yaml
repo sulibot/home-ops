@@ -41,6 +41,12 @@ spec:
       # Beyla instead.
       - name: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
         value: django
+  nodejs:
+    env:
+      - name: OTEL_METRICS_EXPORTER
+        value: otlp
+      - name: OTEL_LOGS_EXPORTER
+        value: none
   dotnet:
     # Version matrix, tested 2026-07-17: operator default 1.2.0 segfaults
     # (exit 139) on musl; 1.16.0 loads cleanly but refuses .NET 6 (support
