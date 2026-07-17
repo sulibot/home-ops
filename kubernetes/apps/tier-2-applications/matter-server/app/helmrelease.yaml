@@ -55,7 +55,7 @@ spec:
               repository: ghcr.io/matter-js/matterjs-server
               # matterjs-server uses its own semver, separate from the HA add-on's 8.2.x numbering.
               # Future stable upgrades should be a tag/digest bump here.
-              tag: 1.2.7@sha256:3f2b19c26fa21f9a855fd1e31cc8e1b174e8fcece881ab4ac7f56b5d828446a6
+              tag: 1.2.6@sha256:b9d7a5c9b1cd61dc15d19b9003290e5518fd58ddf240a650252dcafec9281eba
             env:
               TZ: America/Los_Angeles
               PORT: &port 5580
