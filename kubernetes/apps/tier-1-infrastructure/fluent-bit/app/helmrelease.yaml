@@ -169,7 +169,9 @@ spec:
           match kubernetes.*
           host victoria-logs-victoria-logs-single-server.observability.svc
           port 9428
-          uri /insert/loki/api/v1/push
+          # _msg_field maps fluent-bit's `log` field to VL's message field so
+          # vmui shows the actual log text instead of "missing _msg field".
+          uri /insert/loki/api/v1/push?_msg_field=log
           label_keys $namespace,$app,$stream_class
           labels job=fluentbit
           line_format json
