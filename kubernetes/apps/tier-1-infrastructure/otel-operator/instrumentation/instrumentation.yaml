@@ -34,3 +34,10 @@ spec:
         value: http/protobuf
       - name: OTEL_LOGS_EXPORTER
         value: none
+      # readOnlyRootFilesystem pods: the native profiler must be able to
+      # create its log directory or it silently never initializes. Point it
+      # at the (writable) /tmp emptyDir.
+      - name: OTEL_DOTNET_AUTO_LOG_DIRECTORY
+        value: /tmp/otel-dotnet
+      - name: OTEL_LOG_LEVEL
+        value: warn
