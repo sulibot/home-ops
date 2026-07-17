@@ -77,13 +77,14 @@ spec:
                 memory: 2Gi
     defaultPodOptions:
       annotations:
-        # OTel SDK auto-injection (.NET). Alpine image needs the musl build.
-        # The earlier "silent crash" was OOM under node pressure during the
-        # 2026-07-17 incident (no memory limit + profiler startup overhead
-        # + 2 nodes cordoned), not an instrumentation bug - explicit memory
-        # request/limit added below.
-        instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
-        instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
+        # OTel .NET auto-injection PERMANENTLY UNSUPPORTABLE for sonarr v4
+        # (full version matrix tested 2026-07-17): every instr release with
+        # .NET 6 support (<=1.7.0) segfaults (exit 139) on musl; every
+        # musl-fixed release (>=1.8.0, verified 1.16.0 loads cleanly)
+        # requires .NET 8+. Sonarr v4 = .NET 6 on Alpine = dead zone.
+        # Revisit when Sonarr moves to .NET 8. Beyla covers sonarr.
+        # instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
+        # instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
       dnsConfig:
         options:
           - name: single-request
