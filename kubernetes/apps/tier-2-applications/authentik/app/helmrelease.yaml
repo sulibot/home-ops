@@ -25,8 +25,11 @@ spec:
     global:
       podAnnotations:
         reloader.stakater.com/auto: "true"
-        # OTel SDK auto-injection (Python) via the operator's shared spec
-        instrumentation.opentelemetry.io/inject-python: "observability/default"
+        # OTel SDK auto-injection DISABLED 2026-07-17: PYTHONPATH injection
+        # broke Django management-command discovery ("Unknown command:
+        # 'migrate_schemas'"), crash-looping gunicorn every ~2s. Needs
+        # root-cause before re-enabling; see ENG-16.
+        # instrumentation.opentelemetry.io/inject-python: "observability/default"
       deploymentStrategy:
         type: Recreate
       envFrom:
