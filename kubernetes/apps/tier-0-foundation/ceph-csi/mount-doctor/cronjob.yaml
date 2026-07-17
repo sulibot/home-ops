@@ -34,9 +34,13 @@ spec:
               resources:
                 requests:
                   cpu: 10m
-                  memory: 32Mi
+                  memory: 64Mi
                 limits:
-                  memory: 128Mi
+                  # A full scan spawns a `kubectl exec` per node plus a
+                  # cluster-wide pod list per broken mount found; 128Mi OOM'd
+                  # silently on the node with the most mounts during testing,
+                  # truncating the scan without any visible error.
+                  memory: 384Mi
           volumes:
             - name: script
               configMap:
