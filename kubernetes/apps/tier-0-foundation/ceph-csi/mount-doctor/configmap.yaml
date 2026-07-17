@@ -70,6 +70,30 @@ data:
             || echo "REMEDIATE_FAILED node=$node pod=$tns/$tname" >&2
         fi
       done
+
+      # Broken *staging* mounts (.../csi/cephfs.csi.ceph.com/<volume-id>/globalmount)
+      # with no matching pod-bind-mount above are orphaned: a CSI NodeStage
+      # succeeded once, its session died, and no running pod currently
+      # depends on that exact staging path. These block the *next* pod that
+      # tries to use the volume (this is exactly what blocked sonarr on
+      # 2026-07-17 - discovered and fixed manually before this existed).
+      vol_ids=$(echo "$broken" | grep -oE '/csi/cephfs\.csi\.ceph\.com/[a-f0-9]+/globalmount' | grep -oE '[a-f0-9]{20,}')
+      for vid in $vol_ids; do
+        # Only touch it if genuinely unattached cluster-wide.
+        if kubectl get volumeattachment -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | grep -q "$vid"; then
+          echo "node=$node plugin=$pod status=broken-staging vol=$vid attached=true (skipping - in use)"
+          continue
+        fi
+        broken_total=$((broken_total + 1))
+        echo "node=$node plugin=$pod status=broken-staging vol=$vid attached=false auto_fix=$AUTO_FIX"
+        if [ "$AUTO_FIX" = "true" ]; then
+          kubectl -n ceph-csi exec "$pod" -c csi-cephfsplugin -- sh -c \
+            "umount -l /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid/globalmount && rm -rf /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid" \
+            </dev/null \
+            && { echo "REMEDIATED_STAGING node=$node vol=$vid"; remediated=$((remediated + 1)); } \
+            || echo "REMEDIATE_STAGING_FAILED node=$node vol=$vid" >&2
+        fi
+      done
     done <<< "$plugins"
 
     echo "SUMMARY broken_mounts=$broken_total remediated=$remediated auto_fix=$AUTO_FIX"
