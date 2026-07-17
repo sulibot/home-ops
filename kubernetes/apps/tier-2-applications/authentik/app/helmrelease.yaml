@@ -25,11 +25,12 @@ spec:
     global:
       podAnnotations:
         reloader.stakater.com/auto: "true"
-        # OTel SDK auto-injection DISABLED 2026-07-17: PYTHONPATH injection
-        # broke Django management-command discovery ("Unknown command:
-        # 'migrate_schemas'"), crash-looping gunicorn every ~2s. Needs
-        # root-cause before re-enabling; see ENG-16.
-        # instrumentation.opentelemetry.io/inject-python: "observability/default"
+        # OTel SDK auto-injection (Python). Root-caused 2026-07-17: Django
+        # instrumentor raced django-tenants' migrate_schemas command
+        # autodiscovery, crash-looping gunicorn. Fixed via
+        # OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=django in the shared
+        # Instrumentation CR (see otel-operator/instrumentation/).
+        instrumentation.opentelemetry.io/inject-python: "observability/default"
       deploymentStrategy:
         type: Recreate
       envFrom:
