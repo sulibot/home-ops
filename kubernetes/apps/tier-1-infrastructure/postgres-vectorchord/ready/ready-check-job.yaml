@@ -52,8 +52,10 @@ spec:
               fi
 
               # Capability-based check: only verify DBs explicitly declared via CNPG Database CRs.
+              # Use spec.name (the actual postgres datname, e.g. radarr_4k_log),
+              # not metadata.name (the CR name, e.g. radarr-4k-log).
               mapfile -t REQUIRED_DBS < <(kubectl -n "${NS}" get databases.postgresql.cnpg.io \
-                -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null | sed '/^$/d' || true)
+                -o jsonpath='{range .items[*]}{.spec.name}{"\n"}{end}' 2>/dev/null | sed '/^$/d' || true)
 
               if [ "${#REQUIRED_DBS[@]}" -eq 0 ]; then
                 echo "No CNPG Database CRs found; skipping per-database existence checks."
