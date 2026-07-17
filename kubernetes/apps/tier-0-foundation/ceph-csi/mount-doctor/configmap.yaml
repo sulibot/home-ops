@@ -1,0 +1,81 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/configmap.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cephfs-mount-doctor
+  namespace: ceph-csi
+data:
+  mount-doctor.sh: |
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    # Detects and (optionally) heals the failure mode from 2026-07-17: an MDS
+    # daemon crash left some nodes' CephFS kernel-client sessions dead. The
+    # kernel keeps the mount entry (visible in `mount`, looks fine to
+    # kubelet's own liveness/readiness probes - those check the app's HTTP
+    # port, never the filesystem) but every I/O against it returns EACCES.
+    # Pods report Running/Ready while their storage is silently gone. Took
+    # ~19h to notice manually; this runs every 10m instead.
+    #
+    # Detection: for every CephFS mount inside each csi-cephfsplugin
+    # container, `ls` the mountpoint. A live session lists instantly; a dead
+    # one returns permission-denied. AUTO_FIX=true additionally deletes the
+    # owning pod (found by matching the kubelet pod-uid segment of the mount
+    # path) so it reschedules with a fresh, working session - safe by
+    # construction: a session confirmed dead server-side cannot be made
+    # "more broken" by restarting the pod that depends on it.
+
+    AUTO_FIX="${AUTO_FIX:-true}"
+    remediated=0
+    broken_total=0
+
+    plugins=$(kubectl -n ceph-csi get pods -l app=ceph-csi-cephfs,component=nodeplugin -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.nodeName}{"\n"}{end}')
+
+    if [ -z "$plugins" ]; then
+      echo "ERROR: no ceph-csi-cephfs nodeplugin pods found" >&2
+      exit 1
+    fi
+
+    while read -r pod node; do
+      [ -z "$pod" ] && continue
+      broken=$(kubectl -n ceph-csi exec "$pod" -c csi-cephfsplugin -- sh -c '
+        for m in $(mount | grep "type ceph" | awk "{print \$3}"); do
+          ls "$m" >/dev/null 2>&1 || echo "$m"
+        done
+      ' 2>/dev/null)
+
+      if [ -z "$broken" ]; then
+        echo "node=$node plugin=$pod status=healthy"
+        continue
+      fi
+
+      uids=$(echo "$broken" | grep -oE '/var/lib/kubelet/pods/[a-f0-9-]+/' | sed -E 's#/var/lib/kubelet/pods/##; s#/##' | sort -u)
+      for uid in $uids; do
+        broken_total=$((broken_total + 1))
+        target=$(kubectl get pods -A -o jsonpath='{range .items[?(@.metadata.uid=="'"$uid"'")]}{.metadata.namespace}{" "}{.metadata.name}{end}')
+        if [ -z "$target" ]; then
+          echo "node=$node plugin=$pod status=broken uid=$uid pod=<gone>"
+          continue
+        fi
+        tns=$(echo "$target" | awk '{print $1}')
+        tname=$(echo "$target" | awk '{print $2}')
+        echo "node=$node plugin=$pod status=broken uid=$uid pod=$tns/$tname auto_fix=$AUTO_FIX"
+        if [ "$AUTO_FIX" = "true" ]; then
+          kubectl -n "$tns" delete pod "$tname" --wait=false \
+            && { echo "REMEDIATED node=$node pod=$tns/$tname"; remediated=$((remediated + 1)); } \
+            || echo "REMEDIATE_FAILED node=$node pod=$tns/$tname" >&2
+        fi
+      done
+    done <<< "$plugins"
+
+    echo "SUMMARY broken_mounts=$broken_total remediated=$remediated auto_fix=$AUTO_FIX"
+
+    # Only fail the Job (feeds kube_job_status_failed -> alert) when a broken
+    # mount was left unresolved - either auto-fix is off, or a delete failed.
+    # A clean auto-heal (found + fixed) still exits 0, but the REMEDIATED
+    # lines above are visible in Loki either way for audit.
+    if [ "$broken_total" -gt 0 ] && [ "$remediated" -lt "$broken_total" ]; then
+      exit 1
+    fi
+    exit 0
