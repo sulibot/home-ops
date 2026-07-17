@@ -10,7 +10,10 @@ spec:
   chart:
     spec:
       chart: opentelemetry-operator
-      version: 0.102.0
+      # Keep current: stale operator releases ship stale default
+      # auto-instrumentation images (the 1.2.0 dotnet default segfaulted
+      # on musl; fixed in the Instrumentation CR by pinning 1.16.0).
+      version: 0.120.0
       sourceRef:
         kind: HelmRepository
         name: opentelemetry

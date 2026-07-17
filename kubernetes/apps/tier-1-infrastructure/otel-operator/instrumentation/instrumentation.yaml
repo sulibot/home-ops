@@ -42,9 +42,11 @@ spec:
       - name: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
         value: django
   dotnet:
-    # Operator's default (1.2.0) segfaults (exit 139) with the musl build on
-    # sonarr's runtime; pin the current release instead.
-    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.16.0
+    # Version matrix, tested 2026-07-17: operator default 1.2.0 segfaults
+    # (exit 139) on musl; 1.16.0 loads cleanly but refuses .NET 6 (support
+    # dropped in 1.8.0). Sonarr v4 is .NET 6 -> 1.7.0 is the newest release
+    # that supports it.
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.7.0
     env:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: http/protobuf
