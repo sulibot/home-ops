@@ -25,11 +25,10 @@ spec:
     global:
       podAnnotations:
         reloader.stakater.com/auto: "true"
-        # OTel SDK auto-injection (Python). Root-caused 2026-07-17: Django
-        # instrumentor raced django-tenants' migrate_schemas command
-        # autodiscovery, crash-looping gunicorn. Fixed via
-        # OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=django in the shared
-        # Instrumentation CR (see otel-operator/instrumentation/).
+        # OTel SDK auto-injection (Python). authentik bootstraps Django
+        # programmatically, so DJANGO_SETTINGS_MODULE is set in the shared
+        # Instrumentation CR (otel-python-contrib#2495) - full Django
+        # instrumentor enabled.
         instrumentation.opentelemetry.io/inject-python: "observability/default"
       deploymentStrategy:
         type: Recreate

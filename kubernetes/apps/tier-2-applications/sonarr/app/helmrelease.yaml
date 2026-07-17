@@ -71,17 +71,19 @@ spec:
             resources:
               requests:
                 cpu: 100m
-#              limits:
-#                memory: 2Gi
+                memory: 512Mi
+              limits:
+                # Headroom for the OTel .NET profiler's startup overhead
+                memory: 2Gi
     defaultPodOptions:
       annotations:
-        # OTel SDK auto-injection DISABLED 2026-07-17: pod crash-looped with
-        # no app-level error (dies silently very early in dotnet startup,
-        # likely profiler+memory pressure) even after the musl-runtime and
-        # log-dir fixes. Reverting to restore service; needs isolated
-        # root-cause before retry - see ENG-16.
-        # instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
-        # instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
+        # OTel SDK auto-injection (.NET). Alpine image needs the musl build.
+        # The earlier "silent crash" was OOM under node pressure during the
+        # 2026-07-17 incident (no memory limit + profiler startup overhead
+        # + 2 nodes cordoned), not an instrumentation bug - explicit memory
+        # request/limit added below.
+        instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
+        instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
       dnsConfig:
         options:
           - name: single-request
