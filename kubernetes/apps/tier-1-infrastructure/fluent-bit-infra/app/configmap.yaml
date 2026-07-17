@@ -11,7 +11,9 @@ data:
       Log_Level info
       Parsers_File parsers.conf
       HTTP_Server On
-      HTTP_Listen 0.0.0.0
+      # hostNetwork pod on IPv6-only nodes: probes dial [node-ipv6]:2021,
+      # so the server must bind v6 (0.0.0.0 is v4-only and never answers).
+      HTTP_Listen ::
       HTTP_Port 2021
       Health_Check On
       storage.path /var/log/fluent-bit-infra-buffers/
