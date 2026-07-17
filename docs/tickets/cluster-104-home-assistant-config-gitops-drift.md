@@ -360,6 +360,19 @@ Remaining IKEA / Matter device issue:
   the BILRESA switch-position sensors were enabled, and Home Assistant was
   restarted. A post-restart registry check showed `0` disabled BILRESA
   switch-position sensors.
+- On `2026-07-17`, after upgrading Home Assistant to `2026.7.2`, the live
+  BILRESA blueprint at
+  `/config/blueprints/automation/sulibot/bilresa_multi_target_fast.yaml` failed
+  with `from_json got invalid input` when list-valued `target_entities` were
+  rendered as native lists. The live blueprint was backed up to
+  `/config/blueprints/automation/sulibot/bilresa_multi_target_fast.yaml.bak-20260717T224007Z`,
+  changed to use a native `target_entity_list`, and Home Assistant restarted.
+  `homeassistant --script check_config -c /config` passed, post-restart logs no
+  longer showed `from_json` or template rendering errors, and the Master Bedroom
+  orange controller produced fresh Matter events and brightness updates.
+  The tracked reference copy at `tmp/bilresa_multi_target_fast.yaml` now matches
+  the live fixed blueprint, but this is still not a full GitOps projection into
+  `/config`.
 
 Remaining Bed right / Master target issue:
 
