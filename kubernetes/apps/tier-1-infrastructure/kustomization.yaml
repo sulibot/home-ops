@@ -63,6 +63,8 @@ resources:
   # LGTM stack: Tempo (traces) + Loki (logs, above) + Grafana + Prometheus
   - ./tempo/ks.yaml
   - ./beyla/ks.yaml
+  # VictoriaLogs side-by-side trial (fluent-bit dual-writes; evaluate vs Loki)
+  - ./victoria-logs/ks.yaml
   # OTel collector: Beyla routes traces through it to Tempo; metrics stay on
   # the direct Prometheus scrape (that path carries exemplars).
   - ./otel-collector/helm-repo/ks.yaml
