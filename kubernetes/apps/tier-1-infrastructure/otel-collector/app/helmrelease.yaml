@@ -59,13 +59,19 @@ spec:
         enabled: false
 
     config:
+      # IPv6 cluster: the chart's default health_check endpoint renders the
+      # pod IP unbracketed (fd00::x:13133), which the collector can't parse
+      # and exits 1. Bracket it, and bind OTLP on [::] (0.0.0.0 is v4-only).
+      extensions:
+        health_check:
+          endpoint: "[${env:MY_POD_IP}]:13133"
       receivers:
         otlp:
           protocols:
             grpc:
-              endpoint: 0.0.0.0:4317
+              endpoint: "[::]:4317"
             http:
-              endpoint: 0.0.0.0:4318
+              endpoint: "[::]:4318"
         # Prometheus/kube-state-metrics stay on their existing ServiceMonitor
         # scrape path; this collector is for OTLP-native app telemetry only.
         prometheus: null
