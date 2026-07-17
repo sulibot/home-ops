@@ -38,6 +38,9 @@ spec:
       - name: DJANGO_SETTINGS_MODULE
         value: authentik.root.settings
   dotnet:
+    # Operator's default (1.2.0) segfaults (exit 139) with the musl build on
+    # sonarr's runtime; pin the current release instead.
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:1.16.0
     env:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: http/protobuf
