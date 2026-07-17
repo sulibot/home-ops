@@ -46,6 +46,8 @@ spec:
               SONARR__SERVER__PORT: &port 8989
               SONARR__UPDATE__BRANCH: develop
               TZ: America/Los_Angeles
+              # Keep service.name aligned with the Loki `app` label
+              OTEL_SERVICE_NAME: sonarr
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -72,6 +74,9 @@ spec:
 #              limits:
 #                memory: 2Gi
     defaultPodOptions:
+      annotations:
+        # OTel SDK auto-injection (.NET) via the operator's shared spec
+        instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
       dnsConfig:
         options:
           - name: single-request

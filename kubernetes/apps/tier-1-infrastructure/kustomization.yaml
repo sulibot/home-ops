@@ -69,6 +69,8 @@ resources:
   # the direct Prometheus scrape (that path carries exemplars).
   - ./otel-collector/helm-repo/ks.yaml
   - ./otel-collector/ks.yaml
+  # OTel Operator: SDK auto-injection where there's value; Beyla fills gaps
+  - ./otel-operator/ks.yaml
   # kiali disabled - requires Istio service mesh
   # - ./kiali/helm-repo/ks.yaml
   # - ./kiali/ks.yaml

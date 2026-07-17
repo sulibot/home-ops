@@ -25,11 +25,17 @@ spec:
     global:
       podAnnotations:
         reloader.stakater.com/auto: "true"
+        # OTel SDK auto-injection (Python) via the operator's shared spec
+        instrumentation.opentelemetry.io/inject-python: "observability/default"
       deploymentStrategy:
         type: Recreate
       envFrom:
         - secretRef:
             name: authentik-secret
+      env:
+        # Keep service.name aligned with the Loki `app` label (trace->logs join)
+        - name: OTEL_SERVICE_NAME
+          value: authentik
     authentik:
       log_level: info
       postgresql:
