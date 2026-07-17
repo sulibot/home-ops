@@ -38,5 +38,7 @@ spec:
           memory: 256Mi
         limits:
           memory: 1Gi
+      # No VictoriaMetrics operator in this cluster; add a plain
+      # ServiceMonitor later if the trial graduates.
       vmServiceScrape:
-        enabled: true
+        enabled: false
