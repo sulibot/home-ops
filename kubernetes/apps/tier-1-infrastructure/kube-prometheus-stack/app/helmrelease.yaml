@@ -55,11 +55,9 @@ spec:
               namespace: network
       prometheusSpec:
         externalUrl: https://prometheus.sulibot.com
-        version: v2.55.1 # override 'unsupported Prometheus version' error
-        image:
-          registry: docker.io
-          repository: prompp/prompp
-          tag: 0.7.11
+        # Native OTLP ingestion (/api/v1/otlp) — lets the otel-collector's
+        # metrics pipeline land in Prometheus without a scrape hop.
+        enableOTLPReceiver: true
         securityContext:
           runAsNonRoot: true
           runAsUser: 64535
@@ -70,6 +68,10 @@ spec:
         ruleSelectorNilUsesHelmValues: false
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
+        # Store exemplars (trace IDs on histogram samples) so Grafana can link
+        # metric spikes to Tempo traces.
+        enableFeatures:
+          - exemplar-storage
         retention: 14d
         retentionSize: 50GB
         resources:

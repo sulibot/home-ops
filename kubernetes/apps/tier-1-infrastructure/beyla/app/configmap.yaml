@@ -15,6 +15,8 @@ data:
 
     discovery:
       instrument:
+        # Explicit names kept for the two original services: the SRE triage
+        # dashboard queries service_name=~"authentik|plex".
         - name: authentik
           k8s_namespace: default
           k8s_deployment_name: authentik-server
@@ -24,16 +26,98 @@ data:
           k8s_pod_name: plex-*
           open_ports: "32400"
 
+        # Entries below omit `name:` so service.name defaults to the k8s
+        # deployment name, which matches the Loki `app` stream label that
+        # tracesToLogsV2 joins on.
+
+        # Media servers
+        - k8s_namespace: default
+          k8s_deployment_name: emby
+          open_ports: "8096"
+        - k8s_namespace: default
+          k8s_deployment_name: navidrome
+          open_ports: "4533"
+        - k8s_namespace: default
+          k8s_deployment_name: audiobookshelf
+          open_ports: "8787"
+        - k8s_namespace: default
+          k8s_pod_name: immich-*
+
+        # Media automation (*arr pipeline)
+        - k8s_namespace: default
+          k8s_deployment_name: sonarr
+          open_ports: "8989"
+        - k8s_namespace: default
+          k8s_deployment_name: sonarr-4k
+          open_ports: "8989"
+        - k8s_namespace: default
+          k8s_deployment_name: radarr
+          open_ports: "7878"
+        - k8s_namespace: default
+          k8s_deployment_name: radarr-4k
+          open_ports: "7878"
+        - k8s_namespace: default
+          k8s_deployment_name: prowlarr
+          open_ports: "9696"
+        - k8s_namespace: default
+          k8s_deployment_name: lidarr
+          open_ports: "8686"
+        - k8s_namespace: default
+          k8s_deployment_name: sabnzbd
+          open_ports: "8080"
+        - k8s_namespace: default
+          k8s_deployment_name: qbittorrent
+          open_ports: "8081"
+        - k8s_namespace: default
+          k8s_deployment_name: seerr
+          open_ports: "80"
+        - k8s_namespace: default
+          k8s_deployment_name: jellyseerr
+          open_ports: "80"
+
+        # Music pipeline (SoulSync migration stack)
+        - k8s_namespace: default
+          k8s_deployment_name: soulsync
+          open_ports: "8008"
+        - k8s_namespace: default
+          k8s_deployment_name: digarr
+          open_ports: "3000"
+        - k8s_namespace: default
+          k8s_deployment_name: aurral
+          open_ports: "3001"
+
+        # Home / docs / dashboards
+        - k8s_namespace: default
+          k8s_deployment_name: home-assistant
+          open_ports: "8123"
+        - k8s_namespace: default
+          k8s_deployment_name: paperless
+          open_ports: "8000"
+        - k8s_namespace: default
+          k8s_deployment_name: tautulli
+          open_ports: "80"
+        - k8s_namespace: default
+          k8s_deployment_name: homepage
+          open_ports: "3000"
+
     routes:
+      # The *arr/media APIs embed IDs in URLs; heuristic grouping clusters
+      # them (e.g. /api/v3/series/123 -> /api/v3/series/*) to keep the
+      # http_route label cardinality bounded across ~25 services.
+      unmatched: heuristic
       ignored_patterns:
         - /-/health/live/
         - /-/health/ready/
         - /health
+        - /healthz
+        - /ping
         - /identity
         - /metrics
 
     otel_traces_export:
-      endpoint: http://tempo.observability.svc.cluster.local:4318
+      # Route through the OTel Collector (its traces pipeline forwards to
+      # Tempo) so future processors/exporters apply to Beyla spans too.
+      endpoint: http://otel-collector-opentelemetry-collector.observability.svc.cluster.local:4318
       protocol: http/protobuf
       sampler:
         name: parentbased_traceidratio

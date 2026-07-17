@@ -6,6 +6,8 @@ metadata:
   name: beyla
   labels:
     app.kubernetes.io/name: beyla
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   selector:
     matchLabels:
@@ -36,10 +38,10 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 25m
-              memory: 128Mi
+              cpu: 50m
+              memory: 256Mi
             limits:
-              memory: 512Mi
+              memory: 1Gi
           securityContext:
             privileged: true
             readOnlyRootFilesystem: true
