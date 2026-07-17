@@ -75,11 +75,13 @@ spec:
 #                memory: 2Gi
     defaultPodOptions:
       annotations:
-        # OTel SDK auto-injection (.NET) via the operator's shared spec.
-        # Image is Alpine: the glibc (linux-x64) profiler silently fails to
-        # load; select the musl build explicitly.
-        instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
-        instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
+        # OTel SDK auto-injection DISABLED 2026-07-17: pod crash-looped with
+        # no app-level error (dies silently very early in dotnet startup,
+        # likely profiler+memory pressure) even after the musl-runtime and
+        # log-dir fixes. Reverting to restore service; needs isolated
+        # root-cause before retry - see ENG-16.
+        # instrumentation.opentelemetry.io/inject-dotnet: "observability/default"
+        # instrumentation.opentelemetry.io/otel-dotnet-auto-runtime: "linux-musl-x64"
       dnsConfig:
         options:
           - name: single-request
