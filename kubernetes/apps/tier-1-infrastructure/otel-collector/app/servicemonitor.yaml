@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector-prom-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-collector
+      component: standalone-collector
+  endpoints:
+    # OpenMetrics scrape of the collector's prometheus exporter - the ONLY
+    # path that carries exemplars into Prometheus (its OTLP receiver drops
+    # them). This is how SDK-app metrics get the metric->trace diamond-click.
+    - port: prom-exporter
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true

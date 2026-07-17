@@ -48,6 +48,12 @@ spec:
         hostPort: null
       otlp-http:
         hostPort: null
+      # OpenMetrics exemplar-carrying scrape endpoint (see prometheus exporter)
+      prom-exporter:
+        enabled: true
+        containerPort: 8889
+        servicePort: 8889
+        protocol: TCP
       # Disable ports we don't use to keep the footprint minimal
       jaeger-compact:
         enabled: false
@@ -97,11 +103,15 @@ spec:
           tls:
             insecure: true
 
-        # Metrics -> Prometheus native OTLP receiver
-        otlphttp/prometheus:
-          metrics_endpoint: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/api/v1/otlp/v1/metrics
-          tls:
-            insecure: true
+        # Metrics -> OpenMetrics scrape endpoint on the collector itself.
+        # Prometheus can ONLY ingest exemplars via OpenMetrics scrape, never
+        # via its OTLP receiver - the OTLP push path silently drops them,
+        # which killed the SDK exemplar demo until this was rerouted.
+        prometheus:
+          endpoint: "[${env:MY_POD_IP}]:8889"
+          enable_open_metrics: true
+          resource_to_telemetry_conversion:
+            enabled: true
 
         # Logs -> Loki native OTLP ingestion
         otlphttp/loki:
@@ -118,7 +128,7 @@ spec:
           metrics:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [otlphttp/prometheus]
+            exporters: [prometheus]
           logs:
             receivers: [otlp]
             processors: [memory_limiter, batch]
