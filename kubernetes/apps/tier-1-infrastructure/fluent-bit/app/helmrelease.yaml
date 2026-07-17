@@ -160,6 +160,23 @@ spec:
           workers 2
           storage.total_limit_size 1G
           retry_limit false
+
+        # Side-by-side trial: dual-write the same stream to VictoriaLogs via
+        # its Loki-compatible endpoint. Bounded retries so a VL outage can't
+        # back-pressure the primary Loki pipeline.
+        [OUTPUT]
+          name loki
+          match kubernetes.*
+          host victoria-logs.observability.svc
+          port 9428
+          uri /insert/loki/api/v1/push
+          label_keys $namespace,$app,$stream_class
+          labels job=fluentbit
+          line_format json
+          compress gzip
+          workers 1
+          storage.total_limit_size 512M
+          retry_limit 5
     dashboards:
       enabled: true
     serviceMonitor:
