@@ -1,0 +1,13 @@
+---
+# Step 1: wipe stale LVM/Ceph signatures and lay out the disks each node's
+# host_vars ceph_osds list expects (see inventory/host_vars/pveNN.yml).
+# Consolidates the old stage0-1-clean.yml + stage0-2-layout.yml.
+- name: Disk prep for Ceph OSDs
+  hosts: cluster
+  become: true
+  # host_vars/<hostname>.yml (ceph_osds, nvme_disk, etc.) auto-loads - no
+  # explicit vars_files needed since it's a sibling of the inventory file.
+
+  roles:
+    - cleanup_lvm_disks
+    - disk_layout

@@ -13,9 +13,9 @@ spec:
         - alert: ObservabilityScrapeCoverageLow
           expr: |
             (
-              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"} == 1)
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit|fluent-bit-infra|fluent-bit-events|beyla"} == 1)
               /
-              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"})
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit|fluent-bit-infra|fluent-bit-events|beyla"})
             ) < 0.90
           for: 15m
           labels:
@@ -33,9 +33,9 @@ spec:
         - alert: ObservabilityScrapeCoverageCritical
           expr: |
             (
-              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"} == 1)
+              sum(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit|fluent-bit-infra|fluent-bit-events|beyla"} == 1)
               /
-              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit"})
+              count(up{namespace="observability",job=~"prometheus|kube-state-metrics|kube-prometheus-stack-operator|kube-prometheus-stack-alertmanager|grafana-service|grafana-operator-metrics-service|loki|fluent-bit|fluent-bit-infra|fluent-bit-events|beyla"})
             ) < 0.70
           for: 10m
           labels:

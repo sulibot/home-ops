@@ -1,0 +1,83 @@
+---
+# Replaces lae.proxmox's ceph.yml import (ansible/_archive/lae.proxmox-legacy).
+# Scope is deliberately narrow: pveceph init + mon/mgr bootstrap only. OSD
+# creation, pools, CRUSH rules, and CephFS already have their own dedicated,
+# validated roles (ceph_osd_create, ceph_layout_validate, cephfs_from_pools)
+# with their own idempotency checks - this role does not duplicate them.
+
+- name: Create initial Ceph cluster config
+  ansible.builtin.command: >-
+    pveceph init --network {{ pve_ceph_network }}
+    {% if pve_ceph_cluster_network is defined %}--cluster-network {{ pve_ceph_cluster_network }}{% endif %}
+  args:
+    creates: /etc/ceph/ceph.conf
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+
+- name: Create initial Ceph monitor
+  ansible.builtin.command: pveceph mon create
+  args:
+    creates: "/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/"
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  register: _ceph_initial_mon
+  failed_when: _ceph_initial_mon.rc != 0
+
+- name: Create additional Ceph monitors
+  ansible.builtin.command: pveceph mon create
+  args:
+    creates: "/var/lib/ceph/mon/ceph-{{ ansible_hostname }}/"
+  when:
+    - "inventory_hostname != groups[ceph_mon_group][0]"
+    - "inventory_hostname in groups[ceph_mon_group]"
+
+- name: Create Ceph managers
+  ansible.builtin.command: pveceph mgr create
+  args:
+    creates: "/var/lib/ceph/mgr/ceph-{{ ansible_hostname }}/"
+  when: "inventory_hostname in groups[ceph_mgr_group]"
+
+- name: Check enabled Ceph mgr modules
+  ansible.builtin.command: ceph mgr module ls -f json
+  register: _ceph_mgr_modules
+  changed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+# Required for kube-prometheus-stack's ceph-mgr-targets ServiceMonitor
+# (kubernetes/apps/tier-1-infrastructure/proxmox-observability) to scrape
+# anything - the module ships with Ceph but is disabled by default.
+- name: Enable Ceph prometheus mgr module
+  ansible.builtin.command: ceph mgr module enable prometheus
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "'prometheus' not in (_ceph_mgr_modules.stdout | from_json).enabled_modules"
+  run_once: true
+
+- name: Read Ceph prometheus mgr bind address
+  ansible.builtin.command: ceph config get mgr mgr/prometheus/server_addr
+  register: _ceph_prometheus_server_addr
+  changed_when: false
+  failed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Bind Ceph prometheus mgr metrics on IPv6 wildcard
+  ansible.builtin.command: ceph config set mgr mgr/prometheus/server_addr ::
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_prometheus_server_addr.stdout | trim != '::'"
+  run_once: true
+
+- name: Read Ceph prometheus mgr port
+  ansible.builtin.command: ceph config get mgr mgr/prometheus/server_port
+  register: _ceph_prometheus_server_port
+  changed_when: false
+  failed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Set Ceph prometheus mgr metrics port
+  ansible.builtin.command: ceph config set mgr mgr/prometheus/server_port 9283
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_prometheus_server_port.stdout | trim != '9283'"
+  run_once: true

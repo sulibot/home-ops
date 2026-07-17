@@ -14,5 +14,11 @@ spec:
     image:
       registry: quay.io
       tag: "0.19.0"
+    livenessProbe:
+      timeoutSeconds: 5
+      failureThreshold: 6
     networkPolicy:
       enabled: false
+    readinessProbe:
+      timeoutSeconds: 5
+      failureThreshold: 6

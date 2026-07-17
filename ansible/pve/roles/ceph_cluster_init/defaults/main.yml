@@ -1,0 +1,6 @@
+---
+# Groups that define which nodes run Ceph mon/mgr. Defaults match the
+# pve_ceph_mon_group / pve_ceph_mgr_group convention already used elsewhere
+# in group_vars/pve.yml.
+ceph_mon_group: "{{ pve_ceph_mon_group | default('ceph_mon') }}"
+ceph_mgr_group: "{{ pve_ceph_mgr_group | default('ceph_mgr') }}"

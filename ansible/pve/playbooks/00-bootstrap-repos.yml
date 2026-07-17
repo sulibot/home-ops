@@ -1,0 +1,11 @@
+---
+# Step 0 of a from-scratch PXE cluster build: add PVE/Ceph apt repos + GPG
+# key on a freshly-imaged Debian box. Previously done internally by
+# lae.proxmox; this role existed but was never wired into any playbook.
+- name: Bootstrap PVE/Ceph apt repos
+  hosts: pve
+  become: true
+  gather_facts: true
+
+  roles:
+    - bootstrap

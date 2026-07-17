@@ -1,0 +1,1 @@
+{"bgp_asn_base":4210000000,"bgp_remote_asn":4200001000,"routeros":{"local_asn":4200000000,"loopback_ipv4":"10.255.0.254","loopback_ipv6":"fd00:0:0:ffff::fffe","pve_asn":4200001000,"pve_range_ipv6":"fd00:0:0:ffff::/64","router_id":"10.255.0.254"},"sdn_mtu":8950,"sdn_vrf_vxlan":4096,"sdn_zone_id":"evpnz1"}

@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: sre-home-control-health
+  namespace: observability
+spec:
+  allowCrossNamespaceImport: true
+  folder: sre
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+    - datasourceName: loki
+      inputName: DS_LOKI
+  configMapRef:
+    name: home-control-dashboard
+    key: sre-home-control-health.json

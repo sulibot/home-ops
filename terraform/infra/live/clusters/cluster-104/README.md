@@ -6,7 +6,6 @@ Single-node Talos Kubernetes cluster on repurposed bare-metal hardware.
 - Cluster role: Home Assistant / home-control
 - Cluster ID: `104`
 - Node hostname: `talos01`
-- Former role/name: `pve04`
 - Recovery/bootstrap network: native/untagged `vlan10`
 - Recovery IPs:
   - IPv4: `10.10.0.4`
@@ -28,7 +27,7 @@ Workflow:
 
 Notes:
 
-- This stack does not provision compute. `talos01` is the former `pve04` physical machine.
+- This stack does not provision compute. `talos01` is repurposed bare-metal hardware.
 - VIP is intentionally disabled. The node IP is the Kubernetes endpoint.
 - This is a bare-metal single-node profile. It intentionally does not inherit
   Proxmox SDN/vnet assumptions unless VM participation becomes a real
@@ -44,6 +43,12 @@ Notes:
   RouterOS peers directly with the bare-metal `talos01` node on `vlan104`
   because there is no Proxmox FRR layer in this cluster.
 - Workloads are allowed on the control plane because this is a 1-node cluster.
+- Observability is split intentionally:
+  - cluster-101 owns the primary monitoring view of cluster-104 through Gatus
+    synthetic checks and the normal Prometheus/Alertmanager path.
+  - cluster-104 runs only a lightweight `gatus-observer` backup in the
+    `observer` namespace so there is still a local status view when
+    cluster-101 monitoring is unhealthy.
 
 ## Addressing Alignment
 

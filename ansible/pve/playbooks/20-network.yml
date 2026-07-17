@@ -1,0 +1,7 @@
+---
+- name: Configure network interfaces
+  hosts: pve
+  become: true
+
+  roles:
+    - interfaces

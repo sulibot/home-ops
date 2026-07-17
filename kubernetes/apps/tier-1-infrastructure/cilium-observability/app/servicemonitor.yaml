@@ -16,3 +16,6 @@ spec:
     - port: hubble-metrics
       interval: 30s
       scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: cluster-101

@@ -1,0 +1,9 @@
+---
+# Replaces ceph-only.yml's lae.proxmox ceph.yml import.
+- name: Bootstrap Ceph cluster (mon/mgr)
+  hosts: cluster
+  become: true
+  gather_facts: true
+
+  roles:
+    - ceph_cluster_init

@@ -146,6 +146,18 @@ variable "system_extensions" {
   default     = []
 }
 
+variable "talos_logging" {
+  description = "Talos machine and kernel log forwarding configuration."
+  type = object({
+    enabled         = optional(bool, false)
+    endpoint        = optional(string, "tcp://127.0.0.1:1514")
+    kernel_endpoint = optional(string)
+  })
+  default = {
+    enabled = false
+  }
+}
+
 variable "install_disk" {
   description = "Disk to install Talos on"
   type        = string
@@ -349,4 +361,35 @@ variable "use_vip" {
   description = "Configure a control plane VIP on control plane nodes. Disable for single-node clusters that use the node IP as the endpoint."
   type        = bool
   default     = true
+}
+
+variable "kube_vip_bgp_anycast" {
+  description = "Optional kube-vip BGP anycast static pod for the control-plane API VIP. Peers to local bird2 by default so upstream PVE FRR keeps a single BGP adjacency per Talos node."
+  type = object({
+    enabled                                = optional(bool, false)
+    image                                  = optional(string, "ghcr.io/kube-vip/kube-vip:v1.1.2")
+    vip                                    = optional(string)
+    interface                              = optional(string, "lo")
+    vip_subnet                             = optional(string, "128")
+    local_asn                              = optional(number)
+    peer_address                           = optional(string)
+    peer_asn                               = optional(number)
+    source_ip                              = optional(string)
+    router_id_ipv4                         = optional(string)
+    bgp_multihop                           = optional(bool, false)
+    port                                   = optional(number, 6443)
+    log_level                              = optional(string, "4")
+    k8s_config_file                        = optional(string, "/etc/kubernetes/kubeconfig-kubelet")
+    kubernetes_address                     = optional(string, "https://127.0.0.1:7445")
+    health_check_address                   = optional(string, "https://localhost:6443/livez")
+    health_check_ca_path                   = optional(string, "/etc/kubernetes/pki/ca.crt")
+    health_check_period_seconds            = optional(number, 5)
+    health_check_timeout_seconds           = optional(number, 3)
+    health_check_failure_threshold         = optional(number, 3)
+    prometheus_server                      = optional(string, "")
+    enable_services                        = optional(bool, false)
+    enable_leader_election                 = optional(bool, false)
+    use_global_scope_when_binding_loopback = optional(bool, true)
+  })
+  default = {}
 }

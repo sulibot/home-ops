@@ -1,0 +1,9 @@
+---
+# Replaces pve-accounts.yml's lae.proxmox accounts.yml import.
+- name: Configure Proxmox RBAC accounts
+  hosts: pve
+  become: true
+  gather_facts: false
+
+  roles:
+    - pve_accounts

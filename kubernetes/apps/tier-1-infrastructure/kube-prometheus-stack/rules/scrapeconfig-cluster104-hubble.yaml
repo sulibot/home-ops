@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: cluster-104-hubble-metrics
+  namespace: observability
+spec:
+  metricsPath: /metrics
+  scheme: HTTPS
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  staticConfigs:
+    - targets:
+        - hubble-104.sulibot.com:443
+      labels:
+        cluster: cluster-104
+        namespace: kube-system
+        service: hubble-metrics
+  tlsConfig:
+    serverName: hubble-104.sulibot.com

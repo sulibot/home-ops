@@ -12,6 +12,7 @@ metadata:
     cnpg.io/cluster: postgres-vectorchord
 spec:
   schedule: "15 4 * * *"
+  suspend: true
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

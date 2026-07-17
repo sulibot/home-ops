@@ -1,0 +1,43 @@
+---
+# Single source of truth for values Terraform already computes, so they
+# can't drift from terraform/infra/live/common/network-infrastructure.hcl
+# the way they did before the 2026-07-12 FRR power-event incident. Both
+# files are plain generated/authored data - no wrapper script involved.
+#
+# network_facts: written by `local_file.ansible_network_facts` in
+#   network-infrastructure.hcl (BGP ASN, SDN MTU/VNI/zone, RouterOS loopbacks)
+# site_facts: written by scripts/sync-site-facts.sh from site.yaml (domain,
+#   DNS, NTP, per-node mgmt IPs)
+network_facts: "{{ lookup('file', playbook_dir ~ '/../../network-facts.json') | from_json }}"
+site_facts: "{{ lookup('file', playbook_dir ~ '/../../../site.json') | from_json }}"
+
+# NTP servers for chrony - sourced from site_facts, previously hand-typed
+# here (and differently again in pve.yml) with values that had already
+# drifted from both each other and site.json.
+ntp_servers: "{{ site_facts.ntp_servers }}"
+
+# Path to your chrony config (only used if you template it)
+chrony_config_path: /etc/chrony/chrony.conf
+
+# Enable ZFS periodic TRIM in your sysctl role (if you add one)
+zfs_trim_enabled: true
+
+# Public SSH keys to deploy to root@ each PVE host
+ssh_public_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILS7qW4IWbXx+9hk1A59X8vTtj5gCiEglr+cKNA+gRe5 sulibot@gmail.com
+
+# Timezone for all hosts
+timezone: UTC
+
+# VM swappiness tuning
+vm_swappiness: 10
+
+# Log-forwarding target for PVE/Ceph host journals. This is the Cilium
+# LoadBalancer VIP for observability/fluent-bit-infra.
+log_forwarding_target: "10.101.250.125"
+log_forwarding_port: 2514
+log_forwarding_protocol: tcp
+
+# (optional) any overrides for the community post-install script
+#post_pve_install_url: "https://…/post-pve-install.sh"
+#post_pve_install_dest: "/usr/local/bin/post-pve-install.sh"

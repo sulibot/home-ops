@@ -1,0 +1,19 @@
+---
+- name: Install rsyslog
+  apt:
+    name: rsyslog
+    state: present
+
+- name: Deploy log forwarding config
+  template:
+    src: 50-log-relay.conf.j2
+    dest: /etc/rsyslog.d/50-homeops-forward.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+    enabled: true

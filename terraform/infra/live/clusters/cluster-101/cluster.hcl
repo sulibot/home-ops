@@ -7,12 +7,30 @@
 locals {
   # ── Cluster contract (required by clusters/_shared/units templates) ────────
   enabled             = true
-  cluster_name        = "sol" # Human-readable cluster name
-  cluster_id          = 101   # Canonical cluster identity: state paths, output dirs, naming
-  tenant_id           = 101   # Network tenancy: 10.<tenant>.x.x / fd00:<tenant>:: / vnet<tenant> (equals cluster_id unless segments ever diverge)
+  cluster_name        = "sol"          # Human-readable cluster name
+  cluster_id          = 101            # Canonical cluster identity: state paths, output dirs, naming
+  tenant_id           = 101            # Network tenancy: 10.<tenant>.x.x / fd00:<tenant>:: / vnet<tenant> (equals cluster_id unless segments ever diverge)
   bootstrap_node_ipv4 = "10.101.0.11"  # First control-plane node; used by kubeconfig/talosconfig refresh hooks
   kubernetes_api_host = "fd00:101::10" # API endpoint host controllers pin to (VIP on VM clusters, node IP on metal)
   talos_apply_mode    = "staged_if_needing_reboot"
+
+  # ENG-14: candidate kube-vip BGP anycast replacement for the fragile Talos
+  # floating VIP. The native Talos VIP remains enabled for the proof phase;
+  # do not remove it until pve01/pve02/pve03 all prefer their local CP route
+  # and the normal kubeconfig path is verified.
+  kube_vip_bgp_anycast = {
+    enabled              = true
+    vip                  = "fd00:101::10"
+    image                = "ghcr.io/kube-vip/kube-vip:v1.1.2"
+    interface            = "lo"
+    health_check_address = "https://localhost:6443/livez"
+    health_check_ca_path = "/etc/kubernetes/pki/ca.crt"
+  }
+
+  talos_logging = {
+    enabled  = true
+    endpoint = "tcp://127.0.0.1:1514"
+  }
 
   # ── VM-platform sizing (consumed by the compute provisioning unit) ─────────
   controlplanes = 3

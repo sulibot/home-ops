@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluent-bit-infra
+  annotations:
+    lbipam.cilium.io/ips: fd00:101:250::125,10.101.250.125
+  labels:
+    app.kubernetes.io/name: fluent-bit-infra
+    advertise: loadbalancer
+    bgp-advertise: "true"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
+  selector:
+    app.kubernetes.io/name: fluent-bit-infra
+  ports:
+    - name: syslog-tcp
+      port: 2514
+      targetPort: syslog-tcp
+      protocol: TCP
+    - name: metrics
+      port: 2021
+      targetPort: metrics
+      protocol: TCP

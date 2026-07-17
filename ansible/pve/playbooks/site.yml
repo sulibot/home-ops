@@ -1,0 +1,25 @@
+---
+# End-to-end PVE cluster build from a freshly PXE-imaged Debian box, in
+# order. Run individual numbered playbooks directly for day-2 changes to a
+# single stage (e.g. `ansible-playbook playbooks/21-frr.yml`) instead of
+# re-running the whole sequence.
+#
+# Not included here:
+#   - 24-perl-plugin.yml (role perl_plugin): retired entirely - patched
+#     Proxmox's own stock SDN BGP controller Perl files, which is hard to
+#     keep track of and was also found to target an older pve-network
+#     internal data model than current stock. See
+#     ansible/_archive/perl_plugin-retired/README.md before reviving.
+#   - 23-vnet-gua.yml / 30-proxmox-oidc.yml / 50-pve-accounts.yml: retired,
+#     redundant with already-live Terraform
+#     (terraform/infra/live/common/0-sdn-setup, .../proxmox-realms,
+#     .../proxmox-access) - see
+#     ansible/_archive/terraform-managed-redundant/README.md.
+- import_playbook: 00-bootstrap-repos.yml
+- import_playbook: 01-disk-prep.yml
+- import_playbook: 10-host-baseline.yml
+- import_playbook: 20-network.yml
+- import_playbook: 21-frr.yml
+- import_playbook: 22-firewall.yml
+- import_playbook: 40-ceph-init.yml
+- import_playbook: 41-ceph-osd.yml

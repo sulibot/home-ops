@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluent-bit-events
+  labels:
+    app.kubernetes.io/name: fluent-bit-events
+spec:
+  selector:
+    app.kubernetes.io/name: fluent-bit-events
+  ports:
+    - name: metrics
+      port: 2022
+      targetPort: metrics
+      protocol: TCP

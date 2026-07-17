@@ -876,8 +876,9 @@ data:
         },
         {
           "id": 23,
-          "type": "timeseries",
-          "title": "Beyla Authentik/Plex RED",
+          "type": "table",
+          "title": "All Services RED (Beyla)",
+          "description": "One row per Beyla-instrumented service: request rate, 5xx ratio, p95 latency over the last 5m. Sorted worst error ratio first.",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -890,76 +891,164 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\"}[5m])) or vector(0)",
+              "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))",
               "refId": "A",
-              "legendFormat": "rps {{service_name}}"
+              "instant": true,
+              "range": false,
+              "format": "table"
             },
             {
-              "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"authentik|plex\",http_response_status_code=~\"5..\"}[5m])) or vector(0)",
+              "expr": "(sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m])) or 0 * sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))) / sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))",
               "refId": "B",
-              "legendFormat": "5xx {{service_name}}"
+              "instant": true,
+              "range": false,
+              "format": "table"
             },
             {
-              "expr": "histogram_quantile(0.95, sum by (le,service_name) (rate(http_server_request_duration_seconds_bucket{service_name=~\"authentik|plex\"}[5m]))) or vector(0)",
+              "expr": "histogram_quantile(0.95, sum by (le,service_name) (rate(http_server_request_duration_seconds_bucket[5m])))",
               "refId": "C",
-              "legendFormat": "p95 {{service_name}}"
+              "instant": true,
+              "range": false,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "service_name": "Service",
+                  "Value #A": "req/s",
+                  "Value #B": "5xx ratio",
+                  "Value #C": "p95"
+                }
+              }
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              }
+              "unit": "short",
+              "decimals": 2
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "req/s"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "reqps"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "5xx ratio"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background",
+                      "mode": "basic"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.01
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.05
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "p95"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background",
+                      "mode": "basic"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.5
+                        },
+                        {
+                          "color": "red",
+                          "value": 2
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull",
-                "max"
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
               ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
+              "show": false
             },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          }
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "5xx ratio",
+                "desc": true
+              }
+            ]
+          },
+          "pluginVersion": "11.5.0"
         },
         {
           "id": 30,

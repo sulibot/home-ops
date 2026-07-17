@@ -1,0 +1,137 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: datastore-rules
+  namespace: observability
+spec:
+  groups:
+    - name: datastores.valkey
+      interval: 1m
+      rules:
+        - alert: ValkeyExporterTargetDown
+          expr: |
+            up{namespace="default",job="valkey-metrics"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            component: valkey
+          annotations:
+            summary: "Valkey metrics target {{ $labels.pod }} is down"
+            description: |
+              Prometheus cannot scrape the Valkey exporter for {{ $labels.pod }}.
+              Check the valkey-metrics Service, exporter sidecar, and NetworkPolicy before trusting cache health.
+
+        - alert: ValkeyHealthyNodeCountLow
+          expr: |
+            sum(redis_up{namespace="default",service="valkey-metrics"} == 1) < 3
+          for: 5m
+          labels:
+            severity: critical
+            component: valkey
+          annotations:
+            summary: "Fewer than 3 Valkey nodes are healthy"
+            description: |
+              The shared Valkey cluster should have three responding nodes. A reduced node count can break
+              Sentinel quorum and affect Authentik, Immich, Paperless, Vikunja, Twenty, and other cache clients.
+
+        - alert: ValkeyReplicaLinkDown
+          expr: |
+            redis_master_link_up{namespace="default",service="valkey-metrics"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            component: valkey
+          annotations:
+            summary: "Valkey replica {{ $labels.pod }} lost its primary link"
+            description: |
+              A Valkey replica reports its primary replication link down. Check Sentinel state, pod placement,
+              and Cilium/Hubble flows between Valkey pods.
+
+        - alert: ValkeyRejectedConnections
+          expr: |
+            increase(redis_rejected_connections_total{namespace="default",service="valkey-metrics"}[5m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+            component: valkey
+          annotations:
+            summary: "Valkey is rejecting client connections"
+            description: |
+              Valkey rejected connections in the last five minutes. Check maxclients, client churn,
+              and application retry storms.
+
+        - alert: ValkeyMemoryPressure
+          expr: |
+            redis_memory_max_bytes{namespace="default",service="valkey-metrics"} > 0
+            and
+            (
+              redis_memory_used_bytes{namespace="default",service="valkey-metrics"}
+              /
+              redis_memory_max_bytes{namespace="default",service="valkey-metrics"}
+            ) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            component: valkey
+          annotations:
+            summary: "Valkey memory usage above 85% of configured maxmemory"
+            description: |
+              Valkey memory is near its configured limit. Check key growth, eviction policy, and cache users
+              before application latency or rejected writes appear.
+
+    - name: datastores.postgres
+      interval: 1m
+      rules:
+        - alert: PostgresVectorchordPodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="default",pod=~"postgres-vectorchord-[0-9]+",condition="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: postgres-vectorchord
+          annotations:
+            summary: "Postgres vectorchord pod {{ $labels.pod }} is not ready"
+            description: |
+              The shared CNPG/Postgres vectorchord instance is not ready. This affects every app using
+              postgres-vectorchord-rw, including Authentik, Immich, Firefly, Paperless, Vikunja, n8n, and media apps.
+
+        - alert: PostgresVectorchordMetricsMissing
+          expr: |
+            absent(up{namespace="default",pod=~"postgres-vectorchord-[0-9]+",job="default/postgres-vectorchord"})
+          for: 10m
+          labels:
+            severity: warning
+            component: postgres-vectorchord
+          annotations:
+            summary: "Postgres vectorchord metrics are missing"
+            description: |
+              Prometheus is not scraping the postgres-vectorchord instance metrics. Check PodMonitor/default/postgres-vectorchord
+              and the Postgres pod metrics port before relying on database dashboards or alerts.
+
+        - alert: PostgresVectorchordArchiverFailures
+          expr: |
+            increase(cnpg_pg_stat_archiver_failed_count{namespace="default",pod=~"postgres-vectorchord-[0-9]+"}[15m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: postgres-vectorchord
+          annotations:
+            summary: "Postgres vectorchord WAL archiver failures detected"
+            description: |
+              WAL archiving failed in the last 15 minutes. Check the CNPG barman-cloud plugin, MinIO endpoint,
+              cnpg-barman-s3 secret, and recent backup events before PITR coverage is lost.
+
+        - alert: PostgresVectorchordExporterCollectionErrors
+          expr: |
+            increase(cnpg_collector_collection_errors_total{namespace="default",pod=~"postgres-vectorchord-[0-9]+"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: postgres-vectorchord
+          annotations:
+            summary: "Postgres vectorchord metrics collection errors"
+            description: |
+              The CNPG metrics collector is reporting collection errors. Database health may still be good,
+              but dashboards and alerts may be incomplete.

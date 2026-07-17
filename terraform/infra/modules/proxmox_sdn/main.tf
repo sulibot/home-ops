@@ -123,7 +123,7 @@ resource "null_resource" "ansible_reminder_trigger" {
       echo ""
       echo "Run the following commands from your terminal:"
       echo ""
-      echo "cd $(git rev-parse --show-toplevel)/ansible/lae.proxmox && ansible-playbook -i inventory/hosts.ini playbooks/stage2-configure-frr.yml"
+      echo "cd $(git rev-parse --show-toplevel)/ansible/pve && ansible-playbook playbooks/21-frr.yml"
       echo ""
       echo "--------------------------------------------------------------------------------"
     EOT

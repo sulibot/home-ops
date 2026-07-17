@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: hubble-metrics
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble-metrics
+    app.kubernetes.io/part-of: cluster-104
+spec:
+  hostnames:
+    - hubble-104.sulibot.com
+  parentRefs:
+    - name: gateway-internal
+      namespace: network
+  rules:
+    - backendRefs:
+        - name: hubble-metrics
+          port: 9965

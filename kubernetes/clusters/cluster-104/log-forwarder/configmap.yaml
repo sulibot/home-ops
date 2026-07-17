@@ -1,0 +1,189 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-104-log-forwarder
+  namespace: log-forwarding
+data:
+  containers.conf: |
+    [SERVICE]
+      Daemon Off
+      Flush 1
+      Log_Level warn
+      Parsers_File /fluent-bit/etc/parsers.conf
+      Parsers_File /fluent-bit/etc/custom_parsers.conf
+      HTTP_Server On
+      HTTP_Listen 0.0.0.0
+      HTTP_Port 2020
+      Health_Check On
+      storage.path /var/log/fluent-bit-cluster104-buffers/
+      storage.sync normal
+      storage.checksum off
+      storage.max_chunks_up 64
+      storage.backlog.mem_limit 32M
+
+    [INPUT]
+      Name tail
+      Alias kubernetes
+      Path /var/log/containers/*.log
+      Exclude_Path /var/log/containers/*_log-forwarding_cluster-104-log-forwarder-*.log
+      Parser containerd
+      Tag kubernetes.*
+      DB /var/log/fluent-bit-cluster104-state/fluent-bit.db
+      DB.Sync normal
+      Mem_Buf_Limit 32MB
+      storage.pause_on_chunks_overlimit on
+      Skip_Empty_Lines On
+      Skip_Long_Lines On
+      storage.type filesystem
+
+    [FILTER]
+      Name kubernetes
+      Match kubernetes.*
+      Merge_Log On
+      Kube_Tag_Prefix kubernetes.var.log.containers.
+      K8S-Logging.Parser On
+      K8S-Logging.Exclude On
+      Namespace_Labels Off
+      Annotations Off
+
+    [FILTER]
+      Name nest
+      Match kubernetes.*
+      Operation lift
+      Nested_under kubernetes
+      Add_prefix k_
+
+    [FILTER]
+      Name nest
+      Match kubernetes.*
+      Operation lift
+      Nested_under k_labels
+      Add_prefix k_labels_
+
+    [FILTER]
+      Name modify
+      Match kubernetes.*
+      Rename k_labels_app.kubernetes.io/name app
+      Rename k_labels_app app
+      Rename k_labels_k8s-app app
+      Copy k_container_name container
+      Copy k_node_name node
+      Copy k_namespace_name namespace
+      Copy k_pod_name pod
+      Set cluster cluster-104
+      Set stream_class app
+
+    [FILTER]
+      Name modify
+      Match kubernetes.*
+      Condition Key_does_not_exist app
+      Copy k_container_name app
+
+    [FILTER]
+      Name grep
+      Match kubernetes.*
+      Regex app ^(home-assistant|music-assistant|matter-server|otbr|cloudflare-tunnel|external-dns|gatus-observer)$
+
+    [FILTER]
+      Name grep
+      Match kubernetes.*
+      Exclude log (?i)\b(debug|trace)\b
+
+    [OUTPUT]
+      Name loki
+      Match kubernetes.*
+      Host loki.sulibot.com
+      Port 443
+      TLS On
+      label_keys $cluster,$namespace,$app,$stream_class
+      labels job=fluentbit-cluster104
+      line_format json
+      compress gzip
+      workers 1
+      storage.total_limit_size 256M
+      retry_limit false
+
+  events.conf: |
+    [SERVICE]
+      Daemon Off
+      Flush 1
+      Log_Level warn
+      HTTP_Server On
+      HTTP_Listen 0.0.0.0
+      HTTP_Port 2021
+      Health_Check On
+      storage.path /var/lib/fluent-bit-cluster104-events/buffers/
+      storage.sync normal
+      storage.checksum off
+      storage.max_chunks_up 32
+      storage.backlog.mem_limit 16M
+
+    [INPUT]
+      Name kubernetes_events
+      Alias kubernetes-events
+      Tag kubernetes.event
+      kube_url https://kubernetes.default.svc
+      kube_retention_time 1h
+      db /var/lib/fluent-bit-cluster104-events/events.db
+      db.journal_mode DELETE
+      db.sync normal
+      storage.type filesystem
+
+    [FILTER]
+      Name lua
+      Match kubernetes.event
+      Script /fluent-bit/scripts/kubernetes_event_labels.lua
+      Call kubernetes_event_labels
+
+    [OUTPUT]
+      Name loki
+      Match kubernetes.event
+      Host loki.sulibot.com
+      Port 443
+      TLS On
+      label_keys $cluster,$stream_class,$app,$event_namespace,$involved_kind,$involved_namespace,$event_reason,$event_type
+      labels job=fluentbit-cluster104-events
+      line_format json
+      compress gzip
+      workers 1
+      storage.total_limit_size 128M
+      retry_limit false
+
+  custom_parsers.conf: |
+    [PARSER]
+      Name containerd
+      Format regex
+      Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<log>.*)$
+      Time_Key time
+      Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+
+  kubernetes_event_labels.lua: |
+    function kubernetes_event_labels(tag, timestamp, record)
+      local metadata = record["metadata"] or {}
+      local involved = record["involvedObject"] or record["regarding"] or {}
+      local event_namespace = metadata["namespace"] or involved["namespace"] or "cluster"
+      local involved_kind = involved["kind"] or ""
+      local involved_namespace = involved["namespace"] or event_namespace
+      local involved_name = involved["name"] or ""
+      local reason = record["reason"] or ""
+      local event_type = record["type"] or record["eventType"] or ""
+      local message = record["message"] or record["note"] or ""
+
+      record["cluster"] = "cluster-104"
+      record["stream_class"] = "event"
+      record["app"] = "kubernetes-event"
+      record["event_namespace"] = event_namespace
+      record["event_uid"] = metadata["uid"] or ""
+      record["involved_kind"] = involved_kind
+      record["involved_namespace"] = involved_namespace
+      record["involved_name"] = involved_name
+      record["event_reason"] = reason
+      record["event_type"] = event_type
+
+      if record["log"] == nil then
+        record["log"] = string.format("%s %s/%s %s: %s", involved_kind, involved_namespace, involved_name, reason, message)
+      end
+
+      return 1, timestamp, record
+    end

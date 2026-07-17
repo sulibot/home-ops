@@ -1,0 +1,9 @@
+---
+# Install with: ansible-galaxy collection install -r requirements.yml
+# Collections are no longer vendored in git (see ansible/_archive/lae.proxmox-legacy).
+collections:
+  - name: community.general
+  - name: community.routeros
+  - name: ansible.netcommon
+  - name: community.proxmox
+    version: ">=1.6.0"  # 1.4.0 (bundled with some ansible-core distributions) lacks proxmox_role

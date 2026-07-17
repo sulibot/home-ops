@@ -1,0 +1,19 @@
+---
+- name: Host baseline configuration
+  hosts: pve
+  become: true
+
+  roles:
+    - common       # chrony, base OS tuning
+    - sysctl       # kernel parameters & forwarding
+    - ssh_config   # PermitRootLogin, authorized_keys
+    - journald     # persistent logs
+    - fstrim       # periodic fstrim
+    - swappiness   # vm.swappiness tuning
+    - ssh_keys     # distribute root SSH keys
+    - host_limits  # /etc/security limits
+    - snmpd        # optional
+    - node_exporter # host metrics and storage-error textfile collector
+    - log_forwarding # PVE/Ceph host logs to Loki receiver
+    # - disk_wipe      # optional - deliberately not run by default
+    # - fail2ban       # optional

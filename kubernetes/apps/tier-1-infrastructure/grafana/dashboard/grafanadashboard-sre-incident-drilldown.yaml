@@ -15,7 +15,7 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
     - datasourceName: loki
-      inputName: DS_VICTORIA_LOGS
+      inputName: DS_LOKI
   configMapRef:
     name: sre-incident-drilldown-dashboard
     key: sre-incident-drilldown.json

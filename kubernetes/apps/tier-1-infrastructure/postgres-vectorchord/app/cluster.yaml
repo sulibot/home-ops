@@ -13,7 +13,10 @@ spec:
   instances: 1
   imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
   monitoring:
-    enablePodMonitor: true
+    # CNPG's generated PodMonitor path is deprecated. Keep the scrape resource
+    # repo-owned in podmonitor.yaml so Prometheus coverage does not depend on
+    # operator side effects.
+    enablePodMonitor: false
 
   # Increase delays for IPv6 networking latency
   startDelay: 30

@@ -8,4 +8,5 @@ resources:
   - cilium-gatewayclassconfig.yaml
   - gateway-internal.yaml
   - gateway-tunnel.yaml
+  - hubble-metrics-route.yaml
   - home-assistant-routes.yaml

@@ -1,0 +1,7 @@
+---
+- name: Configure FRR routing on Proxmox hosts
+  hosts: pve
+  become: true
+
+  roles:
+    - frr

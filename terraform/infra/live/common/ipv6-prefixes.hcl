@@ -3,8 +3,12 @@
 # and mapped to corresponding Proxmox SDN VNets
 #
 # When AT&T changes these prefixes, update this file and redeploy via:
-#   cd ansible/lae.proxmox
-#   ansible-playbook -i inventory/hosts.ini playbooks/configure-ipv6-gua.yml
+#   cd terraform/infra/live/common/0-sdn-setup && terragrunt apply
+#
+# (Previously required a manual ansible step - the old vnet_gua ansible
+# role/playbook that used to apply these GUA subnets to Proxmox SDN was
+# retired as redundant with the proxmox_sdn_subnet "gua_subnets" resource
+# in 0-sdn-setup; see ansible/_archive/terraform-managed-redundant/README.md.)
 
 locals {
   # AT&T delegated prefixes (current as of 2025-12-16)

@@ -21,6 +21,7 @@ data:
     CA_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     PORT = int(os.environ.get("PORT", "9808"))
     CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "30"))
+    STATIC_INVENTORY_PATH = os.environ.get("STATIC_INVENTORY_PATH", "/app/static_inventory.json")
 
     cache = {
         "expires": 0,
@@ -35,6 +36,18 @@ data:
     def metric(name, labels, value=1):
         label_text = ",".join(f'{k}="{prom_escape(v)}"' for k, v in sorted(labels.items()))
         return f"{name}{{{label_text}}} {value}"
+
+    def label_bool(value):
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return value
+
+    def load_static_inventory():
+        try:
+            with open(STATIC_INVENTORY_PATH, "r", encoding="utf-8") as inventory_file:
+                return json.load(inventory_file)
+        except FileNotFoundError:
+            return {}
 
     def kube_get(path):
         with open(TOKEN_PATH, "r", encoding="utf-8") as token_file:
@@ -128,12 +141,39 @@ data:
             "# TYPE homeops_kube_pv_ceph_info gauge",
             "# HELP homeops_kube_node_vm_info Kubernetes node to Proxmox placement hint mapping.",
             "# TYPE homeops_kube_node_vm_info gauge",
+            "# HELP homeops_pve_host_info Static Proxmox host inventory mapping.",
+            "# TYPE homeops_pve_host_info gauge",
+            "# HELP homeops_ceph_osd_device_info Static Ceph OSD to physical and DB device mapping.",
+            "# TYPE homeops_ceph_osd_device_info gauge",
         ]
 
+        static_inventory = load_static_inventory()
         pods = kube_get("/api/v1/pods").get("items", [])
         pvcs = kube_get("/api/v1/persistentvolumeclaims").get("items", [])
         pvs = kube_get("/api/v1/persistentvolumes").get("items", [])
         nodes = kube_get("/api/v1/nodes").get("items", [])
+
+        for host in static_inventory.get("pve_hosts", []):
+            lines.append(metric("homeops_pve_host_info", {
+                "pve_node": host.get("pve_node", ""),
+                "service_ipv6": host.get("service_ipv6", ""),
+                "syslog_target": host.get("syslog_target", ""),
+            }))
+
+        ceph_cluster = static_inventory.get("ceph_cluster", "proxmox")
+        for osd in static_inventory.get("ceph_osds", []):
+            osd_id = str(osd.get("osd_id", ""))
+            lines.append(metric("homeops_ceph_osd_device_info", {
+                "ceph_cluster": ceph_cluster,
+                "ceph_daemon": f"osd.{osd_id}",
+                "osd_id": osd_id,
+                "pve_node": osd.get("pve_node", ""),
+                "device_class": osd.get("class", ""),
+                "data_device": osd.get("data_device", ""),
+                "db_device": osd.get("db_device", ""),
+                "drive_bucket": osd.get("drive_bucket", ""),
+                "expected_bluefs_db": label_bool(osd.get("expected_bluefs_db", "")),
+            }))
 
         for node in nodes:
             node_name, pve_node, vmid = node_placement(node)
@@ -229,3 +269,212 @@ data:
     if __name__ == "__main__":
         server = IPv6HTTPServer(("::", PORT), Handler)
         server.serve_forever()
+  static_inventory.json: |
+    {
+      "ceph_cluster": "proxmox",
+      "pve_hosts": [
+        {
+          "pve_node": "pve01",
+          "service_ipv6": "fd00:10::1",
+          "syslog_target": "10.101.250.125:2514"
+        },
+        {
+          "pve_node": "pve02",
+          "service_ipv6": "fd00:10::2",
+          "syslog_target": "10.101.250.125:2514"
+        },
+        {
+          "pve_node": "pve03",
+          "service_ipv6": "fd00:10::3",
+          "syslog_target": "10.101.250.125:2514"
+        }
+      ],
+      "ceph_osds": [
+        {
+          "osd_id": 0,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D36004PX-part1",
+          "db_device": "/dev/ceph-db-vg/osd0-db",
+          "class": "nvme",
+          "expected_bluefs_db": false
+        },
+        {
+          "osd_id": 1,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86a05f5-part1",
+          "db_device": "/dev/ceph-db-vg/osd1-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 2,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86a05f5-part2",
+          "db_device": "/dev/ceph-db-vg/osd2-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 3,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac6ff-part1",
+          "db_device": "/dev/ceph-db-vg/osd3-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 4,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac6ff-part2",
+          "db_device": "/dev/ceph-db-vg/osd4-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 5,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86a1e37-part1",
+          "db_device": "/dev/ceph-db-vg/osd5-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-3",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 6,
+          "pve_node": "pve01",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86a1e37-part2",
+          "db_device": "/dev/ceph-db-vg/osd6-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve01-3",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 7,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/nvme-Seagate_ZP2000GM30073_D360062P-part1",
+          "db_device": "/dev/ceph-db-vg/osd7-db",
+          "class": "nvme",
+          "expected_bluefs_db": false
+        },
+        {
+          "osd_id": 8,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ab1ca-part1",
+          "db_device": "/dev/ceph-db-vg/osd8-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 9,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ab1ca-part2",
+          "db_device": "/dev/ceph-db-vg/osd9-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 10,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac122-part1",
+          "db_device": "/dev/ceph-db-vg/osd10-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 11,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac122-part2",
+          "db_device": "/dev/ceph-db-vg/osd11-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 12,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac38f-part1",
+          "db_device": "/dev/ceph-db-vg/osd12-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-3",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 13,
+          "pve_node": "pve02",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ac38f-part2",
+          "db_device": "/dev/ceph-db-vg/osd13-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve02-3",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 14,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_2TB_S59CNZFNB11046K-part1",
+          "db_device": "/dev/ceph-db-vg/osd14-db",
+          "class": "nvme",
+          "expected_bluefs_db": false
+        },
+        {
+          "osd_id": 15,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e8685467-part1",
+          "db_device": "/dev/ceph-db-vg/osd15-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 16,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e8685467-part2",
+          "db_device": "/dev/ceph-db-vg/osd16-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-1",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 17,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e869e31a-part1",
+          "db_device": "/dev/ceph-db-vg/osd17-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 18,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e869e31a-part2",
+          "db_device": "/dev/ceph-db-vg/osd18-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-2",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 19,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ab39e-part1",
+          "db_device": "/dev/ceph-db-vg/osd19-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-3",
+          "expected_bluefs_db": true
+        },
+        {
+          "osd_id": 20,
+          "pve_node": "pve03",
+          "data_device": "/dev/disk/by-id/wwn-0x5000c500e86ab39e-part2",
+          "db_device": "/dev/ceph-db-vg/osd20-db",
+          "class": "hdd",
+          "drive_bucket": "drive-pve03-3",
+          "expected_bluefs_db": true
+        }
+      ]
+    }

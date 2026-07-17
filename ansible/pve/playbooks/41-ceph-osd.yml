@@ -1,0 +1,9 @@
+---
+- name: Provision Ceph OSDs and CephFS
+  hosts: cluster
+  become: true
+
+  roles:
+    - ceph_layout_validate
+    - ceph_osd_create
+    - cephfs_from_pools
