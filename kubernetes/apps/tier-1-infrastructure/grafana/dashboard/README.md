@@ -17,10 +17,28 @@ This directory contains repo-owned Grafana dashboards managed by the Grafana Ope
 | Dashboard | File | Purpose |
 |---|---|---|
 | SRE Executive Cluster Health | `sre-executive-dashboard-configmap.yaml` | Daily glance: safety, pressure, top IO, hardware red flags, active alerts, logs. |
-| SRE Workload Triage | `sre-workload-triage-dashboard-configmap.yaml` | First responder view: identify affected namespace/workload/node, then pivot into events, Hubble, logs, and infra telemetry. |
+| SRE Workload Triage | `sre-workload-triage-dashboard-configmap.yaml` | First responder view: all-services RED table (Beyla), then pivot into events, Hubble, logs, and infra telemetry. |
 | SRE Incident Drill-Down | `sre-incident-drilldown-configmap.yaml` | Active response: write IO versus recovery, Ceph safety, top pods/VMs/disks, alerts, logs. |
 | SRE Home Control Health | `home-control-dashboard-configmap.yaml` | Home Assistant, Music Assistant, cluster-104 Hubble flows, and related logs/events. |
 | Loki Logs Explorer | `loki-logs-explorer-dashboard-configmap.yaml` | Curated Loki entry points for events, infrastructure logs, workload logs, and cross-cluster log streams. |
+
+## Imported Dashboards (component detail)
+
+Kept deliberately small. Each import lives next to the component that owns it.
+
+| Folder | Boards | Owner dir |
+|---|---|---|
+| cluster | kubernetes-api-server, kubernetes-coredns, kubernetes-global, kubernetes-nodes, kubernetes-pods, kubernetes-volumes, node-exporter-full | `kube-prometheus-stack/app/` |
+| network | hubble, cloudflare-tunnels | `cilium-observability/app/`, `cloudflare-tunnel/app/` |
+| storage | ceph-clusters-overview, smartctl-exporter | `proxmox-observability/app/`, `smartctl-exporter/app/` |
+| virtualization | proxmox-via-prometheus | `proxmox-observability/app/` |
+| databases | valkey, cloudnative-pg | `valkey/app/`, `postgres-vectorchord/app/` |
+| platform | vpa-overview, volsync, keda | `grafana/app/`, `volsync/app/`, `keda/app/` |
+
+Removed (2026-07-17): `prometheus`, `grafana-operator`, `fluent-bit`, `spegel` (component
+self-monitoring that never answered an incident question), `kubernetes-namespaces`
+(fully overlapped by kubernetes-global + kubernetes-pods), `routeros-mikrotik`
+(SNMP targets are dead; restore only if snmp-exporter is fixed).
 
 ## Operator Workflow
 
@@ -47,11 +65,21 @@ Use dashboards as workflow steps, not as a wall of graphs:
 
 ## Current Live Gaps
 
+Updated 2026-07-17 (correlation-loop rollout):
+
+- Prometheus is stock `v3.11.0` (prompp fork removed) with `exemplar-storage`
+  and the OTLP receiver enabled.
+- Beyla instruments ~25 services; traces route through otel-collector to Tempo.
+  The workload-triage board has an all-services RED table.
+- Correlation wiring: Prometheus exemplars -> Tempo (`exemplarTraceIdDestinations`),
+  Tempo -> Loki via span-attribute/label tag join (`k8s.namespace.name`->`namespace`,
+  `service.name`->`app`). Trace IDs do NOT appear in log lines; the join is
+  label+time based until apps adopt OTel SDKs.
+
 Validated on 2026-07-15:
 
 - Grafana is healthy on `12.3.3`; Loki is healthy on `3.7.3`; this supports the Grafana Logs Drilldown app.
 - Loki has labels: `cluster`, `namespace`, `pod`, `service_name`, `stream`, `stream_class`, Kubernetes event labels, and `job`.
-- Beyla request metrics exist for `authentik` and `plex`.
 - Hubble metrics exist, including forwarded and dropped flows.
 - Valkey metrics exist through `redis_*` exporter metrics.
 - CloudNativePG metrics exist as `cnpg_*`; use those names rather than generic `postgres_*`.
