@@ -167,7 +167,7 @@ spec:
         [OUTPUT]
           name loki
           match kubernetes.*
-          host victoria-logs.observability.svc
+          host victoria-logs-victoria-logs-single-server.observability.svc
           port 9428
           uri /insert/loki/api/v1/push
           label_keys $namespace,$app,$stream_class

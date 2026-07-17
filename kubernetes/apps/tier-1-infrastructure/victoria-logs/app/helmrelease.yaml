@@ -19,11 +19,11 @@ spec:
       retries: 3
       strategy: rollback
   values:
-    global:
-      victoriaLogs:
-        server:
-          fullnameOverride: victoria-logs
     server:
+      # IPv6-only cluster: VictoriaMetrics products bind IPv4-only unless
+      # TCP6 is enabled; probes dial the pod's IPv6 and get refused otherwise.
+      extraArgs:
+        enableTCP6: "true"
       # Side-by-side trial next to Loki: fluent-bit dual-writes via the
       # Loki-compatible push endpoint (/insert/loki/api/v1/push). Evaluate
       # query speed + vmui ergonomics for two weeks, then keep one.
