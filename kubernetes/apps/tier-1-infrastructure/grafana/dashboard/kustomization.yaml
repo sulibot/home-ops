@@ -6,11 +6,21 @@ resources:
   - ../app/grafanadashboard.yaml
   - ./grafanadashboard-home-control.yaml
   - ./grafanadashboard-loki-logs-explorer.yaml
+  - ./grafanadashboard-sre-app-experience.yaml
   - ./grafanadashboard-sre-incident-drilldown.yaml
+  - ./grafanadashboard-sre-network-cni.yaml
+  - ./grafanadashboard-sre-pve-hardware.yaml
+  - ./grafanadashboard-sre-storage-ceph-pvc.yaml
   - ./grafanadashboard-sre-executive.yaml
+  - ./grafanadashboard-sre-telemetry-pipeline.yaml
   - ./grafanadashboard-sre-workload-triage.yaml
   - ./home-control-dashboard-configmap.yaml
   - ./loki-logs-explorer-dashboard-configmap.yaml
+  - ./sre-app-experience-dashboard-configmap.yaml
   - ./sre-incident-drilldown-configmap.yaml
+  - ./sre-network-cni-dashboard-configmap.yaml
+  - ./sre-pve-hardware-dashboard-configmap.yaml
+  - ./sre-storage-ceph-pvc-dashboard-configmap.yaml
   - ./sre-executive-dashboard-configmap.yaml
+  - ./sre-telemetry-pipeline-dashboard-configmap.yaml
   - ./sre-workload-triage-dashboard-configmap.yaml

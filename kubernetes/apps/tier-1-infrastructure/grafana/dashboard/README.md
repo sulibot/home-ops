@@ -21,6 +21,11 @@ This directory contains repo-owned Grafana dashboards managed by the Grafana Ope
 | SRE Incident Drill-Down | `sre-incident-drilldown-configmap.yaml` | Active response: write IO versus recovery, Ceph safety, top pods/VMs/disks, alerts, logs. |
 | SRE Home Control Health | `home-control-dashboard-configmap.yaml` | Home Assistant, Music Assistant, cluster-104 Hubble flows, and related logs/events. |
 | Loki Logs Explorer | `loki-logs-explorer-dashboard-configmap.yaml` | Curated Loki entry points for events, infrastructure logs, workload logs, and cross-cluster log streams. |
+| SRE Network and CNI Health | `sre-network-cni-dashboard-configmap.yaml` | Cilium/Hubble flow health, drops, API-service symptoms, waiting pods, and CNI logs. |
+| SRE Storage Ceph and PVC Health | `sre-storage-ceph-pvc-dashboard-configmap.yaml` | Ceph health, PG/OSD status, pool usage, CSI errors, PVC state, and storage logs. |
+| SRE PVE Hardware and Talos Signals | `sre-pve-hardware-dashboard-configmap.yaml` | Proxmox API, PVE guests, NVMe temperature/wear/errors, board sensors, and Talos host logs. |
+| SRE App Experience | `sre-app-experience-dashboard-configmap.yaml` | Gatus user-impact probes, Beyla RED, app logs, Valkey, and CloudNativePG. |
+| SRE LGTM Telemetry Pipeline | `sre-telemetry-pipeline-dashboard-configmap.yaml` | Prometheus, Loki, Tempo, Fluent Bit, Beyla, exemplars, target health, and observability logs. |
 
 ## Imported Dashboards (component detail)
 
@@ -49,8 +54,12 @@ Use dashboards as workflow steps, not as a wall of graphs:
 3. Use Kubernetes event panels to find recent scheduling, image, sandbox, PVC, and probe failures.
 4. Use Hubble flow/drop/DNS panels to distinguish app failure, DNS failure, policy drop, stale backend, and route failure.
 5. Use `Loki Logs Explorer`, Grafana Explore, or Grafana Logs Drilldown for container, proxy, event, host, Talos, Proxmox, and Ceph logs.
-6. Use `SRE Incident Drill-Down` when storage, Proxmox, Ceph, or host hardware might be the cause.
-7. Confirm recovery in Gatus, alerts, workload readiness, Hubble drops, and logs, then leave the trail in Linear/runbooks.
+6. Use `SRE Network and CNI Health` when the symptom is API-service timeout, Cilium/Multus churn, Hubble drops, DNS trouble, or a node-local blast radius.
+7. Use `SRE Storage Ceph and PVC Health` when pods are stuck in mount, attach, PVC, CephFS, RBD, or CSI states.
+8. Use `SRE PVE Hardware and Talos Signals` when VM host, NVMe temperature/wear, node sensors, Talos kubelet/CRI, or etcd logs might be causal.
+9. Use `SRE App Experience` for the daily-service view: Gatus user impact, Beyla RED, app logs, Valkey, and Postgres.
+10. Use `SRE LGTM Telemetry Pipeline` when the observability system itself looks suspect.
+11. Confirm recovery in Gatus, alerts, workload readiness, Hubble drops, and logs, then leave the trail in Linear/runbooks.
 
 ## Keep / Fix / Remove
 
@@ -71,10 +80,19 @@ Updated 2026-07-17 (correlation-loop rollout):
   and the OTLP receiver enabled.
 - Beyla instruments ~25 services; traces route through otel-collector to Tempo.
   The workload-triage board has an all-services RED table.
+- Repo-owned LGTM dashboard collections now cover the intended workflow set:
+  executive health, workload triage, logs explorer, network/CNI, storage/Ceph/PVC,
+  PVE/hardware/Talos, app experience, incident drill-down, and telemetry pipeline.
 - Correlation wiring: Prometheus exemplars -> Tempo (`exemplarTraceIdDestinations`),
   Tempo -> Loki via span-attribute/label tag join (`k8s.namespace.name`->`namespace`,
   `service.name`->`app`). Trace IDs do NOT appear in log lines; the join is
   label+time based until apps adopt OTel SDKs.
+- Live validation found Prometheus metrics for Beyla (`http_server_*`), Hubble
+  (`hubble_*`), Ceph (`ceph_*`), CSI (`csi_operations_seconds_*`), Proxmox API
+  (`pve_*`), Proxmox node/NVMe hardware (`node_hwmon_*`, `nvme_*`), Valkey
+  (`redis_*`), CloudNativePG (`cnpg_*`), Gatus (`gatus_*`), Loki (`loki_*`),
+  Tempo (`tempo_*`), Fluent Bit (`fluentbit_*`), and exemplars
+  (`prometheus_tsdb_exemplar_*`).
 
 Validated on 2026-07-15:
 
@@ -86,8 +104,9 @@ Validated on 2026-07-15:
 - Gatus now uses curated repo-owned checks only. The noisy sidecar auto-discovery
   path was removed after it produced stale root-path checks for API-only
   services such as Loki.
-- Proxmox API scrape targets return HTTP 500 from `pve-exporter`.
-- Ceph MGR targets on `fd00:10::1-3:9283` refuse connections.
+- Proxmox API and Ceph MGR metric names are present in Prometheus. Treat gaps
+  as target-level degradation if `pve_up`, `up{job="ceph-mgr-targets"}`, or
+  the target health panels show failures.
 - SNMP exporter targets time out for the configured APC/Dell/RouterOS endpoints.
 - Alertmanager Pushover notifications fail until `PUSHOVER_ALERTMGR` is populated with a valid application token in the shared `pushover` 1Password item.
 - Alertmanager email notification was failing because it referenced a missing `default.message` template; the repo now uses an inline message template.
