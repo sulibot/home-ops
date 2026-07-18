@@ -59,7 +59,10 @@ spec:
         - name: TraceID
           datasourceUid: tempo
           matcherRegex: '(?:trace_id|otelTraceID)["'']?[=:]\s*["'']?([0-9a-f]{32})'
-          url: "${__value.raw}"
+          # $$ escapes Flux's own postBuild substitution (which otherwise
+          # chokes on the dot in __value.raw and fails the whole
+          # Kustomization) - this is Grafana's own runtime template syntax.
+          url: "$${__value.raw}"
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadatasource_v1beta1.json
 apiVersion: grafana.integreatly.org/v1beta1
