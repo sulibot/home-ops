@@ -15,9 +15,14 @@ data:
 
     discovery:
       instrument:
-        # authentik and sonarr are SDK-instrumented via the OTel Operator
-        # (deeper traces, exemplars, trace IDs in logs) and are deliberately
-        # NOT in this list — Beyla fills the gaps, SDK where there's value.
+        # authentik + sonarr restored after the SDK pilot concluded:
+        # sonarr's SDK path is impossible (.NET 6 + musl dead zone) and
+        # authentik runs SDK DB/client spans only (Django instrumentor
+        # incompatible) - Beyla provides request-level traces/RED for both.
+        - name: authentik
+          k8s_namespace: default
+          k8s_deployment_name: authentik-server
+          open_ports: "9000"
         - name: plex
           k8s_namespace: default
           k8s_pod_name: plex-*
@@ -41,6 +46,9 @@ data:
           k8s_pod_name: immich-*
 
         # Media automation (*arr pipeline)
+        - k8s_namespace: default
+          k8s_deployment_name: sonarr
+          open_ports: "8989"
         - k8s_namespace: default
           k8s_deployment_name: sonarr-4k
           open_ports: "8989"
