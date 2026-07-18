@@ -14,7 +14,20 @@ spec:
       feedback_links_enabled: "false"
       reporting_enabled: "false"
     auth:
+      # Login form stays enabled: break-glass local admin works even when
+      # authentik is down (1Password: Kubernetes/grafana-admin).
       disable_login_form: "false"
+    auth.generic_oauth:
+      enabled: "true"
+      name: authentik
+      allow_sign_up: "true"
+      scopes: "openid profile email"
+      auth_url: https://auth.sulibot.com/application/o/authorize/
+      token_url: https://auth.sulibot.com/application/o/token/
+      api_url: https://auth.sulibot.com/application/o/userinfo/
+      signout_redirect_url: https://auth.sulibot.com/application/o/grafana/end-session/
+      # trusted-users -> Admin, standard-users -> Editor, anyone else Viewer
+      role_attribute_path: "contains(groups[*], 'trusted-users') && 'Admin' || contains(groups[*], 'standard-users') && 'Editor' || 'Viewer'"
     auth.anonymous:
       enabled: "true"
     log:
@@ -39,11 +52,26 @@ spec:
           containers:
             - name: grafana
               env:
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-password-secret
+                      key: GF_SECURITY_ADMIN_USER
                 - name: GF_SECURITY_ADMIN_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: grafana-admin-password-secret
                       key: GF_SECURITY_ADMIN_PASSWORD
+                - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-oidc-secret
+                      key: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+                - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-oidc-secret
+                      key: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
                 - name: GF_INSTALL_PLUGINS
                   value: grafana-lokiexplore-app
               securityContext:
