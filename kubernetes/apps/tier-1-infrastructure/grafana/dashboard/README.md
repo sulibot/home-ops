@@ -122,6 +122,15 @@ Updated 2026-07-18 (dashboard coverage audit):
   had zero series cluster-wide before this.
 - `keda`, `smartctl-exporter`, `external-secrets` dashboard CRs had no `spec.folder` set
   despite this README claiming folder placement for them - fixed.
+- **All LAN blackbox probes fail** with `no such host` - CoreDNS has no forward
+  zone for the `.internal` suffix the probes target (`expanse.internal`,
+  `idrac.internal`, etc.), only a generic `forward . /etc/resolv.conf` catch-all.
+  These hostnames are presumably resolved by the router's own DNS on the LAN,
+  which the cluster never queries. Not fixed in this pass - editing CoreDNS's
+  forward zones is cluster-critical shared infrastructure and the correct
+  upstream resolver IP wasn't confirmed; see follow-up ticket. The Synthetic
+  Probes dashboard will show all-red until this is resolved - that is accurate,
+  not a dashboard bug.
 
 Updated 2026-07-17 (correlation-loop rollout):
 
