@@ -3,7 +3,8 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: external-secrets
+  name: inventory-joins
+  namespace: observability
 spec:
   allowCrossNamespaceImport: true
   folder: platform
@@ -14,5 +15,5 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
   configMapRef:
-    name: external-secrets-dashboard
-    key: external-secrets.json
+    name: inventory-joins-dashboard
+    key: inventory-joins.json

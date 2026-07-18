@@ -14,33 +14,66 @@ This directory contains repo-owned Grafana dashboards managed by the Grafana Ope
 
 ## Current Custom Dashboards
 
-| Dashboard | File | Purpose |
+| Folder | Dashboard | File | Purpose |
+|---|---|---|---|
+| sre | SRE Executive Cluster Health | `sre-executive-dashboard-configmap.yaml` | Daily glance: safety, pressure, top IO, hardware red flags, active alerts, logs. |
+| sre | SRE Workload Triage | `sre-workload-triage-dashboard-configmap.yaml` | First responder view: all-services RED table (Beyla), then pivot into events, Hubble, logs, and infra telemetry. |
+| sre | SRE Incident Drill-Down | `sre-incident-drilldown-configmap.yaml` | Active response: write IO versus recovery, Ceph safety, top pods/VMs/disks, alerts, logs. |
+| sre | SRE Home Control Health | `home-control-dashboard-configmap.yaml` | Home Assistant, Music Assistant, cluster-104 Hubble flows, and related logs/events. |
+| sre | Loki Logs Explorer | `loki-logs-explorer-dashboard-configmap.yaml` | Curated Loki entry points for events, infrastructure logs, workload logs, and cross-cluster log streams. |
+| sre | SRE Network and CNI Health | `sre-network-cni-dashboard-configmap.yaml` | Cilium/Hubble flow health, drops, API-service symptoms, waiting pods, and CNI logs. |
+| sre | SRE Storage Ceph and PVC Health | `sre-storage-ceph-pvc-dashboard-configmap.yaml` | Ceph health, PG/OSD status, pool usage, CSI errors, PVC state, and storage logs. |
+| sre | SRE PVE Hardware and Talos Signals | `sre-pve-hardware-dashboard-configmap.yaml` | Proxmox API, PVE guests, NVMe temperature/wear/errors, board sensors, and Talos host logs. |
+| sre | SRE App Experience | `sre-app-experience-dashboard-configmap.yaml` | Gatus user-impact probes, Beyla RED, app logs, Valkey, and CloudNativePG. |
+| sre | SRE Datastore Health | `sre-datastore-health-dashboard-configmap.yaml` | First-class Valkey and CloudNativePG health using live `redis_*` and `cnpg_*` metrics. |
+| sre | SRE LGTM Telemetry Pipeline | `sre-telemetry-pipeline-dashboard-configmap.yaml` | Prometheus, Loki, Tempo, Fluent Bit, Beyla, exemplars, target health, and observability logs. |
+| network | Router (MikroTik) | `router-dashboard-configmap.yaml` | CPU/thermal, per-interface throughput (top 10), errors/drops/collisions, link status, DHCP leases. Rebuilt 2026-07-18 - SNMP was actually reachable again (README's "SNMP targets time out" note was stale for the router). |
+| network | Synthetic Probes | `synthetic-probes-dashboard-configmap.yaml` | Blackbox LAN + VPN/WAN probe status table and latency trend - "is it the network" before digging into an app. |
+| platform | Inventory Joins | `inventory-joins-dashboard-configmap.yaml` | homeops-inventory-exporter cross-layer joins: k8s node -> PVE host, PVC -> PV -> Ceph FS, OSD -> physical device. Closes the ENG-16 "workload -> storage backend" and "node -> host" gap. |
+
+## Folder Taxonomy
+
+Reorganized 2026-07-18 in two independent passes that landed together: a
+live-validation pass replaced most stale/no-data imports with new repo-owned
+`sre`-folder dashboards, and a coverage-gap audit added three new
+non-SRE dashboards plus fixed folder-assignment bugs (`keda`,
+`smartctl-exporter`, `external-secrets` had no `spec.folder` key at all,
+landing silently in Grafana's default folder despite this README claiming
+otherwise).
+
+| Folder | Scope | Boards |
 |---|---|---|
-| SRE Executive Cluster Health | `sre-executive-dashboard-configmap.yaml` | Daily glance: safety, pressure, top IO, hardware red flags, active alerts, logs. |
-| SRE Workload Triage | `sre-workload-triage-dashboard-configmap.yaml` | First responder view: all-services RED table (Beyla), then pivot into events, Hubble, logs, and infra telemetry. |
-| SRE Incident Drill-Down | `sre-incident-drilldown-configmap.yaml` | Active response: write IO versus recovery, Ceph safety, top pods/VMs/disks, alerts, logs. |
-| SRE Home Control Health | `home-control-dashboard-configmap.yaml` | Home Assistant, Music Assistant, cluster-104 Hubble flows, and related logs/events. |
-| Loki Logs Explorer | `loki-logs-explorer-dashboard-configmap.yaml` | Curated Loki entry points for events, infrastructure logs, workload logs, and cross-cluster log streams. |
-| SRE Network and CNI Health | `sre-network-cni-dashboard-configmap.yaml` | Cilium/Hubble flow health, drops, API-service symptoms, waiting pods, and CNI logs. |
-| SRE Storage Ceph and PVC Health | `sre-storage-ceph-pvc-dashboard-configmap.yaml` | Ceph health, PG/OSD status, pool usage, CSI errors, PVC state, and storage logs. |
-| SRE PVE Hardware and Talos Signals | `sre-pve-hardware-dashboard-configmap.yaml` | Proxmox API, PVE guests, NVMe temperature/wear/errors, board sensors, and Talos host logs. |
-| SRE App Experience | `sre-app-experience-dashboard-configmap.yaml` | Gatus user-impact probes, Beyla RED, app logs, Valkey, and CloudNativePG. |
-| SRE Datastore Health | `sre-datastore-health-dashboard-configmap.yaml` | First-class Valkey and CloudNativePG health using live `redis_*` and `cnpg_*` metrics. |
-| SRE LGTM Telemetry Pipeline | `sre-telemetry-pipeline-dashboard-configmap.yaml` | Prometheus, Loki, Tempo, Fluent Bit, Beyla, exemplars, target health, and observability logs. |
+| sre | Cross-layer incident workflows (this directory, 11 boards) | executive, workload-triage, incident-drilldown, home-control, loki-logs-explorer, network-cni, storage-ceph-pvc, pve-hardware, app-experience, datastore-health, telemetry-pipeline |
+| network | Connectivity: DNS/tunnel, LAN/WAN reachability, router | cloudflare-tunnels, router-mikrotik, synthetic-probes |
+| storage | Disk health (Ceph itself now lives in `sre-storage-ceph-pvc`) | smartctl-exporter |
+| platform | Cluster plumbing / cross-cutting reference | vpa-overview, keda, external-secrets, inventory-joins |
 
-## Imported Dashboards (component detail)
+Owner dirs (imports still live next to the component that owns them):
+`cloudflare-tunnel/app/`, `smartctl-exporter/app/`, `grafana/app/`, `keda/app/`,
+`external-secrets/app/` (tier-0-foundation).
 
-Kept deliberately small. Each import lives next to the component that owns it.
+`cluster`, `virtualization`, and `databases` folders are now empty - their
+imports (`kubernetes-*`, `node-exporter-full`, `hubble`, `proxmox-via-prometheus`,
+`ceph-clusters-overview`, `valkey`, `cloudnative-pg`, `volsync`) were removed
+2026-07-17/18 as stale/no-data; the same ground is now covered by the new
+`sre-network-cni`, `sre-storage-ceph-pvc`, `sre-pve-hardware`, and
+`sre-datastore-health` dashboards, built against live-validated metric names.
 
-| Folder | Boards | Owner dir |
-|---|---|---|
-| network | cloudflare-tunnels | `cloudflare-tunnel/app/` |
-| platform | vpa-overview | `grafana/app/` |
+### Deliberately not dashboarded
+
+- **istio / kiali**: Kiali already ships its own dedicated mesh UI (service graph,
+  traffic, health) - a Grafana import would duplicate it per the anti-pattern rule
+  below, not add cross-layer correlation. Revisit only if a workflow needs mesh
+  metrics correlated with logs/traces in the SRE dashboards specifically.
+- **echo, gatus, descheduler self-monitoring**: scraped but intentionally left
+  off dashboards - same reasoning as the removed `spegel`/`fluent-bit` self-monitoring
+  boards. Gatus results belong on the SRE Executive board as an alert-adjacent
+  signal, not a standalone board; not yet wired in.
 
 Removed (2026-07-17): `prometheus`, `grafana-operator`, `fluent-bit`, `spegel` (component
 self-monitoring that never answered an incident question), `kubernetes-namespaces`
-(overlapped by the repo-owned SRE workflow dashboards), `routeros-mikrotik`
-(SNMP targets are dead; restore only if snmp-exporter is fixed).
+(overlapped by the repo-owned SRE workflow dashboards), the original `routeros-mikrotik`
+import (SNMP targets appeared dead at the time; rebuilt from scratch 2026-07-18, see below).
 
 Removed (2026-07-17 live validation): `kubernetes-global`, `kubernetes-nodes`,
 `kubernetes-pods`, `kubernetes-volumes`, `node-exporter-full`, `hubble`,
@@ -76,6 +109,19 @@ Use dashboards as workflow steps, not as a wall of graphs:
 | Empty/debug-only panels | Remove | A panel must answer an action-oriented question or expose missing telemetry clearly. |
 
 ## Current Live Gaps
+
+Updated 2026-07-18 (dashboard coverage audit):
+
+- **The router's SNMP scrape is up** (`up{job="snmp-exporter"} == 1`, mikrotik/if_mib/system
+  modules all returning data) - the README's prior "SNMP targets time out" note was stale
+  for the router specifically (APC/Dell UPS/iDRAC endpoints may still be down - not verified
+  in this pass). Router dashboard rebuilt on real `mtxr*`/`ifHC*` metrics.
+- **blackbox-exporter/vpn was never deployed** - its entire directory (helmrelease, probes)
+  had no Flux Kustomization referencing it at all. `blackbox-exporter/lan`'s own `probes.yaml`
+  was also missing from its kustomization's resource list. Both fixed 2026-07-18; `probe_success`
+  had zero series cluster-wide before this.
+- `keda`, `smartctl-exporter`, `external-secrets` dashboard CRs had no `spec.folder` set
+  despite this README claiming folder placement for them - fixed.
 
 Updated 2026-07-17 (correlation-loop rollout):
 

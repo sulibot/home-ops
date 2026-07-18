@@ -1,0 +1,111 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-joins-dashboard
+data:
+  inventory-joins.json: |
+    {
+      "uid": "inventory-joins",
+      "title": "Inventory Joins (K8s <-> Proxmox <-> Ceph)",
+      "tags": ["platform", "inventory"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "5m",
+      "time": {"from": "now-6h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "table",
+          "title": "Kubernetes Node -> Proxmox Host",
+          "description": "Answers 'which physical/VM host backs this k8s node' during a node-level incident.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 0},
+          "targets": [{"expr": "homeops_kube_node_vm_info", "refId": "A", "instant": true, "range": false, "format": "table"}],
+          "transformations": [{"id": "organize", "options": {
+            "includeByName": {"node": true, "pve_node": true},
+            "renameByName": {"node": "K8s Node", "pve_node": "PVE Host/Cluster"}
+          }}],
+          "fieldConfig": {"defaults": {}, "overrides": []},
+          "options": {"cellHeight": "sm", "showHeader": true}
+        },
+        {
+          "id": 2,
+          "type": "table",
+          "title": "Proxmox Host Inventory",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 0},
+          "targets": [{"expr": "homeops_pve_host_info", "refId": "A", "instant": true, "range": false, "format": "table"}],
+          "transformations": [{"id": "organize", "options": {
+            "includeByName": {"pve_node": true, "service_ipv6": true, "syslog_target": true},
+            "renameByName": {"pve_node": "PVE Host", "service_ipv6": "Mgmt IPv6", "syslog_target": "Syslog Target"}
+          }}],
+          "fieldConfig": {"defaults": {}, "overrides": []},
+          "options": {"cellHeight": "sm", "showHeader": true}
+        },
+        {
+          "id": 3,
+          "type": "table",
+          "title": "PVC -> PV -> Ceph Backend",
+          "description": "Answers 'what Ceph filesystem/pool backs this workload's storage' when a pod reports IO errors.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 7},
+          "targets": [
+            {"expr": "homeops_kube_pvc_pv_info", "refId": "A", "instant": true, "range": false, "format": "table"},
+            {"expr": "homeops_kube_pv_ceph_info", "refId": "B", "instant": true, "range": false, "format": "table"}
+          ],
+          "transformations": [
+            {"id": "joinByField", "options": {"byField": "persistentvolume", "mode": "outer"}},
+            {"id": "organize", "options": {
+              "includeByName": {
+                "exported_namespace": true,
+                "persistentvolumeclaim": true,
+                "persistentvolume": true,
+                "storageclass": true,
+                "driver": true,
+                "fs_name": true,
+                "root_path": true
+              },
+              "renameByName": {
+                "exported_namespace": "Namespace",
+                "persistentvolumeclaim": "PVC",
+                "persistentvolume": "PV",
+                "storageclass": "StorageClass",
+                "driver": "CSI Driver",
+                "fs_name": "Ceph FS",
+                "root_path": "Ceph Path"
+              }
+            }}
+          ],
+          "fieldConfig": {"defaults": {}, "overrides": []},
+          "options": {"cellHeight": "sm", "showHeader": true}
+        },
+        {
+          "id": 4,
+          "type": "table",
+          "title": "Ceph OSD -> Physical Disk",
+          "description": "Answers 'which physical device/bay/host is this OSD' during a disk-failure or SMART-alert incident.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 16},
+          "targets": [{"expr": "homeops_ceph_osd_device_info", "refId": "A", "instant": true, "range": false, "format": "table"}],
+          "transformations": [{"id": "organize", "options": {
+            "includeByName": {
+              "pve_node": true,
+              "ceph_daemon": true,
+              "device_class": true,
+              "data_device": true,
+              "db_device": true
+            },
+            "renameByName": {
+              "pve_node": "PVE Host",
+              "ceph_daemon": "OSD",
+              "device_class": "Class",
+              "data_device": "Data Device",
+              "db_device": "DB Device"
+            }
+          }}],
+          "fieldConfig": {"defaults": {}, "overrides": []},
+          "options": {"cellHeight": "sm", "showHeader": true, "sortBy": [{"displayName": "PVE Host", "desc": false}]}
+        }
+      ]
+    }

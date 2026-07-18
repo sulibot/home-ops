@@ -26,3 +26,9 @@ resources:
   - ./sre-executive-dashboard-configmap.yaml
   - ./sre-telemetry-pipeline-dashboard-configmap.yaml
   - ./sre-workload-triage-dashboard-configmap.yaml
+  - ./grafanadashboard-router.yaml
+  - ./router-dashboard-configmap.yaml
+  - ./grafanadashboard-synthetic-probes.yaml
+  - ./synthetic-probes-dashboard-configmap.yaml
+  - ./grafanadashboard-inventory-joins.yaml
+  - ./inventory-joins-dashboard-configmap.yaml
