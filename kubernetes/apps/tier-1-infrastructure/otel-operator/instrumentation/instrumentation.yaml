@@ -26,6 +26,8 @@ spec:
         value: http/protobuf
       - name: OTEL_METRICS_EXPORTER
         value: otlp
+      - name: OTEL_METRICS_EXEMPLAR_FILTER
+        value: trace_based
       - name: OTEL_LOGS_EXPORTER
         value: none
       # CONCLUSION (tested 2026-07-17, twice): authentik's custom bootstrap
@@ -45,6 +47,10 @@ spec:
     env:
       - name: OTEL_METRICS_EXPORTER
         value: otlp
+      # Attach trace-context exemplars to histograms recorded inside sampled
+      # spans (the metric->trace diamond-click in Grafana).
+      - name: OTEL_METRICS_EXEMPLAR_FILTER
+        value: trace_based
       - name: OTEL_LOGS_EXPORTER
         value: none
   dotnet:
