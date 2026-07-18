@@ -1455,7 +1455,7 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "{stream_class=\"infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd)\" |~ \"$search\"",
+              "expr": "{stream_class=~\"host|infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd|disk|nvme)\" |~ \"$search\"",
               "refId": "A"
             }
           ],
@@ -1507,7 +1507,7 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "type": "query",
-            "allValue": ".*"
+            "allValue": ".+"
           },
           {
             "current": {
@@ -1534,7 +1534,7 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "type": "query",
-            "allValue": ".*"
+            "allValue": ".+"
           },
           {
             "current": {
@@ -1561,7 +1561,7 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "type": "query",
-            "allValue": ".*"
+            "allValue": ".+"
           },
           {
             "current": {

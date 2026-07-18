@@ -5,5 +5,4 @@ resources:
   - cluster.yaml
   - scheduledbackup.yaml
   - backup-verification-cronjob.yaml
-  - grafanadashboard.yaml
   - podmonitor.yaml

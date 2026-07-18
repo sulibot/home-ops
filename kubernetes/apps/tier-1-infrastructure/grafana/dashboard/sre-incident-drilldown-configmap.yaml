@@ -549,7 +549,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{stream_class=\"event\"}",
+              "expr": "{stream_class=\"event\"} |~ \"(?i)(warning|failed|backoff|unhealthy|timeout|error|evict|kill)\"",
               "refId": "A"
             }
           ],
@@ -580,7 +580,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{stream_class=\"infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd)\"",
+              "expr": "{stream_class=~\"host|infra\"} |~ \"(?i)(pve|talos|ceph|syslog|kernel|etcd)\" |~ \"(?i)(error|warn|failed|timeout|disk|slow|unhealthy)\"",
               "refId": "A"
             }
           ],
@@ -611,7 +611,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{stream_class=\"infra\"}",
+              "expr": "{stream_class=~\"host|infra\"} |~ \"(?i)(error|warn|failed|timeout|ceph|etcd|disk|nvme|talos|pve|kernel)\"",
               "refId": "A"
             }
           ],

@@ -25,6 +25,7 @@ This directory contains repo-owned Grafana dashboards managed by the Grafana Ope
 | SRE Storage Ceph and PVC Health | `sre-storage-ceph-pvc-dashboard-configmap.yaml` | Ceph health, PG/OSD status, pool usage, CSI errors, PVC state, and storage logs. |
 | SRE PVE Hardware and Talos Signals | `sre-pve-hardware-dashboard-configmap.yaml` | Proxmox API, PVE guests, NVMe temperature/wear/errors, board sensors, and Talos host logs. |
 | SRE App Experience | `sre-app-experience-dashboard-configmap.yaml` | Gatus user-impact probes, Beyla RED, app logs, Valkey, and CloudNativePG. |
+| SRE Datastore Health | `sre-datastore-health-dashboard-configmap.yaml` | First-class Valkey and CloudNativePG health using live `redis_*` and `cnpg_*` metrics. |
 | SRE LGTM Telemetry Pipeline | `sre-telemetry-pipeline-dashboard-configmap.yaml` | Prometheus, Loki, Tempo, Fluent Bit, Beyla, exemplars, target health, and observability logs. |
 
 ## Imported Dashboards (component detail)
@@ -33,17 +34,22 @@ Kept deliberately small. Each import lives next to the component that owns it.
 
 | Folder | Boards | Owner dir |
 |---|---|---|
-| cluster | kubernetes-api-server, kubernetes-coredns, kubernetes-global, kubernetes-nodes, kubernetes-pods, kubernetes-volumes, node-exporter-full | `kube-prometheus-stack/app/` |
-| network | hubble, cloudflare-tunnels | `cilium-observability/app/`, `cloudflare-tunnel/app/` |
-| storage | ceph-clusters-overview, smartctl-exporter | `proxmox-observability/app/`, `smartctl-exporter/app/` |
-| virtualization | proxmox-via-prometheus | `proxmox-observability/app/` |
-| databases | valkey, cloudnative-pg | `valkey/app/`, `postgres-vectorchord/app/` |
-| platform | vpa-overview, volsync, keda | `grafana/app/`, `volsync/app/`, `keda/app/` |
+| cluster | kubernetes-api-server, kubernetes-coredns | `kube-prometheus-stack/app/` |
+| network | cloudflare-tunnels | `cloudflare-tunnel/app/` |
+| platform | vpa-overview | `grafana/app/` |
 
 Removed (2026-07-17): `prometheus`, `grafana-operator`, `fluent-bit`, `spegel` (component
 self-monitoring that never answered an incident question), `kubernetes-namespaces`
-(fully overlapped by kubernetes-global + kubernetes-pods), `routeros-mikrotik`
+(overlapped by the repo-owned SRE workflow dashboards), `routeros-mikrotik`
 (SNMP targets are dead; restore only if snmp-exporter is fixed).
+
+Removed (2026-07-17 live validation): `kubernetes-global`, `kubernetes-nodes`,
+`kubernetes-pods`, `kubernetes-volumes`, `node-exporter-full`, `hubble`,
+`proxmox-via-prometheus`, `ceph-clusters-overview`, `valkey`, `cloudnative-pg`,
+and `volsync`. These imported dashboards either required labels this cluster
+does not expose, used stale metric names, had stale variables, or rendered as
+mostly no-data. Restore only as repo-owned dashboards validated against live
+Prometheus/Loki labels.
 
 ## Operator Workflow
 
@@ -66,9 +72,8 @@ Use dashboards as workflow steps, not as a wall of graphs:
 | Area | Decision | Notes |
 |---|---|---|
 | Repo-owned SRE dashboards | Keep/fix | They answer cross-layer workflows that imported dashboards do not. Keep them few. |
-| Imported Kubernetes/node/Prometheus dashboards | Keep | Useful for component detail after the SRE workflow identifies the layer. |
-| Imported Hubble dashboard | Keep | Backing Hubble metrics are present and useful for network triage. |
-| Imported Proxmox/Ceph dashboards | Keep but treat no-data as degraded telemetry | Live Proxmox API and Ceph MGR scrapes are currently down; dashboards must not be interpreted as healthy silence. |
+| Imported Kubernetes API/CoreDNS dashboards | Keep | These validated against live metrics and remain useful for component detail. |
+| Imported Kubernetes/node/Hubble/Proxmox/Ceph/Valkey/CNPG/VolSync dashboards | Remove/replace | Generic imports rendered mostly no-data or used stale labels; use repo-owned SRE dashboards instead. |
 | Curated Loki dashboard | Keep | Good for saved starting points, but daily ad-hoc browsing should use Explore or Logs Drilldown. |
 | Empty/debug-only panels | Remove | A panel must answer an action-oriented question or expose missing telemetry clearly. |
 
@@ -88,7 +93,7 @@ Updated 2026-07-17 (correlation-loop rollout):
   `service.name`->`app`). Trace IDs do NOT appear in log lines; the join is
   label+time based until apps adopt OTel SDKs.
 - Live validation found Prometheus metrics for Beyla (`http_server_*`), Hubble
-  (`hubble_*`), Ceph (`ceph_*`), CSI (`csi_operations_seconds_*`), Proxmox API
+  (`hubble_*`), CSI (`csi_operations_seconds_*`), Proxmox API
   (`pve_*`), Proxmox node/NVMe hardware (`node_hwmon_*`, `nvme_*`), Valkey
   (`redis_*`), CloudNativePG (`cnpg_*`), Gatus (`gatus_*`), Loki (`loki_*`),
   Tempo (`tempo_*`), Fluent Bit (`fluentbit_*`), and exemplars
@@ -104,9 +109,12 @@ Validated on 2026-07-15:
 - Gatus now uses curated repo-owned checks only. The noisy sidecar auto-discovery
   path was removed after it produced stale root-path checks for API-only
   services such as Loki.
-- Proxmox API and Ceph MGR metric names are present in Prometheus. Treat gaps
-  as target-level degradation if `pve_up`, `up{job="ceph-mgr-targets"}`, or
-  the target health panels show failures.
+- Ceph MGR target health exists, but live Ceph scrapes currently return zero
+  Ceph samples (`scrape_samples_scraped{job="ceph-mgr-targets"} == 0`) and
+  pve01/pve03 Ceph targets time out. Storage dashboards expose this as missing
+  telemetry instead of blank Ceph capacity/latency charts.
+- VolSync currently exposes no `volsync_*` metrics, so the imported VolSync
+  dashboard was removed rather than kept as a mostly empty board.
 - SNMP exporter targets time out for the configured APC/Dell/RouterOS endpoints.
 - Alertmanager Pushover notifications fail until `PUSHOVER_ALERTMGR` is populated with a valid application token in the shared `pushover` 1Password item.
 - Alertmanager email notification was failing because it referenced a missing `default.message` template; the repo now uses an inline message template.

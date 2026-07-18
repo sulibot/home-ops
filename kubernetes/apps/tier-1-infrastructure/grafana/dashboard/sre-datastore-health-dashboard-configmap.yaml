@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sre-storage-ceph-pvc-dashboard
+  name: sre-datastore-health-dashboard
   namespace: observability
   labels:
     grafana_dashboard: "1"
 data:
-  sre-storage-ceph-pvc.json: |
+  sre-datastore-health.json: |-
     {
       "annotations": {
         "list": [
@@ -31,31 +31,21 @@ data:
       "id": null,
       "links": [
         {
-          "asDropdown": false,
+          "asDropdown": true,
           "icon": "external link",
           "includeVars": true,
           "keepTime": true,
+          "tags": [],
           "targetBlank": false,
-          "title": "Explore Prometheus",
-          "type": "link",
-          "url": "/explore?orgId=1&left={\"datasource\":\"${DS_PROMETHEUS}\"}"
-        },
-        {
-          "asDropdown": false,
-          "icon": "external link",
-          "includeVars": true,
-          "keepTime": true,
-          "targetBlank": false,
-          "title": "Explore Loki",
-          "type": "link",
-          "url": "/explore?orgId=1&left={\"datasource\":\"${DS_LOKI}\"}"
+          "title": "Related dashboards",
+          "type": "dashboards"
         }
       ],
       "panels": [
         {
           "id": 1,
           "type": "stat",
-          "title": "Ceph Health Status",
+          "title": "Valkey Nodes Up",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -63,31 +53,39 @@ data:
           "gridPos": {
             "x": 0,
             "y": 0,
-            "w": 6,
+            "w": 4,
             "h": 4
           },
+          "targets": [
+            {
+              "expr": "sum(redis_up{job=\"valkey-metrics\"})",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
+              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 3
                   }
                 ]
-              },
-              "unit": "short"
+              }
             },
             "overrides": []
           },
           "options": {
-            "colorMode": "value",
-            "graphMode": "area",
+            "colorMode": "background",
+            "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
             "reduceOptions": {
@@ -98,45 +96,46 @@ data:
               "values": false
             },
             "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "max(ceph_health_status) or vector(0)",
-              "refId": "A"
-            }
-          ],
-          "description": "0 OK, 1 WARN, 2 ERR."
+          }
         },
         {
           "id": 2,
           "type": "stat",
-          "title": "Unclean PGs",
+          "title": "Valkey Clients",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
-            "x": 6,
+            "x": 4,
             "y": 0,
-            "w": 6,
+            "w": 4,
             "h": 4
           },
+          "targets": [
+            {
+              "expr": "sum(redis_connected_clients{job=\"valkey-metrics\"})",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
+              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
                     "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 100
                   }
                 ]
-              },
-              "unit": "short"
+              }
             },
             "overrides": []
           },
@@ -153,34 +152,33 @@ data:
               "values": false
             },
             "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "(sum(ceph_pg_total) - sum(ceph_pg_clean)) or vector(0)",
-              "refId": "A"
-            }
-          ]
+          }
         },
         {
           "id": 3,
           "type": "stat",
-          "title": "OSDs Down",
+          "title": "Valkey Memory",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
-            "x": 12,
+            "x": 8,
             "y": 0,
-            "w": 6,
+            "w": 4,
             "h": 4
           },
+          "targets": [
+            {
+              "expr": "sum(redis_memory_used_bytes{job=\"valkey-metrics\"})",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
+              "unit": "bytes",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -189,8 +187,7 @@ data:
                     "value": null
                   }
                 ]
-              },
-              "unit": "short"
+              }
             },
             "overrides": []
           },
@@ -207,49 +204,51 @@ data:
               "values": false
             },
             "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "sum(ceph_osd_up == bool 0) or vector(0)",
-              "refId": "A"
-            }
-          ]
+          }
         },
         {
           "id": 4,
           "type": "stat",
-          "title": "CSI Error Rate",
+          "title": "Valkey Hit Ratio",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
-            "x": 18,
+            "x": 12,
             "y": 0,
-            "w": 6,
+            "w": 4,
             "h": 4
           },
+          "targets": [
+            {
+              "expr": "sum(rate(redis_keyspace_hits_total{job=\"valkey-metrics\"}[5m])) / clamp_min(sum(rate(redis_keyspace_hits_total{job=\"valkey-metrics\"}[5m])) + sum(rate(redis_keyspace_misses_total{job=\"valkey-metrics\"}[5m])), 1)",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
+              "unit": "percentunit",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "yellow",
                     "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.8
                   }
                 ]
-              },
-              "unit": "ops"
+              }
             },
             "overrides": []
           },
           "options": {
-            "colorMode": "value",
+            "colorMode": "background",
             "graphMode": "area",
             "justifyMode": "center",
             "orientation": "auto",
@@ -261,146 +260,144 @@ data:
               "values": false
             },
             "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(csi_operations_seconds_count{grpc_status_code!=\"OK\"}[5m])) or vector(0)",
-              "refId": "A"
-            }
-          ]
+          }
         },
         {
           "id": 5,
-          "type": "timeseries",
-          "title": "Ceph MGR Scrape Samples",
+          "type": "stat",
+          "title": "Postgres Collector",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
-            "x": 0,
-            "y": 4,
-            "w": 12,
-            "h": 8
+            "x": 16,
+            "y": 0,
+            "w": 4,
+            "h": 4
           },
+          "targets": [
+            {
+              "expr": "min(cnpg_collector_up{job=\"default/postgres-vectorchord\"})",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
+              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
                   }
                 ]
-              },
-              "unit": "short"
+              }
             },
             "overrides": []
           },
           "options": {
-            "legend": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
               "calcs": [
-                "lastNotNull",
-                "max"
+                "lastNotNull"
               ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
+              "fields": "",
+              "values": false
             },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "expr": "scrape_samples_scraped{job=\"ceph-mgr-targets\"} or vector(0)",
-              "refId": "A",
-              "legendFormat": "{{instance}} samples"
-            }
-          ]
+            "textMode": "auto"
+          }
         },
         {
           "id": 6,
-          "type": "timeseries",
-          "title": "Ceph MGR Scrape Duration",
+          "type": "stat",
+          "title": "Postgres Lag",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
-            "x": 12,
-            "y": 4,
-            "w": 12,
-            "h": 8
+            "x": 20,
+            "y": 0,
+            "w": 4,
+            "h": 4
           },
+          "targets": [
+            {
+              "expr": "max(cnpg_pg_replication_lag{job=\"default/postgres-vectorchord\"}) or vector(0)",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
+              "unit": "decbytes",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
                     "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 104857600
                   }
                 ]
-              },
-              "unit": "s"
+              }
             },
             "overrides": []
           },
           "options": {
-            "legend": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
               "calcs": [
-                "lastNotNull",
-                "max"
+                "lastNotNull"
               ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
+              "fields": "",
+              "values": false
             },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "expr": "scrape_duration_seconds{job=\"ceph-mgr-targets\"}",
-              "refId": "A",
-              "legendFormat": "{{instance}}"
-            }
-          ]
+            "textMode": "auto"
+          }
         },
         {
           "id": 7,
           "type": "timeseries",
-          "title": "Ceph PG Problem States",
+          "title": "Valkey Commands by Pod",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
             "x": 0,
-            "y": 12,
+            "y": 4,
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "sum by (pod) (rate(redis_commands_processed_total{job=\"valkey-metrics\"}[5m]))",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
+              "unit": "ops",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -409,17 +406,12 @@ data:
                     "value": null
                   }
                 ]
-              },
-              "unit": "short"
+              }
             },
             "overrides": []
           },
           "options": {
             "legend": {
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ],
               "displayMode": "table",
               "placement": "bottom",
               "showLegend": true
@@ -428,55 +420,32 @@ data:
               "mode": "multi",
               "sort": "desc"
             }
-          },
-          "targets": [
-            {
-              "expr": "sum(ceph_pg_degraded) or vector(0)",
-              "refId": "A",
-              "legendFormat": "degraded"
-            },
-            {
-              "expr": "sum(ceph_pg_inconsistent) or vector(0)",
-              "refId": "B",
-              "legendFormat": "inconsistent"
-            },
-            {
-              "expr": "sum(ceph_pg_recovering) or vector(0)",
-              "refId": "C",
-              "legendFormat": "recovering"
-            },
-            {
-              "expr": "sum(ceph_pg_backfilling) or vector(0)",
-              "refId": "D",
-              "legendFormat": "backfilling"
-            },
-            {
-              "expr": "sum(ceph_pg_remapped) or vector(0)",
-              "refId": "E",
-              "legendFormat": "remapped"
-            }
-          ]
+          }
         },
         {
           "id": 8,
-          "type": "table",
-          "title": "Ceph MGR Target Health",
+          "type": "timeseries",
+          "title": "Valkey Memory by Pod",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "gridPos": {
             "x": 12,
-            "y": 12,
+            "y": 4,
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "redis_memory_used_bytes{job=\"valkey-metrics\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
+              "unit": "bytes",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -485,37 +454,136 @@ data:
                     "value": null
                   }
                 ]
-              },
-              "unit": "short",
-              "decimals": 2
+              }
             },
             "overrides": []
           },
           "options": {
-            "showHeader": true,
-            "cellHeight": "sm",
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "countRows": false
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
             }
-          },
-          "targets": [
-            {
-              "expr": "up{job=\"ceph-mgr-targets\"}",
-              "refId": "A",
-              "instant": true,
-              "range": false,
-              "format": "table"
-            }
-          ]
+          }
         },
         {
           "id": 9,
           "type": "timeseries",
-          "title": "PVC Pending / Lost",
+          "title": "Valkey Write/Connection Red Flags",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(redis_evicted_keys_total{job=\"valkey-metrics\"}[1h])) or vector(0)",
+              "legendFormat": "evicted keys",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(increase(redis_rejected_connections_total{job=\"valkey-metrics\"}[1h])) or vector(0)",
+              "legendFormat": "rejected connections",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(increase(redis_aof_delayed_fsync{job=\"valkey-metrics\"}[1h])) or vector(0)",
+              "legendFormat": "delayed fsync",
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 10,
+          "type": "table",
+          "title": "Valkey Topology",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "expr": "max by (pod, role, valkey_version, maxmemory_policy) (redis_instance_info{job=\"valkey-metrics\"})",
+              "format": "table",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "expr": "redis_connected_slaves{job=\"valkey-metrics\"}",
+              "format": "table",
+              "instant": true,
+              "range": false,
+              "refId": "B"
+            },
+            {
+              "expr": "redis_master_link_up{job=\"valkey-metrics\"}",
+              "format": "table",
+              "instant": true,
+              "range": false,
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          }
+        },
+        {
+          "id": 11,
+          "type": "table",
+          "title": "Largest Postgres Databases",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -526,51 +594,30 @@ data:
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "topk(15, cnpg_pg_database_size_bytes{job=\"default/postgres-vectorchord\"})",
+              "format": "table",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "bytes"
             },
             "overrides": []
           },
           "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum by (namespace,phase) (kube_persistentvolumeclaim_status_phase{phase=~\"Pending|Lost\"} == 1)",
-              "refId": "A"
-            }
-          ]
+            "cellHeight": "sm",
+            "showHeader": true
+          }
         },
         {
-          "id": 10,
+          "id": 12,
           "type": "table",
-          "title": "CSI Errors by Node / Driver / Method",
+          "title": "Postgres Backends",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -581,51 +628,30 @@ data:
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "topk(20, sum by (datname, state, usename) (cnpg_backends_total{job=\"default/postgres-vectorchord\"}))",
+              "format": "table",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              },
-              "unit": "short",
-              "decimals": 2
+              "unit": "short"
             },
             "overrides": []
           },
           "options": {
-            "showHeader": true,
             "cellHeight": "sm",
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "countRows": false
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum by (node,driver_name,grpc_status_code,method_name) (rate(csi_operations_seconds_count{grpc_status_code!=\"OK\"}[15m]))",
-              "refId": "A",
-              "instant": true,
-              "range": false,
-              "format": "table"
-            }
-          ]
+            "showHeader": true
+          }
         },
         {
-          "id": 11,
+          "id": 13,
           "type": "timeseries",
-          "title": "Ceph Recovery Throughput",
+          "title": "Postgres Backup and WAL Signals",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -636,31 +662,44 @@ data:
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "time() - max(cnpg_collector_last_available_backup_timestamp{job=\"default/postgres-vectorchord\"})",
+              "legendFormat": "seconds since last backup",
+              "refId": "A"
+            },
+            {
+              "expr": "time() - max(cnpg_collector_first_recoverability_point{job=\"default/postgres-vectorchord\"})",
+              "legendFormat": "recoverability window seconds",
+              "refId": "B"
+            },
+            {
+              "expr": "sum by (value) (cnpg_collector_pg_wal_archive_status{job=\"default/postgres-vectorchord\"})",
+              "legendFormat": "wal {{value}}",
+              "refId": "C"
+            }
+          ],
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "mappings": [],
+              "unit": "s",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
                     "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 86400
                   }
                 ]
-              },
-              "unit": "Bps"
+              }
             },
             "overrides": []
           },
           "options": {
             "legend": {
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ],
               "displayMode": "table",
               "placement": "bottom",
               "showLegend": true
@@ -669,18 +708,12 @@ data:
               "mode": "multi",
               "sort": "desc"
             }
-          },
-          "targets": [
-            {
-              "expr": "sum(homeops:ceph_recovery_bytes:rate5m) or sum(ceph_pool_recovering_bytes_per_sec) or vector(0)",
-              "refId": "A"
-            }
-          ]
+          }
         },
         {
-          "id": 12,
+          "id": 14,
           "type": "logs",
-          "title": "Ceph CSI / Storage Logs",
+          "title": "Database Warning/Error Logs",
           "datasource": {
             "type": "loki",
             "uid": "${DS_LOKI}"
@@ -691,6 +724,12 @@ data:
             "w": 12,
             "h": 8
           },
+          "targets": [
+            {
+              "expr": "{namespace=\"default\",app=~\"cloudnative-pg|postgresql\"} |~ \"(?i)(error|warn|failed|timeout|panic|backup|replica|wal|aof|evict|reject)\"",
+              "refId": "A"
+            }
+          ],
           "options": {
             "dedupStrategy": "none",
             "enableLogDetails": true,
@@ -700,13 +739,7 @@ data:
             "showTime": true,
             "sortOrder": "Descending",
             "wrapLogMessage": true
-          },
-          "targets": [
-            {
-              "expr": "{namespace=\"ceph-csi\",app=~\"ceph-csi-cephfs|ceph-csi-rbd|cephfs-mount-doctor\"} |~ \"(?i)(error|warn|timeout|mount|csi|rbd|ceph|slow|stuck|failed|permission denied)\"",
-              "refId": "A"
-            }
-          ]
+          }
         }
       ],
       "refresh": "30s",
@@ -714,29 +747,22 @@ data:
       "style": "dark",
       "tags": [
         "sre",
-        "storage",
-        "ceph",
-        "csi",
+        "datastores",
+        "valkey",
+        "postgres",
         "lgtm"
       ],
       "templating": {
         "list": []
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-1h",
         "to": "now"
       },
-      "timepicker": {
-        "refresh_intervals": [
-          "30s",
-          "1m",
-          "5m",
-          "15m"
-        ]
-      },
-      "timezone": "browser",
-      "title": "SRE Storage Ceph and PVC Health",
-      "uid": "sre-storage-ceph-pvc",
+      "timepicker": {},
+      "timezone": "",
+      "title": "SRE Datastore Health",
+      "uid": "sre-datastore-health",
       "version": 1,
       "weekStart": ""
     }

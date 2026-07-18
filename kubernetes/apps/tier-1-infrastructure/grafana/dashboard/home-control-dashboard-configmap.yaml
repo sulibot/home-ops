@@ -588,7 +588,7 @@ data:
                 "uid": "loki"
               },
               "editorMode": "code",
-              "expr": "{cluster=\"cluster-104\",stream_class=\"event\",event_namespace=~\"default|matter-server|otbr|network|observer|kube-system\"}",
+              "expr": "{cluster=\"cluster-104\",stream_class=\"event\",event_namespace=~\"default|matter-server|otbr|network|observer|kube-system\"} |~ \"(?i)(warning|failed|backoff|unhealthy|timeout|error|evict|kill)\"",
               "queryType": "range",
               "refId": "A"
             }

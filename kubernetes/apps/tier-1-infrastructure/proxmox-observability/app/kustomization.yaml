@@ -8,4 +8,3 @@ resources:
   - ./service.yaml
   - ./prometheus-targets.yaml
   - ./servicemonitor.yaml
-  - ./grafanadashboard.yaml

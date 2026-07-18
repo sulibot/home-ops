@@ -7,6 +7,7 @@ resources:
   - ./grafanadashboard-home-control.yaml
   - ./grafanadashboard-loki-logs-explorer.yaml
   - ./grafanadashboard-sre-app-experience.yaml
+  - ./grafanadashboard-sre-datastore-health.yaml
   - ./grafanadashboard-sre-incident-drilldown.yaml
   - ./grafanadashboard-sre-network-cni.yaml
   - ./grafanadashboard-sre-pve-hardware.yaml
@@ -17,6 +18,7 @@ resources:
   - ./home-control-dashboard-configmap.yaml
   - ./loki-logs-explorer-dashboard-configmap.yaml
   - ./sre-app-experience-dashboard-configmap.yaml
+  - ./sre-datastore-health-dashboard-configmap.yaml
   - ./sre-incident-drilldown-configmap.yaml
   - ./sre-network-cni-dashboard-configmap.yaml
   - ./sre-pve-hardware-dashboard-configmap.yaml

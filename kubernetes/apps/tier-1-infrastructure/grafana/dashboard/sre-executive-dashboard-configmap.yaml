@@ -693,7 +693,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{stream_class=\"infra\"}",
+              "expr": "{stream_class=~\"host|infra\"} |~ \"(?i)(error|warn|failed|timeout|ceph|etcd|disk|nvme|talos|pve|kernel)\"",
               "refId": "A"
             }
           ],

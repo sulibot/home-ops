@@ -97,12 +97,12 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$search\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\",app=~\"$app\"} |~ \"$search\" [5m])) or vector(0)",
               "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "Kubernetes Log Lines",
+          "title": "Matched App Logs 15m",
           "type": "stat"
         },
         {
@@ -163,7 +163,7 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$severity\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({stream_class=~\"$app_stream_class\",app=~\"$app\"} |~ \"$severity\" [5m])) or vector(0)",
               "queryType": "range",
               "refId": "A"
             }
@@ -225,7 +225,7 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "sum(count_over_time({stream_class=\"event\",event_namespace=~\"$event_namespace\"} |~ \"$search\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({stream_class=\"event\",event_namespace=~\"$event_namespace\"} |~ \"$search\" [5m])) or vector(0)",
               "queryType": "range",
               "refId": "A"
             }
@@ -287,12 +287,12 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "sum(count_over_time({stream_class=~\"$infra_stream_class\"} |~ \"$search\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({stream_class=~\"$infra_stream_class\"} |~ \"$search\" [5m])) or vector(0)",
               "queryType": "range",
               "refId": "A"
             }
           ],
-          "title": "Infrastructure Log Lines",
+          "title": "Matched Infra Logs 15m",
           "type": "stat"
         },
         {
@@ -378,7 +378,7 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "sum by (stream_class) (count_over_time({stream_class=~\"$app_stream_class\"} |~ \"$search\" [$__interval]))",
+              "expr": "sum by (stream_class) (count_over_time({stream_class=~\"$app_stream_class\",app=~\"$app\"} |~ \"$search\" [$__interval]))",
               "legendFormat": "{{stream_class}}",
               "queryType": "range",
               "refId": "A"
@@ -470,7 +470,7 @@ data:
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "topk(15, sum by (app) (count_over_time({app=~\"$app\",namespace=~\"$namespace\"} |~ \"$search\" [$__interval])))",
+              "expr": "topk(15, sum by (app) (count_over_time({stream_class=~\"$app_stream_class\",app=~\"$app\",namespace=~\"$namespace\"} |~ \"$search\" [$__interval])))",
               "legendFormat": "{{app}}",
               "queryType": "range",
               "refId": "A"
@@ -610,7 +610,7 @@ data:
       "templating": {
         "list": [
           {
-            "allValue": ".*",
+            "allValue": ".+",
             "current": {
               "selected": true,
               "text": "All",
@@ -635,7 +635,7 @@ data:
             "type": "query"
           },
           {
-            "allValue": ".*",
+            "allValue": "authentik|plex|home-assistant|music-assistant|cloudnative-pg|postgresql|loki|grafana|fluent-bit|prometheus|alertmanager|gatus|ceph-csi-cephfs|ceph-csi-rbd|cilium-agent|multus",
             "current": {
               "selected": true,
               "text": "All",
@@ -685,7 +685,7 @@ data:
             "type": "query"
           },
           {
-            "allValue": ".*",
+            "allValue": ".+",
             "current": {
               "selected": true,
               "text": "All",
@@ -710,7 +710,7 @@ data:
             "type": "query"
           },
           {
-            "allValue": ".*",
+            "allValue": "host|infra",
             "current": {
               "selected": true,
               "text": "All",
@@ -729,7 +729,7 @@ data:
             "options": [],
             "query": "label_values(stream_class)",
             "refresh": 1,
-            "regex": "",
+            "regex": "/^(host|infra)$/",
             "skipUrlSync": false,
             "sort": 1,
             "type": "query"
@@ -737,14 +737,14 @@ data:
           {
             "current": {
               "selected": false,
-              "text": ".*",
-              "value": ".*"
+              "text": "(?i)(error|warn|failed|timeout|denied|drop|unavailable)",
+              "value": "(?i)(error|warn|failed|timeout|denied|drop|unavailable)"
             },
             "hide": 0,
             "label": "Search regex",
             "name": "search",
             "options": [],
-            "query": ".*",
+            "query": "(?i)(error|warn|failed|timeout|denied|drop|unavailable)",
             "skipUrlSync": false,
             "type": "textbox"
           },
@@ -765,7 +765,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-1h",
         "to": "now"
       },
       "timepicker": {},
