@@ -1,0 +1,172 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: router-dashboard
+data:
+  router.json: |
+    {
+      "uid": "router-mikrotik",
+      "title": "Router (MikroTik)",
+      "tags": ["network", "router"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "1m",
+      "time": {"from": "now-6h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Board / Firmware",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "mtxrHlProcessorTemperature / 10", "refId": "A", "legendFormat": "CPU Temp (C)"}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "thresholds": {"mode": "absolute", "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 75}
+              ]}
+            },
+            "overrides": []
+          },
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto", "colorMode": "background"}
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Fan Speed (RPM)",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [{"expr": "mtxrHlFanSpeed1", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto"}
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Uptime",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [{"expr": "sysUpTime{target=\"routeros-system\"} / 100", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto"}
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "DHCP Leases",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [{"expr": "mtxrDHCPLeaseCount", "refId": "A"}],
+          "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "textMode": "auto"}
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Interface Throughput (top 10)",
+          "description": "Per-interface RX/TX bytes/sec from the MikroTik driver counters (mtxrInterfaceStats), not generic IF-MIB - matches what the router itself reports.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 4},
+          "targets": [
+            {"expr": "topk(10, rate(mtxrInterfaceStatsRxBytes[5m]) * 8)", "refId": "A", "legendFormat": "rx {{ifName}}"},
+            {"expr": "topk(10, rate(mtxrInterfaceStatsTxBytes[5m]) * 8) * -1", "refId": "B", "legendFormat": "tx {{ifName}}"}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bps",
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "stacking": {"mode": "normal", "group": "A"}
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Interface Errors & Drops",
+          "description": "Any nonzero series here indicates a cabling, duplex mismatch, or congestion problem on that link.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 13},
+          "targets": [
+            {"expr": "sum by (ifName) (rate(mtxrInterfaceStatsRxDrop[5m])) > 0", "refId": "A", "legendFormat": "rx drop {{ifName}}"},
+            {"expr": "sum by (ifName) (rate(mtxrInterfaceStatsTxDrop[5m])) > 0", "refId": "B", "legendFormat": "tx drop {{ifName}}"},
+            {"expr": "sum by (ifName) (rate(mtxrInterfaceStatsRxFCSError[5m])) > 0", "refId": "C", "legendFormat": "rx fcs-error {{ifName}}"},
+            {"expr": "sum by (ifName) (rate(mtxrInterfaceStatsTxCollision[5m])) > 0", "refId": "D", "legendFormat": "tx collision {{ifName}}"},
+            {"expr": "sum by (ifName) (rate(mtxrInterfaceStatsLinkDowns[5m])) > 0", "refId": "E", "legendFormat": "link-down {{ifName}}"}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": {"drawStyle": "line", "fillOpacity": 0, "lineWidth": 2, "spanNulls": false}
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          }
+        },
+        {
+          "id": 7,
+          "type": "table",
+          "title": "Interface Link Status",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+          "targets": [
+            {"expr": "ifOperStatus{target=\"routeros-interfaces\"}", "refId": "A", "instant": true, "range": false, "format": "table"}
+          ],
+          "transformations": [
+            {"id": "organize", "options": {
+              "includeByName": {"ifDescr": true, "Value": true},
+              "renameByName": {"ifDescr": "Interface", "Value": "Oper Status (1=up)"}
+            }}
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "cellOptions": {"type": "color-background", "mode": "basic"},
+                "thresholds": {"mode": "absolute", "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1},
+                  {"color": "red", "value": 2}
+                ]}
+              }
+            },
+            "overrides": []
+          },
+          "options": {"cellHeight": "sm", "showHeader": true}
+        },
+        {
+          "id": 8,
+          "type": "table",
+          "title": "Interface Packet Rates (top 10 by total)",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+          "targets": [
+            {"expr": "topk(10, rate(mtxrInterfaceStatsRxPackets[5m]) + rate(mtxrInterfaceStatsTxPackets[5m]))", "refId": "A", "instant": true, "range": false, "format": "table"}
+          ],
+          "transformations": [
+            {"id": "organize", "options": {
+              "includeByName": {"ifName": true, "Value": true},
+              "renameByName": {"ifName": "Interface", "Value": "pkt/s"}
+            }}
+          ],
+          "fieldConfig": {"defaults": {"unit": "pps", "decimals": 1}, "overrides": []},
+          "options": {"cellHeight": "sm", "showHeader": true, "sortBy": [{"displayName": "pkt/s", "desc": true}]}
+        }
+      ]
+    }

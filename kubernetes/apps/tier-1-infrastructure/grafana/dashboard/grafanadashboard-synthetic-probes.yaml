@@ -3,10 +3,11 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: external-secrets
+  name: synthetic-probes
+  namespace: observability
 spec:
   allowCrossNamespaceImport: true
-  folder: platform
+  folder: network
   instanceSelector:
     matchLabels:
       grafana.internal/instance: grafana
@@ -14,5 +15,5 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
   configMapRef:
-    name: external-secrets-dashboard
-    key: external-secrets.json
+    name: synthetic-probes-dashboard
+    key: synthetic-probes.json
