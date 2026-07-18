@@ -5,6 +5,8 @@ kind: GrafanaDashboard
 metadata:
   name: sre-home-control-health
   namespace: observability
+  annotations:
+    observability.sulibot.com/dashboard-revision: "2026-07-18-live-validated"
 spec:
   allowCrossNamespaceImport: true
   folder: sre

@@ -34,7 +34,6 @@ Kept deliberately small. Each import lives next to the component that owns it.
 
 | Folder | Boards | Owner dir |
 |---|---|---|
-| cluster | kubernetes-api-server, kubernetes-coredns | `kube-prometheus-stack/app/` |
 | network | cloudflare-tunnels | `cloudflare-tunnel/app/` |
 | platform | vpa-overview | `grafana/app/` |
 
@@ -46,10 +45,10 @@ self-monitoring that never answered an incident question), `kubernetes-namespace
 Removed (2026-07-17 live validation): `kubernetes-global`, `kubernetes-nodes`,
 `kubernetes-pods`, `kubernetes-volumes`, `node-exporter-full`, `hubble`,
 `proxmox-via-prometheus`, `ceph-clusters-overview`, `valkey`, `cloudnative-pg`,
-and `volsync`. These imported dashboards either required labels this cluster
-does not expose, used stale metric names, had stale variables, or rendered as
-mostly no-data. Restore only as repo-owned dashboards validated against live
-Prometheus/Loki labels.
+`volsync`, `kubernetes-api-server`, and `kubernetes-coredns`. These imported
+dashboards either required labels this cluster does not expose, used stale metric
+names, had stale variables, or rendered as mostly no-data. Restore only as
+repo-owned dashboards validated against live Prometheus/Loki labels.
 
 ## Operator Workflow
 
@@ -72,7 +71,6 @@ Use dashboards as workflow steps, not as a wall of graphs:
 | Area | Decision | Notes |
 |---|---|---|
 | Repo-owned SRE dashboards | Keep/fix | They answer cross-layer workflows that imported dashboards do not. Keep them few. |
-| Imported Kubernetes API/CoreDNS dashboards | Keep | These validated against live metrics and remain useful for component detail. |
 | Imported Kubernetes/node/Hubble/Proxmox/Ceph/Valkey/CNPG/VolSync dashboards | Remove/replace | Generic imports rendered mostly no-data or used stale labels; use repo-owned SRE dashboards instead. |
 | Curated Loki dashboard | Keep | Good for saved starting points, but daily ad-hoc browsing should use Explore or Logs Drilldown. |
 | Empty/debug-only panels | Remove | A panel must answer an action-oriented question or expose missing telemetry clearly. |
