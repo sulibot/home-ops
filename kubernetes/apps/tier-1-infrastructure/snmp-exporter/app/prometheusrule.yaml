@@ -8,12 +8,23 @@ spec:
   groups:
     - name: snmp-exporter.rules
       rules:
-        - alert: UPSOnBattery
+        # NOTE 2026-07-19: the previous UPSOnBattery alert (upsAdvBattery*
+        # metrics) was inherited config for an APC UPS that does not exist in
+        # this environment - zero ups* series have ever been scraped. Removed
+        # rather than left as an alert that can never fire. The router is the
+        # only real SNMP target; alert on its scrape health instead.
+        - alert: RouterSNMPScrapeDown
           expr: |-
-            (upsAdvBatteryRunTimeRemaining/60/100 <= 20 and upsBasicBatteryTimeOnBattery > 0)
+            up{job="snmp-exporter"} == 0
+          for: 10m
+          labels:
+            severity: warning
+            layer: network
           annotations:
             summary: >-
-              ZPM {{$labels.instance}} is running on batteries and has less than 20 minutes of battery left
-          for: 5m
-          labels:
-            severity: critical
+              SNMP scrape of the router ({{ $labels.instance }}) has been failing for 10m
+            description: >-
+              The router dashboard (network/router-mikrotik) and interface
+              error alerting go dark without this scrape. Check snmp-exporter
+              pod health (pinned to solwk01 for UDP/161 reachability) and the
+              router itself.

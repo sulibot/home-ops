@@ -1,4 +1,10 @@
 ---
+# Rewritten 2026-07-19: the previous target list (expanse, garage-door,
+# hdhomerun, idrac, kiosk, kvm, pikvm, receiver, ups, vacuum,
+# zigbee-controller, zwave-controller - all *.internal, plus an NFS check)
+# was inherited from another user's repo and referenced devices/DNS names
+# that have never existed in this environment. Targets below are the real
+# infrastructure, by IP - no DNS dependency.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/probe_v1.json
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
@@ -11,18 +17,12 @@ spec:
   targets:
     staticConfig:
       static:
-        - expanse.internal
-        - garage-door.internal
-        - hdhomerun.internal
-        - idrac.internal
-        - kiosk.internal
-        - kvm.internal
-        - pikvm.internal
-        - receiver.internal
-        - ups.internal
-        - vacuum.internal
-        - zigbee-controller.internal
-        - zwave-controller.internal
+        # RouterOS (also the SNMP scrape target)
+        - fd00:30::fffe
+        # Proxmox hosts (mgmt addresses, from homeops_pve_host_info)
+        - fd00:10::1
+        - fd00:10::2
+        - fd00:10::3
   metricRelabelings:
     - targetLabel: service
       replacement: blackbox-exporter-lan
@@ -32,16 +32,36 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
 metadata:
-  name: lan-tcp
+  name: wan-icmp
 spec:
-  module: tcp_connect
+  module: icmp
   prober:
     url: blackbox-exporter-lan.observability.svc.cluster.local:9115
   targets:
     staticConfig:
       static:
-        - expanse.internal:2049
+        # Cloudflare anycast - answers "does the cluster have WAN at all"
+        - 2606:4700:4700::1111
   metricRelabelings:
     - targetLabel: service
-      replacement: blackbox-exporter-lan
+      replacement: blackbox-exporter-wan
+      action: replace
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/probe_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: wan-http
+spec:
+  module: http_2xx
+  prober:
+    url: blackbox-exporter-lan.observability.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        # Full HTTP+TLS+DNS path check (unlike raw ICMP above)
+        - https://one.one.one.one
+  metricRelabelings:
+    - targetLabel: service
+      replacement: blackbox-exporter-wan
       action: replace
