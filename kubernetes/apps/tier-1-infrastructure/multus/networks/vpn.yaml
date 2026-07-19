@@ -12,7 +12,10 @@ spec:
       "plugins": [
         {
           "type": "macvlan",
-          "master": "bond0.90",
+          # bond0 doesn't exist on cluster-101 (VM nodes, no physical NIC
+          # bonding) - it's down on all 6 nodes, confirmed 2026-07-18. Every
+          # other working NAD (vlan10/30/31) uses ens19.<vlan> instead.
+          "master": "ens19.90",
           "mode": "bridge",
           "ipam": {
             "type": "static",

@@ -7,6 +7,31 @@ metadata:
 data:
   automations.yaml: |
     ---
+    - id: living_room_wall_switch_mirrors_lights
+      alias: Living Room Wall Switch Mirrors Lights
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id: light.living_room_switch
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.from_state is not none }}"
+      action:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'off' }}"
+          sequence:
+          - service: light.turn_off
+            target:
+              entity_id: light.living_room_lights
+        - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'on' }}"
+          sequence:
+          - service: light.turn_on
+            target:
+              entity_id: light.living_room_lights
     - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
       alias: Bedroom Dimmer Mirrors Bulbs
       mode: restart
