@@ -141,6 +141,16 @@ data:
           - "[STATUS] >= 200"
           - "[STATUS] < 500"
 
+      - name: Home Assistant Google Assistant
+        group: cluster-104-apps
+        url: https://ha-google.sulibot.com/api/google_assistant
+        interval: 1m
+        client:
+          timeout: 10s
+        conditions:
+          - "[STATUS] >= 200"
+          - "[STATUS] < 500"
+
       - name: Music Assistant
         group: cluster-104-apps
         url: https://music-assistant.sulibot.com/

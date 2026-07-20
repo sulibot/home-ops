@@ -110,6 +110,22 @@ data:
         - fd00:104:224::/60
         - 10.104.224.0/20
 
+    command_line:
+      - sensor:
+          name: Home Assistant Config Disk Used Percent
+          unique_id: home_assistant_config_disk_used_percent
+          command: "python3 -c 'import os; s=os.statvfs(\"/config\"); print(round((s.f_blocks - s.f_bavail) * 100 / s.f_blocks, 2) if s.f_blocks else 0)'"
+          scan_interval: 300
+          unit_of_measurement: "%"
+          state_class: measurement
+      - sensor:
+          name: Home Assistant Config Disk Free GB
+          unique_id: home_assistant_config_disk_free_gb
+          command: "python3 -c 'import os; s=os.statvfs(\"/config\"); print(round(s.f_bavail * s.f_frsize / 1024 / 1024 / 1024, 2))'"
+          scan_interval: 300
+          unit_of_measurement: GB
+          state_class: measurement
+
     homeassistant:
       # The iOS/mobile app persists HA's advertised internal/external URLs from
       # discovery/onboarding. Keep both on the unified app/discovery hostname so
@@ -188,6 +204,17 @@ data:
           - sensor.sebby_bedroom_controlled_lights_unavailable_count
           - sensor.sebby_bedroom_wall_switch_target_mismatch_count
           - sensor.wall_switch_controlled_lights_unavailable_count
+          - sensor.home_assistant_config_disk_free_gb
+          - sensor.home_assistant_config_disk_used_percent
+          - sensor.ikea_button_battery_low_count
+          - sensor.ikea_button_battery_unavailable_count
+          - sensor.ikea_button_event_stale_count
+          - sensor.master_bedroom_button_event_stale_count
+          - sensor.sebby_bedroom_button_event_stale_count
+          - sensor.living_room_button_event_stale_count
+          - sensor.dining_room_button_event_stale_count
+          - sensor.music_assistant_core_players_unavailable_count
+          - sensor.music_assistant_script_targets_unavailable_count
 
     google_assistant:
       project_id: sulibot-home-assistant-17e85
@@ -548,6 +575,354 @@ data:
               {% else %}
                 0
               {% endif %}
+            state_class: measurement
+          - name: IKEA Button Event Stale Count
+            unique_id: ikea_button_event_stale_count
+            state: >-
+              {% set max_age = 14 * 24 * 60 * 60 %}
+              {% set buttons = {
+                'Master Bedroom Orange Button': [
+                  'event.bilresa_scroll_wheel_button_3_2',
+                  'event.bilresa_scroll_wheel_button_6_2',
+                  'event.bilresa_scroll_wheel_button_9_2'
+                ],
+                'Sebby Bedroom White Button': [
+                  'event.bilresa_scroll_wheel_button_3_3',
+                  'event.bilresa_scroll_wheel_button_6_3',
+                  'event.bilresa_scroll_wheel_button_9_3'
+                ],
+                'Stale Green Button': [
+                  'event.bilresa_scroll_wheel_button_3_4',
+                  'event.bilresa_scroll_wheel_button_6_4',
+                  'event.bilresa_scroll_wheel_button_9_4'
+                ],
+                'Dining Room Orange Button': [
+                  'event.bilresa_scroll_wheel_button_3_6',
+                  'event.bilresa_scroll_wheel_button_6_6',
+                  'event.bilresa_scroll_wheel_button_9_6'
+                ],
+                'Living Room White Button': [
+                  'event.bilresa_scroll_wheel_button_3_7',
+                  'event.bilresa_scroll_wheel_button_6_7',
+                  'event.bilresa_scroll_wheel_button_9_7'
+                ],
+                'Master Bedroom Green Button': [
+                  'event.bilresa_scroll_wheel_button_3_8',
+                  'event.bilresa_scroll_wheel_button_6_8',
+                  'event.bilresa_scroll_wheel_button_9_8'
+                ]
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, events in buttons.items() %}
+                {% set button = namespace(latest=0, available=false) %}
+                {% for entity_id in events %}
+                  {% set st = states[entity_id] %}
+                  {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                    {% set button.available = true %}
+                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% if updated > button.latest %}
+                      {% set button.latest = updated %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+            attributes:
+              stale_buttons: >-
+                {% set max_age = 14 * 24 * 60 * 60 %}
+                {% set buttons = {
+                  'Master Bedroom Orange Button': [
+                    'event.bilresa_scroll_wheel_button_3_2',
+                    'event.bilresa_scroll_wheel_button_6_2',
+                    'event.bilresa_scroll_wheel_button_9_2'
+                  ],
+                  'Sebby Bedroom White Button': [
+                    'event.bilresa_scroll_wheel_button_3_3',
+                    'event.bilresa_scroll_wheel_button_6_3',
+                    'event.bilresa_scroll_wheel_button_9_3'
+                  ],
+                  'Stale Green Button': [
+                    'event.bilresa_scroll_wheel_button_3_4',
+                    'event.bilresa_scroll_wheel_button_6_4',
+                    'event.bilresa_scroll_wheel_button_9_4'
+                  ],
+                  'Dining Room Orange Button': [
+                    'event.bilresa_scroll_wheel_button_3_6',
+                    'event.bilresa_scroll_wheel_button_6_6',
+                    'event.bilresa_scroll_wheel_button_9_6'
+                  ],
+                  'Living Room White Button': [
+                    'event.bilresa_scroll_wheel_button_3_7',
+                    'event.bilresa_scroll_wheel_button_6_7',
+                    'event.bilresa_scroll_wheel_button_9_7'
+                  ],
+                  'Master Bedroom Green Button': [
+                    'event.bilresa_scroll_wheel_button_3_8',
+                    'event.bilresa_scroll_wheel_button_6_8',
+                    'event.bilresa_scroll_wheel_button_9_8'
+                  ]
+                } %}
+                {% set ns = namespace(names=[]) %}
+                {% for name, events in buttons.items() %}
+                  {% set button = namespace(latest=0, available=false) %}
+                  {% for entity_id in events %}
+                    {% set st = states[entity_id] %}
+                    {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                      {% set button.available = true %}
+                      {% set updated = as_timestamp(st.last_updated, 0) %}
+                      {% if updated > button.latest %}
+                        {% set button.latest = updated %}
+                      {% endif %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                    {% set ns.names = ns.names + [name] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.names | join(',') }}
+          - name: Master Bedroom Button Event Stale Count
+            unique_id: master_bedroom_button_event_stale_count
+            state: >-
+              {% set max_age = 14 * 24 * 60 * 60 %}
+              {% set buttons = {
+                'Master Bedroom Orange Button': [
+                  'event.bilresa_scroll_wheel_button_3_2',
+                  'event.bilresa_scroll_wheel_button_6_2',
+                  'event.bilresa_scroll_wheel_button_9_2'
+                ],
+                'Master Bedroom Green Button': [
+                  'event.bilresa_scroll_wheel_button_3_8',
+                  'event.bilresa_scroll_wheel_button_6_8',
+                  'event.bilresa_scroll_wheel_button_9_8'
+                ]
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, events in buttons.items() %}
+                {% set button = namespace(latest=0, available=false) %}
+                {% for entity_id in events %}
+                  {% set st = states[entity_id] %}
+                  {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                    {% set button.available = true %}
+                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% if updated > button.latest %}
+                      {% set button.latest = updated %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+          - name: Sebby Bedroom Button Event Stale Count
+            unique_id: sebby_bedroom_button_event_stale_count
+            state: >-
+              {% set max_age = 14 * 24 * 60 * 60 %}
+              {% set buttons = {
+                'Sebby Bedroom White Button': [
+                  'event.bilresa_scroll_wheel_button_3_3',
+                  'event.bilresa_scroll_wheel_button_6_3',
+                  'event.bilresa_scroll_wheel_button_9_3'
+                ]
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, events in buttons.items() %}
+                {% set button = namespace(latest=0, available=false) %}
+                {% for entity_id in events %}
+                  {% set st = states[entity_id] %}
+                  {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                    {% set button.available = true %}
+                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% if updated > button.latest %}
+                      {% set button.latest = updated %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+          - name: Living Room Button Event Stale Count
+            unique_id: living_room_button_event_stale_count
+            state: >-
+              {% set max_age = 14 * 24 * 60 * 60 %}
+              {% set buttons = {
+                'Living Room White Button': [
+                  'event.bilresa_scroll_wheel_button_3_7',
+                  'event.bilresa_scroll_wheel_button_6_7',
+                  'event.bilresa_scroll_wheel_button_9_7'
+                ]
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, events in buttons.items() %}
+                {% set button = namespace(latest=0, available=false) %}
+                {% for entity_id in events %}
+                  {% set st = states[entity_id] %}
+                  {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                    {% set button.available = true %}
+                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% if updated > button.latest %}
+                      {% set button.latest = updated %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+          - name: Dining Room Button Event Stale Count
+            unique_id: dining_room_button_event_stale_count
+            state: >-
+              {% set max_age = 14 * 24 * 60 * 60 %}
+              {% set buttons = {
+                'Dining Room Orange Button': [
+                  'event.bilresa_scroll_wheel_button_3_6',
+                  'event.bilresa_scroll_wheel_button_6_6',
+                  'event.bilresa_scroll_wheel_button_9_6'
+                ]
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, events in buttons.items() %}
+                {% set button = namespace(latest=0, available=false) %}
+                {% for entity_id in events %}
+                  {% set st = states[entity_id] %}
+                  {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
+                    {% set button.available = true %}
+                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% if updated > button.latest %}
+                      {% set button.latest = updated %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if not button.available or button.latest == 0 or (as_timestamp(now()) - button.latest) > max_age %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+          - name: IKEA Button Battery Low Count
+            unique_id: ikea_button_battery_low_count
+            state: >-
+              {% set batteries = {
+                'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
+                'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
+                'Stale Green Button': 'sensor.bilresa_scroll_wheel_battery_4',
+                'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
+                'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
+                'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
+              } %}
+              {% set ns = namespace(count=0) %}
+              {% for name, entity_id in batteries.items() %}
+                {% set value = states(entity_id) | float(-1) %}
+                {% if value >= 0 and value < 20 %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+            attributes:
+              low_battery_buttons: >-
+                {% set batteries = {
+                  'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
+                  'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
+                  'Stale Green Button': 'sensor.bilresa_scroll_wheel_battery_4',
+                  'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
+                  'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
+                  'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
+                } %}
+                {% set ns = namespace(names=[]) %}
+                {% for name, entity_id in batteries.items() %}
+                  {% set value = states(entity_id) | float(-1) %}
+                  {% if value >= 0 and value < 20 %}
+                    {% set ns.names = ns.names + [name ~ ' (' ~ (value | round(0)) ~ '%)'] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.names | join(',') }}
+          - name: IKEA Button Battery Unavailable Count
+            unique_id: ikea_button_battery_unavailable_count
+            state: >-
+              {% set batteries = [
+                'sensor.bilresa_scroll_wheel_battery_2',
+                'sensor.bilresa_scroll_wheel_battery_3',
+                'sensor.bilresa_scroll_wheel_battery_4',
+                'sensor.bilresa_scroll_wheel_battery_6',
+                'sensor.bilresa_scroll_wheel_battery_7',
+                'sensor.bilresa_scroll_wheel_battery_8'
+              ] %}
+              {% set ns = namespace(count=0) %}
+              {% for entity_id in batteries %}
+                {% if states(entity_id) in ['unavailable', 'unknown'] %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+          - name: Music Assistant Core Players Unavailable Count
+            unique_id: music_assistant_core_players_unavailable_count
+            state: >-
+              {% set players = [
+                'media_player.dining_room',
+                'media_player.kitchen_2',
+                'media_player.living_room',
+                'media_player.master_bedroom',
+                'media_player.patio',
+                'media_player.sebby_bedroom',
+                'media_player.sebby_bedroom_rear'
+              ] %}
+              {% set ns = namespace(count=0) %}
+              {% for entity_id in players %}
+                {% if states(entity_id) in ['unavailable', 'unknown'] %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
+            state_class: measurement
+            attributes:
+              unavailable_players: >-
+                {% set players = [
+                  'media_player.dining_room',
+                  'media_player.kitchen_2',
+                  'media_player.living_room',
+                  'media_player.master_bedroom',
+                  'media_player.patio',
+                  'media_player.sebby_bedroom',
+                  'media_player.sebby_bedroom_rear'
+                ] %}
+                {% set ns = namespace(names=[]) %}
+                {% for entity_id in players %}
+                  {% if states(entity_id) in ['unavailable', 'unknown'] %}
+                    {% set ns.names = ns.names + [state_attr(entity_id, 'friendly_name') or entity_id] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.names | join(',') }}
+          - name: Music Assistant Script Targets Unavailable Count
+            unique_id: music_assistant_script_targets_unavailable_count
+            state: >-
+              {% set players = [
+                'media_player.dining_room',
+                'media_player.kitchen_2',
+                'media_player.living_room',
+                'media_player.master_bedroom',
+                'media_player.patio',
+                'media_player.sebby_bedroom',
+                'media_player.sebby_bedroom_rear'
+              ] %}
+              {% set ns = namespace(count=0) %}
+              {% for entity_id in players %}
+                {% if states(entity_id) in ['unavailable', 'unknown'] %}
+                  {% set ns.count = ns.count + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.count }}
             state_class: measurement
       - light:
           - name: Living Room Lights
