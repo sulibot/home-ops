@@ -395,7 +395,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm_3
                   - light.kajplats_e26_ws_globe_1600lm_4
               data:
-                brightness: "{{ brightness | default(none) }}"
+                brightness: "{{ brightness | default(255, true) | int }}"
                 transition: "{{ transition | default(0, true) | float }}"
             set_level:
               action: light.turn_on
@@ -433,7 +433,7 @@ data:
                   - light.kajplats_e26_ws_globe_1600lm
                   - light.kajplats_e26_ws_globe_1600lm_5
               data:
-                brightness: "{{ brightness | default(none) }}"
+                brightness: "{{ brightness | default(255, true) | int }}"
                 transition: "{{ transition | default(0, true) | float }}"
             set_level:
               action: light.turn_on

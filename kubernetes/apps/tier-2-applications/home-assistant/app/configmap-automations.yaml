@@ -18,30 +18,118 @@ data:
         - light.bedroom_switch
       condition:
       - condition: template
-        value_template: "{{ trigger.to_state is not none and trigger.to_state.state in ['on', 'off'] }}"
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state in ['on', 'off']
+             and trigger.to_state.state in ['on', 'off']
+             and trigger.from_state.state != trigger.to_state.state }}
       action:
       - variables:
-          target_entity: >-
+          target_lights: >-
             {{ {
-              'light.living_room_switch': 'light.living_room_lights',
-              'light.master_switch': 'light.master_lights',
-              'light.bedroom_switch': 'light.bedroom_lights'
-            }.get(trigger.entity_id) }}
+              'light.living_room_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4'
+              ],
+              'light.master_switch': [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_5'
+              ],
+              'light.bedroom_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ]
+            }.get(trigger.entity_id, []) }}
+          available_target_lights: >-
+            {{ target_lights
+               | reject('is_state', 'unavailable')
+               | reject('is_state', 'unknown')
+               | list }}
       - choose:
         - conditions:
           - condition: template
-            value_template: "{{ trigger.to_state.state == 'off' }}"
+            value_template: "{{ trigger.to_state.state == 'off' and available_target_lights | count > 0 }}"
           sequence:
-          - service: light.turn_off
-            data:
-              entity_id: "{{ target_entity }}"
+          - repeat:
+              for_each: "{{ available_target_lights }}"
+              sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: "{{ repeat.item }}"
+                continue_on_error: true
         - conditions:
           - condition: template
-            value_template: "{{ trigger.to_state.state == 'on' }}"
+            value_template: "{{ trigger.to_state.state == 'on' and available_target_lights | count > 0 }}"
+          sequence:
+          - repeat:
+              for_each: "{{ available_target_lights }}"
+              sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ repeat.item }}"
+                data:
+                  brightness: 255
+                continue_on_error: true
+    - id: wall_switches_mirror_room_brightness
+      alias: Wall Switches Mirror Room Brightness
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id:
+        - light.living_room_switch
+        - light.master_switch
+        - light.bedroom_switch
+        attribute: brightness
+      condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state is not none
+             and trigger.to_state.state == 'on'
+             and trigger.to_state.attributes.get('brightness') is not none
+             and (
+               trigger.from_state is none
+               or trigger.from_state.attributes.get('brightness') != trigger.to_state.attributes.get('brightness')
+             ) }}
+      action:
+      - variables:
+          target_lights: >-
+            {{ {
+              'light.living_room_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4'
+              ],
+              'light.master_switch': [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_5'
+              ],
+              'light.bedroom_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ]
+            }.get(trigger.entity_id, []) }}
+          target_brightness: "{{ trigger.to_state.attributes.get('brightness') | int }}"
+          available_target_lights: >-
+            {{ target_lights
+               | reject('is_state', 'unavailable')
+               | reject('is_state', 'unknown')
+               | list }}
+      - condition: template
+        value_template: "{{ target_brightness > 0 and available_target_lights | count > 0 }}"
+      - repeat:
+          for_each: "{{ available_target_lights }}"
           sequence:
           - service: light.turn_on
+            target:
+              entity_id: "{{ repeat.item }}"
             data:
-              entity_id: "{{ target_entity }}"
+              brightness: "{{ target_brightness }}"
+            continue_on_error: true
     - id: wall_switches_monitor_room_light_follow
       alias: Wall Switches Monitor Room Light Follow
       mode: parallel
@@ -54,15 +142,40 @@ data:
         - light.bedroom_switch
       condition:
       - condition: template
-        value_template: "{{ trigger.to_state is not none and trigger.to_state.state in ['on', 'off'] }}"
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state in ['on', 'off']
+             and trigger.to_state.state in ['on', 'off']
+             and trigger.from_state.state != trigger.to_state.state }}
       action:
       - variables:
-          target_entity: >-
+          target_lights: >-
             {{ {
-              'light.living_room_switch': 'light.living_room_lights',
-              'light.master_switch': 'light.master_lights',
-              'light.bedroom_switch': 'light.bedroom_lights'
-            }.get(trigger.entity_id) }}
+              'light.living_room_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4'
+              ],
+              'light.master_switch': [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_5'
+              ],
+              'light.bedroom_switch': [
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ]
+            }.get(trigger.entity_id, []) }}
+          available_target_lights: >-
+            {{ target_lights
+               | reject('is_state', 'unavailable')
+               | reject('is_state', 'unknown')
+               | list }}
+          unavailable_target_lights: >-
+            {{ target_lights
+               | select('is_state', 'unavailable')
+               | list }}
           room_name: >-
             {{ {
               'light.living_room_switch': 'Living Room',
@@ -75,11 +188,53 @@ data:
               'light.master_switch': 'wall_switch_master_bedroom_follow_failed',
               'light.bedroom_switch': 'wall_switch_sebby_bedroom_follow_failed'
             }.get(trigger.entity_id, 'wall_switch_follow_failed') }}
-      - delay: "00:00:04"
+      - wait_template: >-
+          {{ available_target_lights | count > 0
+             and expand(available_target_lights)
+               | selectattr('state', 'eq', trigger.to_state.state)
+               | list
+               | count == available_target_lights | count }}
+        timeout: "00:00:15"
+        continue_on_timeout: true
+      - variables:
+          mismatched_lights: >-
+            {{ available_target_lights
+               | reject('is_state', trigger.to_state.state)
+               | list }}
+          mismatched_names: >-
+            {% set ns = namespace(names=[]) %}
+            {% for entity_id in mismatched_lights %}
+              {% set ns.names = ns.names + [state_attr(entity_id, 'friendly_name') or entity_id] %}
+            {% endfor %}
+            {{ ns.names | join(', ') }}
+          unavailable_names: >-
+            {% set ns = namespace(names=[]) %}
+            {% for entity_id in unavailable_target_lights %}
+              {% set ns.names = ns.names + [state_attr(entity_id, 'friendly_name') or entity_id] %}
+            {% endfor %}
+            {{ ns.names | join(', ') }}
       - choose:
         - conditions:
           - condition: template
-            value_template: "{{ target_entity is not none and states(target_entity) != trigger.to_state.state }}"
+            value_template: "{{ available_target_lights | count == 0 }}"
+          sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ room_name }} wall switch has no reachable target lights"
+              message: >-
+                {{ trigger.entity_id }} changed to {{ trigger.to_state.state }},
+                but all configured target Matter lights are unavailable:
+                {{ unavailable_names }}.
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                {{ room_name }} wall switch follow check failed: no reachable
+                target Matter lights. Unavailable: {{ unavailable_target_lights | join(', ') }}.
+        - conditions:
+          - condition: template
+            value_template: "{{ not wait.completed }}"
           sequence:
           - service: persistent_notification.create
             data:
@@ -87,18 +242,96 @@ data:
               title: "{{ room_name }} wall switch did not control lights"
               message: >-
                 {{ trigger.entity_id }} changed to {{ trigger.to_state.state }},
-                but {{ target_entity }} is {{ states(target_entity) }} after 4 seconds.
+                but these reachable Matter lights did not follow within 15
+                seconds: {{ mismatched_names }}. Unavailable targets were
+                ignored: {{ unavailable_names }}.
           - service: system_log.write
             data:
               level: warning
               message: >-
                 {{ room_name }} wall switch follow check failed:
-                {{ trigger.entity_id }}={{ trigger.to_state.state }},
-                {{ target_entity }}={{ states(target_entity) }}.
+                {{ trigger.entity_id }}={{ trigger.to_state.state }}.
+                Mismatched: {{ mismatched_lights | join(', ') }}.
+                Unavailable: {{ unavailable_target_lights | join(', ') }}.
         default:
         - service: persistent_notification.dismiss
           data:
             notification_id: "{{ notification_id }}"
+    - id: wall_switch_controlled_lights_availability_monitor
+      alias: Wall Switch Controlled Lights Availability Monitor
+      mode: restart
+      trigger:
+      - platform: state
+        entity_id:
+        - light.kajplats_e26_ws_globe_1600lm
+        - light.kajplats_e26_ws_globe_1600lm_2
+        - light.kajplats_e26_ws_globe_1600lm_3
+        - light.kajplats_e26_ws_globe_1600lm_4
+        - light.kajplats_e26_ws_globe_1600lm_5
+        - light.kajplats_e26_ws_globe_1600lm_6
+        - light.kajplats_e26_ws_globe_1600lm_7
+        - light.kajplats_e26_ws_globe_1600lm_8
+        - light.kajplats_e26_ws_globe_1600lm_9
+        to: unavailable
+        for: "00:02:00"
+      - platform: state
+        entity_id:
+        - light.kajplats_e26_ws_globe_1600lm
+        - light.kajplats_e26_ws_globe_1600lm_2
+        - light.kajplats_e26_ws_globe_1600lm_3
+        - light.kajplats_e26_ws_globe_1600lm_4
+        - light.kajplats_e26_ws_globe_1600lm_5
+        - light.kajplats_e26_ws_globe_1600lm_6
+        - light.kajplats_e26_ws_globe_1600lm_7
+        - light.kajplats_e26_ws_globe_1600lm_8
+        - light.kajplats_e26_ws_globe_1600lm_9
+        from: unavailable
+        for: "00:00:30"
+      - platform: time_pattern
+        minutes: "/10"
+      - platform: homeassistant
+        event: start
+      action:
+      - variables:
+          controlled_lights:
+          - light.kajplats_e26_ws_globe_1600lm
+          - light.kajplats_e26_ws_globe_1600lm_2
+          - light.kajplats_e26_ws_globe_1600lm_3
+          - light.kajplats_e26_ws_globe_1600lm_4
+          - light.kajplats_e26_ws_globe_1600lm_5
+          - light.kajplats_e26_ws_globe_1600lm_6
+          - light.kajplats_e26_ws_globe_1600lm_7
+          - light.kajplats_e26_ws_globe_1600lm_8
+          - light.kajplats_e26_ws_globe_1600lm_9
+          unavailable_lights: "{{ controlled_lights | select('is_state', 'unavailable') | list }}"
+          unavailable_names: >-
+            {% set ns = namespace(names=[]) %}
+            {% for entity_id in unavailable_lights %}
+              {% set ns.names = ns.names + [state_attr(entity_id, 'friendly_name') or entity_id] %}
+            {% endfor %}
+            {{ ns.names | join(', ') }}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ unavailable_lights | count > 0 }}"
+          sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: wall_switch_controlled_lights_unavailable
+              title: Wall switch controlled lights unavailable
+              message: >-
+                These Matter lights are unavailable and may not follow wall
+                switch automations: {{ unavailable_names }}.
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                Wall switch controlled Matter lights unavailable:
+                {{ unavailable_lights | join(', ') }}.
+        default:
+        - service: persistent_notification.dismiss
+          data:
+            notification_id: wall_switch_controlled_lights_unavailable
     - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
       alias: Bedroom Dimmer Mirrors Bulbs
       mode: restart
