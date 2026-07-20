@@ -72,6 +72,22 @@ data:
         name: Sebby Bedroom Lights Press Count
         initial: 0
         step: 1
+      wall_switch_follow_failures:
+        name: Wall Switch Follow Failures
+        initial: 0
+        step: 1
+      wall_switch_living_room_follow_failures:
+        name: Living Room Wall Switch Follow Failures
+        initial: 0
+        step: 1
+      wall_switch_master_bedroom_follow_failures:
+        name: Master Bedroom Wall Switch Follow Failures
+        initial: 0
+        step: 1
+      wall_switch_sebby_bedroom_follow_failures:
+        name: Sebby Bedroom Wall Switch Follow Failures
+        initial: 0
+        step: 1
 
     timer:
       bedroom_lights_press_window:
@@ -147,6 +163,31 @@ data:
         automatic_user_linking: true
         default_redirect: true
         force_https: true
+
+    prometheus:
+      namespace: hass
+      requires_auth: false
+      filter:
+        include_entities:
+          - automation.wall_switches_mirror_room_lights
+          - automation.wall_switches_mirror_room_brightness
+          - automation.wall_switches_monitor_room_light_follow
+          - automation.wall_switch_controlled_lights_availability_monitor
+          - counter.wall_switch_follow_failures
+          - counter.wall_switch_living_room_follow_failures
+          - counter.wall_switch_master_bedroom_follow_failures
+          - counter.wall_switch_sebby_bedroom_follow_failures
+          - light.bedroom_switch
+          - light.living_room_switch
+          - light.master_switch
+          - sensor.living_room_controlled_lights_unavailable_count
+          - sensor.living_room_wall_switch_target_mismatch_count
+          - sensor.wall_switch_automation_disabled_count
+          - sensor.master_bedroom_controlled_lights_unavailable_count
+          - sensor.master_bedroom_wall_switch_target_mismatch_count
+          - sensor.sebby_bedroom_controlled_lights_unavailable_count
+          - sensor.sebby_bedroom_wall_switch_target_mismatch_count
+          - sensor.wall_switch_controlled_lights_unavailable_count
 
     google_assistant:
       project_id: sulibot-home-assistant-17e85
@@ -374,6 +415,140 @@ data:
               action: light.toggle
               target:
                 entity_id: light.dining_room_lights
+      - sensor:
+          - name: Wall Switch Controlled Lights Unavailable Count
+            unique_id: wall_switch_controlled_lights_unavailable_count
+            state: >-
+              {{ [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4',
+                'light.kajplats_e26_ws_globe_1600lm_5',
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ] | select('is_state', 'unavailable') | list | count }}
+            state_class: measurement
+            attributes:
+              unavailable_entities: >-
+                {{ [
+                  'light.kajplats_e26_ws_globe_1600lm',
+                  'light.kajplats_e26_ws_globe_1600lm_2',
+                  'light.kajplats_e26_ws_globe_1600lm_3',
+                  'light.kajplats_e26_ws_globe_1600lm_4',
+                  'light.kajplats_e26_ws_globe_1600lm_5',
+                  'light.kajplats_e26_ws_globe_1600lm_6',
+                  'light.kajplats_e26_ws_globe_1600lm_7',
+                  'light.kajplats_e26_ws_globe_1600lm_8',
+                  'light.kajplats_e26_ws_globe_1600lm_9'
+                ] | select('is_state', 'unavailable') | list | join(',') }}
+          - name: Living Room Controlled Lights Unavailable Count
+            unique_id: living_room_controlled_lights_unavailable_count
+            state: >-
+              {{ [
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4'
+              ] | select('is_state', 'unavailable') | list | count }}
+            state_class: measurement
+          - name: Master Bedroom Controlled Lights Unavailable Count
+            unique_id: master_bedroom_controlled_lights_unavailable_count
+            state: >-
+              {{ [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_5'
+              ] | select('is_state', 'unavailable') | list | count }}
+            state_class: measurement
+          - name: Sebby Bedroom Controlled Lights Unavailable Count
+            unique_id: sebby_bedroom_controlled_lights_unavailable_count
+            state: >-
+              {{ [
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ] | select('is_state', 'unavailable') | list | count }}
+            state_class: measurement
+          - name: Living Room Wall Switch Target Mismatch Count
+            unique_id: living_room_wall_switch_target_mismatch_count
+            state: >-
+              {% set switch_state = states('light.living_room_switch') %}
+              {% set targets = [
+                'light.kajplats_e26_ws_globe_1600lm_2',
+                'light.kajplats_e26_ws_globe_1600lm_3',
+                'light.kajplats_e26_ws_globe_1600lm_4'
+              ] %}
+              {% if switch_state in ['on', 'off'] %}
+                {{ targets
+                   | reject('is_state', 'unavailable')
+                   | reject('is_state', 'unknown')
+                   | reject('is_state', switch_state)
+                   | list
+                   | count }}
+              {% else %}
+                0
+              {% endif %}
+            state_class: measurement
+          - name: Wall Switch Automation Disabled Count
+            unique_id: wall_switch_automation_disabled_count
+            state: >-
+              {{ [
+                'automation.wall_switches_mirror_room_lights',
+                'automation.wall_switches_mirror_room_brightness',
+                'automation.wall_switches_monitor_room_light_follow',
+                'automation.wall_switch_controlled_lights_availability_monitor'
+              ] | reject('is_state', 'on') | list | count }}
+            state_class: measurement
+            attributes:
+              disabled_or_unavailable_entities: >-
+                {{ [
+                  'automation.wall_switches_mirror_room_lights',
+                  'automation.wall_switches_mirror_room_brightness',
+                  'automation.wall_switches_monitor_room_light_follow',
+                  'automation.wall_switch_controlled_lights_availability_monitor'
+                ] | reject('is_state', 'on') | list | join(',') }}
+          - name: Master Bedroom Wall Switch Target Mismatch Count
+            unique_id: master_bedroom_wall_switch_target_mismatch_count
+            state: >-
+              {% set switch_state = states('light.master_switch') %}
+              {% set targets = [
+                'light.kajplats_e26_ws_globe_1600lm',
+                'light.kajplats_e26_ws_globe_1600lm_5'
+              ] %}
+              {% if switch_state in ['on', 'off'] %}
+                {{ targets
+                   | reject('is_state', 'unavailable')
+                   | reject('is_state', 'unknown')
+                   | reject('is_state', switch_state)
+                   | list
+                   | count }}
+              {% else %}
+                0
+              {% endif %}
+            state_class: measurement
+          - name: Sebby Bedroom Wall Switch Target Mismatch Count
+            unique_id: sebby_bedroom_wall_switch_target_mismatch_count
+            state: >-
+              {% set switch_state = states('light.bedroom_switch') %}
+              {% set targets = [
+                'light.kajplats_e26_ws_globe_1600lm_6',
+                'light.kajplats_e26_ws_globe_1600lm_7',
+                'light.kajplats_e26_ws_globe_1600lm_8',
+                'light.kajplats_e26_ws_globe_1600lm_9'
+              ] %}
+              {% if switch_state in ['on', 'off'] %}
+                {{ targets
+                   | reject('is_state', 'unavailable')
+                   | reject('is_state', 'unknown')
+                   | reject('is_state', switch_state)
+                   | list
+                   | count }}
+              {% else %}
+                0
+              {% endif %}
+            state_class: measurement
       - light:
           - name: Living Room Lights
             unique_id: living_room_lights_group

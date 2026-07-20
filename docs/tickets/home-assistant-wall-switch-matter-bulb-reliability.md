@@ -4,6 +4,10 @@
 
 Open.
 
+Monitoring implemented for the Home Assistant control path. The remaining open
+work is deeper Matter/Thread mesh quality visibility and the physical reliability
+work implied by those signals.
+
 ## Context
 
 Home Assistant on cluster-104 uses Matter Kasa wall dimmers to control IKEA
@@ -24,6 +28,13 @@ The immediate Home Assistant YAML issues have been corrected:
 - Monitoring creates a persistent notification and system log warning when
   controlled Matter bulbs are unavailable or when reachable targets do not
   follow a switch state change.
+- Home Assistant exports a narrow Prometheus metric set for the wall-switch
+  control path through `/api/prometheus`.
+- Prometheus on the main observability cluster scrapes cluster-104 Home
+  Assistant through `hass-app.sulibot.com`.
+- Alertmanager rules now cover Home Assistant scrape loss, disabled
+  wall-switch automations, unavailable controlled bulbs, switch/target state
+  mismatch, and follow-failure counter increments.
 
 ## Observed Failure
 
@@ -66,7 +77,9 @@ instead of letting the latest switch state win.
 - Consider replacing load-controlling smart dimmers with scene-controller or
   detached-mode controls for smart bulbs, or use dumb dimmable bulbs behind
   Kasa load dimmers.
-- Add Prometheus or HA sensor-based monitoring for:
-  - Count of unavailable wall-switch-controlled lights.
-  - Matter server `peer-unresponsive` events.
+- Add deeper Matter/Thread telemetry for:
+  - Matter server `peer-unresponsive` event rate by node ID.
   - OTBR neighbor links with weak RSSI or low link quality.
+  - Matter node ID to HA entity/room mapping so alerts name the affected room
+    and bulb directly.
+  - Optional HA dashboard cards for the new Prometheus-backed health signals.

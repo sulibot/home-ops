@@ -188,6 +188,12 @@ data:
               'light.master_switch': 'wall_switch_master_bedroom_follow_failed',
               'light.bedroom_switch': 'wall_switch_sebby_bedroom_follow_failed'
             }.get(trigger.entity_id, 'wall_switch_follow_failed') }}
+          room_failure_counter: >-
+            {{ {
+              'light.living_room_switch': 'counter.wall_switch_living_room_follow_failures',
+              'light.master_switch': 'counter.wall_switch_master_bedroom_follow_failures',
+              'light.bedroom_switch': 'counter.wall_switch_sebby_bedroom_follow_failures'
+            }.get(trigger.entity_id, 'counter.wall_switch_follow_failures') }}
       - wait_template: >-
           {{ available_target_lights | count > 0
              and expand(available_target_lights)
@@ -218,6 +224,12 @@ data:
           - condition: template
             value_template: "{{ available_target_lights | count == 0 }}"
           sequence:
+          - service: counter.increment
+            target:
+              entity_id: counter.wall_switch_follow_failures
+          - service: counter.increment
+            target:
+              entity_id: "{{ room_failure_counter }}"
           - service: persistent_notification.create
             data:
               notification_id: "{{ notification_id }}"
@@ -236,6 +248,12 @@ data:
           - condition: template
             value_template: "{{ not wait.completed }}"
           sequence:
+          - service: counter.increment
+            target:
+              entity_id: counter.wall_switch_follow_failures
+          - service: counter.increment
+            target:
+              entity_id: "{{ room_failure_counter }}"
           - service: persistent_notification.create
             data:
               notification_id: "{{ notification_id }}"
