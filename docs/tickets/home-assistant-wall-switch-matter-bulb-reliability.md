@@ -4,9 +4,11 @@
 
 Open.
 
-Monitoring implemented for the Home Assistant control path. The remaining open
-work is deeper Matter/Thread mesh quality visibility, local PV backup coverage,
-and the physical reliability work implied by those signals.
+Monitoring implemented for the Home Assistant control path, cluster-104 Matter
+and OTBR synthetic probes, Music Assistant player/script health, and the
+cluster-104 Home Assistant `/config` local PVC backup path. The remaining open
+work is true per-node Matter/Thread mesh quality metrics and the physical
+reliability work implied by those signals.
 
 ## Context
 
@@ -47,6 +49,23 @@ The immediate Home Assistant YAML issues have been corrected:
 - Prometheus alerts now cover the new semantic HA health metrics, including a
   missing-metric alert if Home Assistant is scraped but those sensors are not
   present.
+- Cluster-104 observer now verifies that Matter Server accepts TCP connections,
+  OTBR REST reports `state=router`, OTBR reports at least three Thread routers,
+  and `ha-google.sulibot.com/api/google_assistant` is reachable.
+- Prometheus alerts now cover Matter Server endpoint loss, OTBR router health,
+  Google Assistant endpoint health, Home Assistant config backup failure, and
+  stale Home Assistant config backups.
+- The SRE Home Control Health Grafana dashboard now has panels for:
+  - Wall switch mismatch count and per-room history.
+  - Controlled bulb unavailable count and per-room history.
+  - IKEA button freshness/battery aggregate health.
+  - Music Assistant player/script target health.
+  - Matter/OTBR synthetic health.
+  - Home Assistant `/config` disk usage and backup age/failures.
+- Cluster-104 now has a GitOps-owned direct Kopia backup CronJob for the
+  Home Assistant `/config` local PVC. This is intentionally not VolSync yet
+  because cluster-104 does not currently have VolSync, snapshot CRDs, or a
+  shared StorageClass.
 
 ## Matter Node Map
 
@@ -85,11 +104,16 @@ not alert.
 
 Excluded records:
 
+- `sensor.bilresa_scroll_wheel_battery` is an old unnamed BILRESA Matter record.
 - `sensor.bilresa_scroll_wheel_battery_4` is a stale green button record.
+- `sensor.bilresa_scroll_wheel_battery_5` is another old unnamed BILRESA Matter
+  record.
 - `sensor.bilresa_scroll_wheel_battery_9` is the intentionally unassigned green
   button.
-- The unlabeled BILRESA records with no room/user assignment are also not
-  alerting until they are confirmed to represent real physical buttons in use.
+- The excluded records still exist in HA's Matter/device registry, but they are
+  not part of the assigned-button inventory. Remove them through the HA
+  Matter/device UI or a supported Matter-server API path, not by hand-editing
+  `.storage` while HA is running.
 
 ## Observed Failure
 
@@ -103,8 +127,27 @@ session timeout events for several nodes. The OTBR was online as a Thread
 router, but the neighbor table had multiple weak links around -79 to -90 dBm,
 including at least one link with `LQ In` of 1.
 
-Current symptom is therefore not only an HA automation bug. The remaining issue
-is Matter/Thread reachability and command latency for the bulbs.
+Current symptom is therefore not only an HA automation bug. Live checks after
+the monitoring work showed the previously named bulb entities
+`light.kajplats_e26_ws_globe_1600lm_4` and
+`light.kajplats_e26_ws_globe_1600lm_5` reachable again, and all room target
+mismatch counts at zero. The remaining live HA semantic issue was one stale
+assigned IKEA button event path, matching the Dining Room Orange button event
+entities rather than the intentionally excluded green button.
+
+Current live monitoring state after the HA template restart on 2026-07-20:
+
+- `sensor.wall_switch_controlled_lights_unavailable_count`: `0`.
+- `sensor.master_bedroom_wall_switch_target_mismatch_count`: `0`.
+- `sensor.living_room_wall_switch_target_mismatch_count`: `0`.
+- `sensor.sebby_bedroom_wall_switch_target_mismatch_count`: `0`.
+- `sensor.ikea_button_battery_low_count`: `0`.
+- `sensor.ikea_button_battery_unavailable_count`: `0`.
+- `sensor.ikea_button_event_stale_count`: `1`, currently
+  `Dining Room Orange Button`.
+
+The remaining reliability risk is Matter/Thread reachability and command
+latency for the bulbs and controllers.
 
 ## Risk
 
@@ -124,8 +167,10 @@ instead of letting the latest switch state win.
 
 ## Follow-Up Work
 
-- Map each Matter node ID to room/device name so Matter server logs can be read
-  without guessing.
+- Keep the Matter node ID to room/device mapping current as devices are renamed,
+  removed, or re-paired. Alert descriptions now include the current compact
+  mapping, but per-node alerts will need this map once per-node Matter metrics
+  exist.
 - Improve Thread mesh placement or add powered Thread routers near weak rooms.
 - Confirm the Kasa dimmers are not cutting power to smart bulbs in a way that
   breaks Matter reachability.
@@ -135,17 +180,15 @@ instead of letting the latest switch state win.
 - Add deeper Matter/Thread telemetry for:
   - Matter server `peer-unresponsive` event rate by node ID. Current Matter
     logs are forwarded, but no Prometheus metric exists yet for per-node timeout
-    rates.
+    rates. The dashboard now has a focused Matter timeout/peer-unresponsive log
+    panel, but alerting on this needs a Loki ruler or a small exporter.
   - OTBR neighbor links with weak RSSI or low link quality. The OTBR REST probe
     confirms the border router is alive, but an OTBR CLI/textfile exporter is
     still needed for RSSI/LQI alerting.
-  - Matter node ID to HA entity/room mapping in alert annotations, once
-    per-node Matter metrics exist.
-  - Optional HA dashboard cards for the new Prometheus-backed health signals.
-- Add GitOps backup coverage for the cluster-104 local Home Assistant config
-  volume. The app-level VolSync component exists in the tier-2 app definition,
-  but the live cluster-104 local PV/PVC does not currently expose a
-  repo-owned ReplicationSource.
+  - Per-node Matter node ID to HA entity/room labels once per-node Matter
+    metrics exist.
+- Consider replacing the direct Kopia backup CronJob with VolSync if cluster-104
+  later gains snapshot/VolSync/storage support comparable to the main cluster.
 - Add script execution result metrics if HA music scripts continue to be
   fragile. The current monitoring checks whether the target players are
   available before scripts run; it does not yet turn HA service-call failures

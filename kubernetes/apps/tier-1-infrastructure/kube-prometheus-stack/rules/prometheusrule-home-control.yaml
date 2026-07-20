@@ -58,6 +58,10 @@ spec:
               Home Assistant reports one or more Matter lights controlled by a
               room wall switch as unavailable. The room switch automation skips
               unavailable targets, so the room may appear partially broken.
+              Matter node map: 0x1 Master Bed left, 0x2 Living TV right,
+              0x3 Living Couch left, 0x4 Living Couch right, 0x5 Master Bed
+              right, 0x10 Sebby Sofa left, 0x11 Sebby Sofa right, 0x19 Sebby
+              Standing Lamp bulb 1, 0x1b Sebby Standing Lamp bulb 2.
 
         - alert: HomeAssistantWallSwitchTargetMismatch
           expr: |
@@ -76,6 +80,8 @@ spec:
               lights did not settle to the same state. Check the Matter bulb,
               Thread network, Home Assistant automation traces, and matter-server
               logs for command failures.
+              Switch node map: 0x6 Master Bedroom wall dimmer, 0x7 Living Room
+              wall dimmer, 0x1c Sebby Bedroom wall dimmer.
 
         - alert: HomeAssistantWallSwitchFollowFailure
           expr: |
@@ -131,12 +137,14 @@ spec:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA buttons has not emitted an event recently"
+            summary: "One or more monitored IKEA buttons have not emitted an event recently"
             description: |
               A monitored IKEA BILRESA button has no usable button event within
               the last 14 days, or its button event entities are unavailable.
-              This excludes the intentionally unassigned green button, but
-              includes the named stale green device record for cleanup visibility.
+              This excludes the intentionally unassigned green button and
+              retired/stale BILRESA records; only assigned buttons alert. Check
+              sensor.ikea_button_event_stale_count in Home Assistant for the
+              stale_buttons attribute.
 
         - alert: HomeAssistantIkeaButtonBatteryLow
           expr: |
@@ -149,10 +157,12 @@ spec:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA buttons has low battery"
+            summary: "One or more monitored IKEA buttons have low battery"
             description: |
               A monitored IKEA BILRESA battery sensor is below 20%. Replace the
-              battery before the button stops emitting events.
+              battery before the button stops emitting events. Check
+              sensor.ikea_button_battery_low_count in Home Assistant for the
+              low_battery_buttons attribute.
 
         - alert: HomeAssistantIkeaButtonBatteryTelemetryMissing
           expr: |
@@ -165,11 +175,13 @@ spec:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA button battery sensors is unavailable"
+            summary: "One or more monitored IKEA button battery sensors are unavailable"
             description: |
               Home Assistant cannot read battery telemetry for at least one
               monitored IKEA BILRESA button. Check Matter/Thread reachability,
               battery state, and whether the device was removed or re-paired.
+              Check sensor.ikea_button_battery_unavailable_count in Home
+              Assistant for the unavailable_battery_buttons attribute.
 
         - alert: HomeAssistantMusicPlayersUnavailable
           expr: |
@@ -204,6 +216,117 @@ spec:
               One or more media_player entities used by the KQED or sleep-music
               scripts is unavailable. Check Music Assistant, Sonos VLAN reachability,
               and player discovery before relying on voice-triggered scripts.
+
+        - alert: HomeAssistantGoogleAssistantEndpointDown
+          expr: |
+            gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name=~"(Cluster 104 )?Home Assistant Google Assistant"
+            } == 0
+            or absent(gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name=~"(Cluster 104 )?Home Assistant Google Assistant"
+            })
+          for: 3m
+          labels:
+            severity: warning
+            component: home-assistant
+          annotations:
+            summary: "Home Assistant Google Assistant endpoint is not healthy"
+            description: |
+              The cluster-104 observer cannot reach ha-google.sulibot.com/api/google_assistant.
+              Google account linking and voice control may fail even if the human
+              Home Assistant UI is healthy.
+
+        - alert: Cluster104MatterServerEndpointDown
+          expr: |
+            gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name="Matter Server"
+            } == 0
+            or absent(gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name="Matter Server"
+            })
+          for: 3m
+          labels:
+            severity: critical
+            component: matter-server
+          annotations:
+            summary: "Cluster-104 Matter server endpoint is down"
+            description: |
+              The cluster-104 observer cannot open the Matter Server websocket
+              TCP port. Home Assistant may keep running, but Matter lights,
+              wall dimmers, and IKEA BILRESA buttons can stop updating.
+
+        - alert: Cluster104OTBRThreadRouterUnhealthy
+          expr: |
+            gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name=~"OTBR REST|OTBR Router State"
+            } == 0
+            or absent(gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name="OTBR REST"
+            })
+            or absent(gatus_results_endpoint_success{
+              group="cluster-104-apps",
+              name="OTBR Router State"
+            })
+          for: 3m
+          labels:
+            severity: critical
+            component: otbr
+          annotations:
+            summary: "Cluster-104 OTBR is not a healthy Thread router"
+            description: |
+              The OTBR REST endpoint is down, not reporting state=router, or
+              not reporting enough Thread routers. Matter-over-Thread devices
+              can become unreachable even if Home Assistant and matter-server
+              are otherwise healthy.
+
+        - alert: HomeAssistantConfigBackupFailed
+          expr: |
+            increase(kube_job_status_failed{
+              cluster="cluster-104",
+              namespace="default",
+              job_name=~"home-assistant-config-backup-.*"
+            }[24h]) > 0
+          for: 0m
+          labels:
+            severity: warning
+            component: home-assistant
+          annotations:
+            summary: "Home Assistant config backup job failed"
+            description: |
+              The cluster-104 Kopia backup job for the Home Assistant /config
+              PVC failed in the last 24 hours. Check the job logs and the
+              home-assistant-config-backup-secret ExternalSecret.
+
+        - alert: HomeAssistantConfigBackupStale
+          expr: |
+            (
+              time() - max(kube_job_status_completion_time{
+                cluster="cluster-104",
+                namespace="default",
+                job_name=~"home-assistant-config-backup-.*"
+              })
+            ) > 129600
+            or absent(kube_job_status_completion_time{
+              cluster="cluster-104",
+              namespace="default",
+              job_name=~"home-assistant-config-backup-.*"
+            })
+          for: 2h
+          labels:
+            severity: warning
+            component: home-assistant
+          annotations:
+            summary: "Home Assistant config backup has not completed recently"
+            description: |
+              No successful cluster-104 Home Assistant /config Kopia backup has
+              completed in the last 36 hours, or kube-state-metrics has never
+              seen one complete. Verify the CronJob and Kopia repository access.
 
         - alert: HomeAssistantConfigDiskUsageHigh
           expr: |

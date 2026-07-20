@@ -611,7 +611,7 @@ data:
                   {% set st = states[entity_id] %}
                   {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                     {% set button.available = true %}
-                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% set updated = as_timestamp(st.state, 0) %}
                     {% if updated > button.latest %}
                       {% set button.latest = updated %}
                     {% endif %}
@@ -660,7 +660,7 @@ data:
                     {% set st = states[entity_id] %}
                     {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                       {% set button.available = true %}
-                      {% set updated = as_timestamp(st.last_updated, 0) %}
+                      {% set updated = as_timestamp(st.state, 0) %}
                       {% if updated > button.latest %}
                         {% set button.latest = updated %}
                       {% endif %}
@@ -694,7 +694,7 @@ data:
                   {% set st = states[entity_id] %}
                   {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                     {% set button.available = true %}
-                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% set updated = as_timestamp(st.state, 0) %}
                     {% if updated > button.latest %}
                       {% set button.latest = updated %}
                     {% endif %}
@@ -724,7 +724,7 @@ data:
                   {% set st = states[entity_id] %}
                   {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                     {% set button.available = true %}
-                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% set updated = as_timestamp(st.state, 0) %}
                     {% if updated > button.latest %}
                       {% set button.latest = updated %}
                     {% endif %}
@@ -754,7 +754,7 @@ data:
                   {% set st = states[entity_id] %}
                   {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                     {% set button.available = true %}
-                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% set updated = as_timestamp(st.state, 0) %}
                     {% if updated > button.latest %}
                       {% set button.latest = updated %}
                     {% endif %}
@@ -784,7 +784,7 @@ data:
                   {% set st = states[entity_id] %}
                   {% if st is not none and st.state not in ['unavailable', 'unknown'] %}
                     {% set button.available = true %}
-                    {% set updated = as_timestamp(st.last_updated, 0) %}
+                    {% set updated = as_timestamp(st.state, 0) %}
                     {% if updated > button.latest %}
                       {% set button.latest = updated %}
                     {% endif %}
@@ -835,21 +835,37 @@ data:
           - name: IKEA Button Battery Unavailable Count
             unique_id: ikea_button_battery_unavailable_count
             state: >-
-              {% set batteries = [
-                'sensor.bilresa_scroll_wheel_battery_2',
-                'sensor.bilresa_scroll_wheel_battery_3',
-                'sensor.bilresa_scroll_wheel_battery_6',
-                'sensor.bilresa_scroll_wheel_battery_7',
-                'sensor.bilresa_scroll_wheel_battery_8'
-              ] %}
+              {% set batteries = {
+                'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
+                'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
+                'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
+                'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
+                'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
+              } %}
               {% set ns = namespace(count=0) %}
-              {% for entity_id in batteries %}
+              {% for name, entity_id in batteries.items() %}
                 {% if states(entity_id) in ['unavailable', 'unknown'] %}
                   {% set ns.count = ns.count + 1 %}
                 {% endif %}
               {% endfor %}
               {{ ns.count }}
             state_class: measurement
+            attributes:
+              unavailable_battery_buttons: >-
+                {% set batteries = {
+                  'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
+                  'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
+                  'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
+                  'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
+                  'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
+                } %}
+                {% set ns = namespace(names=[]) %}
+                {% for name, entity_id in batteries.items() %}
+                  {% if states(entity_id) in ['unavailable', 'unknown'] %}
+                    {% set ns.names = ns.names + [name] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.names | join(',') }}
           - name: Music Assistant Core Players Unavailable Count
             unique_id: music_assistant_core_players_unavailable_count
             state: >-

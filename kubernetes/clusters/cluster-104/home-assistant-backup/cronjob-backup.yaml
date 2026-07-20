@@ -1,0 +1,134 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/cronjob_v1.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: home-assistant-config-backup
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant-config-backup
+    app.kubernetes.io/part-of: home-assistant
+spec:
+  schedule: "17 3 * * *"
+  timeZone: America/Los_Angeles
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: home-assistant-config-backup
+            app.kubernetes.io/part-of: home-assistant
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: kopia
+              image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: home-assistant-config-backup-secret
+              env:
+                - name: KOPIA_CHECK_FOR_UPDATES
+                  value: "false"
+                - name: HOME
+                  value: /tmp
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/kopia-logs
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  echo "Connecting to Kopia repository for Home Assistant config backup"
+                  if [[ "$KOPIA_REPOSITORY" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                    KOPIA_BUCKET="${BASH_REMATCH[1]}"
+                    KOPIA_PREFIX="${BASH_REMATCH[3]}"
+                  else
+                    echo "Unsupported KOPIA_REPOSITORY format: $KOPIA_REPOSITORY"
+                    exit 1
+                  fi
+
+                  KOPIA_ENDPOINT="$KOPIA_S3_ENDPOINT"
+                  KOPIA_ENDPOINT_SCHEME="https"
+                  KOPIA_ENDPOINT_PATH=""
+                  if [[ "$KOPIA_ENDPOINT" =~ ^(https?)://([^/]+)(/(.*))?$ ]]; then
+                    KOPIA_ENDPOINT_SCHEME="${BASH_REMATCH[1]}"
+                    KOPIA_ENDPOINT="${BASH_REMATCH[2]}"
+                    KOPIA_ENDPOINT_PATH="${BASH_REMATCH[4]}"
+                  fi
+                  if [ -n "$KOPIA_ENDPOINT_PATH" ]; then
+                    if [ -n "${KOPIA_PREFIX:-}" ]; then
+                      KOPIA_PREFIX="${KOPIA_ENDPOINT_PATH%/}/${KOPIA_PREFIX}"
+                    else
+                      KOPIA_PREFIX="$KOPIA_ENDPOINT_PATH"
+                    fi
+                  fi
+                  if [ -n "${KOPIA_PREFIX:-}" ] && [[ "$KOPIA_PREFIX" != */ ]]; then
+                    KOPIA_PREFIX="${KOPIA_PREFIX}/"
+                  fi
+                  echo "Using Kopia bucket=$KOPIA_BUCKET endpoint=$KOPIA_ENDPOINT prefix=${KOPIA_PREFIX:-<none>}"
+
+                  CONNECT_ARGS=(
+                    "--bucket=$KOPIA_BUCKET"
+                    "--endpoint=$KOPIA_ENDPOINT"
+                    "--access-key=$AWS_ACCESS_KEY_ID"
+                    "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
+                    "--password=$KOPIA_PASSWORD"
+                    "--config-file=/tmp/kopia.config"
+                    "--override-hostname=cluster-104.home-assistant"
+                    "--override-username=home-assistant"
+                  )
+                  if [ -n "${KOPIA_PREFIX:-}" ]; then
+                    CONNECT_ARGS+=("--prefix=$KOPIA_PREFIX")
+                  fi
+                  if [ "$KOPIA_ENDPOINT_SCHEME" = "http" ]; then
+                    CONNECT_ARGS+=("--disable-tls")
+                  fi
+
+                  kopia repository connect s3 "${CONNECT_ARGS[@]}"
+                  kopia snapshot create /config \
+                    --config-file=/tmp/kopia.config \
+                    --description="cluster-104 Home Assistant /config"
+                  kopia snapshot list cluster-104.home-assistant@home-assistant:/config \
+                    --config-file=/tmp/kopia.config | tail -n 10
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config
+              persistentVolumeClaim:
+                claimName: home-assistant-config
+                readOnly: true
+            - name: tmp
+              emptyDir: {}

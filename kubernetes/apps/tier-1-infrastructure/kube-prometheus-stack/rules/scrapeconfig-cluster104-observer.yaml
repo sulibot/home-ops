@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: cluster-104-observer
+  namespace: observability
+spec:
+  metricsPath: /metrics
+  scheme: HTTPS
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  staticConfigs:
+    - targets:
+        - observer-104.sulibot.com:443
+      labels:
+        app: gatus-observer
+        cluster: cluster-104
+        namespace: observer
+        service: gatus-observer
+  tlsConfig:
+    serverName: observer-104.sulibot.com

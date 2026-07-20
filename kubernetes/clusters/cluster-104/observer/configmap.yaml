@@ -175,8 +175,19 @@ data:
         client:
           timeout: 5s
         conditions:
-          - "[STATUS] >= 200"
-          - "[STATUS] < 500"
+          - "[STATUS] == 200"
+          - "[BODY].state == router"
+          - "[BODY].routerCount >= 3"
+
+      - name: OTBR Router State
+        group: cluster-104-apps
+        url: http://otbr.otbr.svc.cluster.local:8081/node
+        interval: 1m
+        client:
+          timeout: 5s
+        conditions:
+          - "[STATUS] == 200"
+          - "[BODY].state == router"
 
     metrics: true
 
