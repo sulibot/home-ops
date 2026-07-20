@@ -13,10 +13,11 @@ and the physical reliability work implied by those signals.
 Home Assistant on cluster-104 uses Matter Kasa wall dimmers to control IKEA
 KAJPLATS Matter bulbs in these rooms:
 
-- Living Room: `light.living_room_switch` controls `TV right`, `Couch left`, and `Couch right`.
-- Master Bedroom: `light.master_switch` controls `Bed left` and `Bed right`.
-- Sebby Bedroom: `light.bedroom_switch` controls `Sofa_left`, `Sofa_right`,
-  `Standing_lamp_1`, and `Stadning_lamp_2`.
+- Living Room: `light.living_room_wall_dimmer` controls `TV right`, `Couch left`, and `Couch right`.
+- Master Bedroom: `light.master_bedroom_wall_dimmer` controls `Bed left` and `Bed right`.
+- Sebby Bedroom: `light.sebby_bedroom_wall_dimmer` controls `Sebby Bedroom Sofa Left`,
+  `Sebby Bedroom Sofa Right`, `Sebby Bedroom Standing Lamp 1`, and
+  `Sebby Bedroom Standing Lamp 2`.
 
 The immediate Home Assistant YAML issues have been corrected:
 
@@ -60,37 +61,40 @@ with the room/device that the family actually sees.
 | `0x3` | `light.kajplats_e26_ws_globe_1600lm_3` | Living Room Couch left |
 | `0x4` | `light.kajplats_e26_ws_globe_1600lm_4` | Living Room Couch right |
 | `0x5` | `light.kajplats_e26_ws_globe_1600lm_5` | Master Bedroom Bed right |
-| `0x6` | `light.master_switch` | Master Bedroom wall dimmer |
-| `0x7` | `light.living_room_switch` | Living Room wall dimmer |
+| `0x6` | `light.master_bedroom_wall_dimmer` | Master Bedroom wall dimmer |
+| `0x7` | `light.living_room_wall_dimmer` | Living Room wall dimmer |
 | `0x10` | `light.kajplats_e26_ws_globe_1600lm_6` | Sebby Bedroom Sofa left |
 | `0x11` | `light.kajplats_e26_ws_globe_1600lm_7` | Sebby Bedroom Sofa right |
 | `0x19` | `light.kajplats_e26_ws_globe_1600lm_8` | Sebby Bedroom Standing Lamp bulb 1 |
 | `0x1b` | `light.kajplats_e26_ws_globe_1600lm_9` | Sebby Bedroom Standing Lamp bulb 2 |
-| `0x1c` | `light.bedroom_switch` | Sebby Bedroom wall dimmer |
+| `0x1c` | `light.sebby_bedroom_wall_dimmer` | Sebby Bedroom wall dimmer |
 
 ## IKEA Button Monitoring Scope
 
-The aggregate button health sensors monitor the named BILRESA devices except
-the intentionally unassigned green button:
+The aggregate button health sensors monitor the assigned BILRESA devices only.
+Retired or unassigned green button records stay visible in Home Assistant but do
+not alert.
 
 | Matter node | Battery entity | Assignment |
 | --- | --- | --- |
 | `0xf` | `sensor.bilresa_scroll_wheel_battery_2` | Master Bedroom Orange Button |
 | `0x13` | `sensor.bilresa_scroll_wheel_battery_3` | Sebby Bedroom White Button |
-| `0x12` | `sensor.bilresa_scroll_wheel_battery_4` | Stale Green Button record |
 | `0x17` | `sensor.bilresa_scroll_wheel_battery_6` | Dining Room Orange Button |
 | `0x18` | `sensor.bilresa_scroll_wheel_battery_7` | Living Room White Button |
 | `0x1a` | `sensor.bilresa_scroll_wheel_battery_8` | Master Bedroom Green Button |
 
-`sensor.bilresa_scroll_wheel_battery_9` is the intentionally unassigned green
-button and is excluded from alerts. The unlabeled BILRESA records with no
-room/user assignment are also not alerting until they are confirmed to represent
-real physical buttons in use.
+Excluded records:
+
+- `sensor.bilresa_scroll_wheel_battery_4` is a stale green button record.
+- `sensor.bilresa_scroll_wheel_battery_9` is the intentionally unassigned green
+  button.
+- The unlabeled BILRESA records with no room/user assignment are also not
+  alerting until they are confirmed to represent real physical buttons in use.
 
 ## Observed Failure
 
 On 2026-07-20, HA received master bedroom wall-switch events. Automation traces
-showed `light.master_switch` changing state and the mirror automation running.
+showed `light.master_bedroom_wall_dimmer` changing state and the mirror automation running.
 The reachable target list contained only `light.kajplats_e26_ws_globe_1600lm_5`
 because `Bed left` was unavailable.
 

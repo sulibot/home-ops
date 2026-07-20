@@ -18,10 +18,10 @@ data:
     scene: !include scenes.yaml
 
     input_boolean:
-      bedroom_lights_locked:
+      sebby_bedroom_lights_locked:
         name: Sebby Bedroom Lights Locked
         icon: mdi:lock
-      bedroom_lights_override:
+      sebby_bedroom_lights_override:
         name: Sebby Bedroom Lights Override
         icon: mdi:gesture-tap-button
       bilresa_orange_2_ch1_warmer:
@@ -68,7 +68,7 @@ data:
         max: 50
 
     counter:
-      bedroom_lights_press_count:
+      sebby_bedroom_lights_press_count:
         name: Sebby Bedroom Lights Press Count
         initial: 0
         step: 1
@@ -90,10 +90,10 @@ data:
         step: 1
 
     timer:
-      bedroom_lights_press_window:
+      sebby_bedroom_lights_press_window:
         name: Sebby Bedroom Lights Press Window
         duration: "00:00:05"
-      bedroom_lights_override:
+      sebby_bedroom_lights_override:
         name: Sebby Bedroom Lights Override
         duration: "00:30:00"
 
@@ -135,31 +135,28 @@ data:
       auth_providers:
         - type: homeassistant
       customize:
-        light.living_room_switch:
+        light.living_room_wall_dimmer:
           friendly_name: Living Room Wall Dimmer
           icon: mdi:light-switch
         light.living_room_lights:
           friendly_name: Living Room Lights
           icon: mdi:ceiling-light-multiple
-        light.master_switch:
+        light.master_bedroom_wall_dimmer:
           friendly_name: Master Bedroom Wall Dimmer
           icon: mdi:light-switch
-        light.master_lights:
+        light.master_bedroom_lights:
           friendly_name: Master Bedroom Lights
           icon: mdi:ceiling-light-multiple
-        light.smart_wi_fi_dimmer_switch:
+        light.sebby_bedroom_wall_dimmer:
           friendly_name: Sebby Bedroom Wall Dimmer
           icon: mdi:light-switch
-        light.bedroom_switch:
-          friendly_name: Sebby Bedroom Wall Dimmer
-          icon: mdi:light-switch
-        light.bedroom_lights:
+        light.sebby_bedroom_lights:
           friendly_name: Sebby Bedroom Lights
           icon: mdi:ceiling-light-multiple
-        light.sofa:
+        light.sebby_bedroom_sofa_lights:
           friendly_name: Sebby Bedroom Sofa Lights
           icon: mdi:sofa
-        light.standing_lamp:
+        light.sebby_bedroom_standing_lamp:
           friendly_name: Sebby Bedroom Standing Lamp
           icon: mdi:floor-lamp
         light.dining_room_fan:
@@ -193,9 +190,9 @@ data:
           - counter.wall_switch_living_room_follow_failures
           - counter.wall_switch_master_bedroom_follow_failures
           - counter.wall_switch_sebby_bedroom_follow_failures
-          - light.bedroom_switch
-          - light.living_room_switch
-          - light.master_switch
+          - light.sebby_bedroom_wall_dimmer
+          - light.living_room_wall_dimmer
+          - light.master_bedroom_wall_dimmer
           - sensor.living_room_controlled_lights_unavailable_count
           - sensor.living_room_wall_switch_target_mismatch_count
           - sensor.wall_switch_automation_disabled_count
@@ -245,9 +242,9 @@ data:
           aliases:
             - Couch Right
             - Living Room Couch Right
-        light.living_room_switch:
+        light.living_room_wall_dimmer:
           expose: false
-        light.master_lights:
+        light.master_bedroom_lights:
           expose: true
           room: Master Bedroom
           aliases:
@@ -264,14 +261,14 @@ data:
           aliases:
             - Bed Right
             - Master Bedroom Bed Right
-        light.master_switch:
+        light.master_bedroom_wall_dimmer:
           expose: false
-        light.bedroom_lights:
+        light.sebby_bedroom_lights:
           expose: true
           room: Sebby Bedroom
           aliases:
             - Sebby Bedroom Lights
-        light.standing_lamp:
+        light.sebby_bedroom_standing_lamp:
           expose: true
           room: Sebby Bedroom
           aliases:
@@ -293,7 +290,7 @@ data:
           expose: false
         light.kajplats_e26_ws_globe_1600lm_9:
           expose: false
-        light.smart_wi_fi_dimmer_switch:
+        light.sebby_bedroom_wall_dimmer:
           expose: false
         light.dining_room_lights:
           expose: true
@@ -407,7 +404,7 @@ data:
         initial_transition: 1
         take_over_control: true
         detect_non_ha_changes: false
-      - name: master
+      - name: master_bedroom
         lights:
           - light.kajplats_e26_ws_globe_1600lm
           - light.kajplats_e26_ws_globe_1600lm_5
@@ -416,9 +413,9 @@ data:
         initial_transition: 1
         take_over_control: true
         detect_non_ha_changes: false
-      - name: bedroom
+      - name: sebby_bedroom
         lights:
-          - light.bedroom_lights
+          - light.sebby_bedroom_lights
         prefer_rgb_color: false
         transition: 5
         initial_transition: 1
@@ -501,7 +498,7 @@ data:
           - name: Living Room Wall Switch Target Mismatch Count
             unique_id: living_room_wall_switch_target_mismatch_count
             state: >-
-              {% set switch_state = states('light.living_room_switch') %}
+              {% set switch_state = states('light.living_room_wall_dimmer') %}
               {% set targets = [
                 'light.kajplats_e26_ws_globe_1600lm_2',
                 'light.kajplats_e26_ws_globe_1600lm_3',
@@ -539,7 +536,7 @@ data:
           - name: Master Bedroom Wall Switch Target Mismatch Count
             unique_id: master_bedroom_wall_switch_target_mismatch_count
             state: >-
-              {% set switch_state = states('light.master_switch') %}
+              {% set switch_state = states('light.master_bedroom_wall_dimmer') %}
               {% set targets = [
                 'light.kajplats_e26_ws_globe_1600lm',
                 'light.kajplats_e26_ws_globe_1600lm_5'
@@ -558,7 +555,7 @@ data:
           - name: Sebby Bedroom Wall Switch Target Mismatch Count
             unique_id: sebby_bedroom_wall_switch_target_mismatch_count
             state: >-
-              {% set switch_state = states('light.bedroom_switch') %}
+              {% set switch_state = states('light.sebby_bedroom_wall_dimmer') %}
               {% set targets = [
                 'light.kajplats_e26_ws_globe_1600lm_6',
                 'light.kajplats_e26_ws_globe_1600lm_7',
@@ -590,11 +587,6 @@ data:
                   'event.bilresa_scroll_wheel_button_3_3',
                   'event.bilresa_scroll_wheel_button_6_3',
                   'event.bilresa_scroll_wheel_button_9_3'
-                ],
-                'Stale Green Button': [
-                  'event.bilresa_scroll_wheel_button_3_4',
-                  'event.bilresa_scroll_wheel_button_6_4',
-                  'event.bilresa_scroll_wheel_button_9_4'
                 ],
                 'Dining Room Orange Button': [
                   'event.bilresa_scroll_wheel_button_3_6',
@@ -644,11 +636,6 @@ data:
                     'event.bilresa_scroll_wheel_button_3_3',
                     'event.bilresa_scroll_wheel_button_6_3',
                     'event.bilresa_scroll_wheel_button_9_3'
-                  ],
-                  'Stale Green Button': [
-                    'event.bilresa_scroll_wheel_button_3_4',
-                    'event.bilresa_scroll_wheel_button_6_4',
-                    'event.bilresa_scroll_wheel_button_9_4'
                   ],
                   'Dining Room Orange Button': [
                     'event.bilresa_scroll_wheel_button_3_6',
@@ -815,7 +802,6 @@ data:
               {% set batteries = {
                 'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
                 'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
-                'Stale Green Button': 'sensor.bilresa_scroll_wheel_battery_4',
                 'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
                 'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
                 'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
@@ -834,7 +820,6 @@ data:
                 {% set batteries = {
                   'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
                   'Sebby Bedroom White Button': 'sensor.bilresa_scroll_wheel_battery_3',
-                  'Stale Green Button': 'sensor.bilresa_scroll_wheel_battery_4',
                   'Dining Room Orange Button': 'sensor.bilresa_scroll_wheel_battery_6',
                   'Living Room White Button': 'sensor.bilresa_scroll_wheel_battery_7',
                   'Master Bedroom Green Button': 'sensor.bilresa_scroll_wheel_battery_8'
@@ -853,7 +838,6 @@ data:
               {% set batteries = [
                 'sensor.bilresa_scroll_wheel_battery_2',
                 'sensor.bilresa_scroll_wheel_battery_3',
-                'sensor.bilresa_scroll_wheel_battery_4',
                 'sensor.bilresa_scroll_wheel_battery_6',
                 'sensor.bilresa_scroll_wheel_battery_7',
                 'sensor.bilresa_scroll_wheel_battery_8'
@@ -967,7 +951,7 @@ data:
               data:
                 transition: "{{ transition | default(0, true) | float }}"
           - name: Master Bedroom Lights
-            unique_id: master_lights_group
+            unique_id: master_bedroom_lights_group
             state: >-
               {{ is_state('light.kajplats_e26_ws_globe_1600lm', 'on')
                  or is_state('light.kajplats_e26_ws_globe_1600lm_5', 'on') }}
@@ -1005,30 +989,30 @@ data:
 
     light:
       - platform: group
-        unique_id: couch_group
+        unique_id: living_room_couch_lights_group
         name: Living Room Couch Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_3
           - light.kajplats_e26_ws_globe_1600lm_4
       - platform: group
-        unique_id: sofa_group
+        unique_id: sebby_bedroom_sofa_lights_group
         name: Sebby Bedroom Sofa Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_6
           - light.kajplats_e26_ws_globe_1600lm_7
       - platform: group
-        unique_id: standing_lamp_group
+        unique_id: sebby_bedroom_standing_lamp_group
         name: Sebby Bedroom Standing Lamp
         entities:
           - light.kajplats_e26_ws_globe_1600lm_8
           - light.kajplats_e26_ws_globe_1600lm_9
       - platform: group
-        unique_id: bedroom_lights_group
+        unique_id: sebby_bedroom_lights_group
         name: Sebby Bedroom Lights
         entities:
           - light.kajplats_e26_ws_globe_1600lm_6
           - light.kajplats_e26_ws_globe_1600lm_7
-          - light.standing_lamp
+          - light.sebby_bedroom_standing_lamp
       - platform: group
         unique_id: dining_room_fan_group
         name: Dining Room Fan

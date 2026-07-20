@@ -13,9 +13,9 @@ data:
       trigger:
       - platform: state
         entity_id:
-        - light.living_room_switch
-        - light.master_switch
-        - light.bedroom_switch
+        - light.living_room_wall_dimmer
+        - light.master_bedroom_wall_dimmer
+        - light.sebby_bedroom_wall_dimmer
       condition:
       - condition: template
         value_template: >-
@@ -27,16 +27,16 @@ data:
       - variables:
           target_lights: >-
             {{ {
-              'light.living_room_switch': [
+              'light.living_room_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_2',
                 'light.kajplats_e26_ws_globe_1600lm_3',
                 'light.kajplats_e26_ws_globe_1600lm_4'
               ],
-              'light.master_switch': [
+              'light.master_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm',
                 'light.kajplats_e26_ws_globe_1600lm_5'
               ],
-              'light.bedroom_switch': [
+              'light.sebby_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_6',
                 'light.kajplats_e26_ws_globe_1600lm_7',
                 'light.kajplats_e26_ws_globe_1600lm_8',
@@ -79,9 +79,9 @@ data:
       trigger:
       - platform: state
         entity_id:
-        - light.living_room_switch
-        - light.master_switch
-        - light.bedroom_switch
+        - light.living_room_wall_dimmer
+        - light.master_bedroom_wall_dimmer
+        - light.sebby_bedroom_wall_dimmer
         attribute: brightness
       condition:
       - condition: template
@@ -97,16 +97,16 @@ data:
       - variables:
           target_lights: >-
             {{ {
-              'light.living_room_switch': [
+              'light.living_room_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_2',
                 'light.kajplats_e26_ws_globe_1600lm_3',
                 'light.kajplats_e26_ws_globe_1600lm_4'
               ],
-              'light.master_switch': [
+              'light.master_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm',
                 'light.kajplats_e26_ws_globe_1600lm_5'
               ],
-              'light.bedroom_switch': [
+              'light.sebby_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_6',
                 'light.kajplats_e26_ws_globe_1600lm_7',
                 'light.kajplats_e26_ws_globe_1600lm_8',
@@ -137,9 +137,9 @@ data:
       trigger:
       - platform: state
         entity_id:
-        - light.living_room_switch
-        - light.master_switch
-        - light.bedroom_switch
+        - light.living_room_wall_dimmer
+        - light.master_bedroom_wall_dimmer
+        - light.sebby_bedroom_wall_dimmer
       condition:
       - condition: template
         value_template: >-
@@ -151,16 +151,16 @@ data:
       - variables:
           target_lights: >-
             {{ {
-              'light.living_room_switch': [
+              'light.living_room_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_2',
                 'light.kajplats_e26_ws_globe_1600lm_3',
                 'light.kajplats_e26_ws_globe_1600lm_4'
               ],
-              'light.master_switch': [
+              'light.master_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm',
                 'light.kajplats_e26_ws_globe_1600lm_5'
               ],
-              'light.bedroom_switch': [
+              'light.sebby_bedroom_wall_dimmer': [
                 'light.kajplats_e26_ws_globe_1600lm_6',
                 'light.kajplats_e26_ws_globe_1600lm_7',
                 'light.kajplats_e26_ws_globe_1600lm_8',
@@ -178,21 +178,21 @@ data:
                | list }}
           room_name: >-
             {{ {
-              'light.living_room_switch': 'Living Room',
-              'light.master_switch': 'Master Bedroom',
-              'light.bedroom_switch': 'Sebby Bedroom'
+              'light.living_room_wall_dimmer': 'Living Room',
+              'light.master_bedroom_wall_dimmer': 'Master Bedroom',
+              'light.sebby_bedroom_wall_dimmer': 'Sebby Bedroom'
             }.get(trigger.entity_id, trigger.entity_id) }}
           notification_id: >-
             {{ {
-              'light.living_room_switch': 'wall_switch_living_room_follow_failed',
-              'light.master_switch': 'wall_switch_master_bedroom_follow_failed',
-              'light.bedroom_switch': 'wall_switch_sebby_bedroom_follow_failed'
+              'light.living_room_wall_dimmer': 'wall_switch_living_room_follow_failed',
+              'light.master_bedroom_wall_dimmer': 'wall_switch_master_bedroom_follow_failed',
+              'light.sebby_bedroom_wall_dimmer': 'wall_switch_sebby_bedroom_follow_failed'
             }.get(trigger.entity_id, 'wall_switch_follow_failed') }}
           room_failure_counter: >-
             {{ {
-              'light.living_room_switch': 'counter.wall_switch_living_room_follow_failures',
-              'light.master_switch': 'counter.wall_switch_master_bedroom_follow_failures',
-              'light.bedroom_switch': 'counter.wall_switch_sebby_bedroom_follow_failures'
+              'light.living_room_wall_dimmer': 'counter.wall_switch_living_room_follow_failures',
+              'light.master_bedroom_wall_dimmer': 'counter.wall_switch_master_bedroom_follow_failures',
+              'light.sebby_bedroom_wall_dimmer': 'counter.wall_switch_sebby_bedroom_follow_failures'
             }.get(trigger.entity_id, 'counter.wall_switch_follow_failures') }}
       - wait_template: >-
           {{ available_target_lights | count > 0
@@ -350,22 +350,22 @@ data:
         - service: persistent_notification.dismiss
           data:
             notification_id: wall_switch_controlled_lights_unavailable
-    - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
-      alias: Bedroom Dimmer Mirrors Bulbs
+    - id: sebby_bedroom_dimmer_mirrors_nanoleaf_bulbs
+      alias: Sebby Bedroom Dimmer Mirrors Bulbs
       mode: restart
       trigger:
       - platform: state
-        entity_id: light.smart_wi_fi_dimmer_switch
+        entity_id: light.sebby_bedroom_wall_dimmer
       condition:
       - condition: template
         value_template: "{{ trigger.to_state is not none }}"
       - condition: or
         conditions:
         - condition: state
-          entity_id: input_boolean.bedroom_lights_locked
+          entity_id: input_boolean.sebby_bedroom_lights_locked
           state: 'off'
         - condition: state
-          entity_id: input_boolean.bedroom_lights_override
+          entity_id: input_boolean.sebby_bedroom_lights_override
           state: 'on'
       action:
       - choose:
@@ -375,62 +375,62 @@ data:
           sequence:
           - service: light.turn_off
             target:
-              entity_id: light.bedroom_lights
+              entity_id: light.sebby_bedroom_lights
         default:
         - service: light.turn_on
           target:
-            entity_id: light.bedroom_lights
+            entity_id: light.sebby_bedroom_lights
           data:
             brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
-    - id: bedroom_lights_lock_enable
-      alias: Bedroom Lights Lock Enable
+    - id: sebby_bedroom_lights_lock_enable
+      alias: Sebby Bedroom Lights Lock Enable
       trigger:
       - platform: time
         at: '19:30:00'
       action:
       - service: input_boolean.turn_on
         target:
-          entity_id: input_boolean.bedroom_lights_locked
+          entity_id: input_boolean.sebby_bedroom_lights_locked
       mode: single
-    - id: bedroom_lights_lock_disable
-      alias: Bedroom Lights Lock Disable
+    - id: sebby_bedroom_lights_lock_disable
+      alias: Sebby Bedroom Lights Lock Disable
       trigger:
       - platform: time
         at: '04:00:00'
       action:
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.bedroom_lights_locked
+          entity_id: input_boolean.sebby_bedroom_lights_locked
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.bedroom_lights_override
+          entity_id: input_boolean.sebby_bedroom_lights_override
       - service: timer.cancel
         target:
           entity_id:
-          - timer.bedroom_lights_press_window
-          - timer.bedroom_lights_override
+          - timer.sebby_bedroom_lights_press_window
+          - timer.sebby_bedroom_lights_override
       - service: counter.reset
         target:
-          entity_id: counter.bedroom_lights_press_count
+          entity_id: counter.sebby_bedroom_lights_press_count
       mode: single
-    - id: bedroom_lights_lock_override_detect_triple_press
-      alias: Bedroom Lights Lock Override Detect Triple Press
+    - id: sebby_bedroom_lights_lock_override_detect_triple_press
+      alias: Sebby Bedroom Lights Lock Override Detect Triple Press
       mode: restart
       trigger:
       - platform: state
-        entity_id: light.smart_wi_fi_dimmer_switch
+        entity_id: light.sebby_bedroom_wall_dimmer
         to: 'on'
       condition:
       - condition: state
-        entity_id: input_boolean.bedroom_lights_locked
+        entity_id: input_boolean.sebby_bedroom_lights_locked
         state: 'on'
       - condition: state
-        entity_id: input_boolean.bedroom_lights_override
+        entity_id: input_boolean.sebby_bedroom_lights_override
         state: 'off'
       action:
       - variables:
-          press_window_active: "{{ is_state('timer.bedroom_lights_press_window', 'active') }}"
-          next_press_count: "{{ states('counter.bedroom_lights_press_count') | int(0) + 1 if is_state('timer.bedroom_lights_press_window', 'active') else 1 }}"
+          press_window_active: "{{ is_state('timer.sebby_bedroom_lights_press_window', 'active') }}"
+          next_press_count: "{{ states('counter.sebby_bedroom_lights_press_count') | int(0) + 1 if is_state('timer.sebby_bedroom_lights_press_window', 'active') else 1 }}"
       - choose:
         - conditions:
           - condition: template
@@ -438,17 +438,17 @@ data:
           sequence:
           - service: counter.increment
             target:
-              entity_id: counter.bedroom_lights_press_count
+              entity_id: counter.sebby_bedroom_lights_press_count
         default:
         - service: counter.reset
           target:
-            entity_id: counter.bedroom_lights_press_count
+            entity_id: counter.sebby_bedroom_lights_press_count
         - service: counter.increment
           target:
-            entity_id: counter.bedroom_lights_press_count
+            entity_id: counter.sebby_bedroom_lights_press_count
         - service: timer.start
           target:
-            entity_id: timer.bedroom_lights_press_window
+            entity_id: timer.sebby_bedroom_lights_press_window
           data:
             duration: '00:00:05'
       - choose:
@@ -458,65 +458,65 @@ data:
           sequence:
           - service: input_boolean.turn_on
             target:
-              entity_id: input_boolean.bedroom_lights_override
+              entity_id: input_boolean.sebby_bedroom_lights_override
           - service: timer.start
             target:
-              entity_id: timer.bedroom_lights_override
+              entity_id: timer.sebby_bedroom_lights_override
             data:
               duration: '00:30:00'
           - service: timer.cancel
             target:
-              entity_id: timer.bedroom_lights_press_window
+              entity_id: timer.sebby_bedroom_lights_press_window
           - service: counter.reset
             target:
-              entity_id: counter.bedroom_lights_press_count
+              entity_id: counter.sebby_bedroom_lights_press_count
           - service: light.turn_on
             target:
-              entity_id: light.bedroom_lights
+              entity_id: light.sebby_bedroom_lights
             data:
               brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
-    - id: bedroom_lights_lock_override_reset_press_window
-      alias: Bedroom Lights Lock Override Reset Press Window
+    - id: sebby_bedroom_lights_lock_override_reset_press_window
+      alias: Sebby Bedroom Lights Lock Override Reset Press Window
       mode: single
       trigger:
       - platform: event
         event_type: timer.finished
         event_data:
-          entity_id: timer.bedroom_lights_press_window
+          entity_id: timer.sebby_bedroom_lights_press_window
       action:
       - service: counter.reset
         target:
-          entity_id: counter.bedroom_lights_press_count
-    - id: bedroom_lights_lock_override_disable
-      alias: Bedroom Lights Lock Override Disable
+          entity_id: counter.sebby_bedroom_lights_press_count
+    - id: sebby_bedroom_lights_lock_override_disable
+      alias: Sebby Bedroom Lights Lock Override Disable
       mode: single
       trigger:
       - platform: event
         event_type: timer.finished
         event_data:
-          entity_id: timer.bedroom_lights_override
+          entity_id: timer.sebby_bedroom_lights_override
       action:
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.bedroom_lights_override
-    - id: bedroom_lights_lock_enforce_from_dimmer
-      alias: Bedroom Lights Lock Enforce From Dimmer
+          entity_id: input_boolean.sebby_bedroom_lights_override
+    - id: sebby_bedroom_lights_lock_enforce_from_dimmer
+      alias: Sebby Bedroom Lights Lock Enforce From Dimmer
       mode: restart
       trigger:
       - platform: state
-        entity_id: light.smart_wi_fi_dimmer_switch
+        entity_id: light.sebby_bedroom_wall_dimmer
         to: 'on'
       condition:
       - condition: state
-        entity_id: input_boolean.bedroom_lights_locked
+        entity_id: input_boolean.sebby_bedroom_lights_locked
         state: 'on'
       - condition: state
-        entity_id: input_boolean.bedroom_lights_override
+        entity_id: input_boolean.sebby_bedroom_lights_override
         state: 'off'
       action:
       - service: light.turn_off
         target:
-          entity_id: light.bedroom_lights
+          entity_id: light.sebby_bedroom_lights
     - id: adaptive_lighting_disable_brightness_after_start
       alias: Adaptive Lighting Disable Brightness After Start
       mode: single
@@ -529,12 +529,12 @@ data:
         target:
           entity_id:
           - switch.adaptive_lighting_adapt_brightness_living_room
-          - switch.adaptive_lighting_adapt_brightness_master
-          - switch.adaptive_lighting_adapt_brightness_bedroom
+          - switch.adaptive_lighting_adapt_brightness_master_bedroom
+          - switch.adaptive_lighting_adapt_brightness_sebby_bedroom
           - switch.adaptive_lighting_adapt_brightness_dining_room
           - switch.adaptive_lighting_adapt_color_dining_room
-    - id: bedroom_morning_green_to_white_fade
-      alias: Bedroom Morning Green To White Fade
+    - id: sebby_bedroom_morning_green_to_white_fade
+      alias: Sebby Bedroom Morning Green To White Fade
       mode: single
       trigger:
       - platform: time
@@ -550,7 +550,7 @@ data:
       action:
       - service: light.turn_on
         target:
-          entity_id: light.bedroom_lights
+          entity_id: light.sebby_bedroom_lights
         data:
           rgb_color:
           - 0
@@ -561,13 +561,13 @@ data:
       - delay: '00:00:01'
       - service: light.turn_on
         target:
-          entity_id: light.bedroom_lights
+          entity_id: light.sebby_bedroom_lights
         data:
           color_temp_kelvin: 4000
           brightness_pct: 80
           transition: 1800
-    - id: bedroom_morning_adaptive_lighting_handoff
-      alias: Bedroom Morning Adaptive Lighting Handoff
+    - id: sebby_bedroom_morning_adaptive_lighting_handoff
+      alias: Sebby Bedroom Morning Adaptive Lighting Handoff
       mode: single
       trigger:
       - platform: time
@@ -583,18 +583,18 @@ data:
       action:
       - service: adaptive_lighting.set_manual_control
         data:
-          entity_id: switch.adaptive_lighting_bedroom
+          entity_id: switch.adaptive_lighting_sebby_bedroom
           lights:
-          - light.bedroom_lights
+          - light.sebby_bedroom_lights
           manual_control: false
       - service: adaptive_lighting.apply
         data:
-          entity_id: switch.adaptive_lighting_bedroom
+          entity_id: switch.adaptive_lighting_sebby_bedroom
           lights:
-          - light.bedroom_lights
+          - light.sebby_bedroom_lights
           adapt_brightness: false
           adapt_color: true
-    - id: button_green_1_master
+    - id: button_green_1_master_bedroom
       alias: Master Bedroom Green Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
@@ -625,7 +625,7 @@ data:
           scroll_debounce_ms: 100
           press_debounce_ms: 150
           hold_repeat_ms: 150
-    - id: button_orange_1_master
+    - id: button_orange_1_master_bedroom
       alias: Master Bedroom Orange Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
@@ -656,7 +656,7 @@ data:
           scroll_debounce_ms: 100
           press_debounce_ms: 150
           hold_repeat_ms: 150
-    - id: button_white_1_bedroom
+    - id: button_white_1_sebby_bedroom
       alias: Sebby Bedroom White Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml
@@ -711,7 +711,7 @@ data:
           channel_2_target:
             - light.kajplats_e26_ws_globe_1600lm_2
           channel_3_target:
-            - light.couch
+            - light.living_room_couch_lights
           brightness_step_pct: 10
           enforce_min_brightness_on_scroll_down: true
           min_brightness_pct: 5
@@ -721,7 +721,7 @@ data:
           scroll_debounce_ms: 100
           press_debounce_ms: 150
           hold_repeat_ms: 150
-    - id: button_orange_2_master
+    - id: button_orange_2_dining_room
       alias: Dining Room Orange Button
       use_blueprint:
         path: sulibot/bilresa_multi_target_fast.yaml

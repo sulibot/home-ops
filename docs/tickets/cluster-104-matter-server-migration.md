@@ -24,11 +24,11 @@ cluster-104 local Matter PVC without re-pairing devices.
   `Master Switch` and `Bedroom Switch` bridge entries, but that path is not the
   active cluster-104 deployment.
 - Several primary control entities are online in the new Home Assistant:
-  - `light.bedroom_switch`
-  - `light.living_room_switch`
-  - `light.master_switch`
+  - `light.sebby_bedroom_wall_dimmer`
+  - `light.living_room_wall_dimmer`
+  - `light.master_bedroom_wall_dimmer`
   - `light.living_room_lights`
-  - `light.master_lights`
+  - `light.master_bedroom_lights`
 - Thread bulb control was restored after clearing stale migrated address hints
   and seeding the Matter server cache with each KAJPLATS bulb's stable Thread
   mesh-local `fdf1:49b9:b55e:5844:*` address.
@@ -61,11 +61,11 @@ cluster-104 local Matter PVC without re-pairing devices.
   `ws://matter-server.matter-server.svc.cluster.local:5580/ws`.
 - [x] The old/main cluster is no longer required for Home Assistant Matter control.
 - [x] The main Matter-controlled switches and groups remain online after migration:
-  - `light.bedroom_switch`
-  - `light.living_room_switch`
-  - `light.master_switch`
+  - `light.sebby_bedroom_wall_dimmer`
+  - `light.living_room_wall_dimmer`
+  - `light.master_bedroom_wall_dimmer`
   - `light.living_room_lights`
-  - `light.master_lights`
+  - `light.master_bedroom_lights`
 - [x] Remaining unavailable Matter bulbs are triaged as a Matter/Thread address
   rediscovery issue after the cluster-104 migration.
 - [x] Stale migrated KAJPLATS address hints were backed up under the Matter PVC:
