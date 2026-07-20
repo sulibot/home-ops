@@ -1029,7 +1029,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "min(gatus_results_endpoint_success{group=\"cluster-104-apps\",name=~\"Matter Server|OTBR REST|OTBR Router State\"}) or vector(0)",
+              "expr": "min(gatus_results_endpoint_success{group=\"cluster-104-apps\",name=~\"Matter Server|OTBR REST\"}) or vector(0)",
               "instant": true,
               "legendFormat": "synthetic health",
               "range": false,
@@ -1285,7 +1285,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "gatus_results_endpoint_success{group=\"cluster-104-apps\",name=~\"Matter Server|OTBR REST|OTBR Router State|Home Assistant Google Assistant\"}",
+              "expr": "gatus_results_endpoint_success{group=\"cluster-104-apps\",name=~\"Matter Server|OTBR REST|Home Assistant Google Assistant\"}",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"

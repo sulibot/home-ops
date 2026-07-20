@@ -263,15 +263,11 @@ spec:
           expr: |
             gatus_results_endpoint_success{
               group="cluster-104-apps",
-              name=~"OTBR REST|OTBR Router State"
+              name="OTBR REST"
             } == 0
             or absent(gatus_results_endpoint_success{
               group="cluster-104-apps",
               name="OTBR REST"
-            })
-            or absent(gatus_results_endpoint_success{
-              group="cluster-104-apps",
-              name="OTBR Router State"
             })
           for: 3m
           labels:
