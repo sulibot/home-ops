@@ -373,6 +373,25 @@ Remaining IKEA / Matter device issue:
   The tracked reference copy at `tmp/bilresa_multi_target_fast.yaml` now matches
   the live fixed blueprint, but this is still not a full GitOps projection into
   `/config`.
+- On `2026-07-19`, the Matter wall switch control path failed silently. Matter
+  server logs still showed Master Bedroom switch node `@1:6` reporting OnOff and
+  LevelControl updates, and Home Assistant recorder state showed
+  `light.master_switch` changing, but the target room groups did not follow. The
+  stale `matter_dimmer_bridge` YAML config was removed and replaced with
+  Git-managed HA state automations:
+  - `automation.wall_switches_mirror_room_lights` mirrors
+    `light.living_room_switch`, `light.master_switch`, and
+    `light.bedroom_switch` to their room light groups.
+  - `automation.wall_switches_monitor_room_light_follow` waits 4 seconds after a
+    wall switch change and creates a persistent notification plus `system_log`
+    warning if the matching room light group did not reach the same on/off
+    state.
+  This restores on/off control using the HA Matter entities. The wall switch
+  entities do not currently expose brightness in HA, so LevelControl/dimming
+  mirroring is not covered by this replacement. The
+  `bootstrap-matter-dimmer-bridge` init container was also removed from the HA
+  HelmRelease, and the live `/config/custom_components/matter_dimmer_bridge`
+  directory was removed from the HA config volume.
 
 Remaining Bed right / Master target issue:
 

@@ -148,29 +148,6 @@ data:
         default_redirect: true
         force_https: true
 
-    matter_dimmer_bridge:
-      - name: Living Room Wall Dimmer
-        node_id: 7
-        switch_entity_id: light.living_room_switch
-        target_entity_ids:
-          - light.kajplats_e26_ws_globe_1600lm_2
-          - light.kajplats_e26_ws_globe_1600lm_3
-          - light.kajplats_e26_ws_globe_1600lm_4
-      - name: Master Bedroom Wall Dimmer
-        node_id: 6
-        switch_entity_id: light.master_switch
-        target_entity_ids:
-          - light.kajplats_e26_ws_globe_1600lm
-          - light.kajplats_e26_ws_globe_1600lm_5
-      - name: Sebby Bedroom Wall Dimmer
-        node_id: 28
-        switch_entity_id: light.bedroom_switch
-        target_entity_ids:
-          - light.kajplats_e26_ws_globe_1600lm_6
-          - light.kajplats_e26_ws_globe_1600lm_7
-          - light.kajplats_e26_ws_globe_1600lm_8
-          - light.kajplats_e26_ws_globe_1600lm_9
-
     google_assistant:
       project_id: sulibot-home-assistant-17e85
       service_account: !include SERVICE_ACCOUNT.json

@@ -7,31 +7,98 @@ metadata:
 data:
   automations.yaml: |
     ---
-    - id: living_room_wall_switch_mirrors_lights
-      alias: Living Room Wall Switch Mirrors Lights
+    - id: wall_switches_mirror_room_lights
+      alias: Wall Switches Mirror Room Lights
       mode: restart
       trigger:
       - platform: state
-        entity_id: light.living_room_switch
+        entity_id:
+        - light.living_room_switch
+        - light.master_switch
+        - light.bedroom_switch
       condition:
       - condition: template
-        value_template: "{{ trigger.to_state is not none and trigger.from_state is not none }}"
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state in ['on', 'off'] }}"
       action:
+      - variables:
+          target_entity: >-
+            {{ {
+              'light.living_room_switch': 'light.living_room_lights',
+              'light.master_switch': 'light.master_lights',
+              'light.bedroom_switch': 'light.bedroom_lights'
+            }.get(trigger.entity_id) }}
       - choose:
         - conditions:
           - condition: template
             value_template: "{{ trigger.to_state.state == 'off' }}"
           sequence:
           - service: light.turn_off
-            target:
-              entity_id: light.living_room_lights
+            data:
+              entity_id: "{{ target_entity }}"
         - conditions:
           - condition: template
             value_template: "{{ trigger.to_state.state == 'on' }}"
           sequence:
           - service: light.turn_on
-            target:
-              entity_id: light.living_room_lights
+            data:
+              entity_id: "{{ target_entity }}"
+    - id: wall_switches_monitor_room_light_follow
+      alias: Wall Switches Monitor Room Light Follow
+      mode: parallel
+      max: 10
+      trigger:
+      - platform: state
+        entity_id:
+        - light.living_room_switch
+        - light.master_switch
+        - light.bedroom_switch
+      condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state in ['on', 'off'] }}"
+      action:
+      - variables:
+          target_entity: >-
+            {{ {
+              'light.living_room_switch': 'light.living_room_lights',
+              'light.master_switch': 'light.master_lights',
+              'light.bedroom_switch': 'light.bedroom_lights'
+            }.get(trigger.entity_id) }}
+          room_name: >-
+            {{ {
+              'light.living_room_switch': 'Living Room',
+              'light.master_switch': 'Master Bedroom',
+              'light.bedroom_switch': 'Sebby Bedroom'
+            }.get(trigger.entity_id, trigger.entity_id) }}
+          notification_id: >-
+            {{ {
+              'light.living_room_switch': 'wall_switch_living_room_follow_failed',
+              'light.master_switch': 'wall_switch_master_bedroom_follow_failed',
+              'light.bedroom_switch': 'wall_switch_sebby_bedroom_follow_failed'
+            }.get(trigger.entity_id, 'wall_switch_follow_failed') }}
+      - delay: "00:00:04"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ target_entity is not none and states(target_entity) != trigger.to_state.state }}"
+          sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ room_name }} wall switch did not control lights"
+              message: >-
+                {{ trigger.entity_id }} changed to {{ trigger.to_state.state }},
+                but {{ target_entity }} is {{ states(target_entity) }} after 4 seconds.
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                {{ room_name }} wall switch follow check failed:
+                {{ trigger.entity_id }}={{ trigger.to_state.state }},
+                {{ target_entity }}={{ states(target_entity) }}.
+        default:
+        - service: persistent_notification.dismiss
+          data:
+            notification_id: "{{ notification_id }}"
     - id: bedroom_dimmer_mirrors_nanoleaf_bulbs
       alias: Bedroom Dimmer Mirrors Bulbs
       mode: restart
