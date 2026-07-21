@@ -24,7 +24,7 @@ spec:
       serviceAccountName: cluster-104-log-forwarder
       initContainers:
         - name: wait-for-loki
-          image: curlimages/curl:8.8.0
+          image: curlimages/curl:8.21.0
           imagePullPolicy: IfNotPresent
           command:
             - sh
