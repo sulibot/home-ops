@@ -203,9 +203,9 @@ data:
           - sensor.wall_switch_controlled_lights_unavailable_count
           - sensor.home_assistant_config_disk_free_gb
           - sensor.home_assistant_config_disk_used_percent
-          - sensor.ikea_button_battery_low_count
-          - sensor.ikea_button_battery_unavailable_count
-          - sensor.ikea_button_event_stale_count
+          - sensor.bilresa_button_battery_low_count
+          - sensor.bilresa_button_battery_unavailable_count
+          - sensor.bilresa_button_event_stale_count
           - sensor.master_bedroom_button_event_stale_count
           - sensor.sebby_bedroom_button_event_stale_count
           - sensor.living_room_button_event_stale_count
@@ -573,8 +573,8 @@ data:
                 0
               {% endif %}
             state_class: measurement
-          - name: IKEA Button Event Stale Count
-            unique_id: ikea_button_event_stale_count
+          - name: BILRESA Button Event Stale Count
+            unique_id: bilresa_button_event_stale_count
             state: >-
               {% set max_age = 14 * 24 * 60 * 60 %}
               {% set buttons = {
@@ -796,8 +796,8 @@ data:
               {% endfor %}
               {{ ns.count }}
             state_class: measurement
-          - name: IKEA Button Battery Low Count
-            unique_id: ikea_button_battery_low_count
+          - name: BILRESA Button Battery Low Count
+            unique_id: bilresa_button_battery_low_count
             state: >-
               {% set batteries = {
                 'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',
@@ -832,8 +832,8 @@ data:
                   {% endif %}
                 {% endfor %}
                 {{ ns.names | join(',') }}
-          - name: IKEA Button Battery Unavailable Count
-            unique_id: ikea_button_battery_unavailable_count
+          - name: BILRESA Button Battery Unavailable Count
+            unique_id: bilresa_button_battery_unavailable_count
             state: >-
               {% set batteries = {
                 'Master Bedroom Orange Button': 'sensor.bilresa_scroll_wheel_battery_2',

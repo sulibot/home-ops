@@ -81,9 +81,9 @@ Wall dimmers and physical buttons should not be exposed as Google Assistant
 voice targets. They are controls and automation inputs, not household voice
 destinations.
 
-## IKEA Button Naming
+## BILRESA Button Naming
 
-There are six physical IKEA BILRESA buttons: two green, two orange, and two
+There are six physical BILRESA buttons: two green, two orange, and two
 white.
 
 Use the physical color in the maintenance name, but use the room/function to
@@ -251,7 +251,7 @@ Do this in order to avoid duplicate or stale voice targets.
    Apply the GitOps configuration for room-level light groups, including the
    singular `Sebby Bedroom Standing Lamp`.
 
-5. Correct IKEA button automation names.
+5. Correct BILRESA button automation names.
 
    Rename stale automation aliases so they match actual assignments. Leave
    `Unassigned Green Button` unassigned until a real use is chosen.

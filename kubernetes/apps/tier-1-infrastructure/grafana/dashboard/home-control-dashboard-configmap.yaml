@@ -778,14 +778,14 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(hass_sensor_state{cluster=\"cluster-104\",entity=~\"sensor.ikea_button_(event_stale_count|battery_unavailable_count|battery_low_count)\"}) or vector(0)",
+              "expr": "sum(hass_sensor_state{cluster=\"cluster-104\",entity=~\"sensor.bilresa_button_(event_stale_count|battery_unavailable_count|battery_low_count)\"}) or vector(0)",
               "instant": true,
               "legendFormat": "value",
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "IKEA Button Health Issues",
+          "title": "BILRESA Button Health Issues",
           "type": "stat"
         },
         {
@@ -1183,13 +1183,13 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "hass_sensor_state{cluster=\"cluster-104\",entity=~\"sensor.ikea_button_(event_stale_count|battery_unavailable_count|battery_low_count)\"}",
+              "expr": "hass_sensor_state{cluster=\"cluster-104\",entity=~\"sensor.bilresa_button_(event_stale_count|battery_unavailable_count|battery_low_count)\"}",
               "legendFormat": "{{friendly_name}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "IKEA Button Freshness and Battery",
+          "title": "BILRESA Button Freshness and Battery",
           "type": "timeseries"
         },
         {

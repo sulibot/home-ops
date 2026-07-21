@@ -156,7 +156,7 @@ Final retest after the endpoint recovery:
 
 ### 2026-07-07 BILRESA peer 24 recovery
 
-The IKEA BILRESA buttons were paired but unavailable after the cluster-104
+The BILRESA buttons were paired but unavailable after the cluster-104
 Matter/Thread migration because their Matter Server address hints were empty or
 stale. Pressing one button proved that the radio path was alive: OTBR saw sleepy
 child `7201aeaa63bd1eca` at RLOC16 `0x4802`. That hardware address mapped to

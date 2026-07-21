@@ -12,8 +12,8 @@ reliability work implied by those signals.
 
 ## Context
 
-Home Assistant on cluster-104 uses Matter Kasa wall dimmers to control IKEA
-KAJPLATS Matter bulbs in these rooms:
+Home Assistant on cluster-104 uses Matter Kasa wall dimmers to control KAJPLATS
+Matter bulbs in these rooms:
 
 - Living Room: `light.living_room_wall_dimmer` controls `TV right`, `Couch left`, and `Couch right`.
 - Master Bedroom: `light.master_bedroom_wall_dimmer` controls `Bed left` and `Bed right`.
@@ -39,8 +39,8 @@ The immediate Home Assistant YAML issues have been corrected:
   wall-switch automations, unavailable controlled bulbs, switch/target state
   mismatch, and follow-failure counter increments.
 - Home Assistant exports button, music-player, and config-volume health sensors:
-  - IKEA BILRESA button event freshness.
-  - IKEA BILRESA button battery low/unavailable counts.
+  - BILRESA button event freshness.
+  - BILRESA button battery low/unavailable counts.
   - Music Assistant/Sonos core player availability.
   - Music-script target availability.
   - Home Assistant `/config` disk usage/free-space.
@@ -58,7 +58,7 @@ The immediate Home Assistant YAML issues have been corrected:
 - The SRE Home Control Health Grafana dashboard now has panels for:
   - Wall switch mismatch count and per-room history.
   - Controlled bulb unavailable count and per-room history.
-  - IKEA button freshness/battery aggregate health.
+  - BILRESA button freshness/battery aggregate health.
   - Music Assistant player/script target health.
   - Matter/OTBR synthetic health.
   - Home Assistant `/config` disk usage and backup age/failures.
@@ -88,7 +88,7 @@ with the room/device that the family actually sees.
 | `0x1b` | `light.kajplats_e26_ws_globe_1600lm_9` | Sebby Bedroom Standing Lamp bulb 2 |
 | `0x1c` | `light.sebby_bedroom_wall_dimmer` | Sebby Bedroom wall dimmer |
 
-## IKEA Button Monitoring Scope
+## BILRESA Button Monitoring Scope
 
 The aggregate button health sensors monitor the assigned BILRESA devices only.
 Retired or unassigned green button records stay visible in Home Assistant but do
@@ -132,7 +132,7 @@ the monitoring work showed the previously named bulb entities
 `light.kajplats_e26_ws_globe_1600lm_4` and
 `light.kajplats_e26_ws_globe_1600lm_5` reachable again, and all room target
 mismatch counts at zero. The remaining live HA semantic issue was one stale
-assigned IKEA button event path, matching the Dining Room Orange button event
+assigned BILRESA button event path, matching the Dining Room Orange button event
 entities rather than the intentionally excluded green button.
 
 Current live monitoring state after the HA template restart on 2026-07-20:
@@ -141,9 +141,9 @@ Current live monitoring state after the HA template restart on 2026-07-20:
 - `sensor.master_bedroom_wall_switch_target_mismatch_count`: `0`.
 - `sensor.living_room_wall_switch_target_mismatch_count`: `0`.
 - `sensor.sebby_bedroom_wall_switch_target_mismatch_count`: `0`.
-- `sensor.ikea_button_battery_low_count`: `0`.
-- `sensor.ikea_button_battery_unavailable_count`: `0`.
-- `sensor.ikea_button_event_stale_count`: `1`, currently
+- `sensor.bilresa_button_battery_low_count`: `0`.
+- `sensor.bilresa_button_battery_unavailable_count`: `0`.
+- `sensor.bilresa_button_event_stale_count`: `1`, currently
   `Dining Room Orange Button`.
 
 The remaining reliability risk is Matter/Thread reachability and command

@@ -309,7 +309,7 @@ Validation after restart:
 `/auth/oidc/redirect` now returns a `302` to Authentik with
 `client_id=homeassistant-app`.
 
-On `2026-07-07`, Home Assistant room-switch and IKEA BILRESA button behavior
+On `2026-07-07`, Home Assistant room-switch and BILRESA button behavior
 was reviewed after Matter Server / Thread migration work.
 
 Changes applied:
@@ -334,15 +334,15 @@ Live validation:
   - `7`: Living room switch
   - `28`: Bedroom Switch
 
-Remaining IKEA / Matter device issue:
+Remaining BILRESA / Matter device issue:
 
-- IKEA BILRESA button nodes are paired and their Matter endpoints load, but they
+- BILRESA button nodes are paired and their Matter endpoints load, but they
   remain unavailable until they wake and resolve on the current Thread network.
 - Current BILRESA Matter nodes:
   `14`, `15`, `18`, `19`, `20`, `23`, `24`, `26`, `29`.
 - Their stale address hints were backed up and cleared:
   `/data/server-1-fff1/address-backup-bilresa-reseed-before-20260707T050850Z`.
-- After pressing one IKEA BILRESA, OTBR showed sleepy child
+- After pressing one BILRESA, OTBR showed sleepy child
   `7201aeaa63bd1eca` at RLOC16 `0x4802`, which mapped to Matter peer `24`
   / `@1:18` / `BILRESA scroll wheel`.
 - Peer `24` was repaired by backing up its empty address hint and seeding the

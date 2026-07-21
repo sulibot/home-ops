@@ -105,7 +105,7 @@ spec:
           expr: |
             absent(hass_sensor_state{
               cluster="cluster-104",
-              entity="sensor.ikea_button_event_stale_count"
+              entity="sensor.bilresa_button_event_stale_count"
             })
             or absent(hass_sensor_state{
               cluster="cluster-104",
@@ -126,61 +126,61 @@ spec:
               health sensors is absent. Check configuration.yaml load status and
               restart/reload Home Assistant after GitOps applies the ConfigMap.
 
-        - alert: HomeAssistantIkeaButtonEventsStale
+        - alert: HomeAssistantBilresaButtonEventsStale
           expr: |
             hass_sensor_state{
               cluster="cluster-104",
-              entity="sensor.ikea_button_event_stale_count"
+              entity="sensor.bilresa_button_event_stale_count"
             } > 0
           for: 30m
           labels:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA buttons have not emitted an event recently"
+            summary: "One or more monitored BILRESA buttons have not emitted an event recently"
             description: |
-              A monitored IKEA BILRESA button has no usable button event within
+              A monitored BILRESA button has no usable button event within
               the last 14 days, or its button event entities are unavailable.
               This excludes the intentionally unassigned green button and
               retired/stale BILRESA records; only assigned buttons alert. Check
-              sensor.ikea_button_event_stale_count in Home Assistant for the
+              sensor.bilresa_button_event_stale_count in Home Assistant for the
               stale_buttons attribute.
 
-        - alert: HomeAssistantIkeaButtonBatteryLow
+        - alert: HomeAssistantBilresaButtonBatteryLow
           expr: |
             hass_sensor_state{
               cluster="cluster-104",
-              entity="sensor.ikea_button_battery_low_count"
+              entity="sensor.bilresa_button_battery_low_count"
             } > 0
           for: 30m
           labels:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA buttons have low battery"
+            summary: "One or more monitored BILRESA buttons have low battery"
             description: |
-              A monitored IKEA BILRESA battery sensor is below 20%. Replace the
+              A monitored BILRESA battery sensor is below 20%. Replace the
               battery before the button stops emitting events. Check
-              sensor.ikea_button_battery_low_count in Home Assistant for the
+              sensor.bilresa_button_battery_low_count in Home Assistant for the
               low_battery_buttons attribute.
 
-        - alert: HomeAssistantIkeaButtonBatteryTelemetryMissing
+        - alert: HomeAssistantBilresaButtonBatteryTelemetryMissing
           expr: |
             hass_sensor_state{
               cluster="cluster-104",
-              entity="sensor.ikea_button_battery_unavailable_count"
+              entity="sensor.bilresa_button_battery_unavailable_count"
             } > 0
           for: 15m
           labels:
             severity: warning
             component: home-assistant
           annotations:
-            summary: "One or more monitored IKEA button battery sensors are unavailable"
+            summary: "One or more monitored BILRESA button battery sensors are unavailable"
             description: |
               Home Assistant cannot read battery telemetry for at least one
-              monitored IKEA BILRESA button. Check Matter/Thread reachability,
+              monitored BILRESA button. Check Matter/Thread reachability,
               battery state, and whether the device was removed or re-paired.
-              Check sensor.ikea_button_battery_unavailable_count in Home
+              Check sensor.bilresa_button_battery_unavailable_count in Home
               Assistant for the unavailable_battery_buttons attribute.
 
         - alert: HomeAssistantMusicPlayersUnavailable
@@ -257,7 +257,7 @@ spec:
             description: |
               The cluster-104 observer cannot open the Matter Server websocket
               TCP port. Home Assistant may keep running, but Matter lights,
-              wall dimmers, and IKEA BILRESA buttons can stop updating.
+              wall dimmers, and BILRESA buttons can stop updating.
 
         - alert: Cluster104OTBRThreadRouterUnhealthy
           expr: |
