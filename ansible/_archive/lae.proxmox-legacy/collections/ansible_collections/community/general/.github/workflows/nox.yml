@@ -25,4 +25,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Run nox
-        uses: ansible-community/antsibull-nox@main
+        uses: ansible-community/antsibull-nox@d0a018dfdbf97f6dc13a38598b379c780a9bfa6f # main

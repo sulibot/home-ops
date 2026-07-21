@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Perform sanity testing
-        uses: felixfontein/ansible-test-gh-action@main
+        uses: felixfontein/ansible-test-gh-action@7e42e1b2e22c0dc8f0403a439e81cfd52cb2c30e # main
         with:
           ansible-core-version: stable-${{ matrix.ansible }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
       - name: >-
           Perform unit testing against
           Ansible version ${{ matrix.ansible }}
-        uses: felixfontein/ansible-test-gh-action@main
+        uses: felixfontein/ansible-test-gh-action@7e42e1b2e22c0dc8f0403a439e81cfd52cb2c30e # main
         with:
           ansible-core-version: stable-${{ matrix.ansible }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
@@ -155,7 +155,7 @@ jobs:
           Perform integration testing against
           Ansible version ${{ matrix.ansible }}
           under Python ${{ matrix.python }}
-        uses: felixfontein/ansible-test-gh-action@main
+        uses: felixfontein/ansible-test-gh-action@7e42e1b2e22c0dc8f0403a439e81cfd52cb2c30e # main
         with:
           ansible-core-version: stable-${{ matrix.ansible }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
