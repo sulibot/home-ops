@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: docker.io/collabora/code
-              tag: latest@sha256:9975b01bc6be098df25c433deadefac810948c1bba22f85bc1947e857d1282ab
+              tag: latest@sha256:39e8e4a93f2fde9044805355a8e23fa607fa42e50bec6ce64846c017385a6cad
             command:
               - /bin/sh
               - -c
