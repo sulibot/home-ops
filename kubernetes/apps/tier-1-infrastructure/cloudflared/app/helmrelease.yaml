@@ -47,7 +47,7 @@ spec:
   values:
     image:
       repository: cloudflare/cloudflared
-      tag: "2026.5.2"
+      tag: "2026.7.3"
       pullPolicy: IfNotPresent
     cloudflare:
       account: 089ac5ef7a1525cb7d7129cdde5873cd
