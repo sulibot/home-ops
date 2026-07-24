@@ -512,6 +512,13 @@ inputs = {
       server      = "dhcp_vlan30"
       comment     = "Omada EAP787"
     },
+    {
+      address     = "10.30.0.240"
+      mac_address = "38:1B:9E:97:9F:24"
+      client_id   = "1:38:1b:9e:97:9f:24"
+      server      = "dhcp_vlan30"
+      comment     = "Hisense Canvas Google TV"
+    },
   ], local.baremetal_pxe_leases)
 
   ospf_instances = [
