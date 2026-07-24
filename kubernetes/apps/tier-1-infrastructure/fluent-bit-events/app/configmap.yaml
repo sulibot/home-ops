@@ -26,9 +26,7 @@ data:
       kube_url https://kubernetes.default.svc
       kube_retention_time 1h
       db /var/lib/fluent-bit-events/events.db
-      db.journal_mode DELETE
       db.sync normal
-      storage.type filesystem
 
     [FILTER]
       Name lua

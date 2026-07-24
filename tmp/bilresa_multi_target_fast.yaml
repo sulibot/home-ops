@@ -1,7 +1,7 @@
 blueprint:
   name: Bilresa Multi-Target Preset Controller
   description: >
-    Reusable IKEA BILRESA Matter controller blueprint with three channels.
+    Reusable BILRESA Matter controller blueprint with three channels.
 
     Channel model:
     - channel 1: button + wheel zone 1

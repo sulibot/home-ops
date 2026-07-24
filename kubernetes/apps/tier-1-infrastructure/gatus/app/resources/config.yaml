@@ -91,6 +91,16 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
+  - name: Home Assistant Google Assistant (external)
+    group: apps-external
+    url: https://ha-google.sulibot.com/api/google_assistant
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
   - name: Music Assistant (external)
     group: apps-external
     url: https://music-assistant.sulibot.com/
@@ -369,6 +379,16 @@ endpoints:
   - name: Cluster 104 Home Assistant Dashboard
     group: cluster-104-apps
     url: https://hass-app.sulibot.com/lovelace/default_view
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: Cluster 104 Home Assistant Google Assistant
+    group: cluster-104-apps
+    url: https://ha-google.sulibot.com/api/google_assistant
     interval: 1m
     client:
       timeout: 10s

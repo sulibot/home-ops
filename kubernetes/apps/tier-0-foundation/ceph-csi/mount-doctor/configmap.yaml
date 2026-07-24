@@ -96,6 +96,47 @@ data:
       done
     done <<< "$plugins"
 
+    # Second failure signature, found 2026-07-23: kubelet's own volume-manager
+    # cache believes a shared (RWX) volume is already staged on a node and
+    # only ever retries NodePublishVolume (the per-pod bind mount), never
+    # NodeStageVolume (the per-node global mount) - even though the global
+    # staging directory is genuinely gone. `ls` against the plugin's mounts
+    # never sees this because there IS no mount to check; kubelet fails the
+    # bind mount with "file does not exist" and retries forever. Deleting the
+    # affected pod does NOT fix this - the cache is keyed per node+volume,
+    # not per pod, and as long as any other pod on that node still holds the
+    # volume, kubelet won't re-stage it. The only fix found is restarting
+    # kubelet on the affected node (`talosctl service kubelet restart`),
+    # which forces a full volume-manager resync. That requires Talos API
+    # credentials this ServiceAccount intentionally does not have, so this
+    # pass only detects and surfaces the condition - always via job failure
+    # (never silently "healthy") - it does not attempt to remediate it.
+    # One line per distinct pod (a stuck pod emits a fresh FailedMount event
+    # roughly every 2m, so dedup on namespace/name or broken_total balloons
+    # every run instead of reporting the actual number of stuck pods).
+    stale_cache_pods=$(kubectl get events -A --field-selector reason=FailedMount -o json 2>/dev/null \
+      | jq -r '.items[] | select(.message | contains("file does not exist"))
+               | "\(.involvedObject.namespace) \(.involvedObject.name)"' \
+      | sort -u)
+
+    if [ -n "$stale_cache_pods" ]; then
+      while read -r pns pname; do
+        [ -z "$pname" ] && continue
+        # Events persist for up to ~1h after the underlying issue clears
+        # (e.g. a kubelet restart fixed it manually) - re-check the pod's
+        # actual current state rather than trusting event history alone,
+        # or this reports false positives for an hour after every fix.
+        pready=$(kubectl -n "$pns" get pod "$pname" -o jsonpath='{.status.containerStatuses[*].ready}' 2>/dev/null)
+        if [ -n "$pready" ] && ! echo "$pready" | grep -q false; then
+          echo "status=stale-event-only pod=$pns/$pname (all containers ready now, ignoring old FailedMount event)"
+          continue
+        fi
+        pnode=$(kubectl -n "$pns" get pod "$pname" -o jsonpath='{.spec.nodeName}' 2>/dev/null)
+        broken_total=$((broken_total + 1))
+        echo "node=$pnode status=broken-stale-stage-cache pod=$pns/$pname (needs: talosctl -n <node-ip> service kubelet restart - see mount-doctor.sh comment)"
+      done <<< "$stale_cache_pods"
+    fi
+
     echo "SUMMARY broken_mounts=$broken_total remediated=$remediated auto_fix=$AUTO_FIX"
 
     # Only fail the Job (feeds kube_job_status_failed -> alert) when a broken

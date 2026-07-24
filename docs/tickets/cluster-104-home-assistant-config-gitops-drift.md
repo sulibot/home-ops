@@ -309,7 +309,7 @@ Validation after restart:
 `/auth/oidc/redirect` now returns a `302` to Authentik with
 `client_id=homeassistant-app`.
 
-On `2026-07-07`, Home Assistant room-switch and IKEA BILRESA button behavior
+On `2026-07-07`, Home Assistant room-switch and BILRESA button behavior
 was reviewed after Matter Server / Thread migration work.
 
 Changes applied:
@@ -334,15 +334,15 @@ Live validation:
   - `7`: Living room switch
   - `28`: Bedroom Switch
 
-Remaining IKEA / Matter device issue:
+Remaining BILRESA / Matter device issue:
 
-- IKEA BILRESA button nodes are paired and their Matter endpoints load, but they
+- BILRESA button nodes are paired and their Matter endpoints load, but they
   remain unavailable until they wake and resolve on the current Thread network.
 - Current BILRESA Matter nodes:
   `14`, `15`, `18`, `19`, `20`, `23`, `24`, `26`, `29`.
 - Their stale address hints were backed up and cleared:
   `/data/server-1-fff1/address-backup-bilresa-reseed-before-20260707T050850Z`.
-- After pressing one IKEA BILRESA, OTBR showed sleepy child
+- After pressing one BILRESA, OTBR showed sleepy child
   `7201aeaa63bd1eca` at RLOC16 `0x4802`, which mapped to Matter peer `24`
   / `@1:18` / `BILRESA scroll wheel`.
 - Peer `24` was repaired by backing up its empty address hint and seeding the
@@ -373,6 +373,25 @@ Remaining IKEA / Matter device issue:
   The tracked reference copy at `tmp/bilresa_multi_target_fast.yaml` now matches
   the live fixed blueprint, but this is still not a full GitOps projection into
   `/config`.
+- On `2026-07-19`, the Matter wall switch control path failed silently. Matter
+  server logs still showed Master Bedroom switch node `@1:6` reporting OnOff and
+  LevelControl updates, and Home Assistant recorder state showed
+  `light.master_switch` changing, but the target room groups did not follow. The
+  stale `matter_dimmer_bridge` YAML config was removed and replaced with
+  Git-managed HA state automations:
+  - `automation.wall_switches_mirror_room_lights` mirrors
+    `light.living_room_switch`, `light.master_switch`, and
+    `light.bedroom_switch` to their room light groups.
+  - `automation.wall_switches_monitor_room_light_follow` waits 4 seconds after a
+    wall switch change and creates a persistent notification plus `system_log`
+    warning if the matching room light group did not reach the same on/off
+    state.
+  This restores on/off control using the HA Matter entities. The wall switch
+  entities do not currently expose brightness in HA, so LevelControl/dimming
+  mirroring is not covered by this replacement. The
+  `bootstrap-matter-dimmer-bridge` init container was also removed from the HA
+  HelmRelease, and the live `/config/custom_components/matter_dimmer_bridge`
+  directory was removed from the HA config volume.
 
 Remaining Bed right / Master target issue:
 

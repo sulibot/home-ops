@@ -4,9 +4,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./scrapeconfig-cluster104-hubble.yaml
+  - ./scrapeconfig-cluster104-home-assistant.yaml
+  - ./scrapeconfig-cluster104-kube-state-metrics.yaml
+  - ./scrapeconfig-cluster104-observer.yaml
   - ../app/alertmanagerconfig.yaml
   - ./prometheusrule-cross-layer-storage.yaml
   - ./prometheusrule-datastores.yaml
   - ./prometheusrule-flux.yaml
+  - ./prometheusrule-home-control.yaml
   - ./prometheusrule-observability.yaml
   - ./prometheusrule-pods.yaml

@@ -1,0 +1,137 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/cronjob_v1.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: home-assistant-config-restore-template
+  namespace: default
+  labels:
+    app.kubernetes.io/name: home-assistant-config-restore-template
+    app.kubernetes.io/part-of: home-assistant
+spec:
+  suspend: true
+  schedule: "0 3 * * *"
+  timeZone: America/Los_Angeles
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: home-assistant-config-restore-template
+            app.kubernetes.io/part-of: home-assistant
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: kopia
+              image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: home-assistant-config-backup-secret
+              env:
+                - name: KOPIA_CHECK_FOR_UPDATES
+                  value: "false"
+                - name: HOME
+                  value: /tmp
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/kopia-logs
+                - name: RESTORE_SNAPSHOT_ID
+                  value: "set-me-before-manual-run"
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  if [ "${RESTORE_SNAPSHOT_ID}" = "set-me-before-manual-run" ] || [ -z "${RESTORE_SNAPSHOT_ID}" ]; then
+                    echo "Set RESTORE_SNAPSHOT_ID before creating a restore job from this template."
+                    exit 1
+                  fi
+
+                  echo "Connecting to Kopia repository for Home Assistant config restore"
+                  if [[ "$KOPIA_REPOSITORY" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                    KOPIA_BUCKET="${BASH_REMATCH[1]}"
+                    KOPIA_PREFIX="${BASH_REMATCH[3]}"
+                  else
+                    echo "Unsupported KOPIA_REPOSITORY format: $KOPIA_REPOSITORY"
+                    exit 1
+                  fi
+
+                  KOPIA_ENDPOINT="$KOPIA_S3_ENDPOINT"
+                  KOPIA_ENDPOINT_SCHEME="https"
+                  KOPIA_ENDPOINT_PATH=""
+                  if [[ "$KOPIA_ENDPOINT" =~ ^(https?)://([^/]+)(/(.*))?$ ]]; then
+                    KOPIA_ENDPOINT_SCHEME="${BASH_REMATCH[1]}"
+                    KOPIA_ENDPOINT="${BASH_REMATCH[2]}"
+                    KOPIA_ENDPOINT_PATH="${BASH_REMATCH[4]}"
+                  fi
+                  if [ -n "$KOPIA_ENDPOINT_PATH" ]; then
+                    if [ -n "${KOPIA_PREFIX:-}" ]; then
+                      KOPIA_PREFIX="${KOPIA_ENDPOINT_PATH%/}/${KOPIA_PREFIX}"
+                    else
+                      KOPIA_PREFIX="$KOPIA_ENDPOINT_PATH"
+                    fi
+                  fi
+                  if [ -n "${KOPIA_PREFIX:-}" ] && [[ "$KOPIA_PREFIX" != */ ]]; then
+                    KOPIA_PREFIX="${KOPIA_PREFIX}/"
+                  fi
+
+                  CONNECT_ARGS=(
+                    "--bucket=$KOPIA_BUCKET"
+                    "--endpoint=$KOPIA_ENDPOINT"
+                    "--access-key=$AWS_ACCESS_KEY_ID"
+                    "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
+                    "--password=$KOPIA_PASSWORD"
+                    "--config-file=/tmp/kopia.config"
+                    "--override-hostname=cluster-104.home-assistant"
+                    "--override-username=home-assistant"
+                    "--readonly"
+                  )
+                  if [ -n "${KOPIA_PREFIX:-}" ]; then
+                    CONNECT_ARGS+=("--prefix=$KOPIA_PREFIX")
+                  fi
+                  if [ "$KOPIA_ENDPOINT_SCHEME" = "http" ]; then
+                    CONNECT_ARGS+=("--disable-tls")
+                  fi
+
+                  kopia repository connect s3 "${CONNECT_ARGS[@]}"
+                  kopia restore "$RESTORE_SNAPSHOT_ID" /restore \
+                    --config-file=/tmp/kopia.config
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts:
+                - name: config
+                  mountPath: /restore
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config
+              persistentVolumeClaim:
+                claimName: home-assistant-config
+            - name: tmp
+              emptyDir: {}

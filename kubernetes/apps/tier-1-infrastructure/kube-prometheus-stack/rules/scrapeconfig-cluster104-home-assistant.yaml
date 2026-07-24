@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: cluster-104-home-assistant
+  namespace: observability
+spec:
+  metricsPath: /api/prometheus
+  scheme: HTTPS
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  staticConfigs:
+    - targets:
+        - hass-app.sulibot.com:443
+      labels:
+        app: home-assistant
+        cluster: cluster-104
+        namespace: default
+        service: home-assistant
+  tlsConfig:
+    serverName: hass-app.sulibot.com
