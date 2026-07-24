@@ -10,7 +10,7 @@ data:
       Flush 1
       Log_Level info
       HTTP_Server On
-      HTTP_Listen 0.0.0.0
+      HTTP_Listen ::
       HTTP_Port 2022
       Health_Check On
       storage.path /var/lib/fluent-bit-events/buffers/
