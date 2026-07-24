@@ -10,7 +10,7 @@ spec:
     name: descheduler
   interval: 1h
   values:
-    kind: deployment
+    kind: Deployment
     deschedulerPolicyAPIVersion: descheduler/v1alpha2
     deschedulerPolicy:
       metricsProviders:
@@ -22,7 +22,8 @@ spec:
               args:
                 evictFailedBarePods: true
                 evictLocalStoragePods: true
-                evictSystemCriticalPods: true
+                evictSystemCriticalPods: false
+                nodeFit: true
             - name: LowNodeUtilization
               args:
                 metricsUtilization:

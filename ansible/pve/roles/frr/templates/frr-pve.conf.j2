@@ -377,6 +377,18 @@ route-map RM_VMS_OUT_V6 permit 20
  match ipv6 address prefix-list PL_SVCS_V6
 exit
 !
+{# ENG-284: CP-only BGP session (kube_vip protocol) gets the apiserver VIP
+   directly, but workers rely solely on this VMS export policy and had no
+   matching clause - the VIP was Installed in every PVE host's VRF table
+   but never advertised to worker VMs, which fell back to unreliable
+   on-link ND resolution for an address inside their connected /64.
+   Mirrors RM_GLOBAL_TO_VRF_V6 permit 35, which already leaks the same
+   CL_K8S_PUBLIC-tagged tenant host routes (VIP, node /128s) into the VRF. #}
+route-map RM_VMS_OUT_V6 permit 25
+ match ipv6 address prefix-list PL_TENANT_V6
+ match large-community CL_K8S_PUBLIC
+exit
+!
 route-map RM_VMS_OUT_V6 permit 30
  match ipv6 address prefix-list PL_K8S_PODS_V6
  match large-community CL_K8S_INTERNAL
