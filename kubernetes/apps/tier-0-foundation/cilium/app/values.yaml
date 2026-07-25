@@ -26,9 +26,14 @@ ipv6:
 
 # Masquerade control
 # Keep IPv4 masquerade enabled for internet egress.
-# Disable IPv6 masquerade in-cluster and perform NAT66 only at the edge router.
+# Enable IPv6 masquerade too (2026-07-25): standard Cilium node-level masquerade,
+# same mechanism as IPv4, replacing the previous NAT66-at-edge-router design.
+# That design depended on the edge router having correct, current routes back to
+# every pod subnet - a dependency outside Cilium's own awareness that broke
+# silently. bpf.masquerade stays true (already was, decoupled from this flag) so
+# ClusterIP/kube-proxy-replacement's BPF service datapath is unaffected either way.
 enableIPv4Masquerade: true
-enableIPv6Masquerade: false
+enableIPv6Masquerade: true
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
 # Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6
