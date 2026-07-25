@@ -13,7 +13,7 @@ data:
       Parsers_File /fluent-bit/etc/parsers.conf
       Parsers_File /fluent-bit/etc/custom_parsers.conf
       HTTP_Server On
-      HTTP_Listen 0.0.0.0
+      HTTP_Listen ::
       HTTP_Port 2020
       Health_Check On
       storage.path /var/log/fluent-bit-cluster104-buffers/
@@ -96,6 +96,7 @@ data:
       Host loki.sulibot.com
       Port 443
       TLS On
+      tls.vhost loki.sulibot.com
       label_keys $cluster,$namespace,$app,$stream_class
       labels job=fluentbit-cluster104
       line_format json
@@ -110,7 +111,7 @@ data:
       Flush 1
       Log_Level warn
       HTTP_Server On
-      HTTP_Listen 0.0.0.0
+      HTTP_Listen ::
       HTTP_Port 2021
       Health_Check On
       storage.path /var/lib/fluent-bit-cluster104-events/buffers/
@@ -126,9 +127,7 @@ data:
       kube_url https://kubernetes.default.svc
       kube_retention_time 1h
       db /var/lib/fluent-bit-cluster104-events/events.db
-      db.journal_mode DELETE
       db.sync normal
-      storage.type filesystem
 
     [FILTER]
       Name lua
@@ -142,6 +141,7 @@ data:
       Host loki.sulibot.com
       Port 443
       TLS On
+      tls.vhost loki.sulibot.com
       label_keys $cluster,$stream_class,$app,$event_namespace,$involved_kind,$involved_namespace,$event_reason,$event_type
       labels job=fluentbit-cluster104-events
       line_format json
