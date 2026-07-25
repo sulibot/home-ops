@@ -64,6 +64,8 @@ spec:
                       key: KOPIA_PASSWORD
                 - name: KOPIA_CHECK_FOR_UPDATES
                   value: "false"
+                - name: HOME
+                  value: "/tmp"
               command:
                 - /bin/bash
                 - -c
@@ -85,9 +87,15 @@ spec:
                     exit 1
                   fi
 
+                  # kopia's --endpoint wants a bare host[:port], not a full URL
+                  # (KOPIA_S3_ENDPOINT is shared with other volsync components
+                  # that expect the full https:// form - strip it here only)
+                  KOPIA_S3_HOST="${KOPIA_S3_ENDPOINT#https://}"
+                  KOPIA_S3_HOST="${KOPIA_S3_HOST#http://}"
+
                   CONNECT_ARGS=(
                     "--bucket=$KOPIA_BUCKET"
-                    "--endpoint=$KOPIA_S3_ENDPOINT"
+                    "--endpoint=$KOPIA_S3_HOST"
                     "--access-key=$AWS_ACCESS_KEY_ID"
                     "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
                     "--password=$KOPIA_PASSWORD"
