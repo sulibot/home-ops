@@ -69,6 +69,33 @@ variable "apply_sdn_config" {
   default     = false
 }
 
+variable "enable_underlay_fabric" {
+  description = "Manage the OSPF underlay (mesh-link loopback reachability) via a PVE SDN Fabric instead of hand-rolled FRR. Prototype/opt-in - leave false until cutover is tested and approved."
+  type        = bool
+  default     = false
+}
+
+variable "fabric_ospf_prefix" {
+  description = "Loopback address range for the OSPF underlay fabric (matches existing lo-infra addressing so node IPs are unchanged)."
+  type        = string
+  default     = "10.255.0.0/24"
+}
+
+variable "fabric_ospf_area" {
+  description = "OSPF area for the underlay fabric"
+  type        = string
+  default     = "0.0.0.0"
+}
+
+variable "fabric_nodes" {
+  description = "Per-node underlay fabric config: loopback IP (must fall within fabric_ospf_prefix) and the physical mesh-link interfaces to run OSPF on."
+  type = map(object({
+    ip              = string
+    interface_names = set(string)
+  }))
+  default = {}
+}
+
 variable "vnets" {
   description = "Map of VNets to create with their configuration"
   type = map(object({

@@ -88,6 +88,29 @@ resource "proxmox_sdn_subnet" "gua_subnets" {
   depends_on = [proxmox_sdn_vnet.vnets]
 }
 
+# OSPF underlay fabric (prototype) - replaces the hand-rolled FRR OSPF
+# stanzas on the two mesh links (enp1s0f0np0/enp1s0f1np1) that today provide
+# loopback reachability between PVE hosts for the EVPN BGP overlay.
+# Deliberately scoped to just the mesh links: lo-svcs and vmbr0.10 stay OSPF
+# via frr.conf.local since they serve Ceph advertisement and management
+# reachability, not fabric underlay - not something PVE Fabrics models.
+resource "proxmox_sdn_fabric_ospf" "underlay" {
+  count = var.enable_underlay_fabric ? 1 : 0
+
+  id       = "underlay"
+  area     = var.fabric_ospf_area
+  ip_prefix = var.fabric_ospf_prefix
+}
+
+resource "proxmox_sdn_fabric_node_ospf" "underlay" {
+  for_each = var.enable_underlay_fabric ? var.fabric_nodes : {}
+
+  fabric_id       = proxmox_sdn_fabric_ospf.underlay[0].id
+  node_id         = each.key
+  ip              = each.value.ip
+  interface_names = each.value.interface_names
+}
+
 # Applier - triggers SDN configuration application
 resource "proxmox_sdn_applier" "main" {
   count = var.apply_sdn_config ? 1 : 0
@@ -99,8 +122,15 @@ resource "proxmox_sdn_applier" "main" {
       proxmox_sdn_subnet.ipv4_subnets,
       proxmox_sdn_subnet.ula_subnets,
       proxmox_sdn_subnet.gua_subnets,
+      proxmox_sdn_fabric_ospf.underlay,
+      proxmox_sdn_fabric_node_ospf.underlay,
     ]
   }
+
+  depends_on = [
+    proxmox_sdn_fabric_ospf.underlay,
+    proxmox_sdn_fabric_node_ospf.underlay,
+  ]
 }
 
 # Reminder - notify user to run Ansible after SDN changes

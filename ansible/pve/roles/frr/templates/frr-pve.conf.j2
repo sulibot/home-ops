@@ -443,25 +443,24 @@ exit
 {# =====================================================================
    OSPF - Underlay (Ring + Shared L2)
    Global interface blocks with both IPv4 and IPv6 OSPF settings
+
+   enp1s0f0np0/enp1s0f1np1 (the mesh links) have their area/network-type
+   owned by PVE SDN Fabrics (see terraform/infra/modules/proxmox_sdn's
+   fabric_ospf/fabric_node_ospf resources), which generates those stanzas
+   into /etc/frr/frr.conf - do not duplicate that here.
+
+   Fabric's generated stanzas don't set "no ip ospf passive", so they're
+   silently passive under this file's "passive-interface default" below.
+   FRR merges repeated "interface X" blocks additively, so this narrow
+   override (just the passive flag) is enough without redeclaring area/
+   network-type.
 ===================================================================== #}
 interface enp1s0f0np0
- ip ospf area 0.0.0.0
- ip ospf network point-to-point
- ip ospf cost 10
  no ip ospf passive
- ipv6 ospf6 area 0.0.0.0
- ipv6 ospf6 network point-to-point
- ipv6 ospf6 cost 10
 exit
 !
 interface enp1s0f1np1
- ip ospf area 0.0.0.0
- ip ospf network point-to-point
- ip ospf cost 10
  no ip ospf passive
- ipv6 ospf6 area 0.0.0.0
- ipv6 ospf6 network point-to-point
- ipv6 ospf6 cost 10
 exit
 !
 interface vmbr0.10

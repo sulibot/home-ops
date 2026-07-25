@@ -90,6 +90,10 @@ inputs = {
   # Route target for importing default route from RouterOS into VRF
   rt_import = "65000:1"
 
+  # Push the new fabric resources live (SDN apply). Existing zone/vnet/subnet
+  # state has no other pending changes, so this apply is scoped to the fabric.
+  apply_sdn_config = true
+
   # VNets dynamically generated from centralized cluster list
   vnets = {
     for vnet_name, vnet_config in local.vnets_config.vnets : vnet_name => {
@@ -104,4 +108,14 @@ inputs = {
 
   # Use AT&T delegated GUA prefixes directly on VNets
   delegated_prefixes = local.delegated_prefixes
+
+  # OSPF underlay fabric (see [[project ticket]] for cutover plan).
+  # All three PVE hosts now managed via PVE SDN Fabrics instead of
+  # hand-rolled frr.conf.local OSPF stanzas for the mesh links.
+  enable_underlay_fabric = true
+  fabric_nodes = {
+    pve01 = { ip = "10.255.0.1", interface_names = ["enp1s0f0np0", "enp1s0f1np1"] }
+    pve02 = { ip = "10.255.0.2", interface_names = ["enp1s0f0np0", "enp1s0f1np1"] }
+    pve03 = { ip = "10.255.0.3", interface_names = ["enp1s0f0np0", "enp1s0f1np1"] }
+  }
 }
