@@ -102,6 +102,68 @@ locals {
       network   = "fd00:104:250::/64"
       tunnel_id = local.cluster_104_tunnel_id
     }
+
+    # Full infra access via WARP, mirroring every range the Tailscale subnet
+    # router (tailscale-lxc tail01/tail02) advertises today - replacing
+    # reliance on that single router pair, which went offline entirely on
+    # 2026-07-24 (both nodes simultaneously) and blocked all SSH/kubectl/
+    # talosctl/MinIO access with no fallback path. All routed via cluster-101's
+    # tunnel connector: it already proves out for the gateway/node ranges
+    # above via standard pod->node fabric reachability. Reachability into the
+    # non-tenant-101 ranges below (tenant 100/200, the infra loopback range)
+    # depends on the tenant VRF's default-route leak (RM_GLOBAL_TO_VRF_V6
+    # permit 10, PL_DEFAULT_V6 = ::/0) rather than an explicit PL_TENANT_V6
+    # entry - plausible given that mechanism, but UNVERIFIED until tested
+    # live post-apply. Test each one; do not assume the whole set works
+    # because one range does.
+    "cluster-101-nodes-ipv4" = {
+      network   = "10.101.0.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "cluster-101-nodes-ipv6" = {
+      network   = "fd00:101::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "pve-mgmt-ipv4" = {
+      network   = "10.10.0.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "pve-mgmt-ipv6" = {
+      network   = "fd00:10::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "tenant-100-ipv4" = {
+      network   = "10.100.0.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "tenant-100-ipv6" = {
+      network   = "fd00:100::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "tenant-200-ipv4" = { # MinIO / s3.sulibot.com (Terraform state backend)
+      network   = "10.200.0.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "tenant-200-ipv6" = {
+      network   = "fd00:200::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "infra-loopback-ipv4" = {
+      network   = "10.255.0.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "infra-loopback-ipv6" = {
+      network   = "fd00:0:0:ffff::/64"
+      tunnel_id = local.tunnel_id
+    }
+    "cluster-101-extra-ipv4" = {
+      network   = "10.101.254.0/24"
+      tunnel_id = local.tunnel_id
+    }
+    "cluster-104-extra-ipv4" = {
+      network   = "10.104.254.0/24"
+      tunnel_id = local.cluster_104_tunnel_id
+    }
   }
 
   tunnel_hostnames = distinct(concat(
