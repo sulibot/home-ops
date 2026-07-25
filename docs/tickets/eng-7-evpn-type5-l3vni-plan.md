@@ -236,3 +236,39 @@ on this fix. Its `Preferences.xml` is also empty (0 bytes) - a separate,
 already-diagnosed follow-up (clear the file, let Plex regenerate it) -
 do not restart Plex until `fc00:20::2`/`fc00:20::3` reachability from a
 pod on `solwk01` is confirmed working first.
+
+## Follow-up: ENG-320/ENG-321 (2026-07-25)
+
+Two follow-on tickets came out of this incident, both now closed:
+
+**ENG-320 (Done)** - the ansible FRR role was found to hand-author a full
+replacement `frr.conf`, including sections (e.g. the `vrf vrf_evpnz1 /
+vni 4096` binding) PVE's own SDN generator already produces natively.
+Landed via PVE SDN Fabrics (`proxmox_sdn_fabric_ospf` +
+`proxmox_sdn_fabric_node_ospf`, Terraform-native as of `bpg/proxmox`
+0.111.1 / PVE 9.2) migrating the OSPF underlay for the two mesh links
+off hand-rolled FRR config. Rolled out node-by-node with full
+verification; see `terraform/infra/modules/proxmox_sdn/main.tf` and
+`terraform/infra/live/common/0-sdn-setup/terragrunt.hcl`.
+
+This surfaced a real bug: the ansible role wrote the same template
+directly to both `/etc/frr/frr.conf` and `/etc/frr/frr.conf.local`.
+Since PVE merges `frr.conf.local` into its own generated `frr.conf` on
+SDN apply, the direct write was silently clobbering Fabric-generated
+content on every ansible run. Fixed: the role now only writes
+`frr.conf.local` and triggers `pvesh set /cluster/sdn` to regenerate
+`frr.conf` correctly. Commit `106ae183`.
+
+**ENG-321 (Canceled)** - explored replacing the `VMS` dynamic BGP
+peer-group (which tenant K8s VMs use to advertise pod CIDRs/node
+loopbacks into each hypervisor's VRF) with static Terraform-declared
+`proxmox_sdn_subnet` resources. Refuted at the research stage: that
+resource's `gateway` is a single string scoped to the zone-wide anycast
+gateway, with no per-VM/per-node gateway concept - the entire premise
+didn't hold. Forum/docs research afterward found no better native or
+community-standard alternative (bypassing the fabric costs VM
+live-migration mobility; Cilium tunnel mode means double VXLAN
+encapsulation for no complexity win; PVE SDN Fabrics only manages
+underlay, not tenant-route redistribution). The `VMS` peer-group and its
+route-maps remain the intentional, documented mechanism for this
+traffic class going forward.
