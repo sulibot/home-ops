@@ -26,6 +26,7 @@
 {% set pipe_global    = "fd00:255:254:" ~ node_id ~ "::1" %}
 {% set pipe_vrf       = "fd00:255:254:" ~ node_id ~ "::0" %}
 {% set vrf_router_id  = "10.255.255." ~ ((node_id - 1) * 4 + 2) %}
+{% set ceph_pub_self  = "fc00:20::" ~ node_id %}
 
 {# --- Site / fabric knobs --- #}
 {% set LOCAL_AS       = local_as       | default("4200001000") %}
@@ -230,15 +231,28 @@ route-map RM_GLOBAL_TO_VRF_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
 exit
 !
-{# PL_SVCS_V6 (Ceph public network, fc00:20::/48) is now reached via
-   Type-5/L3VNI (see the VRF's `address-family l2vpn evpn` block below),
-   not this Type-2 VRF leak. Denying it here (rather than leaving it as
-   `permit`) matters: FRR assigns vrf-imported "Local" routes an
-   artificial weight of 32768, which always wins BGP best-path selection
-   over the correct iBGP/Type-5-learned path regardless of validity -
-   and zebra does not fall back to the second-best path when the winner
-   fails kernel install (the exact "Nexthop id does not exist" bug this
-   was fixing). Leaving this as `permit` would silently reintroduce the
+{# This node's OWN Ceph public address must still leak in normally -
+   it's the only source Type-5 has to advertise to the other two nodes
+   (see the VRF's `address-family l2vpn evpn` block below). Denying the
+   whole fc00:20::/48 (below) would also block this self-import and
+   break Type-5 at the source - confirmed live 2026-07-25 during
+   rollout: every node could only reach its own Ceph address until this
+   permit was added ahead of the broader deny. #}
+ipv6 prefix-list PL_SVCS_LOCAL_V6 seq 5 permit {{ ceph_pub_self }}/128
+!
+route-map RM_GLOBAL_TO_VRF_V6 permit 14
+ match ipv6 address prefix-list PL_SVCS_LOCAL_V6
+exit
+!
+{# The other two nodes' Ceph addresses (and this node's own, redundantly
+   covered by permit 14 above) are reached via Type-5/L3VNI, not this
+   Type-2 VRF leak. Denying it here (rather than leaving it as `permit`)
+   matters: FRR assigns vrf-imported "Local" routes an artificial weight
+   of 32768, which always wins BGP best-path selection over the correct
+   iBGP/Type-5-learned path regardless of validity - and zebra does not
+   fall back to the second-best path when the winner fails kernel
+   install (the exact "Nexthop id does not exist" bug this was fixing).
+   Leaving this as unconditional `permit` would silently reintroduce the
    2026-07-25 Ceph reachability outage even with Type-5 configured. #}
 route-map RM_GLOBAL_TO_VRF_V6 deny 15
  match ipv6 address prefix-list PL_SVCS_V6
