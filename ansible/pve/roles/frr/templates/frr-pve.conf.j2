@@ -35,6 +35,7 @@
 
 {# VRF name/table #}
 {% set VRF_NAME       = vrf_name       | default("vrf_evpnz1") %}
+{% set VRF_VXLAN_ID   = vrf_vxlan_id   | default(network_facts.sdn_vrf_vxlan) %}
 
 {# Tenant prefix lists (adjust as needed) #}
 {% set TENANT_V4_LIST = tenant_v4_list | default(["10.100.0.0/24","10.101.0.0/24","10.102.0.0/24","10.103.0.0/24"]) %}
@@ -77,6 +78,7 @@ bfd
 !
 {% if VRF_NAME %}
 vrf {{ VRF_NAME }}
+ vni {{ VRF_VXLAN_ID }}
 exit-vrf
 {% endif %}
 !
@@ -228,7 +230,17 @@ route-map RM_GLOBAL_TO_VRF_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
 exit
 !
-route-map RM_GLOBAL_TO_VRF_V6 permit 15
+{# PL_SVCS_V6 (Ceph public network, fc00:20::/48) is now reached via
+   Type-5/L3VNI (see the VRF's `address-family l2vpn evpn` block below),
+   not this Type-2 VRF leak. Denying it here (rather than leaving it as
+   `permit`) matters: FRR assigns vrf-imported "Local" routes an
+   artificial weight of 32768, which always wins BGP best-path selection
+   over the correct iBGP/Type-5-learned path regardless of validity -
+   and zebra does not fall back to the second-best path when the winner
+   fails kernel install (the exact "Nexthop id does not exist" bug this
+   was fixing). Leaving this as `permit` would silently reintroduce the
+   2026-07-25 Ceph reachability outage even with Type-5 configured. #}
+route-map RM_GLOBAL_TO_VRF_V6 deny 15
  match ipv6 address prefix-list PL_SVCS_V6
 exit
 !
@@ -569,6 +581,12 @@ router bgp {{ LOCAL_AS }} vrf {{ VRF_NAME }}
   neighbor VMS route-map RM_VMS_IN_V6 in
   neighbor VMS route-map RM_VMS_OUT_V6 out
   redistribute connected
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  vni {{ VRF_VXLAN_ID }}
+  advertise ipv4 unicast
+  advertise ipv6 unicast
  exit-address-family
 exit
 !

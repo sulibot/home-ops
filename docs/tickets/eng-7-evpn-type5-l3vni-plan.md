@@ -127,3 +127,112 @@ already on the board.
   goes)
 - `terraform/infra/modules/proxmox_sdn/variables.tf` (`vrf_vxlan`
   description already calls this out as L3VNI-intended)
+
+## Update 2026-07-25: scope confirmed broader, root cause pinpointed, ready to execute
+
+During a Plex outage investigation, hit the same failure signature this
+plan describes, but on different prefixes than the original VIP. Confirmed
+live on `pve01`:
+
+- Zebra logs `[X5XE1-RS0SW][EC 4043309074] Failed to install Nexthop
+  (N[addr if 14 vrfid 0]) into the kernel` and `Nexthop id does not exist`
+  for routes leaked via `import vrf` between `vrf_evpnz1` and the global
+  table - interface index 14 is `vrf_evpnz1` itself, incorrectly used as
+  an egress device for a recursively-resolved next-hop.
+- This affects **Ceph mon/OSD reachability** (`fc00:20::1/2/3`, the
+  storage public network on the PVE hosts) - not just the apiserver VIP.
+  This is what actually blocked Plex.
+- It also affects **same-subnet cross-node VM traffic** (e.g. `solcp02`
+  on `pve02` unreachable from `pve01`'s `vrf_evpnz1`), because even
+  intra-`vnet101` reachability in this design goes through the same
+  `VMS` dynamic-BGP-peer -> redistribute -> leak round trip, not pure
+  L2 flood-and-learn. So the "Type-2 stays untouched" framing from the
+  original plan was too narrow - Type-2 handles MAC/IP mobility during
+  live migration fine and is unaffected, but same-subnet cross-node
+  *reachability* in the current design rides the same broken leak path
+  this plan already targets.
+- **Confirmed reproducible, not stale/corrupted state**: identical error
+  recurred immediately after 3 separate full host reboots (`pve02`,
+  `pve03`, `pve01`) and after an FRR 10.6.1 -> 10.7.0 package upgrade on
+  `pve01`. Ruled out: kernel nexthop-table corruption from a one-time
+  event, FRR version bug fixed upstream, BGP soft-clear recovery. This is
+  a live, deterministic bug in the leak/recursive-nexthop path, not
+  something that self-heals or that a restart clears.
+
+### Ownership boundary, confirmed
+
+- **Terraform is already correct, no changes needed there.**
+  `terraform/infra/live/common/0-sdn-setup/terragrunt.hcl` sets
+  `vrf_vxlan = 4096` and `rt_import = "65000:1"`, which is exactly what
+  drives PVE's own native SDN-to-FRR generator to produce `vrf
+  vrf_evpnz1 / vni 4096` and a `default-originate ipv4/ipv6` +
+  `route-target import 65000:1` block under the VRF's BGP instance
+  (verified against `/etc/frr/frr.conf.sdn-generated-20260712` on
+  `pve01` - a snapshot of PVE's native, pre-ansible-overlay output).
+- **The gap is entirely in Ansible.**
+  `ansible/pve/roles/frr/templates/frr-pve.conf.j2` fully replaces FRR's
+  config (needed for the custom `VMS` dynamic peer-group,
+  `RM_GLOBAL_TO_VRF_V6`/`RM_VRF_TO_GLOBAL_V6`, OSPF underlay, etc. - none
+  of which PVE's SDN system knows how to generate), and in doing so has
+  silently dropped the `vni` interface binding that PVE would otherwise
+  generate. Confirmed absent in both the current live config and a
+  `frr.conf.pre-type5-fix-20260713-161725` backup, so this has been
+  missing since at least 2026-07-13.
+- `default-originate` (PVE's native use of the same L3VNI, scoped to
+  default-route/exit-node behavior via `exitnodes-local-routing 1`,
+  already live and working) is a different, narrower use of Type-5 than
+  what's needed here (`advertise ipv4/ipv6 unicast`, specific-prefix
+  advertisement) - keep `default-originate` as-is, it's unrelated and
+  not in conflict.
+
+### Config change (refined from the original proposal above)
+
+Per PVE node, in `frr-pve.conf.j2`:
+
+```
+vrf {{ VRF_NAME }}
+ vni {{ vrf_vxlan_id }}
+exit-vrf
+!
+router bgp {{ LOCAL_AS }} vrf {{ VRF_NAME }}
+ ...
+ address-family l2vpn evpn
+  vni {{ vrf_vxlan_id }}
+  advertise ipv4 unicast
+  advertise ipv6 unicast
+ exit-address-family
+exit
+```
+
+`vrf_vxlan_id` from `network_facts.sdn_vrf_vxlan` (same source as noted
+in the original plan above, no new plumbing).
+
+### Validation sequence (execute in this order, don't batch)
+
+1. Render template, syntax-check only (`vtysh -f <file> -C`), no live
+   apply.
+2. Apply live on `pve01` only via interactive `vtysh -c 'configure
+   terminal'` (not `ifreload`/ansible push) - trivially reversible with
+   `no vni {{ id }}` / removing the `advertise` lines.
+3. Confirm `show bgp l2vpn evpn vni` on `pve01` shows `Number of L3
+   VNIs: 1` (baseline today: 0).
+4. Advertise a throwaway test prefix, confirm `Status: Installed` (not
+   `Status: Failed`) on `pve02` and `pve03` - the actual proof the
+   recursive-nexthop bug is bypassed.
+5. Verify against a real currently-broken address (`fc00:20::2` from a
+   pod on `solwk01`) before declaring success.
+6. Only then commit to the ansible template and roll to all 3 nodes.
+
+**Explicitly ruled out as remediation, don't retry**: host reboots, FRR
+daemon restart, BGP soft-clear, FRR package upgrade - all tried live on
+2026-07-25, none fixed it. Get explicit sign-off before any action
+beyond the single-node `pve01` live trial in step 2 - this touches
+production Ceph/Kubernetes storage networking.
+
+### Current blocker this unblocks
+
+Plex (`default` namespace, cluster-101) is scaled to 0 replicas, waiting
+on this fix. Its `Preferences.xml` is also empty (0 bytes) - a separate,
+already-diagnosed follow-up (clear the file, let Plex regenerate it) -
+do not restart Plex until `fc00:20::2`/`fc00:20::3` reachability from a
+pod on `solwk01` is confirmed working first.
