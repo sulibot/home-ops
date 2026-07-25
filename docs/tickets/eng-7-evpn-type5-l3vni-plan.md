@@ -5,6 +5,11 @@ ENG-7/ENG-10 - the four workarounds tried there all hit the same
 architectural wall (VRF-leaked/point-to-point routes can't resolve
 link-local next-hops across nodes). This is the actual fix.
 
+Renamed 2026-07-24 from `eng11-evpn-type5-l3vni-plan.md`: this is a design
+doc referenced from ENG-7, not its own tracked Linear issue - the old
+filename collided with the real ENG-11 (OTEL pipeline migration, unrelated
+topic). Still on hold per ENG-7; not implemented.
+
 ## The gap, precisely
 
 - `terraform/infra/modules/proxmox_sdn/variables.tf` describes `vrf_vxlan`

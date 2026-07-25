@@ -1,5 +1,13 @@
 # ENG-14: kube-vip BGP anycast for cluster-101 apiserver VIP
 
+## Status: Done (see Linear ENG-14, completed 2026-07-15)
+
+Implemented and verified 8/8 for CP↔CP traffic. A related worker-node gap
+(workers couldn't reach the VIP via this same mechanism) surfaced later and
+was fixed separately under ENG-284, 2026-07-24 — see
+`docs/tickets/pve-evpn-vip-arp-nd-suppression-gap.md` and
+`ansible/pve/roles/frr/templates/frr-pve.conf.j2` (`RM_VMS_OUT_V6`).
+
 ## Goal
 
 Replace the fragile Talos-native floating VIP behavior for

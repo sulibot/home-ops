@@ -190,3 +190,17 @@ rediscovery.
 - `kubernetes/apps/tier-2-applications/home-assistant/app/`
 - `kubernetes/clusters/cluster-104/storage/home-assistant-local-pv.yaml`
 - `terraform/infra/live/baremetal/cluster-104/README.md`
+
+## Migration debris found and cleaned up (2026-07-24)
+
+`tier-2-applications/kustomization.yaml` already had `matter-server/ks.yaml`
+commented out ("migrated to bare-metal cluster-104"), but the cluster-101
+`HelmRelease/default/matter-server` it used to own was never pruned — it sat
+permanently failed (`could not get Source object: OCIRepository ... not
+found`) for 124+ days, since commenting out a Kustomization reference doesn't
+trigger GC the way deleting/suspending it does. Deleted the stray
+HelmRelease. **Left alone deliberately**: the `matter-server` namespace on
+cluster-101 and its 3 PVCs (`matter-server-config` + 2 volsync cache/dest
+PVCs, 132d old) — plausibly still-needed Matter/Thread pairing data or backup
+cache; not safe to delete without confirming cluster-104's own data already
+supersedes it.

@@ -1,8 +1,19 @@
 # Cloudflare Access Terraform State Reconciliation
 
-## Status (2026-07-11)
+## Status (2026-07-24, confirmed resolved — see Linear ENG-1)
 
-Resolved. The real state (serial 97, 15 resources) was found on a third
+Resolved. Reopened 2026-07-13 for two unchecked ACs (possible import
+ambiguity on `cloudflare_zero_trust_gateway_policy` and
+`cloudflare_zero_trust_tunnel_cloudflared_route`). Confirmed closed
+2026-07-24: ran a clean `terragrunt plan`/`apply` on this stack (adding 12
+unrelated new WARP private routes for full infra access). `terragrunt state
+list` showed all 3 `app_private_dns_override` policies and all 4 original
+`app_private_route` entries already present in state with zero diff — only
+the genuinely-new routes showed as creates. No import ambiguity remains.
+
+### Original resolution (2026-07-11)
+
+The real state (serial 97, 15 resources) was found on a third
 machine (`MacBook-Pro-2.local:~/repos/github/home-ops`) that had actually
 been used to apply this stack — it was never present in this repo's other
 two checkouts. It has been pulled in and migrated to a durable S3 backend
@@ -49,12 +60,10 @@ removed from the Terraform surface.
       the recovered state).
 - [x] Import existing `cloudflare_zero_trust_access_application` resources
       (already tracked in the recovered state).
-- [ ] Import existing `cloudflare_zero_trust_gateway_policy` resources (the
-      `app_private_dns_override` policies show as creates in the current
-      plan — need to confirm whether they already exist live and need
-      `terraform import`, or are genuinely new).
-- [ ] Import existing `cloudflare_zero_trust_tunnel_cloudflared_route`
-      resources (same as above — currently plan as creates).
+- [x] Import existing `cloudflare_zero_trust_gateway_policy` resources —
+      confirmed 2026-07-24 already correctly in state, zero diff.
+- [x] Import existing `cloudflare_zero_trust_tunnel_cloudflared_route`
+      resources — confirmed 2026-07-24 already correctly in state, zero diff.
 - [x] Run `terragrunt plan` and confirm no unexpected creates/replaces
       remain — remaining diff (30 add / 5 change / 4 destroy) is intentional
       and reviewed, not phantom.

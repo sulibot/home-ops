@@ -1,6 +1,9 @@
 # Ticket: cluster-101 kube-apiserver VIP unreachable cross-node after EVPN network event
 
-- Status: Open (investigation ongoing - initial root-cause theory was wrong, see below)
+- Status: Done (see Linear ENG-7 — mitigated via ENG-14's kube-vip BGP anycast
+  + ENG-284's follow-up worker-node route-map fix, not via the Type-5 fix this
+  file's later sections describe as the "actual" solution; that fix is still
+  not implemented, see `docs/tickets/eng-7-evpn-type5-l3vni-plan.md`)
 - Priority: High
 - Area: PVE SDN, FRR, EVPN, cluster-101 networking
 - Created: 2026-07-13
