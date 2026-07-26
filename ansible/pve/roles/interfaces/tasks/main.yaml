@@ -26,6 +26,28 @@
     state: directory
     mode: '0755'
 
+# ENG-322 cleanup: proxy_ndp=0 was in this file's loop at some earlier
+# point in this role's history and got trimmed out, but the stale key was
+# never removed from the file itself (ansible.posix.sysctl with
+# state: present only adds/updates keys it's told about, never prunes
+# ones that fall out of the loop). This directly conflicts with the
+# correct proxy_ndp=1 the sysctl role sets in 99-custom-pve.conf - since
+# sysctl.d applies files in alphabetical order, 99-forwarding.conf (f)
+# would win over 99-custom-pve.conf (c) on any full `sysctl --system`
+# reload (e.g. every reboot), silently breaking VIP/anycast-gateway NDP
+# resolution again. Found live via a full ansible-vs-running audit; the
+# live runtime value was already correct (1, from a prior direct sysctl
+# -w) but would NOT have survived a reboot without this.
+- name: Remove stale conflicting proxy_ndp entries from 99-forwarding.conf
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    sysctl_file: /etc/sysctl.d/99-forwarding.conf
+    state: absent
+    reload: yes
+  loop:
+    - net/ipv6/conf/all/proxy_ndp
+    - net/ipv6/conf/default/proxy_ndp
+
 # Task: Configure global IP forwarding and general network sanity settings
 - name: Configure global IP forwarding and general network sanity
   ansible.posix.sysctl:
