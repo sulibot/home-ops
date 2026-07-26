@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - ./rbac.yaml
   - ./configmap.yaml
+  - ./talos-operator-credentials.sops.yaml
   - ./cronjob.yaml

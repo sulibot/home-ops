@@ -107,18 +107,30 @@ data:
     # not per pod, and as long as any other pod on that node still holds the
     # volume, kubelet won't re-stage it. The only fix found is restarting
     # kubelet on the affected node (`talosctl service kubelet restart`),
-    # which forces a full volume-manager resync. That requires Talos API
-    # credentials this ServiceAccount intentionally does not have, so this
-    # pass only detects and surfaces the condition - always via job failure
-    # (never silently "healthy") - it does not attempt to remediate it.
+    # which forces a full volume-manager resync.
+    #
+    # 2026-07-26: wired up for real. ghcr.io/siderolabs/talosctl is a
+    # scratch image (no shell, can't `cp` its binary out for this container
+    # to use directly), so instead this spawns a short-lived pod FROM that
+    # image via `kubectl run` only when a restart is actually needed,
+    # mounting an os:operator-scoped Talos client cert into it (see
+    # talos-operator-credentials.sops.yaml). os:operator grants service
+    # restart/reboot but explicitly NOT machine-config reads/writes or
+    # secret access - restarting kubelet on a node is the only action this
+    # automation can take, by design, even if the credential were somehow
+    # exfiltrated.
+    #
     # One line per distinct pod (a stuck pod emits a fresh FailedMount event
     # roughly every 2m, so dedup on namespace/name or broken_total balloons
-    # every run instead of reporting the actual number of stuck pods).
+    # every run instead of reporting the actual number of stuck pods). Nodes
+    # are deduped separately (fixed_nodes) so a node with 5 stuck pods only
+    # gets ONE kubelet restart per run, not five.
     stale_cache_pods=$(kubectl get events -A --field-selector reason=FailedMount -o json 2>/dev/null \
       | jq -r '.items[] | select(.message | contains("file does not exist"))
                | "\(.involvedObject.namespace) \(.involvedObject.name)"' \
       | sort -u)
 
+    fixed_nodes=""
     if [ -n "$stale_cache_pods" ]; then
       while read -r pns pname; do
         [ -z "$pname" ] && continue
@@ -133,7 +145,47 @@ data:
         fi
         pnode=$(kubectl -n "$pns" get pod "$pname" -o jsonpath='{.spec.nodeName}' 2>/dev/null)
         broken_total=$((broken_total + 1))
-        echo "node=$pnode status=broken-stale-stage-cache pod=$pns/$pname (needs: talosctl -n <node-ip> service kubelet restart - see mount-doctor.sh comment)"
+        echo "node=$pnode status=broken-stale-stage-cache pod=$pns/$pname auto_fix=$AUTO_FIX"
+
+        if [ "$AUTO_FIX" != "true" ] || [ -z "$pnode" ]; then
+          continue
+        fi
+        case " $fixed_nodes " in
+          *" $pnode "*)
+            echo "node=$pnode status=already-restarted-this-run pod=$pns/$pname (skipping, one restart per node per run)"
+            remediated=$((remediated + 1))
+            continue
+            ;;
+        esac
+        node_ip=$(kubectl get node "$pnode" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null \
+          | tr ' ' '\n' | grep ':' | head -1)
+        if [ -z "$node_ip" ]; then
+          echo "REMEDIATE_FAILED node=$pnode pod=$pns/$pname reason=no-ipv6-internal-ip-found" >&2
+          continue
+        fi
+
+        run_name="talosctl-kubelet-restart-$$"
+        overrides="{\"apiVersion\":\"v1\",\"spec\":{\"restartPolicy\":\"Never\",\"containers\":[{\"name\":\"$run_name\",\"image\":\"$TALOSCTL_IMAGE\",\"args\":[\"-n\",\"$node_ip\",\"service\",\"kubelet\",\"restart\"],\"env\":[{\"name\":\"TALOSCONFIG\",\"value\":\"/talos/talosconfig\"}],\"volumeMounts\":[{\"name\":\"talos-credentials\",\"mountPath\":\"/talos\",\"readOnly\":true}]}],\"volumes\":[{\"name\":\"talos-credentials\",\"secret\":{\"secretName\":\"$TALOS_CREDENTIALS_SECRET\",\"defaultMode\":256}}]}}"
+        kubectl -n ceph-csi run "$run_name" --image="$TALOSCTL_IMAGE" --restart=Never \
+          --overrides="$overrides" >/dev/null 2>&1
+
+        ok=false
+        for _ in $(seq 1 30); do
+          phase=$(kubectl -n ceph-csi get pod "$run_name" -o jsonpath='{.status.phase}' 2>/dev/null)
+          [ "$phase" = "Succeeded" ] && { ok=true; break; }
+          [ "$phase" = "Failed" ] && break
+          sleep 2
+        done
+        kubectl -n ceph-csi logs "$run_name" 2>/dev/null | sed 's/^/  talosctl: /'
+        kubectl -n ceph-csi delete pod "$run_name" --wait=false >/dev/null 2>&1
+
+        if [ "$ok" = "true" ]; then
+          echo "REMEDIATED node=$pnode pod=$pns/$pname action=kubelet-restart"
+          fixed_nodes="$fixed_nodes $pnode"
+          remediated=$((remediated + 1))
+        else
+          echo "REMEDIATE_FAILED node=$pnode pod=$pns/$pname action=kubelet-restart phase=$phase" >&2
+        fi
       done <<< "$stale_cache_pods"
     fi
 

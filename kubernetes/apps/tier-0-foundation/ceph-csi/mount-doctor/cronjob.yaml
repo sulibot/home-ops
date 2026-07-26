@@ -28,6 +28,16 @@ spec:
               env:
                 - name: AUTO_FIX
                   value: "true"
+                # talosctl isn't in alpine/k8s, and ghcr.io/siderolabs/talosctl
+                # is a scratch image with no shell to `cp` its binary out of -
+                # rather than fighting that, the script uses `kubectl run` to
+                # launch a short-lived pod FROM that image directly (native
+                # entrypoint, no shell needed) only when a kubelet restart is
+                # actually required, mounting this same secret into it.
+                - name: TALOS_CREDENTIALS_SECRET
+                  value: talos-operator-credentials
+                - name: TALOSCTL_IMAGE
+                  value: ghcr.io/siderolabs/talosctl:v1.12.4@sha256:d73e00cb8105c791277a810a2314dec7f3aae29b1ff6c9037a02fab7c97d4dfd
               volumeMounts:
                 - name: script
                   mountPath: /scripts

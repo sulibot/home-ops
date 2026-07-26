@@ -26,6 +26,18 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["get", "list"]
+  # For the broken-stale-stage-cache remediation only: create/watch a
+  # short-lived pod running the talosctl image (with the os:operator-scoped
+  # Talos credential - see talos-operator-credentials.sops.yaml) to restart
+  # kubelet on the specific affected node. Cluster-scoped like the rest of
+  # this ClusterRole (see comment on the ServiceAccount above) - the script
+  # always targets the ceph-csi namespace by convention, not RBAC enforcement.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
