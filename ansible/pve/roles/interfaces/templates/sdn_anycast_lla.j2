@@ -20,6 +20,18 @@
 iface vnet{{ vnet_id }} inet6 static
     address fe80::{{ vnet_id }}:fffe/64
     pre-up /sbin/ip link set vnet{{ vnet_id }} address 00:00:5e:00:01:{{ '%02x' | format(vnet_id) }} || true
+{% for vip in vms_local_pref_anycast_v6 if (vip.prefix.split(':')[1] | int) == vnet_id %}
+    # {{ vip.name }}: proxy-NDP answer for the anycast VIP {{ vip.prefix }}.
+    # It falls inside this vnet's own ULA /64, so a guest's kernel treats it
+    # as on-link and tries to resolve it via plain Neighbor Discovery instead
+    # of routing through the gateway - but nothing is L2-present at that
+    # address, it's only reachable via BGP (kube-vip advertises it, doesn't
+    # answer NDP). Without a proxy answer here, resolution fails forever and
+    # a freshly-booted node gets a permanent "no route to host" trying to
+    # reach it - found via solwk03 hanging at boot for 1h+ on 2026-07-26.
+    post-up   sysctl -w net.ipv6.conf.vnet{{ vnet_id }}.proxy_ndp=1 || true
+    post-up   /sbin/ip -6 neigh add proxy {{ vip.prefix.split('/')[0] }} dev vnet{{ vnet_id }} 2>/dev/null || true
+{% endfor %}
 
 {% endfor %}
 {% endif %}
