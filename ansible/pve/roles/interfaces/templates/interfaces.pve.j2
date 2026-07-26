@@ -83,6 +83,16 @@ iface vmbr0.10 inet static
     metric 1024
     vlan-raw-device vmbr0
     mtu 1500
+    # ENG-322: vrf_evpnz1's own BGP-learned default route (recursive iBGP
+    # via vrfbr_evpnz1) shows Selected/Installed in FRR but does NOT
+    # actually forward - found live, cause not yet understood, worth its
+    # own investigation. This static cross-VRF route is the one that
+    # demonstrably works (verified: real pod egress from all 3 workers).
+    # Without it here, a PVE host reboot silently loses vrf_evpnz1 IPv4
+    # egress entirely, even with the SNAT rule in place (nftables/firewall
+    # role) - packets never get routed toward the internet at all.
+    # See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md
+    post-up ip route replace default via 10.10.0.254 dev vmbr0.10 table vrf_evpnz1 || true
 
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
