@@ -262,6 +262,31 @@ locals {
     })
   ] : []
 
+  # Zot's pull-through cache does a full sync (manifest + blobs + cosign
+  # signature/referrer sync) on the first pull of any image it hasn't seen
+  # before, which can take 20-30s+. containerd's CRI images plugin default
+  # image_pull_progress_timeout is 1m but resets on any progress; the
+  # failures actually seen were containerd giving up on the *initial*
+  # connection/response from zot before it started sending data, not a
+  # progress stall. Raising this to 5m gives a cold zot sync enough room to
+  # start responding without changing behavior for a genuinely wedged pull.
+  containerd_pull_timeout_patches = var.registry_mirrors != null ? [
+    yamlencode({
+      machine = {
+        files = [
+          {
+            op      = "create"
+            path    = "/etc/cri/conf.d/21-image-pull-timeout.part"
+            content = <<-EOF
+              [plugins."io.containerd.cri.v1.images"]
+                image_pull_progress_timeout = "5m0s"
+              EOF
+          }
+        ]
+      }
+    })
+  ] : []
+
   talos_service_logging_patches = try(var.talos_logging.enabled, false) ? [
     yamlencode({
       machine = {
@@ -389,7 +414,7 @@ data "talos_machine_configuration" "controlplane" {
         }
       }
     }),
-  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.containerd_pull_timeout_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate worker machine configuration
@@ -451,7 +476,7 @@ EOF
         }
       }
     }),
-  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.containerd_pull_timeout_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate per-node FRR config YAML for the extension
