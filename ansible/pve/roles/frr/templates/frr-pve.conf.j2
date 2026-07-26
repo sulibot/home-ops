@@ -95,6 +95,24 @@ ipv6 prefix-list PL_DEFAULT_V6 seq 5 permit ::/0
 ipv6 prefix-list PL_INFRA_V6 seq 5 permit fd00:0:0:ffff::/64 le 128
 ipv6 prefix-list PL_SVCS_V6  seq 5 permit fc00:20::/48 le 128
 !
+{# PVE's own native EVPN Type-2 SVI/anycast-gateway per-node identity
+   addresses (advertise-svi-ip, VNI 10101 etc - not something this
+   template controls the origin of). Confirmed live 2026-07-25:
+   fd00:101::fffd:2 (pve02's own SVI identity) was being leaked to
+   RouterOS by ALL THREE nodes via the broad PL_TENANT_V6 match below
+   (RM_VRF_TO_GLOBAL_V6/RM_EDGE_EXPORT_V6), since each node imports
+   every other node's copy via Type-5 with no way to tell "mine" from
+   "a peer's" at that point in the pipeline. RouterOS then picked
+   whichever node it learned it from first (not necessarily the real
+   owner), and traffic silently black-holed via the non-owning node.
+   These addresses are PVE-internal fabric plumbing - no external
+   system has a legitimate reason to reach them directly - so the
+   correct fix is exclusion, not trying to arbitrate "true owner"
+   per-address. Only verified/observed for fd00:101 so far; extend to
+   fd00:100/102/103 with the same le 112 pattern if the same symptom
+   ever surfaces there. #}
+ipv6 prefix-list PL_PVE_INTERNAL_V6 seq 5 permit fd00:101::fffd:0/112 le 128
+!
 
 {# --- Tenants --- #}
 {# Simple "all tenants" v4 (override if you want per-tenant granularity) #}
@@ -193,6 +211,10 @@ exit
 !
 route-map RM_EDGE_EXPORT_V6 deny 5
  match large-community CL_K8S_PUBLIC_AND_IBGP
+exit
+!
+route-map RM_EDGE_EXPORT_V6 deny 6
+ match ipv6 address prefix-list PL_PVE_INTERNAL_V6
 exit
 !
 route-map RM_EDGE_EXPORT_V6 permit 10
@@ -298,6 +320,10 @@ route-map RM_VRF_TO_GLOBAL_V4 permit 25
 exit
 !
 route-map RM_VRF_TO_GLOBAL_V4 deny 999
+exit
+!
+route-map RM_VRF_TO_GLOBAL_V6 deny 5
+ match ipv6 address prefix-list PL_PVE_INTERNAL_V6
 exit
 !
 route-map RM_VRF_TO_GLOBAL_V6 permit 10

@@ -572,56 +572,46 @@ inputs = {
       cost                = 1000
     },
     {
-      area                = "backbone"
-      interfaces          = ["lo"]
-      instance_id         = 0
-      type                = "broadcast"
-      retransmit_interval = "5s"
-      transmit_delay      = "1s"
-      hello_interval      = "10s"
-      dead_interval       = "40s"
-      priority            = 128
-      cost                = 1
-      passive             = true
+      area       = "backbone"
+      interfaces = ["lo"]
+      instance_id = 0
+      # ptp: single stub host route, no DR/BDR election - RouterOS has no
+      # explicit "loopback" network type (unlike Cisco), so ptp is the
+      # closest correct type for a dummy interface with zero real neighbors.
+      # type=broadcast was generating an unnecessary Type-2 Network LSA for
+      # this, which caused instability in the fd00:0:0:ffff::1/2/3 host
+      # routes derived from it whenever OSPF elsewhere in the area churned
+      # (e.g. PVE FRR restarts).
+      type   = "ptp"
+      cost   = 1
+      passive = true
     },
     {
-      area                = "backbone_v6"
-      interfaces          = ["lo"]
-      instance_id         = 0
-      type                = "broadcast"
-      retransmit_interval = "5s"
-      transmit_delay      = "1s"
-      hello_interval      = "10s"
-      dead_interval       = "40s"
-      priority            = 128
-      cost                = 1
-      passive             = true
+      area       = "backbone_v6"
+      interfaces = ["lo"]
+      instance_id = 0
+      type   = "ptp"
+      cost   = 1
+      passive = true
     },
     {
-      area                = "backbone"
-      interfaces          = ["lo_dns"]
-      instance_id         = 0
-      type                = "broadcast"
-      retransmit_interval = "5s"
-      transmit_delay      = "1s"
-      hello_interval      = "10s"
-      dead_interval       = "40s"
-      priority            = 128
-      cost                = 1
-      passive             = true
+      area       = "backbone"
+      interfaces = ["lo_dns"]
+      instance_id = 0
+      # Same fix as "lo" above - this is the DNS server's own loopback
+      # (fd00:0:0:ffff::53 / 10.255.0.53), and its stale-route symptoms
+      # today were the direct downstream effect of this misconfiguration.
+      type   = "ptp"
+      cost   = 1
+      passive = true
     },
     {
-      area                = "backbone_v6"
-      interfaces          = ["lo_dns"]
-      instance_id         = 0
-      type                = "broadcast"
-      retransmit_interval = "5s"
-      transmit_delay      = "1s"
-      hello_interval      = "10s"
-      dead_interval       = "40s"
-      priority            = 128
-      cost                = 1
-      passive             = true
+      area       = "backbone_v6"
+      interfaces = ["lo_dns"]
+      instance_id = 0
+      type   = "ptp"
+      cost   = 1
+      passive = true
     },
   ]
 
