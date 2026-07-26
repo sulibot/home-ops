@@ -93,6 +93,19 @@ iface vmbr0.10 inet static
     # role) - packets never get routed toward the internet at all.
     # See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md
     post-up ip route replace default via 10.10.0.254 dev vmbr0.10 table vrf_evpnz1 || true
+    # ENG-322: Proxmox's native per-vnet SNAT (subnets.cfg snat:1, see
+    # nftables role) has no concept of "don't NAT this specific
+    # destination" - it blindly SNATs every tenant-subnet packet leaving
+    # vmbr0.10, including traffic to 10.255.0.0/24 (OSPF-external/E1
+    # routes from RouterOS, includes the cluster's IPv4 DNS resolver at
+    # 10.255.0.53). RouterOS already has a direct route back to the real
+    # tenant subnets for that range; masquerading it breaks the return
+    # path. Insert (not append) at position 1 so this wins regardless of
+    # which vnet's post-up runs first/last. Found live as a DNS
+    # resolution / image-pull regression after switching to the native
+    # SNAT mechanism - see docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+    post-up iptables -t nat -I POSTROUTING 1 -d 10.255.0.0/24 -j RETURN || true
+    post-down iptables -t nat -D POSTROUTING -d 10.255.0.0/24 -j RETURN || true
 
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
