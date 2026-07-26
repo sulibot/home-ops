@@ -17,6 +17,22 @@ table inet filter {
 		# identical on all three. See
 		# docs/tickets/pve-frr-power-event-20260712.md
 		oifname "vmbr0" tcp flags syn tcp option maxseg size set rt mtu
+
+		# ENG-322: same clamp, but for vmbr0.10 - the actual interface the
+		# new vrf_evpnz1 IPv4 NAT path (below) egresses through, which this
+		# pre-existing rule never covered (vmbr0 and vmbr0.10 are different
+		# interfaces). Correct and needed regardless (large TLS handshake
+		# packets over this path should be clamped like everything else),
+		# but NOTE: adding this alone did not fully resolve the TLS
+		# handshake failures seen against real external hosts (github.com
+		# et al) - packet capture showed the pod's own node-level kernel
+		# sending TCP RSTs for the masqueraded flow's reply traffic,
+		# consistent with Cilium's eBPF datapath not intercepting reply
+		# packets that were NAT'd an extra hop away (at the PVE host, not
+		# just within the node). Root cause not fully resolved - see
+		# docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md for the full
+		# writeup and follow-up plan.
+		oifname "vmbr0.10" tcp flags syn tcp option maxseg size set rt mtu
 	}
 	chain output {
 		type filter hook output priority filter;
@@ -42,6 +58,17 @@ table inet filter {
 table ip nat {
 	chain postrouting {
 		type nat hook postrouting priority srcnat; policy accept;
+
+		# 10.255.0.0/24 (OSPF external/E1 routes, ASBR = RouterOS - includes
+		# the cluster's IPv4 DNS resolver at 10.255.0.53) must NOT be
+		# masqueraded. RouterOS already has a direct route back to the real
+		# tenant subnets for these, and rewriting the source here broke
+		# that return path - found live as DNS resolution failures/image
+		# pull breakage for exactly this resolver once the general
+		# masquerade rule below was in place. Must come before the general
+		# masquerade rule (nftables evaluates in order; `return` here exits
+		# this chain for matching packets before they can hit it).
+		ip daddr 10.255.0.0/24 return
 
 		# Tenant IPv4 subnets (vnet100-103: 10.100.0.0/24 - 10.103.0.0/24)
 		# vary in the SECOND octet (100-103), not the third - a /22 (varies
