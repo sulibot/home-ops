@@ -1,11 +1,12 @@
 # ENG-322: Restore native Proxmox SDN exit-node SNAT for vrf_evpnz1 IPv4 egress
 
-## Status: In progress (see Linear ENG-322)
+## Status: In progress (see Linear ENG-322) - core DNS/image-pull issue
+fixed, TLS-to-external-hosts gap remains open
 
 ## Design goals (network engineer framing)
 
 **Fabric roles:**
-- `vrf_evpnz1` (EVPN/VXLAN, BGP ASN 4200001000) is the tenant data plane —
+- `vrf_evpnz1` (EVPN/VXLAN, BGP ASN 4200001000) is the tenant data plane -
   currently hosting `vnet101` (K8s cluster-101, BGP-speaking,
   dynamic-neighbor-enabled) and reserved `vnet100`/`102`/`103` for future
   durable/tenant workloads.
@@ -15,86 +16,91 @@
 - The router (RouterOS) is the L3 edge/policy boundary - the single
   enforcement point for anything crossing from the fabric to the public
   internet.
+- **The network is IPv6-first by design.** Real GUA addressing for pod/VM
+  egress is the default and already works end-to-end; IPv4 is deliberately
+  the exception path.
 
 **Non-negotiable requirements:**
 1. **VM/workload mobility**: any node can host any workload at any time;
-   nothing may be pinned to a specific PVE host for correctness (rules out
-   primary/backup exit-node designs where non-primary nodes depend on the
-   primary).
+   nothing may be pinned to a specific PVE host for correctness.
 2. **No double encapsulation**: egress traffic must not take an extra VXLAN
    hop to a remote exit node before breaking out - each host must be able to
-   route/NAT its own local traffic directly.
+   route/NAT its own local traffic directly. (Confirmed satisfiable by
+   Proxmox's native `exitnodes-local-routing`.)
 3. **Prefer standard, community/vendor-supported patterns over custom
-   automation**, even at some cost to "purity" - this is the primary
-   tiebreaker.
-4. **IPv6-first, NAT-free where legitimate**: real GUA addressing for
-   pod/VM egress is the preferred default and already works end-to-end; this
-   is a deliberate architecture choice, not an accident, and its tradeoff
-   (router/firewall as sole enforcement point, no NAT-implied ACL) is
-   accepted knowingly.
-5. **IPv4 is the exception path**, needed only for destinations without
-   AAAA records; it should get the smallest footprint necessary, not parity
+   automation**, even at some cost to "purity" - primary tiebreaker
+   (enterprise-DC-style patterns preferred when otherwise equal).
+4. **IPv6-first, NAT-free where legitimate** - accepted tradeoff:
+   router/firewall is the sole enforcement point, no NAT-implied ACL.
+5. **IPv4 is the exception path**, smallest footprint necessary, not parity
    with IPv6.
 6. **BGP/dynamic routing is scoped deliberately per-tenant**
-   (`bgp_dynamic_neighbors` true only for vnet101) - used where it teaches
-   something or is operationally necessary, not applied fabric-wide by
-   default.
+   (`bgp_dynamic_neighbors` true only for vnet101).
 7. **Simplicity is a secondary tiebreaker**, applied only after the above
    are satisfied.
 
 ## Current state / root cause
 
 Proxmox's native SDN exit-node mechanism is already configured in
-`/etc/pve/sdn/zones.cfg`:
+`/etc/pve/sdn/zones.cfg` (`exitnodes pve01,pve03,pve02`,
+`exitnodes-local-routing 1`) but is currently inert - FRR management moved
+to a hand-built ansible template during an earlier refactor and the SNAT
+half of that native behavior was never carried over.
 
-```
-evpn: evpnz1
-    exitnodes pve01,pve03,pve02
-    exitnodes-local-routing 1
-    exitnodes-primary pve01
-```
+## Work completed
 
-`exitnodes-local-routing 1` with all three hosts listed is architecturally
-exactly what satisfies requirements (1) and (2) - each host breaks out its
-own local vrf_evpnz1 traffic directly, no tunnel-to-remote-exit-node hop.
+1. Added IPv4-only NAT/masquerade for tenant subnets (`10.100.0.0/14` -
+   corrected from an initially-wrong `/22`; these subnets vary in the
+   *second* octet, not the third) on all 3 PVE hosts, matching
+   `exitnodes-local-routing` semantics
+   (`ansible/common/roles/firewall/templates/nftables.conf.j2`).
+2. Made the underlying default route for `vrf_evpnz1` durable
+   (`ansible/pve/roles/interfaces/templates/interfaces.pve.j2`) - it only
+   existed live before; a host reboot would have silently lost egress
+   entirely. Note: the "proper" BGP-learned recursive default route shows
+   Selected/Installed in FRR but does **not** actually forward traffic -
+   tested live, reverted to the working static route, root cause not
+   understood, worth separate investigation.
+3. Fixed 2 unrelated pre-existing ansible bugs hit along the way:
+   `cluster.fw.j2` had drifted from live state and was about to strip 2
+   live ACCEPT rules; the firewall-reload task used
+   `ansible.builtin.command` with a shell `&&` chain that silently never
+   worked, switched to `ansible.builtin.shell`.
+4. Found and fixed a masquerade side-effect breaking the cluster's IPv4 DNS
+   resolver: `10.255.0.0/24` (OSPF-external/E1 routes from RouterOS,
+   includes DNS at `10.255.0.53`) was being caught by the general
+   masquerade rule, breaking its direct return path and causing real
+   image-pull failures cluster-wide. Fixed with an explicit `return` before
+   the general rule.
+5. Extended the pre-existing MSS-clamp rule
+   (`docs/tickets/pve-frr-power-event-20260712.md`) to also cover
+   `vmbr0.10` (the new NAT path's actual egress interface, which the
+   original rule - scoped to plain `vmbr0` - never touched).
 
-However, this is currently inert. At some point (likely the 2026-07-13
-refactor referenced in the ansible README, moving off `lae.proxmox-legacy`),
-FRR management moved from Proxmox's native SDN-generated config to a fully
-custom ansible template (`ansible/pve/roles/frr/templates/frr-pve.conf.j2` -
-confirmed live `/etc/frr/frr.conf` is ansible-managed via
-`.frr.conf.ansible-hash`, with `/etc/frr/frr.conf.sdn-generated-20260712`
-sitting unused as a dated backup). The custom template replicates routing
-but never carried over the SNAT half of exit-node behavior.
+## Remaining known gap (not resolved)
 
-Result: `vrf_evpnz1` has real routing to the internet (a stale ad-hoc
-`ip route` onlink hack, added as a live patch during an earlier incident)
-but **no NAT rule anywhere** on any PVE host. IPv6 GUA egress works fine (no
-NAT needed). IPv4 egress is completely broken - confirmed cluster-wide (all
-3 PVE hosts fail `nc` to 1.1.1.1 and to GitHub's IPv4), which was actively
-blocking Flux's GitRepository source (`dial tcp 20.29.134.23:443: i/o
-timeout` reaching github.com) and a couple of IPv4-only external
-dependencies (plex.tv, no AAAA record).
+**Full TLS sessions to real external hosts (github.com et al) still fail**,
+even after the MSS clamp fix. Packet capture shows plain TCP connects
+succeed, but for TLS handshakes the masqueraded flow's reply traffic
+triggers a TCP RST sent by the *node's own kernel* (source = node IP, not
+pod IP) - consistent with Cilium's eBPF datapath not correctly intercepting
+reply packets that were NAT'd an extra hop away (at the PVE host, outside
+the node), rather than the more typical single-hop node-IP masquerade
+Cilium expects.
 
-An adjacent NAT64/DNS64 path exists (`ansible/nat64/`, a dedicated Jool
-gateway VM) but DNS64 synthesis isn't actually happening - queried the
-cluster's configured resolvers directly for an IPv4-only domain and got no
-synthesized AAAA back. Not pursuing that path further for now per
-requirement 5 (smallest footprint, not parity).
+This is currently blocking Flux's GitRepository/HelmRepository sources
+(`net/http: TLS handshake timeout` reaching github.com and other chart
+repos) - GitOps reconciliation for *new* commits is stalled until this is
+fixed, though the cluster itself and all currently-running workloads are
+fully healthy and unaffected.
 
-## Decision
-
-Add IPv4-only SNAT/MASQUERADE to the existing ansible-managed FRR/networking
-setup (not a full migration back to native SDN-generated FRR - too large a
-change to do safely right now), scoped to the tenant IPv4 subnet range
-(10.100.0.0/22, covering vnet100-103), applied identically on all three PVE
-hosts to match `exitnodes-local-routing` semantics. Remove the stale onlink
-route hack once confirmed working. This intentionally does not touch IPv6
-(already working, no NAT desired there).
+Needs focused, unhurried investigation - likely need to trace the exact
+Cilium eBPF hook chain for egress-masqueraded reply traffic, or consider
+whether Cilium's own egress gateway feature can absorb this instead of
+doing NAT an extra hop out at the PVE layer.
 
 ## Follow-up worth tracking separately
 
 Whether to eventually migrate off the custom ansible FRR template back to
 Proxmox's native SDN-generated config entirely, now that we know the two
-have diverged. Not in scope here - flagged as a larger, riskier change
-requiring dedicated review.
+have diverged. Not in scope here.
