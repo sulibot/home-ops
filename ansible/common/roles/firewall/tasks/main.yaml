@@ -13,7 +13,7 @@
   register: firewall_config
 
 - name: Reload firewall if configuration changed
-  ansible.builtin.command: pve-firewall compile && pve-firewall restart
+  ansible.builtin.shell: pve-firewall compile && pve-firewall restart
   when:
     - inventory_hostname == 'pve01'
     - firewall_config.changed

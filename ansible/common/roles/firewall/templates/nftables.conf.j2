@@ -22,3 +22,35 @@ table inet filter {
 		type filter hook output priority filter;
 	}
 }
+
+# ENG-322: vrf_evpnz1 IPv4 exit-node SNAT.
+#
+# Proxmox SDN's native EVPN exit-node feature already has this zone
+# configured for exactly this (/etc/pve/sdn/zones.cfg: exitnodes
+# pve01,pve02,pve03 + exitnodes-local-routing 1 - every node breaks out its
+# own local tenant traffic directly, no VXLAN hop to a remote exit node
+# first), but FRR management moved to this hand-built ansible template
+# during the 2026-07-13 refactor and the SNAT half of that native behavior
+# was never carried over - only routing was. Tenant IPv4 (RFC1918, needs
+# NAT to reach the real internet) has had no NAT rule anywhere since,
+# while IPv6 (real GUA, routed natively, no NAT) has been fine throughout -
+# this table is deliberately IPv4-only (`ip`, not `inet`) so it can never
+# touch that IPv6 path. Identical on all three nodes, matching
+# exitnodes-local-routing's per-node-local-breakout design so this stays
+# correct through VM migration with no node-specific state.
+# See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md
+table ip nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+
+		# Tenant IPv4 subnets (vnet100-103: 10.100.0.0/24 - 10.103.0.0/24)
+		# vary in the SECOND octet (100-103), not the third - a /22 (varies
+		# octet 3) was wrong and silently matched nothing real; /14 is the
+		# correct supernet (verified: covers exactly 10.100.0.0-10.103.255.255,
+		# nothing from the 10.10.0.0/24 mgmt network). Egressing via the same
+		# interface the default VRF's own internet route already uses
+		# (confirmed live: `ip route get 8.8.8.8` from the default VRF
+		# resolves via vmbr0.10 to RouterOS at 10.10.0.254).
+		ip saddr 10.100.0.0/14 oifname "vmbr0.10" masquerade
+	}
+}
