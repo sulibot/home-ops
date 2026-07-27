@@ -91,7 +91,7 @@ resource "null_resource" "wait_for_nodes" {
 
       echo "🔍 Checking network connectivity to all Talos nodes before applying configs..."
 
-      NODES=(${join(" ", [for name, ips in var.all_node_ips : ips.ipv4])})
+      NODES=(${join(" ", [for name, ips in var.all_node_ips : ips.ipv6])})
       RETRIES=10  # 10 retries * 3 seconds = 30 seconds max per node
 
       for NODE in "$${NODES[@]}"; do
@@ -101,8 +101,15 @@ resource "null_resource" "wait_for_nodes" {
         while [ $ATTEMPT -lt $RETRIES ]; do
           ATTEMPT=$((ATTEMPT + 1))
 
-          # Simple network check - can we reach the node at all?
-          if ping -c 1 -W 2 "$NODE" >/dev/null 2>&1; then
+          # Simple network check - can we reach the node at all? (IPv6; macOS
+          # ping doesn't accept IPv6 literals, needs ping6 - Linux's ping6
+          # works too, so prefer it uniformly across platforms)
+          if command -v ping6 >/dev/null 2>&1; then
+            PING_OK=$(ping6 -c 1 "$NODE" >/dev/null 2>&1 && echo 1 || echo 0)
+          else
+            PING_OK=$(ping -6 -c 1 -W 2 "$NODE" >/dev/null 2>&1 && echo 1 || echo 0)
+          fi
+          if [ "$PING_OK" = "1" ]; then
             echo "✓ Node $NODE is network reachable"
             break
           fi
@@ -139,8 +146,13 @@ resource "talos_machine_configuration_apply" "nodes" {
   config_patches = [for patch in var.machine_configs[each.key].config_patches : replace(patch, "$$", "$")]
   on_destroy     = var.on_destroy
 
-  # Apply configs via IPv4 (IPv6 ULA is in VRF and not reachable from workstation)
-  endpoint = var.all_node_ips[each.key].ipv4
+  # Apply configs via IPv6. Was IPv4 (comment claimed the IPv6 ULA was
+  # VRF-internal and unreachable from a workstation) - that's no longer true
+  # (or never was for this workstation): IPv4 to these nodes now times out /
+  # "no route to host" reliably here, while IPv6 has been reachable
+  # throughout (talosctl against these same addresses works fine). See
+  # docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+  endpoint = var.all_node_ips[each.key].ipv6
 
   # Wait for health check before applying
   depends_on = [null_resource.wait_for_nodes]
