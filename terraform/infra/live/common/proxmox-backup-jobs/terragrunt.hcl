@@ -50,9 +50,13 @@ inputs = {
       mailto           = ["sulibot@gmail.com"]
       repeat_missed    = true
       stdexcludes      = true
+      # 30253 and 10212 removed: both decommissioned, neither exists on
+      # any host (10212 wasn't even present in the live job's vmid list -
+      # terraform's declared config had drifted from reality). 30253 was
+      # causing every daily run to report "job errors" even though every
+      # real guest backed up successfully (verified via task logs on all
+      # 3 PVE hosts, 2026-07-27).
       vmid = [
-        "10212",
-        "30253",
         "100061",
         "100062",
         "100063",
