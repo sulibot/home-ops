@@ -55,13 +55,13 @@ locals {
 
   # SDN configuration
   sdn = {
-    zone_id                    = "evpnz1"
-    vrf_vxlan                  = 4096
-    mtu                        = 8950 # mesh underlay is 9000, minus 50B VXLAN/IPv4 overhead.
-                                        # North-south TCP through the exit-node path (vmbr0,
-                                        # fixed at 1500) is protected by an MSS clamp deployed
-                                        # via ansible/common/roles/firewall - see
-                                        # docs/tickets/pve-frr-power-event-20260712.md
+    zone_id   = "evpnz1"
+    vrf_vxlan = 4096
+    mtu       = 8950 # mesh underlay is 9000, minus 50B VXLAN/IPv4 overhead.
+    # North-south TCP through the exit-node path (vmbr0,
+    # fixed at 1500) is protected by an MSS clamp deployed
+    # via ansible/common/roles/firewall - see
+    # docs/tickets/pve-frr-power-event-20260712.md
     disable_arp_nd_suppression = false
     advertise_subnets          = true
   }

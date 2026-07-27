@@ -17,6 +17,22 @@ iface xvrf_evpnz1 inet6 static
     post-up sleep 1 && sysctl -w net.ipv6.conf.xvrf_evpnz1.forwarding=1 || true
     # Optimization: Disable Router Advertisements to prevent neighbors from getting confused
     post-up sysctl -w net.ipv6.conf.xvrf_evpnz1.accept_ra=0 || true
+    # ENG-322/ENG-324: SNAT'd tenant traffic's reply path crosses from the
+    # default VRF (where vmbr0.10's un-SNAT happens) back into vrf_evpnz1
+    # via this xvrf cross-connect - a plain veth pair, not enslaved NAT
+    # awareness. This VRF crossing hits a real Linux kernel double-
+    # POSTROUTING/conntrack bug for NAT'd flows crossing a VRF boundary via
+    # a veth, causing TCP RSTs on live sessions (sourced from the pre-NAT
+    # tenant address, interleaved with legitimate reply data on the same
+    # connection - confirmed via packet capture). Explicit conntrack zone
+    # isolation for both ends of this specific crossing fixes it - live-
+    # tested, confirmed via real Flux GitOps reconciliation succeeding
+    # after applying this to all 3 PVE hosts. Not to be confused with the
+    # separate, dead `CT --zone 1` rules Proxmox natively generates for
+    # `fwbr+` (inert here - no per-VM firewall bridges in this topology).
+    # See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md and Linear ENG-324.
+    post-up iptables -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone 5 || true
+    post-down iptables -t raw -D PREROUTING -i xvrf_evpnz1 -j CT --zone 5 || true
 
 # VRF side (vrf_evpnz1)
 auto xvrfp_evpnz1
@@ -28,3 +44,7 @@ iface xvrfp_evpnz1 inet6 static
     pre-up ip link set xvrfp_evpnz1 up || true
     post-up sleep 1 && sysctl -w net.ipv6.conf.xvrfp_evpnz1.forwarding=1 || true
     post-up sysctl -w net.ipv6.conf.xvrfp_evpnz1.accept_ra=0 || true
+    # ENG-322/ENG-324: other end of the same crossing - see xvrf_evpnz1
+    # stanza above for the full explanation.
+    post-up iptables -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone 5 || true
+    post-down iptables -t raw -D PREROUTING -i xvrfp_evpnz1 -j CT --zone 5 || true

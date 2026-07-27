@@ -24,8 +24,15 @@ spec:
             env:
               NO_AUTOUPDATE: true
               TUNNEL_METRICS: "[::]:8080"
-              TUNNEL_POST_QUANTUM: true # disable when using http2
-              TUNNEL_TRANSPORT_PROTOCOL: quic # http2
+              # QUIC (UDP) was failing every handshake attempt in this cluster
+              # ("no recent network activity" against real Cloudflare edge
+              # IPs) - post-quantum key exchange makes QUIC's Initial packet
+              # large enough to exceed this fabric's 1450 MTU (set for the
+              # Cilium/VXLAN overlay), and UDP path-MTU-discovery isn't
+              # reliable enough here to recover from that. http2 (TCP)
+              # sidesteps the issue entirely - confirmed live 2026-07-26.
+              TUNNEL_POST_QUANTUM: false
+              TUNNEL_TRANSPORT_PROTOCOL: http2
             args:
               - tunnel
               - --config

@@ -191,6 +191,41 @@ route-map RM_IBGP_IN permit 10
  set large-community {{ LOCAL_AS }}:0:900 additive
 exit
 !
+{# ENG-327: RouterOS advertises its own internal service host routes
+   (10.255.0.0/24, includes the cluster's IPv4 DNS/NTP resolver at
+   10.255.0.53) via BOTH this direct EDGE BGP session AND OSPF
+   (redistribute=connected on RouterOS). No inbound filter existed for
+   this peer, so we accepted the BGP copy too - and BGP's admin distance
+   (20) always beats OSPF's (110), so nodes' DNS/NTP traffic to
+   10.255.0.53 got routed via the general default-route/exit-node path
+   instead of the correct direct-to-RouterOS OSPF path, causing
+   persistent UDP timeouts (found live via a Talos node's own console
+   logs - "time query error"/"error serving dns request", source
+   10.101.0.21). This is a real, pre-existing bug independent of
+   anything else tonight - RouterOS has always dual-advertised this
+   range, it just happened to only visibly break once this specific
+   BGP path became preferred. Deny it here so OSPF (the correct,
+   intended source for this range) is the only path. #}
+ip prefix-list PL_INTERNAL_SVCS_V4 seq 5 permit 10.255.0.0/24 le 32
+!
+route-map RM_EDGE_IN_V4 deny 5
+ match ip address prefix-list PL_INTERNAL_SVCS_V4
+exit
+!
+route-map RM_EDGE_IN_V4 permit 10
+exit
+!
+{# ENG-327: IPv6 equivalent of the V4 fix above - fd00:0:0:ffff::53 (same
+   DNS/NTP resolver, IPv6) had the identical BGP-vs-OSPF6 conflict. #}
+ipv6 prefix-list PL_INTERNAL_SVCS_V6 seq 5 permit fd00:0:0:ffff::/64 le 128
+!
+route-map RM_EDGE_IN_V6 deny 5
+ match ipv6 address prefix-list PL_INTERNAL_SVCS_V6
+exit
+!
+route-map RM_EDGE_IN_V6 permit 10
+exit
+!
 {# --- Edge export policy (what GLOBAL advertises to RouterOS EDGE) --- #}
 route-map RM_EDGE_EXPORT_V4 deny 5
  match large-community CL_K8S_PUBLIC_AND_IBGP
@@ -235,14 +270,36 @@ route-map RM_EDGE_EXPORT_V6 permit 20
  match ipv6 next-hop prefix-list PL_VM_NH_V6
 exit
 !
+{# ENG-328: applied to non-primary nodes' EDGE session in place of
+   RM_EDGE_EXPORT_V4/V6 above. All 3 hosts independently advertised
+   identical VM/tenant routes to RouterOS with no way for it to tell
+   which was authoritative - it picked arbitrarily, and got it wrong for
+   solwk01, silently breaking DNS/NTP. Only pve01 (the primary) exports
+   now; other nodes' EDGE session stays up (still importing the default
+   route in) but sends nothing out. #}
+route-map RM_EDGE_EXPORT_NONE deny 5
+exit
+!
 
 {# --- VRF<->GLOBAL leak policy --- #}
 route-map RM_GLOBAL_TO_VRF_V4 deny 5
  match ip address prefix-list PL_K8S_SERVICES_V4
 exit
 !
+{# ENG-322: this node's own default route, leaked in from the default VRF,
+   must always beat a default route learned from a PEER exit node via
+   EVPN Type-5 - otherwise BGP best-path has no reason to prefer local and
+   picks arbitrarily, sending "local" exit traffic on a detour across the
+   VXLAN fabric to whichever node happens to win (double encapsulation),
+   and defeats exitnodes-local-routing entirely. Without this, the leaked
+   route never reliably wins over a peer's advertisement, which is why a
+   hand-rolled static kernel route (distance 0) was added as a workaround
+   in interfaces.pve.j2 - that workaround is what's suspected of causing
+   the VRF-crossing double-POSTROUTING/conntrack bug tracked in
+   docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md. #}
 route-map RM_GLOBAL_TO_VRF_V4 permit 10
  match ip address prefix-list PL_DEFAULT_V4
+ set local-preference 500
 exit
 !
 route-map RM_GLOBAL_TO_VRF_V6 deny 5
@@ -251,6 +308,45 @@ exit
 !
 route-map RM_GLOBAL_TO_VRF_V6 permit 10
  match ipv6 address prefix-list PL_DEFAULT_V6
+ set local-preference 500
+exit
+!
+{# ENG-322 (actual fix) / ENG-324 (tracks this as its own tech debt - no
+   upstream Proxmox/FRR bug exists for this gap, see that ticket before
+   assuming it's been fixed elsewhere): the "import vrf default" leak
+   above is NOT what
+   each node's own default route actually travels through - it's
+   self-originated into L2VPN EVPN via `default-originate` under the
+   vrf_evpnz1 BGP process (native Proxmox SDN behavior, not overridable
+   with a route-map on this FRR version). That self-originated route and
+   a PEER's self-originated default (learned back via EVPN Type-5,
+   nexthop across the VXLAN fabric) arrive at identical default
+   local-preference (100), so BGP best-path picks between "my own local
+   exit" and "tunnel to some other node's exit" arbitrarily - this is the
+   real reason exitnodes-local-routing silently failed and traffic ended
+   up double-encapsulated on some nodes. Fix: downgrade default routes
+   RECEIVED FROM PEERS (both via the VTEP L2VPN EVPN session and the
+   parallel IBGP session, which carries the same NLRIs and otherwise
+   bypasses this entirely) so a node's own local default always wins by
+   comparison. MAP_VTEP_IN itself is native-SDN-generated
+   (permit 1, no match, no set) - these entries are appended after it in
+   the merged frr.conf, so `no route-map MAP_VTEP_IN permit 1` here
+   removes native's plain catch-all and these are shift in ahead of a new
+   one. Live-tested and confirmed on pve03 before being committed here -
+   see docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md and Linear ENG-324. #}
+no route-map MAP_VTEP_IN permit 1
+!
+route-map MAP_VTEP_IN permit 5
+ match ip address prefix-list PL_DEFAULT_V4
+ set local-preference 50
+exit
+!
+route-map MAP_VTEP_IN permit 6
+ match ipv6 address prefix-list PL_DEFAULT_V6
+ set local-preference 50
+exit
+!
+route-map MAP_VTEP_IN permit 10
 exit
 !
 {# This node's OWN Ceph public address must still leak in normally -
@@ -559,7 +655,19 @@ router bgp {{ LOCAL_AS }}
  address-family ipv4 unicast
   neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
-  neighbor EDGE route-map RM_EDGE_EXPORT_V4 out
+  neighbor EDGE route-map RM_EDGE_IN_V4 in
+{# ENG-328: decouple "who does SNAT exit-node duty" (stays all 3, via
+   zones.cfg exitnodes - unrelated to this) from "who tells RouterOS
+   about VM ownership" (now pve01/primary only). All 3 hosts still
+   independently advertising identical VM host routes to RouterOS gave
+   it no way to know which was authoritative - it picked arbitrarily,
+   and for solwk01 tonight it picked wrong, silently breaking DNS/NTP.
+   Non-primary nodes keep the EDGE session up (still need to learn the
+   default route from RouterOS for their own use) but export nothing -
+   only pve01 tells RouterOS about VM/tenant routes now, so there's
+   nothing left to be ambiguous about. See
+   docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md. #}
+  neighbor EDGE route-map {{ 'RM_EDGE_EXPORT_V4' if node_id == 1 else 'RM_EDGE_EXPORT_NONE' }} out
   import vrf {{ VRF_NAME }}
   import vrf route-map RM_VRF_TO_GLOBAL_V4
  exit-address-family
@@ -568,7 +676,8 @@ router bgp {{ LOCAL_AS }}
   neighbor {{ EDGE_V6 }} activate
   neighbor IBGP activate
   neighbor IBGP route-map RM_IBGP_IN in
-  neighbor EDGE route-map RM_EDGE_EXPORT_V6 out
+  neighbor EDGE route-map RM_EDGE_IN_V6 in
+  neighbor EDGE route-map {{ 'RM_EDGE_EXPORT_V6' if node_id == 1 else 'RM_EDGE_EXPORT_NONE' }} out
   redistribute connected route-map RM_CONNECTED_TO_BGP_V6
   redistribute ospf6 route-map RM_OSPF6_TO_BGP_V6
   import vrf {{ VRF_NAME }}
@@ -576,7 +685,14 @@ router bgp {{ LOCAL_AS }}
  exit-address-family
  !
  address-family l2vpn evpn
+{# ENG-322 / ENG-324: neighbor IBGP carries the same L2VPN EVPN NLRIs as
+   VTEP but had no inbound policy at all, bypassing MAP_VTEP_IN's
+   default-route local-preference downgrade entirely. See the
+   MAP_VTEP_IN block above for the full explanation, and ENG-324 for
+   why this is tracked as its own tech-debt item (no upstream Proxmox/
+   FRR bug covers this gap). #}
   neighbor IBGP activate
+  neighbor IBGP route-map MAP_VTEP_IN in
   advertise-all-vni
   advertise-svi-ip
  exit-address-family

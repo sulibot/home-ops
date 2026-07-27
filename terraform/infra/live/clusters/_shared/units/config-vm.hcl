@@ -230,15 +230,40 @@ inputs = {
 
   installer_image = "factory.talos.dev/installer/${local.schematic_catalog.schematic_id}:${local.versions.talos_version}"
 
+  # ENG-328: the site-wide DNS/NTP resolver (10.255.0.53 / fd00:0:0:ffff::53)
+  # is reached via a routed loopback (RouterOS lo_dns), redistributed into
+  # the fabric via OSPF+BGP - reachable, but the return path depends on
+  # which PVE exit node currently owns the BGP-advertised route for a given
+  # VM, which isn't guaranteed to match the node actually doing that VM's
+  # local egress. That asymmetry silently dropped DNS/NTP replies for any
+  # VM not colocated with the primary exit node (see
+  # docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md). Fix: also give the same
+  # resolver an on-link address on vmbr0.10's own subnet
+  # (10.10.0.0/24 / fd00:10::/64) - on-link/NDP replies are inherently
+  # symmetric per host, the same mechanism already proven correct for
+  # NAT66 GUA egress. Listed first (preferred); the routed loopback
+  # addresses are kept as fallback, unchanged, not removed.
   dns_servers = [
+    "fd00:10::53",
+    "10.10.0.53",
     local.network_infra.dns_servers.ipv6,
     local.network_infra.dns_servers.ipv4,
   ]
 
-  ntp_servers       = local.network_infra.ntp_servers
-  registry_mirrors  = local.network_infra.registry_mirrors
-  gua_prefix        = local.ipv6_prefixes.delegated_prefixes["vnet${local.tenant_id}"]
-  gua_gateway       = local.ipv6_prefixes.delegated_gateways["vnet${local.tenant_id}"]
+  ntp_servers = concat(
+    ["fd00:10::53", "10.10.0.53"],
+    local.network_infra.ntp_servers,
+  )
+  registry_mirrors = local.network_infra.registry_mirrors
+  # ENG-325: nodes no longer carry a static GUA. Having one alongside the
+  # ULA on the same interface caused Cilium's BPF masquerade to pick the
+  # wrong source address for cross-node pod traffic (silently dropped by
+  # the receiving node as world-ipv6 - see ENG-325). NAT66 to a real GUA
+  # now happens once, at the PVE exit-node layer (vmbr0.10), mirroring the
+  # already-proven IPv4 pattern - see ENG-322/324 and
+  # docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+  gua_prefix        = ""
+  gua_gateway       = ""
   kernel_args       = local.install_schematic_config.install_kernel_args
   system_extensions = concat(local.install_schematic_config.install_system_extensions, local.install_schematic_config.install_custom_extensions)
   talos_logging     = try(local.cluster_config.talos_logging, { enabled = false })

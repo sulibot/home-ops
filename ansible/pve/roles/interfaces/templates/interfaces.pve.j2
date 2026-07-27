@@ -83,16 +83,21 @@ iface vmbr0.10 inet static
     metric 1024
     vlan-raw-device vmbr0
     mtu 1500
-    # ENG-322: vrf_evpnz1's own BGP-learned default route (recursive iBGP
-    # via vrfbr_evpnz1) shows Selected/Installed in FRR but does NOT
-    # actually forward - found live, cause not yet understood, worth its
-    # own investigation. This static cross-VRF route is the one that
-    # demonstrably works (verified: real pod egress from all 3 workers).
-    # Without it here, a PVE host reboot silently loses vrf_evpnz1 IPv4
-    # egress entirely, even with the SNAT rule in place (nftables/firewall
-    # role) - packets never get routed toward the internet at all.
-    # See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md
-    post-up ip route replace default via 10.10.0.254 dev vmbr0.10 table vrf_evpnz1 || true
+    # ENG-322: a static cross-VRF route here (`table vrf_evpnz1 ... dev
+    # vmbr0.10`, vmbr0.10 not enslaved to vrf_evpnz1) was previously needed
+    # because vrf_evpnz1's own BGP-learned default route lost best-path to
+    # a PEER exit node's EVPN-advertised default (both at localpref 100,
+    # no local-preference to break the tie) - root-caused and fixed
+    # properly in the frr role (MAP_VTEP_IN local-preference downgrade for
+    # peer-received defaults, see frr-pve.conf.j2). The static route was
+    # also suspected of causing a VRF-crossing double-POSTROUTING/conntrack
+    # bug (TCP RSTs on live TLS sessions, sourced from the pre-NAT address)
+    # since it routed traffic in vrf_evpnz1's table directly to a device
+    # outside that VRF instead of via a proper FRR-leaked route. Removed
+    # once the FRR fix was confirmed live. See
+    # docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md and Linear ENG-324 (the
+    # underlying Proxmox exitnodes-primary gap - no upstream bug covers
+    # it, tracked there as its own tech debt)
     # ENG-322: Proxmox's native per-vnet SNAT (subnets.cfg snat:1, see
     # nftables role) has no concept of "don't NAT this specific
     # destination" - it blindly SNATs every tenant-subnet packet leaving
@@ -111,11 +116,19 @@ iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
     gateway fe80::10:fffe
     metric 1024
-    # SLAAC/RA disabled on transit interface - static routing only
-    # post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=2 || true
-    # post-up   sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=2 || true
-    # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra_defrtr=1 || true
-    # pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=1 || true
+    # ENG-326: accept RA (needed at all when forwarding is on - accept_ra=2
+    # forces processing despite ip_forward=1) purely for SLAAC address
+    # autoconfiguration, so this host picks up a real GUA from RouterOS's
+    # delegated prefix on vlan10 (2600:1700:ab1a:500a::/64, confirmed live
+    # via `/ipv6 dhcp-client print` on RouterOS). Deliberately NOT setting
+    # accept_ra_defrtr - this interface already has a working static
+    # default route (gateway fe80::10:fffe above) and accepting an
+    # RA-learned default route on top of it is an unnecessary risk, not
+    # something we need for the GUA. See
+    # docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+    post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=2 || true
+    post-up   sysctl -w net.ipv6.conf.vmbr0/10.autoconf=1 || true
+    pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=1 || true
 
 # ------------------------------------------------------------------------------
 # Generic Workload / Ceph Transport (VLAN 200)

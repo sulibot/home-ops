@@ -1,0 +1,27 @@
+# ENG-328: Proxmox's SDN code sets rp_filter=2 (loose) on each dynamically
+# created EVPN fabric interface (vrfbr_*, vrfvx_*) at creation time,
+# overriding net/ipv4/conf/default/rp_filter=0 set in 99-forwarding.conf -
+# that default only applies to interfaces that don't get an explicit value
+# set some other way. Confirmed live: even loose (2) silently drops
+# externally-sourced packets arriving via the VXLAN fabric on these
+# interfaces that need to route out to a VNet (asymmetric by nature of
+# EVPN/ECMP) - packet arrives correctly addressed, but the destination's
+# ARP/neighbor entry is never even probed, i.e. the routing decision
+# itself never gets attempted. Matches a documented Proxmox forum report
+# of the identical symptom (EVPN SDN not forwarding traffic to host with
+# CT).
+#
+# Deliberately scoped to the fabric-facing interfaces only (vrfbr_*,
+# vrfvx_*), NOT vnetNNN (the tenant-facing VNet interfaces) - rp_filter is
+# an ingress check, and the packets in question arrive on the fabric
+# interfaces, not the VNet ones. Confirmed live: reverting vnetNNN back to
+# Proxmox's default (2) does not reintroduce the drop. Leaving Proxmox's
+# own anti-spoofing default in place on the VM-facing interfaces rather
+# than disabling rp_filter everywhere, since that protection is real and
+# this fix doesn't need to remove it there.
+#
+# Since these interfaces are recreated by SDN reloads (not just at boot),
+# a one-time sysctl.d file isn't enough - this has to re-fire on every
+# interface creation. See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="vrfbr_*", RUN+="/usr/sbin/sysctl -w net.ipv4.conf.%k.rp_filter=0"
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="vrfvx_*", RUN+="/usr/sbin/sysctl -w net.ipv4.conf.%k.rp_filter=0"

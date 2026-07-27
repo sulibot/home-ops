@@ -1,7 +1,12 @@
 # ENG-322: Restore native Proxmox SDN exit-node SNAT for vrf_evpnz1 IPv4 egress
 
-## Status: In progress (see Linear ENG-322) - core DNS/image-pull issue
-fixed, TLS-to-external-hosts gap remains open
+## Status: RESOLVED (see Linear ENG-322, closed). All known gaps fixed and
+verified via real production traffic (Flux reconciliation, cloudflare-tunnel).
+See "Final root cause" section below for the actual fix. The
+`exitnodes-primary` gap that caused the double-encapsulation symptom earlier
+in this investigation is tracked separately as ongoing tech debt in ENG-324
+(no upstream Proxmox/FRR fix exists for it - workaround is durable but not a
+first-class supported feature).
 
 ## Design goals (network engineer framing)
 
@@ -77,27 +82,80 @@ half of that native behavior was never carried over.
    `vmbr0.10` (the new NAT path's actual egress interface, which the
    original rule - scoped to plain `vmbr0` - never touched).
 
-## Remaining known gap (not resolved)
+## Remaining known gap - RESOLVED, root cause split into ENG-324
 
-**Full TLS sessions to real external hosts (github.com et al) still fail**,
-even after the MSS clamp fix. Packet capture shows plain TCP connects
-succeed, but for TLS handshakes the masqueraded flow's reply traffic
-triggers a TCP RST sent by the *node's own kernel* (source = node IP, not
-pod IP) - consistent with Cilium's eBPF datapath not correctly intercepting
-reply packets that were NAT'd an extra hop away (at the PVE host, outside
-the node), rather than the more typical single-hop node-IP masquerade
-Cilium expects.
+**Full TLS sessions to real external hosts (github.com et al) were
+failing**, even after the MSS clamp fix. Packet capture showed plain TCP
+connects succeeding, but for TLS handshakes the masqueraded flow's reply
+traffic triggered a TCP RST sent by the *node's own kernel* (source = node
+IP, not pod IP), interleaved with legitimate reply data on the same live
+connection - two divergent conntrack states for one flow. The Cilium eBPF
+hypothesis originally written here was ruled out (a `hostNetwork: true`
+test pod, bypassing Cilium's pod networking entirely, failed identically).
 
-This is currently blocking Flux's GitRepository/HelmRepository sources
-(`net/http: TLS handshake timeout` reaching github.com and other chart
-repos) - GitOps reconciliation for *new* commits is stalled until this is
-fixed, though the cluster itself and all currently-running workloads are
-fully healthy and unaffected.
+Actual root cause: Proxmox's native SDN generator doesn't honor
+`exitnodes-primary` (configured in `zones.cfg` but inert), so every exit
+node self-originates a competing default route into L2VPN EVPN at
+identical BGP local-preference. A hand-rolled static cross-VRF route
+(`interfaces.pve.j2`, since removed) was masking the resulting BGP
+best-path ambiguity but itself caused the VRF-crossing double-POSTROUTING/
+conntrack bug producing the RSTs above. Fixed via a route-map local-
+preference override in the frr role. This is real, currently-unfixed
+upstream Proxmox/FRR tech debt - split out into its own ticket, **Linear
+ENG-324**, since it isn't tracked by any existing Proxmox Bugzilla or FRR
+issue. See ENG-324 for the full evidence trail and the workaround's exact
+diff.
 
-Needs focused, unhurried investigation - likely need to trace the exact
-Cilium eBPF hook chain for egress-masqueraded reply traffic, or consider
-whether Cilium's own egress gateway feature can absorb this instead of
-doing NAT an extra hop out at the PVE layer.
+This was blocking Flux's GitRepository/HelmRepository sources and
+`cloudflare-tunnel`. **Correction**: this fix alone did not actually resolve
+either - see "Final root cause" below for what did. The exitnodes-primary
+fix was still worth doing (real, separate bug, now tracked in ENG-324) but
+it wasn't the source of the TLS/DNS symptom.
+
+## Final root cause (found after the exitnodes-primary fix didn't fully
+resolve the symptom)
+
+SNAT'd tenant reply traffic must cross from the default VRF (where
+`vmbr0.10`'s un-SNAT happens via conntrack) back into `vrf_evpnz1` to reach
+the pod/VM. This crossing happens via the `xvrf_evpnz1`/`xvrfp_evpnz1` veth
+pair, using explicit native-generated static routes (confirmed live in
+`/etc/frr/frr.conf`: `ip route 10.100-103.0.0/24 10.255.255.2
+xvrf_evpnz1`, not present in any ansible template). This VRF crossing hits
+a real Linux kernel double-POSTROUTING/conntrack bug for NAT'd flows
+crossing a VRF boundary via a veth pair - confirmed via packet capture
+showing TCP RSTs sourced from the pre-NAT tenant address (e.g.
+`10.101.0.21`), interleaved with legitimate reply data on the same live
+TLS connection.
+
+Two theories were tested and ruled out before finding this (both
+individually and combined): MTU mismatch (jumbo internal fabric vs 1500
+real uplink) and Cilium's own per-route MTU handling
+(cilium/cilium#41478, a real but ultimately irrelevant matching upstream
+bug - coincidental resemblance, not the actual cause).
+
+**Fix**: explicit conntrack zone isolation for both ends of the xvrf
+crossing:
+```
+iptables -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone 5
+iptables -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone 5
+```
+This is the correct version of an idea already present but dead in this
+cluster - Proxmox natively generates an identical-looking `CT --zone 1`
+rule per vnet, but targeting `fwbr+` (per-VM firewall bridges), which don't
+exist in this topology (VMs connect directly to vnet bridges via tap
+interfaces). That native rule has always had 0 hits. Targeting the actual
+crossing point instead of the dead `fwbr+` interface is what makes it work.
+
+Persisted to `ansible/pve/roles/interfaces/templates/xvrf_ips.j2` as
+`post-up`/`post-down` hooks on both xvrf interface stanzas, applied via
+`playbooks/20-network.yml` to pve01/02/03, confirmed durable (survives
+`ifreload`).
+
+**Verified via real production signal**: Flux's GitRepository went from
+persistent `TLS handshake timeout` failures to `True - stored artifact for
+revision ...` immediately after applying to all 3 PVE hosts.
+`cloudflare-tunnel` both replicas recovered (`1/1 Running`, no longer
+crash-looping).
 
 ## Follow-up worth tracking separately
 

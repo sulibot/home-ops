@@ -57,7 +57,11 @@ resource "proxmox_sdn_subnet" "ipv4_subnets" {
   vnet    = proxmox_sdn_vnet.vnets[each.key].id
   cidr    = each.value.subnet_v4
   gateway = each.value.gateway_v4
-  snat    = false
+  # ENG-322/324: this was hardcoded false, drifted from the live, working
+  # config (snat:1, fixed via pvesh live during that investigation but
+  # never reflected back here) - applying with false would have silently
+  # reverted that fix. See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+  snat = true
 
   depends_on = [proxmox_sdn_vnet.vnets]
 }
@@ -70,13 +74,23 @@ resource "proxmox_sdn_subnet" "ula_subnets" {
   vnet    = proxmox_sdn_vnet.vnets[each.key].id
   cidr    = each.value.subnet
   gateway = each.value.gateway
-  snat    = false # No SNAT - VMs use their real GUA addresses
+  # ENG-325/326: was false ("VMs use their real GUA addresses" - the
+  # original per-pod-GUA design). Superseded: nodes no longer carry a
+  # static GUA (removed the multi-address-per-interface condition that
+  # caused Cilium's BPF masquerade to pick the wrong source for
+  # cross-node pod traffic, silently dropped as world-ipv6 by the
+  # receiving node - see ENG-325). Pods/nodes are ULA-only now; NAT66 to
+  # each exit node's own real GUA on vmbr0.10 happens here instead,
+  # mirroring the already-proven IPv4 exit-node SNAT pattern (ENG-322/324).
+  snat = true
 
   depends_on = [proxmox_sdn_vnet.vnets]
 }
 
-# GUA Subnets - Internet-routable IPv6 using AT&T delegated prefixes
-# VMs get both ULA (stable) and GUA (internet-routable) addresses via SLAAC
+# GUA Subnets - Internet-routable IPv6 using AT&T delegated prefixes.
+# ENG-325/326: VMs/pods no longer get a GUA of their own (see ula_subnets
+# above) - this subnet's only remaining job is giving each PVE exit node
+# a real GUA on vmbr0.10 (via SLAAC, ansible-managed) to NAT66 to.
 resource "proxmox_sdn_subnet" "gua_subnets" {
   for_each = var.delegated_prefixes
 
@@ -97,8 +111,8 @@ resource "proxmox_sdn_subnet" "gua_subnets" {
 resource "proxmox_sdn_fabric_ospf" "underlay" {
   count = var.enable_underlay_fabric ? 1 : 0
 
-  id       = "underlay"
-  area     = var.fabric_ospf_area
+  id        = "underlay"
+  area      = var.fabric_ospf_area
   ip_prefix = var.fabric_ospf_prefix
 }
 

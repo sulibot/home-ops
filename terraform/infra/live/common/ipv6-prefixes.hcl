@@ -11,13 +11,19 @@
 # in 0-sdn-setup; see ansible/_archive/terraform-managed-redundant/README.md.)
 
 locals {
-  # AT&T delegated prefixes (current as of 2025-12-16)
+  # AT&T delegated prefixes (current as of 2026-07-27 - corrected, see
+  # ENG-326: the previous values here had drifted from RouterOS's actual
+  # DHCPv6-PD bindings on every single vnet, confirmed live via
+  # `/ipv6 dhcp-client print` on RouterOS. Re-verify against that output
+  # any time connectivity issues involving real GUA egress come up -
+  # AT&T can reassign these on lease renewal and nothing currently
+  # detects drift automatically.)
   # Source: RouterOS DHCPv6-PD pools
   delegated_prefixes = {
-    vnet100 = "2600:1700:ab1a:500e::/64" # General Workloads (from wan6-v100)
-    vnet101 = "2600:1700:ab1a:500d::/64" # Talos Cluster 101 (from wan6-v101)
-    vnet102 = "2600:1700:ab1a:500c::/64" # Talos Cluster 102 (from wan6-v102)
-    vnet103 = "2600:1700:ab1a:500b::/64" # Talos Cluster 103 (from wan6-v103)
+    vnet100 = "2600:1700:ab1a:500f::/64" # General Workloads (from wan6-vnet100)
+    vnet101 = "2600:1700:ab1a:500e::/64" # Talos Cluster 101 (from wan6-vnet101)
+    vnet102 = "2600:1700:ab1a:5008::/64" # Talos Cluster 102 (from wan6-vnet102)
+    vnet103 = "2600:1700:ab1a:500d::/64" # Talos Cluster 103 (from wan6-vnet103)
   }
 
   # Gateway addresses follow the ::ffff pattern

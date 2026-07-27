@@ -205,6 +205,22 @@ locals {
     serviceSubnets = [var.service_cidr_ipv6, var.service_cidr_ipv4] # IPv6 first-class, dual-stack enabled
   }
 
+  # The Talos provider's default leaves discovery relying solely on the
+  # external discovery.talos.dev service registry (kubernetes registry
+  # disabled) - this cluster has no reliable egress path to that endpoint,
+  # so every node logs a recurring "hello failed ... discovery.talos.dev:443
+  # DeadlineExceeded" warning forever. Harmless (cluster membership doesn't
+  # depend on it - etcd/kube-apiserver handle that), but pure noise. Use the
+  # kubernetes-native registry instead: it stores discovery data as a
+  # Secret via the already-working in-cluster API, no external dependency.
+  common_cluster_discovery = {
+    enabled = true
+    registries = {
+      kubernetes = { disabled = false }
+      service    = { disabled = true }
+    }
+  }
+
   # Control Plane specific configuration
   api_server_cert_sans = distinct(concat(
     compact([var.use_vip ? var.vip_ipv6 : "", var.use_vip ? var.vip_ipv4 : ""]),
@@ -262,30 +278,17 @@ locals {
     })
   ] : []
 
-  # Zot's pull-through cache does a full sync (manifest + blobs + cosign
-  # signature/referrer sync) on the first pull of any image it hasn't seen
-  # before, which can take 20-30s+. containerd's CRI images plugin default
-  # image_pull_progress_timeout is 1m but resets on any progress; the
-  # failures actually seen were containerd giving up on the *initial*
-  # connection/response from zot before it started sending data, not a
-  # progress stall. Raising this to 5m gives a cold zot sync enough room to
-  # start responding without changing behavior for a genuinely wedged pull.
-  containerd_pull_timeout_patches = var.registry_mirrors != null ? [
-    yamlencode({
-      machine = {
-        files = [
-          {
-            op      = "create"
-            path    = "/etc/cri/conf.d/21-image-pull-timeout.part"
-            content = <<-EOF
-              [plugins."io.containerd.cri.v1.images"]
-                image_pull_progress_timeout = "5m0s"
-              EOF
-          }
-        ]
-      }
-    })
-  ] : []
+  # NOTE: attempted a containerd image_pull_progress_timeout bump here via a
+  # machine.files drop-in at /etc/cri/conf.d/21-image-pull-timeout.part, to
+  # give zot's pull-through cache (20-30s+ on a cold sync) more room before
+  # containerd gives up on a new image's first pull. Reverted 2026-07-26:
+  # `op: create` for any /etc path outside /var is rejected on ALL nodes here
+  # ("create operation not allowed outside of /var"), not just SDBoot control
+  # planes as first assumed - it FATAL'd every node's boot in turn. The
+  # pre-existing CDI drop-in below has the same shape and may have never
+  # actually applied cleanly either; needs its own investigation. Revisit the
+  # zot timeout via a different mechanism (containerd extraConfig? overwrite
+  # instead of create?) rather than machine.files.
 
   talos_service_logging_patches = try(var.talos_logging.enabled, false) ? [
     yamlencode({
@@ -365,6 +368,7 @@ data "talos_machine_configuration" "controlplane" {
       cluster = {
         allowSchedulingOnControlPlanes = var.allow_scheduling_on_control_planes
         network                        = local.common_cluster_network
+        discovery                      = local.common_cluster_discovery
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
@@ -414,7 +418,7 @@ data "talos_machine_configuration" "controlplane" {
         }
       }
     }),
-  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.containerd_pull_timeout_patches, local.talos_kernel_logging_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate worker machine configuration
@@ -470,13 +474,14 @@ EOF
         )
       }
       cluster = {
-        network = local.common_cluster_network
+        network   = local.common_cluster_network
+        discovery = local.common_cluster_discovery
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
       }
     }),
-  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.containerd_pull_timeout_patches, local.talos_kernel_logging_patches)
+  ], local.talos_service_logging_patches, local.swap_config_patches, local.user_volume_config_patches, local.registry_mirror_patches, local.talos_kernel_logging_patches)
 }
 
 # Generate per-node FRR config YAML for the extension

@@ -34,6 +34,19 @@ ipv6:
 # ClusterIP/kube-proxy-replacement's BPF service datapath is unaffected either way.
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
+# ENG-325 (see Linear): nodes carry a real GUA in addition to their ULA on
+# the primary interface. Cilium's default BPF masquerade (the only mode
+# compatible with enable-bpf-masquerade: true, which we require) picks the
+# GUA instead of the ULA for cross-node pod-to-pod traffic
+# (autoDirectNodeRoutes), and the receiving node's Cilium doesn't
+# recognize that GUA as a cluster-internal identity - classifies it as
+# `world-ipv6`, silently drops it via default-deny policy. Tried
+# `enableMasqueradeRouteSource: true` as the documented fix for this class
+# of bug (matches cilium/cilium#41866) - it is NOT compatible with
+# enable-bpf-masquerade: true in this Cilium version (agent refuses to
+# start: "BPF masquerading to route source currently not supported with
+# BPF-based masquerading"). Reverted. Root cause and fix still open - see
+# ENG-325.
 
 # IPAM mode - kubernetes. Cilium uses the per-node PodCIDR assigned by the
 # Kubernetes controller-manager. Your Talos config sets this to /64 for IPv6

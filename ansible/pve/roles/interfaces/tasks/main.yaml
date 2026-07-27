@@ -112,3 +112,40 @@
     mode: '0644'
   notify: Reload network
   when: inventory_hostname in ['pve01','pve02','pve03']
+
+# ============================================================================
+# EVPN fabric rp_filter fix (ENG-328)
+# ============================================================================
+# Proxmox's SDN code sets rp_filter=2 on each dynamically-created EVPN
+# fabric interface (vrfbr_*, vrfvx_*) at creation time, silently
+# overriding the rp_filter=0 default set above - and even loose (2) drops
+# legitimate asymmetric EVPN traffic arriving via the fabric. Deliberately
+# scoped to the fabric interfaces only, not vnetNNN (the VM-facing VNet
+# interfaces) - rp_filter is an ingress check, the affected traffic
+# arrives on the fabric side, and Proxmox's own anti-spoofing default on
+# the VM-facing side is real protection this fix doesn't need to remove.
+# A one-time sysctl isn't durable since SDN reloads recreate these
+# interfaces; a udev rule re-applies it every time. See
+# docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
+# ============================================================================
+
+- name: Deploy udev rule to disable rp_filter on EVPN fabric interfaces
+  ansible.builtin.template:
+    src: 90-evpn-rpfilter.rules.j2
+    dest: /etc/udev/rules.d/90-evpn-rpfilter.rules
+    mode: '0644'
+  register: evpn_rpfilter_udev
+  when: inventory_hostname in ['pve01','pve02','pve03']
+
+- name: Reload udev rules
+  ansible.builtin.command: udevadm control --reload-rules
+  when: evpn_rpfilter_udev is changed
+
+- name: Apply rp_filter=0 immediately to existing EVPN fabric interfaces
+  ansible.builtin.shell: |
+    set -e
+    for iface in $(ls /sys/class/net | grep -E '^(vrfbr_|vrfvx_)'); do
+      sysctl -w net.ipv4.conf.${iface}.rp_filter=0
+    done
+  changed_when: false
+  when: inventory_hostname in ['pve01','pve02','pve03']
