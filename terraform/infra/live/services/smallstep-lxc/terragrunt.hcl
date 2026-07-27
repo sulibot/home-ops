@@ -331,6 +331,85 @@ resource "null_resource" "smallstep_1password_sync" {
     OPCMD
   }
 }
+
+# ENG-325: RouterOS's native ACME client only supports HTTP-01 (needs port
+# 80 open to the WAN) - no Cloudflare DNS-01 support - so its own
+# /certificate add-acme can't issue a real Let's Encrypt cert for
+# router.sulibot.com without changing the router's internet exposure.
+# Reuses this host's existing acme.sh + Cloudflare DNS-01 setup (same
+# cloudflare_api_token already used for pki.sulibot.com above) to issue
+# it here instead, then pushes it into RouterOS's certificate store via a
+# dedicated acme.sh deploy-hook - see files/acme-deploy-routeros.sh.
+# Idempotent: safe to re-run (key generation/import/deploy registration
+# are all no-ops on repeat).
+resource "null_resource" "routeros_acme_deploy_hook" {
+  depends_on = [module.smallstep_lxc, null_resource.smallstep_caddy_frontend]
+
+  triggers = {
+    script_hash = filesha256("$${path.module}/files/acme-deploy-routeros.sh")
+    routeros_ip = "10.30.0.254"
+    sync_rev    = "routeros-deploy-hook-v1"
+  }
+
+  provisioner "file" {
+    source      = "$${path.module}/files/acme-deploy-routeros.sh"
+    destination = "/root/.acme.sh/deploy/routeros.sh"
+
+    connection {
+      type        = "ssh"
+      host        = "${local.pki_class.ipv4}"
+      user        = "root"
+      private_key = file(pathexpand("~/.ssh/id_ed25519"))
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /root/.acme.sh/deploy/routeros.sh",
+      "test -f /root/.ssh/routeros_deploy_ed25519 || ssh-keygen -t ed25519 -f /root/.ssh/routeros_deploy_ed25519 -N '' -C acme-deploy@pki01 -q",
+    ]
+
+    connection {
+      type        = "ssh"
+      host        = "${local.pki_class.ipv4}"
+      user        = "root"
+      private_key = file(pathexpand("~/.ssh/id_ed25519"))
+    }
+  }
+
+  provisioner "local-exec" {
+    command = <<-SHELL
+      set -euo pipefail
+      SSH_OPTS="-i $HOME/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+      ROS_SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+
+      DEPLOY_PUBKEY="$(ssh $SSH_OPTS root@${local.pki_class.ipv4} 'cat /root/.ssh/routeros_deploy_ed25519.pub')"
+
+      # Re-importing an already-present key is a harmless no-op on
+      # RouterOS (just adds a duplicate ssh-keys entry, doesn't break
+      # auth) - only skip if key-based auth to admin@ already works, to
+      # avoid accumulating duplicates on every apply. The deploy key only
+      # exists on pki01, so this check has to run from there.
+      if ! ssh $SSH_OPTS root@${local.pki_class.ipv4} \
+        "ssh -i /root/.ssh/routeros_deploy_ed25519 $ROS_SSH_OPTS admin@10.30.0.254 ':put 1'" >/dev/null 2>&1; then
+        TMP_PUB="$(mktemp)"
+        printf '%s\n' "$DEPLOY_PUBKEY" > "$TMP_PUB"
+        scp $ROS_SSH_OPTS "$TMP_PUB" "admin@10.30.0.254:acme-deploy-pki01.pub"
+        ssh $ROS_SSH_OPTS admin@10.30.0.254 \
+          "/user ssh-keys import public-key-file=acme-deploy-pki01.pub user=admin"
+        rm -f "$TMP_PUB"
+      fi
+
+      # Register the deploy hook for future automatic renewals (acme.sh's
+      # existing daily cron already installed on this host). Uses the
+      # script's own built-in defaults (ROUTEROS_HOST/USER/SSH_KEY) - no
+      # secrets needed here, key-based auth only.
+      ssh $SSH_OPTS root@${local.pki_class.ipv4} \
+        '/root/.acme.sh/acme.sh --deploy -d router.sulibot.com --deploy-hook routeros' \
+        || echo "routeros deploy-hook registration: acme.sh reported an issue, check manually"
+    SHELL
+  }
+}
 EOF2
 }
 

@@ -272,7 +272,7 @@ resource "null_resource" "kanidm_lxc_features" {
         local pve="$1"
         local ctid="$2"
         local features
-        features="$(timeout 20 ssh $SSH_OPTS root@$pve "pct config $ctid | awk -F': ' '/^features:/{print \\$2}'" || true)"
+        features="$(ssh $SSH_OPTS root@$pve "pct config $ctid | awk -F': ' '/^features:/{print \\$2}'" || true)"
         if [[ "$features" == *"nesting=1"* && "$features" == *"keyctl=1"* ]]; then
           echo "[$pve/$ctid] features already set: $features"
           return 0
@@ -297,7 +297,7 @@ resource "null_resource" "kanidm_tls_sync" {
 
   triggers = {
     tls_item = local.kanidm_tls_item
-    sync_rev = "k8s-secret-priority-v3"
+    sync_rev = "k8s-secret-priority-v6-fixed"
     nodes    = join(",", local.kanidm_nodes)
   }
 
@@ -329,7 +329,13 @@ resource "null_resource" "kanidm_tls_sync" {
         if [ -z "$cert_pub" ] || [ -z "$key_pub" ] || [ "$cert_pub" != "$key_pub" ]; then
           return 1
         fi
-        printf "%s\n" "$cert" | openssl x509 -noout -text 2>/dev/null | grep -qE "DNS:idm\\.sulibot\\.com"
+        # sulibot-com-tls is a wildcard cert (DNS:*.sulibot.com, DNS:sulibot.com),
+        # not a literal DNS:idm.sulibot.com SAN - the old exact-match regex here
+        # never matched, so this validation always failed and fell through to
+        # the (also broken - see the "timeout" note below) fallback paths. The
+        # currently-installed node certs predate this bug and were never
+        # actually refreshed by this sync path.
+        printf "%s\n" "$cert" | openssl x509 -noout -text 2>/dev/null | grep -qE "DNS:(\\*\\.sulibot\\.com|idm\\.sulibot\\.com)"
       }
 
       # Primary source: cert-manager managed wildcard cert from the in-cluster secret.
@@ -372,9 +378,9 @@ resource "null_resource" "kanidm_tls_sync" {
       # Last-resort fallback: clone currently-installed cert/key from any healthy node.
       if [ -z "$CERT" ] || [ -z "$KEY" ]; then
         for node in 10.100.0.61 10.100.0.62 10.100.0.63; do
-          if timeout 20 ssh $SSH_OPTS root@$node "test -s /etc/kanidm/tls/tls.crt && test -s /etc/kanidm/tls/tls.key"; then
-            CERT="$(timeout 20 ssh $SSH_OPTS root@$node "cat /etc/kanidm/tls/tls.crt")"
-            KEY="$(timeout 20 ssh $SSH_OPTS root@$node "cat /etc/kanidm/tls/tls.key")"
+          if ssh $SSH_OPTS root@$node "test -s /etc/kanidm/tls/tls.crt && test -s /etc/kanidm/tls/tls.key"; then
+            CERT="$(ssh $SSH_OPTS root@$node "cat /etc/kanidm/tls/tls.crt")"
+            KEY="$(ssh $SSH_OPTS root@$node "cat /etc/kanidm/tls/tls.key")"
             SOURCE="existing-node:$node"
             CERT_OK=1
             break
@@ -397,11 +403,11 @@ resource "null_resource" "kanidm_tls_sync" {
       fi
 
       for node in 10.100.0.61 10.100.0.62 10.100.0.63; do
-        timeout 20 ssh $SSH_OPTS root@$node "install -d -m 750 /etc/kanidm/tls /etc/kanidmd"
-        printf "%s\n" "$CERT" | timeout 20 ssh $SSH_OPTS root@$node "cat > /etc/kanidm/tls/tls.crt && chown root:kanidmd /etc/kanidm/tls/tls.crt && chmod 640 /etc/kanidm/tls/tls.crt"
-        printf "%s\n" "$KEY"  | timeout 20 ssh $SSH_OPTS root@$node "cat > /etc/kanidm/tls/tls.key && chown root:kanidmd /etc/kanidm/tls/tls.key && chmod 640 /etc/kanidm/tls/tls.key"
-        timeout 20 ssh $SSH_OPTS root@$node "cp /etc/kanidm/tls/tls.crt /etc/kanidmd/chain.pem && cp /etc/kanidm/tls/tls.key /etc/kanidmd/key.pem && chown root:kanidmd /etc/kanidmd/chain.pem /etc/kanidmd/key.pem && chmod 640 /etc/kanidmd/chain.pem /etc/kanidmd/key.pem"
-        timeout 20 ssh $SSH_OPTS root@$node "systemctl restart kanidmd caddy"
+        ssh $SSH_OPTS root@$node "install -d -m 750 /etc/kanidm/tls /etc/kanidmd"
+        printf "%s\n" "$CERT" | ssh $SSH_OPTS root@$node "cat > /etc/kanidm/tls/tls.crt && chown root:kanidmd /etc/kanidm/tls/tls.crt && chmod 640 /etc/kanidm/tls/tls.crt"
+        printf "%s\n" "$KEY"  | ssh $SSH_OPTS root@$node "cat > /etc/kanidm/tls/tls.key && chown root:kanidmd /etc/kanidm/tls/tls.key && chmod 640 /etc/kanidm/tls/tls.key"
+        ssh $SSH_OPTS root@$node "cp /etc/kanidm/tls/tls.crt /etc/kanidmd/chain.pem && cp /etc/kanidm/tls/tls.key /etc/kanidmd/key.pem && chown root:kanidmd /etc/kanidmd/chain.pem /etc/kanidmd/key.pem && chmod 640 /etc/kanidmd/chain.pem /etc/kanidmd/key.pem"
+        ssh $SSH_OPTS root@$node "systemctl restart kanidmd caddy"
       done
     SHELL
   }
@@ -445,7 +451,7 @@ resource "null_resource" "kanidm_1password_sync" {
 
       ADMIN_PASS="$(op item get "$ITEM_ID" --vault Kubernetes --fields password --reveal 2>/dev/null || true)"
       if [ -z "$ADMIN_PASS" ]; then
-        ADMIN_PASS="$(timeout 20 ssh $SSH_OPTS root@10.100.0.61 "kanidmd recover-account -c /etc/kanidmd/server.toml idm_admin | sed -n 's/.*new_password: \"\\([^\"]*\\)\".*/\\1/p' | tail -n1")"
+        ADMIN_PASS="$(ssh $SSH_OPTS root@10.100.0.61 "kanidmd recover-account -c /etc/kanidmd/server.toml idm_admin | sed -n 's/.*new_password: \"\\([^\"]*\\)\".*/\\1/p' | tail -n1")"
       fi
 
       op item edit "$ITEM_ID" \
@@ -573,7 +579,7 @@ systemctl is-active kanidmd
       }
 
       for node in 10.100.0.61 10.100.0.62 10.100.0.63; do
-        timeout 20 ssh $SSH_OPTS root@$node "tail -n 100 /var/log/kanidmd.log | egrep -q 'UnknownIssuer|UnknownCA|Unable to connect to supplier'" && {
+        ssh $SSH_OPTS root@$node "tail -n 100 /var/log/kanidmd.log | egrep -q 'UnknownIssuer|UnknownCA|Unable to connect to supplier'" && {
           echo "replication bootstrap failed: TLS trust errors still present on $node"
           exit 1
         } || true
