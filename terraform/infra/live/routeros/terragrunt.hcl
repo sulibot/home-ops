@@ -351,6 +351,11 @@ inputs = {
     { address = "10.30.0.254/24", network = "10.30.0.0", interface = "vlan30", comment = "wifi" },
     { address = "10.31.0.254/24", network = "10.31.0.0", interface = "vlan31", comment = "wifi-iot" },
     { address = "10.255.0.53/32", network = "10.255.0.53", interface = "lo_dns" },
+    # ENG-328: on-link DNS/NTP addr, IPv4 - see eng-322 doc. lo_dns above is
+    # left untouched; this fixes the BGP host-route return-path asymmetry
+    # for VMs not colocated with the primary exit node by making the
+    # resolver reachable via on-link NDP instead.
+    { address = "10.10.0.53/24", network = "10.10.0.0", interface = "vlan10", comment = "ENG-328: on-link DNS/NTP anycast-style addr - see docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md. Avoids the BGP host-route return-path ambiguity that broke DNS/NTP for VMs not on the primary exit node; on-link/NDP reply is inherently symmetric per PVE host, same mechanism already proven correct for NAT66 GUA egress. lo_dns (10.255.0.53) left untouched." },
     { address = "10.10.0.254/24", network = "10.10.0.0", interface = "vlan10" },
     { address = "10.1.0.254/24", network = "10.1.0.0", interface = "vlan1" },
     { address = "10.0.10.254/24", network = "10.0.10.0", interface = "vlan10" },
@@ -367,7 +372,6 @@ inputs = {
     { name = "dhcp_pool_vlan104", ranges = ["10.104.0.230-10.104.0.250"] },
     { name = "dhcp_pool16", ranges = ["10.0.9.200-10.0.9.253"] },
     { name = "dhcp_pool_vlan200", ranges = ["10.200.0.201-10.200.0.250"] },
-    { name = "dhcp_pool_vlan104", ranges = ["10.104.0.230-10.104.0.250"] },
   ]
 
   ipv4_dhcp_options = [
@@ -731,6 +735,14 @@ inputs = {
       advertise = true
     },
     {
+      # ENG-328: on-link DNS/NTP addr, IPv6 - see eng-322 doc. lo_dns
+      # (fd00:0:0:ffff::53) left untouched.
+      interface = "vlan10"
+      address   = "fd00:10::53/64"
+      advertise = false
+      comment   = "ENG-328 on-link DNS/NTP"
+    },
+    {
       interface = "vlan10"
       from_pool = "pd-v10"
       address   = "::fffe"
@@ -770,12 +782,6 @@ inputs = {
       address   = "fd00:200::fffe/64"
       advertise = true
       comment   = "Standard VM LAN IPv6"
-    },
-    {
-      interface = "vlan104"
-      address   = "fd00:104::fffe/64"
-      advertise = true
-      comment   = "cluster-104 home-control IPv6"
     },
   ]
 
@@ -837,18 +843,6 @@ inputs = {
       dns                           = "fd00:200::fffe"
       ra_delay                      = "3s"
       ra_interval                   = "20s-1m"
-      ra_lifetime                   = "30m"
-      ra_preference                 = "medium"
-    },
-    {
-      interface                     = "vlan104"
-      advertise_dns                 = true
-      advertise_mac_address         = true
-      managed_address_configuration = false
-      other_configuration           = true
-      dns                           = "fd00:104::fffe"
-      ra_delay                      = "3s"
-      ra_interval                   = "3m20s-10m"
       ra_lifetime                   = "30m"
       ra_preference                 = "medium"
     },
