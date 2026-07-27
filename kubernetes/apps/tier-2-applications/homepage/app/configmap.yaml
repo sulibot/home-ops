@@ -21,15 +21,30 @@ data:
       Media:
         style: column
         icon: mdi-television-play
+      Media Management:
+        style: column
+        icon: mdi-movie-search
+      Requests:
+        style: column
+        icon: mdi-message-question
       Downloads:
         style: column
         icon: mdi-download-circle
-      Books:
+      Books & Reading:
         style: column
         icon: mdi-bookshelf
-      Personal:
+      Productivity:
         style: column
-        icon: mdi-account
+        icon: mdi-briefcase
+      Finance:
+        style: column
+        icon: mdi-cash
+      Documents & Notes:
+        style: column
+        icon: mdi-file-document
+      Home:
+        style: column
+        icon: mdi-home-automation
       AI:
         style: column
         icon: mdi-robot
@@ -70,11 +85,22 @@ data:
               type: plex
               url: http://plex.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
-        - Emby:
-            href: https://emby.sulibot.com
-            icon: emby.png
-            description: Media Server
-            siteMonitor: https://emby.sulibot.com
+        - Tautulli:
+            href: https://tautulli.sulibot.com
+            icon: tautulli.png
+            description: Plex Stats
+            siteMonitor: https://tautulli.sulibot.com
+        - Immich:
+            href: https://immich.sulibot.com
+            icon: immich.png
+            description: Photo Library
+            widget:
+              type: immich
+              url: http://immich-server.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
+              version: 2
+
+    - Media Management:
         - Sonarr:
             href: https://sonarr.sulibot.com
             icon: sonarr.png
@@ -115,29 +141,6 @@ data:
               type: lidarr
               url: http://lidarr.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_LIDARR_API_KEY}}"
-        - Tautulli:
-            href: https://tautulli.sulibot.com
-            icon: tautulli.png
-            description: Plex Stats
-            siteMonitor: https://tautulli.sulibot.com
-
-    - Downloads:
-        - Jellyseerr:
-            href: https://jellyseerr.sulibot.com
-            icon: jellyseerr.png
-            description: Media Requests
-            widget:
-              type: jellyseerr
-              url: http://jellyseerr.default.svc.cluster.local
-              key: "{{HOMEPAGE_VAR_SEERR_API_KEY}}"
-        - Seerr:
-            href: https://seerr.sulibot.com
-            icon: overseerr.png
-            description: Media Requests
-            widget:
-              type: overseerr
-              url: http://seerr.default.svc.cluster.local
-              key: "{{HOMEPAGE_VAR_SEERR_API_KEY}}"
         - Prowlarr:
             href: https://prowlarr.sulibot.com
             icon: prowlarr.png
@@ -146,6 +149,18 @@ data:
               type: prowlarr
               url: http://prowlarr.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
+
+    - Requests:
+        - Seerr:
+            href: https://seerr.sulibot.com
+            icon: overseerr.png
+            description: Media Requests
+            widget:
+              type: overseerr
+              url: http://seerr.default.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_SEERR_API_KEY}}"
+
+    - Downloads:
         - qBittorrent:
             href: https://qbittorrent.sulibot.com
             icon: qbittorrent.png
@@ -167,8 +182,13 @@ data:
             icon: autobrr.png
             description: Torrent Automation
             siteMonitor: https://autobrr.sulibot.com
+        - SLSKD:
+            href: https://slskd.sulibot.com
+            icon: mdi-music-note
+            description: Soulseek Client
+            siteMonitor: https://slskd.sulibot.com
 
-    - Books:
+    - Books & Reading:
         - Bookshelf:
             href: https://bookshelf.sulibot.com
             icon: readarr.png
@@ -187,7 +207,7 @@ data:
         - Calibre-Web:
             href: https://calibre-web-automated.sulibot.com
             icon: mdi-book-open-variant
-            description: Ebook Library
+            description: Ebook Library (disabled)
             siteMonitor: https://calibre-web-automated.sulibot.com
         - Shelfmark:
             href: https://booksearch.sulibot.com
@@ -200,31 +220,49 @@ data:
             description: Book Search
             siteMonitor: https://lazylibrarian.sulibot.com
 
-    - Personal:
-        - Immich:
-            href: https://immich.sulibot.com
-            icon: immich.png
-            description: Photo Library
-            widget:
-              type: immich
-              url: http://immich-server.default.svc.cluster.local
-              key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
-              version: 2
-        - Paperless:
-            href: https://paperless.sulibot.com
-            icon: paperless.png
-            description: Document Manager
-            siteMonitor: https://paperless.sulibot.com
-        - Karakeep:
-            href: https://karakeep.sulibot.com
-            icon: mdi-bookmark
-            description: Bookmarks
-            siteMonitor: https://karakeep.sulibot.com
+    - Productivity:
+        - Vikunja:
+            href: https://vikunja.sulibot.com
+            icon: vikunja.png
+            description: Todo & Project Manager
+            siteMonitor: https://vikunja.sulibot.com
+        - N8N:
+            href: https://n8n.sulibot.com
+            icon: n8n.png
+            description: Workflow Automation
+            siteMonitor: https://n8n.sulibot.com
+        - Baserow:
+            href: https://baserow.sulibot.com
+            icon: baserow.png
+            description: Database & Spreadsheet
+            siteMonitor: https://baserow.sulibot.com
+        - Twenty CRM:
+            href: https://twenty.sulibot.com
+            icon: mdi-account-group
+            description: CRM
+            siteMonitor: https://twenty.sulibot.com
+        - OpenCloud:
+            href: https://opencloud.sulibot.com
+            icon: mdi-cloud
+            description: File Sync
+            siteMonitor: https://opencloud.sulibot.com
+        - Collabora:
+            href: https://collabora.sulibot.com
+            icon: collabora.png
+            description: Office Document Editing
+            siteMonitor: https://collabora.sulibot.com
         - FileBrowser:
             href: https://filebrowser.sulibot.com
             icon: filebrowser.png
             description: File Manager
             siteMonitor: https://filebrowser.sulibot.com
+        - Atuin:
+            href: https://atuin.sulibot.com
+            icon: mdi-console-line
+            description: Shell History Sync
+            siteMonitor: https://atuin.sulibot.com
+
+    - Finance:
         - Actual:
             href: https://actual.sulibot.com
             icon: actual-budget.png
@@ -235,28 +273,32 @@ data:
             icon: firefly.png
             description: Finance
             siteMonitor: https://firefly.sulibot.com
-        - Home Assistant:
-            href: https://home.sulibot.com
-            icon: home-assistant.png
-            description: Home Automation
-            siteMonitor: https://home.sulibot.com
-        - OpenCloud:
-            href: https://opencloud.sulibot.com
-            icon: mdi-cloud
-            description: File Sync
-            siteMonitor: https://opencloud.sulibot.com
-        - Vikunja:
-            href: https://vikunja.sulibot.com
-            icon: vikunja.png
-            description: Todo & Project Manager
-            siteMonitor: https://vikunja.sulibot.com
 
-    - AI:
+    - Documents & Notes:
+        - Paperless:
+            href: https://paperless.sulibot.com
+            icon: paperless.png
+            description: Document Manager
+            siteMonitor: https://paperless.sulibot.com
         - Paperless GPT:
             href: https://paperless-gpt.sulibot.com
             icon: paperless.png
             description: AI Document Processing
             siteMonitor: https://paperless-gpt.sulibot.com
+        - Karakeep:
+            href: https://karakeep.sulibot.com
+            icon: mdi-bookmark
+            description: Bookmarks
+            siteMonitor: https://karakeep.sulibot.com
+
+    - Home:
+        - Home Assistant:
+            href: https://hass-app.sulibot.com
+            icon: home-assistant.png
+            description: Home Automation (cluster-104)
+            siteMonitor: https://hass-app.sulibot.com
+
+    - AI:
         - Ollama:
             href: https://ollama.sulibot.com
             icon: ollama.png
