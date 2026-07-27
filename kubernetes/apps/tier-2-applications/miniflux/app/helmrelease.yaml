@@ -24,7 +24,6 @@ spec:
   values:
     controllers:
       miniflux:
-        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
         containers:

@@ -41,10 +41,12 @@ resources:
   # matter-server migrated to bare-metal cluster-104
   # - ./matter-server/ks.yaml
   - ./mediasage/ks.yaml
-  - ./miniflux/ks.yaml
+  # miniflux disabled - redundant with freshrss
+  # - ./miniflux/ks.yaml
   - ./multi-scrobbler/ks.yaml
   - ./n8n/ks.yaml
-  - ./navidrome/ks.yaml
+  # navidrome disabled - redundant with the existing music stack
+  # - ./navidrome/ks.yaml
   # mosquitto disabled
   # - ./mosquitto/ks.yaml
   - ./notifiarr/ks.yaml
