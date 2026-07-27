@@ -99,6 +99,11 @@ data:
               url: http://immich-server.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
               version: 2
+        - Multi-Scrobbler:
+            href: https://multi-scrobbler.sulibot.com
+            icon: mdi-scoreboard
+            description: Listen History Scrobbler
+            siteMonitor: https://multi-scrobbler.sulibot.com
 
     - Media Management:
         - Sonarr:
@@ -149,6 +154,26 @@ data:
               type: prowlarr
               url: http://prowlarr.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
+        - Whisparr:
+            href: https://whisparr.sulibot.com
+            icon: whisparr.png
+            description: Adult Content
+            siteMonitor: https://whisparr.sulibot.com
+        - Sportarr:
+            href: https://sportarr.sulibot.com
+            icon: mdi-basketball
+            description: Sports
+            siteMonitor: https://sportarr.sulibot.com
+        - Notifiarr:
+            href: https://notifiarr.sulibot.com
+            icon: notifiarr.png
+            description: Arr-Stack Notifications
+            siteMonitor: https://notifiarr.sulibot.com
+        - Mediasage:
+            href: https://mediasage.sulibot.com
+            icon: mdi-lightbulb-on
+            description: Media Recommendations
+            siteMonitor: https://mediasage.sulibot.com
 
     - Requests:
         - Seerr:
@@ -187,6 +212,26 @@ data:
             icon: mdi-music-note
             description: Soulseek Client
             siteMonitor: https://slskd.sulibot.com
+        - Qui:
+            href: https://qui.sulibot.com
+            icon: mdi-qrcode
+            description: Torrent Client UI
+            siteMonitor: https://qui.sulibot.com
+        - Digarr:
+            href: https://digarr.sulibot.com
+            icon: mdi-music-box-multiple
+            description: Music Automation (being replaced by Soulsync)
+            siteMonitor: https://digarr.sulibot.com
+        - Aurral:
+            href: https://aurral.sulibot.com
+            icon: mdi-music-box-multiple
+            description: Music Automation (being replaced by Soulsync)
+            siteMonitor: https://aurral.sulibot.com
+        - Soulsync:
+            href: https://soulsync.sulibot.com
+            icon: mdi-music-box-multiple
+            description: Music Automation (replacing Digarr/Aurral)
+            siteMonitor: https://soulsync.sulibot.com
 
     - Books & Reading:
         - Bookshelf:
