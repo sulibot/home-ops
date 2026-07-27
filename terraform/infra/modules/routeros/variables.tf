@@ -591,3 +591,24 @@ variable "snmp_communities" {
   }))
   default = []
 }
+
+variable "system_logging_rules" {
+  description = "Non-default /system logging topic rules (the 4 built-in info/error/warning/critical rules are left unmanaged)."
+  type = list(object({
+    topics = set(string)
+    action = optional(string, "memory")
+  }))
+  default = []
+}
+
+variable "system_scripts" {
+  description = "RouterOS /system script definitions."
+  type = list(object({
+    name                     = string
+    owner                    = optional(string, "admin")
+    policy                   = set(string)
+    dont_require_permissions = optional(bool, false)
+    source                   = string
+  }))
+  default = []
+}

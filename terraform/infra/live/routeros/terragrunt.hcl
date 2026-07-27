@@ -191,6 +191,96 @@ inputs = {
   # order-sensitive policy; model after cleanup/export review.
   firewall_filter_rules = []
 
+  # ── SYSTEM LOGGING ───────────────────────────────────────────────────────────
+  # The 4 built-in info/error/warning/critical rules are RouterOS defaults
+  # (flag "*") and left unmanaged. These are the non-default topic rules
+  # actually added on this router. Live had two identical "dhcp"/"memory"
+  # entries (a duplicate, same class of bug found elsewhere in this file
+  # tonight) - deduplicated to one.
+  system_logging_rules = [
+    { topics = ["dhcp"] },
+    { topics = ["bgp"] },
+    { topics = ["bgp", "error"] },
+    { topics = ["bgp", "info"] },
+  ]
+
+  # ── SYSTEM SCRIPTS ───────────────────────────────────────────────────────────
+  system_scripts = [
+    {
+      name   = "routing-audit"
+      policy = ["read", "test"]
+      source = <<-EOT
+        :put "\n===== ROUTEROS ROUTING AUDIT (v2) =====";
+        :put ("Time: " . [/system clock get time] . "  Date: " . [/system clock get date]);
+        :put ("Model/Version: " . [/system resource get board-name] . " / " . [/system resource get version]);
+
+        :put "\n--- PACKAGES & SYSTEM ---";
+        /system package update print without-paging; :put "";
+        /system resource print without-paging; :put "";
+        /system routerboard print without-paging; :put "";
+
+        :put "\n--- INTERFACES & MTU ---";
+        /interface print detail without-paging; :put "";
+        /interface bridge print detail without-paging; :put "";
+        /interface vlan print detail without-paging; :put "";
+        /interface ethernet print detail without-paging; :put "";
+
+        :put "\n--- ADDRESSING (IPv4/IPv6) ---";
+        /ip address print detail without-paging; :put "";
+        /ipv6 address print detail without-paging; :put "";
+
+        :put "\n--- DHCP & PREFIX DELEGATION (IPv6) ---";
+        /ipv6 dhcp-client print detail without-paging; :put "";
+        /ipv6 pool print detail without-paging; :put "";
+        /ipv6 nd print detail without-paging; :put "";
+        /ipv6 nd prefix print detail without-paging; :put "";
+
+        :put "\n--- ROUTING TABLE (active BGP only) ---";
+        /routing route print detail where active=yes and protocol=bgp without-paging; :put "";
+
+        :put "\n--- BGP: INSTANCE / CONNECTIONS / SESSIONS ---";
+        /routing bgp instance print detail without-paging; :put "";
+        /routing bgp connection print detail without-paging; :put "";
+        /routing bgp session print detail without-paging; :put "";
+
+        :put "\n--- BGP: ADVERTISEMENTS ---";
+        /routing bgp advertisements print detail without-paging; :put "";
+
+        :put "\n--- FILTERS & POLICY ---";
+        /routing filter print detail without-paging; :put "";
+        /routing policy print detail without-paging; :put "";
+
+        :put "\n--- BFD (if used) ---";
+        /routing bfd session print detail without-paging; :put "";
+
+        :put "\n===== END AUDIT =====\n";
+      EOT
+    },
+    {
+      # ENG-322/326-adjacent: keeps a NAT66 rule's to-address in sync when
+      # AT&T rotates the vlan10 delegated IPv6 prefix. Predates tonight's
+      # NAT66 architecture change (SNAT moved to the vrf_evpnz1 exit-node
+      # layer per config-vm.hcl/proxmox_sdn) - the specific NAT rule this
+      # targets ("NAT66 lab ULA egress - dynamic ::fffe") needs a fresh
+      # look to confirm it's still the right rule under the new design,
+      # not stale automation for a superseded setup.
+      name   = "update-nat66-on-prefix-change"
+      policy = ["read", "write", "test"]
+      source = <<-EOT
+        :local newaddr [/ipv6 address get [find where from-pool="pd-v10" and interface="vlan10"] address];
+        :local prefix [:pick $newaddr 0 [:find $newaddr "::fffe"]];
+        :local newnataddr "$prefix::fffe";
+        :local natid [/ipv6 firewall nat find where comment="NAT66 lab ULA egress - dynamic ::fffe"];
+        :if ([:len $natid] > 0) do={
+          /ipv6 firewall nat set $natid to-address=$newnataddr;
+          :log info "Updated NAT66 to-address to $newnataddr"
+        } else={
+          :log warning "NAT66 rule not found for update"
+        }
+      EOT
+    },
+  ]
+
   # ── FIREWALL NAT ─────────────────────────────────────────────────────────────
   firewall_nat_rules = [
     {
