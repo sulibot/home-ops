@@ -32,7 +32,6 @@ resources:
   - ./immich/helm-repo/ks.yaml
   - ./immich/ks.yaml
   - ./immich-frame/ks.yaml
-  - ./jellyfin/ks.yaml
   # jellyseerr disabled
   # - ./jellyseerr/ks.yaml
   - ./karakeep/ks.yaml
