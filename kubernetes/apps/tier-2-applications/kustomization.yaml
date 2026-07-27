@@ -63,7 +63,8 @@ resources:
   - ./qbittorrent/ks.yaml
   - ./qui/ks.yaml
   - ./radarr-4k/ks.yaml
-  - ./radarr/ks.yaml
+  # radarr disabled - migrated to radarr-4k
+  # - ./radarr/ks.yaml
   - ./recyclarr/ks.yaml
   # sabnzbd disabled
   # - ./sabnzbd/ks.yaml
@@ -73,7 +74,8 @@ resources:
   - ./soulsync/ks.yaml
   - ./smtp-relay/ks.yaml
   - ./sonarr-4k/ks.yaml
-  - ./sonarr/ks.yaml
+  # sonarr disabled - migrated to sonarr-4k
+  # - ./sonarr/ks.yaml
   - ./sportarr/ks.yaml
   - ./tautulli/ks.yaml
   - ./twenty/ks.yaml

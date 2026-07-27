@@ -106,34 +106,18 @@ data:
             siteMonitor: https://multi-scrobbler.sulibot.com
 
     - Media Management:
-        - Sonarr:
-            href: https://sonarr.sulibot.com
+        - Sonarr 4K:
+            href: https://sonarr-4k.sulibot.com
             icon: sonarr.png
             description: TV Shows
             widget:
               type: sonarr
-              url: http://sonarr.default.svc.cluster.local
-              key: "{{HOMEPAGE_VAR_SONARR_API_KEY}}"
-        - Sonarr 4K:
-            href: https://sonarr-4k.sulibot.com
-            icon: sonarr.png
-            description: 4K TV Shows
-            widget:
-              type: sonarr
               url: http://sonarr-4k.default.svc.cluster.local
               key: "{{HOMEPAGE_VAR_SONARR_4K_API_KEY}}"
-        - Radarr:
-            href: https://radarr.sulibot.com
-            icon: radarr.png
-            description: Movies
-            widget:
-              type: radarr
-              url: http://radarr.default.svc.cluster.local
-              key: "{{HOMEPAGE_VAR_RADARR_API_KEY}}"
         - Radarr 4K:
             href: https://radarr-4k.sulibot.com
             icon: radarr.png
-            description: 4K Movies
+            description: Movies
             widget:
               type: radarr
               url: http://radarr-4k.default.svc.cluster.local
