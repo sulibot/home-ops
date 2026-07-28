@@ -385,7 +385,9 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        ipFamilyPolicy: PreferDualStack
+        ipFamilyPolicy: SingleStack
+        ipFamilies:
+          - IPv4
         ports:
           http:
             port: 80
