@@ -135,9 +135,17 @@ data:
       while read -r pns pname; do
         [ -z "$pname" ] && continue
         # Events persist for up to ~1h after the underlying issue clears
-        # (e.g. a kubelet restart fixed it manually) - re-check the pod's
-        # actual current state rather than trusting event history alone,
-        # or this reports false positives for an hour after every fix.
+        # (e.g. a kubelet restart fixed it manually, or the ReplicaSet just
+        # cycled the pod naturally) - re-check the pod's actual current
+        # state rather than trusting event history alone, or this reports
+        # false positives for an hour after every fix. A pod that no longer
+        # exists is just as resolved as one that's ready - without this
+        # check it fell through to the broken-but-unremediable path (empty
+        # nodeName, since `get pod` on a gone pod returns nothing).
+        if ! kubectl -n "$pns" get pod "$pname" >/dev/null 2>&1; then
+          echo "status=stale-event-only pod=$pns/$pname (pod no longer exists, ignoring old FailedMount event)"
+          continue
+        fi
         pready=$(kubectl -n "$pns" get pod "$pname" -o jsonpath='{.status.containerStatuses[*].ready}' 2>/dev/null)
         if [ -n "$pready" ] && ! echo "$pready" | grep -q false; then
           echo "status=stale-event-only pod=$pns/$pname (all containers ready now, ignoring old FailedMount event)"
