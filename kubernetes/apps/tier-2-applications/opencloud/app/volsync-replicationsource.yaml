@@ -17,7 +17,7 @@ spec:
     storageClassName: csi-cephfs-config-sc
     accessModes:
       - ReadWriteMany
-    capacity: 10Gi
+    capacity: 20Gi
     copyMethod: Snapshot
     compression: zstd-fastest
     parallelism: 1

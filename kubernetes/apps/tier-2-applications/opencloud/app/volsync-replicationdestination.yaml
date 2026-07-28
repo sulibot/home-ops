@@ -20,7 +20,7 @@ spec:
     storageClassName: csi-cephfs-config-sc
     accessModes:
       - ReadWriteMany
-    capacity: 10Gi
+    capacity: 20Gi
     volumeSnapshotClassName: csi-cephfs-config-snapclass
     cacheStorageClassName: csi-cephfs-config-sc
     cacheAccessModes:
