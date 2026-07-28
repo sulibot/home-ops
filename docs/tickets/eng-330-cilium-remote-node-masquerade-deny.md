@@ -56,22 +56,41 @@ restrictive standard `NetworkPolicy`. Flux's `flux-system` namespace is the
 visible symptom tonight; anything else with a similar policy shape is
 likely affected too.
 
-## Fix options (not yet implemented)
+## Fix applied
 
-- Add `CiliumNetworkPolicy` with `fromEntities: [remote-node]` (or
-  `cluster`) alongside/replacing the standard `NetworkPolicy` objects in
-  namespaces that need to tolerate this — starting with `flux-system`.
-- Root-cause why native routing mode masquerades intra-cluster traffic at
-  all despite `ipv6NativeRoutingCIDR` being set (`enable-ipv6-masquerade` /
-  `ipv6-native-routing-cidr` interaction) — possibly worth an upstream
-  Cilium issue if it reproduces on a minimal repro.
+`ipv6NativeRoutingCIDR` was `fd00:101::/48`, which only matches node IPs
+(`fd00:101::21` etc, third hextet `0000`) — not pod IPs
+(`fd00:101:224:X::...`, third hextet `0224`). Pod-to-pod traffic between
+worker nodes was therefore always outside the configured CIDR and got
+masqueraded. Widened to `fd00:101::/32`, which covers both ranges,
+mirroring how `ipv4NativeRoutingCIDR` (`/16`) already covers both node and
+pod IPv4 ranges. Commit `496c35cf`. Rolled out via a full `cilium`
+DaemonSet restart (ConfigMap changes to `native-routing-cidr` aren't
+hot-reloaded).
+
+## Cascading fallout also cleaned up
+
+- `flux-system` root Kustomization catch-up + `kustomize-controller`
+  restart, clearing a ~130-Kustomization `DependencyNotReady` cascade.
+- `valkey` Helm release was stuck since 2026-07-25 with no valid rollback
+  target — likely another victim of this same bug (Sentinel/replication
+  needs cross-node pod traffic). Manually rolled back and re-upgraded
+  clean.
+- `multus` was separately stalled since 2026-06-16 (predates this bug,
+  unrelated cause) — the `1.3.2` chart upgrade hangs with `context
+  deadline exceeded` before touching the DaemonSet. Pinned back to
+  `1.2.0` (the actually-deployed, working version) to unblock the
+  dependency chain. The `1.3.2` hang itself is undiagnosed - flagged
+  in-repo for future investigation, not currently blocking anything.
+- `multi-scrobbler` had a stale `dependsOn: navidrome` (navidrome now
+  disabled in favor of Plex) — removed.
 
 ## Acceptance criteria
 
 - [x] Root cause confirmed (masquerade → remote-node identity → policy
       deny).
-- [ ] Fix applied (CiliumNetworkPolicy allow-list, or masquerade
-      root-cause fix).
-- [ ] Worker-to-worker traffic into `flux-system` verified working
-      end-to-end (re-run the original wget test from a Flux controller
-      pod).
+- [x] Fix applied (`ipv6NativeRoutingCIDR` widened to `/32`).
+- [x] Worker-to-worker traffic into `flux-system` verified working
+      end-to-end — live retest showed `action allow, match L3-L4` with
+      real pod identity, no masquerade NAT entry. All 131 cluster
+      Kustomizations reconciled to Ready afterward.
