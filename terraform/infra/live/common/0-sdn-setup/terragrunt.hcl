@@ -106,8 +106,19 @@ inputs = {
     }
   }
 
-  # Use AT&T delegated GUA prefixes directly on VNets
-  delegated_prefixes = local.delegated_prefixes
+  # ENG-325: no VNet-facing GUA subnets. Attaching a GUA subnet to a VNet
+  # makes Proxmox SDN's dnsmasq send Router Advertisements for it to every
+  # VM on that VNet, unconditionally - there's no way to keep the subnet
+  # without the RA. That's what let VM interfaces auto-configure a GUA via
+  # SLAAC even after every node-side mitigation (gua_prefix="", disabling
+  # accept_ra/autoconf via machine.sysctls - which still loses the boot-time
+  # race against the very first RA on some reboots; extraKernelArgs turned
+  # out to be silently ignored on this Talos version's UEFI/UKI install
+  # path). Removing the subnet stops the RA at its source instead of
+  # fighting it node-side. NAT66 egress is unaffected - it uses the PVE
+  # host's own vmbr0.10 GUA (ansible-managed SLAAC, a separate physical
+  # VLAN interface, not this SDN VNet) per ENG-322/324/325.
+  delegated_prefixes = {}
 
   # OSPF underlay fabric (see [[project ticket]] for cutover plan).
   # All three PVE hosts now managed via PVE SDN Fabrics instead of

@@ -123,6 +123,20 @@ locals {
     "net.ipv4.conf.${var.bgp_interface}.arp_notify"   = "1"
   } : {}
 
+  # machine.sysctls above is applied by the Talos controller-runtime after
+  # basic networking is already up - too late, since the kernel processes
+  # the first Router Advertisement (and completes SLAAC) as soon as the
+  # interface comes up during early boot, well before Talos userspace gets
+  # to apply custom sysctls. Confirmed live: nodes rebooted with the
+  # sysctl-only fix in place still came back up with a GUA. The kernel
+  # itself must be told via boot cmdline (net.ipv6.conf.default.* kernel
+  # args are recognized the same as sysctl keys), which takes effect before
+  # any interface exists to receive an RA on.
+  common_kernel_args = [
+    "net.ipv6.conf.default.accept_ra=0",
+    "net.ipv6.conf.default.autoconf=0",
+  ]
+
   common_sysctls = merge({
     "fs.inotify.max_user_watches"   = "1048576"
     "fs.inotify.max_user_instances" = "8192"
@@ -365,7 +379,7 @@ data "talos_machine_configuration" "controlplane" {
           image           = var.installer_image
           wipe            = var.install_wipe
           extensions      = [for ext in var.system_extensions : { image = ext }]
-          extraKernelArgs = var.kernel_args
+          extraKernelArgs = concat(local.common_kernel_args, var.kernel_args)
         }
         kernel = {
           modules = []
@@ -454,7 +468,7 @@ data "talos_machine_configuration" "worker" {
           image           = var.installer_image
           wipe            = var.install_wipe
           extensions      = [for ext in var.system_extensions : { image = ext }]
-          extraKernelArgs = var.kernel_args
+          extraKernelArgs = concat(local.common_kernel_args, var.kernel_args)
         }
         kernel = {
           # GPU kernel modules are configured per-node in config_patch
