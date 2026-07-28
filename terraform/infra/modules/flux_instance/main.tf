@@ -189,6 +189,45 @@ locals {
                   }
                 }
               ])
+            },
+            # Fix 3: raise reconcile concurrency for kustomize-controller and
+            # helm-controller. Default (--concurrent=4) is a bottleneck with
+            # 130+ Kustomizations / 90+ HelmReleases in this repo - cascade
+            # recovery after a fix lands can take several minutes just to
+            # walk the backlog, which repeatedly presented as a "stuck on
+            # stale revision" symptom. Also lower kustomize-controller's
+            # --requeue-dependency so a downstream Kustomization notices its
+            # dependency became ready faster than the 30s default.
+            {
+              target = {
+                kind = "Deployment"
+                name = "kustomize-controller"
+              }
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/template/spec/containers/0/args/-"
+                  value = "--concurrent=10"
+                },
+                {
+                  op    = "add"
+                  path  = "/spec/template/spec/containers/0/args/-"
+                  value = "--requeue-dependency=15s"
+                }
+              ])
+            },
+            {
+              target = {
+                kind = "Deployment"
+                name = "helm-controller"
+              }
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/template/spec/containers/0/args/-"
+                  value = "--concurrent=10"
+                }
+              ])
             }
           ]
         )
