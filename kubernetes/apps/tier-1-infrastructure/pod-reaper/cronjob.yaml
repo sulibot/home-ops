@@ -1,5 +1,10 @@
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+# Sweeps every namespace for pods kubelet lost track of after a node
+# reboot/restart (status ContainerStatusUnknown) and deletes them so their
+# owning controller can replace them cleanly. See pod-reaper.sh in the
+# ConfigMap for the exact detection logic and why "Error" pods are
+# deliberately left alone.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
