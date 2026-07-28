@@ -13,8 +13,6 @@ spec:
   dependsOn:
     - name: secrets-ready
       namespace: flux-system
-    - name: navidrome
-      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/multi-scrobbler/app
