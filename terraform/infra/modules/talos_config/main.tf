@@ -105,9 +105,21 @@ locals {
     var.installer_image != "" ? { image = var.installer_image } : {}
   )
 
+  # ENG-325 made all node addressing (ULA + IPv4) and routing (including the
+  # IPv6 default route, via the static fe80::<cluster>:fffe route below)
+  # fully static - nodes never actually consume anything from Router
+  # Advertisements. accept_ra was previously "2" (force-accept RA despite
+  # forwarding=1, needed back when GUA was RA/SLAAC-derived) which left
+  # ens18 auto-configuring a GUA via SLAAC regardless of gua_prefix - the
+  # exact mechanism that picked up a stray prefix from a neighboring
+  # cluster's VNet and broke Cilium's Envoy egress on control-plane nodes
+  # (2026-07-27/28 investigation). Disabling RA acceptance entirely removes
+  # any GUA (correct or stray) from the interface; nothing here depends on
+  # RA-learned info.
   common_interface_sysctls = length(regexall("\\.", var.bgp_interface)) == 0 ? {
     "net.ipv6.conf.${var.bgp_interface}.ndisc_notify" = "1"
-    "net.ipv6.conf.${var.bgp_interface}.accept_ra"    = "2"
+    "net.ipv6.conf.${var.bgp_interface}.accept_ra"    = "0"
+    "net.ipv6.conf.${var.bgp_interface}.autoconf"     = "0"
     "net.ipv4.conf.${var.bgp_interface}.arp_notify"   = "1"
   } : {}
 
