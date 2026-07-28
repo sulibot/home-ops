@@ -9,10 +9,6 @@ spec:
   layerSelector:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
-  # Pinned to 1.2.0 (the actually-deployed, working version) - 1.3.2 upgrade
-  # attempts hang with "context deadline exceeded" before ever touching the
-  # DaemonSet (repro'd twice: 2026-06-16, again 2026-07-28). Root cause not
-  # yet diagnosed. Revisit before bumping again.
   ref:
-    tag: 1.2.0
+    tag: 1.3.2
   url: oci://ghcr.io/bjw-s-labs/helm/multus
