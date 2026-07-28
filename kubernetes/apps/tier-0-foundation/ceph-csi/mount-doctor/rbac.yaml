@@ -17,6 +17,15 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "delete"]
+  # For resolving the affected node's InternalIP to feed talosctl in the
+  # broken-stale-stage-cache remediation below - without this the
+  # `kubectl get node` lookup fails silently (stderr is suppressed) and
+  # every remediation attempt reports the misleading
+  # "no-ipv6-internal-ip-found", when the real cause is this missing
+  # permission, not a missing address.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]
