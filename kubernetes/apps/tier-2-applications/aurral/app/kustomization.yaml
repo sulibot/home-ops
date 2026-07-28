@@ -7,3 +7,6 @@ resources:
   - helmrelease.yaml
   - manual-pvc-aurral-config.yaml
   - ocirepository.yaml
+  - volsync-externalsecret.yaml
+  - volsync-replicationsource.yaml
+  - volsync-replicationdestination.yaml

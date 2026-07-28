@@ -6,3 +6,6 @@ resources:
   - helmrelease.yaml
   - manual-pvc.yaml
   - ocirepository.yaml
+  - volsync-externalsecret.yaml
+  - volsync-replicationsource.yaml
+  - volsync-replicationdestination.yaml
