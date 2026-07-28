@@ -1,74 +1,77 @@
-# Ticket: cluster-101 worker-to-worker pod traffic silently drops above a certain packet size
+# Ticket: cluster-101 worker-to-worker pod traffic silently dropped by Cilium masquerade/remote-node policy bug
 
-- Status: Todo
+- Linear: ENG-330
+- Status: Backlog
 - Priority: High
-- Area: cluster-101 networking, Cilium, EVPN fabric
+- Area: cluster-101 networking, Cilium
 - Created: 2026-07-28
 
 ## Summary
 
 Discovered while investigating why Flux's `notification-controller` calls
 were timing out cluster-wide (cascading `DependencyNotReady` across nearly
-every Kustomization). Root cause is **not** Flux, and not the
-`tier-0-foundation` cascade documented in
-`project_cluster_flux_tier0_stuck` memory (different symptom, that one was
-IPv6 egress via CoreDNS; this one is worker-to-worker pod traffic).
+every Kustomization).
 
-Real HTTP/TCP traffic between pods on different **worker** nodes
-(`solwk01`/`solwk02`/`solwk03`) hangs and times out. The same request
-between a worker and a **control-plane** node succeeds fine. Small packets
-(Cilium's own ICMP-based health probes, DNS UDP queries) succeed on every
-path, including worker-to-worker — only larger TCP payloads (HTTP
-responses) hang. This is the textbook signature of an MTU black hole: path
-MTU discovery isn't working, so packets above some threshold get silently
-dropped somewhere in the fabric instead of getting an ICMP
-"fragmentation needed" back.
+**Original hypothesis was an MTU black hole — that was wrong.** The real
+cause: for pod-to-pod traffic between two different **worker** nodes,
+Cilium masquerades the source IP to the sending node's own bare IP instead
+of preserving the real pod IP, even though `ipv6NativeRoutingCIDR:
+fd00:101::/48` is correctly configured everywhere. This causes the
+destination node to classify the flow as the reserved `remote-node`
+identity. Standard Kubernetes `NetworkPolicy` structurally cannot grant
+access to `remote-node`/`host` reserved identities (`namespaceSelector: {}`
+never matches them, since they carry no namespace label) — only
+`CiliumNetworkPolicy` with `fromEntities: [remote-node]` can. Any namespace
+with a restrictive standard NetworkPolicy (e.g. `flux-system`'s
+`allow-scraping`) therefore silently denies all cross-worker-node pod
+traffic to it.
+
+Confirmed **universal across all 6 directional worker-node pairs** — not
+pair-specific — and **not fixed** by the Cilium 1.19.1 → 1.19.6 upgrade
+done this session (re-tested live post-upgrade, reproduces identically).
 
 ## Evidence
 
-- `kubectl exec -n flux-system deploy/kustomize-controller -- wget ... http://notification-controller...` (solwk01 → solwk03): **times out**.
-- Same test solwk01 → solwk02: **times out**.
-- Same test solwk01 → solcp01 (CoreDNS metrics endpoint): **succeeds**, full response.
-- `cilium-health status` (ICMP-based probe): **6/6 reachable**, including solwk02/solwk03 — contradicts the real-traffic result above.
-- `cilium-dbg status --verbose`: MTU consistently 1450 on both solwk01 and solwk03's `ens18`, `packetization-layer-pmtud-mode: blackhole` already configured (Cilium's own PLPMTUD blackhole-detection mitigation, already enabled but apparently not fully compensating).
+- `cilium-dbg bpf nat list` on all 3 worker agents, using `netshoot` debug
+  pods pinned one-per-worker: every one of the 6 directional pairs shows
+  `XLATE_SRC` rewriting the pod's source IP to the sending node's bare IP.
+- `cilium-dbg monitor --type policy-verdict` on solwk01 while
+  `nc -zv solwk02->source-controller:9090` timed out, captured live:
+  ```
+  Policy verdict log: flow 0x0 local EP ID 3130, remote ID remote-node, proto 6, ingress,
+  action deny, auth: disabled, match none,
+  [fd00:101::22]:58416 -> [fd00:101:224:3::9cac]:9090 tcp SYN
+  ```
+  Source is solwk02's bare node IP, not the real pod IP — proving the
+  masquerade causes the misclassification. A bare TCP SYN is far too small
+  for any MTU concern, ruling out PMTUD entirely.
+- `cilium-health status` reporting 6/6 reachable is consistent with this
+  root cause: ICMP health probes aren't subject to the same NetworkPolicy
+  enforcement path, so they don't surface the bug.
 
 ## Why this matters
 
-This is silently breaking any pod-to-pod communication between worker
-nodes that involves a real payload of any size — Flux's notification
-events are just the visible symptom (they're the thing that logs loudly on
-failure). Anything else doing cross-worker-node pod traffic (most
-in-cluster service calls that aren't small) is likely affected too.
+Silently breaks cross-worker-node pod traffic into any namespace with a
+restrictive standard `NetworkPolicy`. Flux's `flux-system` namespace is the
+visible symptom tonight; anything else with a similar policy shape is
+likely affected too.
 
-## Suspected relationship to prior fabric work
+## Fix options (not yet implemented)
 
-Likely the same underlying EVPN/FRR fabric as
-`docs/tickets/pve-frr-power-event-20260712.md` (documented MTU/hairpin
-issues on the same fabric) and
-`docs/tickets/pve-evpn-vip-arp-nd-suppression-gap.md`, but this specific
-worker-to-worker packet-size-dependent symptom hasn't been characterized
-before. Not fixed in this session — no direct Proxmox/FRR host access from
-here, and blindly changing live EVPN/MTU config on production network
-fabric without being able to verify the fix is exactly the kind of action
-that needs deliberate, in-person investigation rather than a
-kubectl-only session.
-
-## Suggested next steps
-
-- From a PVE host or a debug pod with raw ping, test `ping -M do -s <size>`
-  at increasing sizes between solwk01/02/03 directly (bypassing Cilium) to
-  find the actual black-holed size and isolate whether it's Cilium's
-  VXLAN/Geneve encap, the EVPN overlay, or the underlay mesh.
-- Compare worker vs control-plane node network config (VM NIC MTU, vNIC
-  type, whichever Proxmox bridge/VNet each is attached to) for a
-  difference that only affects workers.
-- Check `pve-frr-power-event-20260712.md`'s vmbr0.10 loop / hairpin notes
-  for a plausible connection.
+- Add `CiliumNetworkPolicy` with `fromEntities: [remote-node]` (or
+  `cluster`) alongside/replacing the standard `NetworkPolicy` objects in
+  namespaces that need to tolerate this — starting with `flux-system`.
+- Root-cause why native routing mode masquerades intra-cluster traffic at
+  all despite `ipv6NativeRoutingCIDR` being set (`enable-ipv6-masquerade` /
+  `ipv6-native-routing-cidr` interaction) — possibly worth an upstream
+  Cilium issue if it reproduces on a minimal repro.
 
 ## Acceptance criteria
 
-- [ ] Black-holed packet size range identified.
-- [ ] Root cause isolated to a specific fabric layer (Cilium encap vs EVPN
-      overlay vs underlay).
-- [ ] Fix applied and worker-to-worker large-payload traffic verified
-      working (re-run the wget test above from a Flux controller pod).
+- [x] Root cause confirmed (masquerade → remote-node identity → policy
+      deny).
+- [ ] Fix applied (CiliumNetworkPolicy allow-list, or masquerade
+      root-cause fix).
+- [ ] Worker-to-worker traffic into `flux-system` verified working
+      end-to-end (re-run the original wget test from a Flux controller
+      pod).
