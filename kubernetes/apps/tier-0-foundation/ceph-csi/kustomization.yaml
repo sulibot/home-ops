@@ -47,3 +47,8 @@ resources:
   # after an MDS crash/failover (see 2026-07-17 incident, ENG-282)
   - ./mount-doctor
 
+  # RBD mount-doctor: detects and auto-heals orphaned krbd device mappings
+  # left behind by ceph-csi's NodeUnstageVolume race (ceph/ceph-csi#3873,
+  # upstream wontfix; first hit here 2026-07-28, Plex)
+  - ./rbd-mount-doctor
+

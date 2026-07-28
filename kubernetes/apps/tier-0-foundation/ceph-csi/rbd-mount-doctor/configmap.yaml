@@ -1,0 +1,105 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/configmap.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbd-mount-doctor
+  namespace: ceph-csi
+data:
+  rbd-mount-doctor.sh: |
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    # Detects and (optionally) heals a known, upstream-"wontfix" ceph-csi
+    # failure mode (ceph/ceph-csi#3873): on pod termination, NodeUnstageVolume
+    # sometimes fails to unmount before unmapping, leaving the krbd device
+    # mapped in the kernel on the OLD node forever. If a new pod for that same
+    # RWO volume then gets scheduled on a DIFFERENT node (Recreate-strategy
+    # Deployments do this routinely), the volume can never attach there - the
+    # new AttachVolume succeeds, but NodeStageVolume fails with
+    # "failed to find device for <pool>/<image>" because ceph-csi's own device
+    # list on the new node doesn't (and can't) see the old node's mapping.
+    # First hit: Plex, 2026-07-28, stuck ContainerCreating for 98 minutes -
+    # root-caused and fixed manually before this existed. No config or chart
+    # setting fixes this upstream; the maintainers' own remediation is manual
+    # `rbd device unmap -o force`, which is what this automates.
+    #
+    # Detection: for every krbd device mapped on every rbd nodeplugin's node,
+    # resolve which node (if any) currently holds a live VolumeAttachment for
+    # that image. A device is orphaned if no VolumeAttachment references it at
+    # all, or if the VolumeAttachment that does exist points at a *different*
+    # node than the one the device is mapped on. AUTO_FIX=true force-unmaps
+    # orphans only - never touches a device whose owning VolumeAttachment
+    # matches the node it's mapped on, so a legitimate, currently-in-use mount
+    # can never be touched by construction.
+
+    AUTO_FIX="${AUTO_FIX:-true}"
+    remediated=0
+    orphan_total=0
+
+    # image UUID -> node currently holding the VolumeAttachment for it.
+    # ceph-csi image names are "<prefix>-<uuid>"; the volumeHandle
+    # (0001-0024-<clusterID>-<poolID>-<uuid>) ends in the same uuid, so that's
+    # the join key between VolumeAttachments/PVs and `rbd device list` output.
+    pv_handles=$(kubectl get pv -o json | jq -r '.items[] | select(.spec.csi.driver=="rbd.csi.ceph.com") | "\(.metadata.name) \(.spec.csi.volumeHandle)"')
+
+    declare -A uuid_to_node=()
+    while read -r va_node pv_name; do
+      [ -z "$pv_name" ] && continue
+      handle=$(echo "$pv_handles" | awk -v pv="$pv_name" '$1==pv{print $2}')
+      [ -z "$handle" ] && continue
+      uuid=$(echo "$handle" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+      [ -z "$uuid" ] && continue
+      uuid_to_node["$uuid"]="$va_node"
+    done < <(kubectl get volumeattachments -o json | jq -r '.items[] | select(.spec.attacher=="rbd.csi.ceph.com") | "\(.spec.nodeName) \(.spec.source.persistentVolumeName)"')
+
+    plugins=$(kubectl -n ceph-csi get pods -l app=ceph-csi-rbd,component=nodeplugin -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.nodeName}{"\n"}{end}')
+
+    if [ -z "$plugins" ]; then
+      echo "ERROR: no ceph-csi-rbd nodeplugin pods found" >&2
+      exit 1
+    fi
+
+    while read -r pod node; do
+      [ -z "$pod" ] && continue
+      devices=$(kubectl -n ceph-csi exec "$pod" -c csi-rbdplugin -- rbd device list --format=json --device-type krbd 2>/dev/null </dev/null)
+      if [ -z "$devices" ] || [ "$devices" = "[]" ]; then
+        echo "node=$node plugin=$pod status=no-devices"
+        continue
+      fi
+
+      # Process substitution (not a pipe) so remediated/orphan_total updates
+      # below are visible to the SUMMARY line after the loop - a piped `while`
+      # runs its body in a subshell and silently discards variable changes.
+      while read -r dev_name dev_path; do
+        [ -z "$dev_name" ] && continue
+        uuid=$(echo "$dev_name" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        if [ -z "$uuid" ]; then
+          echo "node=$node plugin=$pod status=unrecognized-name dev=$dev_name (skipping - not a ceph-csi image name)"
+          continue
+        fi
+
+        expected_node="${uuid_to_node[$uuid]:-}"
+        if [ "$expected_node" = "$node" ]; then
+          continue
+        fi
+
+        orphan_total=$((orphan_total + 1))
+        echo "node=$node plugin=$pod status=orphaned dev=$dev_name path=$dev_path expected_node=${expected_node:-<none>} auto_fix=$AUTO_FIX"
+        if [ "$AUTO_FIX" = "true" ]; then
+          kubectl -n ceph-csi exec "$pod" -c csi-rbdplugin -- rbd device unmap -o force "$dev_path" </dev/null \
+            && { echo "REMEDIATED node=$node dev=$dev_name"; remediated=$((remediated + 1)); } \
+            || echo "REMEDIATE_FAILED node=$node dev=$dev_name" >&2
+        fi
+      done < <(echo "$devices" | jq -r '.[] | "\(.name) \(.device)"')
+    done < <(echo "$plugins")
+
+    echo "SUMMARY orphaned_devices=$orphan_total remediated=$remediated auto_fix=$AUTO_FIX"
+
+    # Only fail the Job (feeds kube_job_status_failed -> alert) when an orphan
+    # was left unresolved - either auto-fix is off, or an unmap failed. A
+    # clean auto-heal (found + fixed) still exits 0.
+    if [ "$orphan_total" -gt 0 ] && [ "$remediated" -lt "$orphan_total" ]; then
+      exit 1
+    fi
+    exit 0

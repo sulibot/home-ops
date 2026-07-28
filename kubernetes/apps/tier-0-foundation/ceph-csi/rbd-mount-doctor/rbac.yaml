@@ -1,0 +1,42 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rbd-mount-doctor
+  namespace: ceph-csi
+---
+# Cluster-scoped for the same reason as cephfs-mount-doctor's ClusterRole: an
+# orphaned krbd mapping on a node can belong to a PVC in any namespace, and
+# resolving it requires reading PVs/VolumeAttachments cluster-wide. This
+# script only ever force-unmaps a device it has proven is unattached
+# everywhere (or attached to a different node) - it never touches pods.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rbd-mount-doctor
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rbd-mount-doctor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rbd-mount-doctor
+subjects:
+  - kind: ServiceAccount
+    name: rbd-mount-doctor
+    namespace: ceph-csi
