@@ -12,6 +12,7 @@ resources:
   - ./vpa/ks.yaml
   - ./reloader/ks.yaml
   - ./descheduler/ks.yaml
+  - ./pod-reaper/ks.yaml
   - ./coredns/ks.yaml
 
   # Networking

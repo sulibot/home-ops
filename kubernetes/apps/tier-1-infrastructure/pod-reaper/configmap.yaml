@@ -1,0 +1,89 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/configmap.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-reaper
+  namespace: kube-system
+data:
+  pod-reaper.sh: |
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    # After a node reboot/hard-restart, kubelet sometimes loses track of a
+    # container's final state entirely - the pod object is left showing
+    # ContainerStatusUnknown (or Init:ContainerStatusUnknown) forever,
+    # instead of being cleaned up. Normal Kubernetes pod GC does not reliably
+    # catch this once a replacement pod already exists (seen repeatedly
+    # during the 2026-07-27/28 multi-reboot night: 8+ stale pods left behind
+    # across several namespaces after a round of control-plane/worker
+    # reboots, requiring a manual sweep). This runs a sweep on a schedule
+    # instead.
+    #
+    # Deliberately narrow: only ever deletes pods whose computed status is
+    # ContainerStatusUnknown - the specific "kubelet lost this, it is not
+    # coming back" signal. A plain "Error" status is NOT touched here even
+    # though it looks similar in `kubectl get pods` - that can be a genuine,
+    # currently-actionable application failure, and deleting it would erase
+    # the evidence a human might need. Report-only for those.
+
+    AUTO_FIX="${AUTO_FIX:-true}"
+    remediated=0
+    found_total=0
+    reported_total=0
+
+    # Same shape as `kubectl get pods -A` computes its STATUS column: a
+    # container's waiting/terminated reason (checked here) beats the pod
+    # phase for display purposes, which is exactly the case we're after.
+    debris=$(kubectl get pods -A -o json | jq -r '
+      .items[]
+      | select(
+          ([.status.containerStatuses[]?.state.waiting.reason,
+            .status.containerStatuses[]?.state.terminated.reason,
+            .status.initContainerStatuses[]?.state.waiting.reason,
+            .status.initContainerStatuses[]?.state.terminated.reason,
+            .status.reason]
+           | any(. == "ContainerStatusUnknown"))
+        )
+      | "\(.metadata.namespace) \(.metadata.name)"
+    ' 2>/dev/null)
+
+    reportable=$(kubectl get pods -A -o json | jq -r '
+      .items[]
+      | select(
+          ([.status.containerStatuses[]?.state.waiting.reason,
+            .status.containerStatuses[]?.state.terminated.reason]
+           | any(. == "Error"))
+          and
+          ([.status.containerStatuses[]?.ready] | any(. == true) | not)
+        )
+      | "\(.metadata.namespace) \(.metadata.name)"
+    ' 2>/dev/null)
+
+    if [ -n "$debris" ]; then
+      while read -r ns name; do
+        [ -z "$name" ] && continue
+        found_total=$((found_total + 1))
+        echo "namespace=$ns pod=$name status=ContainerStatusUnknown auto_fix=$AUTO_FIX"
+        if [ "$AUTO_FIX" = "true" ]; then
+          kubectl -n "$ns" delete pod "$name" --force --grace-period=0 --wait=false \
+            && { echo "REMEDIATED namespace=$ns pod=$name"; remediated=$((remediated + 1)); } \
+            || echo "REMEDIATE_FAILED namespace=$ns pod=$name" >&2
+        fi
+      done <<< "$debris"
+    fi
+
+    if [ -n "$reportable" ]; then
+      while read -r ns name; do
+        [ -z "$name" ] && continue
+        reported_total=$((reported_total + 1))
+        echo "namespace=$ns pod=$name status=Error auto_fix=false (report-only, not touched - may be a real failure)"
+      done <<< "$reportable"
+    fi
+
+    echo "SUMMARY container_status_unknown=$found_total remediated=$remediated error_reported=$reported_total auto_fix=$AUTO_FIX"
+
+    if [ "$found_total" -gt 0 ] && [ "$remediated" -lt "$found_total" ]; then
+      exit 1
+    fi
+    exit 0

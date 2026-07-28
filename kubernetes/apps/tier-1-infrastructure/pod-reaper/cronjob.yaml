@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pod-reaper
+  namespace: kube-system
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: pod-reaper
+        spec:
+          restartPolicy: Never
+          serviceAccountName: pod-reaper
+          containers:
+            - name: pod-reaper
+              image: alpine/k8s:1.34.1
+              command: ["bash", "/scripts/pod-reaper.sh"]
+              env:
+                - name: AUTO_FIX
+                  value: "true"
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          volumes:
+            - name: script
+              configMap:
+                name: pod-reaper
+                defaultMode: 0o555
