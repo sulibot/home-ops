@@ -82,10 +82,20 @@ endpointRoutes:
 mtu: 1450
 
 # Native routing CIDRs
-# These should cover routable pod address space in the underlay.
+# These should cover routable pod address space in the underlay AND node
+# addresses - anything outside this range gets masqueraded on egress.
 # Do not include Service CIDRs (ClusterIP VIPs are virtual LB addresses).
+# ENG-330: ipv6NativeRoutingCIDR was fd00:101::/48, which only covers node
+# IPs (fd00:101::21 etc, third hextet 0000) - NOT pod IPs
+# (fd00:101:224:X::..., third hextet 0224). Every worker-to-worker pod
+# packet was therefore masqueraded to the sending node's own address,
+# misclassified as `remote-node` identity on the receiving side, and
+# silently policy-denied by any namespace with a restrictive standard
+# NetworkPolicy (e.g. flux-system). Widened to /32 to cover both ranges,
+# matching how ipv4NativeRoutingCIDR (/16) already covers both node and
+# pod IPv4 ranges.
 ipv4NativeRoutingCIDR: 10.101.0.0/16
-ipv6NativeRoutingCIDR: fd00:101::/48
+ipv6NativeRoutingCIDR: fd00:101::/32
 
 daemon:
   enableSourceIPVerification: false
