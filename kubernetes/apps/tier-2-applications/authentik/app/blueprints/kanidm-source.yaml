@@ -1,0 +1,32 @@
+version: 1
+metadata:
+  name: Kanidm OIDC Source
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  # OAuth2 client "authentik" is provisioned on Kanidm itself by
+  # terraform/infra/live/services/kanidm (kanidm_oauth2_authentik_client) -
+  # see docs/tickets/kanidm-oidc-source-for-authentik.md. Endpoints are
+  # per-client: https://idm.sulibot.com/oauth2/openid/authentik/...
+  # Reuses the silent enrollment flow defined in google-source.yaml.
+  - model: authentik_sources_oauth.oauthsource
+    state: present
+    identifiers:
+      slug: kanidm
+    attrs:
+      name: Login with Kanidm
+      slug: kanidm
+      enabled: true
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, source-enrollment-silent]]
+      provider_type: openidconnect
+      consumer_key: !Env KANIDM_OIDC_CLIENT_ID
+      consumer_secret: !Env KANIDM_OIDC_CLIENT_SECRET
+      authorization_url: "https://idm.sulibot.com/ui/oauth2"
+      access_token_url: "https://idm.sulibot.com/oauth2/token"
+      profile_url: "https://idm.sulibot.com/oauth2/openid/authentik/userinfo"
+      oidc_jwks_url: "https://idm.sulibot.com/oauth2/openid/authentik/public_key.jwk"
+      oidc_jwks: {}
+      additional_scopes: "email profile"
+      user_matching_mode: identifier
+      user_path_template: "goauthentik.io/sources/%(slug)s"

@@ -1,0 +1,42 @@
+version: 1
+metadata:
+  name: Authentik Authorization Groups
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: standard-users
+    attrs:
+      name: standard-users
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: trusted-users
+    attrs:
+      name: trusted-users
+  - model: authentik_policies_expression.expressionpolicy
+    state: present
+    identifiers:
+      name: policy-access-standard
+    attrs:
+      name: policy-access-standard
+      expression: |
+        user = request.user
+        if not user or user.is_anonymous:
+            return False
+        groups = {group.name for group in user.groups.all()}
+        return "standard-users" in groups or "trusted-users" in groups
+  - model: authentik_policies_expression.expressionpolicy
+    state: present
+    identifiers:
+      name: policy-access-trusted
+    attrs:
+      name: policy-access-trusted
+      expression: |
+        user = request.user
+        if not user or user.is_anonymous:
+            return False
+        groups = {group.name for group in user.groups.all()}
+        return "trusted-users" in groups

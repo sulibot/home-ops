@@ -36,3 +36,16 @@ entries:
       provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudbeaver]]
       meta_launch_url: "https://cloudbeaver.sulibot.com"
       policy_engine_mode: any
+  - model: authentik_policies.policybinding
+    state: present
+    identifiers:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+      target: !Find [authentik_core.application, [slug, cloudbeaver]]
+      order: 0
+    attrs:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+      target: !Find [authentik_core.application, [slug, cloudbeaver]]
+      order: 0
+      enabled: true
+      negate: false
+      timeout: 30

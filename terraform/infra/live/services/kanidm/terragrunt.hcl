@@ -172,7 +172,7 @@ locals {
     "curl -fsSL https://kanidm.github.io/kanidm_ppa/kanidm_ppa.asc | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kanidm_ppa.gpg",
     "echo 'deb [signed-by=/etc/apt/keyrings/kanidm_ppa.gpg] https://kanidm.github.io/kanidm_ppa bookworm stable' > /etc/apt/sources.list.d/kanidm_ppa.list",
     "apt-get update -qq",
-    "apt-get install -y -qq kanidmd",
+    "apt-get install -y -qq kanidmd kanidm expect",
     "mkdir -p /etc/kanidm/tls /etc/systemd/system/kanidmd.service.d /etc/systemd/system/caddy.service.d /var/lib/kanidm /var/backups/kanidm/snapshots",
     "cat > /usr/local/sbin/kanidm-write-config.sh <<'SCRIPT'\n#!/usr/bin/env bash\nset -euo pipefail\nIP4=\"$(ip -4 -o addr show dev eth0 scope global | awk '{print $4}' | cut -d/ -f1 | head -n1)\"\ncat > /etc/kanidmd/server.toml <<CFG\nversion = \"2\"\nlog_level = 'debug'\n# Baseline Kanidm config managed by Terraform provisioning.\nbindaddress = '[::]:8443'\nldapbindaddress = '[::]:3636'\ndomain = '$${local.kanidm_domain}'\norigin = '$${local.kanidm_origin}'\ndb_path = '/var/lib/kanidm/kanidm.db'\nrole = 'WriteReplica'\ntls_chain = '/etc/kanidmd/chain.pem'\ntls_key = '/etc/kanidmd/key.pem'\n[replication]\norigin = \"repl://$IP4:8444\"\nbindaddress = \"[::]:8444\"\nCFG\nSCRIPT",
     "chmod 750 /usr/local/sbin/kanidm-write-config.sh",
@@ -216,6 +216,13 @@ locals {
     "systemctl restart caddy",
     "systemctl enable --now kanidm-anycast-health.timer",
     "systemctl enable --now kanidm-backup.timer",
+    # Package installs above need reliable resolution before internal DNS is
+    # necessarily reachable, hence the public resolvers earlier. Switch back
+    # to internal DNS (site.yaml, already the centralized source used
+    # elsewhere in this repo) now that bootstrap is done, so idm.sulibot.com
+    # and other internal names resolve normally instead of needing per-host
+    # /etc/hosts patches.
+    "printf 'nameserver ${local.network_infra.dns_servers.ipv6}\\nnameserver ${local.network_infra.dns_servers.ipv4}\\n' > /etc/resolv.conf",
   ])
 }
 
@@ -430,7 +437,9 @@ resource "null_resource" "kanidm_1password_sync" {
       op whoami >/dev/null 2>&1 || { echo "Skipping 1Password metadata sync: 1Password CLI is not authenticated"; exit 0; }
 
       ITEM_ID="$(op item get kanidm --vault Kubernetes --format json 2>/dev/null | jq -r '.id' || true)"
+      NEW_ITEM=0
       if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
+        NEW_ITEM=1
         ITEM_ID="$(op item create \
           --vault=Kubernetes \
           --title=kanidm \
@@ -449,9 +458,19 @@ resource "null_resource" "kanidm_1password_sync" {
           --format json | jq -r '.id')"
       fi
 
-      ADMIN_PASS="$(op item get "$ITEM_ID" --vault Kubernetes --fields password --reveal 2>/dev/null || true)"
-      if [ -z "$ADMIN_PASS" ]; then
+      # A freshly-created item's password is an arbitrary local random value
+      # that was never actually applied to the server - it MUST be pushed via
+      # recover-account, not just read back (reading it back is always
+      # non-empty right after `op item create`, which used to make this
+      # fallback never trigger and left 1Password out of sync with the real
+      # idm_admin credential).
+      if [ "$NEW_ITEM" = "1" ]; then
         ADMIN_PASS="$(ssh $SSH_OPTS root@10.100.0.61 "kanidmd recover-account -c /etc/kanidmd/server.toml idm_admin | sed -n 's/.*new_password: \"\\([^\"]*\\)\".*/\\1/p' | tail -n1")"
+      else
+        ADMIN_PASS="$(op item get "$ITEM_ID" --vault Kubernetes --fields password --reveal 2>/dev/null || true)"
+        if [ -z "$ADMIN_PASS" ]; then
+          ADMIN_PASS="$(ssh $SSH_OPTS root@10.100.0.61 "kanidmd recover-account -c /etc/kanidmd/server.toml idm_admin | sed -n 's/.*new_password: \"\\([^\"]*\\)\".*/\\1/p' | tail -n1")"
+        fi
       fi
 
       op item edit "$ITEM_ID" \
@@ -620,6 +639,73 @@ resource "null_resource" "kanidm_post_deploy_validation" {
           exit 1
         '"
       done
+    SHELL
+  }
+}
+
+# Create (or reconcile) the Kanidm OAuth2 resource server backing Authentik's
+# Kanidm login source (see docs/tickets/kanidm-oidc-source-for-authentik.md).
+# Idempotent by design: "create"/"add-redirect-url"/"update-scope-map" are
+# allowed to fail with "already exists" on reapply, mirroring the
+# best-effort style used throughout this file (e.g. `domain rename ... ||
+# true`). The client secret is never written back to this repo automatically
+# - it's printed via the apply log so it can be reviewed before being added
+# to the 1Password "authentik" item (KANIDM_OIDC_CLIENT_ID/SECRET fields),
+# the same way GOOGLE_CLIENT_ID/etc. are set there.
+#
+# Two things discovered the hard way running this the first time, both
+# baked into the script below:
+#  1. `kanidm login` requires an actual TTY for the password prompt - no
+#     piped-stdin or --password flag exists in this CLI. Driven via `expect`.
+#  2. The CLI's default uri (https://idm.sulibot.com, from /etc/kanidm/config)
+#     goes through Caddy's load-balancer to any of the 3 replicas. A
+#     password just changed via `kanidmd recover-account` on one node isn't
+#     necessarily replicated to the others yet, so hitting the VIP can land
+#     on a stale replica and fail auth. Talk to 127.0.0.1:8443 on this node
+#     directly instead (matches kanidm-anycast-health.sh's own health check).
+resource "null_resource" "kanidm_oauth2_authentik_client" {
+  depends_on = [null_resource.kanidm_post_deploy_validation]
+
+  triggers = {
+    client_rev = "authentik-oauth2-v2"
+  }
+
+  provisioner "local-exec" {
+    command = <<-SHELL
+      set -euo pipefail
+      SSH_OPTS="-i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+
+      op whoami >/dev/null 2>&1 || { echo "Skipping Authentik oauth2 client provisioning: 1Password CLI is not authenticated"; exit 0; }
+
+      ADMIN_PASS="$(op item get kanidm --vault Kubernetes --fields password --reveal 2>/dev/null || true)"
+      if [ -z "$ADMIN_PASS" ]; then
+        echo "Skipping Authentik oauth2 client provisioning: could not read idm_admin password from 1Password item 'kanidm'"
+        exit 0
+      fi
+
+      ssh $SSH_OPTS root@10.100.0.61 "which expect >/dev/null 2>&1 || apt-get install -y -qq expect"
+
+      ssh $SSH_OPTS root@10.100.0.61 bash -s <<REMOTE
+        set -euo pipefail
+        export KANIDM_URL="https://127.0.0.1:8443"
+        export KANIDM_SKIP_HOSTNAME_VERIFICATION=true
+        export KANIDM_ACCEPT_INVALID_CERTS=true
+
+        expect -c "
+          set timeout 15
+          spawn kanidm login --name idm_admin
+          expect \"Password:\"
+          send \"$ADMIN_PASS\r\"
+          expect eof
+        "
+
+        kanidm system oauth2 create authentik 'Authentik SSO' https://auth.sulibot.com --name idm_admin || true
+        kanidm system oauth2 add-redirect-url authentik https://auth.sulibot.com/source/oauth/callback/kanidm/ --name idm_admin || true
+        kanidm system oauth2 update-scope-map authentik idm_all_persons openid email profile --name idm_admin || true
+
+        echo "=== Kanidm 'authentik' OAuth2 client secret (add to the 1Password 'authentik' item as KANIDM_OIDC_CLIENT_ID=authentik / KANIDM_OIDC_CLIENT_SECRET=<below>) ==="
+        kanidm system oauth2 show-basic-secret authentik --name idm_admin
+REMOTE
     SHELL
   }
 }

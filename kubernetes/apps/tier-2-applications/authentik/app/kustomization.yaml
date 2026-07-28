@@ -3,10 +3,33 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ./blueprintconfigmap.yaml
   - ./externalsecret.yaml
   - ./ocirepository.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./rbac.yaml
   - ./vpa.yaml
+configMapGenerator:
+  - name: authentik-blueprints
+    files:
+      - blueprints/host-auth-flows.yaml
+      - blueprints/google-source.yaml
+      - blueprints/kanidm-source.yaml
+      - blueprints/authorization-groups.yaml
+      - blueprints/grafana-provider.yaml
+      - blueprints/immich-provider.yaml
+      - blueprints/cloudflare-access.yaml
+      - blueprints/calibre-web-automated-provider.yaml
+      - blueprints/shelfmark-provider.yaml
+      - blueprints/karakeep-provider.yaml
+      - blueprints/paperless-provider.yaml
+      - blueprints/actual-provider.yaml
+      - blueprints/filebrowser-provider.yaml
+      - blueprints/cloudbeaver-provider.yaml
+      - blueprints/vikunja-provider.yaml
+      - blueprints/miniflux-provider.yaml
+      - blueprints/freshrss-provider.yaml
+      - blueprints/opencloud-provider.yaml
+      - blueprints/proxy-providers.yaml
+generatorOptions:
+  disableNameSuffixHash: true

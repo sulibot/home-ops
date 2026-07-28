@@ -1,19 +1,21 @@
 version: 1
 metadata:
-  name: Cloudflare Access OIDC
+  name: Filebrowser OIDC Provider
   labels:
     blueprints.goauthentik.io/instantiate: "true"
 entries:
   - model: authentik_providers_oauth2.oauth2provider
     state: present
     identifiers:
-      name: cloudflare-access
+      name: filebrowser
     attrs:
-      name: cloudflare-access
-      client_id: !Env CF_ACCESS_CLIENT_ID
-      client_secret: !Env CF_ACCESS_CLIENT_SECRET
+      name: filebrowser
+      client_id: !Env FILEBROWSER_OIDC_CLIENT_ID
+      client_secret: !Env FILEBROWSER_OIDC_CLIENT_SECRET
       redirect_uris:
-        - url: !Env CF_ACCESS_CALLBACK_URL
+        - url: "https://filebrowser.sulibot.com/api/auth/oidc/callback"
+          matching_mode: strict
+        - url: "https://filebrowser.sulibot.com/api/auth/oidc/callback/"
           matching_mode: strict
       authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
@@ -29,21 +31,22 @@ entries:
   - model: authentik_core.application
     state: present
     identifiers:
-      slug: cloudflare-access
+      slug: filebrowser
     attrs:
-      name: Cloudflare Access
-      slug: cloudflare-access
-      provider: !Find [authentik_providers_oauth2.oauth2provider, [name, cloudflare-access]]
+      name: Filebrowser
+      slug: filebrowser
+      provider: !Find [authentik_providers_oauth2.oauth2provider, [name, filebrowser]]
+      meta_launch_url: "https://filebrowser.sulibot.com"
       policy_engine_mode: any
   - model: authentik_policies.policybinding
     state: present
     identifiers:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
-      target: !Find [authentik_core.application, [slug, cloudflare-access]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+      target: !Find [authentik_core.application, [slug, filebrowser]]
       order: 0
     attrs:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
-      target: !Find [authentik_core.application, [slug, cloudflare-access]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
+      target: !Find [authentik_core.application, [slug, filebrowser]]
       order: 0
       enabled: true
       negate: false
