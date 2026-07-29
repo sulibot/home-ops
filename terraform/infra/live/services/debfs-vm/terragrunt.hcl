@@ -81,6 +81,7 @@ inputs = {
     "acl",
     "attr",
     "ceph-common",
+    "nfs-common",
     "qemu-guest-agent",
   ]
   setup_script = <<-SCRIPT
@@ -91,7 +92,34 @@ inputs = {
     if command -v kanidm_unixd >/dev/null 2>&1; then
       systemctl enable --now kanidm-unixd kanidm-unixd-tasks
     fi
-    install -d -m 0750 /home/sulibot /home/sulibot/Cloud
+    install -d -o 1888405477 -g 1888405477 -m 0700 /home/sulibot
+    install -d -o 1888405477 -g 1888405477 -m 0750 /home/sulibot/Cloud
+    install -d -m 0755 /srv/common
+    grep -qF 'sulibot-cloud@.content=/users/sulibot/Cloud /home/sulibot/Cloud ceph' /etc/fstab ||
+      printf '%s\n' \
+        'sulibot-cloud@.content=/users/sulibot/Cloud /home/sulibot/Cloud ceph noauto,x-systemd.automount,x-systemd.idle-timeout=10min,_netdev 0 0' \
+        >> /etc/fstab
+    grep -qF '10.200.0.209:/common /srv/common nfs4' /etc/fstab ||
+      printf '%s\n' \
+        '10.200.0.209:/common /srv/common nfs4 noauto,x-systemd.automount,x-systemd.idle-timeout=10min,_netdev,vers=4.1,proto=tcp,hard 0 0' \
+        >> /etc/fstab
+    cat >/etc/systemd/system/user-storage-ceph-route.service <<'EOF'
+    [Unit]
+    Description=Route Ceph messenger traffic through the local PVE node
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/usr/sbin/ip -6 route replace fc00:20::/64 via fd00:200::3 dev eth0
+    ExecStop=/usr/sbin/ip -6 route del fc00:20::/64 via fd00:200::3 dev eth0
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    systemctl daemon-reload
+    systemctl enable --now user-storage-ceph-route.service
   SCRIPT
   tags         = ["vm", "user-storage-validation"]
 }

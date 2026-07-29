@@ -6,11 +6,13 @@ include "root" {
 }
 
 locals {
-  proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  catalog       = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  guest         = local.catalog.services["nixfs-lxc"]
-  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  proxmox_infra   = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  catalog         = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  guest           = local.catalog.services["nixfs-lxc"]
+  common_space_id = "5348ae65-b9b1-406d-b9d4-1f9139933a37"
+  common_path     = "/mnt/pve/content/users/projects/${local.common_space_id}"
+  credentials     = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file    = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 }
 
 generate "providers" {
@@ -44,6 +46,21 @@ EOF2
 
 terraform {
   source = "../../../modules/proxmox_nixos_lxc"
+
+  after_hook "reconcile_bind_mounts" {
+    commands = ["apply"]
+    execute = [
+      "${get_terragrunt_dir()}/../reconcile-lxc-bind-mounts.sh",
+      local.guest.node_name,
+      tostring(local.guest.vm_id),
+      "/mnt/pve/content/users/sulibot/Cloud",
+      "/home/sulibot/Cloud",
+      local.common_path,
+      "/srv/common",
+      "1888405477",
+      "1888405477",
+    ]
+  }
 }
 
 inputs = {
@@ -76,11 +93,18 @@ inputs = {
       # host bind mount. Use a VM for untrusted workloads; an unprivileged CT
       # requires an explicitly managed 1:1 idmap for every entitled UID/GID.
       unprivileged = false
-      mount_points = [{
-        volume = "/mnt/pve/content/users/sulibot/Cloud"
-        path   = "/home/sulibot/Cloud"
-        backup = false
-      }]
+      mount_points = [
+        {
+          volume = "/mnt/pve/content/users/sulibot/Cloud"
+          path   = "/home/sulibot/Cloud"
+          backup = false
+        },
+        {
+          volume = local.common_path
+          path   = "/srv/common"
+          backup = false
+        },
+      ]
     }
   }
 }

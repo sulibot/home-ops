@@ -4,6 +4,7 @@ set -euo pipefail
 : "${NFS_VIP4:?NFS_VIP4 is required}"
 : "${NFS_VIP6:?NFS_VIP6 is required}"
 : "${NFS_NODES4:?NFS_NODES4 is required}"
+: "${NFS_COMMON_PATH:?NFS_COMMON_PATH is required}"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -108,13 +109,18 @@ if [[ -e /run/nfs-gateway-inhibit ]]; then
   inhibited=1
 fi
 
-export_ready=0
-if [[ "${ganesha_up}" == 1 ]] &&
-   timeout 3 busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
-     org.ganesha.nfsd.exportmgr ShowExports 2>/dev/null |
-     grep -q '100 "/users/sulibot/Cloud"'; then
-  export_ready=1
+exports=""
+if [[ "${ganesha_up}" == 1 ]]; then
+  exports="$(timeout 3 busctl call org.ganesha.nfsd \
+    /org/ganesha/nfsd/ExportMgr org.ganesha.nfsd.exportmgr ShowExports \
+    2>/dev/null || true)"
 fi
+personal_export_ready=0
+common_export_ready=0
+grep -q '100 "/users/sulibot/Cloud"' <<<"${exports}" &&
+  personal_export_ready=1
+grep -q '101 "@@NFS_COMMON_PATH@@"' <<<"${exports}" &&
+  common_export_ready=1
 
 cat >"${temporary}" <<METRICS
 # HELP homeops_nfs_gateway_info Static identity for an NFS gateway.
@@ -136,9 +142,10 @@ homeops_nfs_gateway_vip_owner{gateway="${gateway}",family="ipv6"} ${vip6_owner}
 # HELP homeops_nfs_gateway_port_listening Whether TCP port 2049 is listening.
 # TYPE homeops_nfs_gateway_port_listening gauge
 homeops_nfs_gateway_port_listening{gateway="${gateway}"} ${port_listening}
-# HELP homeops_nfs_gateway_export_ready Whether Ganesha export 100 is available over D-Bus.
+# HELP homeops_nfs_gateway_export_ready Whether a required Ganesha export is available over D-Bus.
 # TYPE homeops_nfs_gateway_export_ready gauge
-homeops_nfs_gateway_export_ready{gateway="${gateway}",export="/shared"} ${export_ready}
+homeops_nfs_gateway_export_ready{gateway="${gateway}",export="/shared"} ${personal_export_ready}
+homeops_nfs_gateway_export_ready{gateway="${gateway}",export="/common"} ${common_export_ready}
 # HELP homeops_nfs_gateway_ceph_route_up Whether the explicit Ceph messenger route exists.
 # TYPE homeops_nfs_gateway_ceph_route_up gauge
 homeops_nfs_gateway_ceph_route_up{gateway="${gateway}"} ${ceph_route_up}
@@ -153,6 +160,8 @@ METRICS
 chmod 0644 "${temporary}"
 mv -f "${temporary}" "${output}"
 EOF
+sed -i "s|@@NFS_COMMON_PATH@@|${NFS_COMMON_PATH}|g" \
+  /usr/local/sbin/nfs-gateway-metrics
 chmod 0755 /usr/local/sbin/nfs-gateway-metrics
 
 cat >/etc/systemd/system/nfs-gateway-metrics.service <<'EOF'
@@ -243,6 +252,27 @@ EXPORT {
     }
 }
 
+EXPORT {
+    Export_Id = 101;
+    Path = ${NFS_COMMON_PATH};
+    Pseudo = /common;
+    Access_Type = RW;
+    Attr_Expiration_Time = 0;
+
+    FSAL {
+        Name = CEPH;
+        Filesystem = content;
+        User_Id = nfs-common;
+        cmount_path = ${NFS_COMMON_PATH};
+    }
+
+    CLIENT {
+        Clients = 10.200.0.0/24, fd00:200::/64;
+        Access_Type = RW;
+        Squash = Root_Squash;
+    }
+}
+
 CEPH {
     Ceph_Conf = /etc/ceph/ceph.conf;
 }
@@ -269,11 +299,12 @@ if ! ip -4 -o addr show dev eth0 | grep -q '${NFS_VIP4}/24'; then
     rm -f /run/nfs-gateway-health-failures
     exit 0
 fi
+exports="\$(busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
+  org.ganesha.nfsd.exportmgr ShowExports 2>/dev/null || true)"
 if systemctl is-active --quiet nfs-ganesha &&
    ss -H -lnt sport = :2049 | grep -q . &&
-   busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
-     org.ganesha.nfsd.exportmgr ShowExports |
-     grep -q '100 "/users/sulibot/Cloud"'; then
+   printf '%s\n' "\${exports}" | grep -q '100 "/users/sulibot/Cloud"' &&
+   printf '%s\n' "\${exports}" | grep -q '101 "${NFS_COMMON_PATH}"'; then
     rm -f /run/nfs-gateway-health-failures
     exit 0
 fi
@@ -302,11 +333,14 @@ case "${1:-}" in
     systemctl start nfs-ganesha
     ready=false
     for _ in $(seq 1 30); do
+      exports="$(busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
+        org.ganesha.nfsd.exportmgr ShowExports 2>/dev/null || true)"
       if systemctl is-active --quiet nfs-ganesha &&
          ss -H -lnt sport = :2049 | grep -q . &&
-         busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
-           org.ganesha.nfsd.exportmgr ShowExports |
-           grep -q '100 "/users/sulibot/Cloud"'; then
+         printf '%s\n' "${exports}" |
+           grep -q '100 "/users/sulibot/Cloud"' &&
+         printf '%s\n' "${exports}" |
+           grep -q '101 "@@NFS_COMMON_PATH@@"'; then
         ready=true
         break
       fi
@@ -328,6 +362,8 @@ case "${1:-}" in
     ;;
 esac
 EOF
+sed -i "s|@@NFS_COMMON_PATH@@|${NFS_COMMON_PATH}|g" \
+  /usr/local/sbin/nfs-gateway-state
 chmod 0755 /usr/local/sbin/nfs-gateway-state
 
 install -d -m 0755 /etc/systemd/system/nfs-ganesha.service.d

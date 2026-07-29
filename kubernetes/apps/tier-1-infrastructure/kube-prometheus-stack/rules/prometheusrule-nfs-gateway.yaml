@@ -15,9 +15,11 @@ spec:
         # before the first scrape during a new deployment.
         - record: homeops:nfs_shared:probe_success
           expr: |
-            max(homeops_nfs_client_probe_success)
-            or
-            (0 * max(max_over_time(homeops_nfs_client_probe_success[14d])))
+            min(
+              homeops_nfs_client_probe_success
+              or
+              (0 * max_over_time(homeops_nfs_client_probe_success[14d]))
+            )
 
         - record: homeops:nfs_shared:availability_ratio5m
           expr: avg_over_time(homeops:nfs_shared:probe_success[5m])
@@ -62,10 +64,12 @@ spec:
           annotations:
             summary: "The shared NFS endpoint is failing end-to-end IO"
             description: |
-              The always-on Debian client cannot mount 10.200.0.209:/shared and
-              complete a UID 1000 write/read/delete transaction. This is direct
-              user-visible impact; check the VIP owner, Ganesha export, CephFS,
-              and tenant routing.
+              The always-on Debian client cannot complete a canonical Kanidm
+              UID 1888405477 write/read/delete transaction through one or both
+              required exports: 10.200.0.209:/shared and
+              10.200.0.209:/common. This is direct user-visible impact; check
+              the VIP owner, Ganesha exports, CephFS, numeric identity, and
+              tenant routing.
             runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
 
         - alert: NFSSharedAvailabilityFastBurn
@@ -131,7 +135,7 @@ spec:
             )
             or
             (
-              sum(homeops_nfs_gateway_export_ready) != 1
+              sum(homeops_nfs_gateway_export_ready) != 2
             )
           for: 1m
           labels:
@@ -143,9 +147,10 @@ spec:
           annotations:
             summary: "The NFS gateways are not in a safe active/passive state"
             description: |
-              Exactly one gateway must own both VIPs and exactly one Ganesha
-              export must be ready. Zero owners causes an outage; multiple or
-              split owners risk conflicting NFS server state.
+              Exactly one gateway must own both VIPs and both required Ganesha
+              exports must be ready on that owner. Zero owners causes an
+              outage; multiple or split owners risk conflicting NFS server
+              state.
             runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
 
         - alert: NFSGatewayFailoverCapacityLost

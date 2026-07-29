@@ -2,10 +2,15 @@
 
 ## Service contract
 
-`nfsgw01` on `pve01` and `nfsgw02` on `pve02` expose the canonical
-`content:/users/sulibot/Cloud` CephFS directory as NFSv4 pseudo-path
-`/shared`. Clients use the floating endpoint `10.200.0.209`; they do not mount
-either gateway's node address.
+`nfsgw01` on `pve01` and `nfsgw02` on `pve02` expose two canonical CephFS
+directories through one NFSv4 endpoint:
+
+- `/shared`: `content:/users/sulibot/Cloud`, the existing personal cloud tree.
+- `/common`: `content:/users/projects/5348ae65-b9b1-406d-b9d4-1f9139933a37`, the
+  organization-owned OpenCloud Common Space.
+
+Clients use the floating endpoint `10.200.0.209`; they do not mount either
+gateway's node address.
 
 The gateways are active/passive as one logical NFS server. Keepalived starts
 NFS-Ganesha only on the VIP owner; the standby has the packages, Ceph
@@ -28,12 +33,14 @@ person with Google or Authentik.
 
 - `client.nfs-shared` is limited by MDS caps to
   `/users/sulibot/Cloud` in the `content` filesystem.
+- `client.nfs-common` is limited to the immutable OpenCloud Common Space path.
 - `client.nfs-recovery` can write only the `nfs-ganesha` recovery pool.
 - Client access is limited to tenant 200 (`10.200.0.0/24` and
   `fd00:200::/64`).
 - The export root is mode `2751`: the anonymous identity created by
   `Root_Squash` receives traverse-only access required for NFSv4 mount
-  negotiation. UID/GID `1000:1000` retains the write permission.
+  negotiation. Kanidm UID/primary GID `1888405477` owns the personal tree;
+  application service UID `1000` retains write permission through an ACL.
 - The LXCs are privileged only because Keepalived must add and remove the VIP.
   They are single-purpose infrastructure guests and receive no host CephFS
   bind mount.
@@ -76,6 +83,12 @@ For a persistent Debian mount:
 10.200.0.209:/shared /home/sulibot/Cloud nfs4 vers=4.1,proto=tcp,hard,_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=600,timeo=600,retrans=2 0 0
 ```
 
+For the organization-owned Common Space:
+
+```fstab
+10.200.0.209:/common /srv/common nfs4 vers=4.1,proto=tcp,hard,_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=600,timeo=600,retrans=2 0 0
+```
+
 For the IPv6 VIP, bracket the literal address and select the IPv6 transport:
 
 ```console
@@ -98,9 +111,29 @@ id sulibot
 stat -c '%u:%g %n' /home/sulibot/Cloud
 ```
 
-The expected current owner is `1000:1000`. A Google or Authentik login may
-establish a web identity, but it does not replace the Kanidm POSIX identity
-used by NFS.
+The personal path owner is canonical Kanidm UID/GID
+`1888405477:1888405477`; OpenCloud and Syncthing UID `1000` are ACL
+principals. The Common Space uses setgid and default ACLs for OpenCloud
+UID/GID 1000 and Kanidm group
+`storage_common_rw`. A Google or Authentik login may establish a web identity,
+but it does not replace the Kanidm POSIX identity used by NFS.
+
+The current `storage_common_rw` GID is `1965604563`. Verify the live value with
+`kanidm group posix show storage_common_rw` before changing ACLs; the name is
+canonical and the numeric value is recorded here for incident diagnosis.
+
+For the validation VMs, route `fc00:20::/64` through the VM's local PVE node
+before mounting native CephFS. VLAN 200's general gateway permits ICMP and the
+initial TCP handshake but produces an asymmetric Ceph messenger session.
+`nixfs-vm01` on `pve01` uses `fd00:200::1`; `debfs-vm01` on `pve03` uses
+`fd00:200::3`. Confirm `ceph status --name client.sulibot-cloud` succeeds
+before diagnosing CephX caps.
+
+The LXC post-apply hook reconciles both `mp0` and `mp1`. If `/srv/common` is
+missing after a fresh create, run `../reconcile-lxc-bind-mounts.sh` with the
+node, VMID, both source/target pairs, and the canonical UID/GID. Do not accept
+a clean OpenTofu plan as sufficient evidence; check `pct config` and the
+runtime mount inside the container.
 
 ## Operations and failure handling
 

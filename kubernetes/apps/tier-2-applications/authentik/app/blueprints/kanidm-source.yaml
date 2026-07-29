@@ -31,3 +31,13 @@ entries:
       additional_scopes: "email profile"
       user_matching_mode: identifier
       user_path_template: "goauthentik.io/sources/%(slug)s"
+  # Preserve the established Authentik user UUID (and therefore every
+  # downstream hashed OIDC subject) while allowing the canonical Kanidm
+  # identity to authenticate that same broker account.
+  - model: authentik_sources_oauth.useroauthsourceconnection
+    state: present
+    identifiers:
+      source: !Find [authentik_sources_oauth.oauthsource, [slug, kanidm]]
+      identifier: "1a8cb2c5-a67a-4010-a01b-43db708ec7e5"
+    attrs:
+      user: !Find [authentik_core.user, [uuid, "0b75cb54-d109-4876-bf4a-cc90a570134c"]]

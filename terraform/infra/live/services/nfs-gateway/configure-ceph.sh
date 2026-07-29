@@ -3,20 +3,41 @@
 # placing secrets in Terraform state or the repository.
 set -euo pipefail
 
+: "${COMMON_SPACE_ID:?COMMON_SPACE_ID is required}"
+: "${COMMON_GID:?COMMON_GID is required}"
+: "${USER_UID:?USER_UID is required}"
+: "${USER_GID:?USER_GID is required}"
+
 pve_host="${PVE_HOST:-10.10.0.1}"
 ssh_key="${SSH_KEY:-${HOME}/.ssh/id_ed25519}"
 gateways=(10.200.0.207 10.200.0.208)
 ssh_opts=(-i "${ssh_key}" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)
 
-ssh "${ssh_opts[@]}" "root@${pve_host}" '
+ssh "${ssh_opts[@]}" "root@${pve_host}" \
+  "COMMON_SPACE_ID='${COMMON_SPACE_ID}' COMMON_GID='${COMMON_GID}' USER_UID='${USER_UID}' USER_GID='${USER_GID}' bash -s" <<'REMOTE'
   set -eu
   cloud_path=/mnt/pve/content/users/sulibot/Cloud
+  common_path="/mnt/pve/content/users/projects/${COMMON_SPACE_ID}"
   test -d "${cloud_path}"
-  chown 1000:1000 "${cloud_path}"
+  test -d "${common_path}"
+  # Kanidm owns the personal tree. UID 1000 is the OpenCloud/Syncthing
+  # service identity and receives only an explicit ACL.
+  chown "${USER_UID}:${USER_GID}" "${cloud_path}"
   # Root_Squash maps the kernel mount lookup to the anonymous identity. Grant
   # traverse-only access so clients can mount the export; write access remains
   # controlled by the canonical POSIX owner/group and file modes.
   chmod 2751 "${cloud_path}"
+  setfacl -m u:1000:rwx,m:rwx \
+    -m d:u:"${USER_UID}":rwx,d:u:1000:rwx,d:g:"${USER_GID}":rwx,d:m:rwx,d:o:--- \
+    "${cloud_path}"
+  chown "1000:${COMMON_GID}" "${common_path}"
+  # The anonymous Root_Squash identity needs traverse-only permission for the
+  # mount lookup. It cannot list or read content; the caller's canonical UID
+  # and GID authorize operations after the mount is established.
+  chmod 2771 "${common_path}"
+  setfacl -m u:1000:rwx,g:"${COMMON_GID}":rwx,m:rwx,o:--x \
+    -m d:u:1000:rwx,d:g:"${COMMON_GID}":rwx,d:m:rwx,d:o:--- \
+    "${common_path}"
   if ! ceph osd pool ls | grep -qx "nfs-ganesha"; then
     ceph osd pool create nfs-ganesha 16
   fi
@@ -25,14 +46,18 @@ ssh "${ssh_opts[@]}" "root@${pve_host}" '
     mon "allow r fsname=content" \
     mds "allow rw fsname=content path=/users/sulibot/Cloud" \
     osd "allow rw tag cephfs data=content" >/dev/null
+  ceph auth get-or-create client.nfs-common \
+    mon "allow r fsname=content" \
+    mds "allow rw fsname=content path=/users/projects/${COMMON_SPACE_ID}" \
+    osd "allow rw tag cephfs data=content" >/dev/null
   ceph auth get-or-create client.nfs-recovery \
     mon "allow r" \
     osd "allow rw pool=nfs-ganesha" >/dev/null
-'
+REMOTE
 
 for gateway in "${gateways[@]}"; do
   ssh "${ssh_opts[@]}" "root@${pve_host}" \
-    'printf "[global]\nfsid = %s\nmon_host = %s\nauth_client_required = cephx\nms_bind_ipv4 = false\nms_bind_ipv6 = true\n\n" "$(ceph fsid)" "$(awk -F"=" "/^[[:space:]]*mon_host[[:space:]]*=/{gsub(/^[[:space:]]+|[[:space:]]+$/, \"\", \$2); print \$2; exit}" /etc/pve/ceph.conf)"; printf "[client.nfs-shared]\nkeyring = /etc/ceph/ceph.client.nfs-shared.keyring\n\n[client.nfs-recovery]\nkeyring = /etc/ceph/ceph.client.nfs-recovery.keyring\n"' |
+    'printf "[global]\nfsid = %s\nmon_host = %s\nauth_client_required = cephx\nms_bind_ipv4 = false\nms_bind_ipv6 = true\n\n" "$(ceph fsid)" "$(awk -F"=" "/^[[:space:]]*mon_host[[:space:]]*=/{gsub(/^[[:space:]]+|[[:space:]]+$/, \"\", \$2); print \$2; exit}" /etc/pve/ceph.conf)"; printf "[client.nfs-shared]\nkeyring = /etc/ceph/ceph.client.nfs-shared.keyring\n\n[client.nfs-common]\nkeyring = /etc/ceph/ceph.client.nfs-common.keyring\n\n[client.nfs-recovery]\nkeyring = /etc/ceph/ceph.client.nfs-recovery.keyring\n"' |
     ssh "${ssh_opts[@]}" "root@${gateway}" \
       'umask 077; install -m 0600 /dev/stdin /etc/ceph/ceph.conf'
 
@@ -40,6 +65,11 @@ for gateway in "${gateways[@]}"; do
     'ceph auth get client.nfs-shared' |
     ssh "${ssh_opts[@]}" "root@${gateway}" \
       'umask 077; install -m 0600 /dev/stdin /etc/ceph/ceph.client.nfs-shared.keyring'
+
+  ssh "${ssh_opts[@]}" "root@${pve_host}" \
+    'ceph auth get client.nfs-common' |
+    ssh "${ssh_opts[@]}" "root@${gateway}" \
+      'umask 077; install -m 0600 /dev/stdin /etc/ceph/ceph.client.nfs-common.keyring'
 
   ssh "${ssh_opts[@]}" "root@${pve_host}" \
     'ceph auth get client.nfs-recovery' |
@@ -62,12 +92,18 @@ ssh "${ssh_opts[@]}" "root@${gateways[0]}" 'systemctl start keepalived'
 ready=false
 for _ in $(seq 1 30); do
   if ssh "${ssh_opts[@]}" "root@${gateways[0]}" \
-    'ip -4 -o addr show dev eth0 | grep -q "10.200.0.209/24" &&
+    "COMMON_SPACE_ID='${COMMON_SPACE_ID}' bash -s" <<'REMOTE'
+     ip -4 -o addr show dev eth0 | grep -q "10.200.0.209/24" &&
      systemctl is-active --quiet nfs-ganesha &&
      ss -H -lnt sport = :2049 | grep -q . &&
      busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
        org.ganesha.nfsd.exportmgr ShowExports |
-       grep -q "100 \"/users/sulibot/Cloud\""'; then
+       tee /tmp/nfs-exports.ready |
+       grep -q "100 \"/users/sulibot/Cloud\"" &&
+     grep -q "101 \"/users/projects/${COMMON_SPACE_ID}\"" \
+       /tmp/nfs-exports.ready
+REMOTE
+  then
     ready=true
     break
   fi

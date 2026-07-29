@@ -26,8 +26,10 @@ The measured user journey is:
 
 1. Resolve the fixed endpoint from configuration.
 2. Reach `10.200.0.209:2049`.
-3. Mount `10.200.0.209:/shared` with NFSv4.1.
-4. Write, read, verify, and remove a file as UID/GID `1000:1000`.
+3. Mount both `10.200.0.209:/shared` and
+   `10.200.0.209:/common` with NFSv4.1.
+4. Write, read, verify, and remove a file in each export as service UID
+   `1000`. The Common export inherits the canonical `storage_common_rw` GID.
 
 This crosses the client tenant network, Keepalived VIP, NFS-Ganesha, CephFS
 MDS, Ceph OSDs, and the canonical directory. It deliberately does not measure
@@ -43,7 +45,7 @@ Prometheus retention period.
 | --- | --- | --- | --- |
 | Availability | 99.5% over 14 days | Successful synthetic NFS transactions / scheduled transactions | About 101 minutes of error budget |
 | Recovery | Restore successful client IO within 60 seconds of a single gateway failure | Quarterly disruptive failover test | Failed test creates reliability work |
-| Data correctness | 100% of successful probes preserve UID/GID and payload | Write/read/delete transaction as UID/GID 1000:1000 | Any mismatch is an availability failure |
+| Data correctness | 100% of successful probes preserve expected ownership and payload | Personal files use canonical Kanidm UID/GID `1888405477:1888405477`; Common files use supplemental GID `1965604563` | Any mismatch is an availability failure |
 | Recovery point | Zero gateway-local data loss | Both gateways serve the same CephFS path | Gateway rebuild must not copy or restore user data |
 | Monitoring coverage | All three exporter targets and the Kubernetes TCP probe healthy | Prometheus target and Blackbox metrics | Missing coverage is a warning, not a healthy sample |
 
@@ -80,7 +82,8 @@ textfile collector:
 
 - Keepalived and Ganesha process state.
 - IPv4 and IPv6 VIP ownership.
-- Export 100 availability through Ganesha D-Bus.
+- Export 100 (`/shared`) and export 101 (`/common`) availability through
+  Ganesha D-Bus.
 - TCP/2049 listener state.
 - Required Ceph messenger route.
 - Health-inhibition state.
@@ -121,7 +124,7 @@ Pushover only outside configured quiet hours.
 | --- | --- | --- | --- |
 | `NFSSharedEndpointUnavailable` | Critical | End-to-end user IO has failed for two minutes | Acknowledge within 15 minutes; restore service |
 | `NFSSharedAvailabilityFastBurn` | Critical | 14.4x budget burn remains present in both five-minute and one-hour windows | Treat as active impact |
-| `NFSGatewayUnsafeHAState` | Critical | VIPs are absent, split, duplicated, or the export count is not one | Prevent conflicting servers and restore one owner |
+| `NFSGatewayUnsafeHAState` | Critical | VIPs are absent, split, duplicated, or both exports are not ready on one owner | Prevent conflicting servers and restore one owner |
 | `NFSSharedAvailabilitySlowBurn` | Warning | Chronic 6x error-budget burn | Investigate within one working day |
 | `NFSGatewayFailoverCapacityLost` | Warning | Service is working without redundancy | Repair before planned maintenance |
 | `NFSGatewayCephRouteMissing` | Warning | Standby promotion may fail | Restore the node-local Ceph route |
@@ -204,7 +207,7 @@ Live acceptance:
 1. Prometheus reports three healthy `nfs-gateway-observability` targets.
 2. `homeops_nfs_client_probe_success` is 1.
 3. `probe_success{service="nfs-gateway-tcp"}` is 1.
-4. Exactly one gateway owns both VIPs and exposes export 100.
+4. Exactly one gateway owns both VIPs and exposes exports 100 and 101.
 5. The dashboard is reconciled by Grafana Operator.
 6. Prometheus accepts all recording and alert rules without evaluation errors.
 7. A controlled failover preserves client IO and moves the ownership metrics.

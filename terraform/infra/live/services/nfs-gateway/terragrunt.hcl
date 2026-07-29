@@ -7,12 +7,20 @@ include "root" {
 }
 
 locals {
-  proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  catalog       = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  service       = local.catalog.services["nfs-gateway"]
-  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  node_ipv4     = [for name in sort(keys(local.service.instances)) : local.service.instances[name].ipv4]
+  proxmox_infra   = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  catalog         = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  service         = local.catalog.services["nfs-gateway"]
+  common_space_id = "5348ae65-b9b1-406d-b9d4-1f9139933a37"
+  common_path     = "/users/projects/${local.common_space_id}"
+  # Kanidm-generated POSIX values for person UUID
+  # 1a8cb2c5-a67a-4010-a01b-43db708ec7e5. Do not substitute the UID 1000
+  # used by application containers.
+  sulibot_uid  = 1888405477
+  sulibot_gid  = 1888405477
+  common_gid   = 1965604563
+  credentials  = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  node_ipv4    = [for name in sort(keys(local.service.instances)) : local.service.instances[name].ipv4]
 }
 
 generate "providers" {
@@ -97,7 +105,7 @@ inputs = {
     commands = [
       "install -m 0750 /dev/null /usr/local/sbin/nfs-gateway-provision",
       "printf '%s' '${filebase64("${get_terragrunt_dir()}/provision.sh")}' | base64 --decode > /usr/local/sbin/nfs-gateway-provision",
-      "NFS_VIP4='${local.service.vip.ipv4}' NFS_VIP6='${local.service.vip.ipv6}' NFS_NODES4='${join(" ", local.node_ipv4)}' /usr/local/sbin/nfs-gateway-provision",
+      "NFS_VIP4='${local.service.vip.ipv4}' NFS_VIP6='${local.service.vip.ipv6}' NFS_NODES4='${join(" ", local.node_ipv4)}' NFS_COMMON_PATH='${local.common_path}' /usr/local/sbin/nfs-gateway-provision",
     ]
   }
 }

@@ -7,6 +7,8 @@ client="${PVE_CLIENT:-10.200.0.205}"
 primary="${NFS_PRIMARY:-10.200.0.207}"
 secondary="${NFS_SECONDARY:-10.200.0.208}"
 vip4="${NFS_VIP4:-10.200.0.209}"
+user_uid="${USER_UID:-1888405477}"
+user_gid="${USER_GID:-1888405477}"
 mount_dir="$(ssh "root@${client}" 'mktemp -d /mnt/nfs-failover.XXXXXX')"
 
 cleanup() {
@@ -19,7 +21,7 @@ cleanup() {
   sleep 5
   ssh "root@${secondary}" 'systemctl start keepalived' >/dev/null
   ssh "root@${client}" \
-    "setpriv --reuid=1000 --regid=1000 --clear-groups rm -f \
+    "setpriv --reuid='${user_uid}' --regid='${user_gid}' --clear-groups rm -f \
       '${mount_dir}/.before-failover' '${mount_dir}/.after-failover';
      if mountpoint -q '${mount_dir}'; then
        umount -f '${mount_dir}' 2>/dev/null || umount -l '${mount_dir}';
@@ -32,7 +34,7 @@ trap cleanup EXIT
 ssh "root@${client}" \
   "mount -t nfs4 -o vers=4.1,proto=tcp,hard,timeo=50,retrans=2 \
      '${vip4}:/shared' '${mount_dir}';
-   setpriv --reuid=1000 --regid=1000 --clear-groups sh -c \
+   setpriv --reuid='${user_uid}' --regid='${user_gid}' --clear-groups sh -c \
      \"printf 'before-failover\\n' > '${mount_dir}/.before-failover'\""
 
 ssh "root@${primary}" \
@@ -55,9 +57,9 @@ done
 printf 'VIP moved to the secondary gateway\n'
 
 ssh "root@${client}" \
-  "timeout 150 setpriv --reuid=1000 --regid=1000 --clear-groups \
+  "timeout 150 setpriv --reuid='${user_uid}' --regid='${user_gid}' --clear-groups \
      grep -qx before-failover '${mount_dir}/.before-failover';
-   timeout 150 setpriv --reuid=1000 --regid=1000 --clear-groups sh -c \
+   timeout 150 setpriv --reuid='${user_uid}' --regid='${user_gid}' --clear-groups sh -c \
      \"printf 'after-failover\\n' > '${mount_dir}/.after-failover'\""
 printf 'Existing client mount completed I/O through the secondary\n'
 
@@ -79,7 +81,7 @@ done
 [[ "${primary_ready}" == true ]]
 
 ssh "root@${client}" \
-  "timeout 150 setpriv --reuid=1000 --regid=1000 --clear-groups \
+  "timeout 150 setpriv --reuid='${user_uid}' --regid='${user_gid}' --clear-groups \
      grep -qx after-failover '${mount_dir}/.after-failover'"
 printf 'Primary recovery and post-recovery I/O succeeded\n'
 
