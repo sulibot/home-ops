@@ -182,15 +182,22 @@ spec:
                     imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
                     bootstrap:
                       recovery:
-                        source: postgres-vectorchord-offsite
+                        # Barman indexes backups by the original server name.
+                        # The disposable Cluster name may differ, but the
+                        # recovery source must match the catalog stored by the
+                        # production postgres-vectorchord cluster.
+                        source: postgres-vectorchord
                         database: immich
                         owner: immich
                     externalClusters:
-                      - name: postgres-vectorchord-offsite
+                      - name: postgres-vectorchord
                         plugin:
                           name: barman-cloud.cloudnative-pg.io
                           parameters:
                             barmanObjectName: ${objectstore}
+                            # Override the plugin's default of using the
+                            # disposable Cluster name for the Barman catalog.
+                            serverName: postgres-vectorchord
                     storage:
                       size: 60Gi
                       storageClass: csi-rbd-rbd-vm-sc
