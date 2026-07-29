@@ -24,6 +24,10 @@ spec:
       port: 2514
       targetPort: syslog-tcp
       protocol: TCP
+    - name: bao-audit-tcp
+      port: 2515
+      targetPort: bao-audit-tcp
+      protocol: TCP
     - name: metrics
       port: 2021
       targetPort: metrics

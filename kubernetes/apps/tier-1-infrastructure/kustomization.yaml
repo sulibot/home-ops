@@ -84,6 +84,7 @@ resources:
   - ./gatus/ks.yaml
   - ./smartctl-exporter/ks.yaml
   - ./proxmox-observability/ks.yaml
+  - ./openbao-observability/ks.yaml
   - ./homeops-inventory-exporter/ks.yaml
   - ./alertmanager-linear-bridge/ks.yaml
   # kromgo disabled

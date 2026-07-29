@@ -17,7 +17,7 @@ API endpoint: `https://10.10.0.1:8006/api2/json`
 
 | Tenant | Purpose | Mode | Subnets | Gateways |
 |---|---|---|---|---|
-| 100 | core service LXCs (kanidm, pki, tailscale) | sdn | 10.100.0.0/24, fd00:100::/64 | 10.100.0.254, fd00:100::fffe |
+| 100 | core service LXCs (kanidm, openbao, pki, tailscale) | sdn | 10.100.0.0/24, fd00:100::/64 | 10.100.0.254, fd00:100::fffe |
 | 101 | cluster-101 (sol) | sdn | 10.101.0.0/24, fd00:101::/64 | 10.101.0.254, fd00:101::fffe |
 | 104 | cluster-104 (baremetal) | sdn | 10.104.0.0/24, fd00:104::/64 | 10.104.0.254, fd00:104::fffe |
 | 200 | shared infra (minio, zot, nixos guests) | vlan | 10.200.0.0/24, fd00:200::/64 | 10.200.0.254, fd00:200::fffe |
@@ -27,6 +27,9 @@ API endpoint: `https://10.10.0.1:8006/api2/json`
 | Service | Host | OS | Tenant | Node | vm_id | IPv4 | IPv6 | Size |
 |---|---|---|---|---|---|---|---|---|
 | kanidm | (managed in its unit) | debian | 100 | - | - | - | - | small |
+| openbao | openbao01 | debian | 100 | pve01 | 100068 | 10.100.0.68 | fd00:100::68 | micro +ov |
+| openbao | openbao02 | debian | 100 | pve02 | 100069 | 10.100.0.69 | fd00:100::69 | micro +ov |
+| openbao | openbao03 | debian | 100 | pve03 | 100070 | 10.100.0.70 | fd00:100::70 | micro +ov |
 | minio | minio01 | debian | 200 | pve02 | 200052 | 10.200.0.52 | fd00:200::52 | small |
 | zot | zot01 | debian | 200 | pve02 | 200051 | 10.200.0.51 | fd00:200::51 | small +ov |
 | pki | pki01 | debian | 100 | pve01 | 100064 | 10.100.0.64 | fd00:100::64 | small |

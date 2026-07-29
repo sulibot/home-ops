@@ -145,6 +145,9 @@ terraform/infra/live/services/zot-lxc/main.tf
 terraform/infra/live/services/zot-lxc/providers.tf
 terraform/infra/live/services/kanidm/main.tf
 terraform/infra/live/services/kanidm/providers.tf
+terraform/infra/live/services/openbao/main.tf
+terraform/infra/live/services/openbao/providers.tf
+terraform/infra/live/cloud/openbao-kms/main.tf
 terraform/infra/live/services/smallstep-lxc/main.tf
 terraform/infra/live/services/smallstep-lxc/providers.tf
 terraform/infra/live/services/tailscale-config/main.tf

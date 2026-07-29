@@ -184,6 +184,25 @@ kubectl get pods -n default
 
 These scripts are for day-to-day cluster operations.
 
+### Scoped OpenBao sessions
+
+`openbao-approle-exec.sh` reads one narrowly scoped AppRole credential from
+1Password, exchanges it for a one-hour OpenBao batch token, and executes the
+requested command without displaying either credential.
+
+```bash
+./scripts/openbao-approle-exec.sh tofu terragrunt plan
+./scripts/openbao-approle-exec.sh ansible ansible-playbook playbook.yml
+```
+
+`sops-openbao.sh` is the corresponding wrapper for the OpenBao Transit
+recipient. Direct `sops` commands continue to use the retained age recipient
+for offline recovery.
+
+```bash
+./scripts/sops-openbao.sh decrypt terraform/infra/live/common/secrets.sops.yaml
+```
+
 ### Reconcile All Apps
 **Script:** `maint-reconcile-all-apps.sh`
 

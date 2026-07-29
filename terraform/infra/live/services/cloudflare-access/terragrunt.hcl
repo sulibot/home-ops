@@ -199,6 +199,14 @@ locals {
       network   = "fd00:100::/64"
       tunnel_id = local.tunnel_id
     }
+    "openbao-vip-ipv4" = {
+      network   = "10.100.240.67/32"
+      tunnel_id = local.tunnel_id
+    }
+    "openbao-vip-ipv6" = {
+      network   = "fd00:100:0:240::67/128"
+      tunnel_id = local.tunnel_id
+    }
     "tenant-200-ipv4" = { # MinIO / s3.sulibot.com (Terraform state backend)
       network   = "10.200.0.0/24"
       tunnel_id = local.tunnel_id

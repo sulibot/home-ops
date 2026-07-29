@@ -46,19 +46,21 @@ locals {
     # (10.3x.0.254:443) must never be reachable through this tunnel or
     # remote devices misdetect themselves as on the home network.
     advertise_routes = [
-      "10.10.0.0/24",       # PVE management
-      "10.100.0.0/24",      # tenant-100 service LXCs
-      "fd00:100::/64",      # tenant-100 service LXCs (v6)
-      "10.200.0.0/24",      # tenant-200 LXCs (MinIO tf-state, zot)
-      "fd00:200::/64",      # tenant-200 LXCs (v6)
-      "10.255.0.0/24",      # infra loopbacks + DNS
-      "fd00:0:0:ffff::/64", # infra loopbacks + DNS (v6)
-      "10.101.0.0/24",      # cluster-101 nodes + API VIP
-      "10.101.254.0/24",    # cluster-101 node loopbacks
-      "fd00:101::/64",      # cluster-101 nodes (v6)
-      "10.104.0.0/24",      # cluster-104 nodes + API VIP
-      "10.104.254.0/24",    # cluster-104 node loopbacks
-      "fd00:104::/64",      # cluster-104 nodes (v6)
+      "10.10.0.0/24",           # PVE management
+      "10.100.0.0/24",          # tenant-100 service LXCs
+      "fd00:100::/64",          # tenant-100 service LXCs (v6)
+      "10.100.240.67/32",       # OpenBao routed service VIP
+      "fd00:100:0:240::67/128", # OpenBao routed service VIP (v6)
+      "10.200.0.0/24",          # tenant-200 LXCs (MinIO tf-state, zot)
+      "fd00:200::/64",          # tenant-200 LXCs (v6)
+      "10.255.0.0/24",          # infra loopbacks + DNS
+      "fd00:0:0:ffff::/64",     # infra loopbacks + DNS (v6)
+      "10.101.0.0/24",          # cluster-101 nodes + API VIP
+      "10.101.254.0/24",        # cluster-101 node loopbacks
+      "fd00:101::/64",          # cluster-101 nodes (v6)
+      "10.104.0.0/24",          # cluster-104 nodes + API VIP
+      "10.104.254.0/24",        # cluster-104 node loopbacks
+      "fd00:104::/64",          # cluster-104 nodes (v6)
     ]
   }
 
@@ -94,6 +96,7 @@ locals {
           }
         }
       } : {},
+      can(s.vip) ? { vip = s.vip } : {},
       name == "tail" ? { tailscale = local.tailscale_config } : {}
     )
   }

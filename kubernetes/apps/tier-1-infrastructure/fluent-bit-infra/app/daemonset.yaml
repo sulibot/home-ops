@@ -31,6 +31,9 @@ spec:
             - name: syslog-tcp
               containerPort: 2514
               protocol: TCP
+            - name: bao-audit-tcp
+              containerPort: 2515
+              protocol: TCP
             - name: metrics
               containerPort: 2021
               protocol: TCP

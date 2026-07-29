@@ -37,7 +37,9 @@ resource "proxmox_virtual_environment_container" "this" {
   description = each.value.description
   tags        = each.value.tags
 
-  started = each.value.started
+  started       = each.value.started
+  start_on_boot = each.value.start_on_boot
+  protection    = each.value.protection
 
   operating_system {
     template_file_id = local.template_file_ids[each.key]
@@ -55,6 +57,7 @@ resource "proxmox_virtual_environment_container" "this" {
       volume = mount_point.value.volume
       size   = try(mount_point.value.size, null)
       path   = mount_point.value.path
+      backup = mount_point.value.backup
     }
   }
 

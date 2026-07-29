@@ -1,0 +1,15 @@
+---
+# OpenBao submits the short-lived External Secrets service-account JWT to the
+# Kubernetes TokenReview API. No persistent reviewer JWT is stored in OpenBao.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-external-secrets-token-review
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: external-secrets
+    namespace: external-secrets

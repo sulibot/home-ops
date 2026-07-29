@@ -1,0 +1,50 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openbao
+spec:
+  groups:
+    - name: openbao.availability
+      rules:
+        - alert: OpenBaoMetricsTargetDown
+          expr: up{job="openbao-metrics"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: OpenBao member {{ $labels.instance }} is not scrapeable
+            description: The private OpenBao metrics listener has been unavailable for five minutes.
+        - alert: OpenBaoMetricsQuorumRisk
+          expr: sum(up{job="openbao-metrics"} == 1) < 2
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Fewer than two OpenBao members are observable
+            description: OpenBao may have lost Raft quorum or network reachability.
+        - alert: OpenBaoMemberSealed
+          expr: vault_core_unsealed{job="openbao-metrics"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: OpenBao member {{ $labels.instance }} is sealed
+            description: GCP KMS auto-unseal did not leave this member unsealed.
+        - alert: OpenBaoAutopilotUnhealthy
+          expr: max(vault_autopilot_healthy{job="openbao-metrics"}) < 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: OpenBao Raft autopilot is unhealthy
+            description: Inspect peer state and storage latency before maintenance.
+        - alert: OpenBaoAuditWriteFailure
+          expr: increase(vault_audit_log_request_failure{job="openbao-metrics"}[5m]) > 0 or increase(vault_audit_log_response_failure{job="openbao-metrics"}[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: OpenBao could not write an audit record
+            description: At least one audit device reported a request or response write failure.

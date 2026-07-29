@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbao-metrics
+  labels:
+    app.kubernetes.io/name: openbao-metrics
+spec:
+  ipFamilies:
+    - IPv6
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: https-metrics
+      port: 9101
+      targetPort: 9101
+      protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/endpoints.json
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: openbao-metrics
+subsets:
+  - addresses:
+      - ip: fd00:100::68
+        hostname: openbao01
+      - ip: fd00:100::69
+        hostname: openbao02
+      - ip: fd00:100::70
+        hostname: openbao03
+    ports:
+      - name: https-metrics
+        port: 9101
+        protocol: TCP

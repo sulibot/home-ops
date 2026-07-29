@@ -16,6 +16,8 @@ Operational and architecture documentation for the home-ops repository.
 
 - [FRR BGP architecture](frr-bgp-architecture.md)
 - [FRR BGP design specification](frr-bgp-design-specification.md)
+- [OpenBao HA cluster](openbao-ha-cluster.md)
+- [Cloud resilience: KMS and offsite backup](cloud-resilience.md)
 - [IP addressing layout](ip-addressing-layout.md)
 - [Network ASN allocation](NETWORK_ASN_ALLOCATION.md)
 - [Proxmox SDN EVPN setup](PROXMOX_SDN_EVPN_SETUP.md)

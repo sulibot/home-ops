@@ -37,7 +37,7 @@ proxmox:
 
 # Network tenants. mode drives bridge derivation: sdn -> vnet<id>, vlan -> vmbr0 tag <id>.
 tenants:
-  100: { purpose: "core service LXCs (kanidm, pki, tailscale)", mode: sdn }
+  100: { purpose: "core service LXCs (kanidm, openbao, pki, tailscale)", mode: sdn }
   101: { purpose: "cluster-101 (sol)", mode: sdn }
   104: { purpose: "cluster-104 (baremetal)", mode: sdn }
   200: { purpose: "shared infra (minio, zot, nixos guests)", mode: vlan }
@@ -59,6 +59,22 @@ services:
     # HA triplet; per-container placement/addressing stays in its terragrunt
     # heredoc by design (see ARCHITECTURE.md, Deferred).
     multi_instance: true
+
+  openbao:
+    role: openbao
+    tenant: 100
+    size: micro
+    # Keep the client VIP outside the nodes' connected /24 so every client
+    # routes through the fabric instead of attempting on-link ARP/NDP.
+    vip:
+      ipv4: 10.100.240.67
+      ipv6: fd00:100:0:240::67
+    instances:
+      openbao01: { suffix: 68, node: pve01 }
+      openbao02: { suffix: 69, node: pve02 }
+      openbao03: { suffix: 70, node: pve03 }
+    override:
+      swap_mb: 0 # Secret material must never be paged to unencrypted swap.
 
   minio:
     role: minio

@@ -46,6 +46,19 @@ data:
       raw_message_key raw_message
       storage.type filesystem
 
+    [INPUT]
+      Name syslog
+      Alias openbao-audit
+      Mode tcp
+      Listen 0.0.0.0
+      Port 2515
+      Parser syslog-rfc5424
+      Format octet_counting
+      Tag openbao.audit
+      source_address_key syslog_source_address
+      raw_message_key raw_message
+      storage.type filesystem
+
     [FILTER]
       Name modify
       Match talos
@@ -64,6 +77,23 @@ data:
       Set cluster cluster-101
       Set source_type pve
       Set stream_class host
+      Rename ident app
+      Copy message log
+
+    [FILTER]
+      Name parser
+      Match openbao.audit
+      Key_Name message
+      Parser json
+      Reserve_Data On
+      Preserve_Key On
+
+    [FILTER]
+      Name modify
+      Match openbao.audit
+      Set cluster cluster-101
+      Set source_type openbao-audit
+      Set stream_class security
       Rename ident app
       Copy message log
 
@@ -92,3 +122,32 @@ data:
       workers 2
       storage.total_limit_size 1G
       retry_limit false
+
+    [OUTPUT]
+      Name loki
+      Match openbao.audit
+      Host loki.observability.svc
+      Port 3100
+      label_keys $cluster,$source_type,$stream_class,$host,$app
+      labels job=fluentbit-infra
+      line_format json
+      compress gzip
+      workers 2
+      storage.total_limit_size 1G
+      retry_limit false
+
+    # Keep the security stream in the side-by-side VictoriaLogs evaluation.
+    # Bounded retries ensure an optional backend cannot block local/Loki audit.
+    [OUTPUT]
+      Name loki
+      Match openbao.audit
+      Host victoria-logs-victoria-logs-single-server.observability.svc
+      Port 9428
+      Uri /insert/loki/api/v1/push?_msg_field=log
+      label_keys $cluster,$source_type,$stream_class,$host,$app
+      labels job=fluentbit-infra
+      line_format json
+      compress gzip
+      workers 1
+      storage.total_limit_size 256M
+      retry_limit 3

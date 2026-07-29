@@ -174,7 +174,7 @@ locals {
     "apt-get update -qq",
     "apt-get install -y -qq kanidmd kanidm expect",
     "mkdir -p /etc/kanidm/tls /etc/systemd/system/kanidmd.service.d /etc/systemd/system/caddy.service.d /var/lib/kanidm /var/backups/kanidm/snapshots",
-    "cat > /usr/local/sbin/kanidm-write-config.sh <<'SCRIPT'\n#!/usr/bin/env bash\nset -euo pipefail\nIP4=\"$(ip -4 -o addr show dev eth0 scope global | awk '{print $4}' | cut -d/ -f1 | head -n1)\"\ncat > /etc/kanidmd/server.toml <<CFG\nversion = \"2\"\nlog_level = 'debug'\n# Baseline Kanidm config managed by Terraform provisioning.\nbindaddress = '[::]:8443'\nldapbindaddress = '[::]:3636'\ndomain = '$${local.kanidm_domain}'\norigin = '$${local.kanidm_origin}'\ndb_path = '/var/lib/kanidm/kanidm.db'\nrole = 'WriteReplica'\ntls_chain = '/etc/kanidmd/chain.pem'\ntls_key = '/etc/kanidmd/key.pem'\n[replication]\norigin = \"repl://$IP4:8444\"\nbindaddress = \"[::]:8444\"\nCFG\nSCRIPT",
+    "cat > /usr/local/sbin/kanidm-write-config.sh <<'SCRIPT'\n#!/usr/bin/env bash\nset -euo pipefail\nIP4=\"$(ip -4 -o addr show dev eth0 scope global | awk '{print $4}' | cut -d/ -f1 | head -n1)\"\n# Replication peers contain node identity certificates generated after first\n# boot. Preserve them when Terraform refreshes the baseline configuration.\nPARTNERS=\"\"\nif [ -f /etc/kanidmd/server.toml ]; then\n  PARTNERS=\"$(sed -n '/^\\[replication\\.\"/,$p' /etc/kanidmd/server.toml)\"\nfi\ncat > /etc/kanidmd/server.toml <<CFG\nversion = \"2\"\nlog_level = 'debug'\n# Baseline Kanidm config managed by Terraform provisioning.\nbindaddress = '[::]:8443'\nldapbindaddress = '[::]:3636'\ndomain = '$${local.kanidm_domain}'\norigin = '$${local.kanidm_origin}'\ndb_path = '/var/lib/kanidm/kanidm.db'\nrole = 'WriteReplica'\ntls_chain = '/etc/kanidmd/chain.pem'\ntls_key = '/etc/kanidmd/key.pem'\n[replication]\norigin = \"repl://$IP4:8444\"\nbindaddress = \"[::]:8444\"\nCFG\nif [ -n \"$PARTNERS\" ]; then\n  printf '\\n%s\\n' \"$PARTNERS\" >> /etc/kanidmd/server.toml\nfi\nSCRIPT",
     "chmod 750 /usr/local/sbin/kanidm-write-config.sh",
     "/usr/local/sbin/kanidm-write-config.sh",
     "cat > /etc/systemd/system/kanidmd.service.d/override.conf <<'UNIT'\n[Service]\n# LXC compatibility: disable namespace isolation directives that fail in unprivileged containers.\nDynamicUser=no\nUser=root\nGroup=kanidmd\nPrivateTmp=false\nPrivateDevices=false\nProtectHostname=false\nProtectClock=false\nProtectKernelTunables=false\nProtectKernelModules=false\nProtectKernelLogs=false\nProtectControlGroups=false\nMemoryDenyWriteExecute=false\nNoNewPrivileges=false\n# Persist kanidmd logs in-file because journald/rsyslog are constrained in this LXC profile.\nStandardOutput=append:/var/log/kanidmd.log\nStandardError=append:/var/log/kanidmd.log\nUNIT",
@@ -495,7 +495,7 @@ resource "null_resource" "kanidm_replication_bootstrap" {
   depends_on = [module.kanidm_lxc, null_resource.kanidm_lxc_features, null_resource.kanidm_tls_sync]
 
   triggers = {
-    bootstrap_rev = "repl-bootstrap-v5"
+    bootstrap_rev = "repl-bootstrap-v6-primary-seeded"
     nodes         = join(",", local.kanidm_nodes)
   }
 
@@ -517,6 +517,10 @@ resource "null_resource" "kanidm_replication_bootstrap" {
 
       cfg() {
         local self="$1" p1="$2" c1="$3" p2="$4" c2="$5"
+        local auto1=""
+        if [ "$self" != "10.100.0.61" ] && [ "$p1" = "10.100.0.61" ]; then
+          auto1="automatic_refresh = true"
+        fi
         cat <<EOF
 # Baseline Kanidm config managed by Terraform provisioning.
 bindaddress = '[::]:8443'
@@ -535,6 +539,7 @@ bindaddress = '[::]:8444'
 [replication."repl://$p1:8444"]
 type = 'mutual-pull'
 partner_cert = '$c1'
+$auto1
 
 [replication."repl://$p2:8444"]
 type = 'mutual-pull'
@@ -583,9 +588,9 @@ systemctl is-active kanidmd
         fi
 
         echo "replication domain UUID mismatch (attempt $attempt): 61=$U61 62=$U62 63=$U63"
+        # node01 is canonical. Never refresh it from an unseeded secondary.
         refresh_node 10.100.0.62
         refresh_node 10.100.0.63
-        refresh_node 10.100.0.61
         sleep 5
       done
 

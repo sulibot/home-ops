@@ -6,5 +6,6 @@ resources:
   - ./namespace.yaml
   - ./external-secrets/ks.yaml
   - ./onepassword/ks.yaml
+  - ./openbao/ks.yaml
   # external-secrets-dashboard is intentionally excluded from Tier 0:
   # it depends on grafana-instance (Tier 1) and must not create cross-tier dependencies.
