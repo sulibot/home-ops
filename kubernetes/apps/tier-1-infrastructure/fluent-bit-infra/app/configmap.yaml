@@ -50,7 +50,7 @@ data:
       Name syslog
       Alias openbao-audit
       Mode tcp
-      Listen 0.0.0.0
+      Listen ::
       Port 2515
       Parser syslog-rfc5424
       Format octet_counting
