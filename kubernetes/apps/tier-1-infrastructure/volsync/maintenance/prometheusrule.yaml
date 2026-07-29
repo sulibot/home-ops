@@ -110,7 +110,13 @@ spec:
         # Alert on backup job failures (using Job metrics)
         - alert: VolsyncMoverJobFailed
           expr: |
-            increase(kube_job_status_failed{job_name=~"volsync-.*"}[30m]) > 0
+            max_over_time(
+              kube_job_failed{
+                condition="true",
+                job_name=~"volsync-.*",
+                job_name!~"volsync-offsite-.*"
+              }[30m]
+            ) > 0
           for: 5m
           labels:
             severity: warning
@@ -149,8 +155,9 @@ spec:
 
         - alert: OffsiteBackupJobFailed
           expr: |
-            increase(
-              kube_job_status_failed{
+            max_over_time(
+              kube_job_failed{
+                condition="true",
                 job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
               }[1h]
             ) > 0
@@ -165,7 +172,86 @@ spec:
 
               Check logs:
               kubectl logs -n {{ $labels.namespace }} job/{{ $labels.job_name }} --tail=200
-            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
+
+        - alert: OffsiteBackupCronJobsMissing
+          expr: |
+            count(
+              kube_cronjob_info{
+                namespace=~"volsync-system|backup-restore-drill",
+                cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill"
+              }
+            ) < 6
+          for: 15m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "One or more offsite backup CronJobs are missing"
+            description: |
+              Prometheus can see fewer than the six GitOps-managed offsite
+              backup and restore-drill CronJobs. Check Flux reconciliation and
+              kube-state-metrics before relying on the backup schedule.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
+
+        - alert: OffsiteBackupCredentialsNotReady
+          expr: |
+            externalsecret_status_condition{
+              condition="Ready",
+              status="False",
+              name=~"volsync-offsite-s3|cnpg-offsite-restore-s3",
+              exported_namespace=~"volsync-system|backup-restore-drill"
+            } == 1
+          for: 15m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Offsite backup credentials are not ready"
+            description: |
+              ExternalSecret {{ $labels.exported_namespace }}/{{ $labels.name }}
+              has not reconciled. Offsite backup or restore jobs that consume
+              the generated Secret will fail.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
+
+        - alert: OffsiteBackupJobLongRunning
+          expr: |
+            (
+              kube_job_status_active{
+                job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
+              } > 0
+              and on(namespace, job_name)
+              (
+                time() -
+                kube_job_status_start_time{
+                  job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
+                }
+              ) > 10800
+            )
+            or
+            (
+              kube_job_status_active{
+                job_name=~"gcs-content-archive-.*"
+              } > 0
+              and on(namespace, job_name)
+              (
+                time() -
+                kube_job_status_start_time{
+                  job_name=~"gcs-content-archive-.*"
+                }
+              ) > 108000
+            )
+          for: 15m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Offsite backup job {{ $labels.job_name }} is running too long"
+            description: |
+              The job is approaching its active deadline. Non-archive jobs
+              alert after three hours; the bandwidth-limited GCS archive alerts
+              after thirty hours.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
 
         - alert: OffsiteHotReplicationStale
           expr: |
@@ -176,6 +262,31 @@ spec:
                 cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
               }
             ) > 50400
+            and on(namespace, cronjob)
+            kube_cronjob_spec_suspend{
+              namespace="volsync-system",
+              cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
+            } == 0
+            or
+            (
+              (
+                time() -
+                kube_cronjob_created{
+                  namespace="volsync-system",
+                  cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
+                }
+              ) > 50400
+              and on(namespace, cronjob)
+              kube_cronjob_spec_suspend{
+                namespace="volsync-system",
+                cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
+              } == 0
+            )
+            unless on(namespace, cronjob)
+            kube_cronjob_status_last_successful_time{
+              namespace="volsync-system",
+              cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
+            }
           for: 1h
           labels:
             severity: warning
@@ -185,7 +296,7 @@ spec:
             description: |
               {{ $labels.cronjob }} has not completed successfully in more than
               14 hours. The intended schedule is every six hours.
-            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
 
         - alert: GCSContentArchiveStale
           expr: |
@@ -196,6 +307,31 @@ spec:
                 cronjob="gcs-content-archive"
               }
             ) > 777600
+            and on(namespace, cronjob)
+            kube_cronjob_spec_suspend{
+              namespace="volsync-system",
+              cronjob="gcs-content-archive"
+            } == 0
+            or
+            (
+              (
+                time() -
+                kube_cronjob_created{
+                  namespace="volsync-system",
+                  cronjob="gcs-content-archive"
+                }
+              ) > 777600
+              and on(namespace, cronjob)
+              kube_cronjob_spec_suspend{
+                namespace="volsync-system",
+                cronjob="gcs-content-archive"
+              } == 0
+            )
+            unless on(namespace, cronjob)
+            kube_cronjob_status_last_successful_time{
+              namespace="volsync-system",
+              cronjob="gcs-content-archive"
+            }
           for: 6h
           labels:
             severity: warning
@@ -205,7 +341,7 @@ spec:
             description: |
               The weekly encrypted content archive has not completed
               successfully in more than nine days.
-            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
 
         - alert: GCSContentRestoreDrillStale
           expr: |
@@ -216,6 +352,31 @@ spec:
                 cronjob="gcs-content-restore-drill"
               }
             ) > 3888000
+            and on(namespace, cronjob)
+            kube_cronjob_spec_suspend{
+              namespace="volsync-system",
+              cronjob="gcs-content-restore-drill"
+            } == 0
+            or
+            (
+              (
+                time() -
+                kube_cronjob_created{
+                  namespace="volsync-system",
+                  cronjob="gcs-content-restore-drill"
+                }
+              ) > 3888000
+              and on(namespace, cronjob)
+              kube_cronjob_spec_suspend{
+                namespace="volsync-system",
+                cronjob="gcs-content-restore-drill"
+              } == 0
+            )
+            unless on(namespace, cronjob)
+            kube_cronjob_status_last_successful_time{
+              namespace="volsync-system",
+              cronjob="gcs-content-restore-drill"
+            }
           for: 6h
           labels:
             severity: warning
@@ -225,7 +386,7 @@ spec:
             description: |
               The monthly encrypted content restore drill has not completed
               successfully in more than 45 days.
-            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
 
         - alert: OffsiteRestoreDrillStale
           expr: |
@@ -236,6 +397,31 @@ spec:
                 cronjob="volsync-offsite-restore-drill"
               }
             ) > 1209600
+            and on(namespace, cronjob)
+            kube_cronjob_spec_suspend{
+              namespace="volsync-system",
+              cronjob="volsync-offsite-restore-drill"
+            } == 0
+            or
+            (
+              (
+                time() -
+                kube_cronjob_created{
+                  namespace="volsync-system",
+                  cronjob="volsync-offsite-restore-drill"
+                }
+              ) > 1209600
+              and on(namespace, cronjob)
+              kube_cronjob_spec_suspend{
+                namespace="volsync-system",
+                cronjob="volsync-offsite-restore-drill"
+              } == 0
+            )
+            unless on(namespace, cronjob)
+            kube_cronjob_status_last_successful_time{
+              namespace="volsync-system",
+              cronjob="volsync-offsite-restore-drill"
+            }
             or
             (
               time() -
@@ -244,6 +430,31 @@ spec:
                 cronjob="cnpg-offsite-restore-drill"
               }
             ) > 3888000
+            and on(namespace, cronjob)
+            kube_cronjob_spec_suspend{
+              namespace="backup-restore-drill",
+              cronjob="cnpg-offsite-restore-drill"
+            } == 0
+            or
+            (
+              (
+                time() -
+                kube_cronjob_created{
+                  namespace="backup-restore-drill",
+                  cronjob="cnpg-offsite-restore-drill"
+                }
+              ) > 3888000
+              and on(namespace, cronjob)
+              kube_cronjob_spec_suspend{
+                namespace="backup-restore-drill",
+                cronjob="cnpg-offsite-restore-drill"
+              } == 0
+            )
+            unless on(namespace, cronjob)
+            kube_cronjob_status_last_successful_time{
+              namespace="backup-restore-drill",
+              cronjob="cnpg-offsite-restore-drill"
+            }
           for: 6h
           labels:
             severity: warning
@@ -253,4 +464,4 @@ spec:
             description: |
               The scheduled offsite restore drill has exceeded its allowed
               success interval. Kopia runs weekly; CNPG runs monthly.
-            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"

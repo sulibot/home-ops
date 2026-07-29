@@ -131,8 +131,24 @@ spec:
 
                   mkdir -p /tmp/manifests
 
+                  # Immich recommends protecting original assets and the
+                  # database together. Refuse to archive a stale dump set.
+                  if ! find /content/backups \
+                    -maxdepth 1 \
+                    -type f \
+                    -name '*.sql.gz' \
+                    -mtime -3 \
+                    -print \
+                    -quit |
+                    grep -q .; then
+                    echo "No Immich database dump newer than 72 hours" >&2
+                    exit 1
+                  fi
+
                   archive_path /content/library immich/library immich-library
                   archive_path /content/upload immich/upload immich-upload
+                  archive_path /content/profile immich/profile immich-profile
+                  archive_path /content/backups immich/backups immich-backups
                   archive_path /content/users users users
                   archive_path /content/data/media/music media/music music
                   archive_path /content/data/media/audiobooks media/audiobooks audiobooks

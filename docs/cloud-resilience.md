@@ -22,6 +22,8 @@ The content archive uses an allowlist. It reads only:
 
 - `/content/library` - Immich originals;
 - `/content/upload` - Immich upload staging;
+- `/content/profile` - Immich user profile images;
+- `/content/backups` - Immich application-managed database dumps;
 - `/content/users` - all user storage, including future data;
 - `/content/data/media/music`;
 - `/content/data/media/audiobooks`;
@@ -36,10 +38,11 @@ It deliberately does not traverse:
 - torrents, Usenet, Soulseek downloads, and other download staging;
 - Immich thumbnails, encoded video, profile images, and other derivatives.
 
-Current measured content is approximately 60 GB of Immich originals, 184 GB
-of music, 2.2 GB of audiobooks, and a small books tree. Size the Immich library
+Current measured content is approximately 60 GB of Immich originals, 293 MB of
+pending/legacy Immich uploads, 793 MB of Immich database dumps, 184 GB of
+music, 2.2 GB of audiobooks, and a small books tree. Size the Immich library
 for three times its current size, or about 181 GB. The resulting planned cold
-set is approximately 367 GB plus future user storage.
+set is approximately 368 GB plus future user storage.
 
 The selected MinIO data is copied logically through S3:
 
@@ -60,20 +63,20 @@ At the planned sizes:
   USD 0.41/month;
 - adding an estimated 80 GB PBS working set would make B2 approximately
   USD 0.96/month before retained deltas;
-- 367 GB in GCS Archive is approximately USD 0.44/month;
+- 368 GB in GCS Archive is approximately USD 0.44/month;
 - user storage growth increases GCS Archive by approximately USD 0.0012 per GB
   per month.
 
 GCS Archive retrieval costs USD 0.05/GiB and internet egress is normally USD
-0.12/GiB at this scale. A complete 367 GiB cold recovery is therefore
-approximately USD 62.39 plus request charges. Reads are immediate.
+0.12/GiB at this scale. A complete 368 GiB cold recovery is therefore
+approximately USD 62.56 plus request charges. Reads are immediate.
 
 Archive has a rolling 365-day minimum storage duration per object. This is a
 billing rule, not a locked retention policy or annual account contract. An
 object can be deleted at any time, but deleting, replacing, or rewriting it
 before day 365 bills the remaining storage duration. At this storage price,
-deleting the entire planned 367 GB set immediately would cap the storage
-commitment at approximately USD 5.28. Do not configure or lock a GCS bucket
+deleting the entire planned 368 GB set immediately would cap the storage
+commitment at approximately USD 5.30. Do not configure or lock a GCS bucket
 retention policy.
 
 ## Kubernetes implementation
@@ -98,7 +101,8 @@ duration in its logs, and removes the Cluster and PVC.
 All new CronJobs are initially suspended. This prevents predictable alert
 noise and failed Jobs before the provider buckets and least-privilege
 credentials exist. Unsuspend them only after completing the provisioning and
-bootstrap checklist below.
+bootstrap checklist below and after the data owner approves the allowlist in
+this document.
 
 ## Provider provisioning
 
@@ -270,6 +274,14 @@ delete the source archive until the target restore test passes.
 
 The first successful drills establish the measured RTO. Do not claim an RTO
 until those results exist.
+
+The `SRE Offsite Backup` Grafana dashboard and the
+[offsite backup monitoring runbook](runbooks/offsite-backup-monitoring.md)
+implement the operating view. Alerts also cover missing CronJobs, credentials
+that are not Ready, failed Jobs, long-running Jobs, and schedules that have
+never succeeded. Provider consoles remain authoritative for stored bytes and
+cost: GCP budget alerts are configured, and GCS/B2 capacity is reviewed
+monthly rather than paging on normal archive growth.
 
 ## Provider comparison
 
