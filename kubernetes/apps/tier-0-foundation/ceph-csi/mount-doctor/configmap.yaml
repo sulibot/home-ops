@@ -87,8 +87,16 @@ data:
         broken_total=$((broken_total + 1))
         echo "node=$node plugin=$pod status=broken-staging vol=$vid attached=false auto_fix=$AUTO_FIX"
         if [ "$AUTO_FIX" = "true" ]; then
+          # kubelet's own volume reconciliation can race ahead and clean the
+          # staging dir itself between detection above and this remediation
+          # step (especially likely right after a node reboot, seen
+          # 2026-07-28: 7/11 "broken" dirs were already gone by the time this
+          # ran). `umount -l` on an already-gone path exits 32 ("not
+          # mounted"), which used to be reported as REMEDIATE_STAGING_FAILED
+          # even though the goal state (no stale staging dir) was already
+          # achieved - check existence first so that case counts as success.
           kubectl -n ceph-csi exec "$pod" -c csi-cephfsplugin -- sh -c \
-            "umount -l /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid/globalmount && rm -rf /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid" \
+            "[ -d /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid ] || exit 0; umount -l /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid/globalmount 2>/dev/null; rm -rf /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/$vid" \
             </dev/null \
             && { echo "REMEDIATED_STAGING node=$node vol=$vid"; remediated=$((remediated + 1)); } \
             || echo "REMEDIATE_STAGING_FAILED node=$node vol=$vid" >&2
