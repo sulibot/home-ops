@@ -155,6 +155,8 @@ jobs:
           if ! terragrunt run --all --non-interactive -- \
             plan -no-color > plan.txt 2>&1; then
             echo "::error::OpenTofu plan failed. Detailed output is withheld from this public repository's logs."
+            echo "Error titles:"
+            grep -E "Error:|ERROR " plan.txt | tail -20 || true
             exit 1
           fi
 
