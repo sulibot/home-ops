@@ -1,6 +1,9 @@
 version: 2
 ethernets:
-  ens18:
+  uplink:
+    match:
+      name: "en*"
+    set-name: eth0
     dhcp4: false
     dhcp6: false
     addresses:
