@@ -42,6 +42,7 @@ jobs:
             terraform 1.14.0
             terragrunt 0.93.8
             jq 1.7.1
+            python 3.13.11
 
       - name: Setup Python yq
         run: |
