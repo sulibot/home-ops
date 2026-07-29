@@ -97,9 +97,9 @@ spec:
 
                   common_args="
                     --config=${config}
-                    --checkers=8
-                    --transfers=4
-                    --bwlimit=8Mi
+                    --checkers=16
+                    --transfers=8
+                    --bwlimit=32Mi
                     --fast-list
                     --stats=5m
                     --stats-one-line
