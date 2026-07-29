@@ -91,7 +91,7 @@
   gather_facts: false
   tags: [guests]
   vars:
-    user_storage_secret_path: /etc/ceph/ceph.client.sulibot-cloud.secret
+    user_storage_keyring_path: /etc/ceph/ceph.client.sulibot-cloud.keyring
   tasks:
     - name: Create Ceph configuration directory
       ansible.builtin.file:
@@ -101,10 +101,26 @@
         group: root
         mode: "0755"
 
-    - name: Install the path-scoped CephX secret
+    - name: Install minimal Ceph client configuration
+      when: user_storage_os == "debian"
       ansible.builtin.copy:
-        content: "{{ hostvars['pve01'].user_storage_ceph_key.stdout }}\n"
-        dest: "{{ user_storage_secret_path }}"
+        dest: /etc/ceph/ceph.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [global]
+          fsid = 407036f5-1f73-44ff-ba81-1f219b7a8a64
+          mon_host = fc00:20::1 fc00:20::2 fc00:20::3
+          ms_bind_ipv4 = false
+          ms_bind_ipv6 = true
+
+    - name: Install the path-scoped CephX keyring
+      ansible.builtin.copy:
+        content: |
+          [client.sulibot-cloud]
+            key = {{ hostvars['pve01'].user_storage_ceph_key.stdout }}
+        dest: "{{ user_storage_keyring_path }}"
         owner: root
         group: root
         mode: "0600"
@@ -119,7 +135,6 @@
               - acl
               - attr
               - ceph-common
-              - kanidm-unixd-clients
             state: present
             update_cache: true
 
@@ -139,16 +154,16 @@
               What=sulibot-cloud@.content=/users/sulibot/Cloud
               Where=/home/sulibot/Cloud
               Type=ceph
-              Options=_netdev,mon_addr=[fc00:20::1]:6789/[fc00:20::2]:6789/[fc00:20::3]:6789,secretfile=/etc/ceph/ceph.client.sulibot-cloud.secret
+              Options=_netdev
 
               [Install]
               WantedBy=multi-user.target
 
-        - name: Enable the Debian CephFS mount
+        - name: Gate the Debian CephFS mount on validated messenger routing
           ansible.builtin.systemd_service:
             name: home-sulibot-Cloud.mount
-            enabled: true
-            state: started
+            enabled: "{{ user_storage_vm_mount_enabled | default(false) | bool }}"
+            state: "{{ (user_storage_vm_mount_enabled | default(false) | bool) | ternary('started', 'stopped') }}"
             daemon_reload: true
 
 - name: Validate identity and mount presentation
@@ -162,6 +177,17 @@
         argv: [getent, passwd, "{{ user_storage_username }}"]
       register: user_storage_getent
       changed_when: false
+      failed_when: false
+
+    - name: Require a provisioned Kanidm POSIX account
+      ansible.builtin.assert:
+        that:
+          - user_storage_getent.rc == 0
+          - user_storage_getent.stdout.split(':') | length >= 4
+        fail_msg: >-
+          {{ user_storage_username }} does not resolve through Kanidm. POSIX-enable
+          the canonical Kanidm person, add it to posix_group, and install a
+          server-compatible unixd client before granting filesystem access.
 
     - name: Record the Kanidm numeric UID
       ansible.builtin.set_fact:

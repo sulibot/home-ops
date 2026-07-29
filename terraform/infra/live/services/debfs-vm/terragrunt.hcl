@@ -67,13 +67,13 @@ inputs = {
   network = {
     bridge       = local.guest.network.bridge
     vlan_id      = local.guest.network.vlan_id
-    ipv4_address = local.guest.ipv4
+    ipv4_address = local.guest.ipv4_cidr
     ipv4_gateway = local.guest.network.ipv4_gateway
-    ipv6_address = local.guest.ipv6
+    ipv6_address = local.guest.ipv6_cidr
     ipv6_gateway = local.guest.network.ipv6_gateway
   }
 
-  dns_servers      = ["10.255.0.11", "fd00:0:0:ffff::11"]
+  dns_servers      = [local.catalog.site.dns_servers.ipv4, local.catalog.site.dns_servers.ipv6]
   ssh_public_key   = trimspace(file(pathexpand("~/.ssh/id_ed25519.pub")))
   debian_version   = "13"
   debian_image_url = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
@@ -81,7 +81,6 @@ inputs = {
     "acl",
     "attr",
     "ceph-common",
-    "kanidm-unixd-clients",
     "qemu-guest-agent",
   ]
   setup_script = <<-SCRIPT
@@ -89,7 +88,9 @@ inputs = {
     printf '%s\n' 'uri = "https://idm.sulibot.com"' > /etc/kanidm/config
     printf '%s\n' 'version = "2"' '[kanidm]' 'pam_allowed_login_groups = ["posix_group"]' > /etc/kanidm/unixd
     chmod 0600 /etc/kanidm/config /etc/kanidm/unixd
-    systemctl enable --now kanidm-unixd kanidm-unixd-tasks
+    if command -v kanidm_unixd >/dev/null 2>&1; then
+      systemctl enable --now kanidm-unixd kanidm-unixd-tasks
+    fi
     install -d -m 0750 /home/sulibot /home/sulibot/Cloud
   SCRIPT
   tags         = ["vm", "user-storage-validation"]

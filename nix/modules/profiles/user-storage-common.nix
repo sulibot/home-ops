@@ -10,6 +10,7 @@
     acl
     attr
     ceph
+    python3
   ];
 
   systemd.tmpfiles.rules = [

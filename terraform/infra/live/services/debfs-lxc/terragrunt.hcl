@@ -8,7 +8,6 @@ include "root" {
 locals {
   proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
   catalog       = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  kanidm_auth   = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
   guest         = local.catalog.services["debfs-lxc"]
   credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
@@ -60,7 +59,7 @@ inputs = {
     file_id   = local.catalog.lxc_defaults.template_file_id
   }
 
-  dns_servers = ["10.255.0.11", "fd00:0:0:ffff::11"]
+  dns_servers = [local.catalog.site.dns_servers.ipv4, local.catalog.site.dns_servers.ipv6]
 
   containers = {
     (local.guest.hostname) = {
@@ -97,12 +96,10 @@ inputs = {
     ssh_private_key    = file(pathexpand("~/.ssh/id_ed25519"))
     ssh_timeout        = "5m"
     wait_for_cloudinit = false
-    commands = concat(
-      [
-        "apt-get update -qq",
-        "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr",
-      ],
-      local.kanidm_auth.kanidm_unix_auth_commands,
-    )
+    commands = [
+      "apt-get update -qq",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr",
+      "install -d -m 0750 /home/sulibot /home/sulibot/Cloud",
+    ]
   }
 }
