@@ -238,6 +238,12 @@ STORAGE_USERS_POSIX_WATCH_TYPE=cephfs
 Bulk moves between OpenCloud Spaces, symlinks, and mass external deletion are
 not supported operating patterns. Stop writers before bulk maintenance.
 
+The pinned OpenCloud 5.2.0 image is deployed with
+`OC_EXCLUDE_RUN_SERVICES=search`: on a new config volume this release
+reproducibly creates an empty Bleve mapping and exits. Search is not required
+for sync, WebDAV, direct file access, or iOS access. Remove the exclusion only
+after validating a newer OpenCloud release against a freshly created index.
+
 ## Failure behavior
 
 | Failure | Effect | Recovery |
