@@ -50,6 +50,7 @@ Authentik's login identities come from.
   - `access_token_url`: `https://idm.sulibot.com/oauth2/token`
   - `profile_url`: `https://idm.sulibot.com/oauth2/openid/authentik/userinfo`
   - `oidc_jwks_url`: `https://idm.sulibot.com/oauth2/openid/authentik/public_key.jwk`
+  - `pkce`: `S256` (required by the Kanidm OAuth2 client)
   - `consumer_key`/`consumer_secret`: `!Env KANIDM_OIDC_CLIENT_ID` /
     `!Env KANIDM_OIDC_CLIENT_SECRET`
 - `externalsecret.yaml`: add `KANIDM_OIDC_CLIENT_ID` /

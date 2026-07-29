@@ -27,6 +27,7 @@ entries:
       profile_url: "https://idm.sulibot.com/oauth2/openid/authentik/userinfo"
       oidc_jwks_url: "https://idm.sulibot.com/oauth2/openid/authentik/public_key.jwk"
       oidc_jwks: {}
+      pkce: S256
       additional_scopes: "email profile"
       user_matching_mode: identifier
       user_path_template: "goauthentik.io/sources/%(slug)s"
