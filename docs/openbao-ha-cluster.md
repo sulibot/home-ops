@@ -191,8 +191,10 @@ The configured ownership boundaries are:
   `transit/keys/sops` in the same key group. Either recipient can recover the
   data key; Flux bootstrap remains age-only and does not depend on OpenBao.
 - The file and syslog audit devices are both enabled. Local audit files rotate
-  safely with `SIGHUP`; rsyslog forwards the security stream over IPv6 to
-  Fluent Bit on TCP 2515 for Loki and the VictoriaLogs trial.
+  safely with `SIGHUP`; rsyslog forwards the security stream to Fluent Bit on
+  TCP 2515 for Loki and the VictoriaLogs trial. The receiver is dual-stack,
+  but tenant 100 currently uses its IPv4 VIP until the fabric forwards the
+  Cilium LoadBalancer IPv6 `/128` across tenants.
 
 Use a scoped automation session instead of exporting the root token:
 

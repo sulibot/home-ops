@@ -92,7 +92,7 @@ for node in "${ordered_nodes[@]}"; do
       OPENBAO_GCP_KMS_LOCATION='global' \
       OPENBAO_GCP_KMS_KEY_RING='openbao' \
       OPENBAO_GCP_KMS_CRYPTO_KEY='auto-unseal' \
-      OPENBAO_AUDIT_SYSLOG_HOST='fd00:101:250::125' \
+      OPENBAO_AUDIT_SYSLOG_HOST='10.101.250.125' \
       OPENBAO_AUDIT_SYSLOG_PORT='2515' \
       OPENBAO_ALLOW_INITIALIZED_CONFIG_CHANGE='true' \
       /usr/local/sbin/openbao-provision"

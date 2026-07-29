@@ -263,7 +263,7 @@ cat >/etc/rsyslog.d/30-openbao-audit.conf <<EOF
 if \$programname == 'openbao-audit' then {
   action(
     type="omfwd"
-    target="${OPENBAO_AUDIT_SYSLOG_HOST:-fd00:101:250::125}"
+    target="${OPENBAO_AUDIT_SYSLOG_HOST:-10.101.250.125}"
     port="${OPENBAO_AUDIT_SYSLOG_PORT:-2515}"
     protocol="tcp"
     TCP_Framing="octet-counted"
