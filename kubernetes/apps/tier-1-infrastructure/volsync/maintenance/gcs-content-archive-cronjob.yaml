@@ -33,11 +33,12 @@ spec:
           restartPolicy: Never
           automountServiceAccountToken: false
           securityContext:
-            # Root is required to read all user trees. The source mount and root
-            # filesystem remain read-only and the pod has no Kubernetes token.
-            runAsUser: 0
-            runAsGroup: 0
-            runAsNonRoot: false
+            # The shared content tree is owned by 1000:1000. Running as root
+            # fails on the users subtree because CephFS applies root-squash.
+            # The source mount remains read-only and the pod has no API token.
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
           containers:
@@ -217,9 +218,9 @@ spec:
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
-                runAsNonRoot: false
-                runAsUser: 0
-                runAsGroup: 0
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
                 capabilities:
                   drop: ["ALL"]
               volumeMounts:
