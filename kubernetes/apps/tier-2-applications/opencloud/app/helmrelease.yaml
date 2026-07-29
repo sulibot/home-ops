@@ -71,8 +71,8 @@ spec:
               STORAGE_USERS_POSIX_ROOT: /srv/user-files
               STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: '{{ "{{.User.Username | lower}}" }}/Cloud'
               STORAGE_USERS_POSIX_WATCH_FS: "true"
-              STORAGE_USERS_POSIX_WATCH_TYPE: cephfs
-              STORAGE_USERS_POSIX_WATCH_ROOT: /srv/user-files
+              STORAGE_USERS_POSIX_WATCH_TYPE: inotifywait
+              STORAGE_USERS_POSIX_WATCH_PATH: /srv/user-files
               OC_ENABLE_OCM: "false"
               PROXY_HTTP_ADDR: 0.0.0.0:9200
               PROXY_TLS: "false"

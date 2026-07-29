@@ -232,8 +232,14 @@ modify the tree externally. Required settings include:
 STORAGE_USERS_DRIVER=posix
 STORAGE_USERS_POSIX_ROOT=/srv/user-files
 STORAGE_USERS_POSIX_WATCH_FS=true
-STORAGE_USERS_POSIX_WATCH_TYPE=cephfs
+STORAGE_USERS_POSIX_WATCH_TYPE=inotifywait
+STORAGE_USERS_POSIX_WATCH_PATH=/srv/user-files
 ```
+
+The OpenCloud `cephfs` watcher type consumes CephFS change notifications from
+Kafka; it is not a direct watcher for a mounted CephFS tree. This stack does not
+run Kafka, so it uses `inotifywait` on the mounted tree. Validate cross-client
+create, update, rename, and delete events before expanding beyond `sulibot`.
 
 Bulk moves between OpenCloud Spaces, symlinks, and mass external deletion are
 not supported operating patterns. Stop writers before bulk maintenance.
