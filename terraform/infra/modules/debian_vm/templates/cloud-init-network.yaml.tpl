@@ -1,6 +1,6 @@
 version: 2
 ethernets:
-  eth0:
+  ens18:
     dhcp4: false
     dhcp6: false
     addresses:
