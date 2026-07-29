@@ -89,8 +89,15 @@ Use separate buckets and separate application keys:
    - Object Lock with a short governance retention period.
    - Upload-only key without delete, retention-management, or
      governance-bypass capabilities.
-   - Encrypted OpenBao Raft snapshots, RouterOS exports, recovery manifests,
+   - Terraform state copied from the dedicated GCS backend every six hours,
+     encrypted OpenBao Raft snapshots, RouterOS exports, recovery manifests,
      and other small break-glass artifacts.
+
+Terraform state is authoritative in the regional Standard-class
+`sulibot-terraform-state` GCS bucket, not in MinIO or the Archive-class content
+bucket. The `gcs-terraform-state-offsite-copy` CronJob uses a separate
+read-only GCS identity and an upload-only B2 identity; it never synchronizes
+deletions. See `docs/runbooks/terraform-state-gcs.md`.
 
 The existing B2 master-capability credential in 1Password is for account
 administration only. Do not install it in PBS, Kubernetes, an LXC, or

@@ -75,7 +75,7 @@ generate "main" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF2
 terraform {
-  backend "local" {}
+  backend "gcs" {}
 
   required_providers {
     proxmox = { source = "bpg/proxmox", version = "${local.lxc_catalog.lxc_defaults.provider_version}" }

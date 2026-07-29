@@ -8,4 +8,5 @@ resources:
   - ./stuck-restore-detection-cronjob.yaml
   - ./volumeattachment-stuck-cleanup-cronjob.yaml
   - ./backup-verification-cronjob.yaml
+  - ./gcs-terraform-state-offsite-copy-cronjob.yaml
   - ./prometheusrule.yaml

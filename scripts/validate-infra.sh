@@ -3,7 +3,7 @@
 # in CI; fails fast on the mistakes the layout can't prevent by itself:
 #   1. site.yaml edited without regenerating site.json / INVENTORY.md
 #   2. a cluster.hcl missing required contract fields
-#   3. terragrunt configs that no longer evaluate/validate
+#   3. terragrunt HCL that no longer parses
 #   4. nix hosts that no longer evaluate
 set -uo pipefail
 
@@ -38,19 +38,17 @@ for cluster_hcl in terraform/infra/live/clusters/cluster-*/cluster.hcl; do
   fi
 done
 
-# ── 3. Terragrunt validate (offline-safe units) ─────────────────────────────
-# cloudflare-access is excluded: its S3 state backend requires network access.
-UNITS=$(find terraform/infra/live/clusters/cluster-* terraform/infra/live/services \
-  -name terragrunt.hcl -not -path '*cache*' -not -path '*cloudflare-access*' \
-  -exec dirname {} \; | sort)
-for unit in $UNITS; do
-  if out=$(cd "$unit" && terragrunt validate -no-color 2>&1); then
-    ok "terragrunt validate: ${unit#terraform/infra/live/}"
+# ── 3. Terragrunt HCL syntax (offline and secret-free) ──────────────────────
+# Feed each file to the formatter parser via stdin so validation does not
+# evaluate live backends, dependency outputs, encrypted locals, or host files.
+while IFS= read -r hcl_file; do
+  if terragrunt hcl fmt --stdin < "$hcl_file" >/dev/null 2>&1; then
+    ok "terragrunt HCL: ${hcl_file#terraform/infra/}"
   else
-    fail "terragrunt validate: ${unit#terraform/infra/live/}"
-    echo "$out" | tail -5 >&2
+    fail "terragrunt HCL: ${hcl_file#terraform/infra/}"
   fi
-done
+done < <(find terraform/infra -name '*.hcl' -not -name '.terraform.lock.hcl' \
+  -not -path '*/.terragrunt-cache/*' | sort)
 
 # ── 4. Nix hosts evaluate ────────────────────────────────────────────────────
 if command -v nix >/dev/null 2>&1; then

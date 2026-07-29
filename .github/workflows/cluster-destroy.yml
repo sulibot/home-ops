@@ -42,7 +42,7 @@ env:
 jobs:
   validate:
     name: Validate Destruction Request
-    runs-on: self-hosted
+    runs-on: home-ops-runner
     steps:
       - name: Verify confirmation
         run: |
@@ -72,7 +72,7 @@ jobs:
 
   destroy:
     name: Destroy Cluster ${{ github.event.inputs.cluster_id }}
-    runs-on: self-hosted
+    runs-on: home-ops-runner
     needs: validate
     timeout-minutes: 45
 

@@ -130,7 +130,7 @@ generate "backend" {
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
     terraform {
-      backend "local" {
+      backend "gcs" {
         path = "${get_terragrunt_dir()}/.state/terraform.tfstate"
       }
     }
