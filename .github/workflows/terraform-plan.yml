@@ -135,6 +135,23 @@ jobs:
             sops 3.12.1
             jq 1.7.1
 
+      - name: Restore artifact registry catalog
+        working-directory: terraform/infra/live/artifacts/registry
+        run: |
+          set -euo pipefail
+          catalog_path="../../clusters/_shared/artifacts-registry.json"
+
+          terragrunt init -input=false
+          terragrunt output -json |
+            jq '{
+              talos_image_file_ids: .talos_image_file_ids.value,
+              talos_image_file_name: .talos_image_file_name.value,
+              talos_image_id: .talos_image_id.value,
+              talos_version: .talos_version.value,
+              kubernetes_version: .kubernetes_version.value,
+              generated_at: (now | todateiso8601)
+            }' > "$catalog_path"
+
       - name: Initialize Terraform
         working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
         run: |
