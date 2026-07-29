@@ -30,8 +30,8 @@ Cloudflare Access application. Posture-only mode is not part of this design.
 `terraform/infra/live/services/cloudflare-access/terragrunt.hcl` defines:
 
 - the approved mTLS candidate inventory;
-- `application_mtls_cutover_hostnames`, the intentionally empty per-host
-  cutover set;
+- `application_mtls_cutover_hostnames`, the per-host cutover set (currently
+  piloting `immich.sulibot.com`);
 - the Cloudflare-managed CA hostname association;
 - the single zone custom-WAF rule that blocks missing, invalid, or revoked
   certificates;
