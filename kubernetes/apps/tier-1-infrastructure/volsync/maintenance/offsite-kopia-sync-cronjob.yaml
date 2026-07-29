@@ -156,7 +156,7 @@ spec:
                     --access-key="${B2_KOPIA_ACCESS_KEY_ID}" \
                     --secret-access-key="${B2_KOPIA_APPLICATION_KEY}" \
                     --parallel=4 \
-                    --max-upload-speed=8M \
+                    --max-upload-speed=8388608 \
                     --delete \
                     --no-progress
               resources:

@@ -1,0 +1,77 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/cronjob_v1.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: music-assistant-config-backup
+  namespace: default
+  labels:
+    app.kubernetes.io/name: music-assistant-config-backup
+    app.kubernetes.io/part-of: music-assistant
+spec:
+  schedule: "37 3 * * *"
+  timeZone: America/Los_Angeles
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: music-assistant-config-backup
+            app.kubernetes.io/part-of: music-assistant
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            # Match the Music Assistant process so its 0750 local volume and
+            # 0600 private state remain readable without elevated privileges.
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: kopia
+              image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+              command: [/bin/bash, /scripts/backup.sh]
+              envFrom:
+                - secretRef:
+                    name: home-assistant-config-backup-secret
+              env:
+                - {name: KOPIA_CHECK_FOR_UPDATES, value: "false"}
+                - {name: HOME, value: /tmp}
+                - {name: KOPIA_CACHE_DIRECTORY, value: /tmp/kopia-cache}
+                - {name: KOPIA_LOG_DIR, value: /tmp/kopia-logs}
+                - {name: BACKUP_PATH, value: /data}
+                - {name: KOPIA_HOSTNAME, value: cluster-104.music-assistant}
+                - {name: KOPIA_USERNAME, value: music-assistant}
+                - {name: BACKUP_DESCRIPTION, value: "cluster-104 Music Assistant /data"}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                capabilities: {drop: [ALL]}
+              resources:
+                requests: {cpu: 50m, memory: 128Mi}
+                limits: {memory: 512Mi}
+              volumeMounts:
+                - {name: data, mountPath: /data, readOnly: true}
+                - {name: scripts, mountPath: /scripts, readOnly: true}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: music-assistant-config
+                readOnly: true
+            - name: scripts
+              configMap:
+                name: cluster104-kopia-backup-script
+                defaultMode: 0555
+            - {name: tmp, emptyDir: {}}

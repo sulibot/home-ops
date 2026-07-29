@@ -89,6 +89,7 @@ spec:
         - alert: KopiaServerDown
           expr: |
             min(up{job="kopia"}) == 0
+            or absent(up{job="kopia"})
           for: 5m
           labels:
             severity: critical
@@ -199,7 +200,7 @@ spec:
             externalsecret_status_condition{
               condition="Ready",
               status="False",
-              name=~"volsync-offsite-s3|cnpg-offsite-restore-s3",
+              name=~"volsync-offsite-s3|gcs-content-archive|cnpg-offsite-restore-s3",
               exported_namespace=~"volsync-system|backup-restore-drill"
             } == 1
           for: 15m

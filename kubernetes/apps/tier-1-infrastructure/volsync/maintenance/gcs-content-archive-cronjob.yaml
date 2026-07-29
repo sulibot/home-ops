@@ -37,6 +37,7 @@ spec:
             # filesystem remain read-only and the pod has no Kubernetes token.
             runAsUser: 0
             runAsGroup: 0
+            runAsNonRoot: false
             seccompProfile:
               type: RuntimeDefault
           containers:
@@ -47,22 +48,22 @@ spec:
                 - name: GCS_CONTENT_BUCKET
                   valueFrom:
                     secretKeyRef:
-                      name: volsync-offsite-s3
+                      name: gcs-content-archive
                       key: GCS_CONTENT_BUCKET
                 - name: GCS_SERVICE_ACCOUNT_JSON
                   valueFrom:
                     secretKeyRef:
-                      name: volsync-offsite-s3
+                      name: gcs-content-archive
                       key: GCS_SERVICE_ACCOUNT_JSON
                 - name: CONTENT_CRYPT_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: volsync-offsite-s3
+                      name: gcs-content-archive
                       key: CONTENT_CRYPT_PASSWORD
                 - name: CONTENT_CRYPT_SALT
                   valueFrom:
                     secretKeyRef:
-                      name: volsync-offsite-s3
+                      name: gcs-content-archive
                       key: CONTENT_CRYPT_SALT
               command:
                 - /bin/sh
@@ -169,6 +170,34 @@ spec:
                     --gcs-storage-class=STANDARD \
                     --log-level=INFO
 
+                  # Record one bounded real original so the monthly drill
+                  # proves recovery of user content, not only a synthetic file.
+                  sample="$(
+                    find /content/library \
+                      -type f \
+                      -size -16M \
+                      -print \
+                      -quit
+                  )"
+                  if [ -z "${sample}" ]; then
+                    echo "No Immich original smaller than 16 MiB is available for the restore sample" >&2
+                    exit 1
+                  fi
+                  sample_relative="${sample#/content/library/}"
+                  sample_sha256="$(sha256sum "${sample}" | awk '{print $1}')"
+                  sample_bytes="$(wc -c < "${sample}" | tr -d ' ')"
+                  printf '%s\n' \
+                    "sample=immich/library/${sample_relative}" \
+                    "sha256=${sample_sha256}" \
+                    "bytes=${sample_bytes}" \
+                    > /tmp/restore-sample.txt
+                  rclone copyto \
+                    /tmp/restore-sample.txt \
+                    "gcs-crypt:_restore-samples/${manifest_run}.txt" \
+                    --config="${config}" \
+                    --gcs-storage-class=STANDARD \
+                    --log-level=INFO
+
                   printf '%s\n' \
                     'sulibot-gcs-archive-restore-probe' \
                     "run=${manifest_run}" \
@@ -188,6 +217,9 @@ spec:
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
+                runAsNonRoot: false
+                runAsUser: 0
+                runAsGroup: 0
                 capabilities:
                   drop: ["ALL"]
               volumeMounts:

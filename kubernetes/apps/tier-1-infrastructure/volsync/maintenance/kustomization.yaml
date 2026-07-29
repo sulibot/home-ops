@@ -6,6 +6,7 @@ resources:
   - ./externalsecret.yaml
   - ./cnpg-offsite-restore-drill.yaml
   - ./offsite-externalsecret.yaml
+  - ./gcs-content-externalsecret.yaml
   - ./content-archive-volume.yaml
   - ./kopiamaintenance.yaml
   - ./stuck-restore-detection-cronjob.yaml

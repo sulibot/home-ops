@@ -36,7 +36,7 @@ It deliberately does not traverse:
 - sports;
 - `vids`;
 - torrents, Usenet, Soulseek downloads, and other download staging;
-- Immich thumbnails, encoded video, profile images, and other derivatives.
+- Immich thumbnails, encoded video, and other generated derivatives.
 
 Current measured content is approximately 60 GB of Immich originals, 293 MB of
 pending/legacy Immich uploads, 793 MB of Immich database dumps, 184 GB of
@@ -118,10 +118,12 @@ Create three private buckets:
 2. `sulibot-cnpg-offsite`
    - versioning enabled;
    - dedicated list/read/write key;
-   - lifecycle old object versions after the agreed PITR window;
+   - automatically hide current objects after 30 days and delete hidden
+     versions one day later;
    - do not allow the Kubernetes copier to bypass governance.
 3. `sulibot-infrastructure-immutable`
    - versioning and Object Lock enabled;
+   - 30-day default governance retention;
    - dedicated create/read/list key without delete or governance bypass;
    - stores Terraform state and future break-glass artifacts.
 
@@ -195,7 +197,7 @@ unrecoverable.
 2. Create the dedicated MinIO read-only service account. It needs list/get for:
    - `cnpg-backups/postgres-vectorchord/*`;
    - `terraform-state/live/*`.
-3. Populate the 1Password item and wait for both ExternalSecrets to become
+3. Populate the 1Password item and wait for all three ExternalSecrets to become
    Ready.
 4. Run one manual Kopia synchronization and inspect its log.
 5. Run one manual selected-MinIO copy and compare object counts/bytes.
@@ -203,8 +205,9 @@ unrecoverable.
    Archive content/probe objects are present.
 7. Run the B2 Kopia restore drill.
 8. Run the CNPG restore drill and confirm the SQL verification result.
-9. Run the GCS content restore drill and then manually restore one small real
-   archived content file through the encrypted remote.
+9. Run the GCS content restore drill. It restores both the synthetic probe and
+   one bounded real Immich original through the encrypted remote and verifies
+   the original SHA-256 digest.
 10. Change `suspend: true` to `suspend: false` for all six CronJobs.
 11. Confirm Prometheus has recorded each CronJob's last successful timestamp.
 
