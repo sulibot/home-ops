@@ -98,6 +98,12 @@ The CNPG drill runs in `backup-restore-drill`, creates a disposable 60 GiB
 cluster, restores the `immich` database, executes a SQL query, records the
 duration in its logs, and removes the Cluster and PVC.
 
+The first live B2 drill passed on 2026-07-29: it selected the latest base
+backup, replayed the off-site WAL archive, promoted a healthy primary, returned
+24 rows from the database-catalog check, and removed every disposable
+resource. The measured recovery duration was 242 seconds. This is an initial
+baseline, not an RTO commitment.
+
 Every OpenBao member runs the same six-hour systemd timer. The timer uses a
 snapshot-only AppRole, but only the active Raft leader writes. It verifies the
 snapshot archive checksums and uploads directly to

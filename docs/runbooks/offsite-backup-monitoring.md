@@ -54,6 +54,12 @@ The first successful full drills establish measured RTOs. Record duration,
 restored bytes/files, database, and verification result; do not advertise an
 unmeasured RTO.
 
+Initial measured baseline:
+
+| Date | Drill | Result | Measured recovery duration |
+|---|---|---|---:|
+| 2026-07-29 | CNPG/Barman from B2 | Latest base backup, WAL replay, primary promotion, SQL check, cleanup | 242 seconds |
+
 ## Implemented monitoring
 
 The `SRE Offsite Backup` Grafana dashboard reports:
