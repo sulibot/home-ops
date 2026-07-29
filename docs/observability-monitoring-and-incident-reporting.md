@@ -225,6 +225,7 @@ homelab_kube_node_vm_info{cluster="prod",node="k8s-worker-02",vmid="202",vm_name
 | Backup job throughput and concurrency | app metrics or custom exporter | 15s-30s | `namespace`, `job`, `target`, `pvc` | Backups frequently collide with recovery. |
 | Object storage ops/latency | MinIO/Ceph RGW exporter if used | 15s | `namespace`, `tenant`, `bucket` | Identifies high-read/high-write services. |
 | HTTP/gRPC request latency/errors | app metrics, OpenTelemetry | 15s | `service`, `namespace`, `workload` | Quantifies user impact. |
+| External mTLS positive and negative controls | Gatus | 1m | `group`, `name`, `type` | Separates certificate/edge enforcement failures from origin failures and detects accidental unauthenticated exposure. |
 | Application logs | Fluent Bit -> Victoria Logs | realtime | `namespace`, `pod`, `container`, `workload` | Correlates errors with infrastructure events. |
 
 ## 3. Correlation Model

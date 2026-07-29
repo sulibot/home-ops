@@ -35,14 +35,57 @@ locals {
   # warp_only_apps below. Kept as an empty map for the pattern's sake.
   public_native_auth_apps = {}
 
-  # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel ID
-  # from the main cluster-101 tunnel) but still want the standard WARP-only
-  # Access gate.
-  cluster_104_warp_only_apps = {
-    "hass.sulibot.com"            = "Home Assistant Browser"
+  # Browser endpoints approved for Application Security mTLS. Keep the cutover
+  # set empty until a client certificate is installed and the positive and
+  # negative probes in docs/runbooks/cloudflare-application-mtls.md pass.
+  main_tunnel_mtls_candidates = {
+    "actual.sulibot.com"      = "Actual Budget"
+    "filebrowser.sulibot.com" = "FileBrowser"
+    "freshrss.sulibot.com"    = "FreshRSS"
+    "immich.sulibot.com"      = "Immich"
+    "karakeep.sulibot.com"    = "Karakeep"
+    "paperless.sulibot.com"   = "Paperless"
+  }
+
+  cluster_104_mtls_candidates = {
+    "hass.sulibot.com" = "Home Assistant Browser"
+  }
+
+  # Move one hostname at a time into this set only after certificate
+  # distribution and monitoring are ready. Terraform then associates the
+  # hostname with Cloudflare's managed CA, enforces mTLS at the WAF, removes
+  # the old Access application, and narrows the WARP split-tunnel host list.
+  application_mtls_cutover_hostnames = toset([])
+
+  main_tunnel_mtls_apps = {
+    for hostname, name in local.main_tunnel_mtls_candidates : hostname => name
+    if contains(local.application_mtls_cutover_hostnames, hostname)
+  }
+
+  cluster_104_mtls_apps = {
+    for hostname, name in local.cluster_104_mtls_candidates : hostname => name
+    if contains(local.application_mtls_cutover_hostnames, hostname)
+  }
+
+  application_mtls_apps = merge(
+    local.main_tunnel_mtls_apps,
+    local.cluster_104_mtls_apps,
+  )
+
+  # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel
+  # ID from the main cluster-101 tunnel) and still require WARP.
+  cluster_104_warp_only_apps = merge({
     "music-assistant.sulibot.com" = "Music Assistant"
     "ma.sulibot.com"              = "Music Assistant"
-  }
+    }, {
+    for hostname, name in local.cluster_104_mtls_candidates : hostname => name
+    if !contains(local.application_mtls_cutover_hostnames, hostname)
+  })
+
+  cluster_104_tunnel_apps = merge(
+    local.cluster_104_warp_only_apps,
+    local.cluster_104_mtls_apps,
+  )
 
   home_assistant_google_hostname = "ha-google.sulibot.com"
   home_assistant_google_paths = [
@@ -53,19 +96,21 @@ locals {
     "/api/google_assistant",
   ]
 
-  # Browser-facing external web apps, gated on cluster-101's main tunnel.
-  warp_only_apps = {
-    "karakeep.sulibot.com"    = "Karakeep"
-    "atuin.sulibot.com"       = "Atuin"
-    "actual.sulibot.com"      = "Actual Budget"
-    "filebrowser.sulibot.com" = "FileBrowser"
-    "freshrss.sulibot.com"    = "FreshRSS"
-    "opencloud.sulibot.com"   = "OpenCloud"
-    "paperless.sulibot.com"   = "Paperless"
-  }
+  # Public endpoints that remain WARP-only because their native clients cannot
+  # reliably present an Application Security client certificate.
+  warp_only_apps = merge({
+    "atuin.sulibot.com"     = "Atuin"
+    "opencloud.sulibot.com" = "OpenCloud"
+    }, {
+    for hostname, name in local.main_tunnel_mtls_candidates : hostname => name
+    if hostname != "immich.sulibot.com" && !contains(local.application_mtls_cutover_hostnames, hostname)
+  })
 
+  # Immich keeps its existing WARP + email Access application until its mTLS
+  # cutover. No email policy remains once the hostname enters the cutover set.
   warp_email_apps = {
-    "immich.sulibot.com" = "Immich"
+    for hostname, name in { "immich.sulibot.com" = "Immich" } : hostname => name
+    if !contains(local.application_mtls_cutover_hostnames, hostname)
   }
 
   app_private_dns_overrides = {
@@ -79,9 +124,13 @@ locals {
       ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 101
     }
-    "vikunja-app.sulibot.com" = {
+    "freshrss-app.sulibot.com" = {
       ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 102
+    }
+    "vikunja-app.sulibot.com" = {
+      ips        = ["10.101.250.11", "fd00:101:250::11"]
+      precedence = 103
     }
   }
 
@@ -180,6 +229,7 @@ locals {
     keys(local.public_native_auth_apps),
     keys(local.warp_only_apps),
     keys(local.warp_email_apps),
+    keys(local.main_tunnel_mtls_apps),
   ))
 
   allowed_emails = split(" ", data.sops_file.secrets.data["cf_access_allowed_emails"])
@@ -219,7 +269,7 @@ resource "cloudflare_dns_record" "tunnel_host" {
 # cluster-104 tunnel origin (a separate tunnel ID from cluster-101's).
 resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   for_each = merge(
-    local.cluster_104_warp_only_apps,
+    local.cluster_104_tunnel_apps,
     { (local.home_assistant_google_hostname) = "Home Assistant Google" },
   )
 
@@ -264,6 +314,46 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_route" "app_private_route" {
   tunnel_id  = each.value.tunnel_id
   network    = each.value.network
   comment    = "Private app endpoint route for ${each.key}"
+}
+
+# ---------------------------------------------------------------------------
+# Application Security mTLS
+# ---------------------------------------------------------------------------
+
+# Omitting mtls_certificate_id selects the account's active Cloudflare-managed
+# CA. This resource owns the complete managed-CA hostname association set for
+# this zone; import/reconcile any out-of-band associations before applying.
+resource "cloudflare_certificate_authorities_hostname_associations" "application_mtls" {
+  zone_id   = local.zone_id
+  hostnames = sort(tolist(local.application_mtls_cutover_hostnames))
+}
+
+# There is currently no other zone entrypoint ruleset in this phase. If a
+# custom-rule entrypoint is added out of band, import and merge it here before
+# applying so this remains the single source of truth.
+resource "cloudflare_ruleset" "application_mtls" {
+  count = length(local.application_mtls_cutover_hostnames) > 0 ? 1 : 0
+
+  zone_id     = local.zone_id
+  name        = "Application Security mTLS"
+  description = "Block selected browser endpoints unless Cloudflare verifies a non-revoked client certificate."
+  kind        = "zone"
+  phase       = "http_request_firewall_custom"
+
+  rules = [{
+    action      = "block"
+    description = "Require a valid Application Security client certificate"
+    enabled     = true
+    ref         = "require_application_mtls"
+    expression = format(
+      "(http.host in {%s} and ((not cf.tls_client_auth.cert_verified) or cf.tls_client_auth.cert_revoked))",
+      join(" ", [for hostname in sort(tolist(local.application_mtls_cutover_hostnames)) : jsonencode(hostname)]),
+    )
+  }]
+
+  depends_on = [
+    cloudflare_certificate_authorities_hostname_associations.application_mtls,
+  ]
 }
 
 # ---------------------------------------------------------------------------
@@ -417,6 +507,8 @@ resource "cloudflare_zero_trust_access_application" "cluster_104_warp_only" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # Google Assistant cloud-to-cloud needs unauthenticated access to Home
@@ -477,6 +569,8 @@ resource "cloudflare_zero_trust_access_application" "warp_only" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # ---------------------------------------------------------------------------
@@ -514,6 +608,8 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # ---------------------------------------------------------------------------
@@ -577,8 +673,9 @@ resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "ho
 
 # Default (fallback) profile -- applies whenever the device is NOT on a
 # "Home trusted" network above, i.e. "external". Split Tunnel Include mode
-# restricts the WARP tunnel to sulibot.com traffic only, so general internet
-# browsing never routes through Cloudflare.
+# restricts the WARP tunnel to only the public hostnames that still require
+# WARP plus the private routes. General browsing and mTLS browser endpoints do
+# not transit WARP.
 resource "cloudflare_zero_trust_device_default_profile" "external" {
   account_id = local.account_id
 
@@ -587,11 +684,19 @@ resource "cloudflare_zero_trust_device_default_profile" "external" {
 
   include = concat(
     [
-      { host = "sulibot.com", description = "sulibot.com apex" },
-      { host = "*.sulibot.com", description = "All sulibot.com apps" },
       { host = "sulibot.cloudflareaccess.com", description = "Zero Trust Access auth domain -- required in Include mode" },
       { address = "162.159.36.12/32", description = "Cloudflare Gateway block page" },
       { address = "162.159.46.12/32", description = "Cloudflare Gateway block page" },
+    ],
+    [
+      for hostname, name in merge(
+        local.cluster_104_warp_only_apps,
+        local.warp_only_apps,
+        local.warp_email_apps,
+        ) : {
+        host        = hostname
+        description = "${name}: WARP-dependent public endpoint"
+      }
     ],
     [
       for name, route in local.warp_private_routes : {
@@ -643,6 +748,10 @@ output "access_application_ids" {
 
 output "identity_provider_id" {
   value = cloudflare_zero_trust_access_identity_provider.authentik.id
+}
+
+output "application_mtls_cutover_hostnames" {
+  value = sort(tolist(local.application_mtls_cutover_hostnames))
 }
 
 # ---------------------------------------------------------------------------

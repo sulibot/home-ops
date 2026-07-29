@@ -15,6 +15,26 @@ This document turns the cross-layer observability model into concrete home-ops m
 | SRE executive dashboard | `kubernetes/apps/tier-1-infrastructure/grafana/dashboard/sre-executive-dashboard-configmap.yaml` | First high-signal everyday operating console |
 | SRE incident drill-down dashboard | `kubernetes/apps/tier-1-infrastructure/grafana/dashboard/sre-incident-drilldown-configmap.yaml` | Focused active-incident view for IO, Ceph, alerts, and logs |
 
+## Application Security mTLS
+
+Every mTLS-protected external hostname has three independent signals:
+
+- a certificate-bearing Gatus probe in `apps-external-mtls`;
+- a no-certificate negative-control probe in `security-negative-control` that
+  succeeds only on HTTP `403`; and
+- an internal service probe that identifies origin failures independently of
+  Cloudflare edge enforcement.
+
+`GatusMtlsNegativeControlFailed` is critical because it means an
+unauthenticated request was not rejected as expected. The SRE app-experience
+dashboard includes both mTLS groups.
+
+Client-certificate expiry is not available from Gatus's server-certificate
+metric. Track each Cloudflare client certificate in the 1Password inventory and
+send rotation reminders at 30, 14, and 7 days, or add a dedicated certificate
+exporter before relying on Prometheus for those reminders. See the
+[Cloudflare Application Security mTLS runbook](runbooks/cloudflare-application-mtls.md).
+
 ## New Alert Coverage
 
 The cross-layer storage rule file adds:

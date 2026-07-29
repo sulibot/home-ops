@@ -6,6 +6,7 @@ Operational procedures for the home-ops cluster.
 
 - [Talos cluster operations](talos-cluster-operations.md)
 - [Home LAN segmentation and Wi-Fi operations](home-lan-segmentation-and-wifi-operations.md)
+- [Cloudflare Application Security mTLS](cloudflare-application-mtls.md)
 
 ## Applications
 
@@ -24,4 +25,3 @@ Use [Observability, Monitoring, and Incident Reporting](../observability-monitor
 - [Safe shutdown of a Proxmox node during Ceph recovery](safe-shutdown-proxmox-node-during-ceph-recovery.md)
 - [BIOS/hardware maintenance readiness check](bios-hardware-maintenance-readiness-check.md)
 - [Incident report template](incident-report-template.md)
-
