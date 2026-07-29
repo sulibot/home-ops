@@ -47,16 +47,28 @@ least-capable profile that meets a user's needs:
 | Browser mTLS plus native/API apps | Manual client identity plus Cloudflare One Client enrollment | App access (WARP Include mode) | Only private `*-app.sulibot.com` gateway destinations use WARP |
 | Infrastructure administration | Manual client identity plus Cloudflare One Client enrollment | Admin access (WARP Include mode) | App gateway destinations plus approved SSH, Kubernetes, OpenBao, storage, and management routes use WARP |
 
-Device profiles use first-match precedence. Put the narrowly assigned
-**Admin access** profile first, **App access** next, and **Posture only** after
-them; leave the default profile at Posture only. Match the WARP profiles by
-enrolled identity email or IdP group. A person who chooses a manual certificate
-does not enroll and therefore does not match any device profile.
+Cloudflare device profiles use first-match precedence, but the final
+Admin/App/Posture assignment model is intentionally deferred. One identity may
+own administrator workstations, native-app mobile devices, and browser-only
+devices. Do not infer privilege from operating system or platform, and do not
+assume an identity-wide profile can represent every device that identity owns.
+A separate technical-debt issue owns selection of a durable assignment signal
+before the current default profile is narrowed.
+
+A person who chooses a manual certificate does not need to enroll and therefore
+does not match any device profile.
+
+The existing **Home trusted** profile is a separate location-based path and must
+remain so. On the trusted home networks, internal DNS resolves application
+hostnames to local gateways and traffic reaches the applications directly over
+the LAN, bypassing the external Cloudflare authentication path. Do not convert
+Home trusted to Posture-only or make it depend on the unresolved external
+Admin/App/Posture assignment design.
 
 Do not reuse the consumer App access profile for infrastructure
-administration. Narrowing the existing default profile to only application
-gateways without first separating administrators would break SSH, `kubectl`,
-`talosctl`, OpenBao, MinIO, and other private-network workflows.
+administration. Narrowing the existing external default profile to only
+application gateways without first solving device-role assignment would break
+SSH, `kubectl`, `talosctl`, OpenBao, MinIO, and other private-network workflows.
 
 ### Split-horizon `*-app` routing
 

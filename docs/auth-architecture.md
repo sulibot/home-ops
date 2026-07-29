@@ -149,8 +149,15 @@ per-device identities provisioned by Cloudflare One Client in Posture-only
 mode. Posture-only users get the identity without traffic routing. App access
 users route only explicit private `*-app` gateway destinations and use a
 manually issued identity when they also need browser mTLS; administrator
-profiles retain separately approved infrastructure routes. The certificate
-lifecycle and per-host migration procedure are documented in
+profiles retain separately approved infrastructure routes.
+
+The Home trusted profile is not an external access profile: internal DNS sends
+traffic directly to local gateways, bypassing the external Cloudflare
+authentication path. Keep this location-based behavior independent from the
+unresolved Admin/App/Posture assignment model. Do not infer a device's role
+from its operating system or platform; a single identity may own devices with
+different roles. The certificate lifecycle and per-host migration procedure
+are documented in
 [Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
 
 Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,
