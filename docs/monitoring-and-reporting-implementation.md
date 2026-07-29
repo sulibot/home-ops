@@ -35,6 +35,13 @@ send rotation reminders at 30, 14, and 7 days, or add a dedicated certificate
 exporter before relying on Prometheus for those reminders. See the
 [Cloudflare Application Security mTLS runbook](runbooks/cloudflare-application-mtls.md).
 
+The certificate inventory distinguishes manual identities,
+Cloudflare-One-provisioned device identities, and service identities. Manual
+and service identities use the expiry reminders above. Enrolled devices are
+monitored for stale enrollment, missing device identity, and
+revocation/deletion rather than treating their client-installed identity as a
+manually rotated PKCS#12 artifact.
+
 ## New Alert Coverage
 
 The cross-layer storage rule file adds:
