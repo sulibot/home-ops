@@ -1,3 +1,8 @@
+variable "region" {
+  type    = string
+  default = "home-lab"
+}
+
 variable "vm_id" {
   description = "Proxmox VM ID"
   type        = number

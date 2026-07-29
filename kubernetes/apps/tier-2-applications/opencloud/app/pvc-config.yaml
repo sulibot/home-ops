@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/component: storage
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: csi-cephfs-config-sc
+    - ReadWriteOnce
+  storageClassName: csi-rbd-rbd-vm-sc
   resources:
     requests:
-      storage: 20Gi
+      storage: 10Gi

@@ -16,6 +16,12 @@ entries:
       name: trusted-users
     attrs:
       name: trusted-users
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: infrastructure-users
+    attrs:
+      name: infrastructure-users
   - model: authentik_policies_expression.expressionpolicy
     state: present
     identifiers:
@@ -40,3 +46,16 @@ entries:
             return False
         groups = {group.name for group in user.groups.all()}
         return "trusted-users" in groups
+  - model: authentik_policies_expression.expressionpolicy
+    state: present
+    identifiers:
+      name: policy-access-infrastructure
+    attrs:
+      name: policy-access-infrastructure
+      expression: |
+        user = request.user
+        if not user or user.is_anonymous:
+            return False
+        groups = {group.name for group in user.groups.all()}
+        storage_username = user.attributes.get("storage_username")
+        return "infrastructure-users" in groups and bool(storage_username)

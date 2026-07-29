@@ -121,3 +121,40 @@ services:
     override:
       memory_mb: 1024 # nix builds want a little more than micro's 512
       swap_mb: 0
+
+  nixfs-vm:
+    role: user-storage-validation-vm
+    os: nixos
+    tenant: 200
+    suffix: 203
+    node: pve01
+    size: small
+    hostname: nixfs-vm01
+
+  nixfs-lxc:
+    role: user-storage-validation-lxc
+    os: nixos
+    tenant: 200
+    suffix: 204
+    node: pve02
+    size: micro
+    hostname: nixfs-lxc01
+    override:
+      memory_mb: 1024
+      swap_mb: 0
+
+  debfs-vm:
+    role: user-storage-validation-vm
+    tenant: 200
+    suffix: 205
+    node: pve03
+    size: small
+    hostname: debfs-vm01
+
+  debfs-lxc:
+    role: user-storage-validation-lxc
+    tenant: 200
+    suffix: 206
+    node: pve01
+    size: micro
+    hostname: debfs-lxc01

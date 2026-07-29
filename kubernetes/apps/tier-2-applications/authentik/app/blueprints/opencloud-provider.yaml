@@ -4,6 +4,19 @@ metadata:
   labels:
     blueprints.goauthentik.io/instantiate: "true"
 entries:
+  - model: authentik_providers_oauth2.scopemapping
+    state: present
+    identifiers:
+      name: OpenCloud storage identity
+    attrs:
+      name: OpenCloud storage identity
+      scope_name: storage
+      description: Stable storage identity for explicitly entitled infrastructure users
+      expression: |
+        return {
+            "storage_username": request.user.attributes.get("storage_username", ""),
+            "kanidm_uuid": request.user.attributes.get("kanidm_uuid", ""),
+        }
   - model: authentik_policies.policybinding
     state: absent
     identifiers:
@@ -49,6 +62,7 @@ entries:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, offline_access]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, storage]]
   - model: authentik_core.application
     state: present
     identifiers:
@@ -62,11 +76,11 @@ entries:
   - model: authentik_policies.policybinding
     state: present
     identifiers:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-infrastructure]]
       target: !Find [authentik_core.application, [slug, opencloud]]
       order: 0
     attrs:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-infrastructure]]
       target: !Find [authentik_core.application, [slug, opencloud]]
       order: 0
       enabled: true

@@ -55,13 +55,20 @@ spec:
                   secretKeyRef:
                     name: opencloud-secret
                     key: OPENCLOUD_OIDC_CLIENT_ID
-              OC_OIDC_SCOPE: "openid profile email"
+              OC_OIDC_SCOPE: "openid profile email storage"
               PROXY_OIDC_REWRITE_WELLKNOWN: "true"
               PROXY_AUTOPROVISION_ACCOUNTS: "true"
               GRAPH_USERNAME_MATCH: "none"
-              PROXY_USER_OIDC_CLAIM: "preferred_username"
-              PROXY_AUTOPROVISION_CLAIM_USERNAME: "preferred_username"
+              PROXY_USER_OIDC_CLAIM: "storage_username"
+              PROXY_AUTOPROVISION_CLAIM_USERNAME: "storage_username"
               PROXY_USER_CS3_CLAIM: "username"
+              STORAGE_USERS_DRIVER: posix
+              STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
+              STORAGE_USERS_POSIX_ROOT: /srv/user-files
+              STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: '{{ "{{.User.Username | lower}}" }}/Cloud'
+              STORAGE_USERS_POSIX_WATCH_FS: "true"
+              STORAGE_USERS_POSIX_WATCH_TYPE: cephfs
+              STORAGE_USERS_POSIX_WATCH_ROOT: /srv/user-files
               OC_ENABLE_OCM: "false"
               PROXY_HTTP_ADDR: 0.0.0.0:9200
               PROXY_TLS: "false"
@@ -80,7 +87,7 @@ spec:
                   secretKeyRef:
                     name: opencloud-secret
                     key: OPENCLOUD_OIDC_CLIENT_ID
-              WEB_OIDC_SCOPE: "openid profile email"
+              WEB_OIDC_SCOPE: "openid profile email storage"
               IDM_CREATE_DEMO_USERS: "false"
               OC_ADMIN_USER_ID:
                 valueFrom:
@@ -258,6 +265,10 @@ spec:
             subPath: data
           - path: /etc/opencloud
             subPath: config
+      user-files:
+        existingClaim: user-storage-opencloud
+        globalMounts:
+          - path: /srv/user-files
       config-file:
         type: configMap
         identifier: config

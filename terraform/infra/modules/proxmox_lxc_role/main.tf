@@ -2,6 +2,7 @@ terraform {
   required_providers {
     proxmox = { source = "bpg/proxmox", version = ">= 0.98.0, < 1.0.0" }
     null    = { source = "hashicorp/null", version = "~> 3.0" }
+    sops    = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
 }
 
@@ -40,6 +41,7 @@ resource "proxmox_virtual_environment_container" "this" {
   started       = each.value.started
   start_on_boot = each.value.start_on_boot
   protection    = each.value.protection
+  unprivileged  = each.value.unprivileged
 
   operating_system {
     template_file_id = local.template_file_ids[each.key]
@@ -58,6 +60,8 @@ resource "proxmox_virtual_environment_container" "this" {
       size   = try(mount_point.value.size, null)
       path   = mount_point.value.path
       backup = mount_point.value.backup
+      shared = mount_point.value.shared
+      replicate = mount_point.value.replicate
     }
   }
 

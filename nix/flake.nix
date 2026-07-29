@@ -31,6 +31,8 @@
       nixosConfigurations = {
         nixtest01 = mkHost "nixtest01";
         nixbuild01 = mkHost "nixbuild01";
+        nixfs-vm01 = mkHost "nixfs-vm01";
+        nixfs-lxc01 = mkHost "nixfs-lxc01";
       };
     };
 }

@@ -47,6 +47,7 @@ resources:
   - ./valkey/ks.yaml
   - ./secrets-ready/ks.yaml
   - ./storage-ready/ks.yaml
+  - ./user-storage/ks.yaml
   - ./ingress-ready/ks.yaml
 
   # Observability

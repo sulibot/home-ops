@@ -1,3 +1,8 @@
+variable "region" {
+  type    = string
+  default = "home-lab"
+}
+
 variable "proxmox" {
   description = "Proxmox storage defaults"
   type = object({
@@ -31,6 +36,7 @@ variable "containers" {
     started       = optional(bool, true)
     start_on_boot = optional(bool, true)
     protection    = optional(bool, false)
+    unprivileged  = optional(bool, false)
     tags          = optional(list(string), [])
     cpu_cores     = number
     memory_mb     = number
@@ -53,6 +59,8 @@ variable "containers" {
       size   = optional(string)
       path   = string
       backup = optional(bool, false)
+      shared = optional(bool, true)
+      replicate = optional(bool, false)
     })), [])
   }))
 }

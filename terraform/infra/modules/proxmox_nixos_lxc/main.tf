@@ -39,6 +39,14 @@ variable "containers" {
     ipv6_address = string # CIDR
     ipv6_gateway = string
     tags         = optional(list(string), ["nixos", "lxc"])
+    unprivileged = optional(bool, true)
+    mount_points = optional(list(object({
+      volume = string
+      path   = string
+      backup = optional(bool, false)
+      shared = optional(bool, true)
+      replicate = optional(bool, false)
+    })), [])
   }))
 }
 
@@ -67,7 +75,7 @@ resource "proxmox_virtual_environment_container" "this" {
   tags        = each.value.tags
 
   # NixOS manages itself; PVE must not touch guest config.
-  unprivileged = true
+  unprivileged = each.value.unprivileged
 
   operating_system {
     template_file_id = var.template_file_id
@@ -90,6 +98,17 @@ resource "proxmox_virtual_environment_container" "this" {
   disk {
     datastore_id = var.proxmox.vm_datastore
     size         = each.value.disk_gb
+  }
+
+  dynamic "mount_point" {
+    for_each = each.value.mount_points
+    content {
+      volume = mount_point.value.volume
+      path   = mount_point.value.path
+      backup = mount_point.value.backup
+      shared = mount_point.value.shared
+      replicate = mount_point.value.replicate
+    }
   }
 
   network_interface {

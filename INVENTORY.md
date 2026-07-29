@@ -36,6 +36,10 @@ API endpoint: `https://10.10.0.1:8006/api2/json`
 | tail | tail01 | debian | 100 | pve01 | 100065 | 10.100.0.65 | fd00:100::65 | micro |
 | tail | tail02 | debian | 100 | pve02 | 100066 | 10.100.0.66 | fd00:100::66 | micro |
 | nixtest | nixtest01 | nixos | 200 | pve02 | 200202 | 10.200.0.202 | fd00:200::202 | micro +ov |
+| nixfs-vm | nixfs-vm01 | nixos | 200 | pve01 | 200203 | 10.200.0.203 | fd00:200::203 | small |
+| nixfs-lxc | nixfs-lxc01 | nixos | 200 | pve02 | 200204 | 10.200.0.204 | fd00:200::204 | micro +ov |
+| debfs-vm | debfs-vm01 | debian | 200 | pve03 | 200205 | 10.200.0.205 | fd00:200::205 | small |
+| debfs-lxc | debfs-lxc01 | debian | 200 | pve01 | 200206 | 10.200.0.206 | fd00:200::206 | micro |
 
 ## Sizes
 

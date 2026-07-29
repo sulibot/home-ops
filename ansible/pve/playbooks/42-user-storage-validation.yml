@@ -1,0 +1,202 @@
+---
+- name: Provision the canonical CephFS user namespace
+  hosts: pve
+  become: true
+  gather_facts: false
+  tags: [namespace]
+  vars:
+    user_storage_cephfs: content
+    user_storage_username: sulibot
+    user_storage_path: /mnt/pve/content/users/sulibot/Cloud
+    user_storage_ceph_path: /users/sulibot/Cloud
+    user_storage_ceph_client: client.sulibot-cloud
+  tasks:
+    - name: Install POSIX ACL tooling
+      ansible.builtin.apt:
+        name: acl
+        state: present
+        update_cache: false
+
+    - name: Verify the content CephFS mount
+      ansible.builtin.command:
+        argv: [mountpoint, -q, /mnt/pve/content]
+      changed_when: false
+
+    - name: Create the retained user directory
+      ansible.builtin.file:
+        path: "{{ user_storage_path }}"
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "2770"
+
+    - name: Give application service UID 1000 inheritable access
+      ansible.posix.acl:
+        path: "{{ user_storage_path }}"
+        entity: "1000"
+        etype: user
+        permissions: rwx
+        default: "{{ item }}"
+        state: present
+      loop:
+        - false
+        - true
+
+    - name: Create the path-scoped VM CephX identity
+      ansible.builtin.command:
+        argv:
+          - ceph
+          - fs
+          - authorize
+          - "{{ user_storage_cephfs }}"
+          - "{{ user_storage_ceph_client }}"
+          - "{{ user_storage_ceph_path }}"
+          - rw
+      run_once: true
+      register: user_storage_ceph_authorize
+      changed_when: "'added key' in user_storage_ceph_authorize.stdout"
+      no_log: true
+
+    - name: Read the path-scoped VM CephX secret
+      ansible.builtin.command:
+        argv: [ceph, auth, get-key, "{{ user_storage_ceph_client }}"]
+      run_once: true
+      register: user_storage_ceph_key
+      changed_when: false
+      no_log: true
+
+    - name: Create path-scoped Kubernetes CephX identities
+      ansible.builtin.command:
+        argv:
+          - ceph
+          - fs
+          - authorize
+          - "{{ user_storage_cephfs }}"
+          - "client.{{ item.client }}"
+          - "{{ item.path }}"
+          - rw
+      loop:
+        - client: opencloud-user-storage
+          path: /users
+        - client: syncthing-sulibot
+          path: /users/sulibot/Cloud
+      run_once: true
+      register: user_storage_kubernetes_ceph_authorize
+      changed_when: "'added key' in user_storage_kubernetes_ceph_authorize.stdout"
+      no_log: true
+
+- name: Enroll the CephX secret on validation VMs
+  hosts: user_storage_vms
+  become: true
+  gather_facts: false
+  tags: [guests]
+  vars:
+    user_storage_secret_path: /etc/ceph/ceph.client.sulibot-cloud.secret
+  tasks:
+    - name: Create Ceph configuration directory
+      ansible.builtin.file:
+        path: /etc/ceph
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install the path-scoped CephX secret
+      ansible.builtin.copy:
+        content: "{{ hostvars['pve01'].user_storage_ceph_key.stdout }}\n"
+        dest: "{{ user_storage_secret_path }}"
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+
+    - name: Configure the Debian CephFS automount
+      when: user_storage_os == "debian"
+      block:
+        - name: Install client packages
+          ansible.builtin.apt:
+            name:
+              - acl
+              - attr
+              - ceph-common
+              - kanidm-unixd-clients
+            state: present
+            update_cache: true
+
+        - name: Install the systemd mount definition
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/home-sulibot-Cloud.mount
+            owner: root
+            group: root
+            mode: "0644"
+            content: |
+              [Unit]
+              Description=Canonical sulibot CephFS files
+              After=network-online.target
+              Wants=network-online.target
+
+              [Mount]
+              What=sulibot-cloud@.content=/users/sulibot/Cloud
+              Where=/home/sulibot/Cloud
+              Type=ceph
+              Options=_netdev,mon_addr=[fc00:20::1]:6789/[fc00:20::2]:6789/[fc00:20::3]:6789,secretfile=/etc/ceph/ceph.client.sulibot-cloud.secret
+
+              [Install]
+              WantedBy=multi-user.target
+
+        - name: Enable the Debian CephFS mount
+          ansible.builtin.systemd_service:
+            name: home-sulibot-Cloud.mount
+            enabled: true
+            state: started
+            daemon_reload: true
+
+- name: Validate identity and mount presentation
+  hosts: user_storage_guests
+  become: true
+  gather_facts: false
+  tags: [validate]
+  tasks:
+    - name: Resolve the canonical Kanidm POSIX account
+      ansible.builtin.command:
+        argv: [getent, passwd, "{{ user_storage_username }}"]
+      register: user_storage_getent
+      changed_when: false
+
+    - name: Record the Kanidm numeric UID
+      ansible.builtin.set_fact:
+        user_storage_kanidm_uid: "{{ user_storage_getent.stdout.split(':')[2] }}"
+
+    - name: Verify the shared mount is a mount point
+      ansible.builtin.command:
+        argv: [mountpoint, -q, "{{ user_storage_mount }}"]
+      changed_when: false
+
+- name: Apply the canonical user's filesystem ACL
+  hosts: pve01
+  become: true
+  gather_facts: false
+  tags: [validate]
+  vars:
+    user_storage_path: /mnt/pve/content/users/sulibot/Cloud
+    user_storage_kanidm_uid: "{{ hostvars['nixfs-vm01'].user_storage_kanidm_uid }}"
+  tasks:
+    - name: Give the Kanidm UID inheritable access
+      ansible.posix.acl:
+        path: "{{ user_storage_path }}"
+        entity: "{{ user_storage_kanidm_uid }}"
+        etype: user
+        permissions: rwx
+        default: "{{ item }}"
+        state: present
+      loop:
+        - false
+        - true
+
+    - name: Create a cross-client validation marker
+      ansible.builtin.copy:
+        dest: "{{ user_storage_path }}/.sre-storage-validation"
+        content: "created-by=pve01\n"
+        owner: "1000"
+        group: "1000"
+        mode: "0660"
