@@ -209,15 +209,22 @@ Plain `sops decrypt` continues to exercise the offline age recovery path.
 ### Kubernetes pilot
 
 `immich-frame` is the first existing application migrated to the OpenBao
-ClusterSecretStore. The bootstrap copies its currently rendered Kubernetes
-Secret byte-for-byte into `kv/kubernetes/immich-frame` before the
-ExternalSecret source changes. Validate the cutover without printing values:
+ClusterSecretStore. `radarr-4k` is the operational pilot: it exercises both
+the application's API/database Secret and the CNPG-managed role-password
+Secret. The bootstrap verifies that both rendered database passwords match,
+then copies the current values into `kv/kubernetes/radarr-4k` before either
+ExternalSecret source changes. This makes each cutover a source change without
+a simultaneous credential rotation. Validate the cutovers without printing
+values:
 
 ```bash
 kubectl get clustersecretstore openbao
 kubectl -n default get externalsecret immich-frame
+kubectl -n default get externalsecret radarr-4k radarr-4k-pg-password
 kubectl -n default rollout status deployment/immich-frame
+kubectl -n default rollout status deployment/radarr-4k
 curl --fail https://immich-frame.sulibot.com
+curl --fail https://radarr-4k.sulibot.com/ping
 ```
 
 Keep 1Password Connect deployed during the pilot and broader migration. It

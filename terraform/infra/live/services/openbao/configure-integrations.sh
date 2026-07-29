@@ -174,13 +174,25 @@ bao_cli write auth/kubernetes/role/external-secrets \
   token_ttl=15m \
   token_max_ttl=1h >/dev/null
 
-# Seed the pilot from the currently rendered Secret so the cutover is a
+# Seed pilots from the currently rendered Secrets so each cutover is a
 # byte-for-byte source change, not a simultaneous credential rotation.
 pilot_file="$(mktemp)"
-trap 'find "$kubernetes_ca_file" "$pilot_file" -type f -delete 2>/dev/null || true' EXIT
+radarr_pilot_file="$(mktemp)"
+trap 'find "$kubernetes_ca_file" "$pilot_file" "$radarr_pilot_file" -type f -delete 2>/dev/null || true' EXIT
 kubectl -n default get secret immich-frame-secret -o json |
   jq -e '.data | with_entries(.value |= @base64d)' >"$pilot_file"
 bao_cli kv put -mount=kv kubernetes/immich-frame @"$pilot_file" >/dev/null
+
+kubectl -n default get secret radarr-4k-secret -o json |
+  jq -e '{
+    RADARR_API_KEY: (.data.RADARR__AUTH__APIKEY | @base64d),
+    DB_PASSWORD: (.data.RADARR__POSTGRES__PASSWORD | @base64d)
+  }' >"$radarr_pilot_file"
+kubectl -n default get secret radarr-4k-pg-password -o json |
+  jq -e --slurpfile app "$radarr_pilot_file" '
+    (.data.password | @base64d) == $app[0].DB_PASSWORD
+  ' >/dev/null
+bao_cli kv put -mount=kv kubernetes/radarr-4k @"$radarr_pilot_file" >/dev/null
 
 if ! bao_cli auth list -format=json | jq -e 'has("approle/")' >/dev/null; then
   bao_cli auth enable -path=approle approle >/dev/null
