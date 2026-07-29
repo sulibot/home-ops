@@ -114,7 +114,9 @@ locals {
   # distribution and monitoring are ready. Terraform then associates the
   # hostname with Cloudflare's managed CA, enforces mTLS at the WAF, removes
   # the old Access application, and narrows the WARP split-tunnel host list.
-  application_mtls_cutover_hostnames = toset([])
+  application_mtls_cutover_hostnames = toset([
+    "immich.sulibot.com",
+  ])
 
   main_tunnel_mtls_apps = {
     for hostname, name in local.main_tunnel_mtls_candidates : hostname => name

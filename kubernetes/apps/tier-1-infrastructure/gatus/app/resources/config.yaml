@@ -41,15 +41,29 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Immich (external)
-    group: apps-external
+  - name: Immich (external mTLS)
+    group: apps-external-mtls
     url: https://immich.sulibot.com/auth/login
     interval: 1m
     client:
       timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+      tls:
+        certificate-file: /config/mtls/tls.crt
+        private-key-file: /config/mtls/tls.key
     conditions:
       - "[STATUS] >= 200"
-      - "[STATUS] < 500"
+      - "[STATUS] < 400"
+
+  - name: Immich mTLS denial
+    group: security-negative-control
+    url: https://immich.sulibot.com/auth/login
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+    conditions:
+      - "[STATUS] == 403"
 
   - name: FreshRSS browser (external)
     group: apps-external
