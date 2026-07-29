@@ -27,7 +27,7 @@ on:
 jobs:
   validate:
     name: Validate infra parameter layers
-    runs-on: self-hosted
+    runs-on: home-ops-runner
     timeout-minutes: 20
 
     steps:
