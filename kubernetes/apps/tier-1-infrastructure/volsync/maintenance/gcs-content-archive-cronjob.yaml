@@ -1,19 +1,19 @@
 ---
-# Encrypted append-only copy of irreplaceable content to Scaleway Glacier.
+# Encrypted append-only copy of irreplaceable content to Google Cloud Archive.
 # Explicit source paths make the exclusion of movies/TV/sports/vids auditable.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: scaleway-content-archive
+  name: gcs-content-archive
   namespace: volsync-system
   labels:
-    app.kubernetes.io/name: scaleway-content-archive
+    app.kubernetes.io/name: gcs-content-archive
     app.kubernetes.io/component: cold-archive
 spec:
   schedule: "30 0 * * 0"
   timeZone: America/Los_Angeles
-  # Enable after the Scaleway bucket, Object Lock policy, and credentials exist.
+  # Enable after the GCS bucket, service account, and credentials exist.
   suspend: true
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 21600
@@ -27,7 +27,7 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: scaleway-content-archive
+            app.kubernetes.io/name: gcs-content-archive
             app.kubernetes.io/component: cold-archive
         spec:
           restartPolicy: Never
@@ -44,31 +44,16 @@ spec:
               image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
               imagePullPolicy: IfNotPresent
               env:
-                - name: SCALEWAY_S3_ENDPOINT
+                - name: GCS_CONTENT_BUCKET
                   valueFrom:
                     secretKeyRef:
                       name: volsync-offsite-s3
-                      key: SCALEWAY_S3_ENDPOINT
-                - name: SCALEWAY_REGION
+                      key: GCS_CONTENT_BUCKET
+                - name: GCS_SERVICE_ACCOUNT_JSON
                   valueFrom:
                     secretKeyRef:
                       name: volsync-offsite-s3
-                      key: SCALEWAY_REGION
-                - name: SCALEWAY_CONTENT_BUCKET
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-offsite-s3
-                      key: SCALEWAY_CONTENT_BUCKET
-                - name: SCALEWAY_ACCESS_KEY_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-offsite-s3
-                      key: SCALEWAY_ACCESS_KEY_ID
-                - name: SCALEWAY_SECRET_ACCESS_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: volsync-offsite-s3
-                      key: SCALEWAY_SECRET_ACCESS_KEY
+                      key: GCS_SERVICE_ACCOUNT_JSON
                 - name: CONTENT_CRYPT_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -90,19 +75,18 @@ spec:
                   crypt_password="$(rclone obscure "${CONTENT_CRYPT_PASSWORD}")"
                   crypt_salt="$(rclone obscure "${CONTENT_CRYPT_SALT}")"
                   config=/tmp/rclone.conf
+                  credentials=/tmp/gcs-service-account.json
+                  printf '%s' "${GCS_SERVICE_ACCOUNT_JSON}" > "${credentials}"
 
                   printf '%s\n' \
-                    '[scaleway]' \
-                    'type = s3' \
-                    'provider = Scaleway' \
-                    "access_key_id = ${SCALEWAY_ACCESS_KEY_ID}" \
-                    "secret_access_key = ${SCALEWAY_SECRET_ACCESS_KEY}" \
-                    "endpoint = ${SCALEWAY_S3_ENDPOINT}" \
-                    "region = ${SCALEWAY_REGION}" \
+                    '[gcs]' \
+                    'type = google cloud storage' \
+                    "service_account_file = ${credentials}" \
+                    'bucket_policy_only = true' \
                     '' \
-                    '[scaleway-crypt]' \
+                    '[gcs-crypt]' \
                     'type = crypt' \
-                    "remote = scaleway:${SCALEWAY_CONTENT_BUCKET}/archive" \
+                    "remote = gcs:${GCS_CONTENT_BUCKET}/archive" \
                     'filename_encryption = standard' \
                     'directory_name_encryption = true' \
                     "password = ${crypt_password}" \
@@ -118,10 +102,7 @@ spec:
                     --stats=5m
                     --stats-one-line
                     --log-level=INFO
-                    --s3-upload-concurrency=2
-                    --s3-chunk-size=64Mi
-                    --s3-no-check-bucket
-                    --s3-storage-class=GLACIER
+                    --gcs-storage-class=ARCHIVE
                   "
 
                   archive_path() {
@@ -133,12 +114,12 @@ spec:
                       exit 1
                     fi
 
-                    # copy never removes a remote object. Bucket versioning and
-                    # Object Lock preserve earlier versions when a file changes.
+                    # copy never removes a remote object. GCS versioning preserves
+                    # earlier generations when a file changes.
                     # shellcheck disable=SC2086
                     rclone copy \
                       "${source}" \
-                      "scaleway-crypt:${destination}" \
+                      "gcs-crypt:${destination}" \
                       ${common_args}
 
                     rclone lsf "${source}" \
@@ -165,12 +146,22 @@ spec:
                   manifest_run="$(date -u +%Y/%m/%d/%Y%m%dT%H%M%SZ)"
                   rclone copy \
                     /tmp/manifests \
-                    "scaleway-crypt:_manifests/${manifest_run}" \
+                    "gcs-crypt:_manifests/${manifest_run}" \
                     --config="${config}" \
                     --checkers=4 \
                     --transfers=2 \
-                    --s3-no-check-bucket \
-                    --s3-storage-class=STANDARD \
+                    --gcs-storage-class=STANDARD \
+                    --log-level=INFO
+
+                  printf '%s\n' \
+                    'sulibot-gcs-archive-restore-probe' \
+                    "run=${manifest_run}" \
+                    > /tmp/restore-probe.txt
+                  rclone copyto \
+                    /tmp/restore-probe.txt \
+                    "gcs-crypt:_probes/${manifest_run}.txt" \
+                    --config="${config}" \
+                    --gcs-storage-class=ARCHIVE \
                     --log-level=INFO
               resources:
                 requests:

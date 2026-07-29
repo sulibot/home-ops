@@ -9,12 +9,12 @@ Use separate hot and cold providers:
 | Local primary | Workloads and content | Existing Ceph | Fast normal operation and recovery |
 | Local backup | VolSync/Kopia and CNPG/Barman | Existing MinIO LXC | Fast repository and PITR recovery |
 | Hot offsite | Kopia, CNPG, Terraform state, later PBS | Backblaze B2 | Mutable S3 repositories, no storage floor, inexpensive restore drills |
-| Cold offsite | Personal originals | Scaleway Glacier in `nl-ams` | Low-cost archive, Object Lock, inexpensive full-disaster retrieval |
+| Cold offsite | Personal originals | Google Cloud Archive in `us-central1` | Lowest idle cost, immediate reads, and simple recurring restore tests |
 | Root of trust | OpenBao auto-unseal | GCP Cloud KMS | Independent key service already used by the stack |
 
-B2 is the operational recovery target. Scaleway Glacier is disaster insurance
-for content that cannot be downloaded or regenerated. Never place a live
-Kopia, Barman, or PBS repository in Glacier.
+B2 is the operational recovery target. Google Cloud Archive is disaster
+insurance for content that cannot be downloaded or regenerated. Never place a
+live Kopia, Barman, or PBS repository in the content archive.
 
 ## What is protected
 
@@ -60,14 +60,21 @@ At the planned sizes:
   USD 0.41/month;
 - adding an estimated 80 GB PBS working set would make B2 approximately
   USD 0.96/month before retained deltas;
-- 367 GB in Scaleway Glacier is approximately EUR 0.93/month;
-- user storage growth increases Glacier by approximately EUR 0.00254 per GB
+- 367 GB in GCS Archive is approximately USD 0.44/month;
+- user storage growth increases GCS Archive by approximately USD 0.0012 per GB
   per month.
 
-Scaleway Glacier restoration costs EUR 0.009/GB. The first 75 GB/month of
-egress is free, then egress is EUR 0.01/GB. A complete 367 GB cold recovery is
-therefore approximately EUR 6.22 plus short-lived Standard Multi-AZ storage.
-The restore can take from a few minutes to 24 hours to start.
+GCS Archive retrieval costs USD 0.05/GiB and internet egress is normally USD
+0.12/GiB at this scale. A complete 367 GiB cold recovery is therefore
+approximately USD 62.39 plus request charges. Reads are immediate.
+
+Archive has a rolling 365-day minimum storage duration per object. This is a
+billing rule, not a locked retention policy or annual account contract. An
+object can be deleted at any time, but deleting, replacing, or rewriting it
+before day 365 bills the remaining storage duration. At this storage price,
+deleting the entire planned 367 GB set immediately would cap the storage
+commitment at approximately USD 5.28. Do not configure or lock a GCS bucket
+retention policy.
 
 ## Kubernetes implementation
 
@@ -79,7 +86,8 @@ The offsite resources live in:
 |---|---|---|
 | `volsync-offsite-kopia-sync` | Every 6 hours | Native Kopia repository synchronization to B2 |
 | `minio-selected-offsite-copy` | Every 6 hours | CNPG and Terraform state logical copy to B2 |
-| `scaleway-content-archive` | Weekly | Encrypted, append-only allowlisted content copy |
+| `gcs-content-archive` | Weekly | Encrypted, append-only allowlisted content copy |
+| `gcs-content-restore-drill` | Monthly | Decrypt and verify a bounded Archive-class probe |
 | `volsync-offsite-restore-drill` | Weekly | Restore `actual-src@default:/data` from B2 |
 | `cnpg-offsite-restore-drill` | Monthly | Recover CNPG from B2 and execute SQL |
 
@@ -116,21 +124,30 @@ Create three private buckets:
 Keep the B2 account master key out of Kubernetes, PBS, and application
 containers.
 
-### Scaleway
+### Google Cloud Storage
 
-Create one private Object Storage bucket in `nl-ams`:
+Create a dedicated GCP project and one private Cloud Storage bucket:
 
-1. enable versioning and Object Lock when the bucket is created;
-2. start with 90-day governance retention;
-3. block public access;
-4. create a dedicated IAM application with object read/list/create access and
-   no retention-administration permission;
-5. set billing alerts for storage and egress;
-6. use direct `GLACIER` uploads for content and `STANDARD` for small manifests.
+1. project ID: `sulibot-personal-archive`;
+2. bucket: `sulibot-personal-archive`, or a globally unique suffixed name if
+   that name is unavailable;
+3. location: regional `us-central1`;
+4. default storage class: `ARCHIVE`;
+5. enforce public access prevention and uniform bucket-level access;
+6. enable Object Versioning and expire noncurrent versions only after they are
+   at least 365 days old;
+7. keep the default soft-delete policy initially;
+8. do not create or lock a bucket retention policy;
+9. create a dedicated service account with bucket-scoped Storage Object User
+   access, but no bucket administration or retention-policy permissions;
+10. set a small monthly billing budget and alerts;
+11. use `ARCHIVE` for content/probes and `STANDARD` for small manifests.
 
-Object Lock cannot be disabled after it is enabled. Keep governance mode until
-at least one cold restore has passed; consider compliance mode only after the
-retention and cost behavior is proven.
+Keep an owner-controlled recovery identity outside Kubernetes. The in-cluster
+service account is allowed to update objects because user files can change;
+Object Versioning and soft delete provide a recovery window for accidental
+overwrites or deletion. Revisit stronger immutability only after the first
+archive and restore drills have established normal behavior.
 
 ## 1Password contract
 
@@ -152,11 +169,8 @@ Create or update the `offsite-backup-s3` item with these fields:
 | `infrastructure-bucket` | B2 immutable infrastructure bucket |
 | `infrastructure-access-key-id` | bucket-scoped infrastructure key ID |
 | `infrastructure-application-key` | matching B2 application key |
-| `scaleway-endpoint` | for example `https://s3.nl-ams.scw.cloud` |
-| `scaleway-region` | `nl-ams` |
-| `scaleway-content-bucket` | Scaleway archive bucket |
-| `scaleway-access-key-id` | least-privilege Scaleway access key |
-| `scaleway-secret-access-key` | matching Scaleway secret |
+| `gcs-content-bucket` | Google Cloud Archive bucket |
+| `gcs-service-account-json` | bucket-scoped GCS service-account JSON |
 | `content-crypt-password` | high-entropy rclone crypt password |
 | `content-crypt-salt` | independent high-entropy rclone crypt salt |
 
@@ -164,15 +178,16 @@ Keep independent offline copies of:
 
 - the Kopia repository password;
 - `content-crypt-password` and `content-crypt-salt`;
-- B2 and Scaleway recovery credentials;
+- B2 and GCS recovery credentials;
 - SOPS identities, OpenBao recovery shares, and KMS recovery information.
 
-Losing the rclone crypt password or salt makes the Scaleway archive
+Losing the rclone crypt password or salt makes the Google Cloud archive
 unrecoverable.
 
 ## Bootstrap and activation
 
-1. Provision the B2 and Scaleway buckets and keys.
+1. Provision the B2 buckets/keys and the GCS project, bucket, and service
+   account.
 2. Create the dedicated MinIO read-only service account. It needs list/get for:
    - `cnpg-backups/postgres-vectorchord/*`;
    - `terraform-state/live/*`.
@@ -180,12 +195,13 @@ unrecoverable.
    Ready.
 4. Run one manual Kopia synchronization and inspect its log.
 5. Run one manual selected-MinIO copy and compare object counts/bytes.
-6. Run the Scaleway content archive manually. Confirm Standard manifests and
-   Glacier content objects are present.
+6. Run the GCS content archive manually. Confirm Standard manifests and
+   Archive content/probe objects are present.
 7. Run the B2 Kopia restore drill.
 8. Run the CNPG restore drill and confirm the SQL verification result.
-9. Perform one manual Scaleway Glacier sample restore.
-10. Change `suspend: true` to `suspend: false` for all five CronJobs.
+9. Run the GCS content restore drill and then manually restore one small real
+   archived content file through the encrypted remote.
+10. Change `suspend: true` to `suspend: false` for all six CronJobs.
 11. Confirm Prometheus has recorded each CronJob's last successful timestamp.
 
 Example manual bootstrap:
@@ -200,8 +216,12 @@ kubectl create job -n volsync-system \
   minio-selected-offsite-bootstrap
 
 kubectl create job -n volsync-system \
-  --from=cronjob/scaleway-content-archive \
-  scaleway-content-bootstrap
+  --from=cronjob/gcs-content-archive \
+  gcs-content-bootstrap
+
+kubectl create job -n volsync-system \
+  --from=cronjob/gcs-content-restore-drill \
+  gcs-content-restore-bootstrap
 ```
 
 ## Recovery order
@@ -212,19 +232,37 @@ kubectl create job -n volsync-system \
 4. Recover PostgreSQL from B2 CNPG/Barman objects and replay WAL.
 5. Recover Terraform state and other immutable infrastructure artifacts.
 6. Recreate PBS and attach its B2 S3 datastore when that phase is implemented.
-7. Restore Scaleway Glacier content only if the local content filesystem is
+7. Restore Google Cloud Archive content only if the local content filesystem is
    unavailable.
 
-For Glacier, list the underlying encrypted S3 object keys, request restoration
-with the S3 `RestoreObject` API, wait until each object's restore status is
-complete, then use the same rclone crypt password and salt to copy the restored
-objects to replacement storage. Restore small groups first to validate the key
-material before requesting the entire archive.
+For GCS Archive, use the same service-account credential and rclone crypt
+password/salt to copy objects directly to replacement storage. No thaw request
+is required. Restore the probe and a small real content group first, verify
+them, and then expand the copy. Use an owner-controlled recovery credential if
+the in-cluster service account is unavailable or suspected compromised.
+
+## Provider migration
+
+The content layout and encryption are intentionally independent of GCS. To
+migrate later:
+
+1. provision the replacement object store and a second least-privilege remote;
+2. configure a second rclone crypt remote with the same password and salt;
+3. copy the decrypted namespace from `gcs-crypt:` to the replacement crypt
+   remote;
+4. compare the encrypted manifests, file counts, and total bytes;
+5. pass a sample restore from the replacement provider;
+6. switch the archive and drill jobs, but retain GCS until every object is at
+   least 365 days old or explicitly accept the small early-deletion charge.
+
+Migration reads are charged at GCS Archive retrieval and egress rates. Do not
+delete the source archive until the target restore test passes.
 
 ## Monitoring and recovery objectives
 
 - Kopia and selected-MinIO copies: target RPO 6 hours; alert after 14 hours.
 - Content archive: target RPO 7 days; alert after 9 days.
+- Content restore drill: monthly; alert after 45 days without success.
 - Kopia drill: weekly; alert after 14 days without success.
 - CNPG drill: monthly; alert after 45 days without success.
 - Record restore duration, restored bytes/files, database name, and SQL result
@@ -238,10 +276,10 @@ until those results exist.
 | Provider | Decision |
 |---|---|
 | Backblaze B2 | Use for mutable operational repositories and drills |
-| Scaleway Glacier | Use for encrypted immutable personal originals |
+| GCP Archive | Start here for encrypted personal originals; lowest idle cost and immediate restore testing |
+| Scaleway Glacier | Migration option if full-recovery economics become more important than immediate reads |
 | Scaleway One Zone | More expensive than B2 and only one zone; not selected |
 | Scaleway Multi-AZ | Good service, but over twice B2's storage price |
-| GCP Archive | Lower idle cost, but substantially higher disaster retrieval cost |
 | IDrive e2 | Revisit only if B2 remains above its cost crossover for two billing cycles |
 | Cloudflare R2 | No S3 Object Lock and higher storage price |
 | Wasabi | One-TB floor and 90-day minimum conflict with current size/pruning |
@@ -250,9 +288,11 @@ until those results exist.
 
 - [Backblaze B2 pricing](https://www.backblaze.com/cloud-storage/pricing)
 - [Backblaze Object Lock](https://www.backblaze.com/docs/cloud-storage-object-lock)
+- [Google Cloud Storage pricing](https://cloud.google.com/storage/pricing)
+- [Google Cloud Storage classes](https://cloud.google.com/storage/docs/storage-classes)
+- [Google Cloud Storage Bucket Lock](https://cloud.google.com/storage/docs/bucket-lock)
+- [rclone Google Cloud Storage backend](https://rclone.org/googlecloudstorage/)
 - [Scaleway Object Storage pricing](https://www.scaleway.com/en/pricing/storage/)
-- [Scaleway Object Storage regions and classes](https://www.scaleway.com/en/docs/object-storage/concepts/)
-- [Scaleway Object Lock](https://www.scaleway.com/en/docs/object-storage/api-cli/object-lock/)
 - [Scaleway Glacier restoration](https://www.scaleway.com/en/docs/object-storage/how-to/restore-an-object-from-glacier/)
 - [Kopia repository synchronization](https://kopia.io/docs/advanced/synchronization/)
 - [CNPG S3-compatible object stores](https://cloudnative-pg.io/docs/1.25/appendixes/object_stores/)

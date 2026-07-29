@@ -14,5 +14,6 @@ resources:
   - ./offsite-kopia-sync-cronjob.yaml
   - ./offsite-kopia-restore-drill-cronjob.yaml
   - ./offsite-minio-copy-cronjob.yaml
-  - ./scaleway-content-archive-cronjob.yaml
+  - ./gcs-content-archive-cronjob.yaml
+  - ./gcs-content-restore-drill-cronjob.yaml
   - ./prometheusrule.yaml

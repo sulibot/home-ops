@@ -151,7 +151,7 @@ spec:
           expr: |
             increase(
               kube_job_status_failed{
-                job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|scaleway-content-archive|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
+                job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
               }[1h]
             ) > 0
           for: 5m
@@ -187,13 +187,13 @@ spec:
               14 hours. The intended schedule is every six hours.
             runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
 
-        - alert: ScalewayContentArchiveStale
+        - alert: GCSContentArchiveStale
           expr: |
             (
               time() -
               kube_cronjob_status_last_successful_time{
                 namespace="volsync-system",
-                cronjob="scaleway-content-archive"
+                cronjob="gcs-content-archive"
               }
             ) > 777600
           for: 6h
@@ -201,10 +201,30 @@ spec:
             severity: warning
             component: backup
           annotations:
-            summary: "Scaleway content archive is stale"
+            summary: "Google Cloud content archive is stale"
             description: |
               The weekly encrypted content archive has not completed
               successfully in more than nine days.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+
+        - alert: GCSContentRestoreDrillStale
+          expr: |
+            (
+              time() -
+              kube_cronjob_status_last_successful_time{
+                namespace="volsync-system",
+                cronjob="gcs-content-restore-drill"
+              }
+            ) > 3888000
+          for: 6h
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Google Cloud content restore drill is stale"
+            description: |
+              The monthly encrypted content restore drill has not completed
+              successfully in more than 45 days.
             runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
 
         - alert: OffsiteRestoreDrillStale
