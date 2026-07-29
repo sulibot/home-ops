@@ -124,7 +124,6 @@ inputs = {
       "apt-get update -qq",
       "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr",
       "install -d -o 1888405477 -g 1888405477 -m 0700 /home/sulibot",
-      "install -d -m 0750 /home/sulibot/Cloud",
     ]
   }
 }

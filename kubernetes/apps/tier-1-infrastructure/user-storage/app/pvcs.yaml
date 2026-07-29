@@ -16,21 +16,3 @@ spec:
       storage: 1Ti
   storageClassName: ""
   volumeName: user-storage-opencloud
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: user-storage-sulibot
-  namespace: default
-  labels:
-    app.kubernetes.io/name: user-storage
-    app.kubernetes.io/component: sulibot-files
-spec:
-  accessModes:
-    - ReadWriteMany
-  volumeMode: Filesystem
-  resources:
-    requests:
-      storage: 1Ti
-  storageClassName: ""
-  volumeName: user-storage-sulibot

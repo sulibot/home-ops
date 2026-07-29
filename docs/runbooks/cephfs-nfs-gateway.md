@@ -37,10 +37,11 @@ person with Google or Authentik.
 - `client.nfs-recovery` can write only the `nfs-ganesha` recovery pool.
 - Client access is limited to tenant 200 (`10.200.0.0/24` and
   `fd00:200::/64`).
-- The export root is mode `2751`: the anonymous identity created by
+- The export root grants other users execute-only traversal (effective mode
+  `2771` after the ACL mask): the anonymous identity created by
   `Root_Squash` receives traverse-only access required for NFSv4 mount
-  negotiation. Kanidm UID/primary GID `1888405477` owns the personal tree;
-  application service UID `1000` retains write permission through an ACL.
+  negotiation. OpenCloud owns the personal Space root as `1000:1000`;
+  Kanidm UID/primary GID `1888405477` receives named access/default ACLs.
 - The LXCs are privileged only because Keepalived must add and remove the VIP.
   They are single-purpose infrastructure guests and receive no host CephFS
   bind mount.
@@ -52,6 +53,10 @@ person with Google or Authentik.
 From `terraform/infra/live/services/nfs-gateway`:
 
 ```console
+export COMMON_SPACE_ID=5348ae65-b9b1-406d-b9d4-1f9139933a37
+export COMMON_GID=1965604563
+export USER_UID=1888405477
+export USER_GID=1888405477
 terragrunt apply
 ./configure-ceph.sh
 ./configure-client-monitoring.sh
@@ -111,12 +116,19 @@ id sulibot
 stat -c '%u:%g %n' /home/sulibot/Cloud
 ```
 
-The personal path owner is canonical Kanidm UID/GID
-`1888405477:1888405477`; OpenCloud and Syncthing UID `1000` are ACL
-principals. The Common Space uses setgid and default ACLs for OpenCloud
-UID/GID 1000 and Kanidm group
+The personal Space root owner is OpenCloud UID/GID `1000:1000`; the canonical
+Kanidm UID/GID `1888405477:1888405477` is an ACL principal. NFS-created files
+use canonical owner UID `1888405477` and inherit OpenCloud group `1000` from
+the setgid Space root. The Common Space uses setgid and default ACLs for
+OpenCloud UID/GID 1000 and Kanidm group
 `storage_common_rw`. A Google or Authentik login may establish a web identity,
 but it does not replace the Kanidm POSIX identity used by NFS.
+
+OpenCloud's current `inotifywait` watcher does not receive changes made by
+this independent Ganesha CephFS client. NFS writes are assimilated during the
+next OpenCloud startup scan, not in real time. Use the Space's WebDAV endpoint
+when a VM/LXC needs immediate OpenCloud consistency, and do not concurrently
+edit the same active working set through raw NFS and OpenCloud.
 
 The current `storage_common_rw` GID is `1965604563`. Verify the live value with
 `kanidm group posix show storage_common_rw` before changing ACLs; the name is

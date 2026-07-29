@@ -18,16 +18,20 @@ ssh "${ssh_opts[@]}" "root@${pve_host}" \
   set -eu
   cloud_path=/mnt/pve/content/users/sulibot/Cloud
   common_path="/mnt/pve/content/users/projects/${COMMON_SPACE_ID}"
-  test -d "${cloud_path}"
+  if [ ! -d "${cloud_path}" ]; then
+    echo "OpenCloud must initialize ${cloud_path} before the export is configured" >&2
+    exit 1
+  fi
   test -d "${common_path}"
-  # Kanidm owns the personal tree. UID 1000 is the OpenCloud/Syncthing
-  # service identity and receives only an explicit ACL.
-  chown "${USER_UID}:${USER_GID}" "${cloud_path}"
+  # OpenCloud must create and own the personal Space root so its immutable
+  # Space metadata is present. Kanidm's canonical UID/GID receives an ACL;
+  # never pre-create or replace this directory.
+  chown "1000:1000" "${cloud_path}"
   # Root_Squash maps the kernel mount lookup to the anonymous identity. Grant
   # traverse-only access so clients can mount the export; write access remains
-  # controlled by the canonical POSIX owner/group and file modes.
+  # controlled by the canonical POSIX ACL and file modes.
   chmod 2751 "${cloud_path}"
-  setfacl -m u:1000:rwx,m:rwx \
+  setfacl -m u:1000:rwx,u:"${USER_UID}":rwx,g:"${USER_GID}":rwx,m:rwx \
     -m d:u:"${USER_UID}":rwx,d:u:1000:rwx,d:g:"${USER_GID}":rwx,d:m:rwx,d:o:--- \
     "${cloud_path}"
   chown "1000:${COMMON_GID}" "${common_path}"

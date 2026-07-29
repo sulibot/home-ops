@@ -6,4 +6,3 @@ resources:
   - ./opencloud-cephx-secret.yaml
   - ./pvs.yaml
   - ./pvcs.yaml
-  - ./syncthing-sulibot-cephx-secret.yaml

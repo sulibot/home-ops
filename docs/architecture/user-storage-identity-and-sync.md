@@ -25,17 +25,20 @@ credentials, sockets, browser profiles, and application databases remain local.
 
 1. CephFS `content` is the canonical online file plane.
 2. The interoperable namespace is `/users/<user>/Cloud`.
-3. OpenCloud and Syncthing state use separate PVCs. They share only the user
-   file tree.
+3. OpenCloud and Syncthing state use separate RBD PVCs. Both file-data mounts
+   reuse the exact `user-storage-opencloud` CephFS PVC and are co-scheduled on
+   one node. This is required for OpenCloud's inotify assimilation to observe
+   Syncthing changes in real time.
 4. Syncthing is single-user. `syncthing-sulibot` serves only `sulibot`; each
    future user receives a separate instance, device graph, config PVC, and
    CephFS root.
 5. Kanidm is authoritative for infrastructure identities and POSIX
    attributes. Authentik is authoritative for application-facing accounts
    and may contain a broader population.
-6. Kubernetes and guest mounts use path-restricted CephX identities. CephX
-   authenticates the machine; Kanidm UID/GID plus POSIX ACLs authorize the
-   process.
+6. OpenCloud creates and owns every personal Space root and its extended
+   attributes. Provisioning must never pre-create `/users/<user>/Cloud`.
+   Kanidm UID/GID plus POSIX ACLs authorize raw Unix access, but independent
+   CephFS/NFS clients do not participate in the real-time inotify domain.
 7. Syncthing replication is availability, not backup. CephFS snapshots and an
    independent backup target remain required.
 8. OpenCloud application users receive a stable `opencloud_username`. A
@@ -60,9 +63,8 @@ Authentik-local login ─────────────────┘
 CephFS content:/users
    ├── sulibot/Cloud
    │   ├── OpenCloud PosixFS collaborative access
-   │   ├── syncthing-sulibot pod
-   │   ├── native CephFS mount in VMs
-   │   └── PVE-host mount + bind mount in trusted, UID-compatible LXCs
+   │   ├── syncthing-sulibot via the same PVC and Kubernetes node
+   │   └── independent CephFS/NFS mounts (startup-scan visibility)
    └── projects/5348ae65-b9b1-406d-b9d4-1f9139933a37
        ├── OpenCloud organization-owned Common Space
        └── NFS-Ganesha /common
@@ -155,7 +157,7 @@ Google login must not delete the Kanidm person or user files.
 
 | Path/storage | Owner |
 |---|---|
-| `content:/users/sulibot/Cloud` | canonical shared files |
+| `content:/users/sulibot/Cloud` | OpenCloud-owned personal Space; UID/GID `1000:1000` plus canonical-user ACL |
 | `content:/users/projects/5348ae65-b9b1-406d-b9d4-1f9139933a37` | organization-owned Common Space |
 | `syncthing-sulibot-config` RBD PVC | Syncthing certificate, database, configuration |
 | `opencloud-config` RBD PVC | OpenCloud configuration, NATS, indexes, metadata |
@@ -179,6 +181,13 @@ Do not mount the root of `content` into either application.
 Never point both the OpenCloud desktop client and Syncthing at the same local
 directory. Pick one synchronization engine per local path.
 
+For a VM/LXC path that must be immediately consistent with OpenCloud, mount
+the Space through WebDAV. Native CephFS, NFS, and Proxmox bind mounts remain
+useful for controlled Unix workflows, but OpenCloud 5.2 does not receive
+remote CephFS-client changes through `inotify`; it assimilates them on its next
+startup scan. Do not use a raw mount and OpenCloud concurrently for the same
+active working set.
+
 ## Organization-owned Common Space
 
 OpenCloud creates the `Common` Space before any NFS export is configured. Its
@@ -192,16 +201,18 @@ content:/users/projects/5348ae65-b9b1-406d-b9d4-1f9139933a37
 The same directory is exported as `10.200.0.209:/common`. This is one data
 copy with two presentation and authorization planes:
 
-- OpenCloud web, mobile, desktop, and WebDAV use OpenCloud group membership.
+- OpenCloud web, mobile, desktop, and WebDAV share the Space once with
+  `opencloud-users` at `Can edit`; do not separately share it with the broader
+  `standard-users` or `trusted-users` groups.
 - Managed Unix VMs use NFS with the Kanidm `storage_common_rw` GID.
 - LXCs receive a Proxmox host mount point; they do not mount NFS themselves.
 
 The directory is setgid and has default ACLs for OpenCloud service UID/GID
-`1000:1000` and the canonical Kanidm group. The personal directory is owned by
-Kanidm UID/primary GID `1888405477`; OpenCloud and Syncthing service UID `1000`
-receive explicit ACLs instead of impersonating the user. OpenCloud users without a Kanidm
-POSIX identity can use OpenCloud and WebDAV but cannot use NFS. Do not infer
-Unix access from Google login or Authentik application membership.
+`1000:1000` and the canonical Kanidm group. OpenCloud owns the personal Space
+root as `1000:1000`; Kanidm UID/primary GID `1888405477` receives named access
+and default ACL entries. OpenCloud users without a Kanidm POSIX identity can
+use OpenCloud and WebDAV but cannot use NFS. Do not infer Unix access from
+Google login or Authentik application membership.
 
 Collaborative PosixFS assimilates external changes, but external writes bypass
 OpenCloud upload-time checks. Do not perform bulk cross-Space moves, mass
@@ -326,9 +337,12 @@ STORAGE_USERS_POSIX_WATCH_PATH=/srv/user-files
 ```
 
 The OpenCloud `cephfs` watcher type consumes CephFS change notifications from
-Kafka; it is not a direct watcher for a mounted CephFS tree. This stack does not
-run Kafka, so it uses `inotifywait` on the mounted tree. Validate cross-client
-create, update, rename, and delete events before expanding beyond `sulibot`.
+Kafka; it is not a direct watcher for a mounted CephFS tree. This stack does
+not run that event pipeline, so it uses `inotifywait`. Inotify is real-time
+only for writers using the same Kubernetes node-staged PVC. Syncthing therefore
+reuses `user-storage-opencloud`, mounts `sulibot/Cloud` with `subPath`, and has
+required pod affinity to OpenCloud. Independent Proxmox, NFS, and CephFS
+clients are assimilated only by a subsequent OpenCloud startup scan.
 
 Bulk moves between OpenCloud Spaces, symlinks, and mass external deletion are
 not supported operating patterns. Stop writers before bulk maintenance.
@@ -355,13 +369,15 @@ after validating a newer OpenCloud release against a freshly created index.
 1. Create or identify the Authentik application account.
 2. POSIX-enable the Kanidm person and private group.
 3. Link the accounts by immutable Kanidm UUID; do not match on email.
-4. Create `/users/<name>/Cloud`.
-5. Create a path-restricted `client.<name>-cloud` CephX identity.
-6. Apply owner, service-user ACL, and default ACL.
-7. Create a retained static PV/PVC rooted at the user path.
-8. Deploy `syncthing-<name>` with its own RBD config PVC.
-9. Authorize and expose the user's tree through OpenCloud.
-10. Validate write propagation from every authorized client.
+4. Grant the user `opencloud-users` membership and complete one OpenCloud
+   login so OpenCloud creates `/users/<name>/Cloud` and its Space metadata.
+5. Apply the canonical-user access/default ACL without changing the Space
+   owner or removing `user.oc.*` attributes.
+6. Deploy `syncthing-<name>` with its own RBD config PVC, the shared OpenCloud
+   file-data PVC, a user-specific `subPath`, and required OpenCloud pod affinity.
+7. Authorize the personal and Common Spaces in OpenCloud.
+8. Validate create, update, rename, and delete propagation from Syncthing and
+   an OpenCloud client before enabling any independent raw mount.
 
 ## SLOs and alerts
 

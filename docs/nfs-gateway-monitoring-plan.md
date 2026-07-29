@@ -45,7 +45,7 @@ Prometheus retention period.
 | --- | --- | --- | --- |
 | Availability | 99.5% over 14 days | Successful synthetic NFS transactions / scheduled transactions | About 101 minutes of error budget |
 | Recovery | Restore successful client IO within 60 seconds of a single gateway failure | Quarterly disruptive failover test | Failed test creates reliability work |
-| Data correctness | 100% of successful probes preserve expected ownership and payload | Personal files use canonical Kanidm UID/GID `1888405477:1888405477`; Common files use supplemental GID `1965604563` | Any mismatch is an availability failure |
+| Data correctness | 100% of successful probes preserve expected ownership and payload | Personal NFS files use canonical Kanidm owner UID `1888405477` and OpenCloud Space GID `1000`; Common files use supplemental GID `1965604563` | Any mismatch is an availability failure |
 | Recovery point | Zero gateway-local data loss | Both gateways serve the same CephFS path | Gateway rebuild must not copy or restore user data |
 | Monitoring coverage | All three exporter targets and the Kubernetes TCP probe healthy | Prometheus target and Blackbox metrics | Missing coverage is a warning, not a healthy sample |
 

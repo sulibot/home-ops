@@ -29,8 +29,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# OpenCloud owns the setgid Space tree as 1000:1000. The Kanidm UID is the NFS
+# file owner; the service group and named ACL keep OpenCloud writable.
 for export_spec in \
-  "personal:/shared:${USER_UID}:${USER_GID}" \
+  "personal:/shared:${USER_UID}:1000" \
   "common:/common:${USER_UID}:${COMMON_GID}"; do
   IFS=: read -r name export_path uid gid <<<"${export_spec}"
   test_dir="${test_root}/${name}"

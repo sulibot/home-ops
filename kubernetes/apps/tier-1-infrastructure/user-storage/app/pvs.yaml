@@ -31,33 +31,3 @@ spec:
       provisionVolume: "false"
       monitors: >-
         [fc00:20::1]:6789,[fc00:20::2]:6789,[fc00:20::3]:6789
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: user-storage-sulibot
-  labels:
-    app.kubernetes.io/name: user-storage
-    app.kubernetes.io/component: sulibot-files
-spec:
-  capacity:
-    storage: 1Ti
-  accessModes:
-    - ReadWriteMany
-  volumeMode: Filesystem
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  csi:
-    driver: cephfs.csi.ceph.com
-    volumeHandle: user-storage-sulibot
-    nodeStageSecretRef:
-      name: csi-ceph-syncthing-sulibot-secret
-      namespace: ceph-csi
-    volumeAttributes:
-      clusterID: 407036f5-1f73-44ff-ba81-1f219b7a8a64
-      fsName: content
-      rootPath: /users/sulibot/Cloud
-      staticVolume: "true"
-      provisionVolume: "false"
-      monitors: >-
-        [fc00:20::1]:6789,[fc00:20::2]:6789,[fc00:20::3]:6789
