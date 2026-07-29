@@ -56,6 +56,12 @@ jobs:
     name: Plan ${{ matrix.cluster }}
     runs-on: home-ops-runner
     environment: terraform-plan
+    env:
+      # These orchestration units require generated Talos credentials and/or
+      # machine configuration files that intentionally are not committed.
+      # Plan the declarative infrastructure units in CI; exercise the excluded
+      # units only from an authorized operator workspace during apply.
+      TG_QUEUE_EXCLUDE_DIR: ./apply,./bootstrap,./cilium-bootstrap,./flux
     needs: detect-changes
     if: >-
       needs.detect-changes.outputs.has_changes == 'true' &&
@@ -142,11 +148,14 @@ jobs:
         id: plan
         working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
         run: |
-          set -o pipefail
           echo "Generating Terraform plan..."
-          terragrunt run --all --non-interactive -- plan -no-color 2>&1 | tee plan.txt
+          if ! terragrunt run --all --non-interactive -- \
+            plan -no-color > plan.txt 2>&1; then
+            echo "::error::OpenTofu plan failed. Detailed output is withheld from this public repository's logs."
+            exit 1
+          fi
 
-          if grep -q "^Plan:" plan.txt; then
+          if grep -Eq "Plan: .*([1-9][0-9]* to add|[1-9][0-9]* to change|[1-9][0-9]* to destroy)" plan.txt; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -158,33 +167,17 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
             const cluster = '${{ matrix.cluster }}';
-            const planOutput = fs.readFileSync(
-              `terraform/infra/live/clusters/${cluster}/plan.txt`,
-              'utf8'
-            );
             const hasChanges = '${{ steps.plan.outputs.has_changes }}' === 'true';
-
-            // Truncate plan if too long (GitHub comment limit)
-            const maxLength = 60000;
-            let truncatedPlan = planOutput;
-            if (planOutput.length > maxLength) {
-              truncatedPlan = planOutput.substring(0, maxLength) + '\n\n... (output truncated)';
-            }
 
             const body = `## Terraform Plan: ${cluster}
 
             **Status**: ${hasChanges ? '⚠️ Changes detected' : '✅ No changes'}
 
-            <details>
-            <summary>Show Plan Output</summary>
-
-            \`\`\`terraform
-            ${truncatedPlan}
-            \`\`\`
-
-            </details>
+            Detailed plan output is intentionally withheld from public logs,
+            PR comments, and artifacts because it can contain infrastructure
+            metadata. Reproduce the plan from an authorized operator workspace
+            before applying.
 
             **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             `;
@@ -217,13 +210,6 @@ jobs:
                 body: body
               });
             }
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: tfplan-${{ matrix.cluster }}
-          path: terraform/infra/live/clusters/${{ matrix.cluster }}/plan.txt
-          retention-days: 7
 
       - name: Cleanup sensitive files
         if: always()
