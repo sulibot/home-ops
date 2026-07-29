@@ -81,16 +81,15 @@ jobs:
           echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
           chmod 600 $SOPS_AGE_KEY_FILE
 
-      - name: Verify required tools
-        run: |
-          echo "Checking for required tools..."
-          for tool in terraform terragrunt sops jq; do
-            if ! command -v $tool &> /dev/null; then
-              echo "ERROR: $tool is not installed"
-              exit 1
-            fi
-            echo "✓ $tool: $(command -v $tool)"
-          done
+      - name: Setup tools
+        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        with:
+          version: 2026.7.13
+          tool_versions: |
+            terraform 1.14.0
+            terragrunt 0.93.8
+            sops 3.12.1
+            jq 1.7.1
 
       - name: Initialize Terraform
         working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
