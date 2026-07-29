@@ -8,9 +8,6 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform-plan.yml'
 
-env:
-  SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
-
 permissions:
   contents: read
   id-token: write
@@ -19,7 +16,7 @@ permissions:
 jobs:
   detect-changes:
     name: Detect Changed Clusters
-    runs-on: home-ops-runner
+    runs-on: ubuntu-latest
     outputs:
       clusters: ${{ steps.detect.outputs.clusters }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
@@ -58,8 +55,12 @@ jobs:
   terraform-plan:
     name: Plan ${{ matrix.cluster }}
     runs-on: home-ops-runner
+    environment: terraform-plan
     needs: detect-changes
-    if: needs.detect-changes.outputs.has_changes == 'true'
+    if: >-
+      needs.detect-changes.outputs.has_changes == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor_id == '6082800'
     timeout-minutes: 30
     strategy:
       matrix:
@@ -76,10 +77,44 @@ jobs:
           workload_identity_provider: projects/836187109693/locations/global/workloadIdentityPools/github-actions/providers/home-ops
           create_credentials_file: true
 
-      - name: Setup SOPS Age key
+      - name: Authenticate to OpenBao
+        env:
+          OPENBAO_ADDR: https://openbao.sulibot.com
+          OPENBAO_ROLE: terraform-plan
         run: |
-          echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
-          chmod 600 $SOPS_AGE_KEY_FILE
+          set -euo pipefail
+          oidc_response="$(
+            curl --silent --show-error --fail-with-body \
+              --config <(
+                printf 'header = "Authorization: Bearer %s"\n' \
+                  "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+              ) \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fopenbao.sulibot.com"
+          )"
+          oidc_token="$(jq -er '.value' <<<"$oidc_response")"
+          unset oidc_response
+
+          login_payload="$(
+            jq -cn --arg jwt "$oidc_token" --arg role "$OPENBAO_ROLE" \
+              '{jwt:$jwt,role:$role}'
+          )"
+          unset oidc_token
+          login_response="$(
+            printf '%s' "$login_payload" |
+              curl --silent --show-error --fail-with-body \
+              --header 'content-type: application/json' \
+              --request POST \
+              --data-binary @- \
+              "$OPENBAO_ADDR/v1/auth/jwt-github/login"
+          )"
+          unset login_payload
+          openbao_token="$(jq -er '.auth.client_token' <<<"$login_response")"
+          unset login_response
+
+          echo "::add-mask::$openbao_token"
+          echo "VAULT_ADDR=$OPENBAO_ADDR" >> "$GITHUB_ENV"
+          echo "VAULT_TOKEN=$openbao_token" >> "$GITHUB_ENV"
+          unset openbao_token
 
       - name: Setup tools
         uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
@@ -193,12 +228,11 @@ jobs:
       - name: Cleanup sensitive files
         if: always()
         run: |
-          rm -f $SOPS_AGE_KEY_FILE
           rm -f terraform/infra/live/clusters/${{ matrix.cluster }}/plan.txt
 
   summary:
     name: Plan Summary
-    runs-on: home-ops-runner
+    runs-on: ubuntu-latest
     needs: [detect-changes, terraform-plan]
     if: always() && needs.detect-changes.outputs.has_changes == 'true'
     steps:
@@ -222,7 +256,7 @@ jobs:
 
   no-changes:
     name: No Terraform Changes
-    runs-on: home-ops-runner
+    runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'false'
     steps:

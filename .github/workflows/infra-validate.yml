@@ -27,7 +27,7 @@ on:
 jobs:
   validate:
     name: Validate infra parameter layers
-    runs-on: home-ops-runner
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
