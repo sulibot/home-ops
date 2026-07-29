@@ -121,7 +121,7 @@ jobs:
         with:
           version: 2026.7.13
           tool_versions: |
-            terraform 1.14.0
+            opentofu 1.12.5
             terragrunt 0.93.8
             sops 3.12.1
             jq 1.7.1
