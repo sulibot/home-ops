@@ -12,13 +12,14 @@ device workflows:
 
 1. a manually issued certificate installed directly in the operating-system
    or browser certificate store; or
-2. the per-device certificate automatically provisioned by an enrolled
-   Cloudflare One Client.
+2. the per-device certificate automatically provisioned when an enrolled
+   Cloudflare One Client runs in Posture-only mode.
 
 The same hostname association and WAF rule accept both certificate workflows.
-The user's device profile determines whether the installed client runs in
-Posture-only mode (certificate, no tunnel) or WARP mode (certificate plus the
-narrow private application routes).
+Cloudflare documents automatic certificate provisioning for Posture-only mode.
+Do not assume a WARP-mode profile will provision the identity. A WARP user who
+also needs browser mTLS should use a manually issued identity until that
+behavior is explicitly validated.
 
 ## Endpoint model
 
@@ -43,8 +44,8 @@ least-capable profile that meets a user's needs:
 |---|---|---|---|
 | Browser mTLS only; no Cloudflare client desired | Manually issued client identity | Not enrolled | No Cloudflare tunnel |
 | Browser mTLS only; automatic certificate lifecycle desired | Cloudflare One Client enrollment | Posture only | No application traffic or DNS is routed through WARP |
-| Browser mTLS plus native/API apps | Cloudflare One Client enrollment | App access (WARP Include mode) | Only private `*-app.sulibot.com` gateway destinations use WARP |
-| Infrastructure administration | Cloudflare One Client enrollment | Admin access (WARP Include mode) | App gateway destinations plus approved SSH, Kubernetes, OpenBao, storage, and management routes use WARP |
+| Browser mTLS plus native/API apps | Manual client identity plus Cloudflare One Client enrollment | App access (WARP Include mode) | Only private `*-app.sulibot.com` gateway destinations use WARP |
+| Infrastructure administration | Manual client identity plus Cloudflare One Client enrollment | Admin access (WARP Include mode) | App gateway destinations plus approved SSH, Kubernetes, OpenBao, storage, and management routes use WARP |
 
 Device profiles use first-match precedence. Put the narrowly assigned
 **Admin access** profile first, **App access** next, and **Posture only** after
@@ -132,16 +133,16 @@ For automatic per-device certificates:
 
 1. Enable device certificate provisioning for the zone through Cloudflare's
    documented `PATCH /zones/{zone_id}/devices/policy/certificates` API.
-2. Assign the user's identity to either the Posture-only or App access device
-   profile.
+2. Assign the user's identity to the Posture-only device profile.
 3. Install the Cloudflare One Client and enroll it into
    `sulibot.cloudflareaccess.com` through the configured identity provider.
 4. Confirm the client-created identity is present in the operating-system
    certificate store.
 5. With WARP traffic disconnected or in Posture-only mode, verify the browser
    can reach an mTLS hostname.
-6. For an App access user, verify each approved `*-app` native client and
-   confirm unrelated Internet traffic bypasses WARP.
+6. If the user later moves to an App access WARP profile, keep a separately
+   issued manual identity for browser mTLS unless WARP-mode provisioning has
+   been explicitly validated.
 
 The automatically provisioned identity is managed by the enrolled client.
 Keeping it after uninstall is not a supported certificate lifecycle. Users who
