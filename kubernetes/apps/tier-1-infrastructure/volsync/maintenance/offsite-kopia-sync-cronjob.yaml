@@ -11,9 +11,8 @@ metadata:
 spec:
   schedule: "30 */6 * * *"
   timeZone: America/Los_Angeles
-  # Enable only after the B2 bucket-scoped application key and the
-  # offsite-backup-s3 1Password item have been provisioned.
-  suspend: true
+  # Enabled after the B2 bootstrap and application restore passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 3

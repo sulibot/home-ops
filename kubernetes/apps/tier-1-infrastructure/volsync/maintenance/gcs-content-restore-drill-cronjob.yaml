@@ -12,8 +12,8 @@ metadata:
 spec:
   schedule: "30 3 1 * *"
   timeZone: America/Los_Angeles
-  # Enable only after the first gcs-content-archive bootstrap succeeds.
-  suspend: true
+  # Enabled after the 2026-07-29 real-content restore gate passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 21600
   successfulJobsHistoryLimit: 4

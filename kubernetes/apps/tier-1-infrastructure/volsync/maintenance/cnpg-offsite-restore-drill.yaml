@@ -63,8 +63,8 @@ metadata:
 spec:
   schedule: "30 8 1 * *"
   timeZone: America/Los_Angeles
-  # Enable after a successful CNPG copy to B2.
-  suspend: true
+  # Enabled after the first B2 CNPG restore and SQL verification passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 21600
   successfulJobsHistoryLimit: 4

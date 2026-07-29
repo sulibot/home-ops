@@ -13,8 +13,8 @@ metadata:
 spec:
   schedule: "30 0 * * 0"
   timeZone: America/Los_Angeles
-  # Enable after the GCS bucket, service account, and credentials exist.
-  suspend: true
+  # Enabled after the first archive and real-content restore passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 21600
   successfulJobsHistoryLimit: 4
@@ -176,7 +176,7 @@ spec:
                   sample="$(
                     find /content/library \
                       -type f \
-                      -size -16M \
+                      -size -32768 \
                       -print \
                       -quit
                   )"

@@ -11,8 +11,8 @@ metadata:
 spec:
   schedule: "15 8 * * 0"
   timeZone: America/Los_Angeles
-  # Enable after one successful B2 repository synchronization.
-  suspend: true
+  # Enabled after the first B2 repository restore passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 4

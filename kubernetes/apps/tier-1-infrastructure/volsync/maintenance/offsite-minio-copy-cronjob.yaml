@@ -13,8 +13,8 @@ metadata:
 spec:
   schedule: "45 */6 * * *"
   timeZone: America/Los_Angeles
-  # Enable after the dedicated MinIO read key and B2 bucket keys exist.
-  suspend: true
+  # Enabled after the selected-prefix bootstrap and restore gates passed.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 3
