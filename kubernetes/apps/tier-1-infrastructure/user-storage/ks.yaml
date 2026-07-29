@@ -17,6 +17,10 @@ spec:
   retryInterval: 30s
   path: ./kubernetes/apps/tier-1-infrastructure/user-storage/app
   prune: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   sourceRef:
     kind: GitRepository
     name: flux-system
