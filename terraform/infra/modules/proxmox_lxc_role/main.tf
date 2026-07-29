@@ -56,11 +56,11 @@ resource "proxmox_virtual_environment_container" "this" {
   dynamic "mount_point" {
     for_each = each.value.mount_points
     content {
-      volume = mount_point.value.volume
-      size   = try(mount_point.value.size, null)
-      path   = mount_point.value.path
-      backup = mount_point.value.backup
-      shared = mount_point.value.shared
+      volume    = mount_point.value.volume
+      size      = try(mount_point.value.size, null)
+      path      = mount_point.value.path
+      backup    = mount_point.value.backup
+      shared    = mount_point.value.shared
       replicate = mount_point.value.replicate
     }
   }
@@ -85,6 +85,7 @@ resource "proxmox_virtual_environment_container" "this" {
     # Default to namespace-capable LXC features so PAM/kanidm-unixd works consistently.
     nesting = try(each.value.features.nesting, true)
     keyctl  = try(each.value.features.keyctl, true)
+    mount   = try(each.value.features.mount, [])
   }
 
   initialization {
