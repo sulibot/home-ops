@@ -5,37 +5,6 @@ include "root" {
 locals {
   credentials  = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  secrets      = yamldecode(sops_decrypt_file(local.secrets_file))
-}
-
-# Overrides the repo-wide local-backend default from root.hcl for this module
-# only. State was previously only local (and lost/fragmented across three
-# different machines -- see docs/tickets/cloudflare-access-terraform-state-reconciliation.md).
-# Backed by a dedicated MinIO service account scoped to only this bucket.
-remote_state {
-  backend = "s3"
-  generate = {
-    path      = "backend.tf"
-    if_exists = "overwrite_terragrunt"
-  }
-  config = {
-    bucket = "terraform-state"
-    key    = "live/services/cloudflare-access/terraform.tfstate"
-    region = "us-east-1"
-
-    endpoints = {
-      s3 = "https://s3.sulibot.com"
-    }
-
-    access_key = local.secrets.terraform_state_s3_access_key
-    secret_key = local.secrets.terraform_state_s3_secret_key
-
-    skip_credentials_validation = true
-    skip_region_validation      = true
-    skip_metadata_api_check     = true
-    skip_requesting_account_id  = true
-    use_path_style              = true
-  }
 }
 
 generate "providers" {
@@ -45,7 +14,7 @@ generate "providers" {
 provider "sops" {}
 
 data "sops_file" "secrets" {
-  source_file = "${local.secrets_file}"
+  source_file = "$${path.module}/../../common/secrets.sops.yaml"
 }
 
 provider "cloudflare" {
@@ -59,8 +28,7 @@ generate "main" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
 terraform {
-  # Backend is generated separately into backend.tf by this module's
-  # remote_state block (S3/MinIO) -- see terragrunt.hcl.
+  backend "gcs" {}
 
   required_providers {
     cloudflare = { source = "cloudflare/cloudflare", version = "~> 5.0" }

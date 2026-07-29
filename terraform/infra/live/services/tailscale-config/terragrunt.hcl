@@ -65,7 +65,7 @@ generate "main" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF2
 terraform {
-  backend "local" {}
+  backend "gcs" {}
 
   required_providers {
     tailscale = { source = "tailscale/tailscale", version = "${local.versions.provider_versions.tailscale}" }

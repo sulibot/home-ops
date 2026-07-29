@@ -1,0 +1,163 @@
+---
+# Copies current GCS Terraform state objects to the independently credentialed,
+# immutable B2 infrastructure bucket. It never deletes either source or
+# destination objects; B2 versioning and Object Lock retain overwritten copies.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gcs-terraform-state-offsite-copy
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: gcs-terraform-state-offsite-copy
+    app.kubernetes.io/component: backup-replication
+spec:
+  schedule: "50 */6 * * *"
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gcs-terraform-state-offsite-copy
+            app.kubernetes.io/component: backup-replication
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1009
+            runAsGroup: 1009
+            fsGroup: 1009
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: copy
+              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: GCS_SERVICE_ACCOUNT_JSON
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: GCS_SERVICE_ACCOUNT_JSON
+                - name: B2_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_S3_ENDPOINT
+                - name: B2_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_REGION
+                - name: B2_INFRA_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_BUCKET
+                - name: B2_INFRA_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_ACCESS_KEY_ID
+                - name: B2_INFRA_APPLICATION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_APPLICATION_KEY
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+                  umask 077
+
+                  config=/tmp/rclone.conf
+                  credentials=/tmp/gcs-service-account.json
+                  printf '%s' "${GCS_SERVICE_ACCOUNT_JSON}" > "${credentials}"
+
+                  printf '%s\n' \
+                    '[gcs]' \
+                    'type = google cloud storage' \
+                    "service_account_file = ${credentials}" \
+                    'bucket_policy_only = true' \
+                    '' \
+                    '[b2infra]' \
+                    'type = s3' \
+                    'provider = Other' \
+                    "access_key_id = ${B2_INFRA_ACCESS_KEY_ID}" \
+                    "secret_access_key = ${B2_INFRA_APPLICATION_KEY}" \
+                    "endpoint = ${B2_S3_ENDPOINT}" \
+                    "region = ${B2_REGION}" \
+                    > "${config}"
+
+                  source="gcs:sulibot-terraform-state/live"
+                  destination="b2infra:${B2_INFRA_BUCKET}/terraform-state/live"
+                  source_count="$(
+                    rclone lsf "${source}" \
+                      --config="${config}" \
+                      --recursive \
+                      --files-only |
+                    grep -c '/default.tfstate$'
+                  )"
+
+                  if [ "${source_count}" -lt 47 ]; then
+                    echo "Expected at least 47 authoritative GCS state objects, found ${source_count}" >&2
+                    exit 1
+                  fi
+
+                  rclone copy \
+                    "${source}" \
+                    "${destination}" \
+                    --config="${config}" \
+                    --checkers=8 \
+                    --transfers=4 \
+                    --fast-list \
+                    --s3-no-check-bucket \
+                    --stats=1m \
+                    --stats-one-line \
+                    --log-level=INFO
+
+                  destination_count="$(
+                    rclone lsf "${destination}" \
+                      --config="${config}" \
+                      --recursive \
+                      --files-only \
+                      --s3-no-check-bucket |
+                    grep -c '/default.tfstate$'
+                  )"
+
+                  if [ "${destination_count}" -lt "${source_count}" ]; then
+                    echo "B2 state copy is incomplete: source=${source_count} destination=${destination_count}" >&2
+                    exit 1
+                  fi
+
+                  echo "Verified ${source_count} GCS state objects in independent B2 storage"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 32Mi

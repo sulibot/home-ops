@@ -11,6 +11,11 @@ on:
 env:
   SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key
 
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
 jobs:
   detect-changes:
     name: Detect Changed Clusters
@@ -27,15 +32,18 @@ jobs:
       - name: Detect changed cluster directories
         id: detect
         run: |
-          # Get list of changed files
           CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
 
-          # Find cluster directories that changed
-          CLUSTERS=$(echo "$CHANGED_FILES" | \
-            grep "^terraform/live/clusters/cluster-" | \
-            sed -E 's|^terraform/live/clusters/(cluster-[0-9]+)/.*|\1|' | \
-            sort -u | \
-            jq -R -s -c 'split("\n") | map(select(length > 0))')
+          # Shared backend/module changes affect both cluster stacks.
+          if echo "$CHANGED_FILES" | grep -Eq \
+            '^terraform/infra/(root\.hcl|modules/|live/common/)'; then
+            CLUSTERS='["cluster-101","cluster-104"]'
+          else
+            CLUSTERS=$(printf '%s\n' "$CHANGED_FILES" | \
+              sed -nE 's|^terraform/infra/live/clusters/(cluster-[0-9]+)/.*|\1|p' | \
+              sort -u | \
+              jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
 
           echo "clusters=$CLUSTERS" >> $GITHUB_OUTPUT
 
@@ -62,6 +70,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/836187109693/locations/global/workloadIdentityPools/github-actions/providers/home-ops
+          create_credentials_file: true
+
       - name: Setup SOPS Age key
         run: |
           echo "${{ secrets.SOPS_AGE_KEY }}" > $SOPS_AGE_KEY_FILE
@@ -79,41 +93,30 @@ jobs:
           done
 
       - name: Initialize Terraform
-        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
         run: |
           echo "Initializing Terraform for ${{ matrix.cluster }}..."
-          terragrunt init
+          terragrunt run --all --non-interactive -- init -input=false
 
       - name: Validate Terraform
-        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
         run: |
           echo "Validating Terraform configuration..."
-          terragrunt validate
+          terragrunt run --all --non-interactive -- validate
 
       - name: Generate Terraform Plan
         id: plan
-        working-directory: terraform/live/clusters/${{ matrix.cluster }}
+        working-directory: terraform/infra/live/clusters/${{ matrix.cluster }}
         run: |
+          set -o pipefail
           echo "Generating Terraform plan..."
-          terragrunt plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          terragrunt run --all --non-interactive -- plan -no-color 2>&1 | tee plan.txt
 
-          # Save plan output for comment
-          echo "PLAN_OUTPUT<<EOF" >> $GITHUB_ENV
-          cat plan.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-          # Check if plan has changes
-          if grep -q "No changes" plan.txt; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
+          if grep -q "^Plan:" plan.txt; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Show Terraform Plan
-        working-directory: terraform/live/clusters/${{ matrix.cluster }}
-        run: |
-          echo "Detailed Terraform plan:"
-          terragrunt show tfplan
 
       - name: Comment PR with Plan
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
@@ -121,8 +124,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
             const cluster = '${{ matrix.cluster }}';
-            const planOutput = process.env.PLAN_OUTPUT;
+            const planOutput = fs.readFileSync(
+              `terraform/infra/live/clusters/${cluster}/plan.txt`,
+              'utf8'
+            );
             const hasChanges = '${{ steps.plan.outputs.has_changes }}' === 'true';
 
             // Truncate plan if too long (GitHub comment limit)
@@ -181,15 +188,14 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: tfplan-${{ matrix.cluster }}
-          path: terraform/live/clusters/${{ matrix.cluster }}/tfplan
+          path: terraform/infra/live/clusters/${{ matrix.cluster }}/plan.txt
           retention-days: 7
 
       - name: Cleanup sensitive files
         if: always()
         run: |
           rm -f $SOPS_AGE_KEY_FILE
-          rm -f terraform/live/clusters/${{ matrix.cluster }}/tfplan
-          rm -f terraform/live/clusters/${{ matrix.cluster }}/plan.txt
+          rm -f terraform/infra/live/clusters/${{ matrix.cluster }}/plan.txt
 
   summary:
     name: Plan Summary
@@ -227,4 +233,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "ℹ️ No cluster configuration changes detected" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "This PR does not modify any files in \`terraform/live/clusters/\`" >> $GITHUB_STEP_SUMMARY
+          echo "This PR does not modify shared infrastructure or files in \`terraform/infra/live/clusters/\`" >> $GITHUB_STEP_SUMMARY
