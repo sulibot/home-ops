@@ -104,6 +104,12 @@ backup, replayed the off-site WAL archive, promoted a healthy primary, returned
 resource. The measured recovery duration was 242 seconds. This is an initial
 baseline, not an RTO commitment.
 
+The first live Kopia drill also passed on 2026-07-29 after the complete
+45.6 GB repository synchronization. It restored the latest
+`actual-src@default:/data` snapshot from B2: four files totaling 113,533 bytes
+in 119 seconds. This is an initial application-data recovery baseline, not an
+RTO commitment.
+
 Every OpenBao member runs the same six-hour systemd timer. The timer uses a
 snapshot-only AppRole, but only the active Raft leader writes. It verifies the
 snapshot archive checksums and uploads directly to
