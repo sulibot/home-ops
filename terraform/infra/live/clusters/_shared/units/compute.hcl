@@ -8,12 +8,20 @@ locals {
   tenant_id      = local.cluster_config.tenant_id
   context        = read_terragrunt_config("${get_repo_root()}/terraform/infra/live/clusters/_shared/context.hcl").locals
 
-  cluster_enabled           = try(local.cluster_config.enabled, true)
-  cnpg_new_db_mode          = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
-  cnpg_restore_mode         = trimspace(upper(get_env("CNPG_RESTORE_MODE", local.cnpg_new_db_mode ? "NEW_DB" : "RESTORE_REQUIRED")))
-  cnpg_backup_max_age_hours = trimspace(get_env("CNPG_BACKUP_MAX_AGE_HOURS", "36"))
-  cnpg_preflight_skip       = trimspace(lower(get_env("CNPG_PREFLIGHT_SKIP", "false"))) == "true"
-  cluster_kubeconfig        = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  cluster_enabled             = try(local.cluster_config.enabled, true)
+  cnpg_new_db_mode            = trimspace(lower(get_env("CNPG_NEW_DB", "false"))) == "true"
+  cnpg_restore_mode           = trimspace(upper(get_env("CNPG_RESTORE_MODE", local.cnpg_new_db_mode ? "NEW_DB" : "RESTORE_REQUIRED")))
+  cnpg_backup_max_age_hours   = trimspace(get_env("CNPG_BACKUP_MAX_AGE_HOURS", "36"))
+  cnpg_preflight_skip         = trimspace(lower(get_env("CNPG_PREFLIGHT_SKIP", "false"))) == "true"
+  cluster_kubeconfig          = "${get_repo_root()}/talos/clusters/cluster-${local.tenant_id}/kubeconfig"
+  ci_mode                     = trimspace(lower(get_env("CI", "false"))) == "true"
+  proxmox_ssh_provider_config = local.ci_mode ? "" : <<-EOT
+    ssh {
+      agent       = false
+      username    = "root"
+      private_key = file(pathexpand("~/.ssh/id_ed25519"))
+    }
+  EOT
 
   # Shared context locals
   proxmox_infra     = local.context.proxmox_infra
@@ -206,11 +214,7 @@ provider "proxmox" {
   password = data.sops_file.proxmox.data["pve_password"]
   insecure = true
 
-  ssh {
-    agent       = true
-    username    = "root"
-    private_key = try(file(pathexpand("~/.ssh/id_ed25519")), null)
-  }
+${local.proxmox_ssh_provider_config}
 }
 EOF2
 }
