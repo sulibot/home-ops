@@ -62,6 +62,9 @@ jobs:
       # Plan the declarative infrastructure units in CI; exercise the excluded
       # units only from an authorized operator workspace during apply.
       TG_QUEUE_EXCLUDE_DIR: ./apply,./bootstrap,./cilium-bootstrap,./flux
+      # The recovery-source check is an apply-time safety gate and requires a
+      # local kubeconfig that is intentionally absent from ephemeral CI.
+      CNPG_PREFLIGHT_SKIP: "true"
     needs: detect-changes
     if: >-
       needs.detect-changes.outputs.has_changes == 'true' &&
