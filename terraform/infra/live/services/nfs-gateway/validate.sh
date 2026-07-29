@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-pve_client="${PVE_CLIENT:-10.200.0.206}"
+pve_client="${PVE_CLIENT:-10.200.0.205}"
 ssh_key="${SSH_KEY:-${HOME}/.ssh/id_ed25519}"
 vip="10.200.0.209"
 ssh_opts=(-i "${ssh_key}" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)

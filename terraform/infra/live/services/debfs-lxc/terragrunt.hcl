@@ -71,9 +71,6 @@ inputs = {
       # See the NixOS LXC note: privileged is the deliberate POSIX-ID
       # compatibility choice for this trusted bind-mount validation guest.
       unprivileged    = false
-      features = {
-        mount = ["nfs"]
-      }
       cpu_cores       = local.guest.sizing.cpu_cores
       memory_mb       = local.guest.sizing.memory_mb
       swap_mb         = local.guest.sizing.swap_mb
@@ -101,7 +98,7 @@ inputs = {
     wait_for_cloudinit = false
     commands = [
       "apt-get update -qq",
-      "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr nfs-common",
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr",
       "install -d -m 0750 /home/sulibot /home/sulibot/Cloud",
     ]
   }

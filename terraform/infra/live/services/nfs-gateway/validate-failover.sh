@@ -3,7 +3,7 @@
 # existing hard-mounted NFS client completes I/O through the peer.
 set -euo pipefail
 
-client="${PVE_CLIENT:-10.200.0.206}"
+client="${PVE_CLIENT:-10.200.0.205}"
 primary="${NFS_PRIMARY:-10.200.0.207}"
 secondary="${NFS_SECONDARY:-10.200.0.208}"
 vip4="${NFS_VIP4:-10.200.0.209}"

@@ -10,6 +10,13 @@ ssh_opts=(-i "${ssh_key}" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKey
 
 ssh "${ssh_opts[@]}" "root@${pve_host}" '
   set -eu
+  cloud_path=/mnt/pve/content/users/sulibot/Cloud
+  test -d "${cloud_path}"
+  chown 1000:1000 "${cloud_path}"
+  # Root_Squash maps the kernel mount lookup to the anonymous identity. Grant
+  # traverse-only access so clients can mount the export; write access remains
+  # controlled by the canonical POSIX owner/group and file modes.
+  chmod 2751 "${cloud_path}"
   if ! ceph osd pool ls | grep -qx "nfs-ganesha"; then
     ceph osd pool create nfs-ganesha 16
   fi

@@ -31,6 +31,9 @@ person with Google or Authentik.
 - `client.nfs-recovery` can write only the `nfs-ganesha` recovery pool.
 - Client access is limited to tenant 200 (`10.200.0.0/24` and
   `fd00:200::/64`).
+- The export root is mode `2751`: the anonymous identity created by
+  `Root_Squash` receives traverse-only access required for NFSv4 mount
+  negotiation. UID/GID `1000:1000` retains the write permission.
 - The LXCs are privileged only because Keepalived must add and remove the VIP.
   They are single-purpose infrastructure guests and receive no host CephFS
   bind mount.
@@ -44,14 +47,17 @@ From `terraform/infra/live/services/nfs-gateway`:
 ```console
 terragrunt apply
 ./configure-ceph.sh
+./configure-client-monitoring.sh
 ./validate.sh
 ```
 
 `terragrunt apply` creates the Debian 13 LXCs and installs Ganesha and
 Keepalived. `configure-ceph.sh` creates/reconciles the Ceph pool and identities,
 streams credentials to both gateways, validates the Ganesha configuration, and
-starts the services. `validate.sh` uses `debfs-lxc01` (`10.200.0.206`) as its
-default clean NFS client.
+starts the services. `validate.sh` uses `debfs-vm01` (`10.200.0.205`) as its
+default clean NFS client. `configure-client-monitoring.sh` idempotently
+reconciles the node_exporter and semantic probe on that VM without taking
+ownership of the VM lifecycle.
 
 ## Client setup
 
@@ -77,10 +83,12 @@ mount -t nfs4 -o vers=4.1,proto=tcp6,hard \
   '[fd00:200::209]:/shared' /home/sulibot/Cloud
 ```
 
-Use the same mount declaration in a VM. A Proxmox LXC that mounts NFS itself
-must be allowed to perform NFS mounts; prefer a VM for untrusted workloads.
-For a trusted LXC, enable the `mount=nfs` feature in its PVE configuration and
-keep the mount scoped to the required export.
+Use the same mount declaration in a VM. On the current Proxmox/kernel release,
+even a privileged LXC with `mount=nfs` and a matching AppArmor rule receives
+`EPERM` from the kernel NFS mount operation. Do not make the container
+unconfined to bypass this. Mount CephFS or NFS on the PVE host and pass only
+the required directory into the LXC as a Proxmox mount point. `debfs-lxc01`
+uses this host-managed, path-scoped model.
 
 The local account must resolve to the canonical Kanidm UID/GID before writing.
 Check with:
@@ -139,3 +147,52 @@ mount, and primary recovery.
 Do not delete `nfs-ganesha` or either CephX identity during routine rebuilds.
 The LXC root disks are disposable; the CephFS data and RADOS recovery pool are
 not.
+
+## Monitoring and alert response
+
+The full service objectives, alert policy, error-budget policy, and review
+cadence are in `docs/nfs-gateway-monitoring-plan.md`. The Grafana dashboard is
+`SRE / NFS Gateway` in the `storage` folder.
+
+Prometheus scrapes node_exporter on both gateways and `debfs-vm01`. Check the
+local collectors:
+
+```console
+ssh root@10.200.0.207 systemctl status \
+  prometheus-node-exporter nfs-gateway-metrics.timer
+ssh root@10.200.0.208 systemctl status \
+  prometheus-node-exporter nfs-gateway-metrics.timer
+ssh root@10.200.0.205 systemctl status \
+  prometheus-node-exporter nfs-client-probe.timer
+curl -fsS http://10.200.0.207:9100/metrics | grep homeops_nfs_gateway
+curl -fsS http://10.200.0.205:9100/metrics | grep homeops_nfs_client_probe
+```
+
+For `NFSSharedEndpointUnavailable`, start with the current client symptom and
+then identify the service owner:
+
+```console
+ssh root@10.200.0.205 systemctl status nfs-client-probe.service
+ssh root@10.200.0.205 journalctl -u nfs-client-probe.service -n 50 --no-pager
+for host in 10.200.0.207 10.200.0.208; do
+  ssh root@"$host" \
+    'hostname; ip -brief address show dev eth0; systemctl is-active keepalived nfs-ganesha'
+done
+```
+
+If exactly one node owns both VIPs and Ganesha is active there, inspect the
+export and Ceph dependency:
+
+```console
+ssh root@10.200.0.207 \
+  'busctl call org.ganesha.nfsd /org/ganesha/nfsd/ExportMgr \
+    org.ganesha.nfsd.exportmgr ShowExports'
+ssh root@pve01 ceph health detail
+ssh root@pve01 ceph fs status content
+```
+
+For `NFSGatewayUnsafeHAState`, do not start Ganesha manually. Stop Keepalived
+on the nonpreferred or unhealthy node, confirm one owner, and use
+`configure-ceph.sh` to reconcile the logical service. Clear
+`/run/nfs-gateway-inhibit` only after its underlying failure is understood and
+the gateway metrics are healthy.

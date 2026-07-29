@@ -12,5 +12,6 @@ resources:
   - ./prometheusrule-datastores.yaml
   - ./prometheusrule-flux.yaml
   - ./prometheusrule-home-control.yaml
+  - ./prometheusrule-nfs-gateway.yaml
   - ./prometheusrule-observability.yaml
   - ./prometheusrule-pods.yaml

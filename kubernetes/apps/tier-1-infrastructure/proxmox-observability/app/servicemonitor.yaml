@@ -98,3 +98,39 @@ spec:
           targetLabel: pve_node
         - targetLabel: role
           replacement: proxmox
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nfs-gateway-observability-targets
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nfs-gateway-observability-targets
+  namespaceSelector:
+    matchNames:
+      - observability
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_endpoint_hostname
+          targetLabel: instance
+        - sourceLabels:
+            - __meta_kubernetes_endpoint_hostname
+          regex: nfsgw.*
+          targetLabel: role
+          replacement: gateway
+        - sourceLabels:
+            - __meta_kubernetes_endpoint_hostname
+          regex: debfs-vm.*
+          targetLabel: role
+          replacement: client-probe
+        - targetLabel: service
+          replacement: nfs-gateway-observability
+        - targetLabel: component
+          replacement: nfs-gateway
