@@ -88,7 +88,7 @@ The offsite resources live in:
 | Resource | Schedule | Purpose |
 |---|---|---|
 | `volsync-offsite-kopia-sync` | Every 6 hours | Native Kopia repository synchronization to B2 |
-| `minio-selected-offsite-copy` | Every 6 hours | CNPG and Terraform state logical copy to B2 |
+| `minio-selected-offsite-copy` | Every 6 hours | CNPG/Terraform copy plus OpenBao offsite freshness gate |
 | `gcs-content-archive` | Weekly | Encrypted, append-only allowlisted content copy |
 | `gcs-content-restore-drill` | Monthly | Decrypt and verify a bounded Archive-class probe |
 | `volsync-offsite-restore-drill` | Weekly | Restore `actual-src@default:/data` from B2 |
@@ -97,6 +97,13 @@ The offsite resources live in:
 The CNPG drill runs in `backup-restore-drill`, creates a disposable 60 GiB
 cluster, restores the `immich` database, executes a SQL query, records the
 duration in its logs, and removes the Cluster and PVC.
+
+Every OpenBao member runs the same six-hour systemd timer. The timer uses a
+snapshot-only AppRole, but only the active Raft leader writes. It verifies the
+snapshot archive checksums and uploads directly to
+`sulibot-infrastructure-immutable/openbao/raft`. The B2 bucket applies 30-day
+governance retention, and the monitored selected-copy job fails when no
+OpenBao snapshot newer than eight hours exists.
 
 All new CronJobs are initially suspended. This prevents predictable alert
 noise and failed Jobs before the provider buckets and least-privilege
@@ -186,6 +193,10 @@ Keep independent offline copies of:
 - `content-crypt-password` and `content-crypt-salt`;
 - B2 and GCS recovery credentials;
 - SOPS identities, OpenBao recovery shares, and KMS recovery information.
+
+The OpenBao nodes receive only the snapshot AppRole and the restricted
+infrastructure-bucket key. Neither credential can read logical OpenBao secrets,
+restore a Raft snapshot, delete B2 objects, or bypass governance retention.
 
 Losing the rclone crypt password or salt makes the Google Cloud archive
 unrecoverable.

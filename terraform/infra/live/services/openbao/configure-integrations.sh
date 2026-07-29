@@ -305,6 +305,7 @@ upsert_approle_item() {
 upsert_approle_item tofu homeops-tofu
 upsert_approle_item ansible homeops-ansible
 upsert_approle_item sops sops-transit
+upsert_approle_item backup openbao-snapshot
 
 # Reconcile Kanidm OIDC after its confidential client has been created. The
 # client bootstrap script stores the secret in 1Password as openbao-oidc.

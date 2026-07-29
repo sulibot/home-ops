@@ -153,6 +153,20 @@ spec:
                     minio:terraform-state/live \
                     "b2infra:${B2_INFRA_BUCKET}/terraform-state/live" \
                     ${common_args}
+
+                  # OpenBao writes application-consistent Raft snapshots
+                  # directly from its active member into the same immutable
+                  # bucket. Fail this monitored job if that independent export
+                  # is missing or older than one replication interval.
+                  if ! rclone lsf \
+                    "b2infra:${B2_INFRA_BUCKET}/openbao/raft" \
+                    --files-only \
+                    --max-age=8h \
+                    --s3-no-check-bucket |
+                    grep -q .; then
+                    echo "No OpenBao Raft snapshot newer than eight hours exists in B2" >&2
+                    exit 1
+                  fi
               resources:
                 requests:
                   cpu: 100m

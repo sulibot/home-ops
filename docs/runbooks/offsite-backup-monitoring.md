@@ -17,7 +17,8 @@ freshness windows.
 
 ## Approved-data gate
 
-The jobs remain suspended until the data owner approves this allowlist.
+The data owner approved this allowlist on 2026-07-29. Schedules remain
+suspended only until their one-time bootstrap and real restore gates pass.
 
 | Destination | Source | Included data |
 |---|---|---|
@@ -32,6 +33,7 @@ The jobs remain suspended until the data owner approves this allowlist.
 | B2 Kopia | Existing MinIO Kopia repository | Kubernetes application PVC snapshots |
 | B2 CNPG | `cnpg-backups/postgres-vectorchord` | PostgreSQL base backups and WAL |
 | B2 immutable infrastructure | `terraform-state/live` | Live Terraform state history |
+| B2 immutable infrastructure | OpenBao active Raft leader | Application-consistent Raft snapshots |
 
 The GCS job is allowlist-only. It does not traverse movies, `movies-4k`, TV,
 `tv-4k`, sports, `vids`, download staging, or Immich derivatives such as
@@ -42,7 +44,7 @@ thumbnails and encoded video. PBS is a later phase.
 | Signal | Schedule | Warning threshold | Operator outcome |
 |---|---:|---:|---|
 | Kopia repository copy to B2 | 6 hours | 14 hours without success | Restore the copy path inside the same day |
-| CNPG and Terraform copy to B2 | 6 hours | 14 hours without success | Restore the copy path inside the same day |
+| CNPG/Terraform copy and OpenBao freshness gate | 6 hours | 14 hours without success | Restore the copy path inside the same day |
 | GCS content archive | Weekly | 9 days without success | Repair before a second weekly run is missed |
 | B2 Kopia restore drill | Weekly | 14 days without success | Re-establish tested PVC recovery |
 | GCS content restore drill | Monthly | 45 days without success | Re-establish tested decryption and Archive reads |
@@ -66,7 +68,7 @@ The `SRE Offsite Backup` Grafana dashboard reports:
 Prometheus alerts cover:
 
 - fewer than six expected CronJobs;
-- either offsite ExternalSecret not Ready;
+- any of the three offsite ExternalSecrets not Ready;
 - Job failure within the last hour;
 - non-archive Jobs active for more than three hours;
 - GCS archive active for more than thirty hours;
@@ -99,6 +101,7 @@ kubectl get cronjob -n volsync-system \
 kubectl get cronjob -n backup-restore-drill cnpg-offsite-restore-drill
 
 kubectl get externalsecret -n volsync-system volsync-offsite-s3
+kubectl get externalsecret -n volsync-system gcs-content-archive
 kubectl get externalsecret -n backup-restore-drill cnpg-offsite-restore-s3
 ```
 
@@ -129,6 +132,7 @@ captured. Job history and Loki are the primary execution evidence.
 | Kopia restore failure | Repository sync, password, or snapshot identity | Kopia target connection and snapshot list |
 | CNPG recovery failure | Barman object layout/WAL continuity | ObjectStore status and CNPG pod events |
 | GCS decrypt failure | Crypt password/salt mismatch | Owner-controlled offline recovery material |
+| OpenBao freshness failure | Leader timer, snapshot AppRole, or B2 upload | `openbao-backup.timer` and `openbao-backup.service` on all three members |
 
 ### 4. Recover safely
 

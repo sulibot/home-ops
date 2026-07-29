@@ -269,6 +269,14 @@ bao operator raft snapshot save openbao-$(date -u +%Y%m%dT%H%M%SZ).snap
 Encrypt and copy snapshots outside the Proxmox/Ceph failure domain. Periodically
 test a force-restore in an isolated environment.
 
+The deployed `openbao-backup.timer` automates this every six hours on all three
+members. A snapshot-only AppRole identifies the active leader, which saves and
+checksum-validates the Raft archive before uploading it directly to the
+30-day-governance `sulibot-infrastructure-immutable` B2 bucket. Standbys exit
+successfully without writing duplicate snapshots. Kubernetes' monitored
+`minio-selected-offsite-copy` job also fails if no B2 OpenBao snapshot is newer
+than eight hours.
+
 ## Upgrades and configuration changes
 
 The provisioning script refuses to upgrade an initialized member in place.

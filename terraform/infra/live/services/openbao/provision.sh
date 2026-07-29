@@ -85,6 +85,7 @@ apt-get install -y -qq --no-install-recommends \
   curl \
   jq \
   logrotate \
+  rclone \
   rsyslog \
   openssl
 
