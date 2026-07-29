@@ -4,8 +4,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./externalsecret.yaml
+  # Legacy CephFS repository resources are retained for recovery/audit only.
+  # The console reads the active MinIO repository and does not mount these PVCs.
   - ./kopia-config-pvc.yaml
-  - ./kopia-repository-pv.yaml  # Re-attach existing 200GB Kopia repository
+  - ./kopia-repository-pv.yaml
   - ./kopia-repository-pvc.yaml
   - ./kopia-repository-subvolume-secret.yaml
   - ./helmrelease.yaml

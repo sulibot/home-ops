@@ -85,27 +85,40 @@ spec:
               kubectl get replicationsource -n {{ $labels.namespace }} {{ $labels.name }} -o yaml
             runbook_url: "https://github.com/backube/volsync/blob/main/docs/usage/index.rst#troubleshooting"
 
-        # Alert if Kopia server is down
-        - alert: KopiaServerDown
+        # The console is operational tooling only. VolSync mover jobs connect
+        # directly to MinIO and do not depend on this Deployment.
+        - alert: KopiaConsoleDown
           expr: |
-            min(up{job="kopia"}) == 0
-            or absent(up{job="kopia"})
+            max(
+              kube_deployment_status_replicas_available{
+                namespace="volsync-system",
+                deployment="kopia"
+              }
+            ) < 1
+            or absent(
+              kube_deployment_status_replicas_available{
+                namespace="volsync-system",
+                deployment="kopia"
+              }
+            )
           for: 5m
           labels:
-            severity: critical
+            severity: warning
             component: backup
           annotations:
-            summary: "Kopia backup server is down"
+            summary: "Kopia backup console is down"
             description: |
-              The Kopia server in volsync-system namespace is not responding.
-
-              All backup and restore operations will fail until the server is restored.
+              The read-only Kopia console in volsync-system is unavailable.
+              VolSync backups connect directly to MinIO and are not blocked by
+              the console. Check the verifier and ReplicationSource alerts
+              separately for repository or backup-path failures.
 
               Check pod status:
               kubectl get pods -n volsync-system -l app.kubernetes.io/name=kopia
 
               Check logs:
-              kubectl logs -n volsync-system -l app.kubernetes.io/name=kopia --tail=100
+              kubectl logs -n volsync-system deployment/kopia -c repository-connect
+              kubectl logs -n volsync-system deployment/kopia -c app --tail=100
             runbook_url: "https://kopia.io/docs/"
 
         # Alert on backup job failures (using Job metrics)
