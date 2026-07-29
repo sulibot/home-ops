@@ -1,0 +1,204 @@
+---
+# Encrypted append-only copy of irreplaceable content to Scaleway Glacier.
+# Explicit source paths make the exclusion of movies/TV/sports/vids auditable.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scaleway-content-archive
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: scaleway-content-archive
+    app.kubernetes.io/component: cold-archive
+spec:
+  schedule: "30 0 * * 0"
+  timeZone: America/Los_Angeles
+  # Enable after the Scaleway bucket, Object Lock policy, and credentials exist.
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 129600
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: scaleway-content-archive
+            app.kubernetes.io/component: cold-archive
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            # Root is required to read all user trees. The source mount and root
+            # filesystem remain read-only and the pod has no Kubernetes token.
+            runAsUser: 0
+            runAsGroup: 0
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: archive
+              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SCALEWAY_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: SCALEWAY_S3_ENDPOINT
+                - name: SCALEWAY_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: SCALEWAY_REGION
+                - name: SCALEWAY_CONTENT_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: SCALEWAY_CONTENT_BUCKET
+                - name: SCALEWAY_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: SCALEWAY_ACCESS_KEY_ID
+                - name: SCALEWAY_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: SCALEWAY_SECRET_ACCESS_KEY
+                - name: CONTENT_CRYPT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: CONTENT_CRYPT_PASSWORD
+                - name: CONTENT_CRYPT_SALT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: CONTENT_CRYPT_SALT
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+                  umask 077
+
+                  crypt_password="$(rclone obscure "${CONTENT_CRYPT_PASSWORD}")"
+                  crypt_salt="$(rclone obscure "${CONTENT_CRYPT_SALT}")"
+                  config=/tmp/rclone.conf
+
+                  printf '%s\n' \
+                    '[scaleway]' \
+                    'type = s3' \
+                    'provider = Scaleway' \
+                    "access_key_id = ${SCALEWAY_ACCESS_KEY_ID}" \
+                    "secret_access_key = ${SCALEWAY_SECRET_ACCESS_KEY}" \
+                    "endpoint = ${SCALEWAY_S3_ENDPOINT}" \
+                    "region = ${SCALEWAY_REGION}" \
+                    '' \
+                    '[scaleway-crypt]' \
+                    'type = crypt' \
+                    "remote = scaleway:${SCALEWAY_CONTENT_BUCKET}/archive" \
+                    'filename_encryption = standard' \
+                    'directory_name_encryption = true' \
+                    "password = ${crypt_password}" \
+                    "password2 = ${crypt_salt}" \
+                    > "${config}"
+
+                  common_args="
+                    --config=${config}
+                    --checkers=8
+                    --transfers=4
+                    --bwlimit=8Mi
+                    --fast-list
+                    --stats=5m
+                    --stats-one-line
+                    --log-level=INFO
+                    --s3-upload-concurrency=2
+                    --s3-chunk-size=64Mi
+                    --s3-no-check-bucket
+                    --s3-storage-class=GLACIER
+                  "
+
+                  archive_path() {
+                    source="$1"
+                    destination="$2"
+                    label="$3"
+                    if [ ! -d "${source}" ]; then
+                      echo "Required archive source is missing: ${source}" >&2
+                      exit 1
+                    fi
+
+                    # copy never removes a remote object. Bucket versioning and
+                    # Object Lock preserve earlier versions when a file changes.
+                    # shellcheck disable=SC2086
+                    rclone copy \
+                      "${source}" \
+                      "scaleway-crypt:${destination}" \
+                      ${common_args}
+
+                    rclone lsf "${source}" \
+                      --recursive \
+                      --files-only \
+                      --format=pst \
+                      > "/tmp/manifests/${label}.tsv"
+                  }
+
+                  mkdir -p /tmp/manifests
+
+                  archive_path /content/library immich/library immich-library
+                  archive_path /content/upload immich/upload immich-upload
+                  archive_path /content/users users users
+                  archive_path /content/data/media/music media/music music
+                  archive_path /content/data/media/audiobooks media/audiobooks audiobooks
+                  archive_path /content/data/media/books media/books books
+
+                  (
+                    cd /tmp/manifests
+                    sha256sum ./*.tsv > checksums.sha256
+                  )
+
+                  manifest_run="$(date -u +%Y/%m/%d/%Y%m%dT%H%M%SZ)"
+                  rclone copy \
+                    /tmp/manifests \
+                    "scaleway-crypt:_manifests/${manifest_run}" \
+                    --config="${config}" \
+                    --checkers=4 \
+                    --transfers=2 \
+                    --s3-no-check-bucket \
+                    --s3-storage-class=STANDARD \
+                    --log-level=INFO
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: content
+                  mountPath: /content
+                  readOnly: true
+                - name: config
+                  mountPath: /config
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: content
+              persistentVolumeClaim:
+                claimName: offsite-content-source
+                readOnly: true
+            - name: config
+              emptyDir:
+                sizeLimit: 64Mi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 2Gi

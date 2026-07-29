@@ -146,3 +146,91 @@ spec:
 
               Check logs:
               kubectl logs -n volsync-system -l app=volsync-stuck-restore-detector --tail=100
+
+        - alert: OffsiteBackupJobFailed
+          expr: |
+            increase(
+              kube_job_status_failed{
+                job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|scaleway-content-archive|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
+              }[1h]
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Offsite backup or restore job {{ $labels.job_name }} failed"
+            description: |
+              An offsite replication, archive, or restore-drill job failed.
+
+              Check logs:
+              kubectl logs -n {{ $labels.namespace }} job/{{ $labels.job_name }} --tail=200
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+
+        - alert: OffsiteHotReplicationStale
+          expr: |
+            (
+              time() -
+              kube_cronjob_status_last_successful_time{
+                namespace="volsync-system",
+                cronjob=~"volsync-offsite-kopia-sync|minio-selected-offsite-copy"
+              }
+            ) > 50400
+          for: 1h
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Hot offsite replication {{ $labels.cronjob }} is stale"
+            description: |
+              {{ $labels.cronjob }} has not completed successfully in more than
+              14 hours. The intended schedule is every six hours.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+
+        - alert: ScalewayContentArchiveStale
+          expr: |
+            (
+              time() -
+              kube_cronjob_status_last_successful_time{
+                namespace="volsync-system",
+                cronjob="scaleway-content-archive"
+              }
+            ) > 777600
+          for: 6h
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Scaleway content archive is stale"
+            description: |
+              The weekly encrypted content archive has not completed
+              successfully in more than nine days.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"
+
+        - alert: OffsiteRestoreDrillStale
+          expr: |
+            (
+              time() -
+              kube_cronjob_status_last_successful_time{
+                namespace="volsync-system",
+                cronjob="volsync-offsite-restore-drill"
+              }
+            ) > 1209600
+            or
+            (
+              time() -
+              kube_cronjob_status_last_successful_time{
+                namespace="backup-restore-drill",
+                cronjob="cnpg-offsite-restore-drill"
+              }
+            ) > 3888000
+          for: 6h
+          labels:
+            severity: warning
+            component: backup
+          annotations:
+            summary: "Offsite restore drill {{ $labels.cronjob }} is stale"
+            description: |
+              The scheduled offsite restore drill has exceeded its allowed
+              success interval. Kopia runs weekly; CNPG runs monthly.
+            runbook_url: "https://github.com/sulibot/home-ops/blob/main/docs/cloud-resilience.md"

@@ -2,7 +2,11 @@
 
 ## Overview
 
-This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disaster recovery of application configuration data. The system provides hourly backups with automated verification, monitoring, and cross-namespace support.
+This Kubernetes cluster uses **Volsync + Kopia** for automated backup and
+disaster recovery of application configuration data. Hourly application
+snapshots are stored in the MinIO S3 repository and replicated to Backblaze
+B2. See [Cloud resilience and offsite backup](cloud-resilience.md) for provider
+provisioning, content selection, cold archive, and restore drills.
 
 ## Architecture
 
@@ -10,8 +14,9 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
 
 1. **Kopia** - Deduplicating backup engine with encryption and compression
 2. **Volsync** - Kubernetes operator that orchestrates backup/restore operations
-3. **CephFS** - Shared storage backend for the centralized backup repository
-4. **Flux** - GitOps controller managing the backup infrastructure
+3. **MinIO** - S3 backend for the centralized Kopia repository
+4. **CephFS** - Source PVCs and per-job Kopia cache
+5. **Flux** - GitOps controller managing the backup infrastructure
 
 ### Data Flow
 
@@ -34,7 +39,7 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
                         │
                         ▼
          ┌──────────────────────────────┐
-         │  Kopia Repository (CephFS)   │
+         │   Kopia Repository (MinIO)   │
          │  - Encrypted & deduplicated  │
          │  - Shared across namespaces  │
          │  - 200Gi RWX PVC             │
@@ -51,26 +56,21 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
 
 ### Storage Architecture
 
-All namespaces share a **single centralized Kopia repository** stored on CephFS:
+All namespaces share one encrypted Kopia repository:
 
-```
-CephFS Subvolume (RWX, 200Gi)
-├─ volumeHandle: 0001-0024-407036f5-...-84e672d78c4e
-│
-├─ PV: kopia-repository-pv-volsync-system
-│  └─ PVC: kopia (volsync-system namespace)
-│
-├─ PV: kopia-repository-pv-default
-│  └─ PVC: kopia (default namespace)
-│
-└─ PV: kopia-repository-pv-observability
-   └─ PVC: kopia (observability namespace)
+```text
+s3://cnpg-backups/volsync-kopia/
+├─ Local endpoint: MinIO LXC at https://s3.sulibot.com
+└─ Hot offsite replica: Backblaze B2
 ```
 
-**Key Points:**
-- All PVs reference the **same CephFS volumeHandle**
-- Multiple PVCs can mount the same RWX volume
-- Repository path: `/repository/repository` (mount point + subdirectory)
+CephFS remains the source storage and provides job cache PVCs, but it is not
+the authoritative Kopia repository. The S3 prefix must retain its trailing
+slash when passed to Kopia; without it Kopia concatenates repository object
+names onto the prefix.
+
+Selected MinIO repositories and Terraform state are copied as logical S3
+objects. The MinIO LXC filesystem must not be copied directly.
 
 ## How Backups Work
 

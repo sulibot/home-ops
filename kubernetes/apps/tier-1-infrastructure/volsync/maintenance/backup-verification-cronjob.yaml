@@ -57,6 +57,11 @@ spec:
                     secretKeyRef:
                       name: volsync-maintenance-secret
                       key: AWS_S3_ENDPOINT
+                - name: AWS_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_REGION
                 - name: KOPIA_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -64,6 +69,12 @@ spec:
                       key: KOPIA_PASSWORD
                 - name: KOPIA_CHECK_FOR_UPDATES
                   value: "false"
+                - name: KOPIA_CONFIG_PATH
+                  value: /tmp/kopia-verify.config
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/logs
                 - name: HOME
                   value: "/tmp"
               command:
@@ -92,10 +103,14 @@ spec:
                   # that expect the full https:// form - strip it here only)
                   KOPIA_S3_HOST="${KOPIA_S3_ENDPOINT#https://}"
                   KOPIA_S3_HOST="${KOPIA_S3_HOST#http://}"
+                  if [ -n "${KOPIA_PREFIX:-}" ] && [[ "${KOPIA_PREFIX}" != */ ]]; then
+                    KOPIA_PREFIX="${KOPIA_PREFIX}/"
+                  fi
 
                   CONNECT_ARGS=(
                     "--bucket=$KOPIA_BUCKET"
                     "--endpoint=$KOPIA_S3_HOST"
+                    "--region=$AWS_REGION"
                     "--access-key=$AWS_ACCESS_KEY_ID"
                     "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
                     "--password=$KOPIA_PASSWORD"

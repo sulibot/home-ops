@@ -1,172 +1,261 @@
-# Cloud resilience: KMS and offsite backup
+# Cloud resilience and offsite backup
 
 ## Decision
 
-Use a cost-optimized three-tier design across the two personal cloud providers
-that are actually useful for this stack:
+Use separate hot and cold providers:
 
-| Tier | Data | Provider | Expected cost |
+| Tier | Data | Provider | Why |
 |---|---|---|---|
-| Local | Fast operational restore | Existing Ceph, then local PBS | Already owned |
-| Hot offsite | PBS and Kopia repositories | Backblaze B2 | $6.95/TB-month, metered with no 1 TB floor |
-| Cold offsite | Raw photos and home movies; optionally music | GCP Cloud Storage Archive in `us-west1` | About $1.20/TiB-month |
-| Root of trust | OpenBao auto-unseal | GCP Cloud KMS | About $0.06/month for one active software key version |
+| Local primary | Workloads and content | Existing Ceph | Fast normal operation and recovery |
+| Local backup | VolSync/Kopia and CNPG/Barman | Existing MinIO LXC | Fast repository and PITR recovery |
+| Hot offsite | Kopia, CNPG, Terraform state, later PBS | Backblaze B2 | Mutable S3 repositories, no storage floor, inexpensive restore drills |
+| Cold offsite | Personal originals | Scaleway Glacier in `nl-ams` | Low-cost archive, Object Lock, inexpensive full-disaster retrieval |
+| Root of trust | OpenBao auto-unseal | GCP Cloud KMS | Independent key service already used by the stack |
 
-Movies and TV are deliberately excluded. They are replaceable and dominate the
-media footprint. Derived Immich thumbnails and encoded video are also excluded;
-archive only originals plus the database/configuration needed to reconstruct
-the library.
+B2 is the operational recovery target. Scaleway Glacier is disaster insurance
+for content that cannot be downloaded or regenerated. Never place a live
+Kopia, Barman, or PBS repository in Glacier.
 
-GCP is the right cold provider at the current size because the account is
-already required for the inexpensive OpenBao seal. The live eligible set is
-about 60 GiB of Immich library plus 88 GiB of personal video. Music would add
-about 184 GiB. Archive storage is therefore roughly:
+## What is protected
 
-- $0.18/month for photos and personal video;
-- $0.40/month with music;
-- $0.24 or $0.46/month respectively after adding the one KMS key version.
+The content archive uses an allowlist. It reads only:
 
-AWS Glacier Deep Archive stores data for about $1/TB-month, but adding AWS KMS
-would make the all-AWS design more expensive until the cold set reaches roughly
-4.5 TB. Keeping GCP KMS and adding AWS only for today's archive would save less
-than $0.10/month while adding another account and recovery path. Re-evaluate
-AWS Glacier Deep Archive when irreplaceable cold data approaches 4 TB.
+- `/content/library` - Immich originals;
+- `/content/upload` - Immich upload staging;
+- `/content/users` - all user storage, including future data;
+- `/content/data/media/music`;
+- `/content/data/media/audiobooks`;
+- `/content/data/media/books`.
 
-Backblaze B2 cannot replace Cloud KMS because it does not offer an
-OpenBao-supported seal endpoint. GCP Archive cannot replace B2 for a live
-PBS/Kopia repository because its 365-day minimum duration and retrieval charges
-conflict with routine reads, pruning, and garbage collection.
+It deliberately does not traverse:
 
-## Evidence from the live stack
+- movies and `movies-4k`;
+- TV and `tv-4k`;
+- sports;
+- `vids`;
+- torrents, Usenet, Soulseek downloads, and other download staging;
+- Immich thumbnails, encoded video, profile images, and other derivatives.
 
-The deployed backup paths remain inside the homelab failure domain:
+Current measured content is approximately 60 GB of Immich originals, 184 GB
+of music, 2.2 GB of audiobooks, and a small books tree. Size the Immich library
+for three times its current size, or about 181 GB. The resulting planned cold
+set is approximately 367 GB plus future user storage.
 
-- Proxmox retains about 665.6 GB of complete `vzdump` archives on CephFS.
-- The most recent backup per guest totals only about 79.9 GB; the retained
-  footprint is large because each daily archive is another full image.
-- MinIO holds about 54 GB, including S3-backed application backups.
-- Kubernetes exposes three 200 GiB Kopia PVCs backed by local CephFS.
-- The shared content filesystem contains about 8.6 TiB, but almost all of that
-  is replaceable movies and TV.
-- The B2 account and empty buckets exist, but there is no active offsite job.
+The selected MinIO data is copied logically through S3:
 
-Ceph replication protects against disk and node failure, not fire, theft,
-operator deletion, Ceph corruption, or a site-wide electrical event.
+- the Kopia repository, approximately 40.6 GB, using `kopia repository
+  sync-to s3`;
+- `cnpg-backups/postgres-vectorchord`, approximately 17.8 GB, using
+  `rclone copy`;
+- `terraform-state/live`, currently tiny but critical, using `rclone copy`.
 
-## Tier 0: local PBS
+Do not copy `/data` from the MinIO LXC. MinIO's filesystem is an implementation
+detail and a raw copy can be inconsistent with the logical object repository.
 
-Deploy Proxmox Backup Server 4.2 as a small VM with two datastores:
+## Expected cost
 
-1. a local datastore on a Ceph-backed virtual disk for fast restores;
-2. a B2 S3 datastore with a dedicated 128 GiB persistent cache.
+At the planned sizes:
 
-Back up guests to the local datastore and use a PBS local sync job to populate
-the B2 datastore. PBS sends incremental, deduplicated chunks, so B2 should be
-much closer to the roughly 80 GB current working set plus retained deltas than
-the 665.6 GB `vzdump` footprint. Treat that as a hypothesis until the first
-month is measured.
+- 58.4 GB of current operational repositories in B2 is approximately
+  USD 0.41/month;
+- adding an estimated 80 GB PBS working set would make B2 approximately
+  USD 0.96/month before retained deltas;
+- 367 GB in Scaleway Glacier is approximately EUR 0.93/month;
+- user storage growth increases Glacier by approximately EUR 0.00254 per GB
+  per month.
 
-Do not `rclone` a live PBS datastore. PBS owns chunk ordering, pruning, and
-garbage collection. A file-level copy of an active repository can be
-inconsistent.
+Scaleway Glacier restoration costs EUR 0.009/GB. The first 75 GB/month of
+egress is free, then egress is EUR 0.01/GB. A complete 367 GB cold recovery is
+therefore approximately EUR 6.22 plus short-lived Standard Multi-AZ storage.
+The restore can take from a few minutes to 24 hours to start.
 
-## Tier 1: Backblaze B2 hot backup
+## Kubernetes implementation
 
-Use separate buckets and separate application keys:
+The offsite resources live in:
 
-1. `sulibot-pbs-offsite`
-   - No Object Lock and no bucket versioning; PBS garbage collection needs
-     list/get/put/delete.
-   - PBS client-side encryption.
-   - Bucket-scoped key, never the B2 account master key.
-   - Configure PBS with path-style addressing and the
-     `Skip If-None-Match` provider quirk.
-2. `sulibot-kopia-offsite`
-   - Kopia client-side encryption.
-   - Bucket-scoped read/write/list/delete key for repository maintenance.
-   - Repository password in 1Password plus an offline recovery copy.
-3. `sulibot-infrastructure-immutable`
-   - Object Lock with a short governance retention period.
-   - Upload-only key without delete, retention-management, or
-     governance-bypass capabilities.
-   - Encrypted OpenBao Raft snapshots, RouterOS exports, recovery manifests,
-     and other small break-glass artifacts.
+`kubernetes/apps/tier-1-infrastructure/volsync/maintenance`
 
-The existing B2 master-capability credential in 1Password is for account
-administration only. Do not install it in PBS, Kubernetes, an LXC, or
-OpenBao.
-
-At current pricing, copying all 665.6 GB of retained `vzdump` data raw would
-cost about $4.63/month; adding 54 GB would put the upper bound near
-$5.00/month. The PBS design should be materially lower. B2 remains cheaper than
-IDrive e2's $4 monthly/1 TB floor while actual offsite usage stays below about
-576 GB. Re-evaluate only after two complete billing cycles above that point.
-
-## Tier 2: GCP Archive for personal originals
-
-Use a separate `sulibot-personal-archive` project under the same personal GCP
-billing account as the KMS project:
-
-- single-region `us-west1` Archive bucket;
-- public access prevention and uniform bucket-level access;
-- a one-year retention policy, left unlockable until a restore drill passes;
-- an uploader principal that can create/read/list but cannot delete objects or
-  administer retention;
-- client-side encryption with the recovery identity stored in 1Password and an
-  independent offline copy;
-- append-only, date-and-content-hash-named archive batches with encrypted
-  manifests and checksums.
-
-Do not point Restic, Kopia, or PBS directly at the Archive bucket. Upload frozen
-archive batches instead. This avoids routine metadata reads, object rewrites,
-and early-deletion charges. Archive:
-
-- Immich originals under the library/upload paths;
-- personal home-video originals;
-- music only if losing or re-ripping it would be costly.
-
-Exclude Immich thumbnails, transcoded video, caches, torrents, movies, TV, and
-all other reproducible data.
-
-GCP Archive data is online but charges about $0.05/GiB to read and has a
-365-day minimum duration. This is disaster insurance, not the first restore
-target.
-
-## Provider comparison
-
-| Provider | Fit | Decision |
+| Resource | Schedule | Purpose |
 |---|---|---|
-| Backblaze B2 | Proven PBS-compatible hot S3, no storage floor, 3x stored data in free egress | Use for live offsite repositories |
-| IDrive e2 | $4/TB but a $4/1 TB monthly minimum | Revisit only if deduplicated B2 stays above 576 GB |
-| MEGA S4 | PBS guide and low marginal rate, but the plan starts around EUR 15 for 3 TB | Too expensive at the current footprint |
-| Storj | Recent price/minimum changes and no advantage over B2 for this size | Reject |
-| GCP Archive | Cheapest operationally simple cold tier because GCP is already needed | Use for personal originals |
-| AWS Glacier Deep Archive | Slightly cheaper per TB, 12-48 hour restore, 180-day minimum, costly recovery | Revisit near 4 TB of cold originals |
+| `volsync-offsite-kopia-sync` | Every 6 hours | Native Kopia repository synchronization to B2 |
+| `minio-selected-offsite-copy` | Every 6 hours | CNPG and Terraform state logical copy to B2 |
+| `scaleway-content-archive` | Weekly | Encrypted, append-only allowlisted content copy |
+| `volsync-offsite-restore-drill` | Weekly | Restore `actual-src@default:/data` from B2 |
+| `cnpg-offsite-restore-drill` | Monthly | Recover CNPG from B2 and execute SQL |
+
+The CNPG drill runs in `backup-restore-drill`, creates a disposable 60 GiB
+cluster, restores the `immich` database, executes a SQL query, records the
+duration in its logs, and removes the Cluster and PVC.
+
+All new CronJobs are initially suspended. This prevents predictable alert
+noise and failed Jobs before the provider buckets and least-privilege
+credentials exist. Unsuspend them only after completing the provisioning and
+bootstrap checklist below.
+
+## Provider provisioning
+
+### Backblaze B2
+
+Create three private buckets:
+
+1. `sulibot-kopia-offsite`
+   - no Object Lock;
+   - no default retention;
+   - dedicated list/read/write/delete key;
+   - Kopia client-side encryption remains authoritative.
+2. `sulibot-cnpg-offsite`
+   - versioning enabled;
+   - dedicated list/read/write key;
+   - lifecycle old object versions after the agreed PITR window;
+   - do not allow the Kubernetes copier to bypass governance.
+3. `sulibot-infrastructure-immutable`
+   - versioning and Object Lock enabled;
+   - dedicated create/read/list key without delete or governance bypass;
+   - stores Terraform state and future break-glass artifacts.
+
+Keep the B2 account master key out of Kubernetes, PBS, and application
+containers.
+
+### Scaleway
+
+Create one private Object Storage bucket in `nl-ams`:
+
+1. enable versioning and Object Lock when the bucket is created;
+2. start with 90-day governance retention;
+3. block public access;
+4. create a dedicated IAM application with object read/list/create access and
+   no retention-administration permission;
+5. set billing alerts for storage and egress;
+6. use direct `GLACIER` uploads for content and `STANDARD` for small manifests.
+
+Object Lock cannot be disabled after it is enabled. Keep governance mode until
+at least one cold restore has passed; consider compliance mode only after the
+retention and cost behavior is proven.
+
+## 1Password contract
+
+Create or update the `offsite-backup-s3` item with these fields:
+
+| Field | Meaning |
+|---|---|
+| `s3-endpoint` | B2 S3 endpoint including `https://` |
+| `region` | B2 bucket region |
+| `kopia-bucket` | B2 Kopia bucket |
+| `kopia-access-key-id` | bucket-scoped Kopia key ID |
+| `kopia-application-key` | bucket-scoped Kopia application key |
+| `minio-mirror-endpoint` | local MinIO endpoint including `https://` |
+| `minio-mirror-access-key-id` | read-only key for selected source buckets |
+| `minio-mirror-secret-access-key` | matching MinIO secret |
+| `cnpg-bucket` | B2 CNPG bucket |
+| `cnpg-access-key-id` | bucket-scoped CNPG key ID |
+| `cnpg-application-key` | bucket-scoped CNPG application key |
+| `infrastructure-bucket` | B2 immutable infrastructure bucket |
+| `infrastructure-access-key-id` | bucket-scoped infrastructure key ID |
+| `infrastructure-application-key` | matching B2 application key |
+| `scaleway-endpoint` | for example `https://s3.nl-ams.scw.cloud` |
+| `scaleway-region` | `nl-ams` |
+| `scaleway-content-bucket` | Scaleway archive bucket |
+| `scaleway-access-key-id` | least-privilege Scaleway access key |
+| `scaleway-secret-access-key` | matching Scaleway secret |
+| `content-crypt-password` | high-entropy rclone crypt password |
+| `content-crypt-salt` | independent high-entropy rclone crypt salt |
+
+Keep independent offline copies of:
+
+- the Kopia repository password;
+- `content-crypt-password` and `content-crypt-salt`;
+- B2 and Scaleway recovery credentials;
+- SOPS identities, OpenBao recovery shares, and KMS recovery information.
+
+Losing the rclone crypt password or salt makes the Scaleway archive
+unrecoverable.
+
+## Bootstrap and activation
+
+1. Provision the B2 and Scaleway buckets and keys.
+2. Create the dedicated MinIO read-only service account. It needs list/get for:
+   - `cnpg-backups/postgres-vectorchord/*`;
+   - `terraform-state/live/*`.
+3. Populate the 1Password item and wait for both ExternalSecrets to become
+   Ready.
+4. Run one manual Kopia synchronization and inspect its log.
+5. Run one manual selected-MinIO copy and compare object counts/bytes.
+6. Run the Scaleway content archive manually. Confirm Standard manifests and
+   Glacier content objects are present.
+7. Run the B2 Kopia restore drill.
+8. Run the CNPG restore drill and confirm the SQL verification result.
+9. Perform one manual Scaleway Glacier sample restore.
+10. Change `suspend: true` to `suspend: false` for all five CronJobs.
+11. Confirm Prometheus has recorded each CronJob's last successful timestamp.
+
+Example manual bootstrap:
+
+```bash
+kubectl create job -n volsync-system \
+  --from=cronjob/volsync-offsite-kopia-sync \
+  volsync-offsite-kopia-bootstrap
+
+kubectl create job -n volsync-system \
+  --from=cronjob/minio-selected-offsite-copy \
+  minio-selected-offsite-bootstrap
+
+kubectl create job -n volsync-system \
+  --from=cronjob/scaleway-content-archive \
+  scaleway-content-bootstrap
+```
 
 ## Recovery order
 
-1. Recover internet, DNS, the operator workstation, and 1Password access.
-2. GCP Cloud KMS automatically unseals the OpenBao members as they start.
-3. Restore infrastructure credentials and configuration from 1Password/Git.
-4. Recreate PBS with its persistent cache and reuse the B2 S3 datastore.
-5. Restore OpenBao snapshots, critical guests, and Kopia application data.
-6. Restore GCP Archive media only if the local and B2 copies are unavailable.
-7. Validate recovery without relying on credentials stored only inside
-   OpenBao.
+1. Recover internet, DNS, an operator workstation, and 1Password access.
+2. Use Git/SOPS and GCP KMS to recover cluster foundations and OpenBao.
+3. Recover application configuration from the B2 Kopia repository.
+4. Recover PostgreSQL from B2 CNPG/Barman objects and replay WAL.
+5. Recover Terraform state and other immutable infrastructure artifacts.
+6. Recreate PBS and attach its B2 S3 datastore when that phase is implemented.
+7. Restore Scaleway Glacier content only if the local content filesystem is
+   unavailable.
 
-Keep the GCP service-account JSON, B2 application keys, PBS/Kopia encryption
-keys, OpenBao recovery shares, and SOPS identities available through
-independent break-glass paths. OpenBao must not be required to retrieve the
-credentials needed to unseal OpenBao or restore its own backup.
+For Glacier, list the underlying encrypted S3 object keys, request restoration
+with the S3 `RestoreObject` API, wait until each object's restore status is
+complete, then use the same rclone crypt password and salt to copy the restored
+objects to replacement storage. Restore small groups first to validate the key
+material before requesting the entire archive.
+
+## Monitoring and recovery objectives
+
+- Kopia and selected-MinIO copies: target RPO 6 hours; alert after 14 hours.
+- Content archive: target RPO 7 days; alert after 9 days.
+- Kopia drill: weekly; alert after 14 days without success.
+- CNPG drill: monthly; alert after 45 days without success.
+- Record restore duration, restored bytes/files, database name, and SQL result
+  in Job logs.
+
+The first successful drills establish the measured RTO. Do not claim an RTO
+until those results exist.
+
+## Provider comparison
+
+| Provider | Decision |
+|---|---|
+| Backblaze B2 | Use for mutable operational repositories and drills |
+| Scaleway Glacier | Use for encrypted immutable personal originals |
+| Scaleway One Zone | More expensive than B2 and only one zone; not selected |
+| Scaleway Multi-AZ | Good service, but over twice B2's storage price |
+| GCP Archive | Lower idle cost, but substantially higher disaster retrieval cost |
+| IDrive e2 | Revisit only if B2 remains above its cost crossover for two billing cycles |
+| Cloudflare R2 | No S3 Object Lock and higher storage price |
+| Wasabi | One-TB floor and 90-day minimum conflict with current size/pruning |
 
 ## Research sources
 
 - [Backblaze B2 pricing](https://www.backblaze.com/cloud-storage/pricing)
-- [GCP Cloud Storage pricing](https://cloud.google.com/storage/pricing)
-- [GCP Cloud KMS pricing](https://cloud.google.com/kms/pricing)
-- [AWS Glacier storage classes](https://aws.amazon.com/s3/storage-classes/glacier/)
-- [PBS 4.2 S3 datastore documentation](https://pbs.proxmox.com/docs/storage.html#datastores-with-s3-backend)
-- [Proxmox forum: Backblaze B2 endpoint settings](https://forum.proxmox.com/threads/pbs-fails-to-connect-to-backblaze-b2.170220/)
-- [Proxmox forum: why not to copy a live PBS datastore with rclone](https://forum.proxmox.com/threads/upload-backups-to-s3-compatible-cloud-storage.160250/)
-- [Homelab forum: 2025 offsite backup approaches](https://www.reddit.com/r/homelab/comments/1k1cusq/)
-- [DataHoarder forum: 2025 low-cost provider discussion](https://www.reddit.com/r/DataHoarder/comments/1m8flvt/)
+- [Backblaze Object Lock](https://www.backblaze.com/docs/cloud-storage-object-lock)
+- [Scaleway Object Storage pricing](https://www.scaleway.com/en/pricing/storage/)
+- [Scaleway Object Storage regions and classes](https://www.scaleway.com/en/docs/object-storage/concepts/)
+- [Scaleway Object Lock](https://www.scaleway.com/en/docs/object-storage/api-cli/object-lock/)
+- [Scaleway Glacier restoration](https://www.scaleway.com/en/docs/object-storage/how-to/restore-an-object-from-glacier/)
+- [Kopia repository synchronization](https://kopia.io/docs/advanced/synchronization/)
+- [CNPG S3-compatible object stores](https://cloudnative-pg.io/docs/1.25/appendixes/object_stores/)
+- [Proxmox PBS S3 datastores](https://pbs.proxmox.com/docs/storage.html#datastores-with-s3-backend)
+- [Proxmox forum: B2 endpoint settings](https://forum.proxmox.com/threads/pbs-fails-to-connect-to-backblaze-b2.170220/)
+- [Proxmox forum: do not raw-copy a live PBS datastore](https://forum.proxmox.com/threads/upload-backups-to-s3-compatible-cloud-storage.160250/)
