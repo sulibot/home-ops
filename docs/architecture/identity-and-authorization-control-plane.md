@@ -27,7 +27,7 @@ is not a directory of people and must never be treated as one.
 | Infrastructure entitlement | Kanidm group | Direct OIDC/POSIX consumer |
 | Kubernetes API authorization | Kubernetes RBAC | OIDC group claim after human OIDC is enabled |
 | Secret policy | OpenBao policy and external group alias | OpenBao token |
-| Data placement | CephFS | OpenCloud PosixFS, NFS, Syncthing |
+| Data placement | CephFS | OpenCloud PosixFS and NFS |
 | App service identity | Workload security context | ACL only; never a human UID |
 
 The same person may have one Kanidm record and one Authentik broker record. The
@@ -52,9 +52,9 @@ Keeping it preserves existing hashed OIDC subjects. The Google and Kanidm
 source connections both authenticate the same Authentik user; neither creates
 a second application person.
 
-UID/GID `1000` is reserved here for OpenCloud and Syncthing workload service
-identities. It is granted explicit ACL access and is not the owner identity of
-the human's personal tree.
+UID/GID `1000` is reserved here for the OpenCloud workload service identity.
+It is granted explicit ACL access and is not the owner identity of the human's
+personal tree.
 
 ## Group classes and naming
 

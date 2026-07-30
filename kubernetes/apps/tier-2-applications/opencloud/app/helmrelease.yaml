@@ -84,10 +84,8 @@ spec:
               # the ID in the physical path makes an NFS export stable.
               STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: 'projects/{{ "{{.SpaceId}}" }}'
               STORAGE_USERS_POSIX_WATCH_FS: "true"
-              # Inotify is real-time only for processes using this same
-              # node-staged PVC. Syncthing therefore reuses this exact claim
-              # and is co-scheduled with OpenCloud. Independent CephFS/NFS
-              # mounts are assimilated only by a subsequent startup scan.
+              # Independent CephFS/NFS mounts are outside this pod's inotify
+              # domain and are assimilated only by a subsequent startup scan.
               STORAGE_USERS_POSIX_WATCH_TYPE: inotifywait
               STORAGE_USERS_POSIX_WATCH_PATH: /srv/user-files
               OC_ENABLE_OCM: "false"

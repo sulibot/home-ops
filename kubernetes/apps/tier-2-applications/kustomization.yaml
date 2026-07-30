@@ -72,7 +72,6 @@ resources:
   - ./shelfmark/ks.yaml
   - ./slskd/ks.yaml
   - ./soulsync/ks.yaml
-  - ./syncthing-sulibot/ks.yaml
   - ./smtp-relay/ks.yaml
   - ./sonarr-4k/ks.yaml
   # sonarr disabled - migrated to sonarr-4k
