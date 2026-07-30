@@ -106,7 +106,9 @@ minimization, not per-host network isolation.
 
 - the approved mTLS candidate inventory;
 - `application_mtls_cutover_hostnames`, the per-host cutover set (currently
-  piloting `immich.sulibot.com`);
+  `immich.sulibot.com` and `freshrss.sulibot.com`);
+- Cloudflare One Client device-certificate provisioning for users who select
+  the Posture-only enrollment workflow;
 - the Cloudflare-managed CA hostname association;
 - the single zone custom-WAF rule that blocks missing, invalid, or revoked
   certificates;
@@ -143,8 +145,9 @@ enrollment step.
 
 For automatic per-device certificates:
 
-1. Enable device certificate provisioning for the zone through Cloudflare's
-   documented `PATCH /zones/{zone_id}/devices/policy/certificates` API.
+1. Confirm Terragrunt manages
+   `cloudflare_zero_trust_device_default_profile_certificates.application_mtls`
+   with `enabled = true`.
 2. Assign the user's identity to the Posture-only device profile.
 3. Install the Cloudflare One Client and enroll it into
    `sulibot.cloudflareaccess.com` through the configured identity provider.
@@ -214,8 +217,9 @@ client:
 
 ## Per-host cutover
 
-Use one pilot hostname at a time. `immich.sulibot.com` is the first planned
-pilot; `freshrss.sulibot.com` follows after its private app route is healthy.
+Use one hostname at a time. `immich.sulibot.com` and
+`freshrss.sulibot.com` are cut over; apply this procedure to each additional
+candidate.
 
 1. Verify a certificate-bearing request reaches the app while the existing
    Access policy is still present.
