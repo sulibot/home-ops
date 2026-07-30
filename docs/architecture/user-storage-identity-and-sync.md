@@ -321,11 +321,11 @@ OpenCloud startup scan.
 Bulk moves between OpenCloud Spaces, symlinks, and mass external deletion are
 not supported operating patterns. Stop writers before bulk maintenance.
 
-The pinned OpenCloud 5.2.0 image is deployed with
-`OC_EXCLUDE_RUN_SERVICES=search`: on a new config volume this release
-reproducibly creates an empty Bleve mapping and exits. Search is not required
-for sync, WebDAV, direct file access, or iOS access. Remove the exclusion only
-after validating a newer OpenCloud release against a freshly created index.
+OpenCloud 7.3.0 is initialized on a clean config volume, including the
+7.x service-account and sharing-service configuration. Search is enabled and
+must be validated after every OpenCloud upgrade. The `opencloud-config` RBD
+PVC holds only reconstructable application state; the independently retained
+`user-storage-opencloud` CephFS PVC holds file payloads.
 
 OpenCloud WebFinger advertises `storage` in addition to the standard OIDC
 scopes for web, desktop, Android, and iOS clients. The Authentik `storage`
