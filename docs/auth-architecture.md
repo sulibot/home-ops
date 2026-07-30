@@ -6,7 +6,7 @@
 
 | App type | Authentication model | Notes |
 |----------|----------------------|-------|
-| **Browser apps behind Application Security mTLS** | Cloudflare-managed client certificate + WAF, followed by app auth | No WARP/VPN is required. The identity may be installed manually or automatically provisioned by an enrolled Cloudflare One Client in Posture-only mode; this is not Enterprise Access mTLS. |
+| **Browser apps behind Application Security mTLS** | Manually installed Cloudflare-managed client certificate + WAF, followed by app auth | No WARP/VPN or Cloudflare One Client enrollment is required; this is not Enterprise Access mTLS. |
 | **WARP-dependent native/API clients** | WARP private routing or an explicit WARP Access policy | Use when the client cannot present an Application Security certificate. |
 | **Remaining apps behind CF Access** | Cloudflare Access with Authentik as OIDC IdP | Authentik is the IdP for Cloudflare Access; app auth may remain layered behind it. |
 | **Passthrough apps** (Plex, Seerr/Jellyseerr) | App-owned authentication | Cloudflare Access `Bypass` policy is applied intentionally. |
@@ -143,28 +143,17 @@ installed on the device, and a zone custom-WAF rule blocks requests when
 `cf.tls_client_auth.cert_verified` is false or
 `cf.tls_client_auth.cert_revoked` is true.
 
-It is independent of Enterprise Cloudflare Access mTLS. The supported browser
-credential is a manually issued Cloudflare-managed identity installed in the
-user's certificate store. Cloudflare One Client can also provision a
-per-device identity, but that path is experimental: macOS testing with ChatGPT
-Atlas produced a System Keychain administrator prompt for each concurrent TLS
-connection. Do not use the device identity for routine browser access until the
-browser/platform compatibility debt is resolved.
+It is independent of Enterprise Cloudflare Access mTLS. The only supported
+browser credential is a manually issued Cloudflare-managed identity installed
+through a device-specific configuration profile.
 
-On `io` and `iot`, the Home trusted profile uses Posture-only solely as a
-no-traffic, no-DNS mode. Away from home, the default profile changes
-automatically to WARP Include mode and carries private `*-app` and currently
-approved administration destinations. Users who need both access paths install
-the manual browser identity and enroll Cloudflare One Client.
-
-The Home trusted profile is not an external access profile: internal DNS sends
-traffic directly to local gateways, bypassing the external Cloudflare
-authentication path. Its managed-network TLS beacons use public-CA validation,
-not a rotating leaf-certificate fingerprint. Keep this location-based behavior
-independent from the unresolved Admin/App assignment model. Do not infer a
-device's role from its operating system or platform; a single identity may own
-devices with different roles. The certificate lifecycle and per-host migration
-procedure are documented in
+There are two supported external-access mechanisms: the installed certificate
+for browser endpoints and WARP for private `*-app.sulibot.com` endpoints. The
+single WARP Include profile applies on every network and carries only its
+configured destinations; there is no posture or managed-network profile. Users
+who need both access paths install the manual browser identity and enroll
+Cloudflare One Client for private app routing. The certificate lifecycle and
+per-host migration procedure are documented in
 [Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
 
 Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,

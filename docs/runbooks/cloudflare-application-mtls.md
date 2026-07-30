@@ -11,13 +11,9 @@ certificates issued by Cloudflare's managed CA. The supported user workflow is
 a manually issued certificate installed directly in the operating-system or
 browser certificate store.
 
-Cloudflare also documents a per-device certificate automatically provisioned
-when an enrolled Cloudflare One Client runs in Posture-only mode. The edge gate
-accepts that certificate, but it is not an approved user workflow here.
-ChatGPT Atlas on macOS requested administrator access to the System Keychain
-nine times during a single Immich navigation. Treat automatic device
-certificates as experimental until the browser/platform compatibility issue is
-resolved.
+Cloudflare One Client device-certificate provisioning is disabled. Enrolling
+the client provides WARP access to private `*-app.sulibot.com` endpoints; it
+does not provide a browser mTLS identity.
 
 ## Endpoint model
 
@@ -38,12 +34,10 @@ Cloudflare Access application.
 | User/device choice | Installation | At home (`io`/`iot`) | Away from home |
 |---|---|---|---|
 | Manual browser identity only | Install a manually issued PKCS#12 identity | No Cloudflare client or tunnel | Browser mTLS works; private `*-app` endpoints are unavailable |
-| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | Home trusted selects Posture-only; local DNS and LAN routing stay in use | Default profile selects WARP Include mode; the manual identity serves browser mTLS and WARP serves private app/API routes |
+| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | WARP Include mode carries only configured private app routes | The manual identity serves browser mTLS and WARP serves private app/API routes |
 
-The Cloudflare One Client's automatically provisioned identity is experimental,
-not a third supported choice. Posture-only remains useful for making the
-enrolled client inert on the trusted home networks; it must not be represented
-as a prompt-free browser enrollment workflow.
+These are the only two supported choices. There is no posture-only,
+managed-network, or automatically provisioned browser-identity path.
 
 The external default still contains the previously approved infrastructure
 routes in addition to the private app gateways. A separate technical-debt issue
@@ -51,14 +45,8 @@ owns selecting a durable per-device Admin/App role signal before those
 infrastructure routes can be removed from the default. Do not infer privilege
 from operating system or platform.
 
-A person who chooses a manual certificate does not need to enroll and therefore
-does not match any device profile.
-
-The **Home trusted** profile is location-based and matches the `io` and `iot`
-managed networks. It uses Posture-only mode: the client may collect posture and
-provision its device identity, but it does not route traffic or forward DNS.
-The operating system therefore continues to use home DNS and direct LAN routes,
-bypassing the external Cloudflare authentication path.
+A person who chooses a manual certificate does not need to enroll in WARP.
+Enrolled devices use the same Include-mode profile on every network.
 
 Do not reuse the consumer App access profile for infrastructure
 administration. Narrowing the existing external default profile to only
@@ -102,8 +90,6 @@ minimization, not per-host network isolation.
 - the approved mTLS candidate inventory;
 - `application_mtls_cutover_hostnames`, the per-host cutover set (currently
   `immich.sulibot.com` and `freshrss.sulibot.com`);
-- experimental Cloudflare One Client device-certificate provisioning, retained
-  for compatibility investigation rather than routine browser access;
 - the Cloudflare-managed CA hostname association;
 - the single zone custom-WAF rule that blocks missing, invalid, or revoked
   certificates;
@@ -293,50 +279,6 @@ application to implement client-certificate authentication, and it does not
 prevent a browser certificate chooser when multiple matching identities are
 installed. Remove expired and superseded identities during profile rotation.
 
-### Experimental automatic device certificate
-
-Do not enroll a user into this path for routine browser access. The validation
-procedure is retained for the compatibility technical-debt investigation:
-
-1. Confirm Terragrunt manages
-   `cloudflare_zero_trust_device_default_profile_certificates.application_mtls`
-   with `enabled = true`.
-2. Install the Cloudflare One Client and enroll it into
-   `sulibot.cloudflareaccess.com` through the configured identity provider.
-3. Connect to `io` or `iot`, connect the client, and verify:
-
-   ```bash
-   warp-cli settings | grep -E 'Mode:|Profile ID:'
-   ```
-
-   The mode must be `PostureOnly` and the profile ID must be the Home trusted
-   profile, not `default`.
-4. Confirm the device-ID certificate is present in the operating-system
-   certificate store. On macOS, the certificate is in the System Keychain and
-   its common name matches `warp-cli registration show`'s Device ID.
-5. Move to an external network and verify the client automatically selects
-   profile `default` in `WarpWithDnsOverHttps` mode.
-6. Verify private `*-app.sulibot.com` hostnames independently from the
-   experimental certificate. Each must resolve to its private gateway and reach
-   the application over WARP.
-
-Observed macOS result on 2026-07-29:
-
-- Cloudflare One Client installed the device identity in the System Keychain.
-- Cloudflare accepted the identity and Immich loaded after authorization.
-- ChatGPT Atlas displayed a malformed `%01$@` System Keychain authorization
-  message and queued nine administrator prompts for one navigation.
-- The behavior is unacceptable even though the TLS authentication succeeds.
-
-Do not tell users to keep approving prompts, modify the generated private-key
-ACL, or assume another Chromium browser behaves the same way. Validate a
-prompt-free lifecycle on each supported browser and platform before promoting
-this workflow.
-
-The automatically provisioned identity is managed by the enrolled client.
-Keeping it after uninstall is not a supported certificate lifecycle. Users who
-do not want the client installed should use the manual workflow instead.
-
 For API-based issuance, generate the private key and CSR outside Terraform so
 the key cannot enter state:
 
@@ -459,23 +401,9 @@ Each cut-over hostname requires:
 - certificate inventory with owner, serial, device, and expiry date; and
 - rotation reminders at 30, 14, and 7 days.
 
-The Home trusted selector additionally depends on both managed-network TLS
-beacons. Gatus probes `10.30.0.254:443` and `10.31.0.254:443` in the `network`
-group and alerts before the certificate expires. The endpoints are addressed
-by private IP, but the public certificate contains DNS SANs only. Without a
-SHA-256 pin, the Cloudflare One Client performs hostname validation against the
-IP and rejects the certificate with `NotValidForNameContext`.
-
-The managed-network resources therefore pin the current leaf certificate.
-Update both pins atomically whenever that certificate rotates. This is a
-temporary dependency: replace the router leaf with a dedicated, long-lived
-managed-network beacon certificate so routine Let's Encrypt renewal cannot
-silently force home devices onto the external profile.
-
-Inventory certificate source as either `manual`, `cloudflare-one-device`, or
-`service`. Manual and service certificates require explicit expiry reminders.
-Enrolled-device inventory must instead alert on stale enrollment, missing
-device certificate, and revoked/deleted device state.
+Inventory certificate source as either `manual` or `service`. Both require
+explicit expiry reminders. WARP enrollment health is monitored independently
+from browser client-certificate inventory.
 
 The negative-control probe is healthy only when the edge denies it. An
 unauthenticated `2xx` or redirect is a critical security incident.
