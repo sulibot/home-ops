@@ -699,6 +699,7 @@ resource "cloudflare_zero_trust_device_default_profile" "external" {
   account_id = local.account_id
 
   service_mode_v2   = { mode = "warp" }
+  tunnel_protocol   = "masque"
   allow_mode_switch = false
   switch_locked     = false
   auto_connect      = 0
