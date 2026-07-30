@@ -626,13 +626,17 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
 # Managed network-scoped WARP profile
 # ---------------------------------------------------------------------------
 
+# The beacon is addressed by private IP, while the router's public certificate
+# contains DNS SANs only. Without a pin, the client rejects it as not valid for
+# the IP address. Keep this pin synchronized until a dedicated long-lived
+# managed-network beacon certificate replaces the rotating Let's Encrypt leaf.
 resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
   account_id = local.account_id
   name       = "Home trusted io"
   type       = "tls"
   config = {
     tls_sockaddr = "10.30.0.254:443"
-    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
   }
 }
 
@@ -645,18 +649,19 @@ resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_iot" {
   type       = "tls"
   config = {
     tls_sockaddr = "10.31.0.254:443"
-    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
   }
 }
 
 resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   account_id  = local.account_id
   name        = "Home trusted"
-  description = "Exclude local private networks from WARP when on io or iot."
+  description = "Use local DNS and direct LAN routing on io or iot; collect posture without a traffic or DNS tunnel."
   precedence  = 10
 
-  service_mode_v2   = { mode = "warp" }
+  service_mode_v2   = { mode = "posture_only" }
   allow_mode_switch = false
+  auto_connect      = 1
 
   match = trimspace(replace(<<-EOT
     network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
@@ -669,6 +674,8 @@ resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "ho
   account_id = local.account_id
   policy_id  = cloudflare_zero_trust_device_custom_profile.home_trusted.policy_id
 
+  # Posture-only does not proxy DNS. Retain this provider-owned setting so
+  # profile transitions also prefer the trusted home resolvers.
   domains = [{
     suffix      = "sulibot.com"
     description = "Use local DNS for sulibot.com on trusted home networks"
@@ -691,6 +698,7 @@ resource "cloudflare_zero_trust_device_default_profile" "external" {
 
   service_mode_v2   = { mode = "warp" }
   allow_mode_switch = false
+  auto_connect      = 1
 
   include = concat(
     [

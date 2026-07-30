@@ -30,9 +30,19 @@ unauthenticated request was not rejected as expected. The SRE app-experience
 dashboard includes both mTLS groups.
 
 Client-certificate expiry is not available from Gatus's server-certificate
-metric. Track each Cloudflare client certificate in the 1Password inventory and
-send rotation reminders at 30, 14, and 7 days, or add a dedicated certificate
-exporter before relying on Prometheus for those reminders. See the
+metric. The authoritative Apple device set is
+`config/cloudflare-mtls-devices.json`; current certificate status, serial, and
+expiry are stored at
+`kv/automation/cloudflare-mtls/inventory/<device-id>/current`. This inventory
+tree contains no private key, PKCS#12 password, or installation profile; those
+remain under the separately authorized `identities/` tree. A 1Password document
+is only an encrypted delivery copy and must not be treated as the inventory.
+`.github/workflows/cloudflare-mtls-expiry.yml` audits the OpenBao records daily
+and fails with a device-specific error when an active identity has 30 days or
+less remaining. Missing and revoked identities are reported as warnings. The
+14-day and 7-day thresholds remain escalation points in the runbook; add a
+dedicated certificate exporter before representing these records as Prometheus
+metrics. See the
 [Cloudflare Application Security mTLS runbook](runbooks/cloudflare-application-mtls.md).
 
 The certificate inventory distinguishes manual identities,
