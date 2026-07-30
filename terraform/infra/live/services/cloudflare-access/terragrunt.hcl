@@ -83,6 +83,7 @@ locals {
   # hostname with Cloudflare's managed CA, enforces mTLS at the WAF, removes
   # the old Access application, and narrows the WARP split-tunnel host list.
   application_mtls_cutover_hostnames = toset([
+    "freshrss.sulibot.com",
     "immich.sulibot.com",
   ])
 
@@ -348,6 +349,14 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_route" "app_private_route" {
 # ---------------------------------------------------------------------------
 # Application Security mTLS
 # ---------------------------------------------------------------------------
+
+# Enable Cloudflare One Client device-certificate provisioning for users who
+# choose the documented Posture-only enrollment path. This does not change any
+# device profile or WARP routing behavior by itself.
+resource "cloudflare_zero_trust_device_default_profile_certificates" "application_mtls" {
+  zone_id = local.zone_id
+  enabled = true
+}
 
 # Omitting mtls_certificate_id selects the account's active Cloudflare-managed
 # CA. This resource owns the complete managed-CA hostname association set for

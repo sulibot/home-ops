@@ -6,10 +6,20 @@ Migrate browser-facing applications from a Cloudflare Access WARP requirement
 to Free-plan Application Security mTLS without exposing an application during
 the transition.
 
-This is not Cloudflare Access mTLS and does not use Cloudflare One Client
-device-posture certificates. Application Security client certificates are
-issued by Cloudflare's managed CA and installed directly in a browser or
-operating-system certificate store.
+This is not Cloudflare Access mTLS. Application Security mTLS accepts
+certificates issued by Cloudflare's managed CA through either of two supported
+device workflows:
+
+1. a manually issued certificate installed directly in the operating-system
+   or browser certificate store; or
+2. the per-device certificate automatically provisioned when an enrolled
+   Cloudflare One Client runs in Posture-only mode.
+
+The same hostname association and WAF rule accept both certificate workflows.
+Cloudflare documents automatic certificate provisioning for Posture-only mode.
+Do not assume a WARP-mode profile will provision the identity. A WARP user who
+also needs browser mTLS should use a manually issued identity until that
+behavior is explicitly validated.
 
 ## Endpoint model
 
@@ -23,7 +33,72 @@ operating-system certificate store.
 | Native/API endpoints without client-certificate support | WARP private routing | Native/API client |
 
 Do not add `*-app.sulibot.com` endpoints to public Cloudflare DNS or a
-Cloudflare Access application. Posture-only mode is not part of this design.
+Cloudflare Access application.
+
+## User access profiles
+
+Both certificate enrollment choices are intentionally available. Select the
+least-capable profile that meets a user's needs:
+
+| User/device need | Installation | Device profile | Network behavior |
+|---|---|---|---|
+| Browser mTLS only; no Cloudflare client desired | Manually issued client identity | Not enrolled | No Cloudflare tunnel |
+| Browser mTLS only; automatic certificate lifecycle desired | Cloudflare One Client enrollment | Posture only | No application traffic or DNS is routed through WARP |
+| Browser mTLS plus native/API apps | Manual client identity plus Cloudflare One Client enrollment | App access (WARP Include mode) | Only private `*-app.sulibot.com` gateway destinations use WARP |
+| Infrastructure administration | Manual client identity plus Cloudflare One Client enrollment | Admin access (WARP Include mode) | App gateway destinations plus approved SSH, Kubernetes, OpenBao, storage, and management routes use WARP |
+
+Cloudflare device profiles use first-match precedence, but the final
+Admin/App/Posture assignment model is intentionally deferred. One identity may
+own administrator workstations, native-app mobile devices, and browser-only
+devices. Do not infer privilege from operating system or platform, and do not
+assume an identity-wide profile can represent every device that identity owns.
+A separate technical-debt issue owns selection of a durable assignment signal
+before the current default profile is narrowed.
+
+A person who chooses a manual certificate does not need to enroll and therefore
+does not match any device profile.
+
+The existing **Home trusted** profile is a separate location-based path and must
+remain so. On the trusted home networks, internal DNS resolves application
+hostnames to local gateways and traffic reaches the applications directly over
+the LAN, bypassing the external Cloudflare authentication path. Do not convert
+Home trusted to Posture-only or make it depend on the unresolved external
+Admin/App/Posture assignment design.
+
+Do not reuse the consumer App access profile for infrastructure
+administration. Narrowing the existing external default profile to only
+application gateways without first solving device-role assignment would break
+SSH, `kubectl`, `talosctl`, OpenBao, MinIO, and other private-network workflows.
+
+### Split-horizon `*-app` routing
+
+WARP does not connect in response to a URL. It remains connected, and Include
+mode decides which destination traffic enters the tunnel.
+
+For each private app endpoint:
+
+1. Cloudflare Gateway DNS returns that app's private Cilium gateway address.
+2. The App access profile includes only the exact gateway IPv4 `/32` and IPv6
+   `/128` destinations used by those DNS overrides.
+3. All other traffic bypasses WARP.
+
+The policy intent is `*-app.sulibot.com`, but DNS overrides remain explicit
+because names on cluster 101 and cluster 104 resolve to different gateways.
+Do not use a single wildcard override for the zone.
+
+Current mappings are:
+
+| Private hostname | Remote/WARP destination |
+|---|---|
+| `hass-app.sulibot.com` | `10.104.250.11`, `fd00:104:250::11` |
+| `immich-app.sulibot.com` | `10.101.250.11`, `fd00:101:250::11` |
+| `freshrss-app.sulibot.com` | `10.101.250.11`, `fd00:101:250::11` |
+| `vikunja-app.sulibot.com` | `10.101.250.11`, `fd00:101:250::11` |
+
+Because multiple private apps share a gateway IP, including that gateway makes
+the other routed hostnames on the same gateway network-reachable. TLS hostname
+validation and application authentication remain required; this is routing
+minimization, not per-host network isolation.
 
 ## GitOps source of truth
 
@@ -31,7 +106,9 @@ Cloudflare Access application. Posture-only mode is not part of this design.
 
 - the approved mTLS candidate inventory;
 - `application_mtls_cutover_hostnames`, the per-host cutover set (currently
-  piloting `immich.sulibot.com`);
+  `immich.sulibot.com` and `freshrss.sulibot.com`);
+- Cloudflare One Client device-certificate provisioning for users who select
+  the Posture-only enrollment workflow;
 - the Cloudflare-managed CA hostname association;
 - the single zone custom-WAF rule that blocks missing, invalid, or revoked
   certificates;
@@ -62,6 +139,29 @@ For a human device:
 4. Confirm the browser offers or automatically selects the certificate for the
    pilot hostname.
 5. Store the recovery copy in 1Password and delete temporary plaintext files.
+
+This manual workflow does not require the Cloudflare One Client and has no
+enrollment step.
+
+For automatic per-device certificates:
+
+1. Confirm Terragrunt manages
+   `cloudflare_zero_trust_device_default_profile_certificates.application_mtls`
+   with `enabled = true`.
+2. Assign the user's identity to the Posture-only device profile.
+3. Install the Cloudflare One Client and enroll it into
+   `sulibot.cloudflareaccess.com` through the configured identity provider.
+4. Confirm the client-created identity is present in the operating-system
+   certificate store.
+5. With WARP traffic disconnected or in Posture-only mode, verify the browser
+   can reach an mTLS hostname.
+6. If the user later moves to an App access WARP profile, keep a separately
+   issued manual identity for browser mTLS unless WARP-mode provisioning has
+   been explicitly validated.
+
+The automatically provisioned identity is managed by the enrolled client.
+Keeping it after uninstall is not a supported certificate lifecycle. Users who
+do not want the client installed should use the manual workflow instead.
 
 For API-based issuance, generate the private key and CSR outside Terraform so
 the key cannot enter state:
@@ -117,8 +217,9 @@ client:
 
 ## Per-host cutover
 
-Use one pilot hostname at a time. `immich.sulibot.com` is the first planned
-pilot; `freshrss.sulibot.com` follows after its private app route is healthy.
+Use one hostname at a time. `immich.sulibot.com` and
+`freshrss.sulibot.com` are cut over; apply this procedure to each additional
+candidate.
 
 1. Verify a certificate-bearing request reaches the app while the existing
    Access policy is still present.
@@ -177,6 +278,11 @@ Each cut-over hostname requires:
   application outage;
 - certificate inventory with owner, serial, device, and expiry date; and
 - rotation reminders at 30, 14, and 7 days.
+
+Inventory certificate source as either `manual`, `cloudflare-one-device`, or
+`service`. Manual and service certificates require explicit expiry reminders.
+Enrolled-device inventory must instead alert on stale enrollment, missing
+device certificate, and revoked/deleted device state.
 
 The negative-control probe is healthy only when the edge denies it. An
 unauthenticated `2xx` or redirect is a critical security incident.

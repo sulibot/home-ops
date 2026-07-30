@@ -6,7 +6,7 @@
 
 | App type | Authentication model | Notes |
 |----------|----------------------|-------|
-| **Browser apps behind Application Security mTLS** | Cloudflare-managed client certificate + WAF, followed by app auth | No WARP/VPN is required. Certificates are installed directly on approved devices; this is not Access mTLS or posture-only mode. |
+| **Browser apps behind Application Security mTLS** | Cloudflare-managed client certificate + WAF, followed by app auth | No WARP/VPN is required. The identity may be installed manually or automatically provisioned by an enrolled Cloudflare One Client in Posture-only mode; this is not Enterprise Access mTLS. |
 | **WARP-dependent native/API clients** | WARP private routing or an explicit WARP Access policy | Use when the client cannot present an Application Security certificate. |
 | **Remaining apps behind CF Access** | Cloudflare Access with Authentik as OIDC IdP | Authentik is the IdP for Cloudflare Access; app auth may remain layered behind it. |
 | **Passthrough apps** (Plex, Seerr/Jellyseerr) | App-owned authentication | Cloudflare Access `Bypass` policy is applied intentionally. |
@@ -143,9 +143,21 @@ installed on the device, and a zone custom-WAF rule blocks requests when
 `cf.tls_client_auth.cert_verified` is false or
 `cf.tls_client_auth.cert_revoked` is true.
 
-It is independent of Cloudflare Access mTLS, Cloudflare One Client device
-posture, and WARP. The client-certificate lifecycle and per-host migration
-procedure are documented in
+It is independent of Enterprise Cloudflare Access mTLS. The same Application
+Security gate accepts manually issued Cloudflare-managed identities and
+per-device identities provisioned by Cloudflare One Client in Posture-only
+mode. Posture-only users get the identity without traffic routing. App access
+users route only explicit private `*-app` gateway destinations and use a
+manually issued identity when they also need browser mTLS; administrator
+profiles retain separately approved infrastructure routes.
+
+The Home trusted profile is not an external access profile: internal DNS sends
+traffic directly to local gateways, bypassing the external Cloudflare
+authentication path. Keep this location-based behavior independent from the
+unresolved Admin/App/Posture assignment model. Do not infer a device's role
+from its operating system or platform; a single identity may own devices with
+different roles. The certificate lifecycle and per-host migration procedure
+are documented in
 [Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
 
 Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,
