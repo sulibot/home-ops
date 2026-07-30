@@ -60,6 +60,13 @@ spec:
                     name: opencloud-secret
                     key: OPENCLOUD_OIDC_CLIENT_ID
               OC_OIDC_SCOPE: "openid profile email storage"
+              # Native clients discover their client IDs and scopes through
+              # OpenCloud WebFinger. They must request the custom Authentik
+              # scope that carries the stable username, groups, and roles.
+              WEBFINGER_WEB_OIDC_CLIENT_SCOPES: "openid profile email storage"
+              WEBFINGER_DESKTOP_OIDC_CLIENT_SCOPES: "openid profile email offline_access storage"
+              WEBFINGER_ANDROID_OIDC_CLIENT_SCOPES: "openid profile email offline_access storage"
+              WEBFINGER_IOS_OIDC_CLIENT_SCOPES: "openid profile email offline_access storage"
               PROXY_OIDC_REWRITE_WELLKNOWN: "true"
               PROXY_AUTOPROVISION_ACCOUNTS: "true"
               GRAPH_USERNAME_MATCH: "none"

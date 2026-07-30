@@ -353,6 +353,14 @@ reproducibly creates an empty Bleve mapping and exits. Search is not required
 for sync, WebDAV, direct file access, or iOS access. Remove the exclusion only
 after validating a newer OpenCloud release against a freshly created index.
 
+OpenCloud WebFinger advertises `storage` in addition to the standard OIDC
+scopes for web, desktop, Android, and iOS clients. The Authentik `storage`
+scope supplies `opencloud_username`, `opencloudGroups`, and `roles`; omitting
+it lets browser authentication complete but makes the native client's
+subsequent user lookup fail. Keep the WebFinger client-scope settings and the
+Authentik storage scope mapping aligned when adding or changing native
+clients.
+
 ## Failure behavior
 
 | Failure | Effect | Recovery |
