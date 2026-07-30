@@ -17,4 +17,5 @@ resources:
   - ./offsite-minio-copy-cronjob.yaml
   - ./gcs-content-archive-cronjob.yaml
   - ./gcs-content-restore-drill-cronjob.yaml
+  - ./gcs-terraform-state-offsite-copy-cronjob.yaml
   - ./prometheusrule.yaml

@@ -49,7 +49,7 @@ env:
 jobs:
   provision:
     name: Provision Talos Cluster ${{ github.event.inputs.cluster_id }}
-    runs-on: self-hosted
+    runs-on: home-ops-runner
     timeout-minutes: 60
 
     steps:

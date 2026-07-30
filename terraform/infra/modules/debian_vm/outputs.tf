@@ -20,5 +20,5 @@ output "ipv6_address" {
 
 output "ssh_command" {
   description = "SSH command to connect"
-  value       = "ssh root@${var.network.ipv4_address}"
+  value       = "ssh root@${split("/", var.network.ipv4_address)[0]}"
 }

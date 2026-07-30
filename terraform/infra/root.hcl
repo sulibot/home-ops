@@ -3,9 +3,18 @@ locals {
 }
 
 remote_state {
-  backend = "local"
+  backend = "gcs"
   config = {
-    path = "${get_parent_terragrunt_dir()}/terragrunt-cache/${path_relative_to_include()}/terraform.tfstate"
+    bucket                      = "sulibot-terraform-state"
+    prefix                      = path_relative_to_include()
+    impersonate_service_account = "terraform-state@sulibot-openbao-kms.iam.gserviceaccount.com"
+
+    # The bucket is managed by the isolated terraform/bootstrap/gcs-state
+    # root. Terragrunt must never create or mutate it implicitly.
+    project                = "sulibot-openbao-kms"
+    location               = "us-central1"
+    skip_bucket_creation   = true
+    skip_bucket_versioning = true
   }
 }
 

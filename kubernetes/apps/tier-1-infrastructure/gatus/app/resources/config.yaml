@@ -41,9 +41,33 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Immich (external)
-    group: apps-external
+  - name: Immich (external mTLS)
+    group: apps-external-mtls
     url: https://immich.sulibot.com/auth/login
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+      tls:
+        certificate-file: /config/mtls/tls.crt
+        private-key-file: /config/mtls/tls.key
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 400"
+
+  - name: Immich mTLS denial
+    group: security-negative-control
+    url: https://immich.sulibot.com/auth/login
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+    conditions:
+      - "[STATUS] == 403"
+
+  - name: FreshRSS browser (external)
+    group: apps-external
+    url: https://freshrss.sulibot.com/
     interval: 1m
     client:
       timeout: 10s
@@ -157,6 +181,26 @@ endpoints:
       timeout: 5s
     conditions:
       - "[STATUS] == 200"
+
+  - name: FreshRSS app endpoint (internal gateway)
+    group: apps-internal
+    url: https://freshrss-app.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: FreshRSS (cluster)
+    group: infra-internal
+    url: http://freshrss.default.svc.cluster.local:8080/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
 
   - name: Paperless (cluster)
     group: infra-internal

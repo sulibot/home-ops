@@ -157,10 +157,10 @@ directory. Pick one synchronization engine per local path.
 ### VM
 
 Install the Kanidm Unix client, `ceph-common`, `acl`, and `attr`. Enroll the
-path-scoped secret as:
+path-scoped keyring as:
 
 ```text
-/etc/ceph/ceph.client.sulibot-cloud.secret
+/etc/ceph/ceph.client.sulibot-cloud.keyring
 ```
 
 Mount `sulibot-cloud@.content=/users/sulibot/Cloud` at
@@ -174,6 +174,25 @@ getfattr -d /home/sulibot/Cloud/.vm-write-test
 ```
 
 Delete only the test file after it appears in OpenCloud and Syncthing.
+
+Direct VM clients must have bidirectional Ceph messenger routing to every
+advertised monitor, MDS, and OSD address—not merely ICMP or a successful TCP
+handshake. The initial VLAN 200 validation reaches `fc00:20::/64` at the
+network layer, but Ceph messenger sessions do not reach the monitors; direct
+VM mounts therefore remain gated on the VRF/route correction. Do not broaden
+CephX caps, expose an admin key, or replace this with NFS to conceal that
+failure. The validation play stages the Debian mount disabled by default; set
+`user_storage_vm_mount_enabled=true` only after a Ceph client handshake and
+path-scoped mount succeed.
+
+For Debian, treat the Kanidm unixd package as an OS support gate. The
+community Kanidm PPA currently publishes Debian 12 (`bookworm`) packages, not
+Debian 13 (`trixie`) packages. Do not install an arbitrary mismatched binary,
+fall back to a local account, or copy a UID from email. Either use the
+supported Debian release, publish an internally tested package that matches
+the Kanidm server, or keep the Debian 13 guest limited to root-based mount
+validation until packaging is available. The NixOS client uses the repo-pinned
+Kanidm package and is the reference identity-validation client.
 
 ### LXC
 
@@ -284,7 +303,9 @@ after validating a newer OpenCloud release against a freshly created index.
 
 ## Destructive reset
 
-The original OpenCloud instance is disposable. The cutover runbook must scale
-OpenCloud to zero, delete its old PVC only after the new manifests are ready,
-recreate application state, and validate the new user tree before Syncthing is
-allowed to write.
+The original OpenCloud instance was declared disposable and its old PVC was
+deleted without backup during this cutover. OpenCloud application state now
+uses the new RBD PVC; the retained CephFS user tree is managed independently.
+For a future reset, scale OpenCloud to zero, delete only its application-state
+PVC, recreate the service, and validate the retained user tree before allowing
+writers.

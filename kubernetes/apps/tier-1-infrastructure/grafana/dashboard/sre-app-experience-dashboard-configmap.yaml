@@ -111,7 +111,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(gatus_results_endpoint_success{group=~\"apps.*|home|cluster-101|cluster-104\"} == bool 0) or vector(0)",
+              "expr": "sum(gatus_results_endpoint_success{group=~\"apps.*|security-negative-control|home|cluster-101|cluster-104\"} == bool 0) or vector(0)",
               "refId": "A"
             }
           ]
@@ -490,7 +490,7 @@ data:
           },
           "targets": [
             {
-              "expr": "gatus_results_endpoint_success{group=~\"apps.*|home|cluster-101|cluster-104\"} == 0",
+              "expr": "gatus_results_endpoint_success{group=~\"apps.*|security-negative-control|home|cluster-101|cluster-104\"} == 0",
               "refId": "A",
               "instant": true,
               "range": false,

@@ -6,6 +6,7 @@ Operational procedures for the home-ops cluster.
 
 - [Talos cluster operations](talos-cluster-operations.md)
 - [Home LAN segmentation and Wi-Fi operations](home-lan-segmentation-and-wifi-operations.md)
+- [Cloudflare Application Security mTLS](cloudflare-application-mtls.md)
 
 ## Applications
 

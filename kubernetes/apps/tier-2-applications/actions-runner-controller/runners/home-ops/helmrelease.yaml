@@ -22,7 +22,7 @@ spec:
       strategy: rollback
     timeout: 10m
   values:
-    githubConfigUrl: https://github.com/onedr0p/home-ops
+    githubConfigUrl: https://github.com/sulibot/home-ops
     githubConfigSecret: home-ops-runner-secret
     minRunners: 1
     maxRunners: 3
@@ -31,7 +31,7 @@ spec:
       kubernetesModeWorkVolumeClaim:
         accessModes:
           - ReadWriteOnce
-        storageClassName: openebs-hostpath
+        storageClassName: csi-rbd-rbd-vm-sc
         resources:
           requests:
             storage: 25Gi
@@ -40,6 +40,9 @@ spec:
       namespace: actions-runner-system
     template:
       spec:
+        securityContext:
+          fsGroup: 1001
+          fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: runner
             image: ghcr.io/home-operations/actions-runner:2.334.0@sha256:95d91d7f8d241e319ef2f4fec08f417aa1606b96fbb327643f75c303acd30002
@@ -52,12 +55,3 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: status.hostIP
-            volumeMounts:
-              - mountPath: /var/run/secrets/talos.dev
-                name: talos
-                readOnly: true
-        serviceAccountName: *name
-        volumes:
-          - name: talos
-            secret:
-              secretName: *name

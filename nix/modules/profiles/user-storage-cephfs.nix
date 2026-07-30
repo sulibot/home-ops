@@ -1,9 +1,17 @@
-# Native CephFS client used by trusted VMs. The path-scoped CephX secret is
-# installed out-of-band at /etc/ceph/ceph.client.sulibot-cloud.secret.
-# noauto + automount keeps boot healthy before the secret is enrolled.
+# Native CephFS client used by trusted VMs. The path-scoped CephX keyring is
+# installed out-of-band at /etc/ceph/ceph.client.sulibot-cloud.keyring.
+# noauto + automount keeps boot healthy before the keyring is enrolled.
 { ... }:
 {
   imports = [ ./user-storage-common.nix ];
+
+  environment.etc."ceph/ceph.conf".text = ''
+    [global]
+    fsid = 407036f5-1f73-44ff-ba81-1f219b7a8a64
+    mon_host = fc00:20::1 fc00:20::2 fc00:20::3
+    ms_bind_ipv4 = false
+    ms_bind_ipv6 = true
+  '';
 
   fileSystems."/home/sulibot/Cloud" = {
     device = "sulibot-cloud@.content=/users/sulibot/Cloud";
@@ -13,8 +21,6 @@
       "x-systemd.automount"
       "x-systemd.idle-timeout=10min"
       "_netdev"
-      "mon_addr=[fc00:20::1]:6789/[fc00:20::2]:6789/[fc00:20::3]:6789"
-      "secretfile=/etc/ceph/ceph.client.sulibot-cloud.secret"
     ];
   };
 }

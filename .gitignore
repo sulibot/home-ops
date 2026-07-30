@@ -26,6 +26,8 @@ __MACOSX
 crash.log
 .terraform*
 terraform.*
+# The isolated backend bootstrap is security-sensitive and reproducible.
+!terraform/bootstrap/gcs-state/.terraform.lock.hcl
 .terragrunt-cache/
 **/.terragrunt-cache/
 terragrunt_rendered.json

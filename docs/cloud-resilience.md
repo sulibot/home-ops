@@ -44,13 +44,14 @@ music, 2.2 GB of audiobooks, and a small books tree. Size the Immich library
 for three times its current size, or about 181 GB. The resulting planned cold
 set is approximately 368 GB plus future user storage.
 
-The selected MinIO data is copied logically through S3:
+The selected operational data is copied logically through provider APIs:
 
 - the Kopia repository, approximately 40.6 GB, using `kopia repository
   sync-to s3`;
 - `cnpg-backups/postgres-vectorchord`, approximately 17.8 GB, using
   `rclone copy`;
-- `terraform-state/live`, currently tiny but critical, using `rclone copy`.
+- authoritative Terraform state from `sulibot-terraform-state/live` in GCS,
+  using a separate read-only identity and `rclone copy` to immutable B2.
 
 Do not copy `/data` from the MinIO LXC. MinIO's filesystem is an implementation
 detail and a raw copy can be inconsistent with the logical object repository.
@@ -85,10 +86,20 @@ The offsite resources live in:
 
 `kubernetes/apps/tier-1-infrastructure/volsync/maintenance`
 
+Terraform state is authoritative in the regional Standard-class
+`sulibot-terraform-state` GCS bucket, not in MinIO or the Archive-class content
+bucket. The `gcs-terraform-state-offsite-copy` CronJob uses a separate
+read-only GCS identity and an upload-only B2 identity; it never synchronizes
+deletions. See `docs/runbooks/terraform-state-gcs.md`.
+
+The existing B2 master-capability credential in 1Password is for account
+administration only. Workloads use bucket-scoped keys.
+
 | Resource | Schedule | Purpose |
 |---|---|---|
 | `volsync-offsite-kopia-sync` | Every 6 hours | Native Kopia repository synchronization to B2 |
-| `minio-selected-offsite-copy` | Every 6 hours | CNPG/Terraform copy plus OpenBao offsite freshness gate |
+| `minio-selected-offsite-copy` | Every 6 hours | CNPG copy plus OpenBao offsite freshness gate |
+| `gcs-terraform-state-offsite-copy` | Every 6 hours | Authoritative GCS state copied to immutable B2 |
 | `gcs-content-archive` | Weekly | Encrypted, append-only allowlisted content copy |
 | `gcs-content-restore-drill` | Monthly | Decrypt and verify a bounded Archive-class probe |
 | `volsync-offsite-restore-drill` | Weekly | Restore `actual-src@default:/data` from B2 |
@@ -117,11 +128,10 @@ snapshot archive checksums and uploads directly to
 governance retention, and the monitored selected-copy job fails when no
 OpenBao snapshot newer than eight hours exists.
 
-All new CronJobs are initially suspended. This prevents predictable alert
-noise and failed Jobs before the provider buckets and least-privilege
-credentials exist. Unsuspend them only after completing the provisioning and
-bootstrap checklist below and after the data owner approves the allowlist in
-this document.
+The six ENG-340 provider CronJobs were activated on 2026-07-29 only after the
+B2 Kopia, B2 CNPG, and GCS real-content restore gates passed. New provider jobs
+must remain suspended until their least-privilege credentials, bootstrap copy,
+monitoring, and restore test have all passed.
 
 ## Provider provisioning
 
@@ -218,8 +228,7 @@ unrecoverable.
 1. Provision the B2 buckets/keys and the GCS project, bucket, and service
    account.
 2. Create the dedicated MinIO read-only service account. It needs list/get for:
-   - `cnpg-backups/postgres-vectorchord/*`;
-   - `terraform-state/live/*`.
+   - `cnpg-backups/postgres-vectorchord/*`.
 3. Populate the 1Password item and wait for all three ExternalSecrets to become
    Ready.
 4. Run one manual Kopia synchronization and inspect its log.

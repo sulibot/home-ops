@@ -18,11 +18,6 @@ locals {
     setup_script     = var.setup_script
   })
 
-  # Cloud-init network config
-  network_config = templatefile("${path.module}/templates/cloud-init-network.yaml.tpl", {
-    network     = var.network
-    dns_servers = var.dns_servers
-  })
 }
 
 # Download Debian cloud image to Proxmox
@@ -50,24 +45,11 @@ resource "proxmox_virtual_environment_file" "cloud_init_user_data" {
   }
 }
 
-# Cloud-init network config snippet
-resource "proxmox_virtual_environment_file" "cloud_init_network" {
-  content_type = "snippets"
-  datastore_id = var.proxmox.datastore_id
-  node_name    = var.proxmox.node_name
-
-  source_raw {
-    data      = local.network_config
-    file_name = "cloud-init-network-${var.vm_name}.yml"
-  }
-}
-
 # Debian VM
 resource "proxmox_virtual_environment_vm" "debian" {
   depends_on = [
     proxmox_download_file.debian_image,
-    proxmox_virtual_environment_file.cloud_init_user_data,
-    proxmox_virtual_environment_file.cloud_init_network
+    proxmox_virtual_environment_file.cloud_init_user_data
   ]
 
   vm_id     = var.vm_id
@@ -121,8 +103,26 @@ resource "proxmox_virtual_environment_vm" "debian" {
   initialization {
     datastore_id = var.proxmox.vm_datastore
 
-    user_data_file_id    = proxmox_virtual_environment_file.cloud_init_user_data.id
-    network_data_file_id = proxmox_virtual_environment_file.cloud_init_network.id
+    user_data_file_id = proxmox_virtual_environment_file.cloud_init_user_data.id
+
+    dns {
+      servers = var.dns_servers
+    }
+
+    ip_config {
+      ipv4 {
+        address = var.network.ipv4_address
+        gateway = var.network.ipv4_gateway
+      }
+
+      dynamic "ipv6" {
+        for_each = var.network.ipv6_address == null ? [] : [var.network.ipv6_address]
+        content {
+          address = ipv6.value
+          gateway = var.network.ipv6_gateway
+        }
+      }
+    }
   }
 
   agent {
