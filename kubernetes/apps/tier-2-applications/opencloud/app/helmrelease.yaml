@@ -39,19 +39,16 @@ spec:
           app:
             image:
               repository: docker.io/opencloudeu/opencloud-rolling
-              tag: 5.2.0@sha256:c840de29b7287da070ffc9d5eb52a1b291a046877402bf70f387ccf56c820aee
+              tag: 7.3.0@sha256:f988f14779cbfe26dec78ea3fc2492ae063fe14a069857dd2d5a397a927fc361
             command:
               - /bin/sh
               - -c
-              - "opencloud init || true; opencloud server"
+              - "test -f /etc/opencloud/opencloud.yaml || opencloud init; exec opencloud server"
             env:
               TZ: America/Los_Angeles
               OC_URL: https://opencloud.sulibot.com
               OC_LOG_LEVEL: info
               OC_ADD_RUN_SERVICES: collaboration
-              # OpenCloud 5.2.0 creates an empty Bleve mapping on a fresh
-              # config volume. Search is non-critical for file sync/access.
-              OC_EXCLUDE_RUN_SERVICES: search
               OC_INSECURE: "false"
               OC_OIDC_ISSUER: "https://auth.sulibot.com/application/o/opencloud/"
               OC_OIDC_CLIENT_ID:
