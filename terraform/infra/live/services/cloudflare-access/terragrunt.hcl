@@ -49,9 +49,11 @@ locals {
   cluster_104_tunnel_id = data.sops_file.secrets.data["cloudflare_tunnel_id_cluster_104"]
 
   bypass_apps = {
-    "auth.sulibot.com" = "Authentik"
-    "plex.sulibot.com" = "Plex"
-    "seerr.sulibot.com" = "Seerr"
+    "auth.sulibot.com"     = "Authentik"
+    "idm.sulibot.com"      = "Kanidm"
+    "openbao.sulibot.com"   = "OpenBao"
+    "plex.sulibot.com"     = "Plex"
+    "seerr.sulibot.com"    = "Seerr"
     "requests.sulibot.com" = "Seerr"
   }
 
@@ -309,6 +311,49 @@ resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   content = "$${local.cluster_104_tunnel_id}.cfargotunnel.com"
   ttl     = 1
   proxied = true
+}
+
+# The main tunnel is remotely managed by Cloudflare. Its pushed ingress
+# configuration overrides the connector's local config file, so public origin
+# rules must be owned here as well as mirrored in the Kubernetes bootstrap
+# secret. Specific infrastructure hostnames precede the wildcard app gateway.
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
+  account_id = local.account_id
+  tunnel_id  = local.tunnel_id
+  source     = "cloudflare"
+
+  config = {
+    ingress = [
+      {
+        hostname = "idm.sulibot.com"
+        service  = "https://10.100.0.60:443"
+        origin_request = {
+          http2_origin       = true
+          origin_server_name = "idm.sulibot.com"
+        }
+      },
+      {
+        hostname = "openbao.sulibot.com"
+        service  = "https://[fd00:100:0:240::67]:443"
+        origin_request = {
+          http2_origin       = true
+          origin_server_name = "openbao.sulibot.com"
+        }
+      },
+      {
+        hostname = "*.sulibot.com"
+        service  = "https://cilium-gateway-gateway-tunnel.network.svc.cluster.local:443"
+        origin_request = {
+          http2_origin       = true
+          no_tls_verify      = true
+          origin_server_name = "sulibot.com"
+        }
+      },
+      {
+        service = "http_status:404"
+      },
+    ]
+  }
 }
 
 # WARP private app endpoints are not published as public DNS records and do
@@ -787,6 +832,5 @@ moved {
   from = cloudflare_zero_trust_access_application.home_assistant_warp_only
   to   = cloudflare_zero_trust_access_application.cluster_104_warp_only
 }
-
 EOF
 }

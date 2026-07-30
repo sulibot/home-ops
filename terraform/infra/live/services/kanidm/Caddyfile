@@ -1,0 +1,45 @@
+{
+	admin off
+}
+
+(kanidm_backend) {
+	reverse_proxy https://10.100.0.61:8443 https://10.100.0.62:8443 https://10.100.0.63:8443 {
+		lb_policy cookie kanidm_lb sulibot-kanidm-lb-v1
+		health_uri /status
+		health_interval 5s
+		health_timeout 2s
+
+		transport http {
+			tls_server_name idm.sulibot.com
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+# Force all node-specific hostnames to the canonical domain to preserve auth
+# cookie domain semantics.
+idm01.sulibot.com, idm02.sulibot.com, idm03.sulibot.com {
+	redir https://idm.sulibot.com{uri} 308
+}
+
+:443 {
+	tls /etc/kanidm/tls/tls.crt /etc/kanidm/tls/tls.key
+
+	# Kanidm 1.10's password form does not suppress repeated submissions. Serve
+	# a same-origin wrapper that keeps Kanidm's theme behavior and makes the
+	# one-time authentication form single-submit.
+	handle /pkg/style.js {
+		root * /usr/local/share/kanidm-ui
+		header Cache-Control "private, no-cache, max-age=0"
+		file_server
+	}
+
+	handle /pkg/style-upstream.js {
+		rewrite * /pkg/style.js
+		import kanidm_backend
+	}
+
+	handle {
+		import kanidm_backend
+	}
+}
