@@ -34,10 +34,13 @@ Cloudflare Access application.
 | User/device choice | Installation | At home (`io`/`iot`) | Away from home |
 |---|---|---|---|
 | Manual browser identity only | Install a manually issued PKCS#12 identity | No Cloudflare client or tunnel | Browser mTLS works; private `*-app` endpoints are unavailable |
-| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | When manually connected, WARP Include mode carries configured destinations | The user connects WARP when private app/API access is needed; the manual identity independently serves browser mTLS |
+| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | Managed-network detection selects `Home WARP off`; traffic and DNS use the LAN | The user connects WARP when private app/API access is needed; the manual identity independently serves browser mTLS |
 
-These are the only two supported choices. There is no posture-only,
-managed-network, or automatically provisioned browser-identity path.
+These are the only two supported authentication choices. Automatic
+device-certificate provisioning remains disabled. The `Home WARP off` profile
+uses Cloudflare's Posture-only service mode only because Cloudflare has no
+literal off mode for a location-matched profile; it does not provide a third
+authentication or browser-identity path.
 
 The external default still contains the previously approved infrastructure
 routes in addition to the private app gateways. A separate technical-debt issue
@@ -46,10 +49,12 @@ infrastructure routes can be removed from the default. Do not infer privilege
 from operating system or platform.
 
 A person who chooses a manual certificate does not need to enroll in WARP.
-Enrolled devices use the same Include-mode profile on every network. The
-connection switch is unlocked and auto-connect is disabled, so the user decides
-when WARP runs. Private `*-app.sulibot.com` endpoints and other WARP-dependent
-destinations are unavailable while it is disconnected.
+Enrolled devices use the external Include-mode profile away from `io`/`iot`.
+The connection switch is unlocked and auto-connect is disabled, so the user
+decides when remote WARP access runs. On `io`/`iot`, managed-network detection
+automatically selects `Home WARP off`, which runs no traffic or DNS tunnel.
+Private `*-app.sulibot.com` endpoints and other WARP-dependent destinations are
+unavailable remotely while WARP is disconnected.
 
 Do not reuse the consumer App access profile for infrastructure
 administration. Narrowing the existing external default profile to only
@@ -58,9 +63,11 @@ SSH, `kubectl`, `talosctl`, OpenBao, MinIO, and other private-network workflows.
 
 ### Split-horizon `*-app` routing
 
-WARP does not connect in response to a URL. The user turns it on before opening
-a private endpoint, and Include mode decides which destination traffic enters
-the tunnel. Turning WARP off persists until the user turns it on again.
+WARP does not connect in response to a URL. Away from home, the user turns it on
+before opening a private endpoint, and Include mode decides which destination
+traffic enters the tunnel. Turning WARP off persists until the user turns it on
+again. On `io`/`iot`, managed-network detection selects the no-tunnel profile
+and split-horizon DNS continues to use the local records.
 
 For each private app endpoint:
 
@@ -408,6 +415,14 @@ Each cut-over hostname requires:
 Inventory certificate source as either `manual` or `service`. Both require
 explicit expiry reminders. WARP enrollment health is monitored independently
 from browser client-certificate inventory.
+
+The `Home WARP off` selector depends on the TLS beacons at
+`10.30.0.254:443` and `10.31.0.254:443`. Gatus probes both endpoints and alerts
+when either is unreachable or its server certificate has less than 30 days
+remaining. The managed-network resources pin the current leaf certificate, so
+update both pins atomically whenever `router.sulibot.com` rotates. The beacon
+addresses must remain unreachable through remote-access tunnels; otherwise a
+remote client could falsely select the home no-tunnel profile.
 
 The negative-control probe is healthy only when the edge denies it. An
 unauthenticated `2xx` or redirect is a critical security incident.
