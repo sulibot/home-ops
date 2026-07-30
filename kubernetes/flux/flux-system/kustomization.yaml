@@ -4,20 +4,6 @@ resources:
 - gotk-components.yaml
 - gotk-sync.yaml
 patches:
-  # Git source events trigger reconciliation immediately. If the root apply
-  # fails, retry quickly so a transient dependency does not stall the graph
-  # for the full 10-minute steady-state interval.
-  - patch: |
-      apiVersion: kustomize.toolkit.fluxcd.io/v1
-      kind: Kustomization
-      metadata:
-        name: flux-system
-        namespace: flux-system
-      spec:
-        retryInterval: 10s
-    target:
-      kind: Kustomization
-      name: flux-system
   # Increase kustomize-controller concurrency for faster reconciliation.
   # --concurrent=20 handles ~85 Kustomizations without saturating the API server.
   # Dynamic concurrency during bootstrap would require the Flux operator FluxInstance CRD.

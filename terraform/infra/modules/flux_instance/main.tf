@@ -151,6 +151,22 @@ locals {
             }
           ] : [],
           [
+            # The Flux Operator owns the root Kustomization, so convergence
+            # tuning for that object must be applied here instead of through
+            # the Git-managed bootstrap manifests.
+            {
+              target = {
+                kind = "Kustomization"
+                name = "flux-system"
+              }
+              patch = yamlencode([
+                {
+                  op    = "add"
+                  path  = "/spec/retryInterval"
+                  value = "10s"
+                }
+              ])
+            },
             # Fix 1: Increase liveness probe delay to prevent restart loops
             {
               target = {
@@ -207,12 +223,12 @@ locals {
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/args/-"
-                  value = "--concurrent=10"
+                  value = "--concurrent=20"
                 },
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/args/-"
-                  value = "--requeue-dependency=15s"
+                  value = "--requeue-dependency=5s"
                 }
               ])
             },
