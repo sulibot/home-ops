@@ -18,7 +18,7 @@ spec:
     - name: cert-manager
       namespace: flux-system
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 10s
   path: ./kubernetes/apps/tier-1-infrastructure/cloudnative-pg/app
   prune: true
   sourceRef:

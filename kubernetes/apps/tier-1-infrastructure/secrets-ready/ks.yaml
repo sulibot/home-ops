@@ -16,7 +16,7 @@ spec:
     - name: onepassword
       namespace: flux-system
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 10s
   path: ./kubernetes/apps/tier-1-infrastructure/secrets-ready/app
   prune: true
   sourceRef:

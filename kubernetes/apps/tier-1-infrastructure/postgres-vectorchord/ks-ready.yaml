@@ -14,7 +14,7 @@ spec:
     - name: postgres-vectorchord
       namespace: flux-system
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 10s
   path: ./kubernetes/apps/tier-1-infrastructure/postgres-vectorchord/ready
   prune: true
   sourceRef:

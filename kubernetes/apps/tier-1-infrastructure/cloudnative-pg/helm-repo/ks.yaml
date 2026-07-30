@@ -9,7 +9,7 @@ metadata:
     layer: infrastructure
 spec:
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 10s
   path: ./kubernetes/apps/tier-1-infrastructure/cloudnative-pg/helm-repo
   prune: true
   sourceRef:
