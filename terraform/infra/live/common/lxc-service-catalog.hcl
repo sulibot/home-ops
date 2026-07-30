@@ -40,11 +40,9 @@ locals {
   tailscale_config = {
     tag                 = "tag:infra"
     advertise_exit_node = true
-    # Infra/admin subnets only. Client VLANs (10.30/10.31) and the
-    # cluster LB subnets (10.x.250.0/24) are deliberately excluded: apps
-    # ride Cloudflare WARP, and the WARP managed-network probe
-    # (10.3x.0.254:443) must never be reachable through this tunnel or
-    # remote devices misdetect themselves as on the home network.
+    # Infra/admin subnets only. Client VLANs (10.30/10.31) and the cluster LB
+    # subnets (10.x.250.0/24) are deliberately excluded because application
+    # clients use Cloudflare WARP for those private routes.
     advertise_routes = [
       "10.10.0.0/24",           # PVE management
       "10.100.0.0/24",          # tenant-100 service LXCs
