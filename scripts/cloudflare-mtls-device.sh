@@ -41,6 +41,8 @@ Required environment:
 The OpenBao config secret at kv/automation/cloudflare-mtls/config contains:
   cloudflare_api_token
   cloudflare_zone_id
+  onepassword_service_account_token
+  onepassword_vault
 EOF
 }
 
@@ -98,6 +100,28 @@ load_cloudflare_config() {
   unset config_response
 }
 
+load_onepassword_config() {
+  local config_response configured_vault
+  config_response="$(read_openbao_secret "$openbao_root/config")"
+  OP_SERVICE_ACCOUNT_TOKEN="$(
+    jq -er '.data.data.onepassword_service_account_token' <<<"$config_response"
+  )"
+  configured_vault="$(
+    jq -er '.data.data.onepassword_vault // "Kubernetes"' <<<"$config_response"
+  )"
+  unset config_response
+
+  if [[ -n "$onepassword_vault" ]] &&
+    [[ "$onepassword_vault" != "$configured_vault" ]]; then
+    die "requested 1Password vault does not match the OpenBao delivery configuration"
+  fi
+  onepassword_vault="$configured_vault"
+  export OP_SERVICE_ACCOUNT_TOKEN
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    printf '::add-mask::%s\n' "$OP_SERVICE_ACCOUNT_TOKEN"
+  fi
+}
+
 validate_slug() {
   local label="$1"
   local value="$2"
@@ -145,6 +169,8 @@ deliver_profile() {
   local profile_file="$1"
   local profile_name="$2"
   local certificate_id="$3"
+  local document_title existing_items matching_items match_count
+  local existing_id existing_profile
 
   if [[ -n "$output_file" ]]; then
     [[ ! -e "$output_file" ]] || die "refusing to overwrite existing output"
@@ -154,12 +180,43 @@ deliver_profile() {
 
   if [[ -n "$onepassword_vault" ]]; then
     require_command op
+    require_command cmp
+    document_title="Cloudflare mTLS - ${device_id} - ${certificate_id}"
+    existing_items="$(
+      op item list --vault "$onepassword_vault" --format=json
+    )"
+    matching_items="$(
+      jq -c --arg title "$document_title" \
+        '[.[] | select(.title == $title)]' <<<"$existing_items"
+    )"
+    unset existing_items
+    match_count="$(jq -r 'length' <<<"$matching_items")"
+    if ((match_count > 1)); then
+      die "multiple 1Password documents have the expected title: $document_title"
+    fi
+    if ((match_count == 1)); then
+      existing_id="$(jq -er '.[0].id' <<<"$matching_items")"
+      existing_profile="${profile_file}.onepassword-existing"
+      op document get "$existing_id" \
+        --vault "$onepassword_vault" \
+        --out-file "$existing_profile" >/dev/null
+      if ! cmp -s "$profile_file" "$existing_profile"; then
+        die "1Password document exists but its contents differ: $document_title"
+      fi
+      find "$existing_profile" -type f -delete
+      printf '1Password document already current in vault: %s\n' \
+        "$onepassword_vault"
+      unset OP_SERVICE_ACCOUNT_TOKEN
+      return
+    fi
+
     op document create "$profile_file" \
-      --title "Cloudflare mTLS - ${device_id} - ${certificate_id}" \
+      --title "$document_title" \
       --file-name "$profile_name" \
       --tags "cloudflare,mtls,client-certificate" \
       --vault "$onepassword_vault" >/dev/null
     printf 'created 1Password document in vault: %s\n' "$onepassword_vault"
+    unset OP_SERVICE_ACCOUNT_TOKEN
   fi
 }
 
@@ -320,6 +377,10 @@ case "$action" in
       fi
     fi
 
+    if [[ -n "$onepassword_vault" ]]; then
+      require_command op
+      load_onepassword_config
+    fi
     load_cloudflare_config
     work_dir="$(mktemp -d "${TMPDIR:-/tmp}/cloudflare-mtls-device.XXXXXX")"
     certificate_id=""
@@ -477,6 +538,10 @@ case "$action" in
     current_status="$(jq -er '.data.data.status' <<<"$response")"
     [[ "$current_status" == "active" ]] ||
       die "refusing to export an identity with status: $current_status"
+    if [[ -n "$onepassword_vault" ]]; then
+      require_command op
+      load_onepassword_config
+    fi
     certificate_id="$(
       jq -er '.data.data.cloudflare_certificate_id' <<<"$response"
     )"

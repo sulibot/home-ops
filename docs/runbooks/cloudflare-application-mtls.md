@@ -175,7 +175,38 @@ certificate across their devices.
    find "$config_file" -type f -delete
    ```
 
-4. Create a protected GitHub environment named
+4. Create a 1Password service account that can read and write only the
+   `Kubernetes` vault, then add its token to the same OpenBao configuration.
+   This is the one-time trust bootstrap that lets the self-hosted runner create
+   a real 1Password Document without an interactive desktop-app session:
+
+   ```bash
+   OP_MTLS_TOKEN="$(
+     op service-account create cloudflare-mtls-delivery \
+       --vault Kubernetes:read_items,write_items \
+       --raw
+   )"
+   delivery_file="$(mktemp)"
+   chmod 0600 "$delivery_file"
+   jq -n \
+     --arg token "$OP_MTLS_TOKEN" \
+     --arg vault "Kubernetes" \
+     '{
+       onepassword_service_account_token: $token,
+       onepassword_vault: $vault
+     }' >"$delivery_file"
+   bao kv patch -mount=kv \
+     automation/cloudflare-mtls/config \
+     @"$delivery_file"
+   unset OP_MTLS_TOKEN
+   find "$delivery_file" -type f -delete
+   ```
+
+   1Password returns a service-account token only once. Do not print it or put
+   it in a GitHub secret. OpenBao holds the automation credential; the
+   service account itself is restricted to the delivery vault.
+
+5. Create a protected GitHub environment named
    `cloudflare-mtls-issuance` and a second environment named
    `cloudflare-mtls-monitoring`. Restrict both to `main`; the OpenBao JWT roles
    also verify the repository, workflow, branch, and self-hosted runner. The
@@ -198,9 +229,23 @@ device ID. The workflow:
    immutable certificate-ID version below `versions/`; writes a second,
    metadata-only record containing status, serial, and expiry below
    `kv/automation/cloudflare-mtls/inventory/<device-id>/`; and
-6. writes no GitHub artifact and prints no private material.
+6. publishes the exact `.mobileconfig` as a Document in the `Kubernetes`
+   1Password vault using the restricted service account; and
+7. writes no GitHub artifact and prints no private material.
 
-To create a temporary installation copy from an operator workstation:
+The 1Password document title includes both the device ID and Cloudflare
+certificate ID, for example
+`Cloudflare mTLS - sulibot-ganymede - <certificate-id>`. Download that document
+from 1Password on the target Mac, iPhone, or iPad and install it locally.
+
+If issuance reached OpenBao but 1Password publication failed, rerun
+**Cloudflare mTLS Device**, choose `publish`, and select the same device. The
+publish action reconstructs the existing profile from OpenBao; it does not
+issue another certificate. Publication is idempotent: an existing document is
+accepted only when its bytes match the OpenBao profile.
+
+For break-glass recovery only, create a temporary installation copy from an
+operator workstation:
 
 ```bash
 scripts/openbao-approle-exec.sh mtls \
@@ -209,23 +254,13 @@ scripts/openbao-approle-exec.sh mtls \
   --output "${TMPDIR:-/tmp}/sulibot-ganymede.mobileconfig"
 ```
 
-Alternatively, make the convenience copy directly in an approved 1Password
-vault:
-
-```bash
-scripts/openbao-approle-exec.sh mtls \
-  scripts/cloudflare-mtls-device.sh export \
-  --device-id sulibot-ganymede \
-  --onepassword-vault Kubernetes
-```
-
 The local user opens the profile and explicitly approves installation. On
 macOS, complete installation in **System Settings -> General -> Device
 Management**. On iOS/iPadOS, complete it in **Settings -> Profile Downloaded**
 (or **General -> VPN & Device Management**). Delete a downloaded installation
 copy immediately afterward because the profile contains the private identity.
-OpenBao remains the source of truth; a 1Password document is only a convenient
-encrypted delivery/recovery copy.
+OpenBao remains the source of truth; the automatically created 1Password
+Document is the supported human delivery/recovery copy.
 
 Then confirm the browser offers or automatically selects the certificate for
 the pilot hostname. A certificate chooser can still appear when multiple

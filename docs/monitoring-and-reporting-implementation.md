@@ -35,8 +35,11 @@ metric. The authoritative Apple device set is
 expiry are stored at
 `kv/automation/cloudflare-mtls/inventory/<device-id>/current`. This inventory
 tree contains no private key, PKCS#12 password, or installation profile; those
-remain under the separately authorized `identities/` tree. A 1Password document
-is only an encrypted delivery copy and must not be treated as the inventory.
+remain under the separately authorized `identities/` tree. The issuance
+workflow publishes the exact installation profile as a 1Password Document
+using a vault-scoped service account whose token is held in OpenBao. The
+1Password copy is the supported human delivery copy, but it must not be treated
+as the certificate inventory or source of truth.
 `.github/workflows/cloudflare-mtls-expiry.yml` audits the OpenBao records daily
 and fails with a device-specific error when an active identity has 30 days or
 less remaining. Missing and revoked identities are reported as warnings. The
