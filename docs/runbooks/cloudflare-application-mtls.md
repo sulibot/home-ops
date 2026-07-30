@@ -7,19 +7,17 @@ to Free-plan Application Security mTLS without exposing an application during
 the transition.
 
 This is not Cloudflare Access mTLS. Application Security mTLS accepts
-certificates issued by Cloudflare's managed CA through either of two supported
-device workflows:
+certificates issued by Cloudflare's managed CA. The supported user workflow is
+a manually issued certificate installed directly in the operating-system or
+browser certificate store.
 
-1. a manually issued certificate installed directly in the operating-system
-   or browser certificate store; or
-2. the per-device certificate automatically provisioned when an enrolled
-   Cloudflare One Client runs in Posture-only mode.
-
-The same hostname association and WAF rule accept both certificate workflows.
-Cloudflare documents automatic certificate provisioning for Posture-only mode.
-Do not assume a WARP-mode profile will provision the identity. A WARP user who
-also needs browser mTLS should use a manually issued identity until that
-behavior is explicitly validated.
+Cloudflare also documents a per-device certificate automatically provisioned
+when an enrolled Cloudflare One Client runs in Posture-only mode. The edge gate
+accepts that certificate, but it is not an approved user workflow here.
+ChatGPT Atlas on macOS requested administrator access to the System Keychain
+nine times during a single Immich navigation. Treat automatic device
+certificates as experimental until the browser/platform compatibility issue is
+resolved.
 
 ## Endpoint model
 
@@ -37,33 +35,30 @@ Cloudflare Access application.
 
 ## User access profiles
 
-Both certificate enrollment choices are intentionally available. Select the
-least-capable profile that meets a user's needs:
-
-| User/device need | Installation | Device profile | Network behavior |
+| User/device choice | Installation | At home (`io`/`iot`) | Away from home |
 |---|---|---|---|
-| Browser mTLS only; no Cloudflare client desired | Manually issued client identity | Not enrolled | No Cloudflare tunnel |
-| Browser mTLS only; automatic certificate lifecycle desired | Cloudflare One Client enrollment | Posture only | No application traffic or DNS is routed through WARP |
-| Browser mTLS plus native/API apps | Manual client identity plus Cloudflare One Client enrollment | App access (WARP Include mode) | Only private `*-app.sulibot.com` gateway destinations use WARP |
-| Infrastructure administration | Manual client identity plus Cloudflare One Client enrollment | Admin access (WARP Include mode) | App gateway destinations plus approved SSH, Kubernetes, OpenBao, storage, and management routes use WARP |
+| Manual browser identity only | Install a manually issued PKCS#12 identity | No Cloudflare client or tunnel | Browser mTLS works; private `*-app` endpoints are unavailable |
+| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | Home trusted selects Posture-only; local DNS and LAN routing stay in use | Default profile selects WARP Include mode; the manual identity serves browser mTLS and WARP serves private app/API routes |
 
-Cloudflare device profiles use first-match precedence, but the final
-Admin/App/Posture assignment model is intentionally deferred. One identity may
-own administrator workstations, native-app mobile devices, and browser-only
-devices. Do not infer privilege from operating system or platform, and do not
-assume an identity-wide profile can represent every device that identity owns.
-A separate technical-debt issue owns selection of a durable assignment signal
-before the current default profile is narrowed.
+The Cloudflare One Client's automatically provisioned identity is experimental,
+not a third supported choice. Posture-only remains useful for making the
+enrolled client inert on the trusted home networks; it must not be represented
+as a prompt-free browser enrollment workflow.
+
+The external default still contains the previously approved infrastructure
+routes in addition to the private app gateways. A separate technical-debt issue
+owns selecting a durable per-device Admin/App role signal before those
+infrastructure routes can be removed from the default. Do not infer privilege
+from operating system or platform.
 
 A person who chooses a manual certificate does not need to enroll and therefore
 does not match any device profile.
 
-The existing **Home trusted** profile is a separate location-based path and must
-remain so. On the trusted home networks, internal DNS resolves application
-hostnames to local gateways and traffic reaches the applications directly over
-the LAN, bypassing the external Cloudflare authentication path. Do not convert
-Home trusted to Posture-only or make it depend on the unresolved external
-Admin/App/Posture assignment design.
+The **Home trusted** profile is location-based and matches the `io` and `iot`
+managed networks. It uses Posture-only mode: the client may collect posture and
+provision its device identity, but it does not route traffic or forward DNS.
+The operating system therefore continues to use home DNS and direct LAN routes,
+bypassing the external Cloudflare authentication path.
 
 Do not reuse the consumer App access profile for infrastructure
 administration. Narrowing the existing external default profile to only
@@ -107,8 +102,8 @@ minimization, not per-host network isolation.
 - the approved mTLS candidate inventory;
 - `application_mtls_cutover_hostnames`, the per-host cutover set (currently
   `immich.sulibot.com` and `freshrss.sulibot.com`);
-- Cloudflare One Client device-certificate provisioning for users who select
-  the Posture-only enrollment workflow;
+- experimental Cloudflare One Client device-certificate provisioning, retained
+  for compatibility investigation rather than routine browser access;
 - the Cloudflare-managed CA hostname association;
 - the single zone custom-WAF rule that blocks missing, invalid, or revoked
   certificates;
@@ -129,35 +124,173 @@ before applying Terraform.
 Issue separate certificates for people/devices and synthetic monitoring.
 Never commit a private key or unencrypted PKCS#12 bundle.
 
-For a human device:
+The non-secret Apple device inventory is
+`config/cloudflare-mtls-devices.json`. It deliberately contains stable friendly
+IDs rather than Apple serial numbers or UDIDs:
 
-1. In Cloudflare, open **SSL/TLS -> Client Certificates -> Cloudflare-issued**.
-2. Create a certificate with the shortest practical validity that still permits
-   reliable rotation.
-3. Export it as PKCS#12 and install it in the operating-system certificate
-   store.
-4. Confirm the browser offers or automatically selects the certificate for the
-   pilot hostname.
-5. Store the recovery copy in 1Password and delete temporary plaintext files.
+| Device ID | Owner | Platform | Description |
+|---|---|---|---|
+| `sulibot-ganymede` | sulibot | macOS | This Mac |
+| `sulibot-secondary-mac` | sulibot | macOS | Second Mac |
+| `sulibot-iphone` | sulibot | iOS | iPhone |
+| `sulibot-ipad` | sulibot | iPadOS | iPad |
+| `ashley-mac` | ashley | macOS | Mac |
+| `ashley-iphone` | ashley | iOS | iPhone |
+
+List the authoritative inventory before operating:
+
+```bash
+scripts/cloudflare-mtls-device.sh list
+```
+
+Each device gets an independent certificate. This makes one lost device
+revocable without disrupting the other five. Do not share one person's
+certificate across their devices.
+
+### One-time automation bootstrap
+
+1. Create a narrowly scoped Cloudflare API token with `SSL and Certificates:
+   Edit` for `sulibot.com`. The device script uses the Cloudflare client
+   certificate API; it never puts private key material in Terraform state.
+2. Run `terraform/infra/live/services/openbao/configure-integrations.sh`. This
+   installs the `cloudflare-mtls` policy, the local `mtls` AppRole, and the
+   GitHub OIDC role.
+3. Store `cloudflare_api_token` and `cloudflare_zone_id` at
+   `kv/automation/cloudflare-mtls/config`. Enter the token through a hidden
+   prompt so it is not placed in shell history:
+
+   ```bash
+   read -r -s -p "Cloudflare mTLS API token: " CF_MTLS_TOKEN
+   printf '\n'
+   read -r -p "Cloudflare zone ID: " CF_MTLS_ZONE_ID
+   config_file="$(mktemp)"
+   chmod 0600 "$config_file"
+   jq -n \
+     --arg token "$CF_MTLS_TOKEN" \
+     --arg zone "$CF_MTLS_ZONE_ID" \
+     '{cloudflare_api_token:$token,cloudflare_zone_id:$zone}' \
+     >"$config_file"
+   bao kv put -mount=kv automation/cloudflare-mtls/config @"$config_file"
+   unset CF_MTLS_TOKEN CF_MTLS_ZONE_ID
+   find "$config_file" -type f -delete
+   ```
+
+4. Create a protected GitHub environment named
+   `cloudflare-mtls-issuance` and a second environment named
+   `cloudflare-mtls-monitoring`. Restrict both to `main`; the OpenBao JWT roles
+   also verify the repository, workflow, branch, and self-hosted runner. The
+   issuance role additionally binds the immutable owner/actor IDs.
+
+### Issue and deliver a human-device identity
+
+Run **Cloudflare mTLS Device** in GitHub Actions, choose `issue`, and select a
+device ID. The workflow:
+
+1. derives owner and platform from the committed inventory;
+2. creates the private key and CSR only on the self-hosted runner;
+3. asks Cloudflare to sign the CSR;
+4. packages the identity in a device-specific `.mobileconfig`:
+   - macOS profiles set `AllowAllAppsAccess` to `true` and
+     `KeyIsExtractable` to `false`;
+   - iOS/iPadOS profiles omit those macOS-only keys;
+5. stores the certificate, private key, password, and profile at
+   `kv/automation/cloudflare-mtls/identities/<device-id>/current`, with an
+   immutable certificate-ID version below `versions/`; writes a second,
+   metadata-only record containing status, serial, and expiry below
+   `kv/automation/cloudflare-mtls/inventory/<device-id>/`; and
+6. writes no GitHub artifact and prints no private material.
+
+To create a temporary installation copy from an operator workstation:
+
+```bash
+scripts/openbao-approle-exec.sh mtls \
+  scripts/cloudflare-mtls-device.sh export \
+  --device-id sulibot-ganymede \
+  --output "${TMPDIR:-/tmp}/sulibot-ganymede.mobileconfig"
+```
+
+Alternatively, make the convenience copy directly in an approved 1Password
+vault:
+
+```bash
+scripts/openbao-approle-exec.sh mtls \
+  scripts/cloudflare-mtls-device.sh export \
+  --device-id sulibot-ganymede \
+  --onepassword-vault Kubernetes
+```
+
+The local user opens the profile and explicitly approves installation. On
+macOS, complete installation in **System Settings -> General -> Device
+Management**. On iOS/iPadOS, complete it in **Settings -> Profile Downloaded**
+(or **General -> VPN & Device Management**). Delete a downloaded installation
+copy immediately afterward because the profile contains the private identity.
+OpenBao remains the source of truth; a 1Password document is only a convenient
+encrypted delivery/recovery copy.
+
+Then confirm the browser offers or automatically selects the certificate for
+the pilot hostname. A certificate chooser can still appear when multiple
+matching identities are installed; remove the superseded manually installed
+identity before testing the managed profile.
 
 This manual workflow does not require the Cloudflare One Client and has no
 enrollment step.
 
-For automatic per-device certificates:
+The macOS PKCS#12 payload must include:
+
+```xml
+<key>PayloadType</key>
+<string>com.apple.security.pkcs12</string>
+<key>AllowAllAppsAccess</key>
+<true/>
+<key>KeyIsExtractable</key>
+<false/>
+```
+
+`AllowAllAppsAccess` authorizes macOS applications to use the installed private
+key without per-application Keychain ACL approval. It does not force an
+application to implement client-certificate authentication, and it does not
+prevent a browser certificate chooser when multiple matching identities are
+installed. Remove expired and superseded identities during profile rotation.
+
+### Experimental automatic device certificate
+
+Do not enroll a user into this path for routine browser access. The validation
+procedure is retained for the compatibility technical-debt investigation:
 
 1. Confirm Terragrunt manages
    `cloudflare_zero_trust_device_default_profile_certificates.application_mtls`
    with `enabled = true`.
-2. Assign the user's identity to the Posture-only device profile.
-3. Install the Cloudflare One Client and enroll it into
+2. Install the Cloudflare One Client and enroll it into
    `sulibot.cloudflareaccess.com` through the configured identity provider.
-4. Confirm the client-created identity is present in the operating-system
-   certificate store.
-5. With WARP traffic disconnected or in Posture-only mode, verify the browser
-   can reach an mTLS hostname.
-6. If the user later moves to an App access WARP profile, keep a separately
-   issued manual identity for browser mTLS unless WARP-mode provisioning has
-   been explicitly validated.
+3. Connect to `io` or `iot`, connect the client, and verify:
+
+   ```bash
+   warp-cli settings | grep -E 'Mode:|Profile ID:'
+   ```
+
+   The mode must be `PostureOnly` and the profile ID must be the Home trusted
+   profile, not `default`.
+4. Confirm the device-ID certificate is present in the operating-system
+   certificate store. On macOS, the certificate is in the System Keychain and
+   its common name matches `warp-cli registration show`'s Device ID.
+5. Move to an external network and verify the client automatically selects
+   profile `default` in `WarpWithDnsOverHttps` mode.
+6. Verify private `*-app.sulibot.com` hostnames independently from the
+   experimental certificate. Each must resolve to its private gateway and reach
+   the application over WARP.
+
+Observed macOS result on 2026-07-29:
+
+- Cloudflare One Client installed the device identity in the System Keychain.
+- Cloudflare accepted the identity and Immich loaded after authorization.
+- ChatGPT Atlas displayed a malformed `%01$@` System Keychain authorization
+  message and queued nine administrator prompts for one navigation.
+- The behavior is unacceptable even though the TLS authentication succeeds.
+
+Do not tell users to keep approving prompts, modify the generated private-key
+ACL, or assume another Chromium browser behaves the same way. Validate a
+prompt-free lifecycle on each supported browser and platform before promoting
+this workflow.
 
 The automatically provisioned identity is managed by the enrolled client.
 Keeping it after uninstall is not a supported certificate lifecycle. Users who
@@ -179,12 +312,17 @@ certificate in Cloudflare with the owner and device role.
 
 ### Device installation notes
 
-- **macOS:** import a password-protected PKCS#12 identity into the login
-  Keychain. Safari and Chromium browsers use Keychain identities; the browser
-  may ask which certificate to present on first use.
+- **macOS:** install the device-specific `.mobileconfig` containing the
+  password-protected PKCS#12 identity, `AllowAllAppsAccess = true`, and
+  `KeyIsExtractable = false`. The local user approves it in **System Settings ->
+  General -> Device Management**. Safari and Chromium browsers use Keychain
+  identities; the browser may ask which certificate to present when multiple
+  matching identities exist.
 - **iOS/iPadOS:** transfer the password-protected PKCS#12 through an approved
-  secure channel, install the downloaded profile, then complete trust/profile
-  installation in Settings. This installs a client identity, not a VPN.
+  secure channel as a device-specific `.mobileconfig`, install the downloaded
+  profile, then approve it in **Settings -> General -> VPN & Device
+  Management**. Do not include the macOS-only `AllowAllAppsAccess` or
+  `KeyIsExtractable` keys. This installs a client identity, not a VPN.
 - **Windows:** import the PKCS#12 file into the current user's Personal
   certificate store. Edge and Chrome use the Windows certificate store.
 - **Android:** import the PKCS#12 as a VPN and app user certificate when the
@@ -279,6 +417,19 @@ Each cut-over hostname requires:
 - certificate inventory with owner, serial, device, and expiry date; and
 - rotation reminders at 30, 14, and 7 days.
 
+The Home trusted selector additionally depends on both managed-network TLS
+beacons. Gatus probes `10.30.0.254:443` and `10.31.0.254:443` in the `network`
+group and alerts before the certificate expires. The endpoints are addressed
+by private IP, but the public certificate contains DNS SANs only. Without a
+SHA-256 pin, the Cloudflare One Client performs hostname validation against the
+IP and rejects the certificate with `NotValidForNameContext`.
+
+The managed-network resources therefore pin the current leaf certificate.
+Update both pins atomically whenever that certificate rotates. This is a
+temporary dependency: replace the router leaf with a dedicated, long-lived
+managed-network beacon certificate so routine Let's Encrypt renewal cannot
+silently force home devices onto the external profile.
+
 Inventory certificate source as either `manual`, `cloudflare-one-device`, or
 `service`. Manual and service certificates require explicit expiry reminders.
 Enrolled-device inventory must instead alert on stale enrollment, missing
@@ -289,8 +440,19 @@ unauthenticated `2xx` or redirect is a critical security incident.
 
 Gatus reports the public server certificate expiry, not the client certificate
 expiry. Client-certificate rotation reminders must therefore come from the
-1Password inventory/automation or a dedicated certificate exporter; do not
-mislabel the Gatus server-certificate metric as client-certificate coverage.
+OpenBao device inventory or a dedicated certificate exporter; do not mislabel
+the Gatus server-certificate metric as client-certificate coverage.
+
+The daily `Cloudflare mTLS Expiry` workflow runs:
+
+```bash
+scripts/cloudflare-mtls-device.sh audit --warning-days 30
+```
+
+It reports identities that have not yet been issued or are inactive as
+warnings, and fails when an active certificate reaches the 30-day rotation
+window. This is the early warning; use the 14-day and 7-day points below for
+escalation.
 
 ## Rotation and revocation
 
@@ -303,9 +465,18 @@ For a lost or decommissioned device:
 1. Revoke that device's certificate in Cloudflare immediately.
 2. Verify the revoked certificate receives `403`.
 3. Confirm other device and monitoring certificates still work.
-4. Remove the recovery bundle from the device-management/1Password inventory.
+4. Remove the convenience copy from 1Password. Preserve the revoked OpenBao
+   version for audit; never reuse its private identity.
 5. Record the revocation, serial, owner, and reason in the incident or change
    record without attaching private material.
+
+Use the same fixed device ID for revocation:
+
+```bash
+scripts/openbao-approle-exec.sh mtls \
+  scripts/cloudflare-mtls-device.sh revoke \
+  --device-id sulibot-ganymede
+```
 
 ## Rollback
 
@@ -328,6 +499,9 @@ application is restored.
 
 - **No certificate chooser:** confirm the identity contains both certificate
   and private key and is in the store used by that browser.
+- **Repeated System Keychain administrator prompts:** stop the test and deny
+  queued prompts. Use the manual identity from the user's login Keychain. The
+  automatically provisioned device identity is not a supported browser path.
 - **Certificate is offered but Cloudflare returns `403`:** confirm it was issued
   by the active Cloudflare-managed CA, is active, is not expired/revoked, and
   the hostname is in the Terraform association set.
@@ -339,6 +513,11 @@ application is restored.
   cutover.
 - **Native app fails:** move it to the paired `*-app.sulibot.com` endpoint and
   verify WARP private DNS/routing. Do not weaken the browser mTLS rule.
+- **Client remains on profile `default` at home:** verify the active interface
+  is on `io` or `iot`, both TLS beacons are reachable, and run
+  `warp-cli debug alternate-network`. Search the WARP service log for
+  `NotValidForNameContext`; if present, verify the configured SHA-256 pin
+  matches the certificate currently served by both beacon IPs.
 - **TLS-inspection product or second VPN interferes:** temporarily disable that
   interception for the pilot test, then add the narrowest compatible
   exclusion. Do not export the private key to the interception product.

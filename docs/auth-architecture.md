@@ -143,21 +143,28 @@ installed on the device, and a zone custom-WAF rule blocks requests when
 `cf.tls_client_auth.cert_verified` is false or
 `cf.tls_client_auth.cert_revoked` is true.
 
-It is independent of Enterprise Cloudflare Access mTLS. The same Application
-Security gate accepts manually issued Cloudflare-managed identities and
-per-device identities provisioned by Cloudflare One Client in Posture-only
-mode. Posture-only users get the identity without traffic routing. App access
-users route only explicit private `*-app` gateway destinations and use a
-manually issued identity when they also need browser mTLS; administrator
-profiles retain separately approved infrastructure routes.
+It is independent of Enterprise Cloudflare Access mTLS. The supported browser
+credential is a manually issued Cloudflare-managed identity installed in the
+user's certificate store. Cloudflare One Client can also provision a
+per-device identity, but that path is experimental: macOS testing with ChatGPT
+Atlas produced a System Keychain administrator prompt for each concurrent TLS
+connection. Do not use the device identity for routine browser access until the
+browser/platform compatibility debt is resolved.
+
+On `io` and `iot`, the Home trusted profile uses Posture-only solely as a
+no-traffic, no-DNS mode. Away from home, the default profile changes
+automatically to WARP Include mode and carries private `*-app` and currently
+approved administration destinations. Users who need both access paths install
+the manual browser identity and enroll Cloudflare One Client.
 
 The Home trusted profile is not an external access profile: internal DNS sends
 traffic directly to local gateways, bypassing the external Cloudflare
-authentication path. Keep this location-based behavior independent from the
-unresolved Admin/App/Posture assignment model. Do not infer a device's role
-from its operating system or platform; a single identity may own devices with
-different roles. The certificate lifecycle and per-host migration procedure
-are documented in
+authentication path. Its managed-network TLS beacons use public-CA validation,
+not a rotating leaf-certificate fingerprint. Keep this location-based behavior
+independent from the unresolved Admin/App assignment model. Do not infer a
+device's role from its operating system or platform; a single identity may own
+devices with different roles. The certificate lifecycle and per-host migration
+procedure are documented in
 [Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
 
 Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,
