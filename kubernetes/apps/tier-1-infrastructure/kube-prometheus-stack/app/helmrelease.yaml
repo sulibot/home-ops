@@ -100,6 +100,169 @@ spec:
       fullnameOverride: node-exporter
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
+      rbac:
+        extraRules:
+          - apiGroups:
+              - apiextensions.k8s.io
+            resources:
+              - customresourcedefinitions
+            verbs:
+              - list
+              - watch
+          - apiGroups:
+              - volsync.backube
+            resources:
+              - replicationsources
+              - replicationdestinations
+            verbs:
+              - list
+              - watch
+      customResourceState:
+        enabled: true
+        config:
+          kind: CustomResourceStateMetrics
+          spec:
+            resources:
+              - groupVersionKind:
+                  group: volsync.backube
+                  version: v1alpha1
+                  kind: ReplicationSource
+                labelsFromPath:
+                  namespace:
+                    - metadata
+                    - namespace
+                  name:
+                    - metadata
+                    - name
+                metrics:
+                  - name: volsync_replicationsource_info
+                    help: VolSync ReplicationSource configuration.
+                    each:
+                      type: Info
+                      info:
+                        labelsFromPath:
+                          source_pvc:
+                            - spec
+                            - sourcePVC
+                          trigger_manual:
+                            - spec
+                            - trigger
+                            - manual
+                          trigger_schedule:
+                            - spec
+                            - trigger
+                            - schedule
+                  - name: volsync_replicationsource_status_last_sync_time
+                    help: Unix timestamp of the last successful VolSync source synchronization.
+                    each:
+                      type: Gauge
+                      gauge:
+                        path:
+                          - status
+                          - lastSyncTime
+                  - name: volsync_replicationsource_status_last_mover_result
+                    help: Latest VolSync source mover result.
+                    each:
+                      type: StateSet
+                      stateSet:
+                        labelName: result
+                        path:
+                          - status
+                          - latestMoverStatus
+                          - result
+                        list:
+                          - Successful
+                          - Failed
+                  - name: volsync_replicationsource_status_condition
+                    help: Current VolSync ReplicationSource conditions.
+                    each:
+                      type: Gauge
+                      gauge:
+                        path:
+                          - status
+                          - conditions
+                        labelsFromPath:
+                          type:
+                            - type
+                          reason:
+                            - reason
+                          status:
+                            - status
+                        valueFrom:
+                          - status
+                  - name: volsync_replicationsource_status_condition_last_transition_time
+                    help: Unix timestamp of the VolSync ReplicationSource condition transition.
+                    each:
+                      type: Gauge
+                      gauge:
+                        path:
+                          - status
+                          - conditions
+                        labelsFromPath:
+                          type:
+                            - type
+                          reason:
+                            - reason
+                          status:
+                            - status
+                        valueFrom:
+                          - lastTransitionTime
+              - groupVersionKind:
+                  group: volsync.backube
+                  version: v1alpha1
+                  kind: ReplicationDestination
+                labelsFromPath:
+                  namespace:
+                    - metadata
+                    - namespace
+                  name:
+                    - metadata
+                    - name
+                metrics:
+                  - name: volsync_replicationdestination_info
+                    help: VolSync ReplicationDestination configuration.
+                    each:
+                      type: Info
+                      info:
+                        labelsFromPath:
+                          trigger_manual:
+                            - spec
+                            - trigger
+                            - manual
+                  - name: volsync_replicationdestination_status_condition
+                    help: Current VolSync ReplicationDestination conditions.
+                    each:
+                      type: Gauge
+                      gauge:
+                        path:
+                          - status
+                          - conditions
+                        labelsFromPath:
+                          type:
+                            - type
+                          reason:
+                            - reason
+                          status:
+                            - status
+                        valueFrom:
+                          - status
+                  - name: volsync_replicationdestination_status_condition_last_transition_time
+                    help: Unix timestamp of the VolSync ReplicationDestination condition transition.
+                    each:
+                      type: Gauge
+                      gauge:
+                        path:
+                          - status
+                          - conditions
+                        labelsFromPath:
+                          type:
+                            - type
+                          reason:
+                            - reason
+                          status:
+                            - status
+                        valueFrom:
+                          - lastTransitionTime
     grafana:
       enabled: false
       forceDeployDashboards: false

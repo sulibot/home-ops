@@ -1,278 +1,97 @@
-# VolSync Configuration Audit
+# Stateful application backup coverage audit
 
-Generated: 2025-11-21
+Audited: 2026-07-29
 
-## Summary
+This audit joins live PVC mounts, live VolSync `ReplicationSource` objects,
+cluster-104 backup CronJobs, CNPG/Barman, shared content mounts, and the
+off-site recovery targets. Counting only existing VolSync objects is
+insufficient because an application with no object would be invisible.
 
-- **Total apps with config PVCs**: 23
-- **Apps with VolSync enabled**: 18 (78%)
-- **Apps needing VolSync**: 5 (22%)
+## Result
 
-## Apps with VolSync ✓
+- All 46 live cluster-101 VolSync sources passed presence, freshness under 25
+  hours, non-empty content, zero source errors, and a repository-wide 1% file
+  integrity sample on 2026-07-29.
+- This change added the two mounted application PVCs that were missing from
+  the prior 44-source set: Notifiarr and OpenCloud.
+- Home Assistant, Music Assistant, and Matter Server on cluster-104 have
+  separate application-consistent Kopia CronJobs because their local-path
+  volumes cannot use cluster-101 VolSync snapshots.
+- PostgreSQL, shared personal content, the Kopia repository, and OpenBao Raft
+  are protected through purpose-specific paths described below.
+- No mounted application state remains unintentionally uncovered after this
+  change.
 
-These apps are already configured with VolSync backup and restore:
+## Cluster-101 application PVCs
 
-| App | Namespace | Status |
-|-----|-----------|--------|
-| autobrr | default | ✓ Configured |
-| emby | default | ✓ Configured |
-| filebrowser | default | ✓ Configured |
-| immich | default | ✓ Configured |
-| jellyseerr | default | ✓ Configured |
-| lidarr | default | ✓ Configured |
-| nzbget | default | ✓ Configured |
-| overseerr | default | ✓ Configured |
-| plex | default | ✓ Configured |
-| prowlarr | default | ✓ Configured |
-| qbittorrent | default | ✓ Configured |
-| qui | default | ✓ Configured |
-| radarr | default | ✓ Configured |
-| sabnzbd | default | ✓ Configured |
-| slskd | default | ✓ Configured |
-| sonarr | default | ✓ Configured |
-| tautulli | default | ✓ Configured |
-| thelounge | default | ✓ Configured |
+The verified VolSync set is:
 
-## Apps Missing VolSync Configuration ✗
+| Namespace | Sources |
+|---|---|
+| `default` | Actual, Atuin, Audiobookshelf, Aurral, Autobrr, Baserow, Bookshelf, Calibre Web Automated, CloudBeaver, Cross-seed, Digarr, FileBrowser, Firefly III, FreshRSS, Grimmory, Immich machine-learning config, Karakeep, LazyLibrarian, Lidarr, MediaSage, Multi Scrobbler, n8n, NZBGet, Ollama, Paperless, Paperless GPT, Plex, Prowlarr, qBittorrent, Qui, Radarr 4K, Seerr, Shelfmark, Slskd, Sonarr 4K, SoulSync, Sportarr, Syncthing, Tautulli, Twenty, Vikunja, Whisparr |
+| `observability` | Gatus, Grafana |
 
-These apps have config PVCs but are NOT backed up:
+This pull request additionally enables:
 
-### 1. atuin
-- **Location**: `kubernetes/apps/default/atuin/`
-- **HelmRelease**: `kubernetes/apps/default/atuin/app/helmrelease.yaml`
-- **Kustomization**: `kubernetes/apps/default/atuin/ks.yaml`
-- **Priority**: Medium
-- **Notes**: Shell history sync server
+| App | Source PVC | Schedule | Reason |
+|---|---|---|---|
+| Notifiarr | `notifiarr` | hourly at minute 44 | Mounted application configuration was not represented by any source |
+| OpenCloud | `opencloud-config` | hourly at minute 51 | Identity, metadata, and NATS-backed application state are not fully reconstructable from Git and user files |
 
-### 2. cross-seed
-- **Location**: `kubernetes/apps/default/cross-seed/`
-- **HelmRelease**: `kubernetes/apps/default/cross-seed/app/helmrelease.yaml`
-- **Kustomization**: `kubernetes/apps/default/cross-seed/ks.yaml`
-- **Priority**: Low
-- **Notes**: Torrent cross-seeding automation, config is regenerable
+The verifier queries the Kubernetes API for the complete live source set on
+every run. Removing a source therefore causes a failure instead of silently
+reducing the expected count.
 
-### 3. home-assistant
-- **Location**: `kubernetes/apps/default/home-assistant/`
-- **HelmRelease**: `kubernetes/apps/default/home-assistant/app/helmrelease.yaml`
-- **Kustomization**: `kubernetes/apps/default/home-assistant/ks.yaml`
-- **Priority**: **HIGH**
-- **Notes**: Smart home automation hub with automations, device configs, historical data
+## Purpose-specific coverage
 
-### 4. mosquitto
-- **Location**: `kubernetes/apps/default/mosquitto/`
-- **HelmRelease**: `kubernetes/apps/default/mosquitto/app/helmrelease.yaml`
-- **Kustomization**: `kubernetes/apps/default/mosquitto/ks.yaml`
-- **Priority**: Low-Medium
-- **Notes**: MQTT broker, config includes user credentials and ACLs
+| Data | Protection path | Off-site path |
+|---|---|---|
+| CNPG `postgres-vectorchord-1` | Barman base backups and WAL in MinIO | Logical copy to `sulibot-cnpg-offsite`, then disposable SQL restore |
+| `/content/users` | Shared CephFS user data | Client-side encrypted GCS Archive allowlist |
+| Immich originals/uploads/profiles | Shared CephFS content plus fresh database dumps | Client-side encrypted GCS Archive allowlist and real-original restore drill |
+| Music, audiobooks, books | Shared CephFS content | Client-side encrypted GCS Archive allowlist |
+| VolSync Kopia repository | Application snapshots in MinIO | Native repository synchronization to `sulibot-kopia-offsite` |
+| OpenBao | Proxmox guest backup plus six-hour application-consistent Raft snapshot | Direct upload from the active leader to the 30-day-governance infrastructure bucket |
+| Terraform state currently in MinIO | Logical S3 object copy | 30-day-governance infrastructure bucket |
+| Home Assistant | Daily read-only Kopia snapshot including root-owned OTBR state | Same encrypted Kopia repository, then B2 repository synchronization |
+| Music Assistant | Daily read-only Kopia snapshot as application UID/GID | Same encrypted Kopia repository, then B2 repository synchronization |
+| Matter Server | Daily read-only Kopia snapshot of `/data` | Same encrypted Kopia repository, then B2 repository synchronization |
 
-### 5. tqm
-- **Location**: `kubernetes/apps/default/tqm/`
-- **HelmRelease**: `kubernetes/apps/default/tqm/app/helmrelease.yaml`
-- **Kustomization**: `kubernetes/apps/default/tqm/ks.yaml`
-- **Priority**: Medium
-- **Notes**: Unknown app, review if important
+## Deliberate exclusions
 
-## Recommended Actions
+These mounted PVCs are not application recovery sources:
 
-### High Priority (Do First)
+- Valkey PVCs are rebuildable cache/session data; authoritative application
+  records live in CNPG or application PVCs.
+- Prometheus, Loki, Tempo, VictoriaLogs, Alertmanager, and Fluent Bit state are
+  disposable telemetry. Grafana configuration is backed up separately.
+- VolSync cache/destination PVCs are derived recovery machinery, not primary
+  data.
+- The local Kopia PVC is the repository being replicated, so recursively
+  snapshotting it through VolSync would be incorrect.
+- Movies, TV, sports, `vids`, downloads, Immich thumbnails, and encoded video
+  are explicitly outside the approved content allowlist.
 
-1. **home-assistant** - Contains critical smart home configuration
-   - Automations
-   - Device integrations
-   - User settings
-   - Historical sensor data
-   - Loss would require complete reconfiguration
+## Orphaned PVCs
 
-### Medium Priority
+The live cluster still contains unmounted legacy PVCs for retired or migrated
+workloads, including old Cross-seed, Home Assistant, Navidrome, NZBGet,
+Omada, Overseerr, Plex, qBittorrent, Radarr, and Sonarr claims. They are not
+active backup gaps. Delete them only through a separate retention-reviewed
+cleanup because an unmounted PVC may still be intentionally retained.
 
-2. **atuin** - Shell history database
-   - Losing this would lose command history
-   - Not critical but valuable
+## Verification
 
-3. **mosquitto** - MQTT broker config
-   - User credentials
-   - ACL rules
-   - Broker settings
-   - Can be regenerated but annoying
-
-4. **tqm** - Needs review
-   - Determine if important
-   - If so, add to VolSync
-
-### Low Priority
-
-5. **cross-seed** - Config is simple
-   - Minimal configuration
-   - Easy to regenerate
-   - Can be added for completeness
-
-## How to Add VolSync to an App
-
-For each app missing VolSync, follow these steps:
-
-### 1. Update the app's Kustomization file
-
-Edit `kubernetes/apps/default/<app>/ks.yaml`:
-
-```yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: <app>
-  namespace: flux-system
-spec:
-  # Add this section:
-  components:
-    - ../../../../components/volsync
-
-  # Add these dependencies:
-  dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
-    - name: volsync
-      namespace: flux-system
-
-  # Add these substitutions:
-  postBuild:
-    substitute:
-      APP: <app>
-      VOLSYNC_CAPACITY: 10Gi                          # Adjust size as needed
-      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
-```
-
-### 2. Verify the app uses existingClaim
-
-Check `kubernetes/apps/default/<app>/app/helmrelease.yaml`:
-
-```yaml
-persistence:
-  config:
-    enabled: true
-    existingClaim: "<app>-config"  # Must match ${APP}-config pattern
-```
-
-### 3. Commit and apply
+Run the fleet verifier:
 
 ```bash
-git add kubernetes/apps/default/<app>/ks.yaml
-git commit -m "feat: Enable VolSync backup for <app>"
-git push
-
-flux reconcile source git flux-system -n flux-system
-flux reconcile kustomization <app> -n flux-system
+kubectl create job -n volsync-system \
+  --from=cronjob/volsync-backup-verifier \
+  volsync-backup-verifier-audit
+kubectl logs -n volsync-system -f job/volsync-backup-verifier-audit
 ```
 
-### 4. Verify backup is working
-
-```bash
-# Check ReplicationSource was created
-kubectl get replicationsource <app>-src -n default
-
-# Check ReplicationDestination was created
-kubectl get replicationdestination <app>-dst -n default
-
-# Wait for first backup (runs hourly)
-kubectl get replicationsource <app>-src -n default -w
-
-# Check backup status
-kubectl describe replicationsource <app>-src -n default
-```
-
-## Example: Adding VolSync to home-assistant
-
-### Before
-```yaml
-# kubernetes/apps/default/home-assistant/ks.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: home-assistant
-  namespace: flux-system
-spec:
-  interval: 30m
-  path: ./kubernetes/manifests/apps/default/home-assistant/app
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  targetNamespace: default
-```
-
-### After
-```yaml
-# kubernetes/apps/default/home-assistant/ks.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: home-assistant
-  namespace: flux-system
-spec:
-  components:
-    - ../../../../components/volsync
-
-  dependsOn:
-    - name: ceph-csi
-      namespace: flux-system
-    - name: volsync
-      namespace: flux-system
-
-  interval: 30m
-  path: ./kubernetes/manifests/apps/default/home-assistant/app
-  postBuild:
-    substitute:
-      APP: home-assistant
-      VOLSYNC_CAPACITY: 25Gi  # Home Assistant can grow large with history
-      VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
-      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc
-      VOLSYNC_SNAPSHOTCLASS: csi-cephfs-config-snapclass
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  targetNamespace: default
-```
-
-## Storage Size Recommendations
-
-Based on typical app data sizes:
-
-| App | Recommended Size | Notes |
-|-----|------------------|-------|
-| home-assistant | 25-50Gi | Large history database, many integrations |
-| atuin | 5Gi | Shell history, grows slowly |
-| mosquitto | 1Gi | Minimal config, mostly text |
-| cross-seed | 2Gi | Simple config files |
-| tqm | 5Gi | Unknown, start conservative |
-
-## Verification Checklist
-
-After adding VolSync to an app:
-
-- [ ] ReplicationSource created and showing status
-- [ ] ReplicationDestination created
-- [ ] ExternalSecret created for Kopia credentials
-- [ ] First backup completed successfully (check lastSyncTime)
-- [ ] PVC labels show `kustomize.toolkit.fluxcd.io/name: <app>`
-- [ ] Kopia repository shows snapshots for the app
-
-```bash
-# Quick verification script
-APP=home-assistant
-
-echo "Checking VolSync resources for $APP..."
-kubectl get replicationsource ${APP}-src -n default
-kubectl get replicationdestination ${APP}-dst -n default
-kubectl get externalsecret ${APP}-volsync-secret -n default
-kubectl get pvc ${APP}-config -n default
-
-echo "\nChecking backup status..."
-kubectl get replicationsource ${APP}-src -n default -o jsonpath='{.status.lastSyncTime}{"\n"}'
-```
-
-## Related Documentation
-
-- [VolSync + Kopia System Overview](VOLSYNC_KOPIA_BACKUP_SYSTEM.md)
-- VolSync Component: `kubernetes/components/volsync/`
-- MutatingAdmissionPolicy: `docs/volsync-kopia-mutatingadmissionpolicy.yaml`
+A valid run must report the same number of expected and verified sources,
+zero coverage/freshness/source errors, and a successful repository integrity
+sample. Provider copy and restore freshness are monitored separately by the
+off-site backup rules and dashboard.

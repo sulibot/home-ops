@@ -5,16 +5,12 @@ kind: Kustomization
 resources:
   # Namespaces
   - ./namespace.yaml
-  - ./snapshot-controller/namespace.yaml
 
-  # Snapshot Controller CRDs (must be applied first)
+  # Retained during controller consolidation so the existing Flux inventory
+  # cannot prune the CRDs while the dedicated CRD Kustomization adopts them.
   - ./snapshot-crds/volumesnapshots.yaml
   - ./snapshot-crds/volumesnapshotclasses.yaml
   - ./snapshot-crds/volumesnapshotcontents.yaml
-
-  # Snapshot Controller
-  - ./snapshot-controller/rbac.yaml
-  - ./snapshot-controller/deployment.yaml
 
   # Ceph CSI Helm Repository
   - ./helm-repo/helmrepository.yaml
@@ -51,4 +47,3 @@ resources:
   # left behind by ceph-csi's NodeUnstageVolume race (ceph/ceph-csi#3873,
   # upstream wontfix; first hit here 2026-07-28, Plex)
   - ./rbd-mount-doctor
-

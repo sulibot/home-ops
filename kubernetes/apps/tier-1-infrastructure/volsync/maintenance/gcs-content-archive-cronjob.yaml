@@ -1,0 +1,244 @@
+---
+# Encrypted append-only copy of irreplaceable content to Google Cloud Archive.
+# Explicit source paths make the exclusion of movies/TV/sports/vids auditable.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gcs-content-archive
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: gcs-content-archive
+    app.kubernetes.io/component: cold-archive
+spec:
+  schedule: "30 0 * * 0"
+  timeZone: America/Los_Angeles
+  # Enabled after the first archive and real-content restore passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 129600
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gcs-content-archive
+            app.kubernetes.io/component: cold-archive
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            # The shared content tree is owned by 1000:1000. Running as root
+            # fails on the users subtree because CephFS applies root-squash.
+            # The source mount remains read-only and the pod has no API token.
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: archive
+              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: GCS_CONTENT_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: GCS_CONTENT_BUCKET
+                - name: GCS_SERVICE_ACCOUNT_JSON
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: GCS_SERVICE_ACCOUNT_JSON
+                - name: CONTENT_CRYPT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: CONTENT_CRYPT_PASSWORD
+                - name: CONTENT_CRYPT_SALT
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: CONTENT_CRYPT_SALT
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+                  umask 077
+
+                  crypt_password="$(rclone obscure "${CONTENT_CRYPT_PASSWORD}")"
+                  crypt_salt="$(rclone obscure "${CONTENT_CRYPT_SALT}")"
+                  config=/tmp/rclone.conf
+                  credentials=/tmp/gcs-service-account.json
+                  printf '%s' "${GCS_SERVICE_ACCOUNT_JSON}" > "${credentials}"
+
+                  printf '%s\n' \
+                    '[gcs]' \
+                    'type = google cloud storage' \
+                    "service_account_file = ${credentials}" \
+                    'bucket_policy_only = true' \
+                    '' \
+                    '[gcs-crypt]' \
+                    'type = crypt' \
+                    "remote = gcs:${GCS_CONTENT_BUCKET}/archive" \
+                    'filename_encryption = standard' \
+                    'directory_name_encryption = true' \
+                    "password = ${crypt_password}" \
+                    "password2 = ${crypt_salt}" \
+                    > "${config}"
+
+                  common_args="
+                    --config=${config}
+                    --checkers=16
+                    --transfers=8
+                    --bwlimit=32Mi
+                    --fast-list
+                    --stats=5m
+                    --stats-one-line
+                    --log-level=INFO
+                    --gcs-storage-class=ARCHIVE
+                  "
+
+                  archive_path() {
+                    source="$1"
+                    destination="$2"
+                    label="$3"
+                    if [ ! -d "${source}" ]; then
+                      echo "Required archive source is missing: ${source}" >&2
+                      exit 1
+                    fi
+
+                    # copy never removes a remote object. GCS versioning preserves
+                    # earlier generations when a file changes.
+                    # shellcheck disable=SC2086
+                    rclone copy \
+                      "${source}" \
+                      "gcs-crypt:${destination}" \
+                      ${common_args}
+
+                    rclone lsf "${source}" \
+                      --recursive \
+                      --files-only \
+                      --format=pst \
+                      > "/tmp/manifests/${label}.tsv"
+                  }
+
+                  mkdir -p /tmp/manifests
+
+                  # Immich recommends protecting original assets and the
+                  # database together. Refuse to archive a stale dump set.
+                  if ! find /content/backups \
+                    -maxdepth 1 \
+                    -type f \
+                    -name '*.sql.gz' \
+                    -mtime -3 \
+                    -print \
+                    -quit |
+                    grep -q .; then
+                    echo "No Immich database dump newer than 72 hours" >&2
+                    exit 1
+                  fi
+
+                  archive_path /content/library immich/library immich-library
+                  archive_path /content/upload immich/upload immich-upload
+                  archive_path /content/profile immich/profile immich-profile
+                  archive_path /content/backups immich/backups immich-backups
+                  archive_path /content/users users users
+                  archive_path /content/data/media/music media/music music
+                  archive_path /content/data/media/audiobooks media/audiobooks audiobooks
+                  archive_path /content/data/media/books media/books books
+
+                  (
+                    cd /tmp/manifests
+                    sha256sum ./*.tsv > checksums.sha256
+                  )
+
+                  manifest_run="$(date -u +%Y/%m/%d/%Y%m%dT%H%M%SZ)"
+                  rclone copy \
+                    /tmp/manifests \
+                    "gcs-crypt:_manifests/${manifest_run}" \
+                    --config="${config}" \
+                    --checkers=4 \
+                    --transfers=2 \
+                    --gcs-storage-class=STANDARD \
+                    --log-level=INFO
+
+                  # Record one bounded real original so the monthly drill
+                  # proves recovery of user content, not only a synthetic file.
+                  sample="$(
+                    find /content/library \
+                      -type f \
+                      -size -32768 \
+                      -print \
+                      -quit
+                  )"
+                  if [ -z "${sample}" ]; then
+                    echo "No Immich original smaller than 16 MiB is available for the restore sample" >&2
+                    exit 1
+                  fi
+                  sample_relative="${sample#/content/library/}"
+                  sample_sha256="$(sha256sum "${sample}" | awk '{print $1}')"
+                  sample_bytes="$(wc -c < "${sample}" | tr -d ' ')"
+                  printf '%s\n' \
+                    "sample=immich/library/${sample_relative}" \
+                    "sha256=${sample_sha256}" \
+                    "bytes=${sample_bytes}" \
+                    > /tmp/restore-sample.txt
+                  rclone copyto \
+                    /tmp/restore-sample.txt \
+                    "gcs-crypt:_restore-samples/${manifest_run}.txt" \
+                    --config="${config}" \
+                    --gcs-storage-class=STANDARD \
+                    --log-level=INFO
+
+                  printf '%s\n' \
+                    'sulibot-gcs-archive-restore-probe' \
+                    "run=${manifest_run}" \
+                    > /tmp/restore-probe.txt
+                  rclone copyto \
+                    /tmp/restore-probe.txt \
+                    "gcs-crypt:_probes/${manifest_run}.txt" \
+                    --config="${config}" \
+                    --gcs-storage-class=ARCHIVE \
+                    --log-level=INFO
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: content
+                  mountPath: /content
+                  readOnly: true
+                - name: config
+                  mountPath: /config
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: content
+              persistentVolumeClaim:
+                claimName: offsite-content-source
+                readOnly: true
+            - name: config
+              emptyDir:
+                sizeLimit: 64Mi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 2Gi

@@ -26,6 +26,26 @@ spec:
       app:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          backup-source-sentinel:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: 1.37.0
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                printf '%s\n' \
+                  'Firefly III attachment storage backup sentinel.' \
+                  > /var/www/html/storage/upload/.backup-source
+                chmod 0644 /var/www/html/storage/upload/.backup-source
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              capabilities:
+                drop: [ALL]
         containers:
           app:
             image:
@@ -152,3 +172,8 @@ spec:
         existingClaim: firefly-config
         globalMounts:
           - path: /var/www/html/storage/upload
+
+    defaultPodOptions:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch

@@ -305,6 +305,7 @@ upsert_approle_item() {
 upsert_approle_item tofu homeops-tofu
 upsert_approle_item ansible homeops-ansible
 upsert_approle_item sops sops-transit
+upsert_approle_item backup openbao-snapshot
 
 # GitHub Actions exchanges its job-scoped OIDC token directly for a short-lived
 # OpenBao batch token. The role is deliberately restricted to this repository,

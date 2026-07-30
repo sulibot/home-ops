@@ -1,0 +1,178 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: volsync-offsite-kopia-sync
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: volsync-offsite-kopia-sync
+    app.kubernetes.io/component: backup-replication
+spec:
+  schedule: "30 */6 * * *"
+  timeZone: America/Los_Angeles
+  # Enabled after the B2 bootstrap and application restore passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 14400
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: volsync-offsite-kopia-sync
+            app.kubernetes.io/component: backup-replication
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sync
+              image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: KOPIA_REPOSITORY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_REPOSITORY
+                - name: KOPIA_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_S3_ENDPOINT
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_REGION
+                - name: KOPIA_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_PASSWORD
+                - name: B2_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_S3_ENDPOINT
+                - name: B2_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_REGION
+                - name: B2_KOPIA_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_BUCKET
+                - name: B2_KOPIA_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_ACCESS_KEY_ID
+                - name: B2_KOPIA_APPLICATION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_APPLICATION_KEY
+                - name: KOPIA_CHECK_FOR_UPDATES
+                  value: "false"
+                - name: KOPIA_CONFIG_PATH
+                  value: /tmp/kopia-source.config
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/logs
+                - name: HOME
+                  value: /tmp
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  if [[ "${KOPIA_REPOSITORY}" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                    source_bucket="${BASH_REMATCH[1]}"
+                    source_prefix="${BASH_REMATCH[3]:-}"
+                  else
+                    echo "Unsupported source repository: ${KOPIA_REPOSITORY}" >&2
+                    exit 1
+                  fi
+
+                  source_endpoint="${KOPIA_S3_ENDPOINT#https://}"
+                  source_endpoint="${source_endpoint#http://}"
+                  target_endpoint="${B2_S3_ENDPOINT#https://}"
+                  target_endpoint="${target_endpoint#http://}"
+                  if [ -n "${source_prefix}" ] && [[ "${source_prefix}" != */ ]]; then
+                    source_prefix="${source_prefix}/"
+                  fi
+
+                  connect_args=(
+                    "--bucket=${source_bucket}"
+                    "--endpoint=${source_endpoint}"
+                    "--region=${AWS_REGION}"
+                    "--access-key=${AWS_ACCESS_KEY_ID}"
+                    "--secret-access-key=${AWS_SECRET_ACCESS_KEY}"
+                    "--password=${KOPIA_PASSWORD}"
+                    "--config-file=/tmp/kopia-source.config"
+                    "--cache-directory=/tmp/kopia-cache"
+                    "--override-hostname=offsite-sync.volsync-system.svc.cluster.local"
+                    "--override-username=volsync-offsite-sync"
+                    "--readonly"
+                  )
+                  if [ -n "${source_prefix}" ]; then
+                    connect_args+=("--prefix=${source_prefix}")
+                  fi
+
+                  kopia repository connect s3 "${connect_args[@]}"
+                  kopia repository sync-to s3 \
+                    --config-file=/tmp/kopia-source.config \
+                    --bucket="${B2_KOPIA_BUCKET}" \
+                    --endpoint="${target_endpoint}" \
+                    --region="${B2_REGION}" \
+                    --access-key="${B2_KOPIA_ACCESS_KEY_ID}" \
+                    --secret-access-key="${B2_KOPIA_APPLICATION_KEY}" \
+                    --parallel=4 \
+                    --max-upload-speed=8388608 \
+                    --delete \
+                    --no-progress
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 2Gi

@@ -387,6 +387,25 @@ resource "null_resource" "openbao_post_deploy_validation" {
   }
 }
 
+resource "null_resource" "openbao_backup_sync" {
+  depends_on = [null_resource.openbao_post_deploy_validation]
+
+  triggers = {
+    nodes                  = join(",", local.openbao_node_ipv4)
+    backup_script_sha      = "${filesha256("${get_terragrunt_dir()}/openbao-backup.sh")}"
+    sync_script_sha        = "${filesha256("${get_terragrunt_dir()}/sync-backup-credentials.sh")}"
+    integrations_sha       = "${filesha256("${get_terragrunt_dir()}/configure-integrations.sh")}"
+    snapshot_policy_sha    = "${filesha256("${get_terragrunt_dir()}/policies/openbao-snapshot.hcl")}"
+  }
+
+  provisioner "local-exec" {
+    command = "${get_terragrunt_dir()}/configure-integrations.sh && ${get_terragrunt_dir()}/sync-backup-credentials.sh"
+    environment = {
+      OPENBAO_NODES = join(" ", local.openbao_node_ipv4)
+    }
+  }
+}
+
 output "openbao_containers" {
   value = module.openbao_lxc.containers
 }

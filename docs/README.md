@@ -9,6 +9,7 @@ Operational and architecture documentation for the home-ops repository.
 - [Observability, Monitoring, and Incident Reporting](observability-monitoring-and-incident-reporting.md)
 - [Monitoring and Reporting Implementation](monitoring-and-reporting-implementation.md)
 - [Backup system](backup-system.md)
+- [Offsite backup monitoring and response](runbooks/offsite-backup-monitoring.md)
 - [Cluster rebuild workflow](CLUSTER_REBUILD_WORKFLOW.md)
 - [VolSync automatic restore](VOLSYNC_AUTOMATIC_RESTORE.md)
 
