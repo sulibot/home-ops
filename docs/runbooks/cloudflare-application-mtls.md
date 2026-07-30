@@ -34,7 +34,7 @@ Cloudflare Access application.
 | User/device choice | Installation | At home (`io`/`iot`) | Away from home |
 |---|---|---|---|
 | Manual browser identity only | Install a manually issued PKCS#12 identity | No Cloudflare client or tunnel | Browser mTLS works; private `*-app` endpoints are unavailable |
-| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | WARP Include mode carries only configured private app routes | The manual identity serves browser mTLS and WARP serves private app/API routes |
+| Manual identity plus private app access | Install the manual identity and enroll Cloudflare One Client | When manually connected, WARP Include mode carries configured destinations | The user connects WARP when private app/API access is needed; the manual identity independently serves browser mTLS |
 
 These are the only two supported choices. There is no posture-only,
 managed-network, or automatically provisioned browser-identity path.
@@ -46,7 +46,10 @@ infrastructure routes can be removed from the default. Do not infer privilege
 from operating system or platform.
 
 A person who chooses a manual certificate does not need to enroll in WARP.
-Enrolled devices use the same Include-mode profile on every network.
+Enrolled devices use the same Include-mode profile on every network. The
+connection switch is unlocked and auto-connect is disabled, so the user decides
+when WARP runs. Private `*-app.sulibot.com` endpoints and other WARP-dependent
+destinations are unavailable while it is disconnected.
 
 Do not reuse the consumer App access profile for infrastructure
 administration. Narrowing the existing external default profile to only
@@ -55,8 +58,9 @@ SSH, `kubectl`, `talosctl`, OpenBao, MinIO, and other private-network workflows.
 
 ### Split-horizon `*-app` routing
 
-WARP does not connect in response to a URL. It remains connected, and Include
-mode decides which destination traffic enters the tunnel.
+WARP does not connect in response to a URL. The user turns it on before opening
+a private endpoint, and Include mode decides which destination traffic enters
+the tunnel. Turning WARP off persists until the user turns it on again.
 
 For each private app endpoint:
 

@@ -630,7 +630,8 @@ resource "cloudflare_zero_trust_device_default_profile" "external" {
 
   service_mode_v2   = { mode = "warp" }
   allow_mode_switch = false
-  auto_connect      = 1
+  switch_locked     = false
+  auto_connect      = 0
 
   include = concat(
     [
