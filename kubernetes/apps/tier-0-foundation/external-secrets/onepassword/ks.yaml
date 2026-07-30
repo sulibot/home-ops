@@ -44,4 +44,4 @@ spec:
   targetNamespace: external-secrets
   wait: true
   timeout: 5m
-  retryInterval: 30s
+  retryInterval: 10s

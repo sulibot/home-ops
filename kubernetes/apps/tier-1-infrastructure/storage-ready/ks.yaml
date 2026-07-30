@@ -14,7 +14,7 @@ spec:
     - name: ceph-csi
       namespace: flux-system
   interval: 15m
-  retryInterval: 30s
+  retryInterval: 10s
   path: ./kubernetes/apps/tier-1-infrastructure/storage-ready/app
   prune: true
   sourceRef:

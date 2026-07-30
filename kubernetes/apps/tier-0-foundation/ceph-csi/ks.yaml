@@ -16,7 +16,7 @@ spec:
     - name: snapshot-controller-crds # Only need CRDs for VolumeSnapshotClass, not the controller itself
       namespace: flux-system
   interval: 15m
-  retryInterval: 1m
+  retryInterval: 10s
   timeout: 10m
   path: ./kubernetes/apps/tier-0-foundation/ceph-csi
   prune: true

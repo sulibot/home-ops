@@ -23,7 +23,7 @@ spec:
     namespace: flux-system
   wait: true
   timeout: 5m
-  retryInterval: 30s
+  retryInterval: 10s
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
