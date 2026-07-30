@@ -76,7 +76,10 @@ locals {
   }
 
   cluster_104_mtls_candidates = {
-    "hass.sulibot.com" = "Home Assistant Browser"
+    "hass.sulibot.com"            = "Home Assistant Browser"
+    "music-assistant.sulibot.com" = "Music Assistant"
+    "ma.sulibot.com"              = "Music Assistant"
+    "music.sulibot.com"           = "Music Assistant"
   }
 
   # Move one hostname at a time into this set only after certificate
@@ -104,15 +107,13 @@ locals {
   )
 
   # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel
-  # ID from the main cluster-101 tunnel) and still require WARP.
-  cluster_104_warp_only_apps = merge({
-    "music-assistant.sulibot.com" = "Music Assistant"
-    "ma.sulibot.com"              = "Music Assistant"
-    "music.sulibot.com"           = "Music Assistant"
-  }, {
+  # ID from the main cluster-101 tunnel) and still require WARP - currently
+  # just the mTLS candidates that haven't been cut over yet (see
+  # cluster_104_mtls_candidates above).
+  cluster_104_warp_only_apps = {
     for hostname, name in local.cluster_104_mtls_candidates : hostname => name
     if !contains(local.application_mtls_cutover_hostnames, hostname)
-  })
+  }
 
   cluster_104_tunnel_apps = merge(
     local.cluster_104_warp_only_apps,
