@@ -46,8 +46,8 @@ Two Cilium Gateway API gateways are deployed in the `network` namespace:
 
 | Gateway | IP | Purpose |
 |---------|----|---------|
-| `gateway-tunnel` | `10.101.250.11` | Externally reachable apps (via Cloudflare Tunnel) and LAN access to those same apps |
-| `gateway-internal` | `10.101.250.12` | Internal-only apps (LAN only) |
+| `gateway-tunnel` | `10.101.250.12` | Externally reachable apps (via Cloudflare Tunnel) and LAN access to those same apps |
+| `gateway-internal` | `10.101.250.11` | Internal-only apps (LAN only) |
 
 Both IPs are BGP-advertised and covered by a valid Let's Encrypt wildcard certificate (`*.sulibot.com`). `cloudflared` connects to `gateway-tunnel` via the cluster service `cilium-gateway-gateway-tunnel.network.svc.cluster.local:443`.
 
@@ -75,13 +75,13 @@ private routing plus Gateway DNS overrides.
 | Hostname | App | Private endpoint |
 |----------|-----|------------------|
 | `hass-app.sulibot.com` | Home Assistant Companion App / app auth | `10.104.250.11`, `fd00:104:250::11` |
-| `immich-app.sulibot.com` | Immich mobile app | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
+| `immich-app.sulibot.com` | Immich mobile app | `10.101.250.11`, `fd00:101:250::11` |
 | `freshrss-app.sulibot.com` | FreshRSS Google Reader/Fever clients | `10.101.250.11`, `fd00:101:250::11` |
-| `vikunja-app.sulibot.com` | Vikunja app/API clients | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
+| `vikunja-app.sulibot.com` | Vikunja app/API clients | `10.101.250.11`, `fd00:101:250::11` |
 
 ### Apps on `gateway-internal` (LAN only)
 
-LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
+LAN-only apps currently routed through `gateway-internal` (`10.101.250.11`):
 
 | Hostname | App | Auth pattern |
 |----------|-----|--------------|
@@ -183,7 +183,7 @@ External path (internet):
 3. If no valid CF session exists, Cloudflare redirects to Authentik (configured as CF's OIDC IdP).
 4. Authentik completes login flow and returns OIDC code/token to Cloudflare.
 5. Cloudflare issues Access session (`CF_Authorization`) and allows request forwarding.
-6. Cloudflare Tunnel forwards to `gateway-tunnel` (`10.101.250.11`) in-cluster.
+6. Cloudflare Tunnel forwards to `gateway-tunnel` (`10.101.250.12`) in-cluster.
 7. App applies its own auth integration:
    - Immich/FileBrowser: native OIDC via Authentik
    - Firefly: Authentik outpost proxy/header auth
@@ -228,6 +228,7 @@ The app-private endpoints use WARP private routing, not Cloudflare Access:
 
 - `hass-app.sulibot.com`
 - `immich-app.sulibot.com`
+- `freshrss-app.sulibot.com`
 - `vikunja-app.sulibot.com`
 
 LAN clients resolve them through RouterOS/internal DNS. Remote clients resolve
@@ -313,20 +314,20 @@ LAN clients must resolve `*.sulibot.com` to the **local gateway IPs**, not Cloud
 
 **Mikrotik DNS static entries (required overrides for `gateway-tunnel` apps):**
 
-All `gateway-tunnel` apps must resolve to `10.101.250.11` on LAN:
+All `gateway-tunnel` apps must resolve to `10.101.250.12` on LAN:
 
 ```
-auth.sulibot.com             -> 10.101.250.11
-filebrowser.sulibot.com      -> 10.101.250.11
-firefly.sulibot.com          -> 10.101.250.11
-filestash.sulibot.com        -> 10.101.250.11
-home-assistant.sulibot.com   -> 10.101.250.11
-immich.sulibot.com           -> 10.101.250.11
-plex.sulibot.com             -> 10.101.250.11
-seerr.sulibot.com            -> 10.101.250.11
+auth.sulibot.com             -> 10.101.250.12
+filebrowser.sulibot.com      -> 10.101.250.12
+firefly.sulibot.com          -> 10.101.250.12
+filestash.sulibot.com        -> 10.101.250.12
+home-assistant.sulibot.com   -> 10.101.250.12
+immich.sulibot.com           -> 10.101.250.12
+plex.sulibot.com             -> 10.101.250.12
+seerr.sulibot.com            -> 10.101.250.12
 ```
 
-All `gateway-internal` apps use `10.101.250.12`. A wildcard entry (`*.sulibot.com -> 10.101.250.12`) covers the default case; the specific overrides above take precedence for `gateway-tunnel` apps.
+All `gateway-internal` apps use `10.101.250.11`. A wildcard entry (`*.sulibot.com -> 10.101.250.11`) covers the default case; the specific overrides above take precedence for `gateway-tunnel` apps.
 
 ExternalDNS (Mikrotik webhook provider) automatically manages these records from `HTTPRoute` hostnames. Manually added records without TXT ownership are ignored by ExternalDNS; delete them so ExternalDNS can recreate and own them.
 
@@ -565,7 +566,7 @@ Account lifecycle is app-owned (including auto-creation where supported).
 
 **Apps**: Radarr, Sonarr, qBittorrent, NZBGet, and similar tools
 
-These apps are available only on LAN through `gateway-internal` (`10.101.250.12`). They are not exposed externally and typically use API keys, basic auth, or app-local accounts. LAN trust remains the outer boundary.
+These apps are available only on LAN through `gateway-internal` (`10.101.250.11`). They are not exposed externally and typically use API keys, basic auth, or app-local accounts. LAN trust remains the outer boundary.
 
 ### Pattern 5: Filestash (direct app auth; OIDC-capable)
 
@@ -628,7 +629,7 @@ The rendered config is stored in `filestash-secret` and mounted read-only at `/a
 
 ### CF Error 1003: "Direct IP access not allowed"
 
-**Cause**: A LAN client resolves a `gateway-tunnel` hostname to Cloudflare public IPs instead of the local gateway IP `10.101.250.11`.
+**Cause**: A LAN client resolves a `gateway-tunnel` hostname to Cloudflare public IPs instead of the local gateway IP `10.101.250.12`.
 
 **Fix**: ExternalDNS should manage these records automatically. If a record was added manually without TXT ownership, delete it so ExternalDNS can recreate and claim it.
 
