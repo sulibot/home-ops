@@ -14,6 +14,7 @@ resources:
   - ./external-dns
   - ./storage
   - ./home-assistant-backup
+  - ./stateful-backups
   - ./kube-state-metrics
   - ./observer
   - ./log-forwarder

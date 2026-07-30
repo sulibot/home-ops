@@ -57,6 +57,11 @@ spec:
                     secretKeyRef:
                       name: volsync-maintenance-secret
                       key: AWS_S3_ENDPOINT
+                - name: AWS_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: AWS_REGION
                 - name: KOPIA_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -64,6 +69,12 @@ spec:
                       key: KOPIA_PASSWORD
                 - name: KOPIA_CHECK_FOR_UPDATES
                   value: "false"
+                - name: KOPIA_CONFIG_PATH
+                  value: /tmp/kopia-verify.config
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/logs
                 - name: HOME
                   value: "/tmp"
               command:
@@ -92,10 +103,14 @@ spec:
                   # that expect the full https:// form - strip it here only)
                   KOPIA_S3_HOST="${KOPIA_S3_ENDPOINT#https://}"
                   KOPIA_S3_HOST="${KOPIA_S3_HOST#http://}"
+                  if [ -n "${KOPIA_PREFIX:-}" ] && [[ "${KOPIA_PREFIX}" != */ ]]; then
+                    KOPIA_PREFIX="${KOPIA_PREFIX}/"
+                  fi
 
                   CONNECT_ARGS=(
                     "--bucket=$KOPIA_BUCKET"
                     "--endpoint=$KOPIA_S3_HOST"
+                    "--region=$AWS_REGION"
                     "--access-key=$AWS_ACCESS_KEY_ID"
                     "--secret-access-key=$AWS_SECRET_ACCESS_KEY"
                     "--password=$KOPIA_PASSWORD"
@@ -114,81 +129,105 @@ spec:
                   echo "✅ Connected to repository"
                   echo ""
 
-                  # Repository status
                   echo "📊 Repository Status:"
                   kopia repository status --config-file=/tmp/kopia-verify.config | grep -E "(Storage capacity|Storage available|Format version|Hash|Encryption)"
                   echo ""
 
-                  # Get snapshot statistics
+                  echo "📥 Reading repository and live ReplicationSource state..."
+                  kopia snapshot list --all --json \
+                    --config-file=/tmp/kopia-verify.config > /tmp/snapshots.json
+                  TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+                  curl --fail --silent --show-error \
+                    --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                    --header "Authorization: Bearer $TOKEN" \
+                    https://kubernetes.default.svc/apis/volsync.backube/v1alpha1/replicationsources \
+                    > /tmp/sources.json
+
                   echo "📸 Snapshot Statistics:"
-                  TOTAL_SNAPSHOTS=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep -c "^" || echo "0")
+                  TOTAL_SNAPSHOTS=$(jq 'length' /tmp/snapshots.json)
+                  EXPECTED_SOURCES=$(jq '.items | length' /tmp/sources.json)
+                  TODAY=$(date -u +%Y-%m-%d)
+                  SNAPSHOTS_TODAY=$(jq --arg today "$TODAY" \
+                    '[.[] | select(.startTime | startswith($today))] | length' \
+                    /tmp/snapshots.json)
                   echo "   Total snapshots: $TOTAL_SNAPSHOTS"
-
-                  # Count snapshots by date
-                  SNAPSHOTS_TODAY=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "$(date -u +%Y-%m-%d)" | wc -l || echo "0")
-                  SNAPSHOTS_YESTERDAY=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "$(date -u -d '1 day ago' +%Y-%m-%d)" | wc -l || echo "0")
-
                   echo "   Snapshots today: $SNAPSHOTS_TODAY"
-                  echo "   Snapshots yesterday: $SNAPSHOTS_YESTERDAY"
+                  echo "   Expected live sources: $EXPECTED_SOURCES"
                   echo ""
 
-                  # List all sources (unique host@user:/path combinations)
-                  echo "🗂️  Backup Sources:"
-                  kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | \
-                    awk '{print $1}' | sort -u | while read -r source; do
-                      if [ -n "$source" ] && [ "$source" != "volsync.volsync-system.svc.cluster.local@volsync" ]; then
-                        LATEST=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "^$source" | tail -1 | awk '{print $4, $5}')
-                        COUNT=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep -c "^$source" || echo "0")
-                        echo "   - $source"
-                        echo "     Latest: $LATEST"
-                        echo "     Count: $COUNT snapshots"
-                      fi
-                    done
-                  echo ""
-
-                  # Perform blob verification on a sample of recent snapshots
-                  echo "🔬 Verifying Snapshot Integrity (sampling recent backups)..."
+                  echo "🔬 Verifying each live source's latest snapshot..."
                   VERIFICATION_ERRORS=0
+                  VERIFIED_SOURCES=0
+                  SNAPSHOT_IDS=()
+                  while IFS=$'\t' read -r namespace name; do
+                    source="${name}@${namespace}:/data"
+                    latest=$(jq -c \
+                      --arg namespace "$namespace" \
+                      --arg name "$name" \
+                      '[.[] | select(.source.host == $namespace and .source.userName == $name)] | sort_by(.startTime) | last // empty' \
+                      /tmp/snapshots.json)
 
-                  # Get list of unique sources
-                  SOURCES=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | awk '{print $1}' | sort -u)
-
-                  for source in $SOURCES; do
-                    if [ -z "$source" ] || [ "$source" = "volsync.volsync-system.svc.cluster.local@volsync" ]; then
+                    if [ -z "$latest" ]; then
+                      echo "   ❌ Missing repository snapshot for $source"
+                      VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
                       continue
                     fi
 
-                    # Get the latest snapshot ID for this source
-                    LATEST_SNAPSHOT=$(kopia snapshot list --all --config-file=/tmp/kopia-verify.config 2>/dev/null | grep "^$source" | tail -1 | awk '{print $2}')
+                    snapshot_id=$(jq -r '.id' <<<"$latest")
+                    start_time=$(jq -r '.startTime' <<<"$latest")
+                    total_size=$(jq -r '.stats.totalSize // 0' <<<"$latest")
+                    source_errors=$(jq -r '(.stats.errorCount // 0) + (.stats.ignoredErrorCount // 0)' <<<"$latest")
+                    age_seconds=$(jq -nr --arg timestamp "$start_time" \
+                      'now - ($timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)')
 
-                    if [ -n "$LATEST_SNAPSHOT" ]; then
-                      echo "   Verifying: $source (snapshot: $LATEST_SNAPSHOT)"
-
-                      # Verify the snapshot (quick check)
-                      if kopia snapshot verify --config-file=/tmp/kopia-verify.config "$LATEST_SNAPSHOT" --verify-files-percent=1 2>&1; then
-                        echo "      ✅ Verification passed"
-                      else
-                        echo "      ❌ Verification FAILED"
-                        VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
-                      fi
+                    echo "   - $source id=$snapshot_id age=$(printf '%.0f' "$age_seconds")s size=${total_size}B"
+                    if (( $(printf '%.0f' "$age_seconds") > 90000 )); then
+                      echo "     ❌ Latest snapshot is older than 25 hours"
+                      VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
                     fi
-                  done
+                    if [ "$total_size" -le 0 ]; then
+                      echo "     ❌ Latest snapshot is empty"
+                      VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
+                    fi
+                    if [ "$source_errors" -gt 0 ]; then
+                      echo "     ❌ Snapshot recorded $source_errors source errors"
+                      VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
+                    fi
+                    SNAPSHOT_IDS+=("$snapshot_id")
+                  done < <(
+                    jq -r '.items[] | [.metadata.namespace, .metadata.name] | @tsv' \
+                      /tmp/sources.json | sort
+                  )
+
+                  echo ""
+                  echo "🧪 Running one repository-wide integrity pass over ${#SNAPSHOT_IDS[@]} latest snapshots..."
+                  if [ "${#SNAPSHOT_IDS[@]}" -gt 0 ] && kopia snapshot verify \
+                    --config-file=/tmp/kopia-verify.config \
+                    --verify-files-percent=1 \
+                    "${SNAPSHOT_IDS[@]}"; then
+                    VERIFIED_SOURCES=${#SNAPSHOT_IDS[@]}
+                    echo "✅ Integrity sample passed for all selected snapshots"
+                  else
+                    echo "❌ Repository integrity verification failed"
+                    VERIFICATION_ERRORS=$((VERIFICATION_ERRORS + 1))
+                  fi
 
                   echo ""
                   echo "================================"
                   echo "Verification Summary:"
                   echo "  Total snapshots: $TOTAL_SNAPSHOTS"
+                  echo "  Expected live sources: $EXPECTED_SOURCES"
+                  echo "  Verified live sources: $VERIFIED_SOURCES"
                   echo "  Verification errors: $VERIFICATION_ERRORS"
 
-                  if [ "$VERIFICATION_ERRORS" -gt 0 ]; then
+                  if [ "$EXPECTED_SOURCES" -eq 0 ] || [ "$VERIFIED_SOURCES" -ne "$EXPECTED_SOURCES" ] || [ "$VERIFICATION_ERRORS" -gt 0 ]; then
                     echo ""
-                    echo "❌ VERIFICATION FAILED - Some snapshots have integrity issues"
+                    echo "❌ VERIFICATION FAILED - backup coverage, freshness, or integrity is incomplete"
                     exit 1
-                  else
-                    echo ""
-                    echo "✅ All verified snapshots are healthy"
-                    exit 0
                   fi
+
+                  echo ""
+                  echo "✅ Every live VolSync source has a fresh, non-empty, verified snapshot"
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
@@ -213,3 +252,30 @@ kind: ServiceAccount
 metadata:
   name: volsync-backup-verifier
   namespace: volsync-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: volsync-backup-verifier
+rules:
+  - apiGroups:
+      - volsync.backube
+    resources:
+      - replicationsources
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: volsync-backup-verifier
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: volsync-backup-verifier
+subjects:
+  - kind: ServiceAccount
+    name: volsync-backup-verifier
+    namespace: volsync-system

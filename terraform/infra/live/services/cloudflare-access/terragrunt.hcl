@@ -5,37 +5,6 @@ include "root" {
 locals {
   credentials  = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
-  secrets      = yamldecode(sops_decrypt_file(local.secrets_file))
-}
-
-# Overrides the repo-wide local-backend default from root.hcl for this module
-# only. State was previously only local (and lost/fragmented across three
-# different machines -- see docs/tickets/cloudflare-access-terraform-state-reconciliation.md).
-# Backed by a dedicated MinIO service account scoped to only this bucket.
-remote_state {
-  backend = "s3"
-  generate = {
-    path      = "backend.tf"
-    if_exists = "overwrite_terragrunt"
-  }
-  config = {
-    bucket = "terraform-state"
-    key    = "live/services/cloudflare-access/terraform.tfstate"
-    region = "us-east-1"
-
-    endpoints = {
-      s3 = "https://s3.sulibot.com"
-    }
-
-    access_key = local.secrets.terraform_state_s3_access_key
-    secret_key = local.secrets.terraform_state_s3_secret_key
-
-    skip_credentials_validation = true
-    skip_region_validation      = true
-    skip_metadata_api_check     = true
-    skip_requesting_account_id  = true
-    use_path_style              = true
-  }
 }
 
 generate "providers" {
@@ -45,7 +14,7 @@ generate "providers" {
 provider "sops" {}
 
 data "sops_file" "secrets" {
-  source_file = "${local.secrets_file}"
+  source_file = "$${path.module}/../../common/secrets.sops.yaml"
 }
 
 provider "cloudflare" {
@@ -59,8 +28,7 @@ generate "main" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
 terraform {
-  # Backend is generated separately into backend.tf by this module's
-  # remote_state block (S3/MinIO) -- see terragrunt.hcl.
+  backend "gcs" {}
 
   required_providers {
     cloudflare = { source = "cloudflare/cloudflare", version = "~> 5.0" }
@@ -81,9 +49,10 @@ locals {
   cluster_104_tunnel_id = data.sops_file.secrets.data["cloudflare_tunnel_id_cluster_104"]
 
   bypass_apps = {
-    "auth.sulibot.com" = "Authentik"
-    "plex.sulibot.com" = "Plex"
-    "seerr.sulibot.com" = "Seerr"
+    "auth.sulibot.com"     = "Authentik"
+    "idm.sulibot.com"      = "Kanidm"
+    "plex.sulibot.com"     = "Plex"
+    "seerr.sulibot.com"    = "Seerr"
     "requests.sulibot.com" = "Seerr"
   }
 
@@ -94,14 +63,60 @@ locals {
   # warp_only_apps below. Kept as an empty map for the pattern's sake.
   public_native_auth_apps = {}
 
-  # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel ID
-  # from the main cluster-101 tunnel) but still want the standard WARP-only
-  # Access gate.
-  cluster_104_warp_only_apps = {
-    "hass.sulibot.com"            = "Home Assistant Browser"
+  # Browser endpoints approved for Application Security mTLS. Keep the cutover
+  # set empty until a client certificate is installed and the positive and
+  # negative probes in docs/runbooks/cloudflare-application-mtls.md pass.
+  main_tunnel_mtls_candidates = {
+    "actual.sulibot.com"      = "Actual Budget"
+    "filebrowser.sulibot.com" = "FileBrowser"
+    "freshrss.sulibot.com"    = "FreshRSS"
+    "immich.sulibot.com"      = "Immich"
+    "karakeep.sulibot.com"    = "Karakeep"
+    "paperless.sulibot.com"   = "Paperless"
+  }
+
+  cluster_104_mtls_candidates = {
+    "hass.sulibot.com" = "Home Assistant Browser"
+  }
+
+  # Move one hostname at a time into this set only after certificate
+  # distribution and monitoring are ready. Terraform then associates the
+  # hostname with Cloudflare's managed CA, enforces mTLS at the WAF, removes
+  # the old Access application, and narrows the WARP split-tunnel host list.
+  application_mtls_cutover_hostnames = toset([
+    "freshrss.sulibot.com",
+    "immich.sulibot.com",
+  ])
+
+  main_tunnel_mtls_apps = {
+    for hostname, name in local.main_tunnel_mtls_candidates : hostname => name
+    if contains(local.application_mtls_cutover_hostnames, hostname)
+  }
+
+  cluster_104_mtls_apps = {
+    for hostname, name in local.cluster_104_mtls_candidates : hostname => name
+    if contains(local.application_mtls_cutover_hostnames, hostname)
+  }
+
+  application_mtls_apps = merge(
+    local.main_tunnel_mtls_apps,
+    local.cluster_104_mtls_apps,
+  )
+
+  # Apps whose origin is cluster-104's own Cloudflare Tunnel (separate tunnel
+  # ID from the main cluster-101 tunnel) and still require WARP.
+  cluster_104_warp_only_apps = merge({
     "music-assistant.sulibot.com" = "Music Assistant"
     "ma.sulibot.com"              = "Music Assistant"
-  }
+  }, {
+    for hostname, name in local.cluster_104_mtls_candidates : hostname => name
+    if !contains(local.application_mtls_cutover_hostnames, hostname)
+  })
+
+  cluster_104_tunnel_apps = merge(
+    local.cluster_104_warp_only_apps,
+    local.cluster_104_mtls_apps,
+  )
 
   home_assistant_google_hostname = "ha-google.sulibot.com"
   home_assistant_google_paths = [
@@ -112,19 +127,21 @@ locals {
     "/api/google_assistant",
   ]
 
-  # Browser-facing external web apps, gated on cluster-101's main tunnel.
-  warp_only_apps = {
-    "karakeep.sulibot.com"    = "Karakeep"
+  # Public endpoints that remain WARP-only because their native clients cannot
+  # reliably present an Application Security client certificate.
+  warp_only_apps = merge({
     "atuin.sulibot.com"       = "Atuin"
-    "actual.sulibot.com"      = "Actual Budget"
-    "filebrowser.sulibot.com" = "FileBrowser"
-    "freshrss.sulibot.com"    = "FreshRSS"
     "opencloud.sulibot.com"   = "OpenCloud"
-    "paperless.sulibot.com"   = "Paperless"
-  }
+  }, {
+    for hostname, name in local.main_tunnel_mtls_candidates : hostname => name
+    if hostname != "immich.sulibot.com" && !contains(local.application_mtls_cutover_hostnames, hostname)
+  })
 
+  # Immich keeps its existing WARP + email Access application until its mTLS
+  # cutover. No email policy remains once the hostname enters the cutover set.
   warp_email_apps = {
-    "immich.sulibot.com" = "Immich"
+    for hostname, name in { "immich.sulibot.com" = "Immich" } : hostname => name
+    if !contains(local.application_mtls_cutover_hostnames, hostname)
   }
 
   app_private_dns_overrides = {
@@ -138,9 +155,13 @@ locals {
       ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 101
     }
-    "vikunja-app.sulibot.com" = {
+    "freshrss-app.sulibot.com" = {
       ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 102
+    }
+    "vikunja-app.sulibot.com" = {
+      ips        = ["10.101.250.11", "fd00:101:250::11"]
+      precedence = 103
     }
   }
 
@@ -239,6 +260,7 @@ locals {
     keys(local.public_native_auth_apps),
     keys(local.warp_only_apps),
     keys(local.warp_email_apps),
+    keys(local.main_tunnel_mtls_apps),
   ))
 
   allowed_emails = split(" ", data.sops_file.secrets.data["cf_access_allowed_emails"])
@@ -278,7 +300,7 @@ resource "cloudflare_dns_record" "tunnel_host" {
 # cluster-104 tunnel origin (a separate tunnel ID from cluster-101's).
 resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   for_each = merge(
-    local.cluster_104_warp_only_apps,
+    local.cluster_104_tunnel_apps,
     { (local.home_assistant_google_hostname) = "Home Assistant Google" },
   )
 
@@ -288,6 +310,45 @@ resource "cloudflare_dns_record" "cluster_104_tunnel_host" {
   content = "$${local.cluster_104_tunnel_id}.cfargotunnel.com"
   ttl     = 1
   proxied = true
+}
+
+# The main tunnel is remotely managed by Cloudflare. Its pushed ingress
+# configuration overrides the connector's local config file, so public origin
+# rules must be owned here as well as mirrored in the Kubernetes bootstrap
+# secret. Specific infrastructure hostnames precede the wildcard app gateway.
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
+  account_id = local.account_id
+  tunnel_id  = local.tunnel_id
+  source     = "cloudflare"
+
+  config = {
+    ingress = [
+      {
+        hostname = "idm.sulibot.com"
+        service  = "https://10.100.0.60:443"
+        origin_request = {
+          http2_origin       = true
+          origin_server_name = "idm.sulibot.com"
+        }
+      },
+      {
+        hostname = "openbao.sulibot.com"
+        service  = "http_status:404"
+      },
+      {
+        hostname = "*.sulibot.com"
+        service  = "https://cilium-gateway-gateway-tunnel.network.svc.cluster.local:443"
+        origin_request = {
+          http2_origin       = true
+          no_tls_verify      = true
+          origin_server_name = "sulibot.com"
+        }
+      },
+      {
+        service = "http_status:404"
+      },
+    ]
+  }
 }
 
 # WARP private app endpoints are not published as public DNS records and do
@@ -323,6 +384,54 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_route" "app_private_route" {
   tunnel_id  = each.value.tunnel_id
   network    = each.value.network
   comment    = "Private app endpoint route for $${each.key}"
+}
+
+# ---------------------------------------------------------------------------
+# Application Security mTLS
+# ---------------------------------------------------------------------------
+
+# Disable automatic WARP device-certificate provisioning. This is retained as
+# an explicit false setting because Cloudflare's API exposes an editable
+# singleton rather than a deletable resource.
+resource "cloudflare_zero_trust_device_default_profile_certificates" "application_mtls" {
+  zone_id = local.zone_id
+  enabled = false
+}
+
+# Omitting mtls_certificate_id selects the account's active Cloudflare-managed
+# CA. This resource owns the complete managed-CA hostname association set for
+# this zone; import/reconcile any out-of-band associations before applying.
+resource "cloudflare_certificate_authorities_hostname_associations" "application_mtls" {
+  zone_id   = local.zone_id
+  hostnames = sort(tolist(local.application_mtls_cutover_hostnames))
+}
+
+# There is currently no other zone entrypoint ruleset in this phase. If a
+# custom-rule entrypoint is added out of band, import and merge it here before
+# applying so this remains the single source of truth.
+resource "cloudflare_ruleset" "application_mtls" {
+  count = length(local.application_mtls_cutover_hostnames) > 0 ? 1 : 0
+
+  zone_id     = local.zone_id
+  name        = "Application Security mTLS"
+  description = "Block selected browser endpoints unless Cloudflare verifies a non-revoked client certificate."
+  kind        = "zone"
+  phase       = "http_request_firewall_custom"
+
+  rules = [{
+    action      = "block"
+    description = "Require a valid Application Security client certificate"
+    enabled     = true
+    ref         = "require_application_mtls"
+    expression = format(
+      "(http.host in {%s} and ((not cf.tls_client_auth.cert_verified) or cf.tls_client_auth.cert_revoked))",
+      join(" ", [for hostname in sort(tolist(local.application_mtls_cutover_hostnames)) : jsonencode(hostname)]),
+    )
+  }]
+
+  depends_on = [
+    cloudflare_certificate_authorities_hostname_associations.application_mtls,
+  ]
 }
 
 # ---------------------------------------------------------------------------
@@ -476,6 +585,8 @@ resource "cloudflare_zero_trust_access_application" "cluster_104_warp_only" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # Google Assistant cloud-to-cloud needs unauthenticated access to Home
@@ -536,6 +647,8 @@ resource "cloudflare_zero_trust_access_application" "warp_only" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # ---------------------------------------------------------------------------
@@ -573,43 +686,48 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
       }
     }]
   }]
+
+  depends_on = [cloudflare_ruleset.application_mtls]
 }
 
 # ---------------------------------------------------------------------------
-# Managed network-scoped WARP profile
+# Managed home networks: automatically disable the VPN tunnel
 # ---------------------------------------------------------------------------
 
+# Cloudflare device profiles have no literal "off" service mode. Posture-only
+# is used strictly as the no-tunnel/no-DNS mode when the client detects io or
+# iot. Automatic Application Security device-certificate provisioning remains
+# disabled above; this profile is not a browser-authentication path.
 resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
   account_id = local.account_id
   name       = "Home trusted io"
   type       = "tls"
   config = {
     tls_sockaddr = "10.30.0.254:443"
-    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
   }
 }
 
-# Named "iot" (not "europa") -- the europa SSID is being retired in favor of
-# iot, and this resource tracks the network by its durable role, not the
-# transient SSID name.
 resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_iot" {
   account_id = local.account_id
   name       = "Home trusted iot"
   type       = "tls"
   config = {
     tls_sockaddr = "10.31.0.254:443"
-    sha256       = "DA43EDA97B878590B049174CE5192AF5FAB7B73A07C6D65B8D2FF4543E90A590"
+    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
   }
 }
 
-resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
+resource "cloudflare_zero_trust_device_custom_profile" "home_warp_off" {
   account_id  = local.account_id
-  name        = "Home trusted"
-  description = "Exclude local private networks from WARP when on io or iot."
+  name        = "Home WARP off"
+  description = "Disable the VPN tunnel and Cloudflare DNS on io or iot; use local DNS and direct LAN routing."
   precedence  = 10
 
-  service_mode_v2 = { mode = "warp" }
+  service_mode_v2   = { mode = "posture_only" }
   allow_mode_switch = false
+  switch_locked     = false
+  auto_connect      = 0
 
   match = trimspace(replace(<<-EOT
     network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
@@ -618,39 +736,32 @@ resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
   , "\n", " "))
 }
 
-resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "home_trusted" {
-  account_id = local.account_id
-  policy_id  = cloudflare_zero_trust_device_custom_profile.home_trusted.policy_id
-
-  domains = [{
-    suffix      = "sulibot.com"
-    description = "Use local DNS for sulibot.com on trusted home networks"
-    dns_server = [
-      "10.30.0.254",
-      "fd00:30::fffe",
-      "10.255.0.53",
-      "fd00:0:0:ffff::53",
-    ]
-  }]
-}
-
-# Default (fallback) profile -- applies whenever the device is NOT on a
-# "Home trusted" network above, i.e. "external". Split Tunnel Include mode
-# restricts the WARP tunnel to sulibot.com traffic only, so general internet
-# browsing never routes through Cloudflare.
+# The default profile applies away from io/iot. Split Tunnel Include mode
+# restricts the tunnel to WARP-dependent destinations and private app routes.
+# General browsing and mTLS browser endpoints do not transit WARP.
 resource "cloudflare_zero_trust_device_default_profile" "external" {
   account_id = local.account_id
 
   service_mode_v2   = { mode = "warp" }
   allow_mode_switch = false
+  switch_locked     = false
+  auto_connect      = 0
 
   include = concat(
     [
-      { host = "sulibot.com", description = "sulibot.com apex" },
-      { host = "*.sulibot.com", description = "All sulibot.com apps" },
       { host = "sulibot.cloudflareaccess.com", description = "Zero Trust Access auth domain -- required in Include mode" },
       { address = "162.159.36.12/32", description = "Cloudflare Gateway block page" },
       { address = "162.159.46.12/32", description = "Cloudflare Gateway block page" },
+    ],
+    [
+      for hostname, name in merge(
+        local.cluster_104_warp_only_apps,
+        local.warp_only_apps,
+        local.warp_email_apps,
+      ) : {
+        host        = hostname
+        description = "$${name}: WARP-dependent public endpoint"
+      }
     ],
     [
       for name, route in local.warp_private_routes : {
@@ -704,6 +815,10 @@ output "identity_provider_id" {
   value = cloudflare_zero_trust_access_identity_provider.authentik.id
 }
 
+output "application_mtls_cutover_hostnames" {
+  value = sort(tolist(local.application_mtls_cutover_hostnames))
+}
+
 # ---------------------------------------------------------------------------
 # State-safe renames
 # ---------------------------------------------------------------------------
@@ -711,11 +826,6 @@ output "identity_provider_id" {
 moved {
   from = cloudflare_zero_trust_access_application.home_assistant_warp_only
   to   = cloudflare_zero_trust_access_application.cluster_104_warp_only
-}
-
-moved {
-  from = cloudflare_zero_trust_device_managed_networks.home_trusted_europa
-  to   = cloudflare_zero_trust_device_managed_networks.home_trusted_iot
 }
 EOF
 }

@@ -92,6 +92,48 @@ spec:
     - name: cross-layer-storage.alerts
       interval: 1m
       rules:
+        - alert: ProxmoxBackupStorageUnavailable
+          expr: |
+            min by (id) (
+              pve_up{
+                job="proxmox-api-targets",
+                id=~"storage/.*/config"
+              }
+            ) == 0
+          for: 5m
+          labels:
+            severity: critical
+            layer: proxmox
+            service: backup
+          annotations:
+            summary: "Proxmox backup storage {{ $labels.id }} is unavailable"
+            description: |
+              The shared CephFS `config` backup storage is not active on this
+              Proxmox node. Nightly vzdump jobs will fail until the mount is
+              repaired. Check `pvesm status` and `/mnt/pve/config`.
+
+        - alert: ProxmoxBackupStorageCoverageMissing
+          expr: |
+            count(
+              count by (id) (
+                pve_up{
+                  job="proxmox-api-targets",
+                  id=~"storage/.*/config"
+                }
+              )
+            ) < 3
+          for: 10m
+          labels:
+            severity: critical
+            layer: proxmox
+            service: backup
+          annotations:
+            summary: "Prometheus cannot see all three Proxmox backup mounts"
+            description: |
+              Fewer than three node-local `config` storage series are present.
+              This can indicate an absent backup mount or incomplete Proxmox
+              API exporter coverage.
+
         - alert: PodFilesystemWriteIOHigh
           expr: |
             topk(10, homeops:pod_fs_write_bytes:rate5m) > 100 * 1024 * 1024

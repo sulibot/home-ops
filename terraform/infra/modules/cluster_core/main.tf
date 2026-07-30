@@ -1,6 +1,6 @@
 terraform {
   # Backend configuration will be injected by Terragrunt
-  backend "local" {}
+  backend "gcs" {}
 
   required_providers {
     external = { source = "hashicorp/external", version = "~> 2.2" }

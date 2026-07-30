@@ -1,0 +1,686 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: offsite-backup-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  offsite-backup.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "doc",
+          "includeVars": false,
+          "keepTime": false,
+          "targetBlank": true,
+          "title": "Runbook",
+          "type": "link",
+          "url": "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/offsite-backup-monitoring.md"
+        }
+      ],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 6
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "count(kube_cronjob_info{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"})",
+              "legendFormat": "CronJobs",
+              "refId": "A"
+            }
+          ],
+          "title": "CronJobs Present (expected 6)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 6
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "sum(1 - kube_cronjob_spec_suspend{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"}) or vector(0)",
+              "legendFormat": "Enabled",
+              "refId": "A"
+            }
+          ],
+          "title": "Schedules Enabled",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "sum(ALERTS{alertstate=\"firing\",alertname=~\"Offsite.*|GCSContent.*\"}) or vector(0)",
+              "legendFormat": "Firing",
+              "refId": "A"
+            }
+          ],
+          "title": "Offsite Alerts Firing",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "blue",
+                    "value": 1
+                  },
+                  {
+                    "color": "orange",
+                    "value": 2
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_job_status_active{namespace=~\"volsync-system|backup-restore-drill\",job_name=~\"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*\"}) or vector(0)",
+              "legendFormat": "Active",
+              "refId": "A"
+            }
+          ],
+          "title": "Jobs Active",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "count((kube_cronjob_spec_suspend{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"} == 0) unless on(namespace,cronjob) kube_cronjob_status_last_successful_time{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"})",
+              "legendFormat": "Never succeeded",
+              "refId": "A"
+            }
+          ],
+          "title": "Enabled, Never Succeeded",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 0
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "sum(max_over_time(kube_job_failed{condition=\"true\",namespace=~\"volsync-system|backup-restore-drill\",job_name=~\"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*\"}[24h])) or vector(0)",
+              "legendFormat": "Failed",
+              "refId": "A"
+            }
+          ],
+          "title": "Failed Jobs (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-GrYlRd"
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 168
+                  },
+                  {
+                    "color": "red",
+                    "value": 336
+                  }
+                ]
+              },
+              "unit": "h"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "id": 7,
+          "options": {
+            "displayMode": "gradient",
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "expr": "(time() - kube_cronjob_status_last_successful_time{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"}) / 3600",
+              "legendFormat": "{{namespace}} / {{cronjob}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Hours Since Last Successful Run",
+          "type": "bargauge"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (cronjob) (kube_cronjob_status_active{namespace=~\"volsync-system|backup-restore-drill\",cronjob=~\"volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill\"})",
+              "legendFormat": "{{cronjob}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Active Jobs by Schedule",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "id": 9,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "expr": "ALERTS{alertstate=\"firing\",alertname=~\"Offsite.*|GCSContent.*\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "refId": "A"
+            }
+          ],
+          "title": "Firing Backup Alerts",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true
+                },
+                "indexByName": {},
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "id": 10,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+              },
+              "editorMode": "code",
+              "expr": "{namespace=~\"volsync-system|backup-restore-drill\"} |~ \"offsite|archive|restore_drill_result|ERROR|failed\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Offsite Backup and Restore Logs",
+          "type": "logs"
+        },
+        {
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 11,
+          "options": {
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false,
+              "showMiniMap": false
+            },
+            "content": "### Capacity and cost guardrails\n\nPrometheus proves execution and restore freshness; provider billing remains authoritative for remote bytes and cost. Google Cloud budget notifications are configured at 50%, 90%, 100%, plus forecast. Review B2 and GCS stored bytes/object growth monthly and after each bootstrap. Media restores are deliberately not routine because Archive retrieval and egress are chargeable.",
+            "mode": "markdown"
+          },
+          "pluginVersion": "11.0.0",
+          "title": "Management Controls",
+          "type": "text"
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 39,
+      "tags": [
+        "sre",
+        "backup",
+        "offsite"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-30d",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "SRE Offsite Backup",
+      "uid": "sre-offsite-backup",
+      "version": 1,
+      "weekStart": ""
+    }

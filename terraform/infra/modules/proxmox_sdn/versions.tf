@@ -12,5 +12,5 @@ terraform {
     }
   }
 
-  backend "local" {}
+  backend "gcs" {}
 }

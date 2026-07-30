@@ -2,7 +2,11 @@
 
 ## Overview
 
-This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disaster recovery of application configuration data. The system provides hourly backups with automated verification, monitoring, and cross-namespace support.
+This Kubernetes cluster uses **Volsync + Kopia** for automated backup and
+disaster recovery of application configuration data. Hourly application
+snapshots are stored in the MinIO S3 repository and replicated to Backblaze
+B2. See [Cloud resilience and offsite backup](cloud-resilience.md) for provider
+provisioning, content selection, cold archive, and restore drills.
 
 ## Architecture
 
@@ -10,8 +14,9 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
 
 1. **Kopia** - Deduplicating backup engine with encryption and compression
 2. **Volsync** - Kubernetes operator that orchestrates backup/restore operations
-3. **CephFS** - Shared storage backend for the centralized backup repository
-4. **Flux** - GitOps controller managing the backup infrastructure
+3. **MinIO** - S3 backend for the centralized Kopia repository
+4. **CephFS** - Source PVCs and per-job Kopia cache
+5. **Flux** - GitOps controller managing the backup infrastructure
 
 ### Data Flow
 
@@ -34,16 +39,20 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
                         │
                         ▼
          ┌──────────────────────────────┐
-         │  Kopia Repository (CephFS)   │
+         │   Kopia Repository (MinIO)   │
          │  - Encrypted & deduplicated  │
          │  - Shared across namespaces  │
-         │  - 200Gi RWX PVC             │
+         │  - s3://cnpg-backups/         │
+         │    volsync-kopia/             │
          └──────────────────────────────┘
                         │
                         ▼
          ┌──────────────────────────────┐
          │    Kopia Web UI (optional)   │
          │  https://kopia.sulibot.com   │
+         │  - Auth: 1Password item      │
+         │    Kubernetes/kopia-console  │
+         │  - Read-only repository      │
          │  - Browse snapshots          │
          │  - View repository stats     │
          └──────────────────────────────┘
@@ -51,26 +60,21 @@ This Kubernetes cluster uses **Volsync + Kopia** for automated backup and disast
 
 ### Storage Architecture
 
-All namespaces share a **single centralized Kopia repository** stored on CephFS:
+All namespaces share one encrypted Kopia repository:
 
-```
-CephFS Subvolume (RWX, 200Gi)
-├─ volumeHandle: 0001-0024-407036f5-...-84e672d78c4e
-│
-├─ PV: kopia-repository-pv-volsync-system
-│  └─ PVC: kopia (volsync-system namespace)
-│
-├─ PV: kopia-repository-pv-default
-│  └─ PVC: kopia (default namespace)
-│
-└─ PV: kopia-repository-pv-observability
-   └─ PVC: kopia (observability namespace)
+```text
+s3://cnpg-backups/volsync-kopia/
+├─ Local endpoint: MinIO LXC at https://s3.sulibot.com
+└─ Hot offsite replica: Backblaze B2
 ```
 
-**Key Points:**
-- All PVs reference the **same CephFS volumeHandle**
-- Multiple PVCs can mount the same RWX volume
-- Repository path: `/repository/repository` (mount point + subdirectory)
+CephFS remains the source storage and provides job cache PVCs, but it is not
+the authoritative Kopia repository. The S3 prefix must retain its trailing
+slash when passed to Kopia; without it Kopia concatenates repository object
+names onto the prefix.
+
+Selected MinIO repositories and Terraform state are copied as logical S3
+objects. The MinIO LXC filesystem must not be copied directly.
 
 ## How Backups Work
 
@@ -318,12 +322,15 @@ kubectl logs -n <namespace> -l volsync.backube/replication-source=<app>-src
 
 **Access Kopia UI:**
 ```bash
-# Port-forward to Kopia server
-kubectl port-forward -n volsync-system svc/kopia 8080:80
-
-# Open browser: http://localhost:8080
-# Browse snapshots, check repository health
+# Open the internal URL and use the login stored in the Kubernetes vault:
+open https://kopia.sulibot.com
+# 1Password item: kopia-console
 ```
+
+The console connects to the same MinIO prefix used by all VolSync movers. It
+starts with an ephemeral Kopia config, is repository read-only, and does not
+mount the retained legacy CephFS repository PVC. The UI includes historical
+source identities as well as the current ReplicationSources.
 
 **Manual backup verification:**
 ```bash
@@ -449,8 +456,9 @@ kubectl exec -n volsync-system deployment/kopia -- \
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| `BLOB not found` | Repository path mismatch | Verify `/repository/repository` path |
-| `password incorrect` | Credential mismatch | Check `kopia-secret` in 1Password |
+| `BLOB not found` | Repository prefix mismatch | Verify `s3://cnpg-backups/volsync-kopia/` |
+| `password incorrect` | Credential mismatch | Check `volsync-template` in 1Password |
+| UI shows `Repository not configured` | Console startup connection failed | Check the `repository-connect` init-container logs |
 | `No such file or directory` | Source PVC doesn't exist | Verify PVC name in `VOLSYNC_SOURCE_PVC` |
 | `snapshot creation failed` | Snapshot class missing | Check `VOLSYNC_SNAPSHOTCLASS` |
 | `connection timeout` | Kopia server down | Restart kopia deployment |
@@ -473,8 +481,7 @@ kubectl delete jobs -n <namespace> -l volsync.backube/replication-source=<app>-s
 - Secret: `kopia-secret` in `volsync-system` namespace
 
 **In Transit:**
-- Kopia connects to repository over local filesystem (PVC mount)
-- No network encryption needed for repository access
+- Kopia connects to the MinIO S3 endpoint over HTTPS
 - Web UI uses HTTPS via Kubernetes Ingress/HTTPRoute
 
 ### Access Control
@@ -482,7 +489,8 @@ kubectl delete jobs -n <namespace> -l volsync.backube/replication-source=<app>-s
 **RBAC:**
 - Volsync operator: Cluster-wide permissions for ReplicationSource/Destination CRDs
 - Mover jobs: Namespace-scoped ServiceAccount with PVC access
-- Kopia server: Read/write access to repository PVC
+- Kopia console: Read-only access to the shared MinIO repository
+- Web login: Separate credentials in 1Password item `kopia-console`
 
 **Credentials:**
 - Repository password: External Secret from 1Password
@@ -546,15 +554,17 @@ kubectl delete jobs -n <namespace> -l volsync.backube/replication-source=<app>-s
 ### Kopia Repository Maintenance
 
 **Automatic Maintenance:**
-- Runs every 24 hours automatically
+- Managed by `KopiaMaintenance/daily` in `volsync-system`
 - Compacts old snapshots
 - Removes unreferenced blobs
-- Reports in Kopia pod logs
+- Runs against the writable repository credentials independently of the
+  read-only web console
 
 **Manual Maintenance:**
 ```bash
-kubectl exec -n volsync-system deployment/kopia -- \
-  kopia maintenance run --full --config-file=/config/repository.config
+# Do not run maintenance from the read-only console.
+kubectl get kopiamaintenance -n volsync-system daily
+kubectl get jobs -n volsync-system -l volsync.backube/kopia-maintenance=true
 ```
 
 ### Backup Rotation
@@ -566,9 +576,8 @@ Retention is automatic based on policy. To manually delete old snapshots:
 kubectl exec -n volsync-system deployment/kopia -- \
   kopia snapshot list --all --config-file=/config/repository.config
 
-# Delete specific snapshot
-kubectl exec -n volsync-system deployment/kopia -- \
-  kopia snapshot delete <snapshot-id> --config-file=/config/repository.config
+# Deletion is intentionally unavailable from the console. Change retention
+# through the ReplicationSource policy and let KopiaMaintenance prune safely.
 ```
 
 ## References

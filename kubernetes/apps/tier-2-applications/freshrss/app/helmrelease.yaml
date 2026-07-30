@@ -91,12 +91,22 @@ spec:
             port: *port
 
     route:
-      app:
+      browser:
         hostnames:
           - freshrss.sulibot.com
         parentRefs:
           - name: gateway-tunnel
             namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+      app:
+        hostnames:
+          - freshrss-app.sulibot.com
+        parentRefs:
           - name: gateway-internal
             namespace: network
         rules:

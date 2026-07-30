@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: ghcr.io/immichframe/immichframe
-              tag: v1.0.32.0@sha256:a0b54ee307d5746cd59518bd3ff60d80bf133b5dbe3202585f8c788d9ce3f2a8
+              tag: v1.0.37.0@sha256:edae2c0b9ab6e1384634582b2bab6246429e14bc209ff6ecc091fc9eedd4582c
             env:
               ApiKey:
                 valueFrom:

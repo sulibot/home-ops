@@ -1,0 +1,163 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: volsync-offsite-restore-drill
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: volsync-offsite-restore-drill
+    app.kubernetes.io/component: restore-verification
+spec:
+  schedule: "15 8 * * 0"
+  timeZone: America/Los_Angeles
+  # Enabled after the first B2 repository restore passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: volsync-offsite-restore-drill
+            app.kubernetes.io/component: restore-verification
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: restore
+              image: ghcr.io/home-operations/kopia:0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: KOPIA_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-maintenance-secret
+                      key: KOPIA_PASSWORD
+                - name: B2_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_S3_ENDPOINT
+                - name: B2_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_REGION
+                - name: B2_KOPIA_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_BUCKET
+                - name: B2_KOPIA_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_ACCESS_KEY_ID
+                - name: B2_KOPIA_APPLICATION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_KOPIA_APPLICATION_KEY
+                - name: KOPIA_CHECK_FOR_UPDATES
+                  value: "false"
+                - name: KOPIA_CONFIG_PATH
+                  value: /tmp/kopia-offsite.config
+                - name: KOPIA_CACHE_DIRECTORY
+                  value: /tmp/kopia-cache
+                - name: HOME
+                  value: /tmp
+                - name: XDG_CONFIG_HOME
+                  value: /tmp
+                - name: KOPIA_LOG_DIR
+                  value: /tmp/logs
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  started="$(date -u +%s)"
+                  target_endpoint="${B2_S3_ENDPOINT#https://}"
+                  target_endpoint="${target_endpoint#http://}"
+
+                  kopia repository connect s3 \
+                    --bucket="${B2_KOPIA_BUCKET}" \
+                    --endpoint="${target_endpoint}" \
+                    --region="${B2_REGION}" \
+                    --access-key="${B2_KOPIA_ACCESS_KEY_ID}" \
+                    --secret-access-key="${B2_KOPIA_APPLICATION_KEY}" \
+                    --password="${KOPIA_PASSWORD}" \
+                    --config-file=/tmp/kopia-offsite.config \
+                    --cache-directory=/tmp/kopia-cache \
+                    --override-hostname=offsite-drill.volsync-system.svc.cluster.local \
+                    --override-username=volsync-offsite-drill \
+                    --readonly
+
+                  snapshot_id="$(
+                    kopia snapshot list --all --json --config-file=/tmp/kopia-offsite.config |
+                      jq -r '
+                        map(select(
+                          .source.userName == "actual-src"
+                          and .source.host == "default"
+                          and .source.path == "/data"
+                        ))
+                        | sort_by(.startTime)
+                        | last
+                        | .id // empty
+                      '
+                  )"
+                  if [ -z "${snapshot_id}" ]; then
+                    echo "No actual-src@default:/data snapshot found in offsite repository" >&2
+                    exit 1
+                  fi
+
+                  mkdir -p /tmp/restore
+                  kopia snapshot restore "${snapshot_id}" /tmp/restore \
+                    --config-file=/tmp/kopia-offsite.config \
+                    --parallel=4
+
+                  restored_files="$(find /tmp/restore -type f | wc -l)"
+                  restored_bytes="$(du -sb /tmp/restore | awk '{print $1}')"
+                  if [ "${restored_files}" -lt 1 ] || [ "${restored_bytes}" -lt 1 ]; then
+                    echo "Restore produced no files" >&2
+                    exit 1
+                  fi
+
+                  duration="$(( $(date -u +%s) - started ))"
+                  echo "restore_drill_result=success"
+                  echo "snapshot_id=${snapshot_id}"
+                  echo "restored_files=${restored_files}"
+                  echo "restored_bytes=${restored_bytes}"
+                  echo "duration_seconds=${duration}"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 20Gi

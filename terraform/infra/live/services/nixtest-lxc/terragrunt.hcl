@@ -39,7 +39,7 @@ provider "proxmox" {
 }
 
 terraform {
-  backend "local" {}
+  backend "gcs" {}
 }
 EOF2
 }

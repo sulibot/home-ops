@@ -27,20 +27,27 @@ on:
 jobs:
   validate:
     name: Validate infra parameter layers
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Install tools
+      - name: Setup tools
+        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        with:
+          version: 2026.7.13
+          tool_versions: |
+            terraform 1.14.0
+            terragrunt 0.93.8
+            jq 1.7.1
+            python 3.13.11
+
+      - name: Setup Python yq
         run: |
-          set -euo pipefail
-          command -v terragrunt || { echo "terragrunt required on runner"; exit 1; }
-          command -v tofu || command -v terraform || { echo "tofu/terraform required on runner"; exit 1; }
-          command -v yq || pip3 install --user yq
-          command -v jq || { echo "jq required on runner"; exit 1; }
+          python3 -m pip install --user yq==3.4.3
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Validate
         run: ./scripts/validate-infra.sh

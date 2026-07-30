@@ -82,3 +82,13 @@ spec:
             subPath: buddy.yaml
           - path: /config/config.yaml
             subPath: config.yaml
+      mtls-client:
+        type: secret
+        name: gatus-mtls-secret
+        globalMounts:
+          - path: /config/mtls/tls.crt
+            subPath: tls.crt
+            readOnly: true
+          - path: /config/mtls/tls.key
+            subPath: tls.key
+            readOnly: true

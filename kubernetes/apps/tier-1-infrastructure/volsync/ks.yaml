@@ -11,7 +11,9 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: ceph-csi  # Includes snapshot-controller
+    - name: ceph-csi
+      namespace: flux-system
+    - name: snapshot-controller
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
@@ -54,5 +56,4 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: volsync-system
   wait: false

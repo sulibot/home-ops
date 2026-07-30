@@ -14,16 +14,81 @@ spec:
       kopia:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          repository-connect:
+            image:
+              repository: ghcr.io/home-operations/kopia
+              tag: 0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
+            env:
+              HOME: /tmp
+              KOPIA_CACHE_DIRECTORY: /tmp/kopia-cache
+              KOPIA_CHECK_FOR_UPDATES: "false"
+              KOPIA_CONFIG_PATH: /config/repository.config
+              KOPIA_LOG_DIR: /tmp/logs
+              KOPIA_PERSIST_CREDENTIALS_ON_CONNECT: "false"
+            envFrom:
+              - secretRef:
+                  name: kopia-secret
+            command:
+              - /bin/bash
+              - -c
+              - |
+                set -euo pipefail
+
+                if [[ "$${KOPIA_REPOSITORY}" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                  bucket="$${BASH_REMATCH[1]}"
+                  prefix="$${BASH_REMATCH[3]:-}"
+                else
+                  echo "Unsupported Kopia repository URI" >&2
+                  exit 1
+                fi
+
+                endpoint="$${KOPIA_S3_ENDPOINT#https://}"
+                endpoint="$${endpoint#http://}"
+                if [ -n "$${prefix}" ] && [[ "$${prefix}" != */ ]]; then
+                  prefix="$${prefix}/"
+                fi
+
+                connect_args=(
+                  "--bucket=$${bucket}"
+                  "--endpoint=$${endpoint}"
+                  "--region=$${AWS_REGION}"
+                  "--config-file=/config/repository.config"
+                  "--cache-directory=/tmp/kopia-cache"
+                  "--override-hostname=kopia-console.volsync-system.svc.cluster.local"
+                  "--override-username=kopia-console"
+                  "--readonly"
+                )
+                if [ -n "$${prefix}" ]; then
+                  connect_args+=("--prefix=$${prefix}")
+                fi
+
+                kopia repository connect s3 "$${connect_args[@]}"
+                kopia repository status --config-file=/config/repository.config
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
         containers:
           app:
             image:
               repository: ghcr.io/home-operations/kopia
               tag: 0.22.3@sha256:17ab64542280197a5368247deaefadc3e3bbe15714ab666c2455a06824e86efd
             env:
+              HOME: /tmp
+              KOPIA_CACHE_DIRECTORY: /tmp/kopia-cache
               KOPIA_WEB_ENABLED: true
               KOPIA_WEB_PORT: &port 80
               KOPIA_PERSIST_CREDENTIALS_ON_CONNECT: "false"
               KOPIA_CHECK_FOR_UPDATES: "false"
+              KOPIA_CONFIG_PATH: /config/repository.config
+              KOPIA_LOG_DIR: /tmp/logs
               TZ: America/Los_Angeles
             envFrom:
               - secretRef:
@@ -35,15 +100,14 @@ spec:
               - start
               - --config-file=/config/repository.config
               - --insecure
-              - --without-password
+              - --readonly
               - --address=0.0.0.0:80
             probes:
               liveness: &probes
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /
+                  tcpSocket:
                     port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 10
@@ -81,17 +145,11 @@ spec:
     persistence:
       config:
         enabled: true
-        type: persistentVolumeClaim
-        existingClaim: kopia-config
+        type: emptyDir
         globalMounts:
           - path: /config
-      repository:
-        enabled: true
-        type: persistentVolumeClaim
-        existingClaim: kopia
-        globalMounts:
-          - path: /repository
       tmp:
         type: emptyDir
+        sizeLimit: 2Gi
         globalMounts:
           - path: /tmp

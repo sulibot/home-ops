@@ -15,6 +15,46 @@ This document turns the cross-layer observability model into concrete home-ops m
 | SRE executive dashboard | `kubernetes/apps/tier-1-infrastructure/grafana/dashboard/sre-executive-dashboard-configmap.yaml` | First high-signal everyday operating console |
 | SRE incident drill-down dashboard | `kubernetes/apps/tier-1-infrastructure/grafana/dashboard/sre-incident-drilldown-configmap.yaml` | Focused active-incident view for IO, Ceph, alerts, and logs |
 
+## Application Security mTLS
+
+Every mTLS-protected external hostname has three independent signals:
+
+- a certificate-bearing Gatus probe in `apps-external-mtls`;
+- a no-certificate negative-control probe in `security-negative-control` that
+  succeeds only on HTTP `403`; and
+- an internal service probe that identifies origin failures independently of
+  Cloudflare edge enforcement.
+
+`GatusMtlsNegativeControlFailed` is critical because it means an
+unauthenticated request was not rejected as expected. The SRE app-experience
+dashboard includes both mTLS groups.
+
+Client-certificate expiry is not available from Gatus's server-certificate
+metric. The authoritative Apple device set is
+`config/cloudflare-mtls-devices.json`; current certificate status, serial, and
+expiry are stored at
+`kv/automation/cloudflare-mtls/inventory/<device-id>/current`. This inventory
+tree contains no private key, PKCS#12 password, or installation profile; those
+remain under the separately authorized `identities/` tree. The issuance
+workflow publishes the exact installation profile as a 1Password Document
+using a vault-scoped service account whose token is held in OpenBao. The
+1Password copy is the supported human delivery copy, but it must not be treated
+as the certificate inventory or source of truth.
+`.github/workflows/cloudflare-mtls-expiry.yml` audits the OpenBao records daily
+and fails with a device-specific error when an active identity has 30 days or
+less remaining. Missing and revoked identities are reported as warnings. The
+14-day and 7-day thresholds remain escalation points in the runbook; add a
+dedicated certificate exporter before representing these records as Prometheus
+metrics. See the
+[Cloudflare Application Security mTLS runbook](runbooks/cloudflare-application-mtls.md).
+
+The certificate inventory distinguishes manual identities,
+Cloudflare-One-provisioned device identities, and service identities. Manual
+and service identities use the expiry reminders above. Enrolled devices are
+monitored for stale enrollment, missing device identity, and
+revocation/deletion rather than treating their client-installed identity as a
+manually rotated PKCS#12 artifact.
+
 ## New Alert Coverage
 
 The cross-layer storage rule file adds:

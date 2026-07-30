@@ -26,8 +26,12 @@ spec:
           automountServiceAccountToken: false
           restartPolicy: OnFailure
           securityContext:
-            fsGroup: 1000
-            fsGroupChangePolicy: OnRootMismatch
+            # /config also contains root-owned OTBR state. The backup pod has
+            # no Kubernetes token or writable source mount, so root is limited
+            # to reading the complete recovery set.
+            runAsUser: 0
+            runAsGroup: 0
+            runAsNonRoot: false
             seccompProfile:
               type: RuntimeDefault
           containers:
@@ -107,9 +111,9 @@ spec:
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
-                runAsGroup: 1000
-                runAsNonRoot: true
-                runAsUser: 1000
+                runAsGroup: 0
+                runAsNonRoot: false
+                runAsUser: 0
                 capabilities:
                   drop:
                     - ALL

@@ -61,7 +61,7 @@ generate "main" {
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF2
 terraform {
-  backend "local" {}
+  backend "gcs" {}
 
   required_providers {
     proxmox = { source = "bpg/proxmox", version = "${local.lxc_catalog.lxc_defaults.provider_version}" }
@@ -383,6 +383,25 @@ resource "null_resource" "openbao_post_deploy_validation" {
     environment = {
       OPENBAO_DOMAIN = local.openbao_domain
       OPENBAO_NODES  = join(" ", local.openbao_node_ipv4)
+    }
+  }
+}
+
+resource "null_resource" "openbao_backup_sync" {
+  depends_on = [null_resource.openbao_post_deploy_validation]
+
+  triggers = {
+    nodes                  = join(",", local.openbao_node_ipv4)
+    backup_script_sha      = "${filesha256("${get_terragrunt_dir()}/openbao-backup.sh")}"
+    sync_script_sha        = "${filesha256("${get_terragrunt_dir()}/sync-backup-credentials.sh")}"
+    integrations_sha       = "${filesha256("${get_terragrunt_dir()}/configure-integrations.sh")}"
+    snapshot_policy_sha    = "${filesha256("${get_terragrunt_dir()}/policies/openbao-snapshot.hcl")}"
+  }
+
+  provisioner "local-exec" {
+    command = "${get_terragrunt_dir()}/configure-integrations.sh && ${get_terragrunt_dir()}/sync-backup-credentials.sh"
+    environment = {
+      OPENBAO_NODES = join(" ", local.openbao_node_ipv4)
     }
   }
 }

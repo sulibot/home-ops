@@ -305,6 +305,93 @@ upsert_approle_item() {
 upsert_approle_item tofu homeops-tofu
 upsert_approle_item ansible homeops-ansible
 upsert_approle_item sops sops-transit
+upsert_approle_item backup openbao-snapshot
+upsert_approle_item mtls cloudflare-mtls
+
+# GitHub Actions exchanges its job-scoped OIDC token directly for a short-lived
+# OpenBao batch token. The role is deliberately restricted to this repository,
+# its owner, the Terraform plan workflow, the protected environment, and the
+# repository owner's immutable actor ID. Fork PRs cannot satisfy these claims.
+if ! bao_cli auth list -format=json | jq -e 'has("jwt-github/")' >/dev/null; then
+  bao_cli auth enable -path=jwt-github jwt >/dev/null
+fi
+bao_cli write auth/jwt-github/config \
+  oidc_discovery_url=https://token.actions.githubusercontent.com >/dev/null
+bao_cli write auth/jwt-github/role/terraform-plan - <<'EOF' >/dev/null
+{
+  "role_type": "jwt",
+  "user_claim": "repository_id",
+  "bound_audiences": ["https://openbao.sulibot.com"],
+  "bound_claims_type": "glob",
+  "bound_claims": {
+    "repository_id": "912241670",
+    "repository_owner_id": "6082800",
+    "actor_id": "6082800",
+    "event_name": "pull_request",
+    "base_ref": "main",
+    "environment": "terraform-plan",
+    "runner_environment": "self-hosted",
+    "workflow_ref": "sulibot/home-ops/.github/workflows/terraform-plan.yml@refs/pull/*/merge"
+  },
+  "token_policies": ["github-actions-sops"],
+  "token_type": "batch",
+  "token_ttl": "10m",
+  "token_max_ttl": "10m",
+  "token_explicit_max_ttl": "10m"
+}
+EOF
+
+# Manual device certificate lifecycle operations run only from the protected
+# main branch workflow, on the self-hosted runner, and for the repository owner.
+bao_cli write auth/jwt-github/role/cloudflare-mtls-device - <<'EOF' >/dev/null
+{
+  "role_type": "jwt",
+  "user_claim": "repository_id",
+  "bound_audiences": ["https://openbao.sulibot.com"],
+  "bound_claims_type": "glob",
+  "bound_claims": {
+    "repository_id": "912241670",
+    "repository_owner_id": "6082800",
+    "actor_id": "6082800",
+    "event_name": "workflow_dispatch",
+    "ref": "refs/heads/main",
+    "environment": "cloudflare-mtls-issuance",
+    "runner_environment": "self-hosted",
+    "workflow_ref": "sulibot/home-ops/.github/workflows/cloudflare-mtls-device.yml@refs/heads/main"
+  },
+  "token_policies": ["cloudflare-mtls"],
+  "token_type": "batch",
+  "token_ttl": "10m",
+  "token_max_ttl": "10m",
+  "token_explicit_max_ttl": "10m"
+}
+EOF
+
+# The scheduled audit can read device identities and expiry metadata through
+# the same least-privilege policy, but its OIDC role cannot mutate the workflow
+# binding or run from a pull request.
+bao_cli write auth/jwt-github/role/cloudflare-mtls-monitor - <<'EOF' >/dev/null
+{
+  "role_type": "jwt",
+  "user_claim": "repository_id",
+  "bound_audiences": ["https://openbao.sulibot.com"],
+  "bound_claims_type": "glob",
+  "bound_claims": {
+    "repository_id": "912241670",
+    "repository_owner_id": "6082800",
+    "event_name": "schedule",
+    "ref": "refs/heads/main",
+    "environment": "cloudflare-mtls-monitoring",
+    "runner_environment": "self-hosted",
+    "workflow_ref": "sulibot/home-ops/.github/workflows/cloudflare-mtls-expiry.yml@refs/heads/main"
+  },
+  "token_policies": ["cloudflare-mtls-monitor"],
+  "token_type": "batch",
+  "token_ttl": "10m",
+  "token_max_ttl": "10m",
+  "token_explicit_max_ttl": "10m"
+}
+EOF
 
 # Reconcile Kanidm OIDC after its confidential client has been created. The
 # client bootstrap script stores the secret in 1Password as openbao-oidc.

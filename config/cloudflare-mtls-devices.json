@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "devices": [
+    {
+      "id": "sulibot-ganymede",
+      "display_name": "Ganymede (this Mac)",
+      "owner": "sulibot",
+      "device": "ganymede",
+      "platform": "macos"
+    },
+    {
+      "id": "sulibot-secondary-mac",
+      "display_name": "Sulibot secondary Mac",
+      "owner": "sulibot",
+      "device": "secondary-mac",
+      "platform": "macos"
+    },
+    {
+      "id": "sulibot-iphone",
+      "display_name": "Sulibot iPhone",
+      "owner": "sulibot",
+      "device": "iphone",
+      "platform": "ios"
+    },
+    {
+      "id": "sulibot-ipad",
+      "display_name": "Sulibot iPad",
+      "owner": "sulibot",
+      "device": "ipad",
+      "platform": "ipados"
+    },
+    {
+      "id": "ashley-mac",
+      "display_name": "Ashley Mac",
+      "owner": "ashley",
+      "device": "mac",
+      "platform": "macos"
+    },
+    {
+      "id": "ashley-iphone",
+      "display_name": "Ashley iPhone",
+      "owner": "ashley",
+      "device": "iphone",
+      "platform": "ios"
+    }
+  ]
+}

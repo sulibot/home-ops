@@ -76,7 +76,7 @@ locals {
   kube_vip_bgp_anycast = {
     enabled                                = var.kube_vip_bgp_anycast.enabled
     image                                  = var.kube_vip_bgp_anycast.image
-    vip                                    = coalesce(var.kube_vip_bgp_anycast.vip, var.vip_ipv6)
+    vip                                    = var.kube_vip_bgp_anycast.vip != null ? var.kube_vip_bgp_anycast.vip : var.vip_ipv6
     interface                              = var.kube_vip_bgp_anycast.interface
     vip_subnet                             = var.kube_vip_bgp_anycast.vip_subnet
     local_asn                              = coalesce(var.kube_vip_bgp_anycast.local_asn, local.kube_vip_asn_cluster)

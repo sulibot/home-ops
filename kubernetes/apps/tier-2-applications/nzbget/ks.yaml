@@ -28,7 +28,8 @@ spec:
     substitute:
       APP: nzbget
       VOLSYNC_SCHEDULE: "21 * * * *"
-      VOLSYNC_CAPACITY: 3Gi
+      # Snapshot mover PVC must be at least as large as the 10Gi source RBD.
+      VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_SOURCE_PVC: nzbget-config-rbd
       VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc
       VOLSYNC_ACCESSMODES: ReadWriteOnce

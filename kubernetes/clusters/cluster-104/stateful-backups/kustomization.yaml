@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - externalsecret-matter-server.yaml
+  - cronjob-music-assistant.yaml
+  - cronjob-matter-server.yaml
+
+configMapGenerator:
+  - name: cluster104-kopia-backup-script
+    namespace: default
+    files:
+      - backup.sh
+  - name: cluster104-kopia-backup-script
+    namespace: matter-server
+    files:
+      - backup.sh
+
+generatorOptions:
+  disableNameSuffixHash: true

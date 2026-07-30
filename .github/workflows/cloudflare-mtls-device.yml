@@ -1,0 +1,109 @@
+name: Cloudflare mTLS Device
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Certificate lifecycle action
+        required: true
+        type: choice
+        options:
+          - issue
+          - publish
+          - revoke
+      device_id:
+        description: Device from config/cloudflare-mtls-devices.json
+        required: true
+        type: choice
+        options:
+          - sulibot-ganymede
+          - sulibot-secondary-mac
+          - sulibot-iphone
+          - sulibot-ipad
+          - ashley-mac
+          - ashley-iphone
+      validity_days:
+        description: Certificate lifetime in days (issue only)
+        required: true
+        default: "365"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  certificate-lifecycle:
+    name: ${{ inputs.action }} ${{ inputs.device_id }}
+    runs-on: home-ops-runner
+    environment: cloudflare-mtls-issuance
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Install 1Password CLI
+        if: inputs.action != 'revoke'
+        uses: 1password/install-cli-action@1a3160d5e9de1ae0803eaa08a88746f5ae3daa50 # v4
+        with:
+          version: 2.34.0
+
+      - name: Authenticate to OpenBao
+        env:
+          OPENBAO_ADDR: https://openbao.sulibot.com
+          OPENBAO_ROLE: cloudflare-mtls-device
+        run: |
+          set -euo pipefail
+          oidc_response="$(
+            curl --silent --show-error --fail-with-body \
+              --config <(
+                printf 'header = "Authorization: Bearer %s"\n' \
+                  "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+              ) \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fopenbao.sulibot.com"
+          )"
+          oidc_token="$(jq -er '.value' <<<"$oidc_response")"
+          unset oidc_response
+
+          login_payload="$(
+            jq -cn --arg jwt "$oidc_token" --arg role "$OPENBAO_ROLE" \
+              '{jwt:$jwt,role:$role}'
+          )"
+          unset oidc_token
+          login_response="$(
+            printf '%s' "$login_payload" |
+              curl --silent --show-error --fail-with-body \
+                --header 'content-type: application/json' \
+                --request POST \
+                --data-binary @- \
+                "$OPENBAO_ADDR/v1/auth/jwt-github/login"
+          )"
+          unset login_payload
+          openbao_token="$(jq -er '.auth.client_token' <<<"$login_response")"
+          unset login_response
+
+          echo "::add-mask::$openbao_token"
+          echo "VAULT_ADDR=$OPENBAO_ADDR" >> "$GITHUB_ENV"
+          echo "VAULT_TOKEN=$openbao_token" >> "$GITHUB_ENV"
+          unset openbao_token
+
+      - name: Manage device certificate
+        env:
+          ACTION: ${{ inputs.action }}
+          DEVICE_ID: ${{ inputs.device_id }}
+          VALIDITY_DAYS: ${{ inputs.validity_days }}
+        run: |
+          set -euo pipefail
+          script_action="$ACTION"
+          if [[ "$ACTION" == "publish" ]]; then
+            script_action="export"
+          fi
+          args=("$script_action" --device-id "$DEVICE_ID")
+          if [[ "$ACTION" == "issue" ]]; then
+            args+=(--validity-days "$VALIDITY_DAYS")
+          fi
+          if [[ "$ACTION" == "issue" || "$ACTION" == "publish" ]]; then
+            args+=(--onepassword-vault Kubernetes)
+          fi
+          scripts/cloudflare-mtls-device.sh "${args[@]}"

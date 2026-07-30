@@ -6,7 +6,9 @@
 
 | App type | Authentication model | Notes |
 |----------|----------------------|-------|
-| **Apps behind CF Access** | Cloudflare Access with Authentik as OIDC IdP | Cloudflare Access is the edge gate. Authentik is used as the IdP for Cloudflare Access, and apps may still use Authentik (OIDC/proxy) and/or native app auth. |
+| **Browser apps behind Application Security mTLS** | Manually installed Cloudflare-managed client certificate + WAF, followed by app auth | No WARP/VPN or Cloudflare One Client enrollment is required; this is not Enterprise Access mTLS. |
+| **WARP-dependent native/API clients** | WARP private routing or an explicit WARP Access policy | Use when the client cannot present an Application Security certificate. |
+| **Remaining apps behind CF Access** | Cloudflare Access with Authentik as OIDC IdP | Authentik is the IdP for Cloudflare Access; app auth may remain layered behind it. |
 | **Passthrough apps** (Plex, Seerr/Jellyseerr) | App-owned authentication | Cloudflare Access `Bypass` policy is applied intentionally. |
 
 ### Internal Access (LAN via gateway)
@@ -17,7 +19,11 @@
 | **Apps with multiple auth modes** | Google via Authentik · Authentik-native account · native app accounts | Keep all relevant options available when useful for collaboration, app-specific roles, service/API access, or break-glass access. |
 | **Passthrough / minimal apps** | None (LAN trust boundary) | LAN trust is the outer boundary for selected internal-only services. |
 
-**Key principle**: Cloudflare Access is the external enforcement layer. It gates internet traffic before requests reach the cluster. Authentik provides centralized identity for both edge and in-cluster integrations (Google OAuth and Authentik-native credentials). Native app accounts may coexist when operationally useful.
+**Key principle**: the external enforcement layer is selected per client.
+Browser endpoints that support certificate authentication use Application
+Security mTLS. Native/API endpoints that cannot present that certificate remain
+WARP-private. Authentik or app-native authentication remains the application
+identity/session layer behind either network gate.
 
 ---
 
@@ -70,6 +76,7 @@ private routing plus Gateway DNS overrides.
 |----------|-----|------------------|
 | `hass-app.sulibot.com` | Home Assistant Companion App / app auth | `10.104.250.11`, `fd00:104:250::11` |
 | `immich-app.sulibot.com` | Immich mobile app | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
+| `freshrss-app.sulibot.com` | FreshRSS Google Reader/Fever clients | `10.101.250.11`, `fd00:101:250::11` |
 | `vikunja-app.sulibot.com` | Vikunja app/API clients | `10.101.250.11`, `10.101.250.12`, `fd00:101:250::11`, `fd00:101:250::12` |
 
 ### Apps on `gateway-internal` (LAN only)
@@ -127,6 +134,35 @@ LAN-only apps currently routed through `gateway-internal` (`10.101.250.12`):
 ---
 
 ## Cloudflare Access (External)
+
+### Application Security mTLS
+
+Application Security mTLS is the preferred edge gate for approved
+browser-facing endpoints. Cloudflare's managed CA validates a certificate
+installed on the device, and a zone custom-WAF rule blocks requests when
+`cf.tls_client_auth.cert_verified` is false or
+`cf.tls_client_auth.cert_revoked` is true.
+
+It is independent of Enterprise Cloudflare Access mTLS. The only supported
+browser credential is a manually issued Cloudflare-managed identity installed
+through a device-specific configuration profile.
+
+There are two supported external-access mechanisms: the installed certificate
+for browser endpoints and WARP for private `*-app.sulibot.com` endpoints. The
+external WARP Include profile carries only its configured destinations when the
+user connects it; its switch is not locked and auto-connect is disabled. On
+`io` or `iot`, managed-network detection selects the `Home WARP off` profile,
+which uses Cloudflare's Posture-only service mode solely to disable its traffic
+and DNS tunnels. Device-certificate provisioning remains disabled, and this
+location profile is not an authentication option. Users who need both access
+paths install the manual browser identity and enroll Cloudflare One Client for
+private app routing. The certificate lifecycle and per-host migration procedure
+are documented in
+[Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
+
+Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,
+`paperless`, `actual`, and the Home Assistant browser endpoint. Native app/API
+traffic uses paired WARP-private `*-app` endpoints where needed.
 
 ### Architectural Decision: Cloudflare Access uses Authentik as OIDC IdP
 

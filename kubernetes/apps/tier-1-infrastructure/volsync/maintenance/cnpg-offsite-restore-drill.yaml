@@ -1,0 +1,253 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backup-restore-drill
+  labels:
+    app.kubernetes.io/name: backup-restore-drill
+    app.kubernetes.io/component: restore-verification
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-offsite-restore-drill
+  namespace: backup-restore-drill
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cnpg-offsite-restore-drill
+  namespace: backup-restore-drill
+rules:
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["barmancloud.cnpg.io"]
+    resources: ["objectstores"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["delete", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cnpg-offsite-restore-drill
+  namespace: backup-restore-drill
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cnpg-offsite-restore-drill
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-offsite-restore-drill
+    namespace: backup-restore-drill
+---
+# Restores the mirrored Barman repository into a disposable CNPG cluster,
+# executes SQL, records duration, and removes the Cluster/PVC afterward.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cnpg-offsite-restore-drill
+  namespace: backup-restore-drill
+  labels:
+    app.kubernetes.io/name: cnpg-offsite-restore-drill
+    app.kubernetes.io/component: restore-verification
+spec:
+  schedule: "30 8 1 * *"
+  timeZone: America/Los_Angeles
+  # Enabled after the first B2 CNPG restore and SQL verification passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 14400
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: cnpg-offsite-restore-drill
+            app.kubernetes.io/component: restore-verification
+        spec:
+          serviceAccountName: cnpg-offsite-restore-drill
+          restartPolicy: Never
+          automountServiceAccountToken: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: restore
+              image: alpine/k8s:1.34.1@sha256:ec714df3813b5405292860f8a1c55c5727bf8c33c88992f1e981efad8065547f
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: B2_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: cnpg-offsite-restore-s3
+                      key: B2_S3_ENDPOINT
+                - name: B2_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: cnpg-offsite-restore-s3
+                      key: B2_REGION
+                - name: B2_CNPG_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: cnpg-offsite-restore-s3
+                      key: B2_CNPG_BUCKET
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+
+                  cluster=postgres-vectorchord-offsite-drill
+                  objectstore=postgres-vectorchord-offsite-drill
+                  started="$(date -u +%s)"
+
+                  if ! printf '%s' "${B2_S3_ENDPOINT}" |
+                    grep -Eq '^https://[a-zA-Z0-9.-]+$'; then
+                    echo "Invalid B2 endpoint" >&2
+                    exit 1
+                  fi
+                  if ! printf '%s' "${B2_CNPG_BUCKET}" |
+                    grep -Eq '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'; then
+                    echo "Invalid B2 bucket name" >&2
+                    exit 1
+                  fi
+
+                  cleanup() {
+                    kubectl delete cluster "${cluster}" \
+                      --ignore-not-found \
+                      --wait=true \
+                      --timeout=20m || true
+                    kubectl delete pvc \
+                      -l "cnpg.io/cluster=${cluster}" \
+                      --ignore-not-found \
+                      --wait=true \
+                      --timeout=10m || true
+                    kubectl delete objectstore "${objectstore}" \
+                      --ignore-not-found \
+                      --wait=true \
+                      --timeout=5m || true
+                  }
+                  trap cleanup EXIT
+                  cleanup
+
+                  kubectl apply -f - <<EOF
+                  apiVersion: barmancloud.cnpg.io/v1
+                  kind: ObjectStore
+                  metadata:
+                    name: ${objectstore}
+                  spec:
+                    configuration:
+                      endpointURL: "${B2_S3_ENDPOINT}"
+                      destinationPath: "s3://${B2_CNPG_BUCKET}/postgres-vectorchord"
+                      s3Credentials:
+                        accessKeyId:
+                          name: cnpg-offsite-restore-s3
+                          key: B2_CNPG_ACCESS_KEY_ID
+                        secretAccessKey:
+                          name: cnpg-offsite-restore-s3
+                          key: B2_CNPG_APPLICATION_KEY
+                      wal:
+                        compression: gzip
+                        maxParallel: 4
+                      data:
+                        compression: gzip
+                        jobs: 2
+                  ---
+                  apiVersion: postgresql.cnpg.io/v1
+                  kind: Cluster
+                  metadata:
+                    name: ${cluster}
+                  spec:
+                    instances: 1
+                    imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17-0.4.3
+                    bootstrap:
+                      recovery:
+                        # Barman indexes backups by the original server name.
+                        # The disposable Cluster name may differ, but the
+                        # recovery source must match the catalog stored by the
+                        # production postgres-vectorchord cluster.
+                        source: postgres-vectorchord
+                        database: immich
+                        owner: immich
+                    externalClusters:
+                      - name: postgres-vectorchord
+                        plugin:
+                          name: barman-cloud.cloudnative-pg.io
+                          parameters:
+                            barmanObjectName: ${objectstore}
+                            # Override the plugin's default of using the
+                            # disposable Cluster name for the Barman catalog.
+                            serverName: postgres-vectorchord
+                    storage:
+                      size: 60Gi
+                      storageClass: csi-rbd-rbd-vm-sc
+                  EOF
+
+                  kubectl wait \
+                    --for=condition=Ready \
+                    "cluster/${cluster}" \
+                    --timeout=3h
+
+                  primary="$(
+                    kubectl get pods \
+                      -l "cnpg.io/cluster=${cluster},role=primary" \
+                      -o jsonpath='{.items[0].metadata.name}'
+                  )"
+                  if [ -z "${primary}" ]; then
+                    echo "Recovered CNPG primary pod was not found" >&2
+                    exit 1
+                  fi
+
+                  database_count="$(
+                    kubectl exec "${primary}" -c postgres -- \
+                      psql -U postgres -d immich -Atc \
+                      "SELECT count(*) FROM pg_database;"
+                  )"
+                  if [ "${database_count}" -lt 1 ]; then
+                    echo "Recovered database SQL verification failed" >&2
+                    exit 1
+                  fi
+
+                  duration="$(( $(date -u +%s) - started ))"
+                  echo "restore_drill_result=success"
+                  echo "database=immich"
+                  echo "database_count=${database_count}"
+                  echo "duration_seconds=${duration}"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi

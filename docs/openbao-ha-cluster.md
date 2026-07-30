@@ -20,6 +20,17 @@ Clients use `https://openbao.sulibot.com`:
 - IPv4 service VIP: `10.100.240.67/32`
 - IPv6 service VIP: `fd00:100:0:240::67/128`
 
+For browser OIDC, only `idm.sulibot.com` is published through the main
+Cloudflare Tunnel so Kanidm remains reachable during the external identity
+handoff. It bypasses Authentik-backed Cloudflare Access because Kanidm is the
+identity provider for both Authentik and OpenBao; protecting the IdP with its
+own downstream identity chain would create a circular dependency.
+
+`openbao.sulibot.com` remains private and resolves to the leader-gated service
+VIP through split DNS. The tunnel has an explicit `http_status:404` rule for
+that hostname ahead of the wildcard application route, preventing accidental
+publication even when wildcard public DNS resolves the name.
+
 This is a leader-gated BGP floating VIP, not active-active ECMP. Every member
 maintains BGP sessions to its local Proxmox FRR anycast gateway, but a health
 timer enables the service routes only when `/v1/sys/health` identifies that
@@ -268,6 +279,14 @@ bao operator raft snapshot save openbao-$(date -u +%Y%m%dT%H%M%SZ).snap
 
 Encrypt and copy snapshots outside the Proxmox/Ceph failure domain. Periodically
 test a force-restore in an isolated environment.
+
+The deployed `openbao-backup.timer` automates this every six hours on all three
+members. A snapshot-only AppRole identifies the active leader, which saves and
+checksum-validates the Raft archive before uploading it directly to the
+30-day-governance `sulibot-infrastructure-immutable` B2 bucket. Standbys exit
+successfully without writing duplicate snapshots. Kubernetes' monitored
+`minio-selected-offsite-copy` job also fails if no B2 OpenBao snapshot is newer
+than eight hours.
 
 ## Upgrades and configuration changes
 

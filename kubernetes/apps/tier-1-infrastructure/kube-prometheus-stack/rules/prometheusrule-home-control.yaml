@@ -302,16 +302,16 @@ spec:
         - alert: HomeAssistantConfigBackupStale
           expr: |
             (
-              time() - max(kube_job_status_completion_time{
+              time() - kube_cronjob_status_last_successful_time{
                 cluster="cluster-104",
                 namespace="default",
-                job_name=~"home-assistant-config-backup-.*"
-              })
+                cronjob="home-assistant-config-backup"
+              }
             ) > 129600
-            or absent(kube_job_status_completion_time{
+            or absent(kube_cronjob_status_last_successful_time{
               cluster="cluster-104",
               namespace="default",
-              job_name=~"home-assistant-config-backup-.*"
+              cronjob="home-assistant-config-backup"
             })
           for: 2h
           labels:
@@ -323,6 +323,53 @@ spec:
               No successful cluster-104 Home Assistant /config Kopia backup has
               completed in the last 36 hours, or kube-state-metrics has never
               seen one complete. Verify the CronJob and Kopia repository access.
+
+        - alert: HomeControlStateBackupFailed
+          expr: |
+            increase(kube_job_status_failed{
+              cluster="cluster-104",
+              job_name=~"(music-assistant|matter-server)-config-backup-.*"
+            }[24h]) > 0
+          for: 0m
+          labels:
+            severity: warning
+            component: home-control-backup
+          annotations:
+            summary: "{{ $labels.namespace }} state backup job failed"
+            description: |
+              The cluster-104 {{ $labels.namespace }} Kopia backup failed in
+              the last 24 hours. Check the job logs, source PVC, and backup
+              ExternalSecret.
+
+        - alert: HomeControlStateBackupStale
+          expr: |
+            (
+              time() - kube_cronjob_status_last_successful_time{
+                cluster="cluster-104",
+                cronjob=~"(music-assistant|matter-server)-config-backup"
+              }
+            ) > 129600
+            or (
+              kube_cronjob_info{
+                cluster="cluster-104",
+                cronjob=~"(music-assistant|matter-server)-config-backup"
+              }
+              unless on(cluster, namespace, cronjob)
+              kube_cronjob_status_last_successful_time{
+                cluster="cluster-104",
+                cronjob=~"(music-assistant|matter-server)-config-backup"
+              }
+            )
+          for: 2h
+          labels:
+            severity: warning
+            component: home-control-backup
+          annotations:
+            summary: "{{ $labels.namespace }} state backup is stale"
+            description: |
+              The cluster-104 {{ $labels.cronjob }} CronJob has no successful
+              Kopia backup in the last 36 hours. Verify its CronJob, PVC,
+              ExternalSecret, and repository access.
 
         - alert: HomeAssistantConfigDiskUsageHigh
           expr: |

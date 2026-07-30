@@ -1,6 +1,6 @@
 terraform {
   # Terragrunt remote_state requires a backend block in the root module.
-  backend "local" {}
+  backend "gcs" {}
 }
 
 module "operator" {

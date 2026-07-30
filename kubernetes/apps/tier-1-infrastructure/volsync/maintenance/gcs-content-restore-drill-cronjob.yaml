@@ -1,0 +1,201 @@
+---
+# Bounded end-to-end test of GCS Archive access and rclone crypt recovery.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gcs-content-restore-drill
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: gcs-content-restore-drill
+    app.kubernetes.io/component: restore-drill
+spec:
+  schedule: "30 3 1 * *"
+  timeZone: America/Los_Angeles
+  # Enabled after the 2026-07-29 real-content restore gate passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gcs-content-restore-drill
+            app.kubernetes.io/component: restore-drill
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: restore
+              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: GCS_CONTENT_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: GCS_CONTENT_BUCKET
+                - name: GCS_SERVICE_ACCOUNT_JSON
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: GCS_SERVICE_ACCOUNT_JSON
+                - name: CONTENT_CRYPT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: CONTENT_CRYPT_PASSWORD
+                - name: CONTENT_CRYPT_SALT
+                  valueFrom:
+                    secretKeyRef:
+                      name: gcs-content-archive
+                      key: CONTENT_CRYPT_SALT
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+                  umask 077
+
+                  crypt_password="$(rclone obscure "${CONTENT_CRYPT_PASSWORD}")"
+                  crypt_salt="$(rclone obscure "${CONTENT_CRYPT_SALT}")"
+                  config=/tmp/rclone.conf
+                  credentials=/tmp/gcs-service-account.json
+                  printf '%s' "${GCS_SERVICE_ACCOUNT_JSON}" > "${credentials}"
+
+                  printf '%s\n' \
+                    '[gcs]' \
+                    'type = google cloud storage' \
+                    "service_account_file = ${credentials}" \
+                    'bucket_policy_only = true' \
+                    '' \
+                    '[gcs-crypt]' \
+                    'type = crypt' \
+                    "remote = gcs:${GCS_CONTENT_BUCKET}/archive" \
+                    'filename_encryption = standard' \
+                    'directory_name_encryption = true' \
+                    "password = ${crypt_password}" \
+                    "password2 = ${crypt_salt}" \
+                    > "${config}"
+
+                  probe="$(
+                    rclone lsf gcs-crypt:_probes \
+                      --config="${config}" \
+                      --files-only \
+                      --recursive |
+                      sort |
+                      tail -n 1
+                  )"
+                  if [ -z "${probe}" ]; then
+                    echo "No encrypted archive restore probe exists" >&2
+                    exit 1
+                  fi
+
+                  rclone copyto \
+                    "gcs-crypt:_probes/${probe}" \
+                    /tmp/restored-probe.txt \
+                    --config="${config}" \
+                    --log-level=INFO
+
+                  first_line="$(sed -n '1p' /tmp/restored-probe.txt)"
+                  run_line="$(sed -n '2p' /tmp/restored-probe.txt)"
+                  if [ "${first_line}" != "sulibot-gcs-archive-restore-probe" ]; then
+                    echo "Restored probe content did not match" >&2
+                    exit 1
+                  fi
+                  case "${run_line}" in
+                    run=????/??/??/*) ;;
+                    *)
+                      echo "Restored probe run marker is invalid" >&2
+                      exit 1
+                      ;;
+                  esac
+
+                  bytes="$(wc -c < /tmp/restored-probe.txt | tr -d ' ')"
+                  echo "Synthetic probe passed: probe=${probe} bytes=${bytes}"
+
+                  descriptor="$(
+                    rclone lsf gcs-crypt:_restore-samples \
+                      --config="${config}" \
+                      --files-only \
+                      --recursive |
+                      sort |
+                      tail -n 1
+                  )"
+                  if [ -z "${descriptor}" ]; then
+                    echo "No real-content restore descriptor exists" >&2
+                    exit 1
+                  fi
+                  rclone copyto \
+                    "gcs-crypt:_restore-samples/${descriptor}" \
+                    /tmp/restore-sample.txt \
+                    --config="${config}" \
+                    --log-level=INFO
+
+                  sample_line="$(sed -n '1p' /tmp/restore-sample.txt)"
+                  sha_line="$(sed -n '2p' /tmp/restore-sample.txt)"
+                  size_line="$(sed -n '3p' /tmp/restore-sample.txt)"
+                  sample_path="${sample_line#sample=}"
+                  expected_sha256="${sha_line#sha256=}"
+                  expected_bytes="${size_line#bytes=}"
+                  case "${sample_path}" in
+                    immich/library/*) ;;
+                    *)
+                      echo "Real-content sample path is outside Immich library" >&2
+                      exit 1
+                      ;;
+                  esac
+                  case "${sample_path}" in
+                    *"/../"*|../*|*/..)
+                      echo "Real-content sample path contains traversal" >&2
+                      exit 1
+                      ;;
+                  esac
+                  rclone copyto \
+                    "gcs-crypt:${sample_path}" \
+                    /tmp/restored-real-content \
+                    --config="${config}" \
+                    --log-level=INFO
+
+                  actual_sha256="$(sha256sum /tmp/restored-real-content | awk '{print $1}')"
+                  actual_bytes="$(wc -c < /tmp/restored-real-content | tr -d ' ')"
+                  if [ "${actual_sha256}" != "${expected_sha256}" ]; then
+                    echo "Real-content SHA-256 verification failed" >&2
+                    exit 1
+                  fi
+                  if [ "${actual_bytes}" != "${expected_bytes}" ]; then
+                    echo "Real-content byte count verification failed" >&2
+                    exit 1
+                  fi
+                  echo "GCS Archive restore drill passed: real_sample=${sample_path} bytes=${actual_bytes} sha256=${actual_sha256}"
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi

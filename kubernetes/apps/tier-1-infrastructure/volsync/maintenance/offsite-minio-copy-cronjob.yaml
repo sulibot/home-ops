@@ -1,0 +1,192 @@
+---
+# Copies selected logical MinIO repositories to B2. This intentionally operates
+# on S3 objects, never on MinIO's underlying filesystem.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: minio-selected-offsite-copy
+  namespace: volsync-system
+  labels:
+    app.kubernetes.io/name: minio-selected-offsite-copy
+    app.kubernetes.io/component: backup-replication
+spec:
+  schedule: "45 */6 * * *"
+  timeZone: America/Los_Angeles
+  # Enabled after the selected-prefix bootstrap and restore gates passed.
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 14400
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: minio-selected-offsite-copy
+            app.kubernetes.io/component: backup-replication
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1009
+            runAsGroup: 1009
+            fsGroup: 1009
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: copy
+              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MINIO_MIRROR_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: MINIO_MIRROR_ENDPOINT
+                - name: MINIO_MIRROR_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: MINIO_MIRROR_ACCESS_KEY_ID
+                - name: MINIO_MIRROR_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: MINIO_MIRROR_SECRET_ACCESS_KEY
+                - name: B2_S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_S3_ENDPOINT
+                - name: B2_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_REGION
+                - name: B2_CNPG_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_CNPG_BUCKET
+                - name: B2_CNPG_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_CNPG_ACCESS_KEY_ID
+                - name: B2_CNPG_APPLICATION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_CNPG_APPLICATION_KEY
+                - name: B2_INFRA_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_BUCKET
+                - name: B2_INFRA_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_ACCESS_KEY_ID
+                - name: B2_INFRA_APPLICATION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: volsync-offsite-s3
+                      key: B2_INFRA_APPLICATION_KEY
+              command:
+                - /bin/sh
+                - -c
+              args:
+                - |
+                  set -eu
+
+                  export RCLONE_CONFIG_MINIO_TYPE=s3
+                  export RCLONE_CONFIG_MINIO_PROVIDER=Minio
+                  export RCLONE_CONFIG_MINIO_ACCESS_KEY_ID="${MINIO_MIRROR_ACCESS_KEY_ID}"
+                  export RCLONE_CONFIG_MINIO_SECRET_ACCESS_KEY="${MINIO_MIRROR_SECRET_ACCESS_KEY}"
+                  export RCLONE_CONFIG_MINIO_ENDPOINT="${MINIO_MIRROR_ENDPOINT}"
+                  export RCLONE_CONFIG_MINIO_REGION=us-east-1
+
+                  export RCLONE_CONFIG_B2CNPG_TYPE=s3
+                  export RCLONE_CONFIG_B2CNPG_PROVIDER=Other
+                  export RCLONE_CONFIG_B2CNPG_ACCESS_KEY_ID="${B2_CNPG_ACCESS_KEY_ID}"
+                  export RCLONE_CONFIG_B2CNPG_SECRET_ACCESS_KEY="${B2_CNPG_APPLICATION_KEY}"
+                  export RCLONE_CONFIG_B2CNPG_ENDPOINT="${B2_S3_ENDPOINT}"
+                  export RCLONE_CONFIG_B2CNPG_REGION="${B2_REGION}"
+
+                  export RCLONE_CONFIG_B2INFRA_TYPE=s3
+                  export RCLONE_CONFIG_B2INFRA_PROVIDER=Other
+                  export RCLONE_CONFIG_B2INFRA_ACCESS_KEY_ID="${B2_INFRA_ACCESS_KEY_ID}"
+                  export RCLONE_CONFIG_B2INFRA_SECRET_ACCESS_KEY="${B2_INFRA_APPLICATION_KEY}"
+                  export RCLONE_CONFIG_B2INFRA_ENDPOINT="${B2_S3_ENDPOINT}"
+                  export RCLONE_CONFIG_B2INFRA_REGION="${B2_REGION}"
+
+                  common_args="
+                    --checkers=8
+                    --transfers=4
+                    --bwlimit=8Mi
+                    --fast-list
+                    --s3-no-check-bucket
+                    --stats=5m
+                    --stats-one-line
+                    --log-level=INFO
+                  "
+
+                  # copy, rather than sync, preserves objects removed by the
+                  # local 14-day CNPG retention until B2 lifecycle expiry.
+                  # shellcheck disable=SC2086
+                  rclone copy \
+                    minio:cnpg-backups/postgres-vectorchord \
+                    "b2cnpg:${B2_CNPG_BUCKET}/postgres-vectorchord" \
+                    ${common_args}
+
+                  # Terraform state is tiny but critical. B2 bucket versioning
+                  # and Object Lock provide history and deletion protection.
+                  # shellcheck disable=SC2086
+                  rclone copy \
+                    minio:terraform-state/live \
+                    "b2infra:${B2_INFRA_BUCKET}/terraform-state/live" \
+                    ${common_args}
+
+                  # OpenBao writes application-consistent Raft snapshots
+                  # directly from its active member into the same immutable
+                  # bucket. Fail this monitored job if that independent export
+                  # is missing or older than one replication interval.
+                  if ! rclone lsf \
+                    "b2infra:${B2_INFRA_BUCKET}/openbao/raft" \
+                    --files-only \
+                    --max-age=8h \
+                    --s3-no-check-bucket |
+                    grep -q .; then
+                    echo "No OpenBao Raft snapshot newer than eight hours exists in B2" >&2
+                    exit 1
+                  fi
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config
+              emptyDir:
+                sizeLimit: 64Mi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi

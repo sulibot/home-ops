@@ -10,6 +10,8 @@ metadata:
     component: application
     critical: "false"
 spec:
+  components:
+    - ../../../../components/volsync
   dependsOn:
     - name: collabora
       namespace: flux-system
@@ -19,9 +21,23 @@ spec:
       namespace: flux-system
     - name: user-storage
       namespace: flux-system
+    - name: volsync
+      namespace: flux-system
+    - name: volsync-repository-pvc
+      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/opencloud/app
+  postBuild:
+    substitute:
+      APP: opencloud
+      VOLSYNC_SCHEDULE: "51 * * * *"
+      VOLSYNC_CAPACITY: 10Gi
+      VOLSYNC_SOURCE_PVC: opencloud-config
+      VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc
+      VOLSYNC_ACCESSMODES: ReadWriteOnce
+      VOLSYNC_CACHE_SNAPSHOTCLASS: csi-rbd-rbd-vm-sc
+      VOLSYNC_SNAPSHOTCLASS: csi-rbd-rbd-vm-snapclass
   prune: true
   sourceRef:
     kind: GitRepository

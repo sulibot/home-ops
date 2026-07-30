@@ -4,8 +4,18 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./externalsecret.yaml
+  - ./cnpg-offsite-restore-drill.yaml
+  - ./offsite-externalsecret.yaml
+  - ./gcs-content-externalsecret.yaml
+  - ./content-archive-volume.yaml
   - ./kopiamaintenance.yaml
   - ./stuck-restore-detection-cronjob.yaml
   - ./volumeattachment-stuck-cleanup-cronjob.yaml
   - ./backup-verification-cronjob.yaml
+  - ./offsite-kopia-sync-cronjob.yaml
+  - ./offsite-kopia-restore-drill-cronjob.yaml
+  - ./offsite-minio-copy-cronjob.yaml
+  - ./gcs-content-archive-cronjob.yaml
+  - ./gcs-content-restore-drill-cronjob.yaml
+  - ./gcs-terraform-state-offsite-copy-cronjob.yaml
   - ./prometheusrule.yaml

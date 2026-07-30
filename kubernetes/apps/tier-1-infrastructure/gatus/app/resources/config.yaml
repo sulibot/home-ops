@@ -41,15 +41,53 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Immich (external)
-    group: apps-external
+  - name: Immich (external mTLS)
+    group: apps-external-mtls
     url: https://immich.sulibot.com/auth/login
     interval: 1m
     client:
       timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+      tls:
+        certificate-file: /config/mtls/tls.crt
+        private-key-file: /config/mtls/tls.key
     conditions:
       - "[STATUS] >= 200"
-      - "[STATUS] < 500"
+      - "[STATUS] < 400"
+
+  - name: Immich mTLS denial
+    group: security-negative-control
+    url: https://immich.sulibot.com/auth/login
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+    conditions:
+      - "[STATUS] == 403"
+
+  - name: FreshRSS (external mTLS)
+    group: apps-external-mtls
+    url: https://freshrss.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+      tls:
+        certificate-file: /config/mtls/tls.crt
+        private-key-file: /config/mtls/tls.key
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 400"
+
+  - name: FreshRSS mTLS denial
+    group: security-negative-control
+    url: https://freshrss.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+      dns-resolver: tcp://1.1.1.1:53
+    conditions:
+      - "[STATUS] == 403"
 
   - name: Paperless (external)
     group: apps-external
@@ -157,6 +195,26 @@ endpoints:
       timeout: 5s
     conditions:
       - "[STATUS] == 200"
+
+  - name: FreshRSS app endpoint (internal gateway)
+    group: apps-internal
+    url: https://freshrss-app.sulibot.com/
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
+
+  - name: FreshRSS (cluster)
+    group: infra-internal
+    url: http://freshrss.default.svc.cluster.local:8080/
+    interval: 1m
+    client:
+      timeout: 5s
+    conditions:
+      - "[STATUS] >= 200"
+      - "[STATUS] < 500"
 
   - name: Paperless (cluster)
     group: infra-internal
@@ -406,12 +464,25 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: RouterOS API
+  - name: Home WARP-off io TLS beacon
     group: network
-    url: tcp://10.30.0.254:443
+    url: tls://10.30.0.254:443
     interval: 1m
+    client:
+      insecure: true
     conditions:
       - "[CONNECTED] == true"
+      - "[CERTIFICATE_EXPIRATION] > 720h"
+
+  - name: Home WARP-off iot TLS beacon
+    group: network
+    url: tls://10.31.0.254:443
+    interval: 1m
+    client:
+      insecure: true
+    conditions:
+      - "[CONNECTED] == true"
+      - "[CERTIFICATE_EXPIRATION] > 720h"
 
   - name: PVE01 API
     group: pve
