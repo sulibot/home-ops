@@ -149,7 +149,27 @@ identity_uuid="$(new_uuid)"
 profile_uuid="$(new_uuid)"
 p12_file="$work_dir/${identity_slug}.p12"
 
+# OpenSSL 3 changed the PKCS#12 defaults to PBES2/AES. Apple can import those
+# bundles directly into a keychain, but macOS and iOS reject them inside a
+# configuration-profile PKCS#12 payload with an authentication error. Generate
+# the legacy interoperable encoding used by Apple's Security framework. The
+# profile is already a secret-bearing delivery artifact, so its security
+# boundary is encrypted delivery/storage rather than the PKCS#12 wrapper.
+pkcs12_compatibility_args=()
+if openssl pkcs12 -help 2>&1 | grep -q -- '-legacy'; then
+  pkcs12_compatibility_args=(-legacy)
+else
+  # Apple ships LibreSSL on older/current macOS releases; it has no -legacy
+  # switch but supports the equivalent algorithms explicitly.
+  pkcs12_compatibility_args=(
+    -keypbe PBE-SHA1-3DES
+    -certpbe PBE-SHA1-RC2-40
+    -macalg sha1
+  )
+fi
+
 openssl pkcs12 -export \
+  "${pkcs12_compatibility_args[@]}" \
   -in "$certificate_file" \
   -inkey "$private_key_file" \
   -name "$display_name" \

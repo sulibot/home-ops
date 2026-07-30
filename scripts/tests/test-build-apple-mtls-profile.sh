@@ -63,6 +63,45 @@ fi
 [[ "$(stat -f '%Lp' "$macos_profile" 2>/dev/null || stat -c '%a' "$macos_profile")" == "600" ]]
 [[ "$(stat -f '%Lp' "$ios_profile" 2>/dev/null || stat -c '%a' "$ios_profile")" == "600" ]]
 
+# Apple rejects OpenSSL 3's PBES2/AES PKCS#12 defaults when the identity is
+# installed from a configuration profile. Confirm the embedded identity uses
+# the Apple-compatible legacy container algorithms.
+embedded_identity="$(
+  sed -n 's|.*<data>\(.*\)</data>.*|\1|p' "$macos_profile"
+)"
+if base64 --help 2>&1 | grep -q -- '--decode'; then
+  printf '%s' "$embedded_identity" |
+    base64 --decode >"$work_dir/macos-identity.p12"
+else
+  printf '%s' "$embedded_identity" |
+    base64 -D >"$work_dir/macos-identity.p12"
+fi
+unset embedded_identity
+if openssl pkcs12 -help 2>&1 | grep -q -- '-legacy'; then
+  # OpenSSL 3 must load its legacy provider to inspect RC2-encrypted bags.
+  pkcs12_info="$(
+    openssl pkcs12 \
+      -legacy \
+      -in "$work_dir/macos-identity.p12" \
+      -passin "file:$password_file" \
+      -info \
+      -noout 2>&1
+  )"
+else
+  pkcs12_info="$(
+    openssl pkcs12 \
+      -in "$work_dir/macos-identity.p12" \
+      -passin "file:$password_file" \
+      -info \
+      -noout 2>&1
+  )"
+fi
+grep -Eq 'RC2|TripleDES|3-KeyTripleDES' <<<"$pkcs12_info"
+if grep -Eq 'PBES2|AES-' <<<"$pkcs12_info"; then
+  echo "profile unexpectedly uses Apple-incompatible PKCS#12 defaults" >&2
+  exit 1
+fi
+
 if "$builder" \
   --platform macos \
   --owner test \
