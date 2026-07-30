@@ -31,5 +31,11 @@ configMapGenerator:
       - blueprints/freshrss-provider.yaml
       - blueprints/opencloud-provider.yaml
       - blueprints/proxy-providers.yaml
+  - name: authentik-brand-assets
+    files:
+      - frosted-theme.css=assets/frosted-theme.css
+      - frosted-flow.jpg=assets/frosted-flow.jpg
+      - logo.svg=assets/logo.svg
+      - logo-192.png=assets/logo-192.png
 generatorOptions:
   disableNameSuffixHash: true

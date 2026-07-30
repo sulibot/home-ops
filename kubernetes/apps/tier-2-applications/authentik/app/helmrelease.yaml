@@ -64,10 +64,16 @@ spec:
       volumeMounts:
         - name: blueprints-cm-authentik-blueprints
           mountPath: /blueprints/mounted/cm-authentik-blueprints
+        - name: authentik-brand-assets
+          mountPath: /data/media/public/branding
+          readOnly: true
       volumes:
         - name: blueprints-cm-authentik-blueprints
           configMap:
             name: authentik-blueprints
+        - name: authentik-brand-assets
+          configMap:
+            name: authentik-brand-assets
       ingress:
         enabled: false
       metrics:
@@ -76,3 +82,11 @@ spec:
           enabled: true
     worker:
       replicas: 1
+      volumeMounts:
+        - name: authentik-brand-assets
+          mountPath: /data/media/public/branding
+          readOnly: true
+      volumes:
+        - name: authentik-brand-assets
+          configMap:
+            name: authentik-brand-assets

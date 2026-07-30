@@ -357,6 +357,32 @@ Blueprints are maintained in `blueprints/` (rendered into an inline ConfigMap) a
 | `actual-provider.yaml` | OIDC provider for Actual Budget |
 | `cloudflare-access.yaml` | Cloudflare Access OIDC provider (actively used; CF IdP is Authentik) |
 
+### Authentik brand and theme
+
+The `auth.sulibot.com` Brand is managed by
+`blueprints/host-auth-flows.yaml`; do not make lasting Brand or login-screen CSS
+changes in the Admin UI. GitOps will restore the declared configuration.
+
+The Brand uses the
+[`iUnstable0/authentik-frosted-theme`](https://github.com/iUnstable0/authentik-frosted-theme)
+theme pinned at commit `06c32287fefdb4e24ba4e9b0b3adc02d97be59a6`.
+The upstream CSS and background plus the Sulibot logo assets are vendored in
+`app/assets/`, generated into the `authentik-brand-assets` ConfigMap, and
+mounted read-only at `/data/media/public/branding` in the server and worker.
+The blueprint reads the CSS with Authentik's `!File` tag and declares the
+Brand's logo, favicon, flow background, dark theme, dashboard layout, and
+feature flags.
+
+When updating the theme:
+
+1. Pin a reviewed upstream commit rather than tracking `main`.
+2. Replace `frosted-theme.css` and `frosted-flow.jpg`.
+3. Update the commit and SHA-256 checksums in `app/assets/README.md`.
+4. Run a Kustomize build and confirm `authentik-brand-assets` stays below the
+   Kubernetes 1 MiB ConfigMap limit.
+5. Verify the login flow, source buttons, passkey/MFA flow, user library, and
+   mobile layout after deployment.
+
 ### Silent enrollment flow (Google OAuth -> Authentik user)
 
 On a user's first Google login, Authentik runs `source-enrollment-silent`:
