@@ -80,6 +80,7 @@ locals {
   cluster_104_warp_only_apps = merge({
     "music-assistant.sulibot.com" = "Music Assistant"
     "ma.sulibot.com"              = "Music Assistant"
+    "music.sulibot.com"           = "Music Assistant"
     }, {
     for hostname, name in local.cluster_104_mtls_candidates : hostname => name
     if !contains(local.application_mtls_cutover_hostnames, hostname)
@@ -134,6 +135,19 @@ locals {
     "vikunja-app.sulibot.com" = {
       ips        = ["10.101.250.11", "fd00:101:250::11"]
       precedence = 103
+    }
+    # Same cluster-104 gateway-internal destination as hass-app.sulibot.com,
+    # by convention with that entry - NOT independently confirmed live (no
+    # WARP-connected access to cluster-104 at the time this was added). If
+    # Music Assistant's own -app HTTPRoute attaches to a different gateway,
+    # update these two entries together.
+    "music-assistant-app.sulibot.com" = {
+      ips        = ["10.104.250.11", "fd00:104:250::11"]
+      precedence = 104
+    }
+    "music-app.sulibot.com" = {
+      ips        = ["10.104.250.11", "fd00:104:250::11"]
+      precedence = 105
     }
   }
 
