@@ -1,0 +1,4 @@
+# Flux source-controller excludes common media extensions by default. These
+# files are required inputs to the authentik-brand-assets ConfigMap.
+!frosted-flow.jpg
+!logo-192.png

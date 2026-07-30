@@ -17,3 +17,6 @@ The assets are generated into the `authentik-brand-assets` ConfigMap and
 mounted read-only at `/data/media/public/branding` in both the server and
 worker. The Brand blueprint reads the CSS with Authentik's `!File` tag and
 references the images using Authentik media paths.
+
+Flux excludes common image extensions from GitRepository artifacts by default.
+The adjacent `.sourceignore` explicitly includes the required JPG and PNG.
