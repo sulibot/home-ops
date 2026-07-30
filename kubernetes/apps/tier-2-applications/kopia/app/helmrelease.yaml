@@ -35,35 +35,35 @@ spec:
               - |
                 set -euo pipefail
 
-                if [[ "${KOPIA_REPOSITORY}" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
-                  bucket="${BASH_REMATCH[1]}"
-                  prefix="${BASH_REMATCH[3]:-}"
+                if [[ "$${KOPIA_REPOSITORY}" =~ ^s3://([^/]+)(/(.*))?$ ]]; then
+                  bucket="$${BASH_REMATCH[1]}"
+                  prefix="$${BASH_REMATCH[3]:-}"
                 else
                   echo "Unsupported Kopia repository URI" >&2
                   exit 1
                 fi
 
-                endpoint="${KOPIA_S3_ENDPOINT#https://}"
-                endpoint="${endpoint#http://}"
-                if [ -n "${prefix}" ] && [[ "${prefix}" != */ ]]; then
-                  prefix="${prefix}/"
+                endpoint="$${KOPIA_S3_ENDPOINT#https://}"
+                endpoint="$${endpoint#http://}"
+                if [ -n "$${prefix}" ] && [[ "$${prefix}" != */ ]]; then
+                  prefix="$${prefix}/"
                 fi
 
                 connect_args=(
-                  "--bucket=${bucket}"
-                  "--endpoint=${endpoint}"
-                  "--region=${AWS_REGION}"
+                  "--bucket=$${bucket}"
+                  "--endpoint=$${endpoint}"
+                  "--region=$${AWS_REGION}"
                   "--config-file=/config/repository.config"
                   "--cache-directory=/tmp/kopia-cache"
                   "--override-hostname=kopia-console.volsync-system.svc.cluster.local"
                   "--override-username=kopia-console"
                   "--readonly"
                 )
-                if [ -n "${prefix}" ]; then
-                  connect_args+=("--prefix=${prefix}")
+                if [ -n "$${prefix}" ]; then
+                  connect_args+=("--prefix=$${prefix}")
                 fi
 
-                kopia repository connect s3 "${connect_args[@]}"
+                kopia repository connect s3 "$${connect_args[@]}"
                 kopia repository status --config-file=/config/repository.config
             securityContext:
               allowPrivilegeEscalation: false
