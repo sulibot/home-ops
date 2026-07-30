@@ -8,7 +8,7 @@ all times, but it does not justify the cost or operational load of a commercial
 24x7 storage SLA.
 
 Monitoring runs entirely inside the home lab. It does not depend on a laptop,
-VPN session, OpenCloud client, Syncthing client, or a user being logged in.
+VPN session, OpenCloud client, or a user being logged in.
 
 Service owner: Home Ops SRE.
 
@@ -33,8 +33,8 @@ The measured user journey is:
 
 This crosses the client tenant network, Keepalived VIP, NFS-Ganesha, CephFS
 MDS, Ceph OSDs, and the canonical directory. It deliberately does not measure
-web access through OpenCloud or replication through Syncthing; those are
-separate user journeys with separate failure modes.
+web access or synchronization through OpenCloud; that is a separate user
+journey with separate failure modes.
 
 ## Reliability objectives
 

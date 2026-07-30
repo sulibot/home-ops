@@ -78,8 +78,6 @@
       loop:
         - client: opencloud-user-storage
           path: /users
-        - client: syncthing-sulibot
-          path: /users/sulibot/Cloud
       run_once: true
       register: user_storage_kubernetes_ceph_authorize
       changed_when: "'added key' in user_storage_kubernetes_ceph_authorize.stdout"

@@ -2,7 +2,7 @@
 
 Status: personal storage plus organization-owned Common Space
 Owners: SRE / storage / identity
-Last reviewed: 2026-07-29
+Last reviewed: 2026-07-30
 
 ## Purpose
 
@@ -10,7 +10,6 @@ Provide one canonical user file tree that is usable through:
 
 - direct POSIX access from Proxmox VMs and LXCs;
 - OpenCloud web, desktop, and iOS clients;
-- Syncthing full offline replicas;
 - Kubernetes workloads that are explicitly authorized.
 
 Provide a separate organization-owned Common Space for files intended for all
@@ -25,30 +24,23 @@ credentials, sockets, browser profiles, and application databases remain local.
 
 1. CephFS `content` is the canonical online file plane.
 2. The interoperable namespace is `/users/<user>/Cloud`.
-3. OpenCloud and Syncthing state use separate RBD PVCs. Both file-data mounts
-   reuse the exact `user-storage-opencloud` CephFS PVC and are co-scheduled on
-   one node. This is required for OpenCloud's inotify assimilation to observe
-   Syncthing changes in real time.
-4. Syncthing is single-user. `syncthing-sulibot` serves only `sulibot`; each
-   future user receives a separate instance, device graph, config PVC, and
-   CephFS root.
-5. Kanidm is authoritative for infrastructure identities and POSIX
+3. OpenCloud state uses an RBD PVC and mounts the canonical file data through
+   the `user-storage-opencloud` CephFS PVC.
+4. Kanidm is authoritative for infrastructure identities and POSIX
    attributes. Authentik is authoritative for application-facing accounts
    and may contain a broader population.
-6. OpenCloud creates and owns every personal Space root and its extended
+5. OpenCloud creates and owns every personal Space root and its extended
    attributes. Provisioning must never pre-create `/users/<user>/Cloud`.
    Kanidm UID/GID plus POSIX ACLs authorize raw Unix access, but independent
    CephFS/NFS clients do not participate in the real-time inotify domain.
-7. Syncthing replication is availability, not backup. CephFS snapshots and an
-   independent backup target remain required.
-8. OpenCloud application users receive a stable `opencloud_username`. A
+6. OpenCloud application users receive a stable `opencloud_username`. A
    Kanidm-backed `storage_username` is preferred when present; otherwise the
    Authentik username is used without granting any Unix entitlement.
-9. Authentik `opencloud-users` and `opencloud-admins` may use OpenCloud. These
+7. Authentik `opencloud-users` and `opencloud-admins` may use OpenCloud. These
    dedicated groups are mirrored during JIT provisioning and grant access to
    the Common Space. NFS access remains the narrower Kanidm
    `storage_common_rw` POSIX entitlement.
-10. OpenCloud system roles are assigned from Authentik groups:
+8. OpenCloud system roles are assigned from Authentik groups:
     `opencloud-admins` maps to `opencloudAdmin`; other allowed users map to
     `opencloudUser`. An application-admin role does not imply NFS access.
 
@@ -63,13 +55,12 @@ Authentik-local login ─────────────────┘
 CephFS content:/users
    ├── sulibot/Cloud
    │   ├── OpenCloud PosixFS collaborative access
-   │   ├── syncthing-sulibot via the same PVC and Kubernetes node
    │   └── independent CephFS/NFS mounts (startup-scan visibility)
    └── projects/5348ae65-b9b1-406d-b9d4-1f9139933a37
        ├── OpenCloud organization-owned Common Space
        └── NFS-Ganesha /common
 
-Mac ── Syncthing local replica
+Mac ── OpenCloud Desktop local sync
 iPhone ── OpenCloud client/selective offline files
 ```
 
@@ -88,7 +79,7 @@ Authentication source is not an authorization signal. Google-only and
 Authentik-local accounts may use applications allowed by their Authentik
 groups, including OpenCloud-managed personal and Common Space storage. They do
 not receive a numeric Unix identity, CephX key, VM/LXC login, NFS entitlement,
-or Syncthing instance.
+or raw filesystem entitlement.
 
 For an infrastructure user, the immutable Kanidm person UUID is the identity
 join key. Email and username are mutable display/routing attributes and must
@@ -103,13 +94,12 @@ connections to it.
 | Login method | Kanidm, Google, or Authentik-local | Prove control of an account |
 | Filesystem client | CephX | Restrict a machine/pod to `/users/sulibot` |
 | File access | numeric UID/GID and ACL | Read/write authorization |
-| Syncthing | device certificate | Per-device folder replication |
 
 OpenCloud's OIDC subject and Kanidm's numeric POSIX ID are not assumed to be
 the same value. Provisioning resolves the Kanidm UID/GID and applies an ACL to
-the user's directory. OpenCloud and Syncthing run as service UID/GID 1000 and
-receive an explicit ACL. Future automation should record the Kanidm account
-UUID and numeric IDs in a generated, non-secret user-storage inventory.
+the user's directory. OpenCloud runs as service UID/GID 1000 and receives an
+explicit ACL. Future automation should record the Kanidm account UUID and
+numeric IDs in a generated, non-secret user-storage inventory.
 
 Current pilot identity link:
 
@@ -147,8 +137,7 @@ To promote an existing Google-only or Authentik-local user:
 2. Capture its immutable Kanidm UUID and numeric UID/GID.
 3. Explicitly link the existing Authentik account to that Kanidm person.
 4. Add the infrastructure and storage entitlement groups.
-5. Provision the CephFS namespace, ACL, CephX identity, and per-user
-   Syncthing instance.
+5. Provision the CephFS namespace, ACL, and path-scoped CephX identity.
 
 This preserves the application account and its data. Deleting or unlinking a
 Google login must not delete the Kanidm person or user files.
@@ -159,7 +148,6 @@ Google login must not delete the Kanidm person or user files.
 |---|---|
 | `content:/users/sulibot/Cloud` | OpenCloud-owned personal Space; UID/GID `1000:1000` plus canonical-user ACL |
 | `content:/users/projects/5348ae65-b9b1-406d-b9d4-1f9139933a37` | organization-owned Common Space |
-| `syncthing-sulibot-config` RBD PVC | Syncthing certificate, database, configuration |
 | `opencloud-config` RBD PVC | OpenCloud configuration, NATS, indexes, metadata |
 | VM/LXC root on `rbd-vm` | disposable guest OS |
 | `/home/sulibot/Cloud` | guest presentation of canonical files |
@@ -173,13 +161,9 @@ Do not mount the root of `content` into either application.
 |---|---|---|
 | NixOS/Debian VM | kernel CephFS client with path-scoped CephX key | requires homelab/Ceph |
 | NixOS/Debian LXC | PVE CephFS mount bind-mounted as `mp0`; privileged or explicit 1:1 idmap | requires homelab/Ceph |
-| macOS | Syncthing folder, e.g. `~/Cloud` | complete local replica |
 | OpenCloud desktop | OpenCloud sync folder | local selected/full replica |
 | iPhone/iPad | OpenCloud iOS app | on-demand or explicitly offline files |
 | Any OpenCloud user | Space-specific WebDAV URL | online network mount only |
-
-Never point both the OpenCloud desktop client and Syncthing at the same local
-directory. Pick one synchronization engine per local path.
 
 For a VM/LXC path that must be immediately consistent with OpenCloud, mount
 the Space through WebDAV. Native CephFS, NFS, and Proxmox bind mounts remain
@@ -240,7 +224,7 @@ touch /home/sulibot/Cloud/.vm-write-test
 getfattr -d /home/sulibot/Cloud/.vm-write-test
 ```
 
-Delete only the test file after it appears in OpenCloud and Syncthing.
+Delete only the test file after it appears in OpenCloud.
 
 Direct VM clients must have bidirectional Ceph messenger routing to every
 advertised monitor, MDS, and OSD address—not merely ICMP or a successful TCP
@@ -301,32 +285,23 @@ security exception:
 - if privileged LXCs are no longer acceptable, implement and validate a
   narrow 1:1 LXC idmap for every entitled Kanidm UID/GID before switching.
 
-### macOS Syncthing
-
-Install Syncthing, add the device ID shown by `syncthing-sulibot`, and accept
-the `sulibot-cloud` folder into `~/Cloud`. Enable staggered file versioning.
-Use Tailscale-routed/LAN connectivity; the transfer listener is not publicly
-exposed.
-
 ### OpenCloud desktop
 
 Sign in at `https://opencloud.sulibot.com` through Authentik. Select a local
-directory that is not managed by Syncthing. OpenCloud is appropriate when
-selective sync, sharing, or the same experience as iOS matters more than peer
-to-peer replication.
+directory for synchronized files. Select the required Spaces and folders for
+offline use; the server remains the canonical copy.
 
 ### iPhone/iPad
 
 Install the OpenCloud iOS client, connect to
 `https://opencloud.sulibot.com`, and authenticate through Authentik. Use
 **Make available offline** for files required away from the network. iOS
-offline availability is selective and is not a complete Syncthing-style
-replica.
+offline availability is selective.
 
 ## OpenCloud requirements
 
-OpenCloud uses PosixFS collaborative mode because direct mounts and Syncthing
-modify the tree externally. Required settings include:
+OpenCloud uses PosixFS collaborative mode because direct mounts can modify the
+tree externally. Required settings include:
 
 ```text
 STORAGE_USERS_DRIVER=posix
@@ -339,10 +314,9 @@ STORAGE_USERS_POSIX_WATCH_PATH=/srv/user-files
 The OpenCloud `cephfs` watcher type consumes CephFS change notifications from
 Kafka; it is not a direct watcher for a mounted CephFS tree. This stack does
 not run that event pipeline, so it uses `inotifywait`. Inotify is real-time
-only for writers using the same Kubernetes node-staged PVC. Syncthing therefore
-reuses `user-storage-opencloud`, mounts `sulibot/Cloud` with `subPath`, and has
-required pod affinity to OpenCloud. Independent Proxmox, NFS, and CephFS
-clients are assimilated only by a subsequent OpenCloud startup scan.
+only for writers using the same Kubernetes node-staged PVC. Independent
+Proxmox, NFS, and CephFS clients are assimilated only by a subsequent
+OpenCloud startup scan.
 
 Bulk moves between OpenCloud Spaces, symlinks, and mass external deletion are
 not supported operating patterns. Stop writers before bulk maintenance.
@@ -365,12 +339,11 @@ clients.
 
 | Failure | Effect | Recovery |
 |---|---|---|
-| laptop offline | local Syncthing/OpenCloud copies remain usable | reconnect and inspect conflicts |
-| Syncthing down | direct mounts and OpenCloud continue | restore config PVC or re-enroll devices |
-| OpenCloud down | direct mounts and Syncthing continue | restore config PVC; user files remain |
+| laptop offline | locally synchronized OpenCloud files remain usable | reconnect and inspect conflicts |
+| OpenCloud down | direct mounts continue; synchronized client files remain local | restore config PVC; user files remain |
 | Kanidm down | cached Unix identities may work; new auth fails | restore identity quorum |
 | CephFS/MDS unavailable | all online canonical access stops | follow Ceph MDS runbook |
-| concurrent edit | application or Syncthing conflict copy | preserve both and reconcile manually |
+| concurrent edit | OpenCloud conflict copy or last-writer behavior | preserve both and reconcile manually |
 
 ## Provisioning a future user
 
@@ -381,19 +354,15 @@ clients.
    login so OpenCloud creates `/users/<name>/Cloud` and its Space metadata.
 5. Apply the canonical-user access/default ACL without changing the Space
    owner or removing `user.oc.*` attributes.
-6. Deploy `syncthing-<name>` with its own RBD config PVC, the shared OpenCloud
-   file-data PVC, a user-specific `subPath`, and required OpenCloud pod affinity.
-7. Authorize the personal and Common Spaces in OpenCloud.
-8. Validate create, update, rename, and delete propagation from Syncthing and
-   an OpenCloud client before enabling any independent raw mount.
+6. Authorize the personal and Common Spaces in OpenCloud.
+7. Validate create, update, rename, delete, offline, and reconnect behavior
+   with an OpenCloud client before enabling any independent raw mount.
 
 ## SLOs and alerts
 
-- Alert when the Syncthing pod is unavailable for 15 minutes.
-- Alert on out-of-sync items older than one hour while a peer is connected.
 - Alert on CephFS near-full, MDS damage, or failed snapshots.
 - Quarterly restore test for application state and user files.
-- Review CephX caps and Syncthing device membership during user offboarding.
+- Review CephX caps and OpenCloud sessions during user offboarding.
 
 ## Destructive reset
 

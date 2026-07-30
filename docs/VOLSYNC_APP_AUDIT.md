@@ -28,7 +28,7 @@ The verified VolSync set is:
 
 | Namespace | Sources |
 |---|---|
-| `default` | Actual, Atuin, Audiobookshelf, Aurral, Autobrr, Baserow, Bookshelf, Calibre Web Automated, CloudBeaver, Cross-seed, Digarr, FileBrowser, Firefly III, FreshRSS, Grimmory, Immich machine-learning config, Karakeep, LazyLibrarian, Lidarr, MediaSage, Multi Scrobbler, n8n, NZBGet, Ollama, Paperless, Paperless GPT, Plex, Prowlarr, qBittorrent, Qui, Radarr 4K, Seerr, Shelfmark, Slskd, Sonarr 4K, SoulSync, Sportarr, Syncthing, Tautulli, Twenty, Vikunja, Whisparr |
+| `default` | Actual, Atuin, Audiobookshelf, Aurral, Autobrr, Baserow, Bookshelf, Calibre Web Automated, CloudBeaver, Cross-seed, Digarr, FileBrowser, Firefly III, FreshRSS, Grimmory, Immich machine-learning config, Karakeep, LazyLibrarian, Lidarr, MediaSage, Multi Scrobbler, n8n, NZBGet, Ollama, Paperless, Paperless GPT, Plex, Prowlarr, qBittorrent, Qui, Radarr 4K, Seerr, Shelfmark, Slskd, Sonarr 4K, SoulSync, Sportarr, Tautulli, Twenty, Vikunja, Whisparr |
 | `observability` | Gatus, Grafana |
 
 This pull request additionally enables:

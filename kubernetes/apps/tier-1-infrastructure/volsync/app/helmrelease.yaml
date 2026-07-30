@@ -45,7 +45,6 @@ spec:
     restic: *image
     rsync: *image
     rsync-tls: *image
-    syncthing: *image
     manageCRDs: true
     # MutatingAdmissionPolicy mounts kopia PVC for restore (volsync-dst-*)
     # and backup jobs (volsync-src-*) to keep repository mount behavior consistent.
