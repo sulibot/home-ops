@@ -15,8 +15,10 @@ the canonical logo changes.
 
 The assets are generated into the `authentik-brand-assets` ConfigMap and
 mounted read-only at `/data/media/public/branding` in both the server and
-worker. The Brand blueprint reads the CSS with Authentik's `!File` tag and
-references the images using Authentik media paths.
+worker. The Brand blueprint reads the CSS with Authentik's `!File` tag, appends
+the minimal Sulibot identity override with `!Format`, and references the images
+using Authentik media paths. Keep Sulibot-specific changes in the blueprint so
+the vendored upstream stylesheet remains byte-for-byte reproducible.
 
 Flux excludes common image extensions from GitRepository artifacts by default.
 The adjacent `.sourceignore` explicitly includes the required JPG and PNG.

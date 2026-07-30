@@ -86,7 +86,17 @@ entries:
       branding_logo: branding/logo.svg
       branding_favicon: branding/logo-192.png
       branding_default_flow_background: branding/frosted-flow.jpg
-      branding_custom_css: !File /data/media/public/branding/frosted-theme.css
+      branding_custom_css: !Format
+        - |
+          %s
+
+          /* Replace the upstream demo identity without modifying vendored CSS. */
+          :host(ak-flow-executor) .pf-c-login__main-header.pf-c-brand::after,
+          .pf-c-login__main-header.pf-c-brand::after,
+          body:has(#ak-back-home) .pf-c-login__main-header.pf-c-brand::after {
+            content: "sulibot.com" !important;
+          }
+        - !File /data/media/public/branding/frosted-theme.css
       attributes:
         settings:
           theme:
