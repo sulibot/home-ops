@@ -42,9 +42,7 @@ locals {
     advertise_exit_node = true
     # Infra/admin subnets only. Client VLANs (10.30/10.31) and the cluster LB
     # subnets (10.x.250.0/24) are deliberately excluded because application
-    # clients use Cloudflare WARP for those private routes. The managed-network
-    # TLS beacons on 10.3x.0.254 must also remain unreachable over Tailscale so
-    # remote devices cannot falsely detect themselves as at home.
+    # clients use Cloudflare WARP for those private routes.
     advertise_routes = [
       "10.10.0.0/24",           # PVE management
       "10.100.0.0/24",          # tenant-100 service LXCs

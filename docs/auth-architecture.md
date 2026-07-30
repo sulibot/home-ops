@@ -150,14 +150,12 @@ through a device-specific configuration profile.
 There are two supported external-access mechanisms: the installed certificate
 for browser endpoints and WARP for private `*-app.sulibot.com` endpoints. The
 external WARP Include profile carries only its configured destinations when the
-user connects it; its switch is not locked and auto-connect is disabled. On
-`io` or `iot`, managed-network detection selects the `Home WARP off` profile,
-which uses Cloudflare's Posture-only service mode solely to disable its traffic
-and DNS tunnels. Device-certificate provisioning remains disabled, and this
-location profile is not an authentication option. Users who need both access
-paths install the manual browser identity and enroll Cloudflare One Client for
-private app routing. The certificate lifecycle and per-host migration procedure
-are documented in
+user connects it; its switch is not locked and auto-connect is disabled.
+Cloudflare posture-only mode and managed-network profiles are not used. Users
+turn WARP off on trusted home networks and on when remote private-app access is
+needed. Users who need both access paths install the manual browser identity
+and enroll Cloudflare One Client for private app routing. The certificate
+lifecycle and per-host migration procedure are documented in
 [Cloudflare Application Security mTLS](runbooks/cloudflare-application-mtls.md).
 
 Initial candidates are `immich`, `freshrss`, `filebrowser`, `karakeep`,
