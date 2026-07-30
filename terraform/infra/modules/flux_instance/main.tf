@@ -595,17 +595,20 @@ resource "null_resource" "resume_and_cleanup" {
         --type=merge -p '{"spec":{"suspend":false}}'
       echo "✓ flux-system resumed - Flux will adopt preinstalled apps via SSA Replace"
 
-      # Force immediate reconciliation of pre-installed app kustomizations so Flux
-      # adopts them now instead of waiting for the default poll interval (~5m).
-      echo "Triggering immediate reconciliation of pre-installed apps..."
-      FLUX_KUBECONFIG="$KUBECONFIG"
+      # Queue immediate reconciliation of pre-installed app Kustomizations.
+      # Do not synchronously wait for each one: the root is already resumed,
+      # and serial `flux reconcile --with-source` calls can add 5-10 minutes
+      # while repeating a source fetch that the root reconciliation completed.
+      echo "Queueing immediate reconciliation of pre-installed apps..."
+      RECONCILE_REQUEST="$(date +%s)"
       for KS in external-secrets onepassword cert-manager snapshot-controller volsync; do
-        echo "  Reconciling kustomization/$KS..."
-        flux reconcile kustomization $KS -n flux-system \
-          --kubeconfig="$FLUX_KUBECONFIG" \
-          --with-source \
-          --timeout=5m 2>/dev/null || \
-        echo "  ⚠ Could not reconcile $KS (may not exist yet, Flux will pick it up on next poll)"
+        echo "  Queueing kustomization/$KS..."
+        kubectl --kubeconfig="$KUBECONFIG" annotate \
+          kustomization "$KS" \
+          -n flux-system \
+          reconcile.fluxcd.io/requestedAt="$RECONCILE_REQUEST" \
+          --overwrite >/dev/null 2>&1 || \
+          echo "  ⚠ Could not queue $KS (may not exist yet, Flux will pick it up on next poll)"
       done
       echo "✓ Pre-installed apps queued for immediate adoption"
 
