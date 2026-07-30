@@ -464,26 +464,6 @@ endpoints:
       - "[STATUS] >= 200"
       - "[STATUS] < 500"
 
-  - name: Home WARP-off io TLS beacon
-    group: network
-    url: tls://10.30.0.254:443
-    interval: 1m
-    client:
-      insecure: true
-    conditions:
-      - "[CONNECTED] == true"
-      - "[CERTIFICATE_EXPIRATION] > 720h"
-
-  - name: Home WARP-off iot TLS beacon
-    group: network
-    url: tls://10.31.0.254:443
-    interval: 1m
-    client:
-      insecure: true
-    conditions:
-      - "[CONNECTED] == true"
-      - "[CERTIFICATE_EXPIRATION] > 720h"
-
   - name: PVE01 API
     group: pve
     url: tcp://10.10.0.1:8006

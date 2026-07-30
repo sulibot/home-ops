@@ -690,55 +690,11 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
   depends_on = [cloudflare_ruleset.application_mtls]
 }
 
-# ---------------------------------------------------------------------------
-# Managed home networks: automatically disable the VPN tunnel
-# ---------------------------------------------------------------------------
-
-# Cloudflare device profiles have no literal "off" service mode. Posture-only
-# is used strictly as the no-tunnel/no-DNS mode when the client detects io or
-# iot. Automatic Application Security device-certificate provisioning remains
-# disabled above; this profile is not a browser-authentication path.
-resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
-  account_id = local.account_id
-  name       = "Home trusted io"
-  type       = "tls"
-  config = {
-    tls_sockaddr = "10.30.0.254:443"
-    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
-  }
-}
-
-resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_iot" {
-  account_id = local.account_id
-  name       = "Home trusted iot"
-  type       = "tls"
-  config = {
-    tls_sockaddr = "10.31.0.254:443"
-    sha256       = "05241180B43061B852FBC770D0DF69CD8B22A7EDF030AF85A0E148A519DB66CF"
-  }
-}
-
-resource "cloudflare_zero_trust_device_custom_profile" "home_warp_off" {
-  account_id  = local.account_id
-  name        = "Home WARP off"
-  description = "Disable the VPN tunnel and Cloudflare DNS on io or iot; use local DNS and direct LAN routing."
-  precedence  = 10
-
-  service_mode_v2   = { mode = "posture_only" }
-  allow_mode_switch = false
-  switch_locked     = false
-  auto_connect      = 0
-
-  match = trimspace(replace(<<-EOT
-    network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
-    or network == "$${cloudflare_zero_trust_device_managed_networks.home_trusted_iot.name}"
-  EOT
-  , "\n", " "))
-}
-
-# The default profile applies away from io/iot. Split Tunnel Include mode
+# The single WARP profile applies on every network. Split Tunnel Include mode
 # restricts the tunnel to WARP-dependent destinations and private app routes.
-# General browsing and mTLS browser endpoints do not transit WARP.
+# General browsing and mTLS browser endpoints do not transit WARP. The user
+# controls the unlocked switch; Cloudflare has no non-posture managed-network
+# profile that automatically turns the iOS tunnel off.
 resource "cloudflare_zero_trust_device_default_profile" "external" {
   account_id = local.account_id
 
