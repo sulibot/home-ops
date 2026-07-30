@@ -77,6 +77,56 @@ entries:
             # from the narrower Kanidm POSIX storage entitlement.
             "roles": opencloud_roles,
         }
+  - model: authentik_providers_oauth2.scopemapping
+    state: present
+    identifiers:
+      name: OpenCloud profile identity
+    attrs:
+      name: OpenCloud profile identity
+      scope_name: profile
+      description: Standard profile plus OpenCloud identity for native clients
+      expression: |
+        # OpenCloud Desktop 3.x requests only standard scopes. Keep this
+        # provider-specific profile mapping aligned with the storage mapping.
+        storage_links = {
+            "0b75cb54-d109-4876-bf4a-cc90a570134c": {
+                "storage_username": "sulibot",
+                "kanidm_uuid": "1a8cb2c5-a67a-4010-a01b-43db708ec7e5",
+            },
+        }
+        link = storage_links.get(str(request.user.uuid), {})
+        storage_username = (
+            request.user.attributes.get("storage_username", "")
+            or link.get("storage_username", "")
+        )
+        kanidm_uuid = (
+            request.user.attributes.get("kanidm_uuid", "")
+            or link.get("kanidm_uuid", "")
+        )
+        groups = [group.name for group in request.user.groups.all()]
+        opencloud_groups = [
+            group for group in groups
+            if group in {"opencloud-users", "opencloud-admins"}
+        ]
+        opencloud_roles = (
+            ["opencloudAdmin"]
+            if "opencloud-admins" in groups
+            else ["opencloudUser"]
+        )
+        return {
+            # Preserve Authentik's standard profile claims because this mapping
+            # replaces the global default profile mapping for this provider.
+            "name": request.user.name,
+            "given_name": request.user.name,
+            "preferred_username": request.user.username,
+            "nickname": request.user.username,
+            "groups": groups,
+            "opencloud_username": storage_username or request.user.username,
+            "storage_username": storage_username,
+            "kanidm_uuid": kanidm_uuid,
+            "opencloudGroups": opencloud_groups,
+            "roles": opencloud_roles,
+        }
   - model: authentik_policies.policybinding
     state: absent
     identifiers:
@@ -120,7 +170,7 @@ entries:
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
-        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [name, OpenCloud profile identity]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, offline_access]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, storage]]
   - model: authentik_core.application

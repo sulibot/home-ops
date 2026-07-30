@@ -361,6 +361,12 @@ subsequent user lookup fail. Keep the WebFinger client-scope settings and the
 Authentik storage scope mapping aligned when adding or changing native
 clients.
 
+OpenCloud Desktop 3.x does not fully honor the advertised WebFinger scopes.
+The OpenCloud provider therefore uses an application-specific `profile`
+mapping that returns both the standard profile claims and the same
+OpenCloud-specific identity claims. Keep that mapping aligned with `storage`
+until all supported desktop clients reliably request custom scopes.
+
 ## Failure behavior
 
 | Failure | Effect | Recovery |
