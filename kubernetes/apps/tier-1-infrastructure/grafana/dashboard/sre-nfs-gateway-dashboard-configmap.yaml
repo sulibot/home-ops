@@ -1,0 +1,401 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sre-nfs-gateway-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  sre-nfs-gateway.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {
+          "icon": "doc",
+          "targetBlank": true,
+          "title": "NFS gateway runbook",
+          "type": "link",
+          "url": "https://github.com/sulibot/home-ops/blob/main/docs/runbooks/cephfs-nfs-gateway.md"
+        },
+        {
+          "icon": "doc",
+          "targetBlank": true,
+          "title": "Monitoring plan",
+          "type": "link",
+          "url": "https://github.com/sulibot/home-ops/blob/main/docs/nfs-gateway-monitoring-plan.md"
+        }
+      ],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "14-day Availability",
+          "description": "User-facing write/read/delete SLI. Objective: at least 99.5%.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 5, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "homeops:nfs_shared:availability_ratio14d",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "decimals": 3,
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.99},
+                  {"color": "green", "value": 0.995}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          }
+        },
+        {
+          "id": 2,
+          "type": "gauge",
+          "title": "Error Budget Remaining",
+          "description": "Remaining share of the 0.5% error budget over the rolling 14-day window.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 5, "x": 5, "y": 0},
+          "targets": [
+            {
+              "expr": "homeops:nfs_shared:error_budget_remaining_ratio14d",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.25},
+                  {"color": "green", "value": 0.5}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "End-to-End NFS",
+          "description": "Mount plus canonical Kanidm UID 1888405477 write/read/delete from debfs-vm01.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 4, "x": 10, "y": 0},
+          "targets": [
+            {
+              "expr": "homeops:nfs_shared:probe_success",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {"color": "red", "index": 0, "text": "FAILED"},
+                    "1": {"color": "green", "index": 1, "text": "HEALTHY"}
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          }
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Kubernetes TCP Path",
+          "description": "Independent Blackbox connection to 10.200.0.209:2049.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 4, "x": 14, "y": 0},
+          "targets": [
+            {
+              "expr": "max(probe_success{service=\"nfs-gateway-tcp\"}) or vector(0)",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {"color": "red", "index": 0, "text": "DOWN"},
+                    "1": {"color": "green", "index": 1, "text": "UP"}
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          }
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Failovers (24h)",
+          "description": "VIP ownership transitions. A planned failover and failback count as two.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 3, "x": 18, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(changes(homeops_nfs_gateway_vip_owner{family=\"ipv4\"}[24h])) / 2",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}, "overrides": []},
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          }
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Metrics Targets",
+          "description": "nfsgw01, nfsgw02, and debfs-vm01.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 4, "w": 3, "x": 21, "y": 0},
+          "targets": [
+            {
+              "expr": "count(up{service=\"nfs-gateway-observability\"} == 1)",
+              "refId": "A",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 2}, {"color": "green", "value": 3}]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          }
+        },
+        {
+          "id": 7,
+          "type": "state-timeline",
+          "title": "VIP Ownership",
+          "description": "Both address families must stay on the same single gateway.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {
+              "expr": "homeops_nfs_gateway_vip_owner",
+              "legendFormat": "{{gateway}} {{family}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {"color": "dark-gray", "index": 0, "text": "standby"},
+                    "1": {"color": "green", "index": 1, "text": "owner"}
+                  },
+                  "type": "value"
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "alignValue": "left",
+            "mergeValues": true,
+            "rowHeight": 0.8,
+            "showValue": "auto",
+            "tooltip": {"mode": "single", "sort": "none"}
+          }
+        },
+        {
+          "id": 8,
+          "type": "state-timeline",
+          "title": "Gateway Control Plane",
+          "description": "Keepalived runs on both nodes; Ganesha, port 2049, and the export run only on the owner.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {
+              "expr": "homeops_nfs_gateway_keepalived_up",
+              "legendFormat": "{{gateway}} keepalived",
+              "refId": "A"
+            },
+            {
+              "expr": "homeops_nfs_gateway_ganesha_up",
+              "legendFormat": "{{gateway}} ganesha",
+              "refId": "B"
+            },
+            {
+              "expr": "homeops_nfs_gateway_export_ready",
+              "legendFormat": "{{gateway}} export",
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {"color": "dark-gray", "index": 0, "text": "inactive"},
+                    "1": {"color": "green", "index": 1, "text": "active"}
+                  },
+                  "type": "value"
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "alignValue": "left",
+            "mergeValues": true,
+            "rowHeight": 0.65,
+            "showValue": "auto",
+            "tooltip": {"mode": "single", "sort": "none"}
+          }
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "End-to-End Probe Duration",
+          "description": "Mount plus canonical Kanidm UID 1888405477 write/read/delete transaction.",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
+          "targets": [
+            {
+              "expr": "homeops_nfs_client_probe_duration_seconds",
+              "legendFormat": "{{client}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {"drawStyle": "line", "fillOpacity": 8, "lineWidth": 1},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 2}]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {"calcs": ["lastNotNull", "mean", "max"], "displayMode": "table", "placement": "bottom"},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          }
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "Gateway Memory Available",
+          "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
+          "targets": [
+            {
+              "expr": "node_memory_MemAvailable_bytes{service=\"nfs-gateway-observability\",role=\"gateway\"} / node_memory_MemTotal_bytes{service=\"nfs-gateway-observability\",role=\"gateway\"}",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "custom": {"drawStyle": "line", "fillOpacity": 8, "lineWidth": 1}
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {"calcs": ["lastNotNull", "min"], "displayMode": "table", "placement": "bottom"},
+            "tooltip": {"mode": "multi", "sort": "asc"}
+          }
+        }
+      ],
+      "refresh": "15s",
+      "schemaVersion": 39,
+      "tags": ["sre", "storage", "nfs", "cephfs", "proxmox"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timezone": "browser",
+      "title": "SRE / NFS Gateway",
+      "uid": "sre-nfs-gateway",
+      "version": 1
+    }

@@ -23,4 +23,20 @@
       "_netdev"
     ];
   };
+
+  # Organization-owned data is served through the HA NFS gateway so the VM
+  # receives only the user's POSIX group entitlement, not another CephX key.
+  fileSystems."/srv/common" = {
+    device = "10.200.0.209:/common";
+    fsType = "nfs";
+    options = [
+      "noauto"
+      "x-systemd.automount"
+      "x-systemd.idle-timeout=10min"
+      "_netdev"
+      "vers=4.1"
+      "proto=tcp"
+      "hard"
+    ];
+  };
 }

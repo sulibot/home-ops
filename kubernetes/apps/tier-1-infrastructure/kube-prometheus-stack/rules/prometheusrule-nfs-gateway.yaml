@@ -1,0 +1,289 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nfs-gateway-rules
+  namespace: observability
+spec:
+  groups:
+    - name: nfs-gateway.recording
+      interval: 30s
+      rules:
+        # Once the probe has existed, persist a zero when its live series
+        # disappears. The historical guard avoids manufacturing an outage
+        # before the first scrape during a new deployment.
+        - record: homeops:nfs_shared:probe_success
+          expr: |
+            min(
+              homeops_nfs_client_probe_success
+              or
+              (0 * max_over_time(homeops_nfs_client_probe_success[14d]))
+            )
+
+        - record: homeops:nfs_shared:availability_ratio5m
+          expr: avg_over_time(homeops:nfs_shared:probe_success[5m])
+
+        - record: homeops:nfs_shared:availability_ratio30m
+          expr: avg_over_time(homeops:nfs_shared:probe_success[30m])
+
+        - record: homeops:nfs_shared:availability_ratio1h
+          expr: avg_over_time(homeops:nfs_shared:probe_success[1h])
+
+        - record: homeops:nfs_shared:availability_ratio6h
+          expr: avg_over_time(homeops:nfs_shared:probe_success[6h])
+
+        - record: homeops:nfs_shared:availability_ratio14d
+          expr: avg_over_time(homeops:nfs_shared:probe_success[14d])
+
+        - record: homeops:nfs_shared:error_budget_remaining_ratio14d
+          expr: |
+            clamp_max(
+              clamp_min(
+                (
+                  0.005
+                  - (1 - homeops:nfs_shared:availability_ratio14d)
+                ) / 0.005,
+                0
+              ),
+              1
+            )
+
+    - name: nfs-gateway.alerts
+      interval: 30s
+      rules:
+        - alert: NFSSharedEndpointUnavailable
+          expr: homeops:nfs_shared:probe_success == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "The shared NFS endpoint is failing end-to-end IO"
+            description: |
+              The always-on Debian client cannot complete a canonical Kanidm
+              UID 1888405477 write/read/delete transaction through one or both
+              required exports: 10.200.0.209:/shared and
+              10.200.0.209:/common. This is direct user-visible impact; check
+              the VIP owner, Ganesha exports, CephFS, numeric identity, and
+              tenant routing.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSSharedAvailabilityFastBurn
+          expr: |
+            (1 - homeops:nfs_shared:availability_ratio1h > 0.072)
+            and
+            (1 - homeops:nfs_shared:availability_ratio5m > 0.072)
+            and
+            (count_over_time(homeops:nfs_shared:probe_success[1h]) >= 100)
+          for: 1m
+          labels:
+            severity: critical
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+            slo: nfs-shared-availability
+          annotations:
+            summary: "The NFS availability error budget is burning at least 14.4x"
+            description: |
+              Both the five-minute and one-hour error rates exceed 7.2%, which
+              threatens the 99.5% rolling 14-day availability objective.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSSharedAvailabilitySlowBurn
+          expr: |
+            (1 - homeops:nfs_shared:availability_ratio6h > 0.03)
+            and
+            (1 - homeops:nfs_shared:availability_ratio30m > 0.03)
+            and
+            (count_over_time(homeops:nfs_shared:probe_success[6h]) >= 600)
+          for: 5m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+            slo: nfs-shared-availability
+          annotations:
+            summary: "The NFS availability error budget is burning at least 6x"
+            description: |
+              Both the 30-minute and six-hour error rates exceed 3%. Review
+              intermittent failures before they exhaust the service budget.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayUnsafeHAState
+          expr: |
+            (
+              sum(homeops_nfs_gateway_vip_owner{family="ipv4"}) != 1
+            )
+            or
+            (
+              sum(homeops_nfs_gateway_vip_owner{family="ipv6"}) != 1
+            )
+            or
+            (
+              sum(
+                homeops_nfs_gateway_vip_owner{family="ipv4"}
+                * on (gateway)
+                homeops_nfs_gateway_vip_owner{family="ipv6"}
+              ) != 1
+            )
+            or
+            (
+              sum(homeops_nfs_gateway_export_ready) != 2
+            )
+          for: 1m
+          labels:
+            severity: critical
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "The NFS gateways are not in a safe active/passive state"
+            description: |
+              Exactly one gateway must own both VIPs and both required Ganesha
+              exports must be ready on that owner. Zero owners causes an
+              outage; multiple or split owners risk conflicting NFS server
+              state.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayFailoverCapacityLost
+          expr: sum(homeops_nfs_gateway_keepalived_up) < 2
+          for: 5m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "The NFS service has lost automatic failover capacity"
+            description: |
+              Fewer than two Keepalived instances are healthy. The endpoint may
+              still work, but another gateway or host failure will cause an
+              outage.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayCephRouteMissing
+          expr: sum(homeops_nfs_gateway_ceph_route_up) < 2
+          for: 2m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "An NFS gateway is missing its symmetric Ceph route"
+            description: |
+              Both gateways require a route to fc00:20::/64 through their local
+              PVE node. Missing it can make promotion fail even while the
+              standby otherwise looks healthy.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayHealthInhibited
+          expr: homeops_nfs_gateway_inhibited == 1
+          for: 15m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Gateway {{ $labels.gateway }} remains inhibited after a health failure"
+            description: |
+              The inhibition marker prevents this gateway from preempting its
+              peer. Repair the underlying fault, validate the gateway, then
+              deliberately clear the marker.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayMetricsTargetDown
+          expr: count(up{service="nfs-gateway-observability"} == 1) < 3
+          for: 5m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: observability
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Not all NFS gateway monitoring targets are reachable"
+            description: |
+              Prometheus expects node_exporter on nfsgw01, nfsgw02, and
+              debfs-vm01. Check guest state, routing, port 9100, and the
+              nfs-gateway-observability-targets ServiceMonitor.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayMetricsStale
+          expr: time() - homeops_nfs_gateway_metrics_timestamp_seconds > 60
+          for: 2m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: observability
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Gateway metrics are stale on {{ $labels.gateway }}"
+            description: |
+              node_exporter is reachable but the NFS gateway textfile timer has
+              not refreshed its state. Check nfs-gateway-metrics.timer.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSClientProbeStale
+          expr: time() - homeops_nfs_client_probe_timestamp_seconds > 120
+          for: 2m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: observability
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "The end-to-end NFS client probe is stale"
+            description: |
+              debfs-vm01 is exporting old probe data. Check
+              nfs-client-probe.timer and confirm the probe is not blocked in
+              mount or NFS IO.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSClientProbeLatencyHigh
+          expr: homeops_nfs_client_probe_duration_seconds > 2
+          for: 5m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "The NFS synthetic transaction is taking more than two seconds"
+            description: |
+              Sustained mount and IO latency may precede user-visible stalls.
+              Correlate with Ceph slow operations, MDS health, and tenant
+              network loss before changing thresholds.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"
+
+        - alert: NFSGatewayClusterPathDown
+          expr: (max(probe_success{service="nfs-gateway-tcp"}) or vector(0)) == 0
+          for: 2m
+          labels:
+            severity: warning
+            component: nfs-gateway
+            service: network
+            layer: kubernetes
+            owner: sre
+          annotations:
+            summary: "Kubernetes cannot connect to the NFS VIP on TCP/2049"
+            description: |
+              The independent Blackbox probe cannot reach 10.200.0.209:2049.
+              Compare with the Debian client SLI to distinguish a cluster
+              routing problem from a general NFS outage.
+            runbook_url: "docs/runbooks/cephfs-nfs-gateway.md"

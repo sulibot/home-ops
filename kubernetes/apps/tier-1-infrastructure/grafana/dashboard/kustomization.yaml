@@ -11,6 +11,7 @@ resources:
   - ./grafanadashboard-sre-datastore-health.yaml
   - ./grafanadashboard-sre-incident-drilldown.yaml
   - ./grafanadashboard-sre-network-cni.yaml
+  - ./grafanadashboard-sre-nfs-gateway.yaml
   - ./grafanadashboard-sre-pve-hardware.yaml
   - ./grafanadashboard-sre-storage-ceph-pvc.yaml
   - ./grafanadashboard-sre-executive.yaml
@@ -23,6 +24,7 @@ resources:
   - ./sre-datastore-health-dashboard-configmap.yaml
   - ./sre-incident-drilldown-configmap.yaml
   - ./sre-network-cni-dashboard-configmap.yaml
+  - ./sre-nfs-gateway-dashboard-configmap.yaml
   - ./sre-pve-hardware-dashboard-configmap.yaml
   - ./sre-storage-ceph-pvc-dashboard-configmap.yaml
   - ./sre-executive-dashboard-configmap.yaml

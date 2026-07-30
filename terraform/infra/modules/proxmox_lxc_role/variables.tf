@@ -48,6 +48,7 @@ variable "containers" {
     features = optional(object({
       nesting = optional(bool, true)
       keyctl  = optional(bool, true)
+      mount   = optional(list(string), [])
     }), {})
     ipv4_address    = string
     ipv4_gateway    = string
@@ -55,11 +56,11 @@ variable "containers" {
     ipv6_gateway    = string
     ssh_public_keys = optional(list(string), [])
     mount_points = optional(list(object({
-      volume = string
-      size   = optional(string)
-      path   = string
-      backup = optional(bool, false)
-      shared = optional(bool, true)
+      volume    = string
+      size      = optional(string)
+      path      = string
+      backup    = optional(bool, false)
+      shared    = optional(bool, true)
       replicate = optional(bool, false)
     })), [])
   }))

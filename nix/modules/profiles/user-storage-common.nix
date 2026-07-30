@@ -15,7 +15,6 @@
 
   systemd.tmpfiles.rules = [
     "d /home 0755 root root -"
-    "d /home/sulibot 0750 root root -"
-    "d /home/sulibot/Cloud 0750 root root -"
+    "d /home/sulibot 0700 1888405477 1888405477 -"
   ];
 }

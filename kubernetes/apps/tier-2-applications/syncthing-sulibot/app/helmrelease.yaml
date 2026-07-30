@@ -29,6 +29,16 @@ spec:
         runAsNonRoot: true
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+      # OpenCloud's inotify watcher only receives changes made through the
+      # same node-staged CephFS volume. Reuse its PVC and keep both workloads
+      # on one node so Syncthing changes are assimilated in real time.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: opencloud
+              topologyKey: kubernetes.io/hostname
 
     controllers:
       syncthing:
@@ -133,9 +143,10 @@ spec:
         globalMounts:
           - path: /var/syncthing/config
       files:
-        existingClaim: user-storage-sulibot
+        existingClaim: user-storage-opencloud
         globalMounts:
           - path: /var/syncthing/Cloud
+            subPath: sulibot/Cloud
       tmp:
         type: emptyDir
         globalMounts:

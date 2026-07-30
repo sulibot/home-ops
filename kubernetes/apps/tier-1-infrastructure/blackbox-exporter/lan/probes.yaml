@@ -65,3 +65,28 @@ spec:
     - targetLabel: service
       replacement: blackbox-exporter-wan
       action: replace
+---
+# Independent Kubernetes-to-VIP path check. The semantic write/read/delete SLI
+# runs from debfs-lxc01; this probe distinguishes NFS failure from a tenant
+# routing or firewall failure between the cluster and the gateway.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/probe_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: nfs-gateway-tcp
+spec:
+  interval: 15s
+  module: tcp_connect
+  prober:
+    url: blackbox-exporter-lan.observability.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - 10.200.0.209:2049
+  metricRelabelings:
+    - targetLabel: service
+      replacement: nfs-gateway-tcp
+      action: replace
+    - targetLabel: component
+      replacement: nfs-gateway
+      action: replace

@@ -63,14 +63,24 @@ spec:
               PROXY_OIDC_REWRITE_WELLKNOWN: "true"
               PROXY_AUTOPROVISION_ACCOUNTS: "true"
               GRAPH_USERNAME_MATCH: "none"
-              PROXY_USER_OIDC_CLAIM: "storage_username"
-              PROXY_AUTOPROVISION_CLAIM_USERNAME: "storage_username"
+              PROXY_USER_OIDC_CLAIM: "opencloud_username"
+              PROXY_AUTOPROVISION_CLAIM_USERNAME: "opencloud_username"
+              PROXY_AUTOPROVISION_CLAIM_GROUPS: "opencloudGroups"
+              PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
+              PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM: roles
               PROXY_USER_CS3_CLAIM: "username"
               STORAGE_USERS_DRIVER: posix
               STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
               STORAGE_USERS_POSIX_ROOT: /srv/user-files
               STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: '{{ "{{.User.Username | lower}}" }}/Cloud'
+              # Space IDs are immutable even when a Space is renamed. Keeping
+              # the ID in the physical path makes an NFS export stable.
+              STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: 'projects/{{ "{{.SpaceId}}" }}'
               STORAGE_USERS_POSIX_WATCH_FS: "true"
+              # Inotify is real-time only for processes using this same
+              # node-staged PVC. Syncthing therefore reuses this exact claim
+              # and is co-scheduled with OpenCloud. Independent CephFS/NFS
+              # mounts are assimilated only by a subsequent startup scan.
               STORAGE_USERS_POSIX_WATCH_TYPE: inotifywait
               STORAGE_USERS_POSIX_WATCH_PATH: /srv/user-files
               OC_ENABLE_OCM: "false"
@@ -93,6 +103,7 @@ spec:
                     key: OPENCLOUD_OIDC_CLIENT_ID
               WEB_OIDC_SCOPE: "openid profile email storage"
               IDM_CREATE_DEMO_USERS: "false"
+              GRAPH_ASSIGN_DEFAULT_USER_ROLE: "false"
               OC_ADMIN_USER_ID:
                 valueFrom:
                   secretKeyRef:

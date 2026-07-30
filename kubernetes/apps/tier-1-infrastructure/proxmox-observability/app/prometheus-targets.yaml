@@ -88,3 +88,34 @@ subsets:
       - name: metrics
         port: 9100
         protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-gateway-observability-targets
+  labels:
+    app.kubernetes.io/name: nfs-gateway-observability-targets
+spec:
+  ports:
+    - name: metrics
+      port: 9100
+      protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/endpoints.json
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: nfs-gateway-observability-targets
+subsets:
+  - addresses:
+      - ip: 10.200.0.207
+        hostname: nfsgw01
+      - ip: 10.200.0.208
+        hostname: nfsgw02
+      - ip: 10.200.0.205
+        hostname: debfs-vm01
+    ports:
+      - name: metrics
+        port: 9100
+        protocol: TCP

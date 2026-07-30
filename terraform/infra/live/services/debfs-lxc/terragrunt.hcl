@@ -6,11 +6,13 @@ include "root" {
 }
 
 locals {
-  proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
-  catalog       = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
-  guest         = local.catalog.services["debfs-lxc"]
-  credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
-  secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
+  proxmox_infra   = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
+  catalog         = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  guest           = local.catalog.services["debfs-lxc"]
+  common_space_id = "5348ae65-b9b1-406d-b9d4-1f9139933a37"
+  common_path     = "/mnt/pve/content/users/projects/${local.common_space_id}"
+  credentials     = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
+  secrets_file    = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
 }
 
 generate "providers" {
@@ -44,6 +46,21 @@ EOF2
 
 terraform {
   source = "../../../modules/proxmox_lxc_role"
+
+  after_hook "reconcile_bind_mounts" {
+    commands = ["apply"]
+    execute = [
+      "${get_terragrunt_dir()}/../reconcile-lxc-bind-mounts.sh",
+      local.guest.node_name,
+      tostring(local.guest.vm_id),
+      "/mnt/pve/content/users/sulibot/Cloud",
+      "/home/sulibot/Cloud",
+      local.common_path,
+      "/srv/common",
+      "1888405477",
+      "1888405477",
+    ]
+  }
 }
 
 inputs = {
@@ -63,11 +80,11 @@ inputs = {
 
   containers = {
     (local.guest.hostname) = {
-      vm_id           = local.guest.vm_id
-      node_name       = local.guest.node_name
-      hostname        = local.guest.hostname
-      description     = "Debian user-storage validation LXC"
-      tags            = ["debian", "lxc", "user-storage-validation"]
+      vm_id       = local.guest.vm_id
+      node_name   = local.guest.node_name
+      hostname    = local.guest.hostname
+      description = "Debian user-storage validation LXC"
+      tags        = ["debian", "lxc", "user-storage-validation"]
       # See the NixOS LXC note: privileged is the deliberate POSIX-ID
       # compatibility choice for this trusted bind-mount validation guest.
       unprivileged    = false
@@ -82,11 +99,18 @@ inputs = {
       ipv6_address    = local.guest.ipv6_cidr
       ipv6_gateway    = local.guest.network.ipv6_gateway
       ssh_public_keys = [file(pathexpand("~/.ssh/id_ed25519.pub"))]
-      mount_points = [{
-        volume = "/mnt/pve/content/users/sulibot/Cloud"
-        path   = "/home/sulibot/Cloud"
-        backup = false
-      }]
+      mount_points = [
+        {
+          volume = "/mnt/pve/content/users/sulibot/Cloud"
+          path   = "/home/sulibot/Cloud"
+          backup = false
+        },
+        {
+          volume = local.common_path
+          path   = "/srv/common"
+          backup = false
+        },
+      ]
     }
   }
 
@@ -99,7 +123,7 @@ inputs = {
     commands = [
       "apt-get update -qq",
       "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq acl attr",
-      "install -d -m 0750 /home/sulibot /home/sulibot/Cloud",
+      "install -d -o 1888405477 -g 1888405477 -m 0700 /home/sulibot",
     ]
   }
 }

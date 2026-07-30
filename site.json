@@ -186,6 +186,29 @@
       "node": "pve01",
       "size": "micro",
       "hostname": "debfs-lxc01"
+    },
+    "nfs-gateway": {
+      "role": "cephfs-nfs-gateway",
+      "tenant": 200,
+      "size": "micro",
+      "vip": {
+        "ipv4": "10.200.0.209",
+        "ipv6": "fd00:200::209"
+      },
+      "instances": {
+        "nfsgw01": {
+          "suffix": 207,
+          "node": "pve01"
+        },
+        "nfsgw02": {
+          "suffix": 208,
+          "node": "pve02"
+        }
+      },
+      "override": {
+        "memory_mb": 1024,
+        "swap_mb": 0
+      }
     }
   }
 }

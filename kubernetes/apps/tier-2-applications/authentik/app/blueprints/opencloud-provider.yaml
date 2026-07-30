@@ -4,6 +4,30 @@ metadata:
   labels:
     blueprints.goauthentik.io/instantiate: "true"
 entries:
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: opencloud-users
+    attrs:
+      name: opencloud-users
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: opencloud-admins
+    attrs:
+      name: opencloud-admins
+  - model: authentik_policies_expression.expressionpolicy
+    state: present
+    identifiers:
+      name: policy-access-opencloud
+    attrs:
+      name: policy-access-opencloud
+      expression: |
+        user = request.user
+        if not user or user.is_anonymous:
+            return False
+        groups = {group.name for group in user.groups.all()}
+        return bool(groups & {"opencloud-users", "opencloud-admins"})
   - model: authentik_providers_oauth2.scopemapping
     state: present
     identifiers:
@@ -11,11 +35,47 @@ entries:
     attrs:
       name: OpenCloud storage identity
       scope_name: storage
-      description: Stable storage identity for explicitly entitled infrastructure users
+      description: Stable OpenCloud identity with explicit application-to-POSIX links
       expression: |
+        # Join infrastructure identities by the immutable Authentik UUID. The
+        # Kanidm UUID is added to this link after identity reconciliation.
+        storage_links = {
+            "0b75cb54-d109-4876-bf4a-cc90a570134c": {
+                "storage_username": "sulibot",
+                "kanidm_uuid": "1a8cb2c5-a67a-4010-a01b-43db708ec7e5",
+            },
+        }
+        link = storage_links.get(str(request.user.uuid), {})
+        storage_username = (
+            request.user.attributes.get("storage_username", "")
+            or link.get("storage_username", "")
+        )
+        kanidm_uuid = (
+            request.user.attributes.get("kanidm_uuid", "")
+            or link.get("kanidm_uuid", "")
+        )
+        groups = [group.name for group in request.user.groups.all()]
+        opencloud_groups = [
+            group for group in groups
+            if group in {"opencloud-users", "opencloud-admins"}
+        ]
+        opencloud_roles = (
+            ["opencloudAdmin"]
+            if "opencloud-admins" in groups
+            else ["opencloudUser"]
+        )
         return {
-            "storage_username": request.user.attributes.get("storage_username", ""),
-            "kanidm_uuid": request.user.attributes.get("kanidm_uuid", ""),
+            # Keep existing POSIX-backed users stable while giving application-
+            # only users a valid OpenCloud identity that grants no Unix access.
+            "opencloud_username": storage_username or request.user.username,
+            "storage_username": storage_username,
+            "kanidm_uuid": kanidm_uuid,
+            # OpenCloud JIT provisioning mirrors these Authentik memberships so
+            # Spaces can be assigned to groups instead of individual accounts.
+            "opencloudGroups": opencloud_groups,
+            # System-wide OpenCloud roles remain group-driven and independent
+            # from the narrower Kanidm POSIX storage entitlement.
+            "roles": opencloud_roles,
         }
   - model: authentik_policies.policybinding
     state: absent
@@ -74,15 +134,27 @@ entries:
       meta_launch_url: "https://opencloud.sulibot.com"
       policy_engine_mode: any
   - model: authentik_policies.policybinding
-    state: present
+    state: absent
     identifiers:
       policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-infrastructure]]
       target: !Find [authentik_core.application, [slug, opencloud]]
       order: 0
+  - model: authentik_policies.policybinding
+    state: present
+    identifiers:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-opencloud]]
+      target: !Find [authentik_core.application, [slug, opencloud]]
+      order: 0
     attrs:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-infrastructure]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-opencloud]]
       target: !Find [authentik_core.application, [slug, opencloud]]
       order: 0
       enabled: true
       negate: false
       timeout: 30
+  - model: authentik_policies.policybinding
+    state: absent
+    identifiers:
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      target: !Find [authentik_core.application, [slug, opencloud]]
+      order: 0
