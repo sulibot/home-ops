@@ -20,14 +20,16 @@ Clients use `https://openbao.sulibot.com`:
 - IPv4 service VIP: `10.100.240.67/32`
 - IPv6 service VIP: `fd00:100:0:240::67/128`
 
-For external browser OIDC, the main Cloudflare Tunnel publishes both
-`openbao.sulibot.com` and `idm.sulibot.com` as explicit ingress rules ahead of
-the wildcard application route. Both hostnames bypass Cloudflare Access:
-Kanidm remains the native identity provider and OpenBao enforces its own
-Kanidm OIDC roles. Protecting either route with the Authentik-backed Access
-identity provider would create a circular authentication dependency. The
-tunnel targets the cluster VIPs rather than individual members, preserving
-the health and leadership decisions described below.
+For browser OIDC, only `idm.sulibot.com` is published through the main
+Cloudflare Tunnel so Kanidm remains reachable during the external identity
+handoff. It bypasses Authentik-backed Cloudflare Access because Kanidm is the
+identity provider for both Authentik and OpenBao; protecting the IdP with its
+own downstream identity chain would create a circular dependency.
+
+`openbao.sulibot.com` remains private and resolves to the leader-gated service
+VIP through split DNS. The tunnel has an explicit `http_status:404` rule for
+that hostname ahead of the wildcard application route, preventing accidental
+publication even when wildcard public DNS resolves the name.
 
 This is a leader-gated BGP floating VIP, not active-active ECMP. Every member
 maintains BGP sessions to its local Proxmox FRR anycast gateway, but a health

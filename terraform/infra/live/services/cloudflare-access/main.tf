@@ -23,7 +23,6 @@ locals {
   bypass_apps = {
     "auth.sulibot.com"     = "Authentik"
     "idm.sulibot.com"      = "Kanidm"
-    "openbao.sulibot.com"  = "OpenBao"
     "plex.sulibot.com"     = "Plex"
     "seerr.sulibot.com"    = "Seerr"
     "requests.sulibot.com" = "Seerr"
@@ -306,11 +305,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
       },
       {
         hostname = "openbao.sulibot.com"
-        service  = "https://[fd00:100:0:240::67]:443"
-        origin_request = {
-          http2_origin       = true
-          origin_server_name = "openbao.sulibot.com"
-        }
+        service  = "http_status:404"
       },
       {
         hostname = "*.sulibot.com"
