@@ -266,9 +266,12 @@ OpenBao remains the source of truth; the automatically created 1Password
 Document is the supported human delivery/recovery copy.
 
 Then confirm the browser offers or automatically selects the certificate for
-the pilot hostname. A certificate chooser can still appear when multiple
-matching identities are installed; remove the superseded manually installed
-identity before testing the managed profile.
+the pilot hostname. Fully quit and relaunch Chromium-based browsers after
+installing or rotating the profile so they discard any connection and
+client-certificate state created before the identity was available. A
+certificate chooser can still appear when multiple matching identities are
+installed; remove the superseded manually installed identity before testing
+the managed profile.
 
 This manual workflow does not require the Cloudflare One Client and has no
 enrollment step.
@@ -355,7 +358,8 @@ certificate in Cloudflare with the owner and device role.
   `KeyIsExtractable = false`. The local user approves it in **System Settings ->
   General -> Device Management**. Safari and Chromium browsers use Keychain
   identities; the browser may ask which certificate to present when multiple
-  matching identities exist.
+  matching identities exist. Fully quit and relaunch Chromium-based browsers
+  after installing or rotating the profile before testing external access.
 - **iOS/iPadOS:** transfer the password-protected PKCS#12 through an approved
   secure channel as a device-specific `.mobileconfig`, install the downloaded
   profile, then approve it in **Settings -> General -> VPN & Device
