@@ -1,0 +1,46 @@
+---
+# ENG-364: PVE hosts had zero swap configured, so a ceph-mds cache overrun
+# (or any other host memory spike) goes straight to a kernel OOM-kill of a
+# running VM with no graceful degradation path. Deliberately NOT swap-on-ZFS
+# (a zvol, or a swapfile on a ZFS dataset) - ZFS's ARC needs memory to
+# service the swap I/O path itself, a well-documented deadlock risk under
+# exactly the kind of memory pressure this is meant to protect against.
+#
+# pve01/pve02 have a large (1.4TB) Optane device already used for Ceph
+# BlueStore DB LVs (see host_vars optane_disk) with ~1.25TB confirmed
+# unallocated beyond the existing boot/zfs/ceph-db partitions - a raw
+# partition there sidesteps the ZFS risk entirely (low-latency,
+# high-endurance, no filesystem layer). pve03's Optane is a much smaller
+# module that's already fully allocated, so this is deliberately scoped to
+# pve01/pve02 only (see playbook host list) rather than applied uniformly.
+
+- name: Create Optane swap partition
+  parted:
+    device: "{{ optane_disk }}"
+    label: gpt
+    state: present
+    number: 5
+    part_start: 149GiB
+    part_end: 181GiB
+  register: optane_swap_partition
+
+- name: Format Optane swap partition
+  community.general.filesystem:
+    fstype: swap
+    dev: "{{ optane_disk }}-part5"
+
+- name: Get UUID of the swap partition
+  ansible.builtin.command: blkid -s UUID -o value "{{ optane_disk }}-part5"
+  register: optane_swap_uuid
+  changed_when: false
+
+- name: Persist swap entry in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^UUID={{ optane_swap_uuid.stdout }}\s'
+    line: "UUID={{ optane_swap_uuid.stdout }} none swap sw 0 0"
+    state: present
+
+- name: Activate swap
+  ansible.builtin.command: swapon -a
+  changed_when: false
