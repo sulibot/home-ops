@@ -32,6 +32,13 @@ sysctl -q -w net.ipv4.conf.all.rp_filter=0
 sysctl -q -w net.ipv4.conf.vrfbr_evpnz1.rp_filter=0
 sysctl -q -w net.ipv4.conf.vrfvx_evpnz1.rp_filter=0
 
+# ENG-362 follow-up: pve-firewall reloads its own ruleset frequently enough
+# that this guard's own iptables/ip6tables calls can lose the /run/xtables.lock
+# race - confirmed live (a drain-then-readd NAT66 SNAT rule was drained but
+# never re-added because the following -A call hit the lock and set -e
+# aborted the script, silently leaving a tenant subnet with zero egress NAT
+# until the next timer run happened to succeed). All locking calls below use
+# -w to block for the lock instead of failing immediately.
 ensure_single_conntrack_rule() {
   local ipt="$1"        # iptables or ip6tables
   local interface="$2"
@@ -44,16 +51,16 @@ ensure_single_conntrack_rule() {
   # version of this fix - it conflates original/reply direction lookups and
   # won't be recognized by the directional check below, so it would
   # otherwise sit alongside the new rule forever instead of being replaced.
-  while "$ipt" -t raw -C PREROUTING -i "$interface" -j CT --zone 5 2>/dev/null; do
-    "$ipt" -t raw -D PREROUTING -i "$interface" -j CT --zone 5
+  while "$ipt" -w -t raw -C PREROUTING -i "$interface" -j CT --zone 5 2>/dev/null; do
+    "$ipt" -w -t raw -D PREROUTING -i "$interface" -j CT --zone 5
   done
 
   # ENG-360: also drain any earlier UNSCOPED directional rule (no exclusion)
   # left over from before the PVE-mgmt-network corruption was found - it
   # would otherwise coexist with the correctly-scoped rule below and win
   # (whichever is hit first), silently undoing this fix.
-  while "$ipt" -t raw -C PREROUTING -i "$interface" -j CT $direction_flag 5 2>/dev/null; do
-    "$ipt" -t raw -D PREROUTING -i "$interface" -j CT $direction_flag 5
+  while "$ipt" -w -t raw -C PREROUTING -i "$interface" -j CT $direction_flag 5 2>/dev/null; do
+    "$ipt" -w -t raw -D PREROUTING -i "$interface" -j CT $direction_flag 5
   done
 
   rule_count="$(
@@ -65,10 +72,10 @@ ensure_single_conntrack_rule() {
     return
   fi
 
-  while "$ipt" -t raw -C PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5 2>/dev/null; do
-    "$ipt" -t raw -D PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
+  while "$ipt" -w -t raw -C PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5 2>/dev/null; do
+    "$ipt" -w -t raw -D PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
   done
-  "$ipt" -t raw -I PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
+  "$ipt" -w -t raw -I PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
 }
 
 # xvrf_evpnz1 only ever carries original-direction (pre-SNAT, tenant-
@@ -154,9 +161,9 @@ reconcile_nat66_snat() {
       [[ -z "$rule" ]] && break
       # Only one matching line is guaranteed removed per -D call even with
       # duplicates present, so loop until grep finds none left.
-      ip6tables -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
+      ip6tables -w -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
     done
-    ip6tables -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$gua"
+    ip6tables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$gua"
   done <<< "$pairs"
 }
 

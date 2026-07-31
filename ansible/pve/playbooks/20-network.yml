@@ -1,7 +1,34 @@
 ---
+# Rolls out one node at a time by default, gated by a Ceph mon-quorum check
+# between batches - a network role change on one node (even something as
+# narrow as a single template's iptables flags) can trigger a full
+# `ifreload -a`, which is coarse-grained enough to disrupt mon TCP sessions
+# on that node and knock quorum out. Applying to all 3 nodes at once (the
+# previous default) means that happens simultaneously everywhere with
+# nothing to catch it - confirmed live 2026-07-31 (see ENG-362 follow-up:
+# a routine template redeploy cascaded into a real mon quorum outage this
+# way). Serial + a quorum gate contains the blast radius to one node and
+# stops the rollout before it repeats on the next.
+#
+# Override for intentional full-speed/all-at-once runs (e.g. active live
+# debugging where outage is acceptable and the gate would just slow things
+# down):
+#   ansible-playbook playbooks/20-network.yml -e network_rollout_serial=100% -e network_rollout_health_gate=false
 - name: Configure network interfaces
   hosts: pve
   become: true
+  serial: "{{ network_rollout_serial | default(1) }}"
 
   roles:
     - interfaces
+
+  post_tasks:
+    - name: Wait for Ceph mon quorum to include all nodes before continuing rollout
+      ansible.builtin.command: ceph quorum_status --format json
+      register: ceph_quorum_status
+      changed_when: false
+      until: (ceph_quorum_status.stdout | from_json).quorum_names | length == groups['pve'] | length
+      retries: 30
+      delay: 5
+      run_once: true
+      when: network_rollout_health_gate | default(true) | bool

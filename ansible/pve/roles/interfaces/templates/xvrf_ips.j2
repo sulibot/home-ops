@@ -40,16 +40,16 @@ iface xvrf_evpnz1 inet6 static
     # The reply direction is tagged separately at xvrfp_evpnz1 (see that
     # stanza below). See docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md and
     # Linear ENG-322/324/359.
-    post-up iptables -t raw -C PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 2>/dev/null || iptables -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
-    post-down iptables -t raw -D PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
+    post-up iptables -w -t raw -C PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 2>/dev/null || iptables -w -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
+    post-down iptables -w -t raw -D PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
     # ENG-359: `iptables` and `ip6tables` are entirely separate rulesets -
     # the rule above (added under ENG-322 for an IPv4 TLS/DNS bug) never
     # applied to IPv6 traffic at all. This tenant fabric is IPv6-primary
     # (NAT66 for tenant ULA->GUA egress), so the IPv6 equivalent is what
     # actually matters for ENG-359's conntrack corruption - add it
     # explicitly rather than assuming the v4 rule covered both.
-    post-up ip6tables -t raw -C PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 2>/dev/null || ip6tables -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
-    post-down ip6tables -t raw -D PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
+    post-up ip6tables -w -t raw -C PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 2>/dev/null || ip6tables -w -t raw -I PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
+    post-down ip6tables -w -t raw -D PREROUTING -i xvrf_evpnz1 -j CT --zone-orig 5 || true
 
 # VRF side (vrf_evpnz1)
 auto xvrfp_evpnz1
@@ -69,9 +69,9 @@ iface xvrfp_evpnz1 inet6 static
     # used for --zone-orig on the other end, so the two directions of one
     # logical connection share a single coherent zone-5 view without
     # colliding on a flat, non-directional assignment.
-    post-up iptables -t raw -C PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 2>/dev/null || iptables -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
-    post-down iptables -t raw -D PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
+    post-up iptables -w -t raw -C PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 2>/dev/null || iptables -w -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
+    post-down iptables -w -t raw -D PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
     # ENG-359: IPv6 equivalent - see xvrf_evpnz1 stanza above for why this
     # is needed as its own rule, separate from the iptables (v4) one.
-    post-up ip6tables -t raw -C PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 2>/dev/null || ip6tables -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
-    post-down ip6tables -t raw -D PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
+    post-up ip6tables -w -t raw -C PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 2>/dev/null || ip6tables -w -t raw -I PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
+    post-down ip6tables -w -t raw -D PREROUTING -i xvrfp_evpnz1 -j CT --zone-reply 5 || true
