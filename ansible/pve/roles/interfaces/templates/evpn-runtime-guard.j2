@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# Reconcile runtime settings that Proxmox SDN may overwrite or create after
+# sysctl.d and interface post-up hooks have already run.
+set -euo pipefail
+
+fabric_interfaces=(
+  vrfbr_evpnz1
+  vrfvx_evpnz1
+  xvrf_evpnz1
+  xvrfp_evpnz1
+)
+
+for attempt in $(seq 1 60); do
+  missing=false
+  for interface in "${fabric_interfaces[@]}"; do
+    if [[ ! -d "/sys/class/net/$interface" ]]; then
+      missing=true
+      break
+    fi
+  done
+  if [[ "$missing" == "false" ]]; then
+    break
+  fi
+  if [[ "$attempt" == "60" ]]; then
+    echo "EVPN runtime interfaces did not appear within 60 seconds" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+sysctl -q -w net.ipv4.conf.all.rp_filter=0
+sysctl -q -w net.ipv4.conf.vrfbr_evpnz1.rp_filter=0
+sysctl -q -w net.ipv4.conf.vrfvx_evpnz1.rp_filter=0
+
+ensure_single_conntrack_rule() {
+  local ipt="$1"        # iptables or ip6tables
+  local interface="$2"
+  local direction_flag="$3" # --zone-orig or --zone-reply
+  local match_flag="$4"    # -d or -s
+  local exclude_subnet="$5" # e.g. 10.10.0.0/24 or fd00:10::/64
+  local rule_count
+
+  # Drain any leftover flat `--zone 5` rule from the earlier (non-directional)
+  # version of this fix - it conflates original/reply direction lookups and
+  # won't be recognized by the directional check below, so it would
+  # otherwise sit alongside the new rule forever instead of being replaced.
+  while "$ipt" -t raw -C PREROUTING -i "$interface" -j CT --zone 5 2>/dev/null; do
+    "$ipt" -t raw -D PREROUTING -i "$interface" -j CT --zone 5
+  done
+
+  # ENG-360: also drain any earlier UNSCOPED directional rule (no exclusion)
+  # left over from before the PVE-mgmt-network corruption was found - it
+  # would otherwise coexist with the correctly-scoped rule below and win
+  # (whichever is hit first), silently undoing this fix.
+  while "$ipt" -t raw -C PREROUTING -i "$interface" -j CT $direction_flag 5 2>/dev/null; do
+    "$ipt" -t raw -D PREROUTING -i "$interface" -j CT $direction_flag 5
+  done
+
+  rule_count="$(
+    { "$ipt"-save -t raw |
+      grep -F -- "-A PREROUTING -i $interface $match_flag $exclude_subnet -j CT $direction_flag 5" || true; } |
+      wc -l
+  )"
+  if [[ "$rule_count" == "1" ]]; then
+    return
+  fi
+
+  while "$ipt" -t raw -C PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5 2>/dev/null; do
+    "$ipt" -t raw -D PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
+  done
+  "$ipt" -t raw -I PREROUTING -i "$interface" ! $match_flag "$exclude_subnet" -j CT $direction_flag 5
+}
+
+# xvrf_evpnz1 only ever carries original-direction (pre-SNAT, tenant-
+# initiated request) traffic; xvrfp_evpnz1 only ever carries reply-direction
+# (post-un-NAT response) traffic. See xvrf_ips.j2 for the full explanation
+# of why a flat, non-directional --zone 5 on both ends wasn't sufficient.
+# ENG-359: iptables (v4) and ip6tables (v6) are separate rulesets - the
+# original ENG-322 fix only ever covered v4. This fabric is IPv6-primary,
+# so both need reconciling here.
+#
+# ENG-360: this same crossing also carries plain (non-NAT'd) traffic once
+# the PVE-mgmt-network routes were added - e.g. a cluster node reaching
+# another PVE host's mgmt IP for monitoring/API access. Blanket-tagging
+# ALL traffic through this interface as zone 5 corrupted conntrack for
+# those flows (confirmed live: duplicate conntrack entries with the wrong
+# reply destination, causing real TTL-exceeded-style unreachability for
+# the PVE mgmt network). Exclude the mgmt subnet explicitly - it never
+# needs NAT66 zone isolation since nothing on it gets SNAT'd.
+ensure_single_conntrack_rule iptables xvrf_evpnz1 --zone-orig -d 10.10.0.0/24
+ensure_single_conntrack_rule iptables xvrfp_evpnz1 --zone-reply -s 10.10.0.0/24
+ensure_single_conntrack_rule ip6tables xvrf_evpnz1 --zone-orig -d fd00:10::/64
+ensure_single_conntrack_rule ip6tables xvrfp_evpnz1 --zone-reply -s fd00:10::/64
+
+# Proxmox SDN's own generated /etc/network/interfaces.d/sdn hardcodes each
+# tenant vnet's IPv6 SNAT target to this node's ULA gateway address on its
+# exit interface (fd00:10::N) - there is no GUA subnet attached to any vnet
+# for Proxmox's SDN model to know about (see 0-sdn-setup/terragrunt.hcl,
+# delegated_prefixes = {}), so its native snat=1 mechanism has nothing
+# routable to translate to. A ULA-to-ULA rewrite is not internet-routable,
+# so tenant IPv6 egress silently dies past this node's own gateway.
+#
+# Rather than hardcoding the tenant subnet list and exit interface here
+# (which would drift the moment a vnet is added/removed - see
+# common/sdn-vnets.hcl's tenant_ids list), derive both directly from
+# Proxmox's own generated config: it's the actual source of truth for
+# which (subnet, exit interface) pairs should be NAT66'd. For each pair,
+# drain whatever SNAT rule(s) currently exist (Proxmox's wrong-target one,
+# or duplicates accumulated from repeated SDN reloads) and replace with
+# exactly one rule targeting that interface's own live GUA.
+get_node_gua() {
+  local iface="$1"
+  ip -6 addr show "$iface" scope global 2>/dev/null |
+    awk '/inet6/ && $2 !~ /^fd00:/ {print $2}' |
+    cut -d/ -f1 |
+    head -1
+}
+
+reconcile_nat66_snat() {
+  local pair src iface gua rule
+
+  # Extract every unique (source subnet, exit interface) pair Proxmox's own
+  # generated config declares an IPv6 SNAT rule for, regardless of what
+  # target address it currently hardcodes.
+  local sdn_file="/etc/network/interfaces.d/sdn"
+  local matching_lines srcs ifaces pairs
+  matching_lines="$(
+    grep -E "ip6tables -t nat -A POSTROUTING -s '[^']+' -o [^ ]+ -j SNAT" \
+      "$sdn_file" 2>/dev/null || true
+  )"
+  if [[ -z "$matching_lines" ]]; then
+    return 0
+  fi
+  srcs="$(echo "$matching_lines" | grep -oP "(?<=-s ')[^']+")"
+  ifaces="$(echo "$matching_lines" | grep -oP "(?<=-o )\S+(?= -j SNAT)")"
+  pairs="$(paste -d' ' <(echo "$srcs") <(echo "$ifaces") | sort -u)"
+  if [[ -z "$pairs" ]]; then
+    return 0
+  fi
+
+  while read -r src iface; do
+    [[ -z "$src" || -z "$iface" ]] && continue
+    gua="$(get_node_gua "$iface")"
+    if [[ -z "$gua" ]]; then
+      echo "evpn-runtime-guard: no GUA on $iface yet, skipping NAT66 reconcile for $src" >&2
+      continue
+    fi
+
+    while true; do
+      rule="$(
+        ip6tables-save -t nat |
+          grep -F -- "-A POSTROUTING -s $src -o $iface -j SNAT" || true
+      )"
+      [[ -z "$rule" ]] && break
+      # Only one matching line is guaranteed removed per -D call even with
+      # duplicates present, so loop until grep finds none left.
+      ip6tables -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
+    done
+    ip6tables -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$gua"
+  done <<< "$pairs"
+}
+
+reconcile_nat66_snat
+
+# ENG-360: external IPv4 traffic destined for a tenant host that happens to
+# be co-located on THIS node has no working path at all. The mechanism that
+# should provide it - `redistribute connected` inside the vrf_evpnz1 BGP
+# instance, leaked into the default VRF via `import vrf` + RM_VRF_TO_GLOBAL -
+# hits a real, currently-open upstream FRR bug: the leaked route installs
+# with `dev lo` as its nexthop, and routing via `lo` does not correctly
+# reinject the packet back into the stack for a second FIB lookup the way a
+# real VRF/veth device does, so the packet loops between this node and the
+# upstream router until its TTL expires. See
+# https://github.com/FRRouting/frr/issues/15909 - confirmed same symptom
+# (TTL-exceeded loop from a same-host connected-route leak between VRFs).
+#
+# Documented workaround from that thread: add the route in the kernel's
+# `local` table pointing at a real device instead of relying on FRR/zebra's
+# (buggy) install. `xvrf_evpnz1` is already the working, tested crossing
+# point (this session's own conntrack-zone fix runs the same veth pair) -
+# reuse it. Derive the tenant subnet list the same way as the NAT66 fix
+# above (from Proxmox's own generated config) rather than hardcoding it, so
+# this doesn't drift when a vnet is added/removed.
+reconcile_same_node_ingress_routes() {
+  local sdn_file="/etc/network/interfaces.d/sdn"
+  local subnets subnet
+
+  subnets="$(
+    grep -oP "(?<=^\tpost-up iptables -t nat -A POSTROUTING -s ')[^']+" \
+      "$sdn_file" 2>/dev/null | sort -u || true
+  )"
+  if [[ -z "$subnets" ]]; then
+    return 0
+  fi
+
+  while read -r subnet; do
+    [[ -z "$subnet" ]] && continue
+    if ip route show table local | grep -qF -- "$subnet dev xvrf_evpnz1"; then
+      continue
+    fi
+    ip route replace "$subnet" dev xvrf_evpnz1 table local
+  done <<< "$subnets"
+}
+
+reconcile_same_node_ingress_routes
+
+# ENG-360 (reverse direction): the same FRR dev-lo route-leak bug also
+# breaks the opposite crossing - a tenant workload (e.g. a Tailscale subnet
+# router LXC) trying to reach the PVE management network (10.10.0.0/24,
+# default VRF) when the subnet-router happens to be co-located on the same
+# node it's trying to reach. Confirmed live: a client connected via
+# tailscale, routed through a subnet-router node, could reach every other
+# PVE node's mgmt IP except the one hosting that particular subnet router.
+# Same fix, opposite side of the veth: add the route inside vrf_evpnz1's
+# own table (a VRF-lite table has no separate local/main split, unlike the
+# default VRF, so no `table local` here) pointing at xvrfp_evpnz1.
+reconcile_same_node_egress_routes() {
+  local pve_mgmt_subnet="10.10.0.0/24"
+
+  if ip route show vrf vrf_evpnz1 "$pve_mgmt_subnet" 2>/dev/null | grep -q .; then
+    return 0
+  fi
+  ip route replace "$pve_mgmt_subnet" dev xvrfp_evpnz1 vrf vrf_evpnz1
+}
+
+reconcile_same_node_egress_routes

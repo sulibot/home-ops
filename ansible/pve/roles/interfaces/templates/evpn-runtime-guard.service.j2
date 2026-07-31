@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile Proxmox EVPN runtime forwarding invariants
+After=network-online.target pve-cluster.service
+Wants=network-online.target
+Before=pve-guests.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/evpn-runtime-guard
+
+[Install]
+WantedBy=multi-user.target

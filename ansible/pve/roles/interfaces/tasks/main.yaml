@@ -149,3 +149,69 @@
     done
   changed_when: false
   when: inventory_hostname in ['pve01','pve02','pve03']
+
+# The SDN interfaces and xvrf pair are created asynchronously during boot.
+# Their interface post-up/udev hooks can race Proxmox's own sysctl writes, and
+# pve-guests may otherwise start before the EVPN forwarding invariants exist.
+- name: Deploy EVPN runtime guard
+  ansible.builtin.template:
+    src: evpn-runtime-guard.j2
+    dest: /usr/local/sbin/evpn-runtime-guard
+    mode: '0755'
+  when: inventory_hostname in ['pve01','pve02','pve03']
+  tags: [evpn_runtime_guard]
+
+- name: Deploy EVPN runtime guard service
+  ansible.builtin.template:
+    src: evpn-runtime-guard.service.j2
+    dest: /etc/systemd/system/evpn-runtime-guard.service
+    mode: '0644'
+  register: evpn_runtime_guard_service
+  when: inventory_hostname in ['pve01','pve02','pve03']
+  tags: [evpn_runtime_guard]
+
+- name: Deploy EVPN runtime guard timer
+  ansible.builtin.template:
+    src: evpn-runtime-guard.timer.j2
+    dest: /etc/systemd/system/evpn-runtime-guard.timer
+    mode: '0644'
+  register: evpn_runtime_guard_timer
+  when: inventory_hostname in ['pve01','pve02','pve03']
+  tags: [evpn_runtime_guard]
+
+- name: Reload systemd for EVPN runtime guard
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - evpn_runtime_guard_service is changed or evpn_runtime_guard_timer is changed
+  tags: [evpn_runtime_guard]
+
+- name: Enable EVPN runtime guard at boot
+  ansible.builtin.systemd_service:
+    name: evpn-runtime-guard.service
+    enabled: true
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - not ansible_check_mode
+  tags: [evpn_runtime_guard]
+
+- name: Enable EVPN runtime guard timer
+  ansible.builtin.systemd_service:
+    name: evpn-runtime-guard.timer
+    enabled: true
+    state: started
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - not ansible_check_mode
+  tags: [evpn_runtime_guard]
+
+- name: Reconcile EVPN runtime invariants now
+  ansible.builtin.systemd_service:
+    name: evpn-runtime-guard.service
+    state: started
+  changed_when: false
+  when:
+    - inventory_hostname in ['pve01','pve02','pve03']
+    - not ansible_check_mode
+  tags: [evpn_runtime_guard]

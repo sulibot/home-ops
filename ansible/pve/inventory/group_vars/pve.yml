@@ -168,11 +168,20 @@ tenant_vnets:
 # dial in over IPv6 (ULA) only - no cluster currently needs a v4 listen
 # range, so none is opened.
 vms_listen_v4_list: []
-vms_listen_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+
+# OpenBao uses one dual-stack BGP session over IPv6 from each fixed service
+# node. Keep tenant 100 closed to arbitrary dynamic neighbors and allow only
+# these three addresses.
+openbao_bgp_peers_v6:
+  - "fd00:100::68/128"
+  - "fd00:100::69/128"
+  - "fd00:100::70/128"
+
+vms_listen_v6_list: "{{ (tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list) + openbao_bgp_peers_v6 }}"
 
 # VM next-hop trust filter (PL_VM_NH_V6): same BGP-capable-tenant scoping as
-# the listen ranges above.
-vm_nh_v6_list: "{{ tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list }}"
+# the listen ranges above, including the fixed OpenBao speakers.
+vm_nh_v6_list: "{{ (tenant_vnets | selectattr('bgp_dynamic_neighbors') | map(attribute='ula_prefix') | list) + openbao_bgp_peers_v6 }}"
 
 # ENG-14: anycast control-plane VIPs that should prefer the locally hosted
 # control-plane VM on each PVE node. The VIP itself is advertised by kube-vip

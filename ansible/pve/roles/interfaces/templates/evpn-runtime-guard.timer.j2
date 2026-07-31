@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically verify Proxmox EVPN runtime forwarding invariants
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=evpn-runtime-guard.service
+
+[Install]
+WantedBy=timers.target
