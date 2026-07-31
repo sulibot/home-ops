@@ -476,8 +476,8 @@ inet6 2600:1700:ab1a:500c::ffff/64 scope global
 
 ## Related Documentation
 
-- [EVPN_Deployment.md](EVPN_Deployment.md) - EVPN architecture and configuration
-- [ip-addressing-layout-2.md](ip-addressing-layout-2.md) - IPv6 addressing scheme
+- [tickets/eng-322-vrf-evpnz1-ipv4-snat.md](tickets/eng-322-vrf-evpnz1-ipv4-snat.md) - EVPN architecture and current operational history (supersedes the archived `_archive/EVPN_Deployment.md`)
+- [ip-addressing-layout.md](ip-addressing-layout.md) - IPv6 addressing scheme
 - [IPV6_INTERNET_CONNECTIVITY_PLAN.md](IPV6_INTERNET_CONNECTIVITY_PLAN.md) - Original IPv6 connectivity planning
 
 ## References

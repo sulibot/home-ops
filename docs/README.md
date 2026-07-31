@@ -21,7 +21,7 @@ Operational and architecture documentation for the home-ops repository.
 - [Cloud resilience: KMS and offsite backup](cloud-resilience.md)
 - [IP addressing layout](ip-addressing-layout.md)
 - [Network ASN allocation](NETWORK_ASN_ALLOCATION.md)
-- [Proxmox SDN EVPN setup](PROXMOX_SDN_EVPN_SETUP.md)
+- [ENG-322: EVPN/VRF NAT44/NAT66 fabric - operational history](tickets/eng-322-vrf-evpnz1-ipv4-snat.md)
 
 ## Platform
 
@@ -29,3 +29,10 @@ Operational and architecture documentation for the home-ops repository.
 - [CI/CD pipeline](CI_CD_PIPELINE.md)
 - [Talos FRR boot configuration](talos-frr-boot-configuration.md)
 - [RWX migration plan](rwx-migration-plan.md)
+
+## Archive
+
+`_archive/` holds superseded design docs and raw AI-debugging-session
+transcripts (BGP/EVPN/xvrf/Cilium/DNS investigations from late 2025 and
+earlier) that are no longer accurate against the current deployed state but
+retain forensic value. Not maintained - don't treat as current.

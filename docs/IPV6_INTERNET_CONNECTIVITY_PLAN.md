@@ -382,7 +382,7 @@ set [find interface=wan6-v101] script=update-pve-prefixes
 - [ ] `/usr/local/bin/add-vnet-gua.sh` - Manual GUA setup (deployed via Ansible)
 
 ### Documentation
-- [ ] Update `docs/PROXMOX_SDN_EVPN_SETUP.md` - Document IPv6 GUA configuration
+- [x] Superseded - IPv6 GUA configuration is now documented in `docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md` (`docs/PROXMOX_SDN_EVPN_SETUP.md` archived, no longer accurate)
 - [ ] Update `docs/NETWORK_ASN_ALLOCATION.md` - Add IPv6 prefix allocation table
 
 ## Next Steps

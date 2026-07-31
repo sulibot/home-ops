@@ -8,6 +8,35 @@ in this investigation is tracked separately as ongoing tech debt in ENG-324
 (no upstream Proxmox/FRR fix exists for it - workaround is durable but not a
 first-class supported feature).
 
+## Follow-on work built on this fix (all resolved, tracked separately)
+
+This ticket's conntrack-zone/NAT44 mechanism (`evpn-runtime-guard.j2`,
+`xvrf_ips.j2`, `interfaces.pve.j2`) turned out to need several more rounds of
+fixes as new traffic patterns exercised it. Not re-documented here in full -
+see each Linear ticket for its own root-cause writeup:
+
+- **ENG-359/360/361** - IPv6 NAT66 egress for LXCs/VMs, same-node crossing for
+  the PVE mgmt subnet, tenant-200 IPv6 gap.
+- **ENG-362** - tenant egress reply packets lost on the direct BGP-leaked
+  route (root cause: a stray manually-added IPv6 `table local` route, not a
+  design flaw).
+- **ENG-363** - pve01-hosted VMs losing TLS handshakes to external hosts
+  (wrong-source-port replies); fixed by a full host reboot, mechanism never
+  fully explained.
+- **ENG-364** - `ceph-mds` cache overrunning its configured limit caused an
+  OOM-kill of a pve02-hosted VM; mitigated with dedicated Optane-backed swap
+  on pve01/pve02 (`ansible/pve/roles/optane_swap/`).
+- **ENG-366** - the IPv6 equivalent of this ticket's own `10.255.0.0/24`
+  RETURN exemption was never added for the PVE mgmt network
+  (`fd00:10::/64`), so tenant-subnet NAT66 was masquerading legitimately
+  local-routed mgmt traffic. Fixed by mirroring the same RETURN-exemption
+  pattern for IPv6.
+
+Also worth noting: `ansible/pve/playbooks/20-network.yml` now rolls out
+serially with a Ceph mon-quorum health gate between nodes by default (see
+ENG-363's postmortem) - any future change to these templates should deploy
+through that playbook rather than by hand across all 3 nodes at once.
+
 ## Design goals (network engineer framing)
 
 **Fabric roles:**

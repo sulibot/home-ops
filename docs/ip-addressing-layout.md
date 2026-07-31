@@ -233,6 +233,13 @@ It aligns with:
 - EVPN and BGP operational reality
 - Kubernetes without NAT or overlays
 
+  > This refers specifically to Kubernetes pod networking (Cilium native
+  > routing, no overlay, real GUA addressing end-to-end) - it does not
+  > extend to the PVE/EVPN fabric layer beneath it. Tenant IPv4 egress and
+  > IPv6 ULA-only subnets deliberately do use SNAT/NAT66 at the PVE exit
+  > node - a documented, intentional exception, not a contradiction of this
+  > principle. See `docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md`.
+
 The result is a fabric that is:
 
 - Predictable

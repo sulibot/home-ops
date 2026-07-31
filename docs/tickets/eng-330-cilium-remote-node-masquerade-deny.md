@@ -1,7 +1,7 @@
 # Ticket: cluster-101 worker-to-worker pod traffic silently dropped by Cilium masquerade/remote-node policy bug
 
 - Linear: ENG-330
-- Status: Backlog
+- Status: Done (resolved 2026-07-28)
 - Priority: High
 - Area: cluster-101 networking, Cilium
 - Created: 2026-07-28

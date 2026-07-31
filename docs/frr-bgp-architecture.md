@@ -1002,13 +1002,14 @@ vtysh -c "show daemons"
 
 **Using Ansible (Recommended):**
 ```bash
-cd /Users/sulibot/repos/github/home-ops/ansible/lae.proxmox
+cd ansible/pve
 
-# Deploy to all PVE hosts
-ansible-playbook -i inventory/hosts.ini playbooks/configure-frr.yml
+# Deploy to all PVE hosts (serial rollout, gated on Ceph mon quorum - see
+# docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md)
+ansible-playbook playbooks/21-frr.yml
 
 # Deploy to single host
-ansible-playbook -i inventory/hosts.ini playbooks/configure-frr.yml -l pve01
+ansible-playbook playbooks/21-frr.yml --limit pve01
 ```
 
 **Ansible Role Structure:**
