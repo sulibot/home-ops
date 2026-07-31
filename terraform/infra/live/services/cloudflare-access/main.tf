@@ -676,11 +676,92 @@ resource "cloudflare_zero_trust_access_application" "warp_email" {
   depends_on = [cloudflare_ruleset.application_mtls]
 }
 
-# The single WARP profile applies on every network. Split Tunnel Include mode
-# restricts the tunnel to WARP-dependent destinations and private app routes.
-# General browsing and mTLS browser endpoints do not transit WARP. The user
-# controls the unlocked switch; Cloudflare has no non-posture managed-network
-# profile that automatically turns the iOS tunnel off.
+# ---------------------------------------------------------------------------
+# Home-trusted managed network (restored)
+# ---------------------------------------------------------------------------
+#
+# A prior version of this detection (removed in PR #326 / ENG-355) pointed at
+# the router's real admin HTTPS service (10.30.0.254:443, router.sulibot.com's
+# public Let's Encrypt cert). That cert only carries DNS SANs
+# (router.sulibot.com, routeros.sulibot.com), not IP SANs, so validating it
+# against the connection IP failed and the client silently fell back to the
+# external Default profile while physically at home - the worst failure mode,
+# since nothing indicated the misdetection had happened.
+#
+# Fix: a dedicated beacon, entirely separate from the router's real admin
+# service, so it can never be confused with or break production HTTPS
+# access:
+#   - Repurposes RouterOS's built-in api-ssl service (port 8729), which was
+#     disabled and unused - not the www-ssl service (443) that serves the
+#     real router.sulibot.com admin certificate.
+#   - Serves a dedicated, long-lived (10 year) self-signed certificate whose
+#     SANs are the beacon IPs themselves (10.30.0.254, 10.31.0.254), so the
+#     sha256 pin below doesn't depend on a rotating public CA cert.
+#   - RSA 2048, not EC: RouterOS's certificate importer silently failed to
+#     import an EC (prime256v1) cert (0 imported, source file consumed with no
+#     error) but imported an equivalent RSA cert without issue.
+#   - api-ssl's allowed client address is restricted to 10.30.0.0/24 and
+#     10.31.0.0/24 - unreachable from other tenant VLANs, external networks,
+#     or via WARP (the Default profile's Include list below doesn't cover
+#     these ranges at all, so WARP clients can't reach it through the tunnel
+#     regardless of this restriction).
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_io" {
+  account_id = local.account_id
+  name       = "Home trusted io"
+  type       = "tls"
+  config = {
+    tls_sockaddr = "10.30.0.254:8729"
+    sha256       = "285814229065751698D06ADCDC73F4BE63F8EACBC048F4C44C372BEFB9F3B56D"
+  }
+}
+
+resource "cloudflare_zero_trust_device_managed_networks" "home_trusted_iot" {
+  account_id = local.account_id
+  name       = "Home trusted iot"
+  type       = "tls"
+  config = {
+    tls_sockaddr = "10.31.0.254:8729"
+    sha256       = "285814229065751698D06ADCDC73F4BE63F8EACBC048F4C44C372BEFB9F3B56D"
+  }
+}
+
+resource "cloudflare_zero_trust_device_custom_profile" "home_trusted" {
+  account_id  = local.account_id
+  name        = "Home trusted"
+  description = "No WARP tunnel on io or iot; local split DNS handles sulibot.com. Cloudflare has no literal 'off' mode (valid service_mode_v2 values: 1dot1, warp, proxy, posture_only, warp_tunnel_only) - '1dot1' is the closest fit: DNS-only, no tunnel at all."
+  precedence  = 10
+
+  service_mode_v2   = { mode = "1dot1" }
+  allow_mode_switch = false
+
+  match = trimspace(replace(<<-EOT
+    network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_io.name}"
+    or network == "${cloudflare_zero_trust_device_managed_networks.home_trusted_iot.name}"
+  EOT
+  , "\n", " "))
+}
+
+resource "cloudflare_zero_trust_device_custom_profile_local_domain_fallback" "home_trusted" {
+  account_id = local.account_id
+  policy_id  = cloudflare_zero_trust_device_custom_profile.home_trusted.policy_id
+
+  domains = [{
+    suffix      = "sulibot.com"
+    description = "Use local DNS for sulibot.com on trusted home networks"
+    dns_server = [
+      "10.30.0.254",
+      "fd00:30::fffe",
+      "10.255.0.53",
+      "fd00:0:0:ffff::53",
+    ]
+  }]
+}
+
+# The single WARP profile applies on every network NOT matched by "Home
+# trusted" above, i.e. actually external. Split Tunnel Include mode restricts
+# the tunnel to WARP-dependent destinations and private app routes. General
+# browsing and mTLS browser endpoints do not transit WARP. The user controls
+# the unlocked switch.
 resource "cloudflare_zero_trust_device_default_profile" "external" {
   account_id = local.account_id
 
