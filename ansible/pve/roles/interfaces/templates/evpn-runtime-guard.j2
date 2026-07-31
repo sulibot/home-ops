@@ -169,6 +169,51 @@ reconcile_nat66_snat() {
 
 reconcile_nat66_snat
 
+# Unlike the IPv6 case above, Proxmox's native IPv4 SNAT target (this node's
+# own vmbr0.10 address) is already correct - there's no ULA/GUA mismatch to
+# fix. The bug here is idempotency: the SDN-generated post-up hook is a
+# blind `-A` with no existence check, so every ifreload (interface edits,
+# SDN reloads) appends another identical copy. Confirmed live 2026-07-31 -
+# a single `ifreload -a` left dozens of duplicate copies of the same 4
+# rules. Harmless functionally (first match wins, same target either way)
+# but grows the ruleset unbounded over time and makes the live table
+# unreadable during incident response. Same drain-then-reinstall approach
+# as reconcile_nat66_snat, minus the target-recompute step.
+reconcile_nat44_snat() {
+  local sdn_file="/etc/network/interfaces.d/sdn"
+  local matching_lines srcs ifaces targets triples src iface target rule
+
+  matching_lines="$(
+    grep -E "iptables -t nat -A POSTROUTING -s '[^']+' -o [^ ]+ -j SNAT --to-source" \
+      "$sdn_file" 2>/dev/null || true
+  )"
+  if [[ -z "$matching_lines" ]]; then
+    return 0
+  fi
+  srcs="$(echo "$matching_lines" | grep -oP "(?<=-s ')[^']+")"
+  ifaces="$(echo "$matching_lines" | grep -oP "(?<=-o )\S+(?= -j SNAT)")"
+  targets="$(echo "$matching_lines" | grep -oP "(?<=--to-source )\S+")"
+  triples="$(paste -d' ' <(echo "$srcs") <(echo "$ifaces") <(echo "$targets") | sort -u)"
+  if [[ -z "$triples" ]]; then
+    return 0
+  fi
+
+  while read -r src iface target; do
+    [[ -z "$src" || -z "$iface" || -z "$target" ]] && continue
+    while true; do
+      rule="$(
+        iptables-save -t nat |
+          grep -F -- "-A POSTROUTING -s $src -o $iface -j SNAT" || true
+      )"
+      [[ -z "$rule" ]] && break
+      iptables -w -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
+    done
+    iptables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$target"
+  done <<< "$triples"
+}
+
+reconcile_nat44_snat
+
 # ENG-360: external IPv4 traffic destined for a tenant host that happens to
 # be co-located on THIS node has no working path at all. The mechanism that
 # should provide it - `redistribute connected` inside the vrf_evpnz1 BGP

@@ -109,8 +109,10 @@ iface vmbr0.10 inet static
     # which vnet's post-up runs first/last. Found live as a DNS
     # resolution / image-pull regression after switching to the native
     # SNAT mechanism - see docs/tickets/eng-322-vrf-evpnz1-ipv4-snat.md.
-    post-up iptables -t nat -I POSTROUTING 1 -d 10.255.0.0/24 -j RETURN || true
-    post-down iptables -t nat -D POSTROUTING -d 10.255.0.0/24 -j RETURN || true
+    # Idempotent: a blind -I here duplicates on every ifreload (confirmed
+    # live 2026-07-31 - dozens of copies accumulated from repeated reloads).
+    post-up iptables -w -t nat -C POSTROUTING -d 10.255.0.0/24 -j RETURN 2>/dev/null || iptables -w -t nat -I POSTROUTING 1 -d 10.255.0.0/24 -j RETURN || true
+    post-down iptables -w -t nat -D POSTROUTING -d 10.255.0.0/24 -j RETURN || true
 
 iface vmbr0.10 inet6 static
     address fd00:10::{{ node_id }}/64
