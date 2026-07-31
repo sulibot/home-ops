@@ -61,6 +61,10 @@
     - { name: 'net/ipv4/ip_forward',                 value: '1' }
     - { name: 'net/ipv6/conf/all/forwarding',        value: '1' }
     - { name: 'net/ipv6/conf/default/forwarding',    value: '1' }
+    # ENG-323: lo/forwarding doesn't reliably inherit from default.forwarding
+    # for an interface that already existed at boot (lo is created before
+    # sysctl.d applies) - keep it explicit rather than assumed.
+    - { name: 'net/ipv6/conf/lo/forwarding',         value: '1' }
 
     # --- Reverse Path Filtering (IPv4) ---
     # Disable globally for EVPN/VRF asymmetric return paths.
@@ -74,6 +78,28 @@
     - { name: 'net/ipv4/conf/default/send_redirects',   value: '0' }
     - { name: 'net/ipv6/conf/all/accept_redirects',     value: '0' }
     - { name: 'net/ipv6/conf/default/accept_redirects', value: '0' }
+
+    # --- ARP tuning (IPv4) ---
+    # ENG-323: restored after being dropped from this loop in 4b8a6f53 as
+    # "redundant" - arp_announce=2 is NOT a kernel default (default is 0) and
+    # is genuinely relied on for correct EVPN anycast-gateway ARP behavior
+    # (same class of issue as the proxy_ndp regression fixed in ENG-322/
+    # edd88614 - a value only persisting in unmanaged file content would
+    # silently vanish on a node rebuild since it was never in this loop to
+    # begin with, not just at risk of being overwritten). arp_ignore/
+    # arp_filter=0 do match kernel defaults, but keeping all three explicit
+    # and tracked together is simpler and safer than judging each one's
+    # "is this really redundant" case separately.
+    - { name: 'net/ipv4/conf/all/arp_ignore',        value: '0' }
+    - { name: 'net/ipv4/conf/default/arp_ignore',    value: '0' }
+    - { name: 'net/ipv4/conf/all/arp_filter',        value: '0' }
+    - { name: 'net/ipv4/conf/default/arp_filter',    value: '0' }
+    - { name: 'net/ipv4/conf/all/arp_announce',      value: '2' }
+    - { name: 'net/ipv4/conf/default/arp_announce',  value: '2' }
+
+    # --- Duplicate Address Detection (IPv6 loopback) ---
+    # ENG-323: same rationale as lo/forwarding above.
+    - { name: 'net/ipv6/conf/lo/accept_dad',         value: '0' }
 
 # ============================================================================
 # xvrf Cross-Connect Configuration
