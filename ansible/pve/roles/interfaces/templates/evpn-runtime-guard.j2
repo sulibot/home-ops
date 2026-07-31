@@ -163,7 +163,16 @@ reconcile_nat66_snat() {
       # duplicates present, so loop until grep finds none left.
       ip6tables -w -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
     done
-    ip6tables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$gua"
+    # --random-fully: the kernel's default SNAT port allocation tries to
+    # preserve the original source port and only reassigns on an actual
+    # conflict - a well-documented race under concurrent connections
+    # sharing one masqueraded address (see the kube-proxy "Subtleties"
+    # postmortem: https://kubernetes.io/blog/2019/03/29/kube-proxy-subtleties-debugging-an-intermittent-connection-reset/).
+    # Confirmed live 2026-07-31: cluster-101 (vnet101, dozens of concurrent
+    # pod egress connections through this one SNAT target) hit exactly this
+    # - TLS handshakes failing with replies arriving on the wrong source
+    # port, causing the client to RST its own legitimate connection.
+    ip6tables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$gua" --random-fully
   done <<< "$pairs"
 }
 
@@ -208,7 +217,11 @@ reconcile_nat44_snat() {
       [[ -z "$rule" ]] && break
       iptables -w -t nat $(echo "$rule" | head -1 | sed 's/^-A/-D/')
     done
-    iptables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$target"
+    # --random-fully: see the matching comment in reconcile_nat66_snat above
+    # - same kernel SNAT port-allocation race, confirmed live here too
+    # (cluster-101/vnet101 TLS handshakes to real internet hosts failing
+    # with wrong-source-port replies under concurrent pod egress load).
+    iptables -w -t nat -A POSTROUTING -s "$src" -o "$iface" -j SNAT --to-source "$target" --random-fully
   done <<< "$triples"
 }
 
@@ -256,23 +269,34 @@ reconcile_same_node_ingress_routes() {
 
 reconcile_same_node_ingress_routes
 
-# ENG-360 (reverse direction): the same FRR dev-lo route-leak bug also
-# breaks the opposite crossing - a tenant workload (e.g. a Tailscale subnet
-# router LXC) trying to reach the PVE management network (10.10.0.0/24,
-# default VRF) when the subnet-router happens to be co-located on the same
-# node it's trying to reach. Confirmed live: a client connected via
-# tailscale, routed through a subnet-router node, could reach every other
-# PVE node's mgmt IP except the one hosting that particular subnet router.
-# Same fix, opposite side of the veth: add the route inside vrf_evpnz1's
-# own table (a VRF-lite table has no separate local/main split, unlike the
-# default VRF, so no `table local` here) pointing at xvrfp_evpnz1.
+# ENG-360 (reverse direction) + tenant-200 crossing (2026-07-31): the same
+# FRR dev-lo route-leak bug (see reconcile_same_node_ingress_routes above)
+# also breaks the opposite crossing for ANY VLAN-mode tenant/infra subnet
+# that lives in the default VRF (vmbr0.<vlan>, not part of the vrf_evpnz1
+# EVPN fabric by design - e.g. the PVE mgmt network on vmbr0.10, or
+# vnet200's out-of-band infra like the zot registry). A workload inside
+# vrf_evpnz1 reaching one of these when both happen to be co-located on
+# this node falls through to the internet-egress default route instead of
+# a direct local crossing - gets needlessly masqueraded, and the reply's
+# return path breaks (confirmed live for the mgmt subnet via a Tailscale
+# subnet-router LXC, and again 2026-07-31 for vnet101/cluster-101 K8s
+# nodes reaching vnet200's zot registry with the exact same symptom).
+# Originally hardcoded to just the mgmt subnet; derive every VLAN
+# interface's subnet directly from the kernel's own connected route
+# instead, so this doesn't drift as VLAN-mode tenants are added/removed.
 reconcile_same_node_egress_routes() {
-  local pve_mgmt_subnet="10.10.0.0/24"
+  local iface subnet
 
-  if ip route show vrf vrf_evpnz1 "$pve_mgmt_subnet" 2>/dev/null | grep -q .; then
-    return 0
-  fi
-  ip route replace "$pve_mgmt_subnet" dev xvrfp_evpnz1 vrf vrf_evpnz1
+  for iface in /sys/class/net/vmbr0.*; do
+    [[ -e "$iface" ]] || continue
+    iface="$(basename "$iface")"
+    subnet="$(ip route show dev "$iface" scope link proto kernel 2>/dev/null | awk '{print $1; exit}')"
+    [[ -z "$subnet" ]] && continue
+    if ip route show vrf vrf_evpnz1 "$subnet" 2>/dev/null | grep -q .; then
+      continue
+    fi
+    ip route replace "$subnet" dev xvrfp_evpnz1 vrf vrf_evpnz1
+  done
 }
 
 reconcile_same_node_egress_routes
