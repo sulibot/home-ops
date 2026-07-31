@@ -102,6 +102,10 @@ spec:
             runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
 
         - alert: CephMgrMetricsTargetDown
+          # ENG-366: count(metric == 1) < 3 can't fire when the count would
+          # be zero - an empty filtered vector, not a 0 - so this alert sat
+          # silently inactive through a real, hours-long all-targets-down
+          # outage instead of catching it. `or vector(0)` fixes the gap.
           expr: |
             (count(up{service="ceph-mgr-targets"} == 1) or vector(0)) < 3
           for: 5m
