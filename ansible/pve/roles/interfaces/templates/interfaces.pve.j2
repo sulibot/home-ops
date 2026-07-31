@@ -131,6 +131,21 @@ iface vmbr0.10 inet6 static
     post-up   sleep 1 && sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=2 || true
     post-up   sysctl -w net.ipv6.conf.vmbr0/10.autoconf=1 || true
     pre-down  sysctl -w net.ipv6.conf.vmbr0/10.accept_ra=1 || true
+    # ENG-366: the IPv6 equivalent of the ENG-322 10.255.0.0/24 RETURN
+    # exemption above was never added - evpn-runtime-guard.j2's NAT66
+    # SNAT (reconcile_nat66_snat) blindly masquerades every tenant-subnet
+    # IPv6 packet leaving vmbr0.10 the same way the native IPv4 SNAT does,
+    # with no equivalent "don't NAT this destination" concept. The PVE
+    # mgmt network (fd00:10::/64) is already reachable via a legitimate,
+    # specific OSPF-learned route straight out vmbr0.10 - it doesn't need
+    # NAT at all, and masquerading it broke the reply path the same way
+    # the IPv4 DNS-resolver case did (confirmed live 2026-07-31: every
+    # in-cluster Prometheus scrape of PVE mgmt-network targets - ceph-mgr,
+    # node-exporter - silently failed with a TCP connect that never got a
+    # reply, for at least 6+ hours before anyone noticed, since nothing
+    # had scraped this path end-to-end before ENG-364's alerting went in).
+    post-up   ip6tables -w -t nat -C POSTROUTING -d fd00:10::/64 -j RETURN 2>/dev/null || ip6tables -w -t nat -I POSTROUTING 1 -d fd00:10::/64 -j RETURN || true
+    post-down ip6tables -w -t nat -D POSTROUTING -d fd00:10::/64 -j RETURN || true
 
 # ------------------------------------------------------------------------------
 # Generic Workload / Ceph Transport (VLAN 200)
