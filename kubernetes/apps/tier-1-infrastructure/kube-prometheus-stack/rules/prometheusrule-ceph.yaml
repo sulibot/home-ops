@@ -1,0 +1,142 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ceph-rules
+  namespace: observability
+spec:
+  groups:
+    - name: ceph.alerts
+      interval: 30s
+      rules:
+        # 2026-07-31: a routine ansible network-role redeploy triggered an
+        # `ifreload -a` on all 3 PVE nodes, which knocked mon quorum into a
+        # stuck probing state for several minutes with nothing paging -
+        # discovered only by manually running `ceph -s` mid-investigation.
+        # This alert is the direct fix for that blind spot.
+        - alert: CephMonQuorumDegraded
+          expr: |
+            count(ceph_mon_quorum_status == 1) < 3
+          for: 2m
+          labels:
+            severity: critical
+            component: ceph
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Ceph mon quorum has fewer than 3 members"
+            description: |
+              Fewer than all 3 mons (pve01/pve02/pve03) report quorum_status
+              == 1. A network reload, mon crash, or election stall can cause
+              this - check `ceph -s` and each mon's mon_status (probing vs
+              electing vs leader/peon) before assuming it will self-heal.
+
+        - alert: CephHealthError
+          expr: ceph_health_status == 2
+          for: 1m
+          labels:
+            severity: critical
+            component: ceph
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Ceph cluster health is HEALTH_ERR"
+            description: |
+              Check `ceph -s` and `ceph health detail` immediately - HEALTH_ERR
+              indicates data availability or integrity risk, not just a
+              degraded-but-serving state.
+
+        - alert: CephHealthWarnSustained
+          expr: ceph_health_status == 1
+          for: 30m
+          labels:
+            severity: warning
+            component: ceph
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Ceph cluster health has been HEALTH_WARN for 30+ minutes"
+            description: |
+              A brief HEALTH_WARN after a reload or recovery is expected and
+              usually self-clears within a few minutes (see
+              docs/runbooks/ceph-recovery-too-slow.md for what's normal).
+              Sustained WARN past 30 minutes means something isn't
+              converging on its own - check `ceph health detail`.
+
+        - alert: CephOSDDown
+          expr: ceph_osd_up == 0
+          for: 5m
+          labels:
+            severity: warning
+            component: ceph
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Ceph OSD {{ $labels.ceph_daemon }} is down"
+            description: |
+              {{ $labels.ceph_daemon }} has been down for 5+ minutes. Single-OSD
+              loss is tolerable short-term but delays here risk a second
+              failure landing during recovery.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephPGsNotActive
+          expr: sum(ceph_pg_total) - sum(ceph_pg_active) > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: ceph
+            service: storage
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Some Ceph PGs have not been active for 10+ minutes"
+            description: |
+              Inactive PGs (peering/down/stale) block IO for the objects they
+              own, not just data redundancy. A brief window after a mon
+              election or OSD flap is normal; sustained inactivity is not.
+            runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
+
+        - alert: CephMgrMetricsTargetDown
+          expr: count(up{service="ceph-mgr-targets"} == 1) < 3
+          for: 5m
+          labels:
+            severity: warning
+            component: ceph
+            service: observability
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "Not all Ceph mgr metrics targets are reachable"
+            description: |
+              Prometheus expects the ceph-mgr prometheus module on all 3 PVE
+              nodes (fd00:10::1-3:9283). Check the ceph-mgr-targets Endpoints,
+              EVPN fabric reachability, and that `ceph mgr module ls` shows
+              prometheus enabled on the active mgr.
+
+    - name: frr.alerts
+      interval: 30s
+      rules:
+        # No BGP session-state exporter exists yet (only "is the frr
+        # process running", not "are its BGP sessions Established") - this
+        # is a coarse first layer, not full coverage. See the FRR
+        # investigation follow-up for adding real session-state metrics.
+        - alert: FRRServiceDown
+          expr: node_systemd_unit_state{name="frr.service",state="active"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: frr
+            service: network
+            layer: proxmox
+            owner: sre
+          annotations:
+            summary: "frr.service is not active on {{ $labels.instance }}"
+            description: |
+              The EVPN/BGP fabric depends on FRR running on every PVE node.
+              A stopped or crashed frr.service means this node's BGP peerings
+              and route leaking are down, not just degraded.

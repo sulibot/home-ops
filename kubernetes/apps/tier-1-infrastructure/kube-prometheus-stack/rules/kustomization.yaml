@@ -8,6 +8,7 @@ resources:
   - ./scrapeconfig-cluster104-kube-state-metrics.yaml
   - ./scrapeconfig-cluster104-observer.yaml
   - ../app/alertmanagerconfig.yaml
+  - ./prometheusrule-ceph.yaml
   - ./prometheusrule-cross-layer-storage.yaml
   - ./prometheusrule-datastores.yaml
   - ./prometheusrule-flux.yaml
