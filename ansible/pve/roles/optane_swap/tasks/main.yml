@@ -21,7 +21,7 @@
     state: present
     number: 5
     part_start: 149GiB
-    part_end: 181GiB
+    part_end: 277GiB
   register: optane_swap_partition
 
 - name: Format Optane swap partition
