@@ -219,18 +219,21 @@ locals {
       tunnel_id = local.tunnel_id
     }
     # cluster-104 has its own separate node/control-plane range (same
-    # convention as cluster-101-nodes above) that was never added here -
-    # kubectl/host access to cluster-104 (10.104.0.4, fd00:104::4) doesn't
-    # work remotely via WARP without this. Not a user/IoT VLAN; genuinely
-    # missing infra coverage.
-    "cluster-104-nodes-ipv4" = {
-      network   = "10.104.0.0/24"
-      tunnel_id = local.cluster_104_tunnel_id
-    }
-    "cluster-104-nodes-ipv6" = {
-      network   = "fd00:104::/64"
-      tunnel_id = local.cluster_104_tunnel_id
-    }
+    # convention as cluster-101-nodes above), currently uncovered by WARP.
+    # Backend/infra remote access is designated as Tailscale's job (it
+    # already declares this exact range in
+    # common/lxc-service-catalog.hcl's advertise_routes) - WARP is for
+    # frontend/app access. Left here, commented out, as a deliberate
+    # backend fallback for WARP to pick up later if wanted; not activated
+    # now.
+    # "cluster-104-nodes-ipv4" = {
+    #   network   = "10.104.0.0/24"
+    #   tunnel_id = local.cluster_104_tunnel_id
+    # }
+    # "cluster-104-nodes-ipv6" = {
+    #   network   = "fd00:104::/64"
+    #   tunnel_id = local.cluster_104_tunnel_id
+    # }
     "pve-mgmt-ipv4" = {
       network   = "10.10.0.0/24"
       tunnel_id = local.tunnel_id
