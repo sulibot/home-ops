@@ -1,8 +1,18 @@
 ---
 # ENG-364: add a dedicated swap partition on the Optane device's confirmed
-# free space, scoped to pve01/pve02 only - pve03's Optane module is much
-# smaller and already fully allocated. See roles/optane_swap/tasks/main.yml
+# free space, scoped to pve01/pve02 only. See roles/optane_swap/tasks/main.yml
 # for the full rationale (why Optane, why not swap-on-ZFS).
+#
+# pve03 deliberately excluded (see ENG-365) - no safe device exists there:
+# its Optane module is much smaller and already fully allocated (1.25GB
+# free), its other NVMe (a consumer Samsung drive) is 100% allocated to a
+# single Ceph OSD and already flagged for high temperature/wear, and its
+# only other free space is 19GB on the ZFS *boot* pool (rpool) - a zvol/
+# swapfile there would carry the same ARC-needs-memory-for-swap-I/O
+# deadlock risk as any ZFS swap, except a hang there risks the whole node
+# becoming unresponsive rather than an isolated OOM-kill. Accepted
+# asymmetry, not an oversight - do not add pve03 here without a genuinely
+# safe device to put it on.
 - name: Add Optane-backed swap
   hosts: pve01,pve02
   become: true
