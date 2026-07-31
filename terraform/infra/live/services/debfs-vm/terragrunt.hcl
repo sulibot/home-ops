@@ -9,6 +9,7 @@ include "root" {
 locals {
   proxmox_infra = read_terragrunt_config(find_in_parent_folders("common/proxmox-infrastructure.hcl")).locals
   catalog       = read_terragrunt_config(find_in_parent_folders("common/lxc-service-catalog.hcl")).locals
+  kanidm_auth   = read_terragrunt_config(find_in_parent_folders("common/lxc-kanidm-auth.hcl")).locals
   guest         = local.catalog.services["debfs-vm"]
   credentials   = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))
   secrets_file  = try(local.credentials.locals.secrets_file, local.credentials.inputs.secrets_file)
@@ -87,7 +88,7 @@ inputs = {
   setup_script = <<-SCRIPT
     install -d -m 0755 /etc/kanidm
     printf '%s\n' 'uri = "https://idm.sulibot.com"' > /etc/kanidm/config
-    printf '%s\n' 'version = "2"' '[kanidm]' 'pam_allowed_login_groups = ["posix_group"]' > /etc/kanidm/unixd
+    printf '%s\n' 'version = "2"' '[kanidm]' 'pam_allowed_login_groups = ["${local.kanidm_auth.kanidm_login_group}"]' > /etc/kanidm/unixd
     chmod 0600 /etc/kanidm/config /etc/kanidm/unixd
     if command -v kanidm_unixd >/dev/null 2>&1; then
       systemctl enable --now kanidm-unixd kanidm-unixd-tasks

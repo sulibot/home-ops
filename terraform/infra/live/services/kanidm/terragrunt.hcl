@@ -674,7 +674,7 @@ resource "null_resource" "kanidm_oauth2_authentik_client" {
   depends_on = [null_resource.kanidm_post_deploy_validation]
 
   triggers = {
-    client_rev = "authentik-oauth2-v2"
+    client_rev = "authentik-oauth2-v3-groups-claim"
   }
 
   provisioner "local-exec" {
@@ -708,7 +708,13 @@ resource "null_resource" "kanidm_oauth2_authentik_client" {
 
         kanidm system oauth2 create authentik 'Authentik SSO' https://auth.sulibot.com --name idm_admin || true
         kanidm system oauth2 add-redirect-url authentik https://auth.sulibot.com/source/oauth/callback/kanidm/ --name idm_admin || true
-        kanidm system oauth2 update-scope-map authentik idm_all_persons openid email profile --name idm_admin || true
+        # groups_name exposes each person's Kanidm group membership as a
+        # "groups" claim in the token Authentik receives - Authentik's OAuth
+        # source group sync (native since 2024.8, see
+        # docs/tickets/kanidm-onboard-user-groups.md) reads this claim to
+        # keep Authentik-side groups in lockstep with Kanidm without a
+        # second, separate place to manage membership.
+        kanidm system oauth2 update-scope-map authentik idm_all_persons openid email profile groups_name --name idm_admin || true
 
         echo "=== Kanidm 'authentik' OAuth2 client secret (add to the 1Password 'authentik' item as KANIDM_OIDC_CLIENT_ID=authentik / KANIDM_OIDC_CLIENT_SECRET=<below>) ==="
         kanidm system oauth2 show-basic-secret authentik --name idm_admin

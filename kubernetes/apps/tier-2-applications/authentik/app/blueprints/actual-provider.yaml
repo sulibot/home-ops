@@ -38,11 +38,11 @@ entries:
   - model: authentik_policies.policybinding
     state: present
     identifiers:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
       target: !Find [authentik_core.application, [slug, actual]]
       order: 0
     attrs:
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-standard]]
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, policy-access-trusted]]
       target: !Find [authentik_core.application, [slug, actual]]
       order: 0
       enabled: true
