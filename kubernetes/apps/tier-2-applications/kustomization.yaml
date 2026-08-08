@@ -45,6 +45,7 @@ resources:
   # - ./miniflux/ks.yaml
   - ./multi-scrobbler/ks.yaml
   - ./n8n/ks.yaml
+  - ./openhands/ks.yaml
   # navidrome disabled - redundant with the existing music stack
   # - ./navidrome/ks.yaml
   # mosquitto disabled
