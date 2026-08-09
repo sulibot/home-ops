@@ -80,6 +80,10 @@ variable "firewall_nat_rules" {
     action             = string
     disabled           = optional(bool, false)
     out_interface_list = optional(string)
+    out_interface       = optional(string)
+    src_address         = optional(string)
+    dst_address         = optional(string)
+    to_addresses        = optional(string)
   }))
   default = []
 }
@@ -609,6 +613,53 @@ variable "system_scripts" {
     policy                   = set(string)
     dont_require_permissions = optional(bool, false)
     source                   = string
+  }))
+  default = []
+}
+
+variable "firewall_mangle_rules" {
+  description = "IP firewall mangle rules (e.g. TCP MSS clamping)."
+  type = list(object({
+    comment       = optional(string, "")
+    chain         = string
+    action        = string
+    disabled      = optional(bool, false)
+    protocol      = optional(string)
+    tcp_flags     = optional(string)
+    in_interface  = optional(string)
+    out_interface = optional(string)
+    new_mss       = optional(string)
+    passthrough   = optional(bool, true)
+  }))
+  default = []
+}
+
+variable "wireguard_interfaces" {
+  description = "RouterOS /interface/wireguard interfaces."
+  type = list(object({
+    name        = string
+    private_key = string
+    listen_port = number
+    mtu         = optional(string, "1420")
+    comment     = optional(string, "")
+    disabled    = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "wireguard_peers" {
+  description = "RouterOS /interface/wireguard/peers, keyed by interface+name."
+  type = list(object({
+    interface             = string
+    name                  = optional(string, "")
+    public_key            = string
+    preshared_key         = optional(string, "")
+    allowed_address       = list(string)
+    endpoint_address      = optional(string, "")
+    endpoint_port         = optional(string, "")
+    persistent_keepalive  = optional(string, "")
+    comment               = optional(string, "")
+    disabled              = optional(bool, false)
   }))
   default = []
 }

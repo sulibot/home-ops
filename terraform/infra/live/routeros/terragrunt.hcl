@@ -288,6 +288,48 @@ inputs = {
       action             = "masquerade"
       out_interface_list = "WAN"
     },
+    {
+      # ENG-453: the OCI Talos node's WireGuard peer config for RouterOS is
+      # deliberately scoped to allowed_address=10.99.99.1/32 only (not the
+      # tenant subnets) -- WireGuard's cryptokey routing drops any packet
+      # arriving over that tunnel whose source doesn't match. So anything
+      # other than RouterOS itself (a home-ops workstation via the tailnet,
+      # etc.) needs masquerading to 10.99.99.1 to reach the node at all.
+      chain          = "srcnat"
+      action         = "masquerade"
+      out_interface  = "wg-oci-phoenix"
+      dst_address    = "10.99.99.2"
+      comment        = "ENG-453: masquerade to RouterOS's WG address for OCI Phoenix tunnel"
+    },
+  ]
+
+  # ENG-453: this tunnel is nested inside a home-ops workstation's own
+  # Tailscale WireGuard tunnel when accessed remotely (Mac -> Tailscale WG ->
+  # tail02 -> RouterOS -> this WG -> OCI), and standard TCP MSS negotiation
+  # doesn't know about the inner tunnel's real path MTU. Confirmed via
+  # testing: ICMP and small TCP connects (nc) worked fine, but talosctl's
+  # larger mTLS handshake (client-cert exchange, bigger than kubectl's)
+  # silently timed out -- a classic PMTU blackhole. clamp-to-pmtu fixes it
+  # dynamically per-connection rather than guessing a fixed MSS.
+  firewall_mangle_rules = [
+    {
+      chain         = "forward"
+      action         = "change-mss"
+      protocol       = "tcp"
+      tcp_flags      = "syn"
+      out_interface  = "wg-oci-phoenix"
+      new_mss        = "clamp-to-pmtu"
+      comment        = "ENG-453: MSS clamp, outbound to OCI Phoenix"
+    },
+    {
+      chain         = "forward"
+      action         = "change-mss"
+      protocol       = "tcp"
+      tcp_flags      = "syn"
+      in_interface   = "wg-oci-phoenix"
+      new_mss        = "clamp-to-pmtu"
+      comment        = "ENG-453: MSS clamp, inbound from OCI Phoenix"
+    },
   ]
 
   # ── INTERFACE LISTS ──────────────────────────────────────────────────────────
@@ -452,6 +494,41 @@ inputs = {
     { address = "10.104.0.254/24", network = "10.104.0.0", interface = "vlan104", comment = "cluster-104 home-control" },
     { address = "10.200.0.254/24", network = "10.200.0.0", interface = "vlan200", comment = "Standard VM LAN" },
     { address = "10.255.0.254/32", network = "10.255.0.254", interface = "lo" },
+    { address = "10.99.99.1/30", network = "10.99.99.0", interface = "wg-oci-phoenix", comment = "ENG-453: OCI Phoenix WireGuard P2P" },
+  ]
+
+  # ── WIREGUARD (ENG-453) ──────────────────────────────────────────────────────
+  # RouterOS is the roaming/dynamic-IP peer: it initiates outbound to OCI's
+  # fixed Reserved Public IP, so no endpoint_address is needed for OCI to
+  # reach RouterOS back (learned from the incoming handshake). Deliberately
+  # NOT full-mesh like tailscale-lxc: allowed_address on the peer is scoped
+  # to exactly the OCI node's tunnel address, not any wider subnet.
+  wireguard_interfaces = [
+    {
+      name        = "wg-oci-phoenix"
+      private_key = local.creds.routeros_oci_phoenix_wg_private_key
+      listen_port = 51820
+      comment     = "ENG-453: OCI Phoenix Talos node tunnel"
+    },
+  ]
+
+  wireguard_peers = [
+    {
+      interface            = "wg-oci-phoenix"
+      name                 = "oci-phoenix-talos"
+      public_key           = "nevf/qtUdY5JsRRQwdSdr96weMyao3sg+QCEIhrZKgY=" # Talos node's WG pubkey
+      # No preshared_key: the installed talosctl client (v1.13.3) rejects
+      # presharedKey in the WireGuard peer config schema at gen-config time
+      # (a real, unresolved upstream bug -- siderolabs/talos#11392). Both
+      # sides omit it; WireGuard is still secure on the Curve25519 keypair
+      # alone. oci_phoenix_wg_psk stays in sops, unused, for whenever that's
+      # fixed upstream.
+      allowed_address      = ["10.99.99.2/32"]
+      endpoint_address     = "161.153.48.162" # ENG-451 Reserved Public IP
+      endpoint_port        = "51820"
+      persistent_keepalive = "25s"
+      comment              = "ENG-453: OCI Phoenix Talos node"
+    },
   ]
 
   ipv4_pools = [

@@ -38,6 +38,10 @@ resource "routeros_ip_firewall_nat" "rules" {
   disabled = each.value.disabled
 
   out_interface_list = each.value.out_interface_list
+  out_interface       = each.value.out_interface
+  src_address         = each.value.src_address
+  dst_address         = each.value.dst_address
+  to_addresses        = each.value.to_addresses
 }
 
 resource "routeros_ip_firewall_addr_list" "entries" {

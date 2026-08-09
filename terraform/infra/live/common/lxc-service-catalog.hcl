@@ -64,6 +64,7 @@ locals {
       "10.104.254.0/24",        # cluster-104 node loopbacks
       "10.200.0.0/24",          # tenant-200 LXCs (MinIO tf-state, zot)
       "10.255.0.0/24",          # infra loopbacks + DNS
+      "10.99.99.0/30",          # ENG-453: OCI Phoenix WireGuard tunnel P2P
       "fd00::/8",               # entire ULA space - all tenants, infra, OpenBao VIP (v6)
     ]
   }
