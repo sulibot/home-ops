@@ -155,6 +155,7 @@ terraform/infra/live/services/smallstep-lxc/providers.tf
 terraform/infra/live/services/tailscale-config/main.tf
 terraform/infra/live/services/tailscale-config/providers.tf
 terraform/infra/live/cloud/oci-phoenix/main.tf
+terraform/infra/live/cloud/oci-phoenix-compute/main.tf
 
 # FRR extension symlink (links to separate repository)
 # Anchored to repo root - unanchored "FRR/" matched ansible/pve/roles/frr/
