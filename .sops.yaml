@@ -10,7 +10,15 @@ creation_rules:
     age: *age_key
     hc_vault_transit_uri: *openbao_transit_key
   - path_regex: '^terraform/(infra/)?live/common/.*\.sops\.ya?ml$'
-    encrypted_regex: '^(data|stringData|.*secret.*|.*token.*|.*password.*|.*endpoint)$'
+    # 2026-08-08: was a keyword allowlist (secret/token/password/endpoint) --
+    # the same failure mode caught and fixed the same day in the
+    # kabinett/registrar repo. It left openrouter_api_key and access_key
+    # (neither name matches any of those keywords) sitting in plaintext in
+    # this file, committed to git. A keyword allowlist is only as safe as
+    # everyone remembering to name new fields so the regex catches them;
+    # encrypting everything under this path removes that failure mode
+    # instead of enumerating more keywords to dodge it.
+    encrypted_regex: '.*'
     age: *age_key
     hc_vault_transit_uri: *openbao_transit_key
   - path_regex: '^terraform/live/golden/images/.*\.sops\.ya?ml$'
