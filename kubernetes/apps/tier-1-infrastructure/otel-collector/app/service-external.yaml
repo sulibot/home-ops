@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/v1/service.json
+# ENG-454: OTLP ingest reachable from outside cluster-101 (the OCI Phoenix
+# orchestrator, over its WireGuard tunnel). ClusterIPs are cluster-internal
+# only -- no route could ever make one reachable externally -- so this is a
+# second Service, same pod selector as the Helm-managed one, following the
+# fluent-bit / fluent-bit-infra split already used in this namespace for
+# exactly this pattern.
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector-external
+  namespace: observability
+  annotations:
+    lbipam.cilium.io/ips: fd00:101:250::126,10.101.250.126
+  labels:
+    app.kubernetes.io/name: otel-collector-external
+    advertise: loadbalancer
+    bgp-advertise: "true"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
+  selector:
+    app.kubernetes.io/instance: otel-collector
+    app.kubernetes.io/name: opentelemetry-collector
+  ports:
+    - name: otlp
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
