@@ -21,7 +21,7 @@ locals {
   # policy, wrangler owns the code push and the Worker's own custom-domain
   # route/DNS record, same GitOps/Terraform split as the rest of this
   # infra). Update this if the actual chosen hostname ends up different.
-  hostname = "chief-of-staff-mcp.sulibot.com"
+  hostname = "kabinett-edge.sulibot.com"
 }
 
 # Long-lived (1 year) credential for the MCP client(s) calling this
@@ -33,7 +33,7 @@ locals {
 # chief-of-staff's own docs.
 resource "cloudflare_zero_trust_access_service_token" "chief_of_staff_mcp" {
   account_id = local.account_id
-  name       = "chief-of-staff-mcp"
+  name       = "kabinett-edge"
   duration   = "8760h"
 
   lifecycle {
@@ -48,7 +48,7 @@ resource "cloudflare_zero_trust_access_service_token" "chief_of_staff_mcp" {
 # ever logs into it via browser.
 resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp" {
   account_id                 = local.account_id
-  name                       = "chief-of-staff-mcp"
+  name                       = "kabinett-edge"
   domain                     = local.hostname
   type                       = "self_hosted"
   session_duration           = "24h"
@@ -66,6 +66,32 @@ resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp" {
         token_id = cloudflare_zero_trust_access_service_token.chief_of_staff_mcp.id
       }
     }]
+  }]
+}
+
+# ENG-459: Slack's slash-command POSTs to /slack/capture on this same
+# Worker/hostname, but Slack can't present the service token above (it
+# authenticates the request itself via X-Slack-Signature, verified in
+# the Worker -- see apps/edge/src/slack.ts in kabinett). Access resolves
+# overlapping applications on one hostname by most-specific-path-first,
+# so this narrower app takes precedence over the broader one above for
+# exactly this one path, leaving the MCP endpoint's auth untouched.
+resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp_slack_capture" {
+  account_id                 = local.account_id
+  name                       = "kabinett-edge-slack-capture"
+  domain                     = "${local.hostname}/slack/capture"
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+
+  policies = [{
+    name       = "Bypass for Slack signature verification"
+    decision   = "bypass"
+    precedence = 1
+    include    = [{ everyone = {} }]
   }]
 }
 
