@@ -128,6 +128,32 @@ resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp" {
   }]
 }
 
+# ENG-459: Slack's slash-command POSTs to /slack/capture on this same
+# Worker/hostname, but Slack can't present the service token above (it
+# authenticates the request itself via X-Slack-Signature, verified in
+# the Worker -- see apps/edge/src/slack.ts in kabinett). Access resolves
+# overlapping applications on one hostname by most-specific-path-first,
+# so this narrower app takes precedence over the broader one above for
+# exactly this one path, leaving the MCP endpoint's auth untouched.
+resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp_slack_capture" {
+  account_id                 = local.account_id
+  name                       = "chief-of-staff-mcp-slack-capture"
+  domain                     = "$${local.hostname}/slack/capture"
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+
+  policies = [{
+    name       = "Bypass for Slack signature verification"
+    decision   = "bypass"
+    precedence = 1
+    include    = [{ everyone = {} }]
+  }]
+}
+
 output "service_token_client_id" {
   value = cloudflare_zero_trust_access_service_token.chief_of_staff_mcp.client_id
 }
