@@ -31,6 +31,13 @@ spec:
     mode: deployment
     replicaCount: 1
 
+    # Pinned to the ClusterIP Kubernetes already assigned (was previously
+    # unset/auto-assigned). ENG-454's OCI Phoenix orchestrator depends on
+    # this exact address for its WireGuard tunnel AllowedIPs -- pinning
+    # removes the risk of it drifting on a future Service recreate.
+    service:
+      clusterIP: "fd00:101:96::1:9cd5"
+
     image:
       repository: otel/opentelemetry-collector-contrib
 
