@@ -95,6 +95,29 @@ resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp_slack_ca
   }]
 }
 
+# ENG-469: same shape as the /slack/capture bypass above -- a second
+# Slack slash command (/job-hunt, apps/edge/src/slack.ts's
+# handleSlackJobHunt) POSTs here, also self-authenticating via
+# X-Slack-Signature rather than a service token.
+resource "cloudflare_zero_trust_access_application" "chief_of_staff_mcp_slack_job_hunt" {
+  account_id                 = local.account_id
+  name                       = "kabinett-edge-slack-job-hunt"
+  domain                     = "${local.hostname}/slack/job-hunt"
+  type                       = "self_hosted"
+  session_duration           = "24h"
+  auto_redirect_to_identity  = false
+  enable_binding_cookie      = false
+  http_only_cookie_attribute = false
+  options_preflight_bypass   = false
+
+  policies = [{
+    name       = "Bypass for Slack signature verification"
+    decision   = "bypass"
+    precedence = 1
+    include    = [{ everyone = {} }]
+  }]
+}
+
 output "service_token_client_id" {
   value = cloudflare_zero_trust_access_service_token.chief_of_staff_mcp.client_id
 }
