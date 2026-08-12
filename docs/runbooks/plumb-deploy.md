@@ -88,11 +88,47 @@ Does not exist. Create it, then:
   `pg-functions://postgres/public/before_user_created_gate`. Without it the
   public signup endpoint is open (ENG-491).
 
-### 2. A Workers-scoped Cloudflare API token
+### 2. Cloudflare API tokens — TWO gaps, and they are different
 
-None of the four tokens in the Kubernetes vault can touch the Workers API —
-checked. Create one with **Account → Workers Scripts → Edit** and store it as
-`Cloudflare Workers Token` in the Kubernetes vault.
+Both were found by testing, not by reading docs.
+
+**a. The Terragrunt token needs Workers Routes.** The token in
+`common/secrets.sops.yaml` can edit DNS but is refused on Workers routes:
+
+```
+DNS read:        200
+Workers routes:  403
+Workers scripts: 403
+```
+
+So `terragrunt apply` on `services/cloudflare-plumb` fails on
+`cloudflare_workers_route` unless this is fixed first.
+
+**Extend the existing token** rather than minting another. Add
+**Zone → Workers Routes → Edit**, scoped to `sulibot.com`. This does not
+meaningfully widen it: anything that can edit DNS for the zone can already
+repoint every hostname on it, so route editing adds no capability an attacker
+did not already have. One token, one thing to rotate.
+
+**b. wrangler needs a NEW token.** Create one with
+**Account → Workers Scripts → Edit**, and store it in the Kubernetes vault as
+`Cloudflare Workers Deploy`.
+
+Do **not** fold this into the Terragrunt token, for a reason that is not
+tidiness. Workers Scripts is an **account-level** permission, while everything
+the Terragrunt token holds is **zone-level**. Merging them means one leaked
+value can both replace the running application *and* repoint the entire zone —
+two failures that should stay independent. They also have different lifecycles:
+the Terragrunt token is used by planned infrastructure changes, the deploy token
+by a laptop or CI on every ship.
+
+Scope it to the account only. It needs no zone permissions to publish a script.
+
+**Worth noting while you are in there:** the Terragrunt token in sops is a
+*third* Cloudflare token — it is not the `Cloudflare API Zone.DNS Token` item in
+1Password, which is a different value. There are now several, and it is not
+obvious which is which. Naming them for their purpose when you next touch them
+would help.
 
 ### 3. Secrets on the Worker
 
