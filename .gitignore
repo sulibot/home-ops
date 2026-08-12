@@ -174,3 +174,5 @@ terraform/infra/live/services/cloudflare-email-dns/main.tf
 terraform/infra/live/services/cloudflare-email-dns/providers.tf
 terraform/infra/live/services/cloudflare-plumb/main.tf
 terraform/infra/live/services/cloudflare-plumb/providers.tf
+terraform/infra/live/services/supabase-plumb/main.tf
+terraform/infra/live/services/supabase-plumb/providers.tf

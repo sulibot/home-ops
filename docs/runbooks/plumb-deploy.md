@@ -56,37 +56,64 @@ The Terragrunt route references a Worker by name, so the script must exist
 first. Applying before deploying leaves a route pointing at nothing.
 
 ```
-1. Create the Supabase Cloud project        (needs you)
-2. Create a Workers-scoped API token        (needs you)
-3. wrangler secret put …                    (needs you, values from 1Password)
-4. pnpm cf:deploy                            from ~/code/plumb/apps/web
-5. terragrunt apply                          services/cloudflare-plumb
-6. Verify
+1. sops-edit secrets                         (needs you: Supabase PAT + org id)
+2. terragrunt apply                          services/supabase-plumb
+3. supabase db push                          from ~/code/plumb
+4. Add the Google redirect URI               (needs you: value from tf output)
+5. Cloudflare tokens                         (needs you)
+6. wrangler secret put …
+7. pnpm cf:deploy                            from ~/code/plumb/apps/web
+8. terragrunt apply                          services/cloudflare-plumb
+9. Verify
 ```
 
 ---
 
 ## What needs you
 
-### 1. Supabase Cloud project
+### 1. Supabase Cloud project — now Terraform, not a dashboard checklist
 
-Does not exist. Create it, then:
+`services/supabase-plumb` creates the project and manages its auth
+configuration through the official `supabase/supabase` provider. Site URL,
+redirect allow-list, SMTP, the Google provider and the `before_user_created`
+hook are all in the plan.
 
-- Run the migrations: `supabase link --project-ref <ref>` then `supabase db push`
-- **Auth → Emails → SMTP**: `smtp.resend.com:587`, username the literal
-  `resend`, password from 1Password `Plumb SMTP`. Sender per ENG-493.
-- **Auth → Emails → Templates**: paste the five from `supabase/templates/` —
-  Cloud keeps its own copies and does not read the repo.
-- **Auth → URL Configuration**: site URL `https://plumb.sulibot.com`, and add
-  `https://plumb.sulibot.com/auth/callback` to the redirect allow-list.
-- **Auth → Providers → Google**: client ID and secret from 1Password
-  `Plumb Google OAuth`. Then add the Cloud callback
-  `https://<ref>.supabase.co/auth/v1/callback` to the authorised redirect URIs
-  in the Google Cloud console — the stored value there is currently the local
-  one, and Google will refuse anything not listed.
-- **Auth hook**: enable `before_user_created` →
-  `pg-functions://postgres/public/before_user_created_gate`. Without it the
-  public signup endpoint is open (ENG-491).
+**Two credentials are needed in `common/secrets.sops.yaml` before it can run:**
+
+```yaml
+supabase_access_token:      # supabase.com/dashboard/account/tokens
+supabase_organization_id:   # dashboard URL, or the org settings page
+supabase_plumb_db_password: # generate one; Terraform sets it at create time
+plumb_smtp_sender:          # no-reply@sulibot.com (pending your decision)
+plumb_smtp_password:        # 1Password: Plumb SMTP / credential
+plumb_google_client_id:     # 1Password: Plumb Google OAuth / username
+plumb_google_client_secret: # 1Password: Plumb Google OAuth / credential
+```
+
+Then:
+
+```sh
+cd terraform/infra/live/services/supabase-plumb
+terragrunt apply
+terragrunt output project_ref
+terragrunt output google_redirect_uri
+```
+
+**What Terraform deliberately does NOT own:**
+
+- **Migrations.** `supabase link --project-ref <ref>` then `supabase db push`
+  from the plumb repo. Schema is versioned SQL and belongs with the code;
+  Terraform holding it would be two sources of truth for the same tables.
+- **Email templates.** The auth API takes them as inline strings, and the five
+  live in `plumb/supabase/templates/*.html`. Inlining ~9KB of HTML into a
+  terragrunt.hcl to satisfy a principle would make both files worse. Push them
+  with the migrations.
+
+**Order matters:** apply Terraform first to get `project_ref`, then push
+migrations. The `before_user_created` hook points at
+`public.before_user_created_gate`, which does not exist until the migrations
+run — the hook is configured but inert until then, and the signup endpoint is
+open in that window. Push migrations promptly.
 
 ### 2. Cloudflare API tokens — TWO gaps, and they are different
 
