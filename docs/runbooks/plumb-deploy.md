@@ -78,29 +78,41 @@ configuration through the official `supabase/supabase` provider. Site URL,
 redirect allow-list, SMTP, the Google provider and the `before_user_created`
 hook are all in the plan.
 
-**Secrets come from 1Password, not by hand.** `./scripts/plumb-secrets.sh`
-reads them and writes the sops file; it refuses rather than writing a
-placeholder, because a placeholder applies and then fails somewhere far away
-with an error that never mentions 1Password.
+**One value to fill in by hand. Everything else is derived.**
+
+On the `Supabase Plumb` item in the Kubernetes vault, set `credential` to a
+Supabase personal access token from
+https://supabase.com/dashboard/account/tokens.
+
+**Expiry: choose Custom, ~12 months.** "Never" is only offered when no
+never-expiring token exists, and the single slot is held by
+`cli_sulibot@ganymede` — which is your **CLI login**, used by `supabase link`
+and `supabase db push`. Deleting it to free the slot logs your CLI out, and
+re-running `supabase login` just mints another one. An expiry you have written
+down beats a token that dies when you reinstall a CLI.
+
+Then:
 
 ```sh
 ./scripts/plumb-secrets.sh --dry-run
 ./scripts/plumb-secrets.sh
 ```
 
-Five of the seven values already resolve. **Two are yours to fill**, both on the
-`Supabase Plumb` item in the Kubernetes vault:
+The script derives the rest:
 
-| Field | Where to get it |
-|---|---|
-| `credential` | A personal access token: supabase.com/dashboard/account/tokens |
-| `organization_id` | The dashboard URL, or `GET https://api.supabase.com/v1/organizations` with that token |
+- **organization_id** is fetched from the Management API, not transcribed. The
+  dashboard shows a slug in some places and an id in others; the provider wants
+  the id. If the account has more than one organization it stops and asks,
+  rather than silently putting the project somewhere with different billing.
+- **The token is validated** against the API before anything is written, so a
+  bad paste fails here rather than at `terraform apply` with `Unauthorized`.
+- **open-brain's sops copy is refreshed** with the same token. Both repos hold
+  Supabase PATs and both currently hold the same *dead* one — open-brain's
+  terraform cannot run today. A PAT cannot be scoped, so a second token would
+  add rotation burden without shrinking blast radius.
 
-The `ACCESS_TOKEN_OPEN_BRAIN` on the existing `Supabase` item is dead — tested,
-401 — so it cannot be reused.
-
-`db_password` is already generated. Terraform sets it at project creation and it
-is not recoverable from the dashboard afterwards, so leave it in 1Password.
+`db_password` is already generated. Terraform sets it at project creation and
+Supabase does not let you read it back, so it stays in 1Password.
 
 Then:
 
