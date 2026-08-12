@@ -82,6 +82,10 @@ locals {
   # read or write Email Routing.
   dmarc_rua = "dmarc@sulibot.com"
 
+  # Where those reports are forwarded. Must be a verified destination address
+  # on the Cloudflare account.
+  dmarc_destination = "sulibot@gmail.com"
+
   # p=none reports without quarantining, so a misconfigured DKIM shows up in
   # aggregate reports rather than by sending real password-reset emails to
   # spam. Move to quarantine once the reports are clean -- and only then, since
@@ -117,21 +121,56 @@ import {
 }
 
 # ---------------------------------------------------------------------------
+# DMARC report delivery
+# ---------------------------------------------------------------------------
+
+# rua points at dmarc@sulibot.com, so that address has to actually go
+# somewhere. Without this rule the reports are refused and p=none tells us
+# nothing at all — the policy would exist while doing none of its job, which
+# is the failure mode worth avoiding since it looks like success.
+#
+# NOTE: the destination must already be a VERIFIED destination address on the
+# account. Cloudflare verifies by emailing a link, so that step cannot be
+# automated. cloudflare_email_routing_address is deliberately not managed here:
+# the address predates this unit, and adopting it would need an import of a tag
+# this token cannot currently read.
+resource "cloudflare_email_routing_rule" "dmarc" {
+  zone_id = local.zone_id
+  name    = "DMARC aggregate reports"
+  enabled = true
+
+  matchers = [{
+    type  = "literal"
+    field = "to"
+    value = local.dmarc_rua
+  }]
+
+  actions = [{
+    type  = "forward"
+    value = [local.dmarc_destination]
+  }]
+}
+
+# ---------------------------------------------------------------------------
 # Sending domain
 # ---------------------------------------------------------------------------
 #
-# NOT managed here yet, and deliberately so.
+# NOT managed here, and now for a hard reason rather than a soft one.
 #
-# Resend already has sulibot.com verified, with DKIM at
-# resend._domainkey.sulibot.com and the return-path SPF at send.sulibot.com --
-# both created outside Terraform before this unit existed. Importing them is
-# worth doing, but it is a separate change from publishing DMARC, and adopting
-# working mail records is the kind of thing to do deliberately rather than as a
-# side effect.
+# Isolating Plumb's sending reputation onto plumb.sulibot.com was the plan.
+# Resend refuses it:
 #
-# If Plumb's sending domain is later isolated to plumb.sulibot.com (see
-# ENG-493), Resend will issue a DKIM record and a send.plumb SPF record. Those
-# are new, so they should be authored here from the start rather than clicked
-# in and imported afterwards.
+#   403 {"message":"Your plan includes 1 domain. Upgrade to add more."}
+#
+# sulibot.com already occupies that one slot. So Plumb sends as
+# no-reply@sulibot.com and shares sending reputation with everything else this
+# zone sends — cluster alerting included. Accepted rather than chosen; revisit
+# if Resend is ever upgraded, at which point the DKIM and SPF records Resend
+# issues for the subdomain should be authored here from the start.
+#
+# The existing records for sulibot.com (DKIM at resend._domainkey, return-path
+# SPF at send.) were created outside Terraform before this unit existed.
+# Importing them is worth doing, but it is a separate change from publishing
+# DMARC, and adopting live mail records belongs in its own reviewable diff.
 EOF
 }

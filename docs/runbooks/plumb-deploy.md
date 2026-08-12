@@ -84,7 +84,7 @@ hook are all in the plan.
 supabase_access_token:      # supabase.com/dashboard/account/tokens
 supabase_organization_id:   # dashboard URL, or the org settings page
 supabase_plumb_db_password: # generate one; Terraform sets it at create time
-plumb_smtp_sender:          # no-reply@sulibot.com (pending your decision)
+plumb_smtp_sender:          # no-reply@sulibot.com  (decided — see below)
 plumb_smtp_password:        # 1Password: Plumb SMTP / credential
 plumb_google_client_id:     # 1Password: Plumb Google OAuth / username
 plumb_google_client_secret: # 1Password: Plumb Google OAuth / credential
@@ -131,8 +131,10 @@ Workers scripts: 403
 So `terragrunt apply` on `services/cloudflare-plumb` fails on
 `cloudflare_workers_route` unless this is fixed first.
 
-**Extend the existing token** rather than minting another. Add
-**Zone → Workers Routes → Edit**, scoped to `sulibot.com`. This does not
+**Extend the existing token** rather than minting another. Add both
+**Zone → Workers Routes → Edit** and **Zone → Email Routing Rules → Edit**,
+scoped to `sulibot.com`. The second is for the DMARC forwarding rule, which is
+now Terraform too and is refused by the current token (403, tested). This does not
 meaningfully widen it: anything that can edit DNS for the zone can already
 repoint every hostname on it, so route editing adds no capability an attacker
 did not already have. One token, one thing to rotate.
@@ -233,3 +235,36 @@ Then in a browser:
 `wrangler rollback` reverts the script. The route and DNS are Terraform, so
 reverting those is a revert-and-apply. The two are independent: rolling back the
 script does not touch the route.
+
+---
+
+## The sender address, decided by constraint
+
+Isolating Plumb's reputation onto `plumb.sulibot.com` was the intent. Resend
+refuses it:
+
+```
+403 {"message":"Your plan includes 1 domain. Upgrade to add more."}
+```
+
+`sulibot.com` already occupies the single slot, so a from-address on any
+subdomain is rejected as unverified. Plumb sends as `no-reply@sulibot.com` and
+shares sending reputation with everything else the zone sends — cluster
+alerting included. If Plumb is ever marked as spam, alert delivery degrades
+with it.
+
+Revisit only if Resend is upgraded. `supabase/config.toml` in the plumb repo
+has been corrected to match, and verified: `Plumb <no-reply@sulibot.com>`.
+
+## DMARC report delivery
+
+`rua` points at `dmarc@sulibot.com`, and that address must actually receive
+mail or `p=none` reports nothing while looking like it works.
+
+The forwarding rule is now Terraform —
+`cloudflare_email_routing_rule.dmarc` in `services/cloudflare-email-dns`.
+
+**One manual prerequisite that cannot be automated:** the destination
+(`sulibot@gmail.com`) must be a *verified* destination address on the account.
+Cloudflare verifies by emailing a link. If it is already verified from earlier
+Email Routing setup, nothing to do.
