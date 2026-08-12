@@ -45,34 +45,70 @@ want these in git later, that module has to exist first.
 
 ---
 
-## Records to create
+## What already exists
 
-Values marked `<from provider>` come from the sending provider's dashboard
-after you add the domain. Use a subdomain (`mail.sulibot.com` or
-`send.sulibot.com`) as the sending domain rather than the apex, so a
-deliverability problem with Plumb never affects mail from `sulibot.com` itself.
+Discovered rather than assumed — checked against the live zone and the Resend API.
 
-| Type | Name | Value | Proxy |
-|---|---|---|---|
-| TXT | `send.sulibot.com` | `v=spf1 include:<provider-spf> ~all` | n/a |
-| TXT | `<selector>._domainkey.send` | `<from provider>` | n/a |
-| CNAME | `<selector>._domainkey.send` | `<from provider>` (SES/Resend often use CNAME) | **DNS only** |
-| TXT | `_dmarc.sulibot.com` | `v=DMARC1; p=none; rua=mailto:dmarc@sulibot.com; fo=1` | n/a |
-| MX | `send.sulibot.com` | `feedback-smtp.<region>.amazonses.com` (SES/Resend bounce handling) | n/a |
+| Thing | State |
+|---|---|
+| Resend account | **exists**, API key in 1Password item `smtp-relay` (field `SMTP_RELAY_PASSWORD`) |
+| `sulibot.com` in Resend | **verified**, region `us-east-1` |
+| DKIM `resend._domainkey.sulibot.com` | **published** |
+| Return-path SPF `send.sulibot.com` | **published** — `v=spf1 include:amazonses.com ~all` |
+| Apex SPF | `v=spf1 include:_spf.mx.cloudflare.net ~all` — Cloudflare Email Routing, inbound only |
+| MX | Cloudflare Email Routing (`route1/2/3.mx.cloudflare.net`) |
+| `_dmarc.sulibot.com` | **MISSING** |
 
-Notes that matter:
+So the account-creation and domain-verification work is already done. What is
+left is much smaller than it first appeared.
 
-- **Never proxy a DKIM CNAME.** Cloudflare's proxy rewrites the answer and DKIM
-  validation fails. The zone runs with `--cloudflare-proxied` as the
-  external-dns default, but that only applies to records external-dns creates;
-  set these to DNS-only explicitly.
-- **Start DMARC at `p=none`.** It reports without quarantining, so a
-  misconfigured DKIM shows up in the aggregate reports rather than sending real
-  password resets to spam. Move to `p=quarantine` once reports are clean.
-- `~all` (softfail) not `-all` on SPF, for the same reason. Tighten after
-  observation.
+## The in-cluster relay cannot serve Plumb
 
----
+`smtp-relay.sulibot.com` (maddy, `tier-2-applications/smtp-relay`) is a
+LoadBalancer on `fd00:101:250::122` / `10.101.250.122` — ULA and RFC1918, so
+reachable from inside the cluster only. Supabase Cloud is an external service
+and cannot connect to it.
+
+Plumb therefore points at **`smtp.resend.com:587` directly**, using the same
+Resend credentials the relay already uses. The relay stays as-is for in-cluster
+senders (Alertmanager, Authentik, Firefly); Plumb is simply a second consumer of
+the same upstream account.
+
+## DMARC is missing, and that is not just a Plumb problem
+
+`_dmarc.sulibot.com` does not exist. Every domain that sends mail should publish
+one — without it, receivers have no stated policy for handling messages that
+fail SPF or DKIM, and no reporting channel to tell you when they do.
+
+```
+Type   TXT
+Name   _dmarc.sulibot.com
+Value  v=DMARC1; p=none; rua=mailto:dmarc@sulibot.com; fo=1
+```
+
+Start at `p=none`: it reports without quarantining, so a misconfiguration shows
+up in aggregate reports rather than sending real password resets to spam. Move
+to `p=quarantine` once the reports are clean. `dmarc@sulibot.com` needs to be a
+routable address — Cloudflare Email Routing already handles inbound for this
+zone.
+
+## Sender address: one decision
+
+Resend verifies a specific domain. `sulibot.com` is verified; `plumb.sulibot.com`
+is not, and Resend's guidance is that subdomains are added and verified
+individually.
+
+- **Send as `no-reply@sulibot.com`** — works today, no DNS. Plumb's sending
+  reputation is then shared with everything else the zone sends.
+- **Add `plumb.sulibot.com` to Resend** — two records (DKIM TXT, and SPF on
+  `send.plumb.sulibot.com`), and Resend explicitly recommends a subdomain to
+  isolate reputation. A deliverability problem with Plumb then cannot affect
+  cluster alerting, and vice versa.
+
+`supabase/config.toml` in the Plumb repo currently says
+`admin_email = "no-reply@plumb.sulibot.com"`, which assumes the second option.
+**If you pick the first, that value must change or Resend will reject the
+send** — the from-address has to be on a verified domain.
 
 ## Supabase configuration
 
@@ -82,18 +118,21 @@ the local file governs only the local stack. In the Plumb project:
 *Authentication → Emails → SMTP Settings*
 
 ```
-Host        <provider smtp host>
-Port        587
-Username    <from provider>
-Password    <from provider>
-Sender email no-reply@send.sulibot.com
-Sender name  Plumb
+Host          smtp.resend.com
+Port          587                  (STARTTLS)
+Username      resend
+Password      <Resend API key — 1Password: smtp-relay / SMTP_RELAY_PASSWORD>
+Sender email  no-reply@sulibot.com          (or @plumb.sulibot.com once verified)
+Sender name   Plumb
 ```
 
-The sender name and address must match `supabase/config.toml` in the Plumb
-repo, which already sets `sender_name = "Plumb"` and
-`admin_email = "no-reply@plumb.sulibot.com"` for local. Pick one address and
-use it in both, so a local test and a production email look the same.
+Username is the literal string `resend` for every Resend SMTP connection; the
+API key is the password. Same credentials the in-cluster maddy relay already
+uses — see its `maddy.conf`, which does `auth plain` against
+`tcp://smtp.resend.com:587`.
+
+The sender address must match `admin_email` in `supabase/config.toml` in the
+Plumb repo, so a local test and a production email look identical.
 
 Email templates are already written and live in `supabase/templates/` in the
 Plumb repo. **They are not uploaded automatically** — Supabase Cloud keeps its
@@ -104,15 +143,24 @@ keep the repo as the source of truth.
 
 ## Credentials
 
-Store in the **1Password Kubernetes vault**, matching the shape used for the
-Google OAuth items:
+**Nothing new to store.** The Resend API key already exists in the 1Password
+Kubernetes vault as item `smtp-relay`, field `SMTP_RELAY_PASSWORD`, where the
+cluster relay reads it via External Secrets.
 
+Reuse it rather than minting a second key: one key means one thing to rotate,
+and Resend's per-key usage is not separated in a way that would make a second
+key more informative here.
+
+Read it with:
+
+```sh
+op item get smtp-relay --vault Kubernetes --fields label=SMTP_RELAY_PASSWORD --reveal
 ```
-Title      Plumb SMTP
-Category   API Credential
-Fields     username, credential (concealed), host, port,
-           sender_email, sender_name, provider
-```
+
+If you later want Plumb's sending isolated from the cluster's — separate
+reputation, separate revocation — mint a second key scoped to the
+`plumb.sulibot.com` domain and store it as `Plumb SMTP`. That is the same
+decision as the sender-address one above, and should be made once for both.
 
 ---
 
@@ -122,9 +170,9 @@ Not "the dashboard is green" — send a real message and read the headers.
 
 ```sh
 # 1. Records are live and unproxied
-dig +short TXT send.sulibot.com
-dig +short TXT _dmarc.sulibot.com
-dig +short CNAME <selector>._domainkey.send.sulibot.com
+dig +short TXT send.sulibot.com            # already present
+dig +short TXT resend._domainkey.sulibot.com   # already present
+dig +short TXT _dmarc.sulibot.com          # the one that is missing
 
 # 2. Sign up from an address on a domain you do NOT control
 #    (gmail is the useful test — it is the strictest common receiver)
