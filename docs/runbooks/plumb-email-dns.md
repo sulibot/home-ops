@@ -74,17 +74,25 @@ Resend credentials the relay already uses. The relay stays as-is for in-cluster
 senders (Alertmanager, Authentik, Firefly); Plumb is simply a second consumer of
 the same upstream account.
 
-## DMARC is missing, and that is not just a Plumb problem
+## DMARC — published
 
-`_dmarc.sulibot.com` does not exist. Every domain that sends mail should publish
-one — without it, receivers have no stated policy for handling messages that
-fail SPF or DKIM, and no reporting channel to tell you when they do.
+Created in Cloudflare via the API on 2026-08-12, verified resolving against
+1.1.1.1:
 
 ```
-Type   TXT
-Name   _dmarc.sulibot.com
-Value  v=DMARC1; p=none; rua=mailto:dmarc@sulibot.com; fo=1
+_dmarc.sulibot.com  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@sulibot.com; fo=1"
 ```
+
+**One thing left: `dmarc@sulibot.com` must be routable.** The `rua` address is
+where aggregate reports arrive, and reports are the entire point of `p=none`.
+The zone uses Cloudflare Email Routing, so add a rule forwarding `dmarc@` to a
+real inbox — otherwise receivers send reports into a black hole and the policy
+tells you nothing. (The Zone.DNS token cannot read or write Email Routing rules,
+so this one is dashboard work.)
+
+The address is deliberately on `sulibot.com` rather than an external inbox: a
+`rua` pointing at another domain requires that domain to publish an
+authorization record, which is not something we can create for gmail.com.
 
 Start at `p=none`: it reports without quarantining, so a misconfiguration shows
 up in aggregate reports rather than sending real password resets to spam. Move
@@ -172,14 +180,9 @@ API Credential item.
 sender address. If Plumb's key is ever compromised or rate-limited, cluster
 alerting keeps working; if the cluster's key is rotated, Plumb keeps sending.
 
-```
-Title      Plumb SMTP
-Category   API Credential
-Fields     credential (concealed)  <- key B
-           username = resend
-           host     = smtp.resend.com
-           port     = 587
-```
+**Created 2026-08-12** in the Kubernetes vault as `Plumb SMTP`
+(API Credential), holding key B plus `username=resend`,
+`host=smtp.resend.com`, `port=587`, `sender_name=Plumb`.
 
 `username` is the literal string `resend` for every Resend SMTP connection —
 the API key is the password.
