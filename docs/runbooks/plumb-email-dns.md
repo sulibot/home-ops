@@ -141,26 +141,48 @@ keep the repo as the source of truth.
 
 ---
 
-## Credentials
+## Credentials — what actually exists
 
-**Nothing new to store.** The Resend API key already exists in the 1Password
-Kubernetes vault as item `smtp-relay`, field `SMTP_RELAY_PASSWORD`, where the
-cluster relay reads it via External Secrets.
+**Nothing new to create.** Verified against 1Password and against
+`smtp.resend.com:587` (AUTH only, no message sent — all three log in
+successfully):
 
-Reuse it rather than minting a second key: one key means one thing to rotate,
-and Resend's per-key usage is not separated in a way that would make a second
-key more informative here.
+| 1Password item (Kubernetes vault) | Field | Key | SMTP auth |
+|---|---|---|---|
+| `smtp-relay` | `SMTP_RELAY_PASSWORD` | **A** | OK |
+| `API Credential - resend` | `credential` | **A** — same key | OK |
+| `Resend` | `API_KEY` | **B** — different key | OK |
 
-Read it with:
+Resend itself lists two keys: `home-ops` (2026-02-23) and `ops` (2026-08-12).
 
-```sh
-op item get smtp-relay --vault Kubernetes --fields label=SMTP_RELAY_PASSWORD --reveal
+### Two things worth fixing while you are here
+
+**`smtp-relay` and `API Credential - resend` hold the same key.** Rotate one
+and the other silently goes stale, still looking authoritative. One of them
+should go — `smtp-relay` is the one External Secrets reads, so keep that.
+
+**The `Resend` item is a LOGIN holding the account password alongside key B.**
+An account credential and a service credential in one item means anything that
+needs the key gets shown the password too. Key B belongs in its own
+API Credential item.
+
+### Which key Plumb should use
+
+**Key B**, moved into a dedicated item — the same isolation argument as the
+sender address. If Plumb's key is ever compromised or rate-limited, cluster
+alerting keeps working; if the cluster's key is rotated, Plumb keeps sending.
+
+```
+Title      Plumb SMTP
+Category   API Credential
+Fields     credential (concealed)  <- key B
+           username = resend
+           host     = smtp.resend.com
+           port     = 587
 ```
 
-If you later want Plumb's sending isolated from the cluster's — separate
-reputation, separate revocation — mint a second key scoped to the
-`plumb.sulibot.com` domain and store it as `Plumb SMTP`. That is the same
-decision as the sender-address one above, and should be made once for both.
+`username` is the literal string `resend` for every Resend SMTP connection —
+the API key is the password.
 
 ---
 
