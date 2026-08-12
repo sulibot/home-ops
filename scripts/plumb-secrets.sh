@@ -9,10 +9,10 @@
 # Copying them by hand is how a wrong value gets in and then costs an hour to
 # find, so this does it — and refuses rather than writing a placeholder.
 #
-# ONE thing to fill in by hand, on the 'Supabase Plumb' item (Kubernetes vault):
+# ONE thing to fill in by hand, on the 'Supabase' item (Kubernetes vault):
 #
-#   credential  <- a Supabase personal access token
-#                  https://supabase.com/dashboard/account/tokens
+#   ACCESS_TOKEN_terraform-home-ops  <- a Supabase personal access token
+#                                       supabase.com/dashboard/account/tokens
 #
 # Everything else is derived:
 #
@@ -30,7 +30,9 @@ cd "$(dirname "$0")/.."
 
 SECRETS="terraform/infra/live/common/secrets.sops.yaml"
 OPEN_BRAIN="/Users/sulibot/code/open-brain/infra/terraform/live/common/secrets.sops.yaml"
-ITEM="Supabase Plumb"
+ITEM="Supabase Plumb"          # project-scoped: db password, project ref
+ACCOUNT_ITEM="Supabase"        # account-scoped: the personal access token
+PAT_FIELD="ACCESS_TOKEN_terraform-home-ops"
 DRY_RUN=0
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
 
@@ -47,7 +49,10 @@ read_field() {
 # The one value that must come from a human
 # ---------------------------------------------------------------------------
 
-PAT="$(read_field "$ITEM" credential)"
+# The PAT is account-scoped, so it lives on the account item alongside the
+# other Supabase tokens rather than on the per-project one. Project-specific
+# values (db password, project ref) stay on 'Supabase Plumb'.
+PAT="$(read_field "$ACCOUNT_ITEM" "$PAT_FIELD")"
 
 if [[ -z "$PAT" || "$PAT" == REPLACE-ME* ]]; then
   cat >&2 <<'MSG'
@@ -58,7 +63,7 @@ No Supabase access token yet.
   3. Expires in -> Custom. "Never" is unavailable while the existing
      cli_sulibot@ganymede token holds the single never-expiring slot —
      do NOT delete that one, it is your CLI login.
-  4. Paste it into 1Password: "Supabase Plumb" / credential
+  4. Paste it into 1Password: "Supabase" / ACCESS_TOKEN_terraform-home-ops
 
 Then re-run this script.
 MSG
@@ -68,7 +73,7 @@ fi
 # Fail here, loudly, rather than at terraform apply with "Unauthorized".
 if ! curl -sf -o /dev/null -H "Authorization: Bearer $PAT" \
      https://api.supabase.com/v1/organizations; then
-  echo "The token in '$ITEM' / credential is rejected by the Supabase API." >&2
+  echo "The token in '$ACCOUNT_ITEM' / $PAT_FIELD is rejected by the Supabase API." >&2
   echo "It is expired, revoked, or was pasted incompletely." >&2
   exit 1
 fi

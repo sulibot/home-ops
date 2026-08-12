@@ -1,5 +1,9 @@
 # Deploying Plumb to Cloudflare Workers
 
+> **Status 2026-08-12.** Supabase project `fprczipdwiydbnmbizje` is created,
+> configured and migrated. Remaining: the Cloudflare Workers token, the Worker
+> secrets, and the deploy itself.
+
 `plumb.sulibot.com`, running on Workers Paid ($5/mo), with Supabase Cloud for
 auth and database. Tracked as ENG-495.
 
@@ -292,3 +296,43 @@ The forwarding rule is now Terraform —
 (`sulibot@gmail.com`) must be a *verified* destination address on the account.
 Cloudflare verifies by emailing a link. If it is already verified from earlier
 Email Routing setup, nothing to do.
+
+---
+
+## Facts established during the first deploy
+
+**Supabase project:** `fprczipdwiydbnmbizje`, org `Sulibot`
+(`vsqdkrwdzgsljcmafkrf`), region `eu-west-2`. API at
+`https://fprczipdwiydbnmbizje.supabase.co`.
+
+**The direct database host is IPv6-only, and this machine has no IPv6 egress.**
+`supabase link` fails with a dial timeout that names an IPv6 address and does
+not explain itself. Use the session pooler, which is IPv4:
+
+```sh
+supabase db push --db-url \
+  "postgresql://postgres.fprczipdwiydbnmbizje:<pw>@aws-0-eu-west-2.pooler.supabase.com:5432/postgres"
+```
+
+Port 5432 on the pooler host is *session* mode. The 6543 the API advertises is
+*transaction* mode and is the wrong one for DDL.
+
+**Verified after migrating**, rather than assumed:
+
+| Check | Result |
+|---|---|
+| Auth settings actually applied | all 15 keys read back correctly from the config API |
+| Migrations | 12 applied, 40 tables |
+| RLS | enabled on all 40 |
+| `before_user_created_gate` exists | yes |
+| Live signup gate | `422 User already registered` for a brand-new address |
+| Refresh-token reuse (ADR-028) | same token twice, 15s apart, 200 both times |
+
+The auth block is opaque JSON to the Terraform provider, so a misspelled key
+would be silently dropped rather than rejected. Reading it back is the only way
+to know it took.
+
+The refresh-token reuse check is the one that mattered most: the entire
+no-middleware design rests on it, and Cloud runs a different GoTrue build from
+the local stack — visible in the tokens themselves, ES256 on Cloud versus HS256
+locally.
