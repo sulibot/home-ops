@@ -1,8 +1,9 @@
 # Deploying Plumb to Cloudflare Workers
 
-> **Status 2026-08-12.** Supabase project `fprczipdwiydbnmbizje` is created,
-> configured and migrated. Remaining: the Cloudflare Workers token, the Worker
-> secrets, and the deploy itself.
+> **Status 2026-08-12.** Supabase project `fprczipdwiydbnmbizje` created,
+> configured, migrated and verified. Cloudflare tokens in place, Worker built,
+> secrets uploaded. **Blocked on one thing: the Cloudflare account is on the
+> Workers Free plan.** See the last section.
 
 `plumb.sulibot.com`, running on Workers Paid ($5/mo), with Supabase Cloud for
 auth and database. Tracked as ENG-495.
@@ -336,3 +337,30 @@ The refresh-token reuse check is the one that mattered most: the entire
 no-middleware design rests on it, and Cloud runs a different GoTrue build from
 the local stack — visible in the tokens themselves, ES256 on Cloud versus HS256
 locally.
+
+---
+
+## Blocked: the account is on Workers Free
+
+`wrangler deploy` fails:
+
+```
+CPU limits are not supported for the Free plan.  [code: 100328]
+```
+
+Removing `limits.cpu_ms` from `wrangler.jsonc` would get past that error and
+then fail worse. **Free allows 10ms of CPU per request**, and a Next.js SSR
+render exceeds that immediately — the deploy would succeed and every page would
+error at runtime. The `cpu_ms` line is not the problem; it is what surfaced the
+problem before users did, which is the better failure.
+
+**Upgrade to Workers Paid ($5/mo):**
+https://dash.cloudflare.com/089ac5ef7a1525cb7d7129cdde5873cd/workers/plans
+
+Nothing else is waiting. After the upgrade:
+
+```sh
+cd ~/code/plumb/apps/web && pnpm cf:deploy
+cd ~/code/home-ops/terraform/infra/live/services/cloudflare-plumb && terragrunt apply
+cd ../cloudflare-email-dns && terragrunt apply     # DMARC forwarding rule
+```
