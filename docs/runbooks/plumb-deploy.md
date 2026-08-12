@@ -78,17 +78,29 @@ configuration through the official `supabase/supabase` provider. Site URL,
 redirect allow-list, SMTP, the Google provider and the `before_user_created`
 hook are all in the plan.
 
-**Two credentials are needed in `common/secrets.sops.yaml` before it can run:**
+**Secrets come from 1Password, not by hand.** `./scripts/plumb-secrets.sh`
+reads them and writes the sops file; it refuses rather than writing a
+placeholder, because a placeholder applies and then fails somewhere far away
+with an error that never mentions 1Password.
 
-```yaml
-supabase_access_token:      # supabase.com/dashboard/account/tokens
-supabase_organization_id:   # dashboard URL, or the org settings page
-supabase_plumb_db_password: # generate one; Terraform sets it at create time
-plumb_smtp_sender:          # no-reply@sulibot.com  (decided — see below)
-plumb_smtp_password:        # 1Password: Plumb SMTP / credential
-plumb_google_client_id:     # 1Password: Plumb Google OAuth / username
-plumb_google_client_secret: # 1Password: Plumb Google OAuth / credential
+```sh
+./scripts/plumb-secrets.sh --dry-run
+./scripts/plumb-secrets.sh
 ```
+
+Five of the seven values already resolve. **Two are yours to fill**, both on the
+`Supabase Plumb` item in the Kubernetes vault:
+
+| Field | Where to get it |
+|---|---|
+| `credential` | A personal access token: supabase.com/dashboard/account/tokens |
+| `organization_id` | The dashboard URL, or `GET https://api.supabase.com/v1/organizations` with that token |
+
+The `ACCESS_TOKEN_OPEN_BRAIN` on the existing `Supabase` item is dead — tested,
+401 — so it cannot be reused.
+
+`db_password` is already generated. Terraform sets it at project creation and it
+is not recoverable from the dashboard afterwards, so leave it in 1Password.
 
 Then:
 
