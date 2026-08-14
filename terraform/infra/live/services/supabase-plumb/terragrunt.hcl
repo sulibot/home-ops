@@ -5,7 +5,7 @@ include "root" {
 # Supabase Cloud project for Plumb.
 #
 # Replaces most of what was a dashboard checklist in
-# docs/runbooks/plumb-deploy.md. The official provider
+# docs/runbooks/onward-deploy.md. The official provider
 # (supabase/terraform-provider-supabase) creates the project and manages its
 # auth configuration, so site URL, redirect allow-list, SMTP, the Google
 # provider and the before_user_created hook are all reviewable in a plan
@@ -28,7 +28,7 @@ include "root" {
 # supabase.com/dashboard/account/tokens) and `supabase_organization_id` in
 # common/secrets.sops.yaml. Neither exists yet — see the runbook.
 #
-# Runbook: docs/runbooks/plumb-deploy.md
+# Runbook: docs/runbooks/onward-deploy.md
 
 locals {
   credentials  = read_terragrunt_config(find_in_parent_folders("common/credentials.hcl"))

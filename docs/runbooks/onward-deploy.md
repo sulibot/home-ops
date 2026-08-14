@@ -63,11 +63,11 @@ first. Applying before deploying leaves a route pointing at nothing.
 ```
 1. sops-edit secrets                         (needs you: Supabase PAT + org id)
 2. terragrunt apply                          services/supabase-plumb
-3. supabase db push                          from ~/code/plumb
+3. supabase db push                          from ~/code/onward
 4. Add the Google redirect URI               (needs you: value from tf output)
 5. Cloudflare tokens                         (needs you)
 6. wrangler secret put …
-7. pnpm cf:deploy                            from ~/code/plumb/apps/web
+7. pnpm cf:deploy                            from ~/code/onward/apps/web
 8. terragrunt apply                          services/cloudflare-plumb
 9. Verify
 ```
@@ -194,7 +194,7 @@ would help.
 is a secret and must never be in the file:
 
 ```sh
-cd ~/code/plumb/apps/web
+cd ~/code/onward/apps/web
 wrangler secret put NEXT_PUBLIC_SUPABASE_URL
 wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_URL
@@ -218,7 +218,7 @@ scan for it (ADR-003), and it should stay passing.
 ## Deploy
 
 ```sh
-cd ~/code/plumb/apps/web
+cd ~/code/onward/apps/web
 pnpm cf:build      # OpenNext bundle, no deploy
 pnpm cf:preview    # run it locally in workerd first
 pnpm cf:deploy
@@ -360,7 +360,7 @@ https://dash.cloudflare.com/089ac5ef7a1525cb7d7129cdde5873cd/workers/plans
 Nothing else is waiting. After the upgrade:
 
 ```sh
-cd ~/code/plumb/apps/web && pnpm cf:deploy
+cd ~/code/onward/apps/web && pnpm cf:deploy
 cd ~/code/home-ops/terraform/infra/live/services/cloudflare-plumb && terragrunt apply
 cd ../cloudflare-email-dns && terragrunt apply     # DMARC forwarding rule
 ```
