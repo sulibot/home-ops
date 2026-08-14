@@ -129,6 +129,18 @@ collect supabase_plumb_db_password "$ITEM" db_password
 collect plumb_smtp_password        "Plumb SMTP"        credential
 collect plumb_google_client_id     "Plumb Google OAuth" username
 collect plumb_google_client_secret "Plumb Google OAuth" credential
+# ENG-505. The item is named for the domain the app was registered against,
+# and its fields are LinkedIn's own labels rather than 1Password's generic
+# username/credential pair — cf-deploy.sh reads the same two.
+#
+# No longer guarded by an existence check. The guard was written when the
+# LinkedIn app did not exist, and it went on silently skipping after it did,
+# because it was looking for an item name that was never created. The Supabase
+# stack then failed to plan at all on a missing sops key, which is a worse
+# failure than the one the guard was avoiding and much harder to trace: the
+# error names the key, not the item it should have come from.
+collect plumb_linkedin_client_id     "Linkedin OAuth - onward.jobs" Client_ID
+collect plumb_linkedin_client_secret "Linkedin OAuth - onward.jobs" Primary_Client_Secret
 
 # Not a secret, but kept here so the sops file is complete and terraform needs
 # no other source. The apex, not a subdomain: Resend's plan allows one domain

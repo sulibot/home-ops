@@ -72,7 +72,7 @@ variable "region" {
 locals {
   org_id   = data.sops_file.secrets.data["supabase_organization_id"]
   db_pass  = data.sops_file.secrets.data["supabase_plumb_db_password"]
-  site_url = "https://plumb.sulibot.com"
+  site_url = "https://onward.jobs"
 }
 
 resource "supabase_project" "plumb" {
@@ -96,9 +96,17 @@ resource "supabase_settings" "plumb" {
 
   auth = jsonencode({
     site_url = local.site_url
+    # Wildcards, and every origin the app is actually served from. This drifted
+    # once already: production was cut over to onward.jobs through the
+    # Management API while this file still said plumb.sulibot.com, so the next
+    # apply here would have rolled sign-in back to a host that no longer
+    # exists. Terragrunt owns this setting; anything that writes it another way
+    # is drift waiting to be reverted.
     uri_allow_list = join(",", [
-      "$${local.site_url}",
-      "$${local.site_url}/auth/callback",
+      "$${local.site_url}/**",
+      "https://www.onward.jobs/**",
+      # Local development signs in against the hosted project.
+      "http://localhost:3000/**",
     ])
 
     # One hour, matching supabase/config.toml. Deliberately NOT lengthened to
@@ -131,13 +139,27 @@ resource "supabase_settings" "plumb" {
     smtp_port        = "587"
     smtp_user        = "resend"
     smtp_pass        = data.sops_file.secrets.data["plumb_smtp_password"]
-    smtp_sender_name = "Plumb"
+    # The From name on every auth email. It said "Plumb" in production long
+    # after the rename, because it lives in Supabase's config rather than the
+    # repo — no build, test, or grep over the codebase could have found it.
+    smtp_sender_name = "Onward"
     rate_limit_email_sent = 100
 
     external_google_enabled       = true
     external_google_client_id     = data.sops_file.secrets.data["plumb_google_client_id"]
     external_google_secret        = data.sops_file.secrets.data["plumb_google_client_secret"]
     external_google_skip_nonce_check = false
+
+    # ENG-505. Supabase calls this provider linkedin_oidc; the older `linkedin`
+    # provider used LinkedIn's pre-OIDC API and is not what a new app gets.
+    #
+    # Scopes are openid/profile/email and that is all LinkedIn will grant
+    # without partner approval — name, picture, locale, email. No work history.
+    # The button copy says so, because on a job-search product "continue with
+    # LinkedIn" otherwise reads as "import my career".
+    external_linkedin_oidc_enabled   = true
+    external_linkedin_oidc_client_id = data.sops_file.secrets.data["plumb_linkedin_client_id"]
+    external_linkedin_oidc_secret    = data.sops_file.secrets.data["plumb_linkedin_client_secret"]
 
     password_min_length = 12
   })
