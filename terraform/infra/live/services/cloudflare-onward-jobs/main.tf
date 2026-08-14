@@ -38,18 +38,19 @@ resource "porkbun_nameservers" "onward_jobs" {
 # The Worker, at the apex and at www
 # ---------------------------------------------------------------------------
 #
-# Same shape as services/cloudflare-plumb: a proxied placeholder A record so
-# the hostname exists in DNS, then a Workers route that intercepts it before
-# anything is ever sent to 192.0.2.1. That address is TEST-NET-1 and
-# deliberately unroutable — if the route were ever removed the request would
-# fail rather than reach a stranger's server.
+# A proxied placeholder A record so the hostname exists in DNS, then a Workers
+# route that intercepts it before anything is ever sent to 192.0.2.1. That
+# address is TEST-NET-1 and deliberately unroutable — if the route were ever
+# removed the request would fail rather than reach a stranger's server.
 #
-# The Worker is still named `plumb`. Renaming a Worker creates a new one and
-# orphans the deployed script, so the name stays until there is a reason
-# better than tidiness.
+# Cloudflare has no rename for a Worker: changing the name in wrangler.jsonc
+# deploys a second script and leaves this route pointed at the first. So the
+# move from `plumb` to `onward` was ordered — deploy under the new name, push
+# its secrets (a fresh Worker has none, so a route repointed first would serve
+# 500s), then change this, then delete the old script.
 
 locals {
-  worker = "plumb"
+  worker = "onward"
 }
 
 resource "cloudflare_dns_record" "apex" {
