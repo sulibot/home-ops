@@ -213,6 +213,62 @@ rather than in the committed config.
 belongs only on the Worker and never in a client bundle — there is a build-time
 scan for it (ADR-003), and it should stay passing.
 
+> **Stale above, as of ENG-532.** `vars` in `wrangler.jsonc` no longer holds
+> only `NEXT_PUBLIC_SITE_URL`, and the auth provider flags are no longer
+> secrets. `vars` now also carries `SITE_URL`, `MCP_SERVER_URL`,
+> `AUTH_GOOGLE_ENABLED`, `AUTH_LINKEDIN_ENABLED` and `ANALYTICS_ENABLED`.
+> `scripts/cf-deploy.sh --sync-secrets` is the current way to push the actual
+> secrets; the hand-run list above is kept for the "recreate a Worker from
+> nothing" case.
+
+### 4. Feature flags are `vars`, not secrets
+
+Boolean deployment flags live in `vars` in `wrangler.jsonc`, in git, where
+their state shows up in a diff. They are not credentials, and putting them in
+`wrangler secret put` would hide the one thing worth reviewing about them.
+
+They are also deliberately **not** `NEXT_PUBLIC_*`. Next inlines that prefix at
+build time, so the value would come from whichever laptop ran the deploy — which
+is exactly how one unreachable 1Password item once shipped a bundle with the
+LinkedIn button compiled out, with no error anywhere.
+
+| Var | Meaning |
+|---|---|
+| `AUTH_GOOGLE_ENABLED` | Offer Google sign-in. Must agree with `external_google_enabled` in the Supabase Terragrunt stack. |
+| `AUTH_LINKEDIN_ENABLED` | Offer LinkedIn sign-in. Same agreement requirement. |
+| `ANALYTICS_ENABLED` | **Off.** Whether the app records product-analytics events. |
+
+**`ANALYTICS_ENABLED` — what turning it on means.**
+
+ENG-532 built a product-event pipeline for the applications tracker: five
+events, written server-side to the `product_events` table in Postgres, with a
+strict property allowlist (no free text, no PII, no resume or job-description
+content) and RLS. It exists to answer whether the queue's nine hardcoded time
+estimates are honest, whether the rules engine surfaces the right items, and
+whether users really do build an evidence inventory.
+
+It is **off by default and ships off**, so the pipeline could land and be
+reviewed before writing a single row about a real person. Setting it to `"true"`
+starts collection for everyone — collection is unconditional and disclosed in
+the terms of service rather than gated behind a per-user toggle, so this is the
+switch, and there is no second one.
+
+```jsonc
+// apps/web/wrangler.jsonc → vars
+"ANALYTICS_ENABLED": "false"   // "true" to collect
+```
+
+Exactly the string `"true"` enables it. `"1"`, `"yes"`, `"TRUE"` and a trailing
+space are all off, on purpose: a permissive parse is how a gate gets flipped by
+a typo, and the failure would be silent in the direction that starts writing.
+Deploy the change (`./scripts/cf-deploy.sh`) for it to take effect — it is read
+at request time, but the var reaches the Worker with the deploy.
+
+Locally the same flag is written to `apps/web/.env.local` by
+`scripts/dev-env.sh`, also `false`. Set it to `true` by hand to exercise the
+events against the local stack; that script regenerates the file, so the edit
+cannot quietly become the default.
+
 ---
 
 ## Deploy
