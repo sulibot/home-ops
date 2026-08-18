@@ -52,7 +52,9 @@ spec:
           - name: severity
             value: warning
             matchType: =
-      - receiver: email
+      # Email delivery through smtp-relay/Resend is temporarily paused.
+      # Change this receiver back to `email` to resume delivery.
+      - receiver: blackhole
         matchers:
           - name: severity
             value: critical
