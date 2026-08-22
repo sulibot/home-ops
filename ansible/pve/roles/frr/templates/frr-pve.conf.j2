@@ -47,8 +47,7 @@
 {# K8s route policy (cluster-specific) #}
 {% set K8S_PODS_V6    = k8s_pods_v6    | default("fd00:101:224::/60") %}
 {% set K8S_PODS_V4    = k8s_pods_v4    | default("10.101.224.0/20") %}
-{% set K8S_VIPS_V6_A  = k8s_vips_v6_a  | default("fd00:101:253::/112") %}
-{% set K8S_VIPS_V6_B  = k8s_vips_v6_b  | default("fd00:101:254::/112") %}
+{% set K8S_VIPS_V6_LIST = k8s_vips_v6_list | default(["fd00:101:250::/112", "fd00:101:253::/112", "fd00:101:254::/112"]) %}
 {% set K8S_LOOPBACKS_V6 = k8s_loopbacks_v6 | default("fd00:101:fe::/64") %}
 {% set K8S_SERVICES_V4 = k8s_services_v4 | default("10.101.96.0/20") %}
 {% set K8S_SERVICES_V6 = k8s_services_v6 | default("fd00:101:96::/108") %}
@@ -133,8 +132,9 @@ ipv6 prefix-list PL_TENANT_GUA_V6 seq {{ 10 + loop.index0*10 }} permit {{ p }} l
 {# --- K8s --- #}
 ipv6 prefix-list PL_K8S_PODS_V6 seq 5 permit {{ K8S_PODS_V6 }} ge 64 le 64
 ip prefix-list PL_K8S_PODS_V4 seq 5 permit {{ K8S_PODS_V4 }} ge 24 le 24
-ipv6 prefix-list PL_K8S_VIPS_V6 seq 5 permit {{ K8S_VIPS_V6_A }} le 128
-ipv6 prefix-list PL_K8S_VIPS_V6 seq 15 permit {{ K8S_VIPS_V6_B }} le 128
+{% for p in K8S_VIPS_V6_LIST %}
+ipv6 prefix-list PL_K8S_VIPS_V6 seq {{ 5 + loop.index0*10 }} permit {{ p }} le 128
+{% endfor %}
 ipv6 prefix-list PL_K8S_LOOPBACKS_V6 seq 5 permit {{ K8S_LOOPBACKS_V6 }} le 128
 ip prefix-list PL_K8S_SERVICES_V4 seq 5 permit {{ K8S_SERVICES_V4 }} le 32
 ipv6 prefix-list PL_K8S_SERVICES_V6 seq 5 permit {{ K8S_SERVICES_V6 }} le 128
@@ -465,6 +465,12 @@ exit
 !
 route-map RM_VMS_IN_V6 deny 6
  match ipv6 address prefix-list PL_K8S_PODS_V6
+exit
+!
+{# The LB pool is outside fd00:<cluster>::/48, so it must be admitted by its
+   dedicated prefix list before the final deny. #}
+route-map RM_VMS_IN_V6 permit 7
+ match ipv6 address prefix-list PL_K8S_VIPS_V6
 exit
 !
 {% if VMS_LOCAL_PREF_ANYCAST_V6 | length > 0 and VMS_ANYCAST_NS.local_next_hops | length > 0 %}
