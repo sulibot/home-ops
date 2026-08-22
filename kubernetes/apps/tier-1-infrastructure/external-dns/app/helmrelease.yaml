@@ -23,7 +23,7 @@ spec:
     - --managed-record-types=SRV
     - --managed-record-types=NS
     fullnameOverride: external-dns-mikrotik
-    interval: 1s
+    interval: 1m
     logFormat: text
     logLevel: debug
     policy: sync
