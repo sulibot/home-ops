@@ -36,6 +36,16 @@ safety preconditions cannot be proved.
   dependents.
 - Keep the CephFS/RBD mount-doctor jobs. Alert on their latest result, while
   excluding retained historical failed Jobs after a newer run succeeds.
+- Alert on CephFS MDS cache usage, inode/dentry count, request rate, client-cap
+  count, and host memory together. `MDS_CACHE_OVERSIZED` plus rising cache and
+  BlueStore slow ops is an active metadata incident, not a warning to mute.
+- Correlate recursive `VolumePermissionChangeInProgress` events with MDS cache
+  growth. Require `fsGroupChangePolicy: OnRootMismatch` on VolSync movers and
+  alert when the rendered ReplicationSource has drifted from that setting.
+- Remediation: pause only affected ReplicationSources and cancel stuck kubelet
+  ownership walks before touching an MDS. Do not force MDS failover when Ceph
+  rejects it for `MDS_CACHE_OVERSIZED` or `MDS_TRIM`; require an operator to
+  accept the explicit filesystem-availability risk.
 
 ## Applications and backups
 
@@ -50,6 +60,14 @@ safety preconditions cannot be proved.
   files in `own-writes`. Treat this as interrupted repository work: quarantine
   and inspect the cache before retrying. Never automatically delete the cache
   while uncommitted writes are present.
+- Do not count Kopia's `.shards` bookkeeping file as an uncommitted write. The
+  cache-recovery guard must distinguish it from actual pending pack data.
+- Alert when a deleted VolSync pod leaves a Kopia process behind on its node.
+  Correlate Kubernetes pod UID, CRI task, and host PID; terminate only the
+  proven orphan instead of restarting containerd and every workload on a node.
+- Remediation must never recursively delete a large Kopia cache in one pass on
+  CephFS. Quarantine only regenerable index data, preserve `own-writes`, stop if
+  MDS/OSD latency rises, and remove quarantined entries in rate-limited batches.
 - Remediation: expand an expandable cache PVC within an application-specific
   ceiling, then verify a successful new snapshot. Never initialize a new Kopia
   repository merely because connecting to an existing repository failed.
