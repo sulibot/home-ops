@@ -3,7 +3,7 @@ fullnameOverride: external-dns-mikrotik
 
 logLevel: debug
 logFormat: text
-interval: 1s
+interval: 1m
 sources: ["ingress", "service", "crd"]
 registry: txt
 txtOwnerId: default

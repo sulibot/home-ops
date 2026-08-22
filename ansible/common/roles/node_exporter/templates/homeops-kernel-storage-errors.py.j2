@@ -19,7 +19,8 @@ PATTERNS = {
     "ata_exception": re.compile(r"(?i)(ata[0-9.]+: exception Emask|SError:|irq_stat|interface fatal error)"),
     "io_error": re.compile(r"(?i)(blk_update_request: I/O error|Buffer I/O error|end_request: I/O error|critical medium error|I/O error, dev)"),
     "nvme_timeout": re.compile(r"(?i)(nvme.*(timeout|reset|I/O.*error|controller is down|abort status))"),
-    "pcie_aer": re.compile(r"(?i)(AER:|PCIe Bus Error|corrected error received|uncorrected.*error)"),
+    # "AER: enabled with IRQ ..." is normal PCIe initialization at boot.
+    "pcie_aer": re.compile(r"(?i)(AER:\s*(?!enabled\b)|PCIe Bus Error|corrected error received|uncorrected.*error)"),
 }
 
 

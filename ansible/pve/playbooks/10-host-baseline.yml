@@ -6,6 +6,7 @@
   roles:
     - common       # chrony, base OS tuning
     - sysctl       # kernel parameters & forwarding
+    - network_rps  # optional per-host receive packet steering
     - ssh_config   # PermitRootLogin, authorized_keys
     - journald     # persistent logs
     - fstrim       # periodic fstrim

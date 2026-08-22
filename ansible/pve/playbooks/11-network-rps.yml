@@ -1,0 +1,7 @@
+---
+- name: Configure receive packet steering
+  hosts: pve
+  become: true
+
+  roles:
+    - network_rps

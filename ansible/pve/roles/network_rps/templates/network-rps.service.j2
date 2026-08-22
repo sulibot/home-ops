@@ -1,0 +1,14 @@
+[Unit]
+Description=Configure receive packet steering for single-queue NICs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+{% for interface in network_rps_interfaces %}
+ExecStart=/bin/sh -c 'test ! -e /sys/class/net/{{ interface }}/queues/rx-0/rps_cpus || { printf %%s {{ network_rps_cpu_mask | default("ffff") }} > /sys/class/net/{{ interface }}/queues/rx-0/rps_cpus; printf %%s {{ network_rps_flow_entries | default(32768) }} > /sys/class/net/{{ interface }}/queues/rx-0/rps_flow_cnt; }'
+{% endfor %}
+
+[Install]
+WantedBy=multi-user.target

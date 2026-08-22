@@ -1,0 +1,36 @@
+---
+- name: Persist receive-processing sysctls
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-network-rps.conf
+    state: present
+    reload: true
+  loop:
+    - name: net.core.netdev_budget
+      value: "{{ network_rps_netdev_budget | default(600) }}"
+    - name: net.core.netdev_budget_usecs
+      value: "{{ network_rps_netdev_budget_usecs | default(4000) }}"
+    - name: net.core.rps_sock_flow_entries
+      value: "{{ network_rps_flow_entries | default(32768) }}"
+  when: network_rps_interfaces | default([]) | length > 0
+
+- name: Install receive packet steering service
+  ansible.builtin.template:
+    src: network-rps.service.j2
+    dest: /etc/systemd/system/network-rps.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart network-rps
+  when: network_rps_interfaces | default([]) | length > 0
+
+- name: Enable receive packet steering service
+  ansible.builtin.systemd_service:
+    name: network-rps.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: network_rps_interfaces | default([]) | length > 0

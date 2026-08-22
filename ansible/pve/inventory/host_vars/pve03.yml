@@ -2,6 +2,15 @@
 ceph_db_lv_size: 11G
 ceph_db_vg: ceph-db-vg
 
+# The RTL8125B/r8169 uplink has one RX queue and a 256-descriptor maximum
+# ring. RPS/RFS prevents sustained VM/Ceph traffic from overflowing that ring.
+network_rps_interfaces:
+  - enp61s0
+network_rps_cpu_mask: ffff
+network_rps_flow_entries: 32768
+network_rps_netdev_budget: 600
+network_rps_netdev_budget_usecs: 4000
+
 ceph_osd_ids:
   - 14
   - 15

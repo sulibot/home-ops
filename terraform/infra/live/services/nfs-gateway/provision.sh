@@ -198,8 +198,12 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/sbin/ip -6 route replace fc00:20::/64 via ${ceph_route_gateway} dev eth0
+# network-online.target can be reached before the LXC receives its IPv6
+# address. Retry the route until the on-link PVE gateway is usable so a host
+# reboot cannot strand Ganesha without its Ceph messenger path.
+ExecStart=/bin/sh -c 'for attempt in \$(seq 1 30); do /usr/sbin/ip -6 route replace fc00:20::/64 via ${ceph_route_gateway} dev eth0 && exit 0; sleep 2; done; exit 1'
 ExecStop=/usr/sbin/ip -6 route del fc00:20::/64 via ${ceph_route_gateway} dev eth0
+TimeoutStartSec=70s
 
 [Install]
 WantedBy=multi-user.target

@@ -115,6 +115,10 @@ spec:
                 runAsNonRoot: false
                 runAsUser: 0
                 capabilities:
+                  add:
+                    # Root without this capability cannot traverse HA's
+                    # mode-0700 state directories after dropping ALL.
+                    - DAC_READ_SEARCH
                   drop:
                     - ALL
               resources:
