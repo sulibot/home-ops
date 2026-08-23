@@ -24,7 +24,7 @@ data:
     # setting fixes this upstream; the maintainers' own remediation is manual
     # `rbd device unmap -o force`, which is what this automates.
     #
-    # Detection: for every krbd device mapped on every rbd nodeplugin's node,
+    # Detection 1: for every krbd device mapped on every rbd nodeplugin's node,
     # resolve which node (if any) currently holds a live VolumeAttachment for
     # that image. A device is orphaned if no VolumeAttachment references it at
     # all, or if the VolumeAttachment that does exist points at a *different*
@@ -32,16 +32,29 @@ data:
     # orphans only - never touches a device whose owning VolumeAttachment
     # matches the node it's mapped on, so a legitimate, currently-in-use mount
     # can never be touched by construction.
+    #
+    # Detection 2: a VolumeAttachment itself can remain stale on the old node
+    # even when its mapping is internally consistent. It is safe to recycle
+    # only when all of these are true: the attachment is at least 10 minutes
+    # old, no live pod consumes its PVC on that node, a Pending pod requests
+    # the PVC on a different node, and that pod has a Multi-Attach event. The
+    # old mapping is removed first, then the attachment and Pending pod are
+    # deleted so their controllers reconcile a fresh attachment lifecycle.
 
     AUTO_FIX="${AUTO_FIX:-true}"
+    STALE_MIN_AGE_SECONDS="${STALE_MIN_AGE_SECONDS:-600}"
     remediated=0
     orphan_total=0
+    stale_attachment_total=0
+    stale_attachment_remediated=0
 
     # image UUID -> node currently holding the VolumeAttachment for it.
     # ceph-csi image names are "<prefix>-<uuid>"; the volumeHandle
     # (0001-0024-<clusterID>-<poolID>-<uuid>) ends in the same uuid, so that's
     # the join key between VolumeAttachments/PVs and `rbd device list` output.
-    pv_handles=$(kubectl get pv -o json | jq -r '.items[] | select(.spec.csi.driver=="rbd.csi.ceph.com") | "\(.metadata.name) \(.spec.csi.volumeHandle)"')
+    pvs_json=$(kubectl get pv -o json)
+    vas_json=$(kubectl get volumeattachments -o json)
+    pv_handles=$(echo "$pvs_json" | jq -r '.items[] | select(.spec.csi.driver=="rbd.csi.ceph.com") | "\(.metadata.name) \(.spec.csi.volumeHandle)"')
 
     declare -A uuid_to_node=()
     while read -r va_node pv_name; do
@@ -51,7 +64,7 @@ data:
       uuid=$(echo "$handle" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
       [ -z "$uuid" ] && continue
       uuid_to_node["$uuid"]="$va_node"
-    done < <(kubectl get volumeattachments -o json | jq -r '.items[] | select(.spec.attacher=="rbd.csi.ceph.com") | "\(.spec.nodeName) \(.spec.source.persistentVolumeName)"')
+    done < <(echo "$vas_json" | jq -r '.items[] | select(.spec.attacher=="rbd.csi.ceph.com") | "\(.spec.nodeName) \(.spec.source.persistentVolumeName)"')
 
     plugins=$(kubectl -n ceph-csi get pods -l app=ceph-csi-rbd,component=nodeplugin -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.nodeName}{"\n"}{end}')
 
@@ -59,6 +72,68 @@ data:
       echo "ERROR: no ceph-csi-rbd nodeplugin pods found" >&2
       exit 1
     fi
+
+    # Recycle attachments that are demonstrably stale. The pod/event checks
+    # deliberately bias toward false negatives: ambiguity means no mutation.
+    while read -r va_name va_node pv_name; do
+      [ -z "$pv_name" ] && continue
+
+      old_enough=$(echo "$vas_json" | jq -r --arg name "$va_name" --argjson min "$STALE_MIN_AGE_SECONDS" \
+        '.items[] | select(.metadata.name==$name) | (now - (.metadata.creationTimestamp | fromdateiso8601)) >= $min')
+      [ "$old_enough" = "true" ] || continue
+
+      claim=$(echo "$pvs_json" | jq -r --arg pv "$pv_name" \
+        '.items[] | select(.metadata.name==$pv) | select(.spec.claimRef.namespace and .spec.claimRef.name) | "\(.spec.claimRef.namespace) \(.spec.claimRef.name)"')
+      read -r claim_namespace claim_name <<<"$claim"
+      [ -n "${claim_namespace:-}" ] && [ -n "${claim_name:-}" ] || continue
+
+      consumers=$(kubectl -n "$claim_namespace" get pods -o json | jq -r --arg pvc "$claim_name" '
+        .items[]
+        | select(.metadata.deletionTimestamp == null)
+        | select(.status.phase != "Succeeded" and .status.phase != "Failed")
+        | select(any(.spec.volumes[]?; .persistentVolumeClaim.claimName == $pvc))
+        | [.metadata.name, (.spec.nodeName // ""), (.status.phase // "Unknown"), .metadata.uid] | @tsv')
+
+      if echo "$consumers" | awk -F '\t' -v node="$va_node" '$2==node{found=1} END{exit !found}'; then
+        continue
+      fi
+
+      target=$(echo "$consumers" | awk -F '\t' -v node="$va_node" '$2!="" && $2!=node && $3=="Pending"{print; exit}')
+      [ -n "$target" ] || continue
+      IFS=$'\t' read -r target_pod target_node target_phase target_uid <<<"$target"
+
+      multi_attach=$(kubectl -n "$claim_namespace" get events \
+        --field-selector="involvedObject.uid=$target_uid,reason=FailedAttachVolume" -o json | \
+        jq -r '[.items[] | select((.message // "") | test("Multi-Attach"; "i"))] | length')
+      [ "$multi_attach" -gt 0 ] || continue
+
+      stale_attachment_total=$((stale_attachment_total + 1))
+      echo "status=stale-attachment va=$va_name pv=$pv_name old_node=$va_node target_node=$target_node target_pod=$claim_namespace/$target_pod age_threshold=${STALE_MIN_AGE_SECONDS}s auto_fix=$AUTO_FIX"
+      [ "$AUTO_FIX" = "true" ] || continue
+
+      handle=$(echo "$pv_handles" | awk -v pv="$pv_name" '$1==pv{print $2}')
+      uuid=$(echo "$handle" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+      old_plugin=$(echo "$plugins" | awk -v node="$va_node" '$2==node{print $1; exit}')
+      unmap_ok=true
+      if [ -n "$uuid" ] && [ -n "$old_plugin" ]; then
+        old_device=$(kubectl -n ceph-csi exec "$old_plugin" -c csi-rbdplugin -- \
+          rbd device list --format=json --device-type krbd 2>/dev/null </dev/null | \
+          jq -r --arg uuid "$uuid" '.[] | select(.name | endswith($uuid)) | .device' | head -1)
+        if [ -n "$old_device" ]; then
+          kubectl -n ceph-csi exec "$old_plugin" -c csi-rbdplugin -- \
+            rbd device unmap -o force "$old_device" </dev/null || unmap_ok=false
+        fi
+      fi
+
+      if [ "$unmap_ok" = "true" ] && \
+         kubectl delete volumeattachment "$va_name" --wait=true --timeout=60s && \
+         kubectl -n "$claim_namespace" delete pod "$target_pod" --wait=false; then
+        stale_attachment_remediated=$((stale_attachment_remediated + 1))
+        echo "REMEDIATED stale_attachment=$va_name target_pod=$claim_namespace/$target_pod"
+      else
+        echo "REMEDIATE_FAILED stale_attachment=$va_name" >&2
+      fi
+    done < <(echo "$vas_json" | jq -r '.items[] | select(.spec.attacher=="rbd.csi.ceph.com" and .status.attached==true) | "\(.metadata.name) \(.spec.nodeName) \(.spec.source.persistentVolumeName)"')
 
     while read -r pod node; do
       [ -z "$pod" ] && continue
@@ -94,12 +169,15 @@ data:
       done < <(echo "$devices" | jq -r '.[] | "\(.name) \(.device)"')
     done < <(echo "$plugins")
 
-    echo "SUMMARY orphaned_devices=$orphan_total remediated=$remediated auto_fix=$AUTO_FIX"
+    echo "SUMMARY orphaned_devices=$orphan_total remediated=$remediated stale_attachments=$stale_attachment_total stale_remediated=$stale_attachment_remediated auto_fix=$AUTO_FIX"
 
     # Only fail the Job (feeds kube_job_status_failed -> alert) when an orphan
     # was left unresolved - either auto-fix is off, or an unmap failed. A
     # clean auto-heal (found + fixed) still exits 0.
     if [ "$orphan_total" -gt 0 ] && [ "$remediated" -lt "$orphan_total" ]; then
+      exit 1
+    fi
+    if [ "$stale_attachment_total" -gt 0 ] && [ "$stale_attachment_remediated" -lt "$stale_attachment_total" ]; then
       exit 1
     fi
     exit 0

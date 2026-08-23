@@ -8,8 +8,9 @@ metadata:
 # Cluster-scoped for the same reason as cephfs-mount-doctor's ClusterRole: an
 # orphaned krbd mapping on a node can belong to a PVC in any namespace, and
 # resolving it requires reading PVs/VolumeAttachments cluster-wide. This
-# script only ever force-unmaps a device it has proven is unattached
-# everywhere (or attached to a different node) - it never touches pods.
+# script only force-unmaps a device it has proven has no consumer on its node.
+# It can also recycle a stale attachment and its still-Pending target pod, but
+# only after a sustained Multi-Attach event proves demand on another node.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -17,6 +18,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
     verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods/exec"]
@@ -26,7 +30,7 @@ rules:
     verbs: ["get", "list"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

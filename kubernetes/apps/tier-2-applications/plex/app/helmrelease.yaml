@@ -24,6 +24,10 @@ spec:
   values:
     controllers:
       plex:
+        # The config database is on a ReadWriteOnce RBD volume. Recreate keeps
+        # upgrades from starting a replacement until the old pod has released
+        # its attachment, avoiding an unnecessary Multi-Attach race.
+        strategy: Recreate
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
