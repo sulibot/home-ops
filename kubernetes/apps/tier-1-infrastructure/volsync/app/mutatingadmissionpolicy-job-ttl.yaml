@@ -1,7 +1,7 @@
 ---
-# Auto-cleanup completed/failed VolSync mover Jobs after 2 hours.
-# This keeps pod lists clean without hiding active ReplicationSource failures,
-# which remain visible via CR status and alerts.
+# Bound VolSync mover Jobs to 2 hours and clean their records 2 hours later.
+# The execution deadline prevents a hung mover from traversing CephFS forever;
+# ReplicationSource status and alerts retain the failure signal after cleanup.
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingAdmissionPolicyBinding
 metadata:
@@ -44,6 +44,11 @@ spec:
             JSONPatch{
               op: "add",
               path: "/spec/ttlSecondsAfterFinished",
+              value: 7200
+            },
+            JSONPatch{
+              op: "add",
+              path: "/spec/activeDeadlineSeconds",
               value: 7200
             }
           ]
