@@ -22,6 +22,9 @@ spec:
   values:
     controllers:
       multi-scrobbler:
+        # Disabled after a failed Spotify/Last.fm backlog retry loop drove
+        # sustained ~130 MiB/s reads and destabilized shared Ceph/etcd.
+        replicas: 0
         containers:
           app:
             image:
