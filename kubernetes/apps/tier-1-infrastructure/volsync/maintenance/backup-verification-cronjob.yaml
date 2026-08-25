@@ -12,13 +12,16 @@ spec:
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
+      # Verification failures are deterministic for a repository snapshot.
+      # Do not repeat the expensive integrity scan in the same scheduled run.
+      backoffLimit: 0
       ttlSecondsAfterFinished: 86400  # Keep for 24 hours
       template:
         metadata:
           labels:
             app: volsync-backup-verifier
         spec:
-          restartPolicy: OnFailure
+          restartPolicy: Never
           serviceAccountName: volsync-backup-verifier
           securityContext:
             runAsNonRoot: true
