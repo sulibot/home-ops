@@ -11,7 +11,7 @@ metadata:
 spec:
   sourcePVC: digarr-config
   trigger:
-    schedule: "8 * * * *"
+    schedule: "30 0-21/3 * * *"
   kopia:
     repository: digarr-volsync-secret
     storageClassName: csi-cephfs-config-sc

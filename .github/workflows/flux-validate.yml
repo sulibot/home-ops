@@ -215,6 +215,14 @@ jobs:
           ./scripts/check-cnpg-backup-hygiene.sh
           echo "✅ CNPG backup hygiene is valid" >> $GITHUB_STEP_SUMMARY
 
+      - name: Validate VolSync schedule slots
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### VolSync Schedule Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ./scripts/check-volsync-schedule-slots.sh
+          echo "✅ VolSync schedules use unique three-hour slots" >> $GITHUB_STEP_SUMMARY
+
       - name: Check for SOPS encrypted secrets
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY

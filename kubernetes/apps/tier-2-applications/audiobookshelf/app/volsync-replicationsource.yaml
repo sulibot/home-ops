@@ -11,7 +11,7 @@ metadata:
 spec:
   sourcePVC: audiobookshelf-config
   trigger:
-    schedule: "9 * * * *"
+    schedule: "6 0-21/3 * * *"
   kopia:
     repository: audiobookshelf-volsync-secret
     storageClassName: csi-cephfs-config-sc

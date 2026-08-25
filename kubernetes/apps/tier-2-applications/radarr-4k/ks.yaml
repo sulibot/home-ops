@@ -28,7 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: radarr-4k
-      VOLSYNC_SCHEDULE: "30 * * * *"
+      VOLSYNC_SCHEDULE: "6 2-23/3 * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

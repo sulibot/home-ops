@@ -17,7 +17,9 @@ spec:
 
   # --- Backup scheduling --------------------------------------------------
   trigger:
-    schedule: "${VOLSYNC_SCHEDULE:=0 * * * *}"  # Hourly, app-specific minute via ks substitute
+    # Compatibility fallback only. CI requires every enabled consumer to provide
+    # a unique three-hour slot through VOLSYNC_SCHEDULE.
+    schedule: "${VOLSYNC_SCHEDULE:=0 0-21/3 * * *}"
 
   # --- Kopia backup configuration ----------------------------------------
   kopia:

@@ -27,7 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: notifiarr
-      VOLSYNC_SCHEDULE: "44 * * * *"
+      VOLSYNC_SCHEDULE: "30 1-22/3 * * *"
       VOLSYNC_CAPACITY: 100Mi
       VOLSYNC_SOURCE_PVC: notifiarr
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc

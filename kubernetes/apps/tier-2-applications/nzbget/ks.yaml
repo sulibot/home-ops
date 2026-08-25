@@ -27,7 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: nzbget
-      VOLSYNC_SCHEDULE: "21 * * * *"
+      VOLSYNC_SCHEDULE: "33 1-22/3 * * *"
       # Snapshot mover PVC must be at least as large as the 10Gi source RBD.
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_SOURCE_PVC: nzbget-config-rbd

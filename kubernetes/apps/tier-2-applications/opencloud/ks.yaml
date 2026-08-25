@@ -31,7 +31,7 @@ spec:
   postBuild:
     substitute:
       APP: opencloud
-      VOLSYNC_SCHEDULE: "51 * * * *"
+      VOLSYNC_SCHEDULE: "42 1-22/3 * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_SOURCE_PVC: opencloud-config
       VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc

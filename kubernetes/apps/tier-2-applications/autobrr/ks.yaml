@@ -29,7 +29,7 @@ spec:
   postBuild:
     substitute:
       APP: autobrr
-      VOLSYNC_SCHEDULE: "5 * * * *"
+      VOLSYNC_SCHEDULE: "12 0-21/3 * * *"
       VOLSYNC_CAPACITY: 2Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

@@ -26,7 +26,7 @@ spec:
   postBuild:
     substitute:
       APP: emby
-      VOLSYNC_SCHEDULE: "10 * * * *"
+      VOLSYNC_SCHEDULE: "33 0-21/3 * * *"
       VOLSYNC_CAPACITY: 15Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc
       VOLSYNC_CACHE_SNAPSHOTCLASS: csi-cephfs-config-sc

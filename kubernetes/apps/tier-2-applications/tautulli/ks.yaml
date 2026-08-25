@@ -27,7 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: tautulli
-      VOLSYNC_SCHEDULE: "38 * * * *"
+      VOLSYNC_SCHEDULE: "36 2-23/3 * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_CACHE_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc

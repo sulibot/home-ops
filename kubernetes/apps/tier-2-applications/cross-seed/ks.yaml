@@ -27,7 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: cross-seed
-      VOLSYNC_SCHEDULE: "9 * * * *"
+      VOLSYNC_SCHEDULE: "27 0-21/3 * * *"
       VOLSYNC_CAPACITY: 5Gi
       VOLSYNC_SOURCE_PVC: config-cross-seed-0
       VOLSYNC_STORAGECLASS: csi-cephfs-config-sc

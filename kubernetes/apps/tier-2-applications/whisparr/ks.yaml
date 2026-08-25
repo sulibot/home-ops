@@ -28,7 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: whisparr
-      VOLSYNC_SCHEDULE: "39 * * * *"
+      VOLSYNC_SCHEDULE: "45 2-23/3 * * *"
       VOLSYNC_CAPACITY: 10Gi
       VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc
       VOLSYNC_ACCESSMODES: ReadWriteOnce

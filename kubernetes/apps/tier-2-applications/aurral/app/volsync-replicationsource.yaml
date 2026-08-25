@@ -11,7 +11,7 @@ metadata:
 spec:
   sourcePVC: aurral-config
   trigger:
-    schedule: "8 * * * *"
+    schedule: "9 0-21/3 * * *"
   kopia:
     repository: aurral-volsync-secret
     storageClassName: csi-cephfs-config-sc

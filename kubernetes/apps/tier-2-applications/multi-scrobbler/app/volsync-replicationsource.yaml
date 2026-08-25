@@ -11,7 +11,7 @@ metadata:
 spec:
   sourcePVC: multi-scrobbler-config
   trigger:
-    schedule: "8 * * * *"
+    schedule: "21 1-22/3 * * *"
   kopia:
     repository: multi-scrobbler-volsync-secret
     storageClassName: csi-cephfs-config-sc

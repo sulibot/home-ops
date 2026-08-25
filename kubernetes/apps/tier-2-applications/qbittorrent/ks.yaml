@@ -28,7 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: qbittorrent
-      VOLSYNC_SCHEDULE: "28 * * * *"
+      VOLSYNC_SCHEDULE: "0 2-23/3 * * *"
       VOLSYNC_CAPACITY: 3Gi
       VOLSYNC_SOURCE_PVC: qbittorrent-config-rbd
       VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc

@@ -32,7 +32,7 @@ spec:
   postBuild:
     substitute:
       APP: plex
-      VOLSYNC_SCHEDULE: "26 * * * *"
+      VOLSYNC_SCHEDULE: "54 1-22/3 * * *"
       VOLSYNC_CAPACITY: 50Gi
       VOLSYNC_SOURCE_PVC: plex-config-rbd
       VOLSYNC_STORAGECLASS: csi-rbd-rbd-vm-sc
