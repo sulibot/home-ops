@@ -10,6 +10,10 @@ metadata:
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 
 spec:
+  # Incident containment: mover runs are paused while host-level Ceph I/O
+  # stalls are investigated. Existing snapshots and maintenance remain intact.
+  paused: true
+
   # --- Source PVC configuration -------------------------------------------
   # This identifies the PVC being backed up.
   # Override with VOLSYNC_SOURCE_PVC if the PVC name doesn't follow the ${APP}-config pattern
