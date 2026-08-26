@@ -6,7 +6,8 @@ ceph_mon_group: "{{ pve_ceph_mon_group | default('ceph_mon') }}"
 ceph_mgr_group: "{{ pve_ceph_mgr_group | default('ceph_mgr') }}"
 
 # Protect client-facing VM and Kubernetes IO during routine scrub activity.
-# Recovery incidents may temporarily override these, but the steady-state
-# configuration must be restored once PG recovery is complete.
-ceph_osd_mclock_profile: balanced
+# Even with one scrub per OSD, multiple cluster-wide scrubs repeatedly stalled
+# colocated Talos VMs under the balanced profile. Keep client IO prioritized;
+# recovery incidents may still temporarily select a recovery-oriented profile.
+ceph_osd_mclock_profile: high_client_ops
 ceph_osd_max_scrubs: 1
