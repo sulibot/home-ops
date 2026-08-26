@@ -23,6 +23,15 @@ safety preconditions cannot be proved.
 - Remediation after an abrupt multi-node restart: replace only controller-owned
   pods that remain `Running` with no pod IP and terminated containers in
   `Unknown`. Rate-limit deletes to avoid loading etcd during recovery.
+- Correlate full-revision Flux reconciliation with controller filesystem write
+  rate, node XFS workqueue count, load per core, and I/O PSI. On 2026-08-25,
+  `kustomize-controller --concurrent=20 --requeue-dependency=5s` drove the
+  Ceph-backed Talos system disk above load 1,100; four workers and 30-second
+  dependency retries kept the same revision wave below the saturation point.
+- Remediation: when the kustomize-controller is the proven write source and
+  full I/O PSI is severe, scale only that controller to zero, let the host
+  drain, then restore it with bounded concurrency. Do not restart the worker or
+  fan out forced reconciliations while storage-backed kernel work is blocked.
 
 ## Ceph and persistent volumes
 
@@ -46,6 +55,16 @@ safety preconditions cannot be proved.
   ownership walks before touching an MDS. Do not force MDS failover when Ceph
   rejects it for `MDS_CACHE_OVERSIZED` or `MDS_TRIM`; require an operator to
   accept the explicit filesystem-availability risk.
+- Alert on cluster-wide active scrub and deep-scrub PG counts, not only
+  `osd_max_scrubs`. That setting limits each OSD independently: clearing the
+  scrub flags on 2026-08-25 immediately started eight simultaneous PG scrubs
+  and drove a colocated Kubernetes worker above load 500 even with
+  `high_client_ops` and `osd_max_scrubs=1`.
+- Remediation may automatically set `noscrub` and `nodeep-scrub` when multiple
+  active scrubs correlate with severe worker I/O PSI or control-plane errors.
+  Automatically clearing those flags is unsafe; resume scrubbing only in a
+  monitored maintenance window with an explicit cluster-wide concurrency or
+  scheduling control and a rollback threshold.
 
 ## Applications and backups
 
