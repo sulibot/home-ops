@@ -27,8 +27,9 @@ safety preconditions cannot be proved.
   rate, node XFS workqueue count, load per core, and I/O PSI. On 2026-08-25,
   `kustomize-controller --concurrent=20 --requeue-dependency=5s` drove the
   Ceph-backed Talos system disk above load 1,100. A later four-worker,
-  30-second retry test reproduced the backlog on another worker, so keep one
-  reconciliation worker until the local-system-disk bottleneck is removed.
+  30-second retry test reproduced the backlog on another worker. Keep two
+  reconciliation workers (the minimum that avoids parent/child health-check
+  deadlock) until the local-system-disk bottleneck is removed.
 - Remediation: when the kustomize-controller is the proven write source and
   full I/O PSI is severe, scale only that controller to zero, let the host
   drain, then restore it with bounded concurrency. Do not restart the worker or

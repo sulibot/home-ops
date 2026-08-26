@@ -23,7 +23,7 @@ patches:
               - --log-level=info
               - --log-encoding=json
               - --enable-leader-election
-              - --concurrent=1
+              - --concurrent=2
               - --requeue-dependency=1m
     target:
       kind: Deployment

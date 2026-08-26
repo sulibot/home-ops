@@ -209,8 +209,9 @@ locals {
             # Fix 3: serialize kustomize reconciliation to protect the
             # Ceph-backed Talos system disk. Full-revision tests with both 20
             # and four concurrent workers created >1,000 blocked XFS workers
-            # and drove node load above 1,000. Dependency retries are also
-            # deliberately slower to avoid retry storms while tiers converge.
+            # and drove node load above 1,000. Two workers are the minimum
+            # needed so parent health checks cannot block all child work.
+            # Dependency retries are deliberately slower to avoid retry storms.
             {
               target = {
                 kind = "Deployment"
@@ -220,7 +221,7 @@ locals {
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/args/-"
-                  value = "--concurrent=1"
+                  value = "--concurrent=2"
                 },
                 {
                   op    = "add"
