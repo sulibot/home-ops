@@ -116,6 +116,15 @@ spec:
       path: /metrics
       interval: 15s
       scrapeTimeout: 10s
+      # These endpoints also run the standard node-exporter collector and are
+      # already scraped by proxmox-node-exporter-targets. Keep only the custom
+      # NFS probe/textfile metrics here so generic disk, CPU, and network
+      # series are not duplicated under the nfsgw aliases.
+      metricRelabelings:
+        - sourceLabels:
+            - __name__
+          regex: homeops_.*
+          action: keep
       relabelings:
         - sourceLabels:
             - __meta_kubernetes_endpoint_hostname

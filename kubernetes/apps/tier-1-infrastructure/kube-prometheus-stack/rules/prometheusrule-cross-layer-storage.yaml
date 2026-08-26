@@ -25,7 +25,7 @@ spec:
         - record: homeops:node_disk_io_time:rate5m
           expr: |
             sum by (instance, device) (
-              rate(node_disk_io_time_seconds_total[5m])
+              rate(node_disk_io_time_seconds_total{device!~"dm-[0-9]+"}[5m])
             )
 
         - record: homeops:nic_errors_drops:rate5m
