@@ -28,14 +28,42 @@ spec:
               rate(node_disk_io_time_seconds_total{device!~"dm-[0-9]+"}[5m])
             )
 
-        - record: homeops:nic_errors_drops:rate5m
+        - record: homeops:nic_receive_errors:rate5m
           expr: |
             sum by (instance, device) (
               rate(node_network_receive_errs_total[5m])
-              + rate(node_network_transmit_errs_total[5m])
-              + rate(node_network_receive_drop_total[5m])
-              + rate(node_network_transmit_drop_total[5m])
             )
+
+        - record: homeops:nic_transmit_errors:rate5m
+          expr: |
+            sum by (instance, device) (
+              rate(node_network_transmit_errs_total[5m])
+            )
+
+        - record: homeops:nic_receive_drops:rate5m
+          expr: |
+            sum by (instance, device) (
+              rate(node_network_receive_drop_total[5m])
+            )
+
+        - record: homeops:nic_transmit_drops:rate5m
+          expr: |
+            sum by (instance, device) (
+              rate(node_network_transmit_drop_total[5m])
+            )
+
+        - record: homeops:nic_receive_drop_peers:count5m
+          expr: |
+            count by (device) (
+              homeops:nic_receive_drops:rate5m > 1
+            )
+
+        - record: homeops:nic_errors_drops:rate5m
+          expr: |
+            homeops:nic_receive_errors:rate5m
+            + homeops:nic_transmit_errors:rate5m
+            + homeops:nic_receive_drops:rate5m
+            + homeops:nic_transmit_drops:rate5m
 
         - record: homeops:ceph_recovery_bytes:rate5m
           expr: |
@@ -194,31 +222,69 @@ spec:
               latency, recovery/backfill activity, SMART data, and kernel disk errors.
             runbook_url: "docs/runbooks/osd-slow-ops-during-recovery.md"
 
-        - alert: HostNetworkErrorsOrDrops
+        - alert: HostNetworkReceiveErrors
           expr: |
-            (
-              sum by (instance, device) (
-                rate(node_network_receive_errs_total[5m])
-                + rate(node_network_transmit_errs_total[5m])
-              ) > 0
-            )
-            or
-            (
-              sum by (instance, device) (
-                rate(node_network_receive_drop_total[5m])
-                + rate(node_network_transmit_drop_total[5m])
-              ) > 1
-            )
+            homeops:nic_receive_errors:rate5m > 0
           for: 10m
           labels:
             severity: warning
             layer: hardware
             service: network
+            direction: receive
+            packet_class: error
           annotations:
-            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} has errors or drops"
+            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} has receive errors"
+            description: "Receive error rate is {{ $value | humanize }} packets/s over 5m."
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: HostNetworkTransmitErrors
+          expr: |
+            homeops:nic_transmit_errors:rate5m > 0
+          for: 10m
+          labels:
+            severity: warning
+            layer: hardware
+            service: network
+            direction: transmit
+            packet_class: error
+          annotations:
+            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} has transmit errors"
+            description: "Transmit error rate is {{ $value | humanize }} packets/s over 5m."
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: HostNetworkReceiveDrops
+          expr: |
+            (homeops:nic_receive_drops:rate5m{device!="ens19.30"} > 1)
+            or
+            (homeops:nic_receive_drops:rate5m{device="ens19.30"} > 100)
+          for: 10m
+          labels:
+            severity: warning
+            layer: hardware
+            service: network
+            direction: receive
+            packet_class: drop
+          annotations:
+            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} is dropping received packets"
             description: |
-              Network errors or drops can look like Ceph latency, VM stalls, or Kubernetes node instability.
-              Check link speed, duplex, switch counters, driver/firmware, and recent cable or topology changes.
+              Receive drop rate is {{ $value | humanize }} packets/s over 5m.
+              VLAN interface ens19.30 has a measured baseline near 32 packets/s from Omada EtherType 0x6969
+              encapsulation of flooded mDNS and IPv6 neighbor-discovery frames, so it alerts above 100 packets/s.
+            runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
+
+        - alert: HostNetworkTransmitDrops
+          expr: |
+            homeops:nic_transmit_drops:rate5m > 1
+          for: 10m
+          labels:
+            severity: warning
+            layer: hardware
+            service: network
+            direction: transmit
+            packet_class: drop
+          annotations:
+            summary: "NIC {{ $labels.device }} on {{ $labels.instance }} is dropping transmitted packets"
+            description: "Transmit drop rate is {{ $value | humanize }} packets/s over 5m."
             runbook_url: "docs/runbooks/bios-hardware-maintenance-readiness-check.md"
 
         - alert: HostKernelStorageErrors
