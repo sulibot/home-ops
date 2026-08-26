@@ -206,14 +206,11 @@ locals {
                 }
               ])
             },
-            # Fix 3: raise reconcile concurrency for kustomize-controller and
-            # helm-controller. Default (--concurrent=4) is a bottleneck with
-            # 130+ Kustomizations / 90+ HelmReleases in this repo - cascade
-            # recovery after a fix lands can take several minutes just to
-            # walk the backlog, which repeatedly presented as a "stuck on
-            # stale revision" symptom. Also lower kustomize-controller's
-            # --requeue-dependency so a downstream Kustomization notices its
-            # dependency became ready faster than the 30s default.
+            # Fix 3: serialize kustomize reconciliation to protect the
+            # Ceph-backed Talos system disk. Full-revision tests with both 20
+            # and four concurrent workers created >1,000 blocked XFS workers
+            # and drove node load above 1,000. Dependency retries are also
+            # deliberately slower to avoid retry storms while tiers converge.
             {
               target = {
                 kind = "Deployment"
@@ -223,12 +220,12 @@ locals {
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/args/-"
-                  value = "--concurrent=20"
+                  value = "--concurrent=1"
                 },
                 {
                   op    = "add"
                   path  = "/spec/template/spec/containers/0/args/-"
-                  value = "--requeue-dependency=5s"
+                  value = "--requeue-dependency=1m"
                 }
               ])
             },
