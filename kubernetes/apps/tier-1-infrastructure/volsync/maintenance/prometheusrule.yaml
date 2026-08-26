@@ -169,12 +169,32 @@ spec:
 
         - alert: OffsiteBackupJobFailed
           expr: |
-            max_over_time(
-              kube_job_failed{
-                condition="true",
-                job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"
-              }[1h]
-            ) > 0
+            (
+              label_replace(
+                max_over_time(kube_job_failed{condition="true", job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"}[1h]),
+                "backup_job", "$1", "job_name", "^(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*$"
+              ) > 0
+            )
+            unless on (namespace, backup_job)
+            (
+              max by (namespace, backup_job) (
+                label_replace(
+                  kube_job_status_start_time{job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"}
+                  * on (namespace, job_name) group_left()
+                  (kube_job_status_succeeded{job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"} > 0),
+                  "backup_job", "$1", "job_name", "^(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*$"
+                )
+              )
+              > on (namespace, backup_job)
+              max by (namespace, backup_job) (
+                label_replace(
+                  max_over_time(kube_job_status_start_time{job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"}[1h])
+                  * on (namespace, job_name) group_left()
+                  (max_over_time(kube_job_failed{condition="true", job_name=~"(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*"}[1h]) > 0),
+                  "backup_job", "$1", "job_name", "^(volsync-offsite-kopia-sync|minio-selected-offsite-copy|gcs-content-archive|gcs-content-restore-drill|volsync-offsite-restore-drill|cnpg-offsite-restore-drill)-.*$"
+                )
+              )
+            )
           for: 5m
           labels:
             severity: warning
