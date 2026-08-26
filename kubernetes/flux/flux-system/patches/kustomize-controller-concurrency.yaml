@@ -15,8 +15,9 @@ spec:
         - --log-encoding=json
         - --enable-leader-election
         # Keep reconciliation below the local XFS/Ceph-backed system-disk
-        # saturation point. At ~135 Kustomizations, 20 workers plus 5-second
-        # dependency retries created >1,000 blocked XFS workers on solwk02.
-        - --concurrent=4
-        - --requeue-dependency=30s
+        # saturation point. At ~135 Kustomizations, both 20 workers and a later
+        # four-worker test created >1,000 blocked XFS workers during a full
+        # revision wave on the Ceph-backed Talos system disk.
+        - --concurrent=1
+        - --requeue-dependency=1m
         - --feature-gates=ObjectLevelWorkloadIdentity=false

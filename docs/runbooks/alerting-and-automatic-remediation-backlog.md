@@ -26,8 +26,9 @@ safety preconditions cannot be proved.
 - Correlate full-revision Flux reconciliation with controller filesystem write
   rate, node XFS workqueue count, load per core, and I/O PSI. On 2026-08-25,
   `kustomize-controller --concurrent=20 --requeue-dependency=5s` drove the
-  Ceph-backed Talos system disk above load 1,100; four workers and 30-second
-  dependency retries kept the same revision wave below the saturation point.
+  Ceph-backed Talos system disk above load 1,100. A later four-worker,
+  30-second retry test reproduced the backlog on another worker, so keep one
+  reconciliation worker until the local-system-disk bottleneck is removed.
 - Remediation: when the kustomize-controller is the proven write source and
   full I/O PSI is severe, scale only that controller to zero, let the host
   drain, then restore it with bounded concurrency. Do not restart the worker or

@@ -23,8 +23,8 @@ patches:
               - --log-level=info
               - --log-encoding=json
               - --enable-leader-election
-              - --concurrent=4
-              - --requeue-dependency=30s
+              - --concurrent=1
+              - --requeue-dependency=1m
     target:
       kind: Deployment
       name: kustomize-controller
