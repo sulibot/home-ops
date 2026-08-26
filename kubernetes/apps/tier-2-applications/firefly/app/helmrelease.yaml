@@ -35,10 +35,13 @@ spec:
               - /bin/sh
               - -ec
               - |
-                printf '%s\n' \
-                  'Firefly III attachment storage backup sentinel.' \
-                  > /var/www/html/storage/upload/.backup-source
-                chmod 0644 /var/www/html/storage/upload/.backup-source
+                sentinel=/var/www/html/storage/upload/.backup-source
+                if [ ! -f "${sentinel}" ]; then
+                  printf '%s\n' \
+                    'Firefly III attachment storage backup sentinel.' \
+                    > "${sentinel}"
+                fi
+                test -r "${sentinel}"
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true
