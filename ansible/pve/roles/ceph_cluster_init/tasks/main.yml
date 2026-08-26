@@ -61,7 +61,7 @@
   run_once: true
 
 - name: Bind Ceph prometheus mgr metrics on IPv6 wildcard
-  ansible.builtin.command: ceph config set mgr mgr/prometheus/server_addr ::
+  ansible.builtin.command: "ceph config set mgr mgr/prometheus/server_addr ::"
   when:
     - "inventory_hostname == groups[ceph_mon_group][0]"
     - "_ceph_prometheus_server_addr.stdout | trim != '::'"
@@ -80,4 +80,34 @@
   when:
     - "inventory_hostname == groups[ceph_mon_group][0]"
     - "_ceph_prometheus_server_port.stdout | trim != '9283'"
+  run_once: true
+
+- name: Read Ceph OSD mClock profile
+  ansible.builtin.command: ceph config get osd osd_mclock_profile
+  register: _ceph_osd_mclock_profile
+  changed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Restore client-safe Ceph OSD mClock profile
+  ansible.builtin.command: >-
+    ceph config set osd osd_mclock_profile {{ ceph_osd_mclock_profile }}
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_osd_mclock_profile.stdout | trim != ceph_osd_mclock_profile | string"
+  run_once: true
+
+- name: Read Ceph maximum concurrent scrubs per OSD
+  ansible.builtin.command: ceph config get osd osd_max_scrubs
+  register: _ceph_osd_max_scrubs
+  changed_when: false
+  when: "inventory_hostname == groups[ceph_mon_group][0]"
+  run_once: true
+
+- name: Limit concurrent Ceph scrubs per OSD
+  ansible.builtin.command: >-
+    ceph config set osd osd_max_scrubs {{ ceph_osd_max_scrubs }}
+  when:
+    - "inventory_hostname == groups[ceph_mon_group][0]"
+    - "_ceph_osd_max_scrubs.stdout | trim != ceph_osd_max_scrubs | string"
   run_once: true

@@ -4,3 +4,9 @@
 # in group_vars/pve.yml.
 ceph_mon_group: "{{ pve_ceph_mon_group | default('ceph_mon') }}"
 ceph_mgr_group: "{{ pve_ceph_mgr_group | default('ceph_mgr') }}"
+
+# Protect client-facing VM and Kubernetes IO during routine scrub activity.
+# Recovery incidents may temporarily override these, but the steady-state
+# configuration must be restored once PG recovery is complete.
+ceph_osd_mclock_profile: balanced
+ceph_osd_max_scrubs: 1
