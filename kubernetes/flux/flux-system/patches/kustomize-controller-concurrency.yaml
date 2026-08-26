@@ -14,6 +14,9 @@ spec:
         - --log-level=info
         - --log-encoding=json
         - --enable-leader-election
-        - --concurrent=20
-        - --requeue-dependency=5s
+        # Keep reconciliation below the local XFS/Ceph-backed system-disk
+        # saturation point. At ~135 Kustomizations, 20 workers plus 5-second
+        # dependency retries created >1,000 blocked XFS workers on solwk02.
+        - --concurrent=4
+        - --requeue-dependency=30s
         - --feature-gates=ObjectLevelWorkloadIdentity=false

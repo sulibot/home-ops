@@ -4,9 +4,8 @@ resources:
 - gotk-components.yaml
 - gotk-sync.yaml
 patches:
-  # Increase kustomize-controller concurrency for faster reconciliation.
-  # --concurrent=20 handles ~85 Kustomizations without saturating the API server.
-  # Dynamic concurrency during bootstrap would require the Flux operator FluxInstance CRD.
+  # Bound kustomize-controller concurrency to protect the Ceph-backed Talos
+  # system disk during full-revision reconciliation waves.
   - patch: |
       apiVersion: apps/v1
       kind: Deployment
@@ -24,8 +23,8 @@ patches:
               - --log-level=info
               - --log-encoding=json
               - --enable-leader-election
-              - --concurrent=20
-              - --requeue-dependency=5s
+              - --concurrent=4
+              - --requeue-dependency=30s
     target:
       kind: Deployment
       name: kustomize-controller
