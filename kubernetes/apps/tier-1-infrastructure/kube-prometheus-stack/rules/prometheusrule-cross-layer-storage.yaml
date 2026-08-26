@@ -475,16 +475,21 @@ spec:
           # discovery. Both nodes' nodeplugins had 40-135 restarts by then;
           # a healthy node plugin should almost never restart.
           expr: |
-            increase(kube_pod_container_status_restarts_total{namespace="ceph-csi", container=~"csi-cephfsplugin|csi-rbdplugin"}[1h]) > 3
+            (
+              increase(kube_pod_container_status_restarts_total{namespace="ceph-csi", container=~"csi-cephfsplugin|csi-rbdplugin"}[1h]) > 3
+            )
+            * on (namespace, pod) group_left (node)
+            kube_pod_info{namespace="ceph-csi"}
           for: 10m
           labels:
             severity: warning
             layer: ceph
             service: storage
           annotations:
-            summary: "ceph-csi node plugin restarting repeatedly on {{ $labels.node }}"
+            summary: "Ceph CSI plugin restarting repeatedly in {{ $labels.pod }} on {{ $labels.node }}"
             description: |
-              {{ $labels.pod }} has restarted more than 3 times in the last hour. This preceded a ~19h
+              Plugin container {{ $labels.container }} in {{ $labels.pod }} on {{ $labels.node }} has
+              restarted more than 3 times in the last hour. Node-plugin restarts preceded a ~19h
               silent CephFS session outage on 2026-07-17 (kubelet health checks never caught it - the
               app stayed Ready while its storage was dead). Check `ceph tell mds.* session ls` for
               this node's client sessions and consider running the cephfs-mount-doctor CronJob
