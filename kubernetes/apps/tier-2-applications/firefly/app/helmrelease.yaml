@@ -35,13 +35,12 @@ spec:
               - /bin/sh
               - -ec
               - |
-                sentinel=/var/www/html/storage/upload/.backup-source
-                if [ ! -f "${sentinel}" ]; then
+                if [ ! -f /var/www/html/storage/upload/.backup-source ]; then
                   printf '%s\n' \
                     'Firefly III attachment storage backup sentinel.' \
-                    > "${sentinel}"
+                    > /var/www/html/storage/upload/.backup-source
                 fi
-                test -r "${sentinel}"
+                test -r /var/www/html/storage/upload/.backup-source
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true
