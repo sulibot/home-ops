@@ -15,26 +15,6 @@ nodes:
     publicIPv4: 10.101.0.11
     publicIPv6: fd00:101::11
     publicMTU: 1450
-  - controlPlane: true
-    hostname: solcp02
-    ipAddress: 10.101.0.12
-    loopbackIPv4: 10.101.254.12
-    loopbackIPv6: fd00:101:fe::12
-    publicGatewayIPv4: 10.101.0.254
-    publicGatewayIPv6: fe80::101:fffe
-    publicIPv4: 10.101.0.12
-    publicIPv6: fd00:101::12
-    publicMTU: 1450
-  - controlPlane: true
-    hostname: solcp03
-    ipAddress: 10.101.0.13
-    loopbackIPv4: 10.101.254.13
-    loopbackIPv6: fd00:101:fe::13
-    publicGatewayIPv4: 10.101.0.254
-    publicGatewayIPv6: fe80::101:fffe
-    publicIPv4: 10.101.0.13
-    publicIPv6: fd00:101::13
-    publicMTU: 1450
   - controlPlane: false
     hostname: solwk01
     ipAddress: 10.101.0.21
@@ -74,12 +54,6 @@ services_ipv6: fd00:101:96::/108
 solcp01_ipAddress: 10.101.0.11
 solcp01_public_ipv4: 10.101.0.11
 solcp01_public_ipv6: fd00:101::11
-solcp02_ipAddress: 10.101.0.12
-solcp02_public_ipv4: 10.101.0.12
-solcp02_public_ipv6: fd00:101::12
-solcp03_ipAddress: 10.101.0.13
-solcp03_public_ipv4: 10.101.0.13
-solcp03_public_ipv6: fd00:101::13
 solwk01_ipAddress: 10.101.0.21
 solwk01_public_ipv4: 10.101.0.21
 solwk01_public_ipv6: fd00:101::21
