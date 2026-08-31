@@ -1,0 +1,31 @@
+---
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: collabora
+spec:
+  target:
+    service: collabora
+    port: 9980
+  rules:
+    - hosts:
+        - collabora.sulibot.com
+  scalingMetric:
+    concurrency:
+      targetValue: 10
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: collabora-http
+spec:
+  scaleTargetRef:
+    name: collabora
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 1800
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.observability:9090
+        interceptorRoute: collabora
