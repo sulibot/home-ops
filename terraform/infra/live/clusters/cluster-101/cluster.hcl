@@ -33,7 +33,9 @@ locals {
   }
 
   # ── VM-platform sizing (consumed by the compute provisioning unit) ─────────
-  controlplanes = 3
+  # Single control plane by design for this resource-constrained home cluster.
+  # This trades API/etcd HA for a substantially smaller always-on footprint.
+  controlplanes = 1
   workers       = 3
   network = {
     bridge_public = "vmbr0" # Legacy: used when use_sdn = false

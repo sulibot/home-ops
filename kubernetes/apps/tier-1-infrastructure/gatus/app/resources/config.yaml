@@ -371,20 +371,6 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Cluster 101 solcp02 API
-    group: cluster-101
-    url: tcp://[fd00:101::12]:6443
-    interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
-  - name: Cluster 101 solcp03 API
-    group: cluster-101
-    url: tcp://[fd00:101::13]:6443
-    interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
   - name: Cluster 101 Gateway Internal
     group: cluster-101
     url: tcp://[fd00:101:250::11]:443
