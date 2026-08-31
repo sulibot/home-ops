@@ -1,0 +1,26 @@
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-scale-to-zero-routes-to-http-interceptor
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: baserow
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: twenty
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: openhands
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: collabora
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: opencloud
+  to:
+    - group: ""
+      kind: Service
+      name: keda-add-ons-http-interceptor-proxy

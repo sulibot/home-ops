@@ -1,0 +1,31 @@
+---
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: baserow
+spec:
+  target:
+    service: baserow
+    port: 80
+  rules:
+    - hosts:
+        - baserow.sulibot.com
+  scalingMetric:
+    concurrency:
+      targetValue: 10
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: baserow-http
+spec:
+  scaleTargetRef:
+    name: baserow
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 1800
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.observability:9090
+        interceptorRoute: baserow

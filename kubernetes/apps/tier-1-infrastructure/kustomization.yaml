@@ -77,6 +77,7 @@ resources:
   # - ./kiali/helm-repo/ks.yaml
   # - ./kiali/ks.yaml
   - ./keda/ks.yaml
+  - ./keda-http-add-on/ks.yaml
 
   # Additional observability
   - ./snmp-exporter/ks.yaml

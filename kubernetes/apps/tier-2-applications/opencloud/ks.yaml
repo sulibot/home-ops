@@ -13,6 +13,8 @@ spec:
   components:
     - ../../../../components/volsync
   dependsOn:
+    - name: keda-http-add-on
+      namespace: flux-system
     - name: collabora
       namespace: flux-system
     - name: onepassword

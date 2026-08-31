@@ -1,0 +1,50 @@
+---
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: opencloud
+spec:
+  target:
+    service: opencloud
+    port: 9200
+  rules:
+    - hosts:
+        - opencloud.sulibot.com
+  scalingMetric:
+    concurrency:
+      targetValue: 10
+---
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: opencloud-wopi
+spec:
+  target:
+    service: opencloud
+    port: 9300
+  rules:
+    - hosts:
+        - wopiserver.sulibot.com
+  scalingMetric:
+    concurrency:
+      targetValue: 10
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: opencloud-http
+spec:
+  scaleTargetRef:
+    name: opencloud
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 1800
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.observability:9090
+        interceptorRoute: opencloud
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.observability:9090
+        interceptorRoute: opencloud-wopi

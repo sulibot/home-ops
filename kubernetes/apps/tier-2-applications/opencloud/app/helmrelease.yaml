@@ -159,8 +159,9 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - identifier: app
-                port: *port
+              - name: keda-add-ons-http-interceptor-proxy
+                namespace: observability
+                port: 8080
       wopi:
         hostnames:
           - "wopiserver.sulibot.com"
@@ -171,8 +172,9 @@ spec:
             namespace: network
         rules:
           - backendRefs:
-              - identifier: app
-                port: *wopiPort
+              - name: keda-add-ons-http-interceptor-proxy
+                namespace: observability
+                port: 8080
 
     configMaps:
       config:
