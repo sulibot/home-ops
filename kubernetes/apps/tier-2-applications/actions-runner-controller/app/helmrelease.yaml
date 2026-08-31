@@ -23,3 +23,13 @@ spec:
     timeout: 10m
   values:
     fullnameOverride: *name
+    replicaCount: 1
+    flags:
+      logLevel: info
+      updateStrategy: eventual
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 256Mi

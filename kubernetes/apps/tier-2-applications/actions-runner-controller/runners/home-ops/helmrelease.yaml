@@ -24,7 +24,8 @@ spec:
   values:
     githubConfigUrl: https://github.com/sulibot/home-ops
     githubConfigSecret: home-ops-runner-secret
-    minRunners: 1
+    # Keep no idle runner pod; ARC creates runners when GitHub queues a job.
+    minRunners: 0
     maxRunners: 3
     containerMode:
       type: kubernetes
@@ -55,3 +56,9 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: status.hostIP
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 2Gi
