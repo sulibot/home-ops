@@ -159,6 +159,22 @@ services:
     size: micro
     hostname: debfs-lxc01
 
+  agent-devbox:
+    role: agent-development
+    os: nixos
+    tenant: 200
+    suffix: 210
+    node: pve02
+    size: small
+    hostname: agent-devbox01
+    override:
+      cpu_cores: 4
+      # LXC memory is a reclaimable cgroup ceiling, not reserved VM RAM.
+      # Keep the 4 GiB ceiling because Claude Code documents 4 GiB+.
+      memory_mb: 4096
+      swap_mb: 2048
+      disk_gb: 64
+
   nfs-gateway:
     role: cephfs-nfs-gateway
     tenant: 200

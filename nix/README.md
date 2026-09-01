@@ -9,6 +9,8 @@ them. No SSH bash provisioning — the split is deliberate:
 | Everything running on it | `nix/hosts/<hostname>/` |
 
 Tracks `nixos-25.11` (same as the workstation `nix-config` repo).
+The agent devbox imports Codex and Claude Code from a separately pinned
+`nixos-unstable` input because those clients release faster than the base OS.
 
 ## New LXC guest
 
