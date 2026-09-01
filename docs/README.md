@@ -26,6 +26,7 @@ Operational and architecture documentation for the home-ops repository.
 ## Platform
 
 - [Auth architecture](auth-architecture.md)
+- [IaC-managed persistent agent control plane](architecture/agentic-development-control-plane.md)
 - [CI/CD pipeline](CI_CD_PIPELINE.md)
 - [Talos FRR boot configuration](talos-frr-boot-configuration.md)
 - [RWX migration plan](rwx-migration-plan.md)
