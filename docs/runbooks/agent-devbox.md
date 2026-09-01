@@ -110,6 +110,12 @@ Selected burst verification runs through an ephemeral GitHub Actions Runner
 Controller scale set in Kubernetes. This avoids Docker-in-LXC, privileged LXC
 features, and persistent test databases on the coordinator.
 
+The `onward-runner` scale set has zero idle pods and at most three concurrent
+runners. Each job receives a 4-core/4-GiB ceiling and an ephemeral 25-GiB RBD
+workspace. It is intentionally limited to DB-free fast and security profiles.
+Before Flux enables the scale set, confirm that the existing `actions-runner`
+GitHub App installation includes the private `sulibot/onward` repository.
+
 ## Persistent sessions and durable state
 
 Use one named `tmux` session per repository or task. A disconnected SSH
