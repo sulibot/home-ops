@@ -40,6 +40,7 @@ API endpoint: `https://10.10.0.1:8006/api2/json`
 | nixfs-lxc | nixfs-lxc01 | nixos | 200 | pve02 | 200204 | 10.200.0.204 | fd00:200::204 | micro +ov |
 | debfs-vm | debfs-vm01 | debian | 200 | pve03 | 200205 | 10.200.0.205 | fd00:200::205 | small |
 | debfs-lxc | debfs-lxc01 | debian | 200 | pve01 | 200206 | 10.200.0.206 | fd00:200::206 | micro |
+| agent-devbox | agent-devbox01 | nixos | 200 | pve02 | 200210 | 10.200.0.210 | fd00:200::210 | small +ov |
 | nfs-gateway | nfsgw01 | debian | 200 | pve01 | 200207 | 10.200.0.207 | fd00:200::207 | micro +ov |
 | nfs-gateway | nfsgw02 | debian | 200 | pve02 | 200208 | 10.200.0.208 | fd00:200::208 | micro +ov |
 
