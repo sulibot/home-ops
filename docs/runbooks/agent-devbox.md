@@ -72,13 +72,17 @@ nixos-rebuild switch --flake ./nix#agent-devbox01 \
 The non-root development identity is `agent`:
 
 ```bash
-ssh agent@10.200.0.210
+ssh -A agent@10.200.0.210
 mkdir -p ~/code
 cd ~/code
 gh auth login
 gh repo clone sulibot/onward
 tmux new -As onward
 ```
+
+SSH agent forwarding is sufficient for initial private-repository access.
+For unattended fetch/push after the laptop disconnects, authenticate `gh` on
+the devbox or provision a narrowly scoped repository credential separately.
 
 Authenticate each agent interactively. Credentials live in the user's home
 directory and must never be committed to home-ops or application repositories:
