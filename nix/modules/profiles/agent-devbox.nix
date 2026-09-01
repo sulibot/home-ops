@@ -164,11 +164,11 @@ in
       users = [ "agent" ];
       commands = [
         {
-          command = lib.getExe githubSigner;
+          command = "/run/current-system/sw/bin/agent-sign-verification-dispatch";
           options = [ "NOPASSWD" ];
         }
         {
-          command = lib.getExe githubExec;
+          command = "/run/current-system/sw/bin/agent-github-exec";
           options = [ "NOPASSWD" ];
         }
       ];
