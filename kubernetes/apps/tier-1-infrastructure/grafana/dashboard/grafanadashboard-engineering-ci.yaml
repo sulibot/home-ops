@@ -6,7 +6,7 @@ metadata:
   name: engineering-ci
   namespace: observability
   annotations:
-    observability.sulibot.com/dashboard-revision: "2026-09-01"
+    observability.sulibot.com/dashboard-revision: "2026-09-01-selected-range"
 spec:
   allowCrossNamespaceImport: true
   folder: engineering-ci
