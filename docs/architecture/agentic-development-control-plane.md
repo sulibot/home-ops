@@ -630,12 +630,19 @@ encrypt credential caches and OpenBao bootstrap material.
 1. Record comparable local-Mac, LXC, and Kubernetes timings for exact SHAs.
 2. Prove affected selection during development and full coverage at promotion.
 3. Quantify compact-result token savings and end-to-end wall-clock change.
-4. Extract only the stable repository-neutral pieces: command naming, result
+4. Onboard one second application with its own least-privilege runner scale set
+   and the same verification/evidence interface. Compare both projects before
+   deciding which implementation details are actually portable.
+5. Only then create a shared harness repository and extract the stable
+   repository-neutral pieces: command naming, result
    schema, agent policy block, bootstrap procedure, and optional remote runner
    integration.
 
 Do not generalize the Onward harness until the proving data shows that its
-contracts apply cleanly to another repository.
+contracts apply cleanly to another repository. Until the second application is
+working, keep project verification code in its application repository and keep
+shared execution infrastructure in `home-ops`; an empty universal repository
+would create a premature compatibility promise.
 
 The first Kubernetes proof must use a known SHA and retain dispatch, pod,
 harness, artifact, and cleanup evidence. It is not complete merely because the

@@ -148,10 +148,14 @@ boundary for another project's untrusted verification runner, require:
 5. its runner endpoint has ingress and egress policy enforcement enabled, can
    reach GitHub over IPv4, cannot reach a LAN/PVE address over IPv4 or IPv6,
    and has no general IPv6 egress allowance. Inspect `.status.podIPs` while the
-   runner exists: it must have no IPv6 pod address. If the cluster later becomes
-   dual-stack, enforce IPv4 address precedence in the runner before retaining
-   the IPv6-deny policy, otherwise AAAA-first clients can stall instead of
-   failing over promptly.
+   runner exists and test both families explicitly. The cluster currently gives
+   runner pods IPv4 and IPv6 addresses; direct IPv6 egress must remain denied,
+   while the complete harness run proves its clients fall back to allowed
+   public IPv4 promptly.
+
+For the Cilium endpoint, `policy-enabled` must be `both`, not only `egress`.
+Cilium requires an ingress rule section to activate ingress default-deny;
+`enableDefaultDeny.ingress: true` alone does not activate that direction.
 
 `home-ops-runner` is a separate trusted administrative lane used by explicit
 PVE, Talos, Terraform, and credential-gated workflows. It is not a general
