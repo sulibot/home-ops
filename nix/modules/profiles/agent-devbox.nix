@@ -47,6 +47,7 @@ let
         printf '%s' "$openai_api_key" |
           runuser -u agent -- env -i \
             HOME=/home/agent \
+            NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt \
             PATH=${lib.makeBinPath [ unstablePkgs.codex pkgs.coreutils ]} \
             codex login --with-api-key >/dev/null 2>&1
       fi
