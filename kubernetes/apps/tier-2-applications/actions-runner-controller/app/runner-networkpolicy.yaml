@@ -12,6 +12,11 @@ spec:
   enableDefaultDeny:
     ingress: true
     egress: true
+  # Cilium enables default-deny per direction only when that rule section is
+  # present. One empty rule turns ingress enforcement on without allowing any
+  # source; `fromEndpoints: [{}]` would instead allow every managed endpoint.
+  ingress:
+    - {}
   egress:
     # Permit cluster DNS without opening any other cluster service.
     - toEndpoints:
