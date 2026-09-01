@@ -98,39 +98,17 @@ let
   };
   githubExec = pkgs.writeShellApplication {
     name = "agent-github-exec";
-    runtimeInputs = with pkgs; [ coreutils curl jq openssl util-linux ];
-    text = ''
-      set -euo pipefail
-      phase="''${1:-}"
-      test "$#" -ge 2 || { echo "usage: agent-github-exec <ref-write|observe> <command> [args...]" >&2; exit 2; }
-      shift
-      case "$phase" in
-        ref-write) permissions='{"contents":"write"}' ;;
-        observe) permissions='{"actions":"read","checks":"read","contents":"read"}' ;;
-        *) echo "unsupported GitHub token phase" >&2; exit 2 ;;
-      esac
-      secret="$(${lib.getExe githubSecret})"
-      app_id="$(jq -er '.app_id' <<<"$secret")"
-      installation_id="$(jq -er '.installation_id' <<<"$secret")"
-      key_file="$(mktemp)"
-      trap 'rm -f "$key_file"' EXIT
-      jq -er '.private_key' <<<"$secret" >"$key_file"
-      chmod 0600 "$key_file"
-      base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
-      now="$(date +%s)"
-      header="$(printf '%s' '{"alg":"RS256","typ":"JWT"}' | base64url)"
-      payload="$(jq -cn --argjson iat "$((now - 60))" --argjson exp "$((now + 540))" --arg iss "$app_id" '{iat:$iat,exp:$exp,iss:$iss}' | base64url)"
-      unsigned="$header.$payload"
-      signature="$(printf '%s' "$unsigned" | openssl dgst -sha256 -sign "$key_file" -binary | base64url)"
-      jwt="$unsigned.$signature"
-      token="$(curl --silent --show-error --fail-with-body --request POST \
-        --header "Authorization: Bearer $jwt" \
-        --header 'Accept: application/vnd.github+json' \
-        --header 'X-GitHub-Api-Version: 2022-11-28' \
-        --data "{\"permissions\":$permissions}" \
-        "https://api.github.com/app/installations/$installation_id/access_tokens" | jq -er '.token')"
-      exec runuser -u agent -- env HOME=/home/agent GH_TOKEN="$token" GITHUB_TOKEN="$token" "$@"
-    '';
+    runtimeInputs = with pkgs; [
+      coreutils
+      curl
+      git
+      github-cli
+      githubSecret
+      jq
+      openssl
+      util-linux
+    ];
+    text = builtins.readFile ./agent-github-exec.sh;
   };
 in
 {
@@ -216,6 +194,8 @@ in
     "d /srv/agent 0750 agent agent -"
     "d /srv/agent/workspaces 0750 agent agent -"
     "d /var/lib/agent-secrets 0700 root root -"
+    "d /var/lib/agent-github-exec 0755 root root -"
+    "d /var/lib/agent-github-exec/evidence 0711 root root -"
     "d /run/agent-credentials 0750 root agent -"
     "d /home/agent/.codex 0700 agent agent -"
   ];
