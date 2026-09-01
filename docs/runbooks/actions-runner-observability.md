@@ -75,16 +75,19 @@ sent to the warning notification receiver outside its quiet-hours interval.
 
 ## Diagnose stalled provisioning
 
-Compare desired, registered, running, and maximum capacity:
+Compare listener demand with controller-reported pending and running capacity:
 
 ```promql
-sum by (name) (gha_desired_runners)
-sum by (name) (gha_registered_runners)
-sum by (name) (gha_running_jobs)
-sum by (name) (gha_max_runners)
+max by (repository) (gha_desired_runners)
+max by (repository) (gha_controller_pending_ephemeral_runners)
+max by (repository) (gha_controller_running_ephemeral_runners)
+max by (repository) (gha_max_runners)
 ```
 
-If desired exceeds registered for more than 15 minutes:
+The listener's `gha_registered_runners` value can retain its last observation
+after an ephemeral runner scales to zero. Use the controller lifecycle metrics
+for current runner capacity. If desired exceeds controller-reported running
+capacity for more than 15 minutes:
 
 1. inspect ephemeral runner pods and events;
 2. check image pulls, scheduling, memory, CPU, and storage pressure;

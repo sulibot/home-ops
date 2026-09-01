@@ -32,14 +32,14 @@ spec:
             description: No ARC controller metrics have been observed for 15 minutes.
             runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md
         - alert: ActionsRunnerProvisioningStalled
-          expr: max by (name) (gha_desired_runners) > max by (name) (gha_registered_runners) and max by (name) (gha_registered_runners) < max by (name) (gha_max_runners) and max by (name) (gha_desired_runners) > 0
+          expr: max by (repository) (gha_desired_runners) > max by (repository) (gha_controller_running_ephemeral_runners) and max by (repository) (gha_controller_running_ephemeral_runners) < max by (repository) (gha_max_runners)
           for: 15m
           labels:
             severity: warning
             component: ci
           annotations:
             summary: GitHub Actions runners are not reaching desired capacity
-            description: Runner scale set {{ $labels.name }} has wanted more runners than it has registered for 15 minutes.
+            description: Repository {{ $labels.repository }} has wanted more runners than the controller reports running for 15 minutes.
             runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md
         - alert: ActionsRunnerProvisioningFailed
           expr: sum(gha_controller_failed_ephemeral_runners) > 0

@@ -39,15 +39,15 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-          "description": "Registered and busy ephemeral runners compared with the configured maximum.",
+          "description": "Controller-reported pending and running ephemeral runners compared with the configured maximum. Controller lifecycle metrics remain accurate after scale-to-zero.",
           "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "min": 0, "unit": "short"}, "overrides": []},
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "id": 2,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "max by (name) (gha_registered_runners{name=~\"$scale_set\"})", "legendFormat": "{{name}} registered", "refId": "A"},
-            {"expr": "max by (name) (gha_busy_runners{name=~\"$scale_set\"})", "legendFormat": "{{name}} busy", "refId": "B"},
-            {"expr": "max by (name) (gha_max_runners{name=~\"$scale_set\"})", "legendFormat": "{{name}} max", "refId": "C"}
+            {"expr": "max by (repository) (gha_controller_pending_ephemeral_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} pending", "refId": "A"},
+            {"expr": "max by (repository) (gha_controller_running_ephemeral_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} running", "refId": "B"},
+            {"expr": "max by (repository) (gha_max_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} max", "refId": "C"}
           ],
           "title": "Runner capacity",
           "type": "timeseries"
@@ -80,15 +80,16 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "links": [{"targetBlank": true, "title": "Open repository Actions", "url": "https://github.com/sulibot/${__field.labels.repository}/actions"}], "unit": "short"}, "overrides": []},
+          "description": "Completed jobs observed during the time range selected in Grafana.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "decimals": 0, "links": [{"targetBlank": true, "title": "Open repository Actions", "url": "https://github.com/sulibot/${__field.labels.repository}/actions"}], "unit": "short"}, "overrides": []},
           "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
           "id": 5,
-          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
           "targets": [
-            {"expr": "sum by (repository, job_result) (increase(gha_completed_jobs_total{repository=~\"$repository\"}[6h]))", "legendFormat": "{{repository}} {{job_result}}", "refId": "A"}
+            {"expr": "sum by (repository, job_result) (increase(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) + (min_over_time(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) unless gha_completed_jobs_total{repository=~\"$repository\"} offset $__range))", "instant": true, "legendFormat": "{{repository}} {{job_result}}", "refId": "A"}
           ],
-          "title": "Completed jobs (6h)",
-          "type": "timeseries"
+          "title": "Completed jobs (selected range)",
+          "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
@@ -98,22 +99,22 @@ data:
           "id": 6,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
           "targets": [
-            {"expr": "100 * sum by (repository) (increase(gha_completed_jobs_total{repository=~\"$repository\",job_result=\"failed\"}[6h])) / sum by (repository) (increase(gha_completed_jobs_total{repository=~\"$repository\"}[6h]))", "legendFormat": "{{repository}}", "refId": "A"}
+            {"expr": "100 * (sum by (repository) (increase(gha_completed_jobs_total{repository=~\"$repository\",job_result=\"failed\"}[$__range]) + (min_over_time(gha_completed_jobs_total{repository=~\"$repository\",job_result=\"failed\"}[$__range]) unless gha_completed_jobs_total{repository=~\"$repository\",job_result=\"failed\"} offset $__range)) or on (repository) 0 * sum by (repository) (increase(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) + (min_over_time(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) unless gha_completed_jobs_total{repository=~\"$repository\"} offset $__range))) / sum by (repository) (increase(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) + (min_over_time(gha_completed_jobs_total{repository=~\"$repository\"}[$__range]) unless gha_completed_jobs_total{repository=~\"$repository\"} offset $__range))", "instant": true, "legendFormat": "{{repository}}", "refId": "A"}
           ],
           "title": "Job failure ratio",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-          "description": "Current busy runners divided by configured maximum; unlike busy/registered this remains meaningful with minRunners=0.",
+          "description": "Current controller-reported running ephemeral runners divided by configured maximum. This remains accurate with minRunners=0.",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "max": 100, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 95}]}, "unit": "percent"}, "overrides": []},
           "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16},
           "id": 7,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
           "targets": [
-            {"expr": "100 * max by (name) (gha_busy_runners{name=~\"$scale_set\"}) / clamp_min(max by (name) (gha_max_runners{name=~\"$scale_set\"}), 1)", "legendFormat": "{{name}}", "refId": "A"}
+            {"expr": "100 * max by (repository) (gha_controller_running_ephemeral_runners{repository=~\"$repository\"}) / clamp_min(max by (repository) (gha_max_runners{repository=~\"$repository\"}), 1)", "legendFormat": "{{repository}}", "refId": "A"}
           ],
-          "title": "Runner utilization",
+          "title": "Runner allocation",
           "type": "stat"
         },
         {
@@ -137,9 +138,9 @@ data:
           "id": 9,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "sum(gha_controller_pending_ephemeral_runners)", "legendFormat": "pending", "refId": "A"},
-            {"expr": "sum(gha_controller_running_ephemeral_runners)", "legendFormat": "running", "refId": "B"},
-            {"expr": "sum(gha_controller_failed_ephemeral_runners)", "legendFormat": "failed", "refId": "C"}
+            {"expr": "max by (repository) (gha_controller_pending_ephemeral_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} pending", "refId": "A"},
+            {"expr": "max by (repository) (gha_controller_running_ephemeral_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} running", "refId": "B"},
+            {"expr": "max by (repository) (gha_controller_failed_ephemeral_runners{repository=~\"$repository\"})", "legendFormat": "{{repository}} failed", "refId": "C"}
           ],
           "title": "ARC controller runner lifecycle",
           "type": "timeseries"
