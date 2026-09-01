@@ -147,9 +147,11 @@ in
     zsh.enable = true;
   };
 
+  users.groups.agent = { };
   users.users.agent = {
     isNormalUser = true;
     description = "Agent development coordinator";
+    group = "agent";
     linger = true;
     shell = pkgs.zsh;
     openssh.authorizedKeys.keys = [
