@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: engineering-ci
+  namespace: observability
+  annotations:
+    observability.sulibot.com/dashboard-revision: "2026-09-01"
+spec:
+  allowCrossNamespaceImport: true
+  folder: engineering-ci
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+  configMapRef:
+    name: engineering-ci-dashboard
+    key: engineering-ci.json
