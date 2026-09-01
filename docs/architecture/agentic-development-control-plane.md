@@ -356,6 +356,36 @@ Codex and Claude follow the same consumption policy:
 This is the primary token-saving mechanism. Moving a verbose command to another
 machine without changing its result contract does not itself reduce context use.
 
+### Human developer interface
+
+The harness is a human development tool, not an agent-only API. A developer
+must be able to clone an application repository, edit it with their normal
+editor, and begin useful testing without understanding ARC, Kubernetes, the
+persistent LXC, or the structured evidence internals.
+
+The shared project contract therefore has two deliberately different loops:
+
+| Developer moment | Interface |
+| --- | --- |
+| While editing | Native watch or focused test command such as `pnpm test:watch` |
+| Before asking for review | `pnpm verify:affected` against the default trusted base; dirty, staged, and untracked paths are included |
+| Before pushing a candidate | `pnpm verify:fast` plus any repository-required security/integration profile |
+| Remote burst | GitHub Actions **Run workflow** for a pushed branch/commit, or one documented `gh workflow run` command |
+| Promotion | Clean exact-SHA full gate through protected CI |
+
+Local affected verification must not require a preparatory commit. Exact-SHA
+binding is required when work leaves the checkout for remote execution or
+promotion, because remote workers need an immutable revision. A human sees the
+same compact PASS/FAIL summary, first actionable error, and clickable or local
+artifact path that an agent sees. Full logs remain available on demand rather
+than becoming the default interface.
+
+Each application README or contributor guide must expose these commands near
+the ordinary setup instructions. Reasonable editor tasks or buttons may wrap
+them, but wrappers must call the same repository-owned profiles and may not
+create a second coverage policy. Agents, IDEs, terminals, and GitHub Actions are
+clients of one deterministic contract.
+
 ## Execution placement policy
 
 ### Persistent LXC is the default
@@ -440,14 +470,17 @@ Do not grant the development App workflow write access as a workaround.
 
 ### Routine development
 
-1. Human selects/approves the Plane work item.
-2. Agent creates or resumes an isolated worktree on the LXC.
-3. Agent edits and freezes a candidate SHA.
-4. Agent invokes `verify:affected` against a trusted base.
+1. Human selects/approves the Plane work item and edits locally or delegates the
+   implementation to an agent worktree on the LXC.
+2. The implementer uses native focused/watch tests while editing.
+3. The implementer invokes `verify:affected` against a trusted base; this works
+   before commit and includes working-tree changes.
+4. The implementer freezes a candidate SHA before remote execution.
 5. Independent `verify:fast` and `verify:security` may overlap.
-6. Agent reads compact structured results and continues productive work while
-   independent lanes run.
-7. Failures open only their first relevant artifact/log.
+6. Human and agent clients read the same compact structured results and can
+   continue productive work while independent lanes run.
+7. Failures open only their first relevant artifact/log unless deeper diagnosis
+   is needed.
 
 ### Burst verification
 
@@ -666,6 +699,8 @@ The platform is considered operational when:
 - Kubernetes starts from zero runners, respects concurrency/resource limits,
   retains evidence, and cleans up;
 - agents consume compact summaries rather than passing logs;
+- a developer can run focused/watch and affected verification before commit,
+  and can dispatch remote verification without Kubernetes access or knowledge;
 - full canonical coverage remains required at merge/milestone boundaries;
 - infrastructure/security changes receive independent review; and
 - credential refresh, LXC pressure/disk, ARC health, and drift monitoring are
