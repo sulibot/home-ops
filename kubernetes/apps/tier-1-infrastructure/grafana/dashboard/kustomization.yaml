@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ../app/grafanadashboard.yaml
   - ./grafanadashboard-home-control.yaml
+  - ./grafanadashboard-engineering-ci.yaml
   - ./grafanadashboard-offsite-backup.yaml
   - ./grafanadashboard-loki-logs-explorer.yaml
   - ./grafanadashboard-sre-app-experience.yaml
@@ -18,6 +19,7 @@ resources:
   - ./grafanadashboard-sre-telemetry-pipeline.yaml
   - ./grafanadashboard-sre-workload-triage.yaml
   - ./home-control-dashboard-configmap.yaml
+  - ./engineering-ci-dashboard-configmap.yaml
   - ./offsite-backup-dashboard-configmap.yaml
   - ./loki-logs-explorer-dashboard-configmap.yaml
   - ./sre-app-experience-dashboard-configmap.yaml

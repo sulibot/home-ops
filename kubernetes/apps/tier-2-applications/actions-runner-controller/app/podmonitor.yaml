@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/podmonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: actions-runner-listeners
+  namespace: actions-runner-system
+  labels:
+    app.kubernetes.io/name: actions-runner-listeners
+spec:
+  sampleLimit: 5000
+  labelLimit: 30
+  labelValueLengthLimit: 256
+  selector:
+    matchLabels:
+      actions.github.com/scale-set-name: onward-runner
+      app.kubernetes.io/component: runner-scale-set-listener
+  podMetricsEndpoints:
+    - interval: 30s
+      path: /metrics
+      portNumber: 8080
+      scrapeTimeout: 10s
+      metricRelabelings:
+        - action: keep
+          sourceLabels: [__name__]
+          regex: gha_.*

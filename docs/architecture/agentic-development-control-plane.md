@@ -86,6 +86,67 @@ local retained artifacts       centralized CI artifacts
 The harness defines **what** must run. The execution layer decides **where and
 when** it runs.
 
+### Independent reasoning checkpoints
+
+Meaningful new work uses Claude as an independent challenger at two points:
+
+1. Codex writes a concrete, contract-grounded plan before implementation.
+2. Claude reviews the plan for missing risks and alternatives.
+3. Codex reconciles that advice against canonical contracts and repository or
+   runtime evidence, then implements the accepted plan.
+4. Claude independently reviews the completed diff before merge.
+5. Codex remediates supported findings and reruns deterministic verification.
+
+Both checkpoints are required for architecture/infrastructure,
+authentication/authorization/privacy/secrets, database schemas or migrations,
+billing, shared contracts or state machines, cross-cutting changes,
+deployment/CI trust boundaries, and changes that could weaken verification.
+Ordinary bounded features may use post-implementation review only. Trivial
+copy, formatting, and mechanical changes with strong deterministic coverage may
+skip Claude review.
+
+Claude is an independent reviewer, not an automatic veto or a substitute for
+evidence. Codex remains accountable for resolving conflicts between reviewer
+advice, pinned dependency behavior, live observations, and canonical product
+contracts. Record material accepted and rejected findings in the change or PR.
+
+### CI visibility and evidence authority
+
+The engineering CI view is deliberately layered rather than implemented as a
+new Jenkins-like control service:
+
+| Surface | Authority |
+| --- | --- |
+| GitHub Actions checks | Authoritative result for a commit, workflow, job, and protected promotion gate |
+| Harness `result.json` and retained artifacts | Exact-SHA suite evidence, fingerprints, trust, reuse, logs, JUnit, traces, screenshots, and coverage |
+| Grafana `Engineering CI` dashboard | Aggregate ARC demand, capacity, throughput, outcome ratio, and latency across repositories |
+| Plane | Work ownership, acceptance state, and follow-up defects; never a test executor |
+| Integration/staging site | Human inspection of the deployed candidate; never proof that its gates passed |
+
+ARC listener metrics intentionally exclude Git refs, run IDs, and candidate
+SHAs. Those values have unbounded cardinality and belong in GitHub and harness
+evidence. Listener metrics aggregate on stable repository, workflow, event,
+job, result, and scale-set labels. Duration histograms use a bounded bucket set.
+
+Runner pools are separated by trust purpose. `onward-runner` is the first
+public-egress-only verification lane for repository tests. `home-ops-runner`
+executes explicit credential-gated PVE/Talos/Terraform administration and may
+require private infrastructure access; it is not a shared verification pool.
+Future projects receive their own constrained verification scale set rather
+than borrowing the administrative lane.
+
+The Grafana failure ratio is diagnostic and does not page. Ordinary test
+failures are handled by GitHub checks. Alerts are limited to platform failures:
+missing listener or controller metrics, stalled runner provisioning, failed
+ephemeral runners, and assigned work that ARC is not dispatching despite spare
+configured capacity.
+
+Per-test history and harness reuse/trust trends remain a planned evidence
+ingestion layer. Until a write-only, authenticated OTLP/Loki path and retention
+contract exist, compact evidence stays in GitHub artifacts rather than giving
+repository-controlled jobs access to observability query APIs or a Prometheus
+Pushgateway.
+
 ## Persistent control plane
 
 ### Host identity
@@ -498,6 +559,9 @@ encrypt credential caches and OpenBao bootstrap material.
 | DNS declaration | `terraform/infra/live/routeros/terragrunt.hcl` |
 | PVE LXC object, storage, resources, backup | **Planned; canonical provider/path not yet selected** |
 | ARC controller and home-ops runner | `kubernetes/apps/tier-2-applications/actions-runner-controller/` |
+| ARC discovery, isolation, and alerts | `kubernetes/apps/tier-2-applications/actions-runner-controller/app/` |
+| Per-scale-set listener metrics | `kubernetes/apps/tier-2-applications/actions-runner-controller/runners/*/helmrelease.yaml` |
+| Multi-project CI dashboard | `kubernetes/apps/tier-1-infrastructure/grafana/dashboard/{grafanadashboard-engineering-ci.yaml,engineering-ci-dashboard-configmap.yaml}` |
 | Onward harness | Onward `scripts/validation/` and `docs/implementation/VERIFICATION_HARNESS.md` |
 | Onward burst workflow | Onward `.github/workflows/burst-verification.yml` |
 
@@ -523,6 +587,8 @@ encrypt credential caches and OpenBao bootstrap material.
 | Persistent Codex credential cache | Present; boundary/backup remediation required |
 | ARC runner workload secret isolation | Deployed and verified: no token, no Secret authorization |
 | Accepted end-to-end Onward burst run | Passed for SHA `92b9a47`; artifacts and cleanup verified |
+| ARC Prometheus metrics, runner network policy, and CI dashboard | Candidate; Onward is the first untrusted-verification canary and live convergence is pending |
+| Per-test/reuse evidence history in Grafana | Planned; GitHub artifacts remain authoritative meanwhile |
 | Protected promotion gate and CI authority | Must be verified per proving repository before agent write access |
 | Universal multi-repository harness package | Deferred until Onward evidence justifies extraction |
 

@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: actions-runner-controller-metrics
+  namespace: actions-runner-system
+  labels:
+    app.kubernetes.io/name: actions-runner-controller-metrics
+spec:
+  selector:
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/name: gha-rs-controller
+  ports:
+    - name: metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080

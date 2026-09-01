@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: actions-runner-controller
+  namespace: actions-runner-system
+  labels:
+    app.kubernetes.io/name: actions-runner-controller
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: actions-runner-controller-metrics
+  endpoints:
+    - interval: 30s
+      path: /metrics
+      port: metrics
+      scrapeTimeout: 10s
+      metricRelabelings:
+        - action: keep
+          sourceLabels: [__name__]
+          regex: (gha_controller_.*|controller_runtime_.*|workqueue_.*|process_.*|go_.*)

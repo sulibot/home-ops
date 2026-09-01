@@ -10,6 +10,7 @@ Operational procedures for the home-ops cluster.
 
 ## Applications
 
+- [GitHub Actions runner observability](actions-runner-observability.md)
 - [Home Assistant operations](home-assistant-operations.md)
 - [Baserow/n8n auth operations](baserow-n8n-auth-operations.md)
 - [Kanidm user onboarding](kanidm-user-onboarding.md)
