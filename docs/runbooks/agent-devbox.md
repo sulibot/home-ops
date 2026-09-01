@@ -117,6 +117,45 @@ workspace. It is intentionally limited to DB-free fast and security profiles.
 Before Flux enables the scale set, confirm that the existing `actions-runner`
 GitHub App installation includes the private `sulibot/onward` repository.
 
+## Unattended GitHub dispatch bootstrap
+
+Use a dedicated private GitHub App, not the ARC App. Install it only on approved
+development repositories with Contents read/write, Actions read, Checks read,
+Pull requests none, and Workflows none. Store the following object at OpenBao
+KV v2 path `automation/agent-devbox01/github-dispatch`:
+
+```text
+app_id
+installation_id
+private_key
+hmac_key
+```
+
+The HMAC key must contain at least 32 random characters. Put the same value in
+the Onward Actions secret `ONWARD_DISPATCH_HMAC_KEY`, and put the App bot actor
+ID in repository variable `ONWARD_DISPATCH_ACTOR_ID`. Never put the App private
+key or HMAC key in `/run/agent-credentials/runtime.env`.
+
+`agent-sign-verification-dispatch` reads the HMAC key as root and accepts only
+the canonical payload on stdin. `agent-github-exec` mints a new installation
+token for each phase: `ref-write` receives Contents write only; `observe`
+receives Contents, Actions, and Checks read only. Both Codex and Claude call the
+same helpers through `pnpm verify:dispatch`; neither client receives the App
+private key.
+
+Before enabling the workflow, verify the read boundary and inspect the App
+installation permissions returned by GitHub:
+
+```bash
+sudo -u agent sudo agent-github-exec observe gh api repos/sulibot/onward
+sudo -u agent sudo agent-github-exec observe gh api installation/repositories
+```
+
+Both commands must pass without printing a token. Separately confirm repository
+rules prevent the App from updating the protected default branch. The trusted
+workflow/harness bootstrap must be merged to the default branch before remote
+results are authoritative.
+
 ## Persistent sessions and durable state
 
 Use one named `tmux` session per repository or task. A disconnected SSH
