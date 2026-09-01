@@ -45,7 +45,10 @@ let
       if [[ -n "$openai_api_key" ]]; then
         install -d -m 0700 -o agent -g agent /home/agent/.codex
         printf '%s' "$openai_api_key" |
-          runuser -u agent -- env HOME=/home/agent codex login --with-api-key >/dev/null 2>&1
+          runuser -u agent -- env -i \
+            HOME=/home/agent \
+            PATH=${lib.makeBinPath [ unstablePkgs.codex pkgs.coreutils ]} \
+            codex login --with-api-key >/dev/null 2>&1
       fi
     '';
   };
