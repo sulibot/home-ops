@@ -4,14 +4,14 @@
 set -euo pipefail
 
 if [[ "$#" -lt 2 ]]; then
-  echo "usage: $0 {tofu|ansible|sops|mtls} command [args...]" >&2
+  echo "usage: $0 {tofu|ansible|sops|mtls|agent-devbox} command [args...]" >&2
   exit 2
 fi
 
 role="$1"
 shift
 case "$role" in
-  tofu | ansible | sops | mtls) ;;
+  tofu | ansible | sops | mtls | agent-devbox) ;;
   *)
     echo "unsupported OpenBao automation role: $role" >&2
     exit 2

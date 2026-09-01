@@ -203,32 +203,22 @@ cgroup CPU, memory, and swap ceiling backed by the PVE host. Unused host memory
 is inherently available to other workloads; a configured limit bounds the
 container under contention.
 
-Current live measurements on 2026-09-01:
+Current live measurements on 2026-09-01 after IaC convergence:
 
 | Property | Observed value |
 | --- | --- |
 | Visible CPUs | 4 |
-| CPU quota (`cpu.max`) | unlimited; visibility is already restricted to 4 CPUs |
-| Memory cgroup ceiling | unlimited |
-| Swap ceiling | unlimited |
-| Memory currently charged | approximately 2.4 GiB |
+| CPU ceiling | 4 vCPU |
+| Memory cgroup ceiling | 4 GiB |
+| Swap ceiling | 2 GiB |
+| Root disk | 64 GiB thin-provisioned RBD |
+| Memory normally charged | approximately 1.1 GiB |
+| Peak memory under heavy verification | approximately 4.26 GiB including swap |
 
-The current container therefore does **not** yet meet the intended bounded,
-lowest-practical-resource policy. The PVE LXC resource definition must be moved
-into IaC and measured under real Nix/pnpm/build workloads.
-
-Recommended initial controlled envelope:
-
-- 4 vCPU maximum;
-- 6 GiB memory ceiling;
-- 4 GiB swap ceiling;
-- no guaranteed idle reservation beyond PVE's normal scheduling; and
-- alerting on sustained memory pressure, OOM kills, swap churn, and load.
-
-Reduce the ceiling only after representative Codex/Claude plus routine harness
-runs prove sufficient headroom. Increase it before moving routine heavy browser
-or database lanes back from Kubernetes. An OOM-retry loop costs more time and
-tokens than a modest idle-memory ceiling.
+The controlled envelope is now in IaC. Heavy verification reached the memory
+ceiling and produced `memory.high` events, which supports the coordinator-only
+placement policy rather than permanently enlarging the LXC. Alert on sustained
+memory pressure, OOM kills, swap churn, and load.
 
 ## Identity and secret delivery
 
@@ -299,15 +289,19 @@ Create a dedicated development-agent GitHub App, install it only on approved
 development repositories, and request only:
 
 - Contents: read/write;
-- Pull requests: read/write;
+- Pull requests: none initially; add access only for a separately approved PR
+  automation feature;
 - Actions: read-only;
 - Checks: read-only; and
 - Workflows: no access by default; grant write only through a separately
   reviewed workflow-change path.
 
-Mint short-lived installation tokens in the root-only refresh service. Deliver
-tokens through a read-at-use credential helper; keep the App private key outside
-the agent-readable runtime file. The existing ARC App material was staged in an
+Mint phase-scoped, short-lived installation tokens in a root-only read-at-use
+helper: Contents write only while creating candidate refs, and Actions/Checks
+read only while observing and downloading evidence. Keep the App private key
+and dispatch HMAC key outside the agent-readable runtime file. The workflow
+checks both the dedicated App actor ID and the HMAC before candidate checkout.
+The existing ARC App material was staged in an
 OpenBao `github-app` path during bootstrap but is not loaded into the LXC runtime
 and no `GH_TOKEN` is present. Remove that path from the agent AppRole policy and
 delete the staged copy before enabling GitHub access.
@@ -388,24 +382,26 @@ clients of one deterministic contract.
 
 ## Execution placement policy
 
-### Persistent LXC is the default
+### Persistent LXC is the coordinator
 
 Use the LXC for:
 
 - repository inspection and editing;
 - Git/worktree operations;
-- affected and fast profiles;
-- bounded unit tests;
-- low-cost security/static checks;
+- focused checks that finish within 30 seconds under the local cgroup guard;
 - result interpretation; and
 - orchestration of remote lanes.
 
-Keeping the ordinary loop on the LXC minimizes queueing, checkout, image-pull,
-dependency-install, and artifact-transfer overhead.
+Use `agent-local-check <command> [args...]` for the local exception. It enforces
+a 30-second timeout, 2 GiB memory ceiling, and 512 MiB swap ceiling. Normal
+`affected` plus `security` verification is dispatched after freezing a clean
+candidate commit. This keeps the LXC responsive without making a five-second
+focused test wait for runner startup.
 
-### Kubernetes is selected burst capacity
+### Kubernetes is the normal verification plane
 
-Use Kubernetes when at least one of these is true:
+Use Kubernetes for clean-SHA `affected` and `security` verification, and when
+at least one of these is true:
 
 - two or more independent profiles have enough duration to amortize runner startup;
 - a database, browser, or service lane needs disposable isolation;
@@ -413,21 +409,29 @@ Use Kubernetes when at least one of these is true:
 - multiple architecture/browser/security matrices can run safely in parallel; or
 - centralized artifacts are required for a promotion gate.
 
-Do not use Kubernetes for every command. A five-second check should not wait for
+Do not use Kubernetes for every edit-time command. A five-second check should not wait for
 a pod. Do not split gates whose setup or shared build cost exceeds the saved
 execution time.
 
-The selected Onward burst workflow is defined on an Onward proving branch and
-dispatches `fast` and `security` as independent ARC jobs on the `onward-runner`
-scale set. It uploads harness artifacts for seven days. The scale set is now
-represented in `home-ops` IaC and configured with:
+The Onward burst workflow accepts a signed `repository_dispatch` only after the
+trusted workflow and harness wrapper are present on the default branch. It runs
+`affected` and `security` as independent ARC jobs; `affected` already contains
+the fast checks, so a third `fast` job would duplicate work. It uploads harness
+artifacts and provenance for seven days. The scale set is represented in
+`home-ops` IaC and configured with:
 
 - `minRunners: 0`;
-- `maxRunners: 3`;
-- per-pod requests of 250m CPU and 512 MiB memory; and
+- `maxRunners: 2`;
+- a shared PriorityClass-scoped quota of two pods, 2 CPU, and 6 GiB memory;
+- per-pod requests of 1 CPU and 3 GiB memory; and
 - per-pod limits of 4 CPU and 4 GiB memory.
 
 No idle runner pod is retained. Listener/controller overhead remains.
+
+The requests reflect measured peaks of approximately 3.5 CPU and 2.95 GiB
+working set. Increase the shared quota only with measured queue pressure and
+dedicated runner capacity; per-repository scale sets without a shared ceiling
+do not create safe horizontal scale.
 
 ### Kubernetes workload boundary
 
@@ -442,6 +446,10 @@ Both scale sets now run direct steps in ephemeral runner pods with:
 - no Kubernetes container-hook variables;
 - no Secret `get` or `list` authorization; and
 - an explicit 25 GiB Ceph-backed generic ephemeral workspace.
+
+The candidate lane is restricted by FQDN to GitHub, GitHub Actions artifact
+endpoints, Azure blob endpoints used by Actions, and npm registries. Private
+networks and arbitrary public egress are denied.
 
 The trusted ARC controller retains its separate manager Role. The obsolete
 `*-gha-rs-kube-mode` Roles, RoleBindings, and service accounts were removed
@@ -473,10 +481,11 @@ Do not grant the development App workflow write access as a workaround.
 1. Human selects/approves the Plane work item and edits locally or delegates the
    implementation to an agent worktree on the LXC.
 2. The implementer uses native focused/watch tests while editing.
-3. The implementer invokes `verify:affected` against a trusted base; this works
-   before commit and includes working-tree changes.
+3. The implementer may run a focused check through `agent-local-check`; broad
+   profiles do not run on the coordinator.
 4. The implementer freezes a candidate SHA before remote execution.
-5. Independent `verify:fast` and `verify:security` may overlap.
+5. `pnpm verify:dispatch` sends signed, independent `affected` and `security`
+   jobs and waits for compact exact-SHA evidence.
 6. Human and agent clients read the same compact structured results and can
    continue productive work while independent lanes run.
 7. Failures open only their first relevant artifact/log unless deeper diagnosis
@@ -485,15 +494,22 @@ Do not grant the development App workflow write access as a workaround.
 ### Burst verification
 
 1. The orchestrator determines that remote startup is amortized.
-2. CI dispatches the exact candidate SHA to the `onward-runner` scale set.
+2. The coordinator pushes a namespaced temporary ref and sends a signed request
+   containing the exact candidate and trusted-base SHAs.
 3. ARC creates ephemeral runner pods up to the configured ceiling.
-4. Each pod checks out the immutable revision and runs a harness profile.
-5. CI retains compact results and raw artifacts.
+4. Each pod validates actor/signature, checks out the trusted default-branch
+   harness separately from the immutable candidate, and receives no
+   write-capable repository token.
+5. CI retains compact results, critical-path review flags, checksums, and
+   workflow/run provenance. The coordinator verifies them before accepting a pass.
 6. The orchestrator consumes summaries, not complete runner logs.
-7. Pods and disposable test resources are removed after completion, and a
-   periodic reaper handles abnormal terminations.
+7. Successful temporary refs are deleted immediately. Failed/cancelled refs are
+   retained seven days; a state-aware reaper deletes only terminal requests
+   after the grace period.
 
-This flow is deployed for the selected `fast` and `security` profiles. Container
+This flow is defined for `affected` and `security`. It becomes authoritative
+only after the trusted bootstrap is merged to the protected default branch and
+the dedicated App identity and HMAC secret are installed. Container
 jobs and `services:` are intentionally unsupported on this scale set; a profile
 that needs them requires a separately designed execution lane.
 

@@ -307,6 +307,7 @@ upsert_approle_item ansible homeops-ansible
 upsert_approle_item sops sops-transit
 upsert_approle_item backup openbao-snapshot
 upsert_approle_item mtls cloudflare-mtls
+upsert_approle_item agent-devbox agent-devbox
 
 # GitHub Actions exchanges its job-scoped OIDC token directly for a short-lived
 # OpenBao batch token. The role is deliberately restricted to this repository,

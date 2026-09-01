@@ -29,15 +29,21 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # GitHub, public package registries, and public test dependencies remain
-    # reachable over IPv4. IPv6 stays denied during the canary because the PVE
-    # management plane also carries delegated global addresses.
-    - toCIDRSet:
-        - cidr: 0.0.0.0/0
-          except:
-            - 10.0.0.0/8
-            - 100.64.0.0/10
-            - 127.0.0.0/8
-            - 169.254.0.0/16
-            - 172.16.0.0/12
-            - 192.168.0.0/16
+    # Candidate code receives only the public services needed to check out the
+    # repository, resolve pinned Actions, install npm packages, and transfer
+    # GitHub artifacts. Private networks and arbitrary Internet egress remain
+    # denied. Extend this list only from failed-flow evidence.
+    - toFQDNs:
+        - matchName: github.com
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubassets.com"
+        - matchPattern: "*.githubusercontent.com"
+        - matchPattern: "*.actions.githubusercontent.com"
+        - matchPattern: "*.blob.core.windows.net"
+        - matchName: registry.npmjs.org
+        - matchPattern: "*.npmjs.org"
+        - matchPattern: "*.npmjs.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
