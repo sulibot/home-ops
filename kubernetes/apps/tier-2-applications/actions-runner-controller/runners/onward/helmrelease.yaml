@@ -25,7 +25,9 @@ spec:
     githubConfigUrl: https://github.com/sulibot/onward
     githubConfigSecret: onward-runner-secret
     minRunners: 0
-    maxRunners: 3
+    # The normal burst contract has exactly two independent profiles. Keep the
+    # ceiling aligned with useful parallelism and the shared admission quota.
+    maxRunners: 2
     # Aggregate at metric creation time. Excluding git refs, job names, and run
     # IDs keeps series cardinality bounded without scrape-time label collapse.
     listenerMetrics:
@@ -66,6 +68,7 @@ spec:
         # Fast/security profiles run in the ephemeral runner pod and must not
         # receive Kubernetes API credentials or access ARC App secrets.
         automountServiceAccountToken: false
+        priorityClassName: agentic-verification
         securityContext:
           fsGroup: 1001
           fsGroupChangePolicy: OnRootMismatch
@@ -97,8 +100,10 @@ spec:
                     fieldPath: status.hostIP
             resources:
               requests:
-                cpu: 250m
-                memory: 512Mi
+                # Measured 24h peaks were ~3.5 CPU and 2.95 GiB working set.
+                # Requests must be honest enough for safe scheduler bin-packing.
+                cpu: "1"
+                memory: 3Gi
               limits:
                 cpu: "4"
                 memory: 4Gi

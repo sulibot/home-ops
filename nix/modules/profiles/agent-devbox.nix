@@ -1,6 +1,22 @@
 # Persistent, low-idle-footprint development coordinator. Expensive database
 # and browser verification belongs on isolated runners rather than this guest.
 { pkgs, unstablePkgs, ... }:
+let
+  agent-local-check = pkgs.writeShellApplication {
+    name = "agent-local-check";
+    runtimeInputs = [ pkgs.coreutils pkgs.systemd ];
+    text = ''
+      if [ "$#" -eq 0 ]; then
+        echo "usage: agent-local-check <command> [args...]" >&2
+        exit 2
+      fi
+      exec systemd-run --user --scope --quiet --collect \
+        --property=MemoryMax=2G \
+        --property=MemorySwapMax=512M \
+        timeout --signal=TERM --kill-after=5s 30s "$@"
+    '';
+  };
+in
 {
   programs = {
     direnv = {
@@ -44,6 +60,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    agent-local-check
     unstablePkgs.codex
     unstablePkgs.claude-code
     corepack

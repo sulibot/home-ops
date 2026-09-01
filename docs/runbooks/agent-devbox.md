@@ -98,20 +98,21 @@ NixOS 25.11. Update and review the flake lock to upgrade those clients.
 
 ## Verification flow
 
-Run compact profiles locally on the LXC:
+Run only focused, bounded edit-time checks locally on the LXC:
 
 ```bash
-pnpm verify:affected -- --base origin/main --sha "$(git rev-parse HEAD)"
-pnpm verify:security -- --sha "$(git rev-parse HEAD)"
+agent-local-check pnpm exec vitest run path/to/changed.test.ts
 ```
 
 Database and database-backed browser profiles remain fail-closed on the LXC.
-Selected burst verification runs through an ephemeral GitHub Actions Runner
-Controller scale set in Kubernetes. This avoids Docker-in-LXC, privileged LXC
-features, and persistent test databases on the coordinator.
+After freezing a clean commit, run `pnpm verify:dispatch -- --base origin/main
+--sha HEAD`. This sends `affected` and `security` to ephemeral GitHub Actions
+Runner Controller pods, verifies exact-SHA provenance, and returns one compact
+JSON result. It avoids Docker-in-LXC, privileged LXC features, and persistent
+test databases on the coordinator.
 
-The `onward-runner` scale set has zero idle pods and at most three concurrent
-runners. Each job receives a 4-core/4-GiB ceiling and an ephemeral 25-GiB RBD
+The `onward-runner` scale set has zero idle pods and at most two concurrent
+runners. Each job requests 1 CPU/3 GiB, receives a 4-core/4-GiB ceiling, and an ephemeral 25-GiB RBD
 workspace. It is intentionally limited to DB-free fast and security profiles.
 Before Flux enables the scale set, confirm that the existing `actions-runner`
 GitHub App installation includes the private `sulibot/onward` repository.
