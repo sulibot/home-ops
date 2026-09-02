@@ -1,0 +1,16 @@
+---
+# An empty Kubernetes egress policy is explicit default-deny. Cilium ignores an
+# empty CiliumNetworkPolicy egress list for policy-direction selection.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: onward-staging-deny-egress
+  namespace: engineering-staging
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: onward-staging
+      app.kubernetes.io/component: web
+  policyTypes:
+    - Egress
+  egress: []
