@@ -124,13 +124,11 @@ spec:
         # Alert on backup job failures (using Job metrics)
         - alert: VolsyncMoverJobFailed
           expr: |
-            max_over_time(
-              kube_job_failed{
-                condition="true",
-                job_name=~"volsync-.*",
-                job_name!~"volsync-offsite-.*"
-              }[30m]
-            ) > 0
+            kube_job_failed{
+              condition="true",
+              job_name=~"volsync-.*",
+              job_name!~"volsync-offsite-.*"
+            } > 0
           for: 5m
           labels:
             severity: warning
