@@ -68,6 +68,15 @@ spec:
         # Fast/security profiles run in the ephemeral runner pod and must not
         # receive Kubernetes API credentials or access ARC App secrets.
         automountServiceAccountToken: false
+        # GitHub assigns runner endpoints under deep, rotating hostnames such
+        # as *.actions.githubusercontent.com. Query them as absolute names
+        # before Kubernetes search suffixes so Cilium's FQDN cache records the
+        # policy-matching hostname instead of a synthesized *.cluster.local
+        # variant that cannot receive an egress identity.
+        dnsConfig:
+          options:
+            - name: ndots
+              value: "1"
         priorityClassName: agentic-verification
         securityContext:
           fsGroup: 1001
