@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/component: backup
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
-  paused: true
   sourcePVC: grimmory-config
   trigger:
     schedule: "51 0-21/3 * * *"

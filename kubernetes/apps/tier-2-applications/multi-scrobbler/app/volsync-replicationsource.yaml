@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/component: backup
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
-  paused: true
   sourcePVC: multi-scrobbler-config
   trigger:
     schedule: "21 1-22/3 * * *"

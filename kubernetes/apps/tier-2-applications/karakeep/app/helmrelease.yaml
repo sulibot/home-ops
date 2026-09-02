@@ -120,7 +120,7 @@ spec:
               requests:
                 cpu: 10m
               limits:
-                memory: 1Gi
+                memory: 2Gi
           chrome:
             image:
               repository: docker.io/zenika/alpine-chrome
@@ -182,6 +182,7 @@ spec:
             resources:
               requests:
                 cpu: 10m
+                memory: 256Mi
               limits:
                 memory: 4Gi
 
