@@ -60,7 +60,13 @@ case "$intent" in
     validate_repository "$repository"
     validate_request_id "$request_id"
     permission='ref-write'
-    command=(git push "https://github.com/$repository.git" ":refs/heads/agents/verification/$request_id")
+    # Ref deletion must work from a coordinator without a repository checkout.
+    # `git push <url> :<ref>` still requires a local Git repository, so use the
+    # bounded GitHub API endpoint with the same short-lived App permission.
+    command=(
+      gh api --method DELETE
+      "repos/$repository/git/refs/heads/agents/verification/$request_id"
+    )
     ;;
   dispatch-verification)
     require_count 5 "$@"
@@ -178,7 +184,7 @@ if [ "$intent" = observe-run-download ]; then
   chown agent:agent "$evidence_directory"
 fi
 
-if [ "$intent" = push-verification-ref ] || [ "$intent" = delete-verification-ref ]; then
+if [ "$intent" = push-verification-ref ]; then
   basic_auth="$(printf 'x-access-token:%s' "$token" | base64 -w0)"
   exec runuser -u agent -- env \
     HOME=/home/agent \
