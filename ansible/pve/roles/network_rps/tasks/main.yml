@@ -15,7 +15,7 @@
       value: "{{ network_rps_flow_entries | default(32768) }}"
   when: network_rps_interfaces | default([]) | length > 0
 
-- name: Install receive packet steering service
+- name: Install receive network tuning service
   ansible.builtin.template:
     src: network-rps.service.j2
     dest: /etc/systemd/system/network-rps.service
@@ -25,7 +25,9 @@
   notify:
     - Reload systemd
     - Restart network-rps
-  when: network_rps_interfaces | default([]) | length > 0
+  when: >-
+    (network_rps_interfaces | default([]) | length > 0) or
+    (network_ring_interfaces | default([]) | length > 0)
 
 - name: Enable receive packet steering service
   ansible.builtin.systemd_service:
@@ -33,4 +35,6 @@
     enabled: true
     state: started
     daemon_reload: true
-  when: network_rps_interfaces | default([]) | length > 0
+  when: >-
+    (network_rps_interfaces | default([]) | length > 0) or
+    (network_ring_interfaces | default([]) | length > 0)

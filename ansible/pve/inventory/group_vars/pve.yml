@@ -110,6 +110,15 @@ mesh_links:
     - iface: enp1s0f1np1
       peer_id: 2
 
+# The 25 Gb mesh NICs support 8192 descriptors but default to 1024. A burst on
+# pve02 exhausted the receive ring without any CRC or PHY errors, so retain
+# enough queue depth on both symmetric fabric links to absorb short bursts.
+network_ring_interfaces:
+  - enp1s0f0np0
+  - enp1s0f1np1
+network_ring_rx: 4096
+network_ring_tx: 4096
+
 # Edge BGP Configuration (RouterOS) - sourced from network_facts
 # (terraform/infra/live/common/network-infrastructure.hcl locals.routeros).
 #
