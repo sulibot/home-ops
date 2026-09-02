@@ -131,8 +131,9 @@ locals {
   # Public endpoints that remain WARP-only because their native clients cannot
   # reliably present an Application Security client certificate.
   warp_only_apps = merge({
-    "atuin.sulibot.com"       = "Atuin"
-    "opencloud.sulibot.com"   = "OpenCloud"
+    "atuin.sulibot.com"          = "Atuin"
+    "onward-staging.sulibot.com" = "Onward Staging"
+    "opencloud.sulibot.com"      = "OpenCloud"
   }, {
     for hostname, name in local.main_tunnel_mtls_candidates : hostname => name
     if hostname != "immich.sulibot.com" && !contains(local.application_mtls_cutover_hostnames, hostname)

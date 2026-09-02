@@ -10,6 +10,14 @@ spec:
       app.kubernetes.io/name: onward-staging
       app.kubernetes.io/component: web
   ingress:
+    # Cilium assigns traffic forwarded by Gateway API proxies the reserved
+    # ingress identity. Hostname matching remains enforced by the HTTPRoute.
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
     # Kubelet probes originate from the node, not a namespace-scoped probe pod.
     - fromEntities:
         - host
