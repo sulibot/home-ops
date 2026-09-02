@@ -4,10 +4,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # NOTE: This file is NOT used by Flux directly.
 # Flux reconciles kubernetes/clusters/cluster-101/apps/kustomization.yaml,
-# which references the three tier ks.yaml files:
+# which references the four tier ks.yaml files:
 #   - kubernetes/apps/tier-0-foundation/ks.yaml
 #   - kubernetes/apps/tier-1-infrastructure/ks.yaml
 #   - kubernetes/apps/tier-2-applications/ks.yaml
+#   - kubernetes/apps/tier-3-projects/ks.yaml
 #
 # Each tier ks.yaml is a Flux Kustomization that points to its own directory,
 # which has its own kustomization.yaml listing the individual app ks.yaml files.
@@ -17,3 +18,4 @@ resources:
   - ./tier-0-foundation
   - ./tier-1-infrastructure
   - ./tier-2-applications
+  - ./tier-3-projects

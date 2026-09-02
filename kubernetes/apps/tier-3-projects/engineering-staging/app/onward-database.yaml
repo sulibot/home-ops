@@ -1,0 +1,31 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: onward-staging
+  namespace: engineering-staging
+  labels:
+    app.kubernetes.io/name: onward
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: engineering-platform
+    environment: staging
+spec:
+  cluster:
+    name: engineering-staging
+  name: onward_staging
+  owner: onward_owner
+  ensure: present
+  databaseReclaimPolicy: retain
+  allowConnections: true
+  connectionLimit: 40
+  schemas:
+    - name: extensions
+      owner: onward_owner
+      ensure: present
+  extensions:
+    - name: pgcrypto
+      schema: extensions
+      ensure: present
+    - name: uuid-ossp
+      schema: extensions
+      ensure: present

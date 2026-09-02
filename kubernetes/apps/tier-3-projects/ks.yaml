@@ -1,0 +1,28 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tier-3-projects
+  namespace: flux-system
+  labels:
+    tier: "3-projects"
+    layer: projects
+spec:
+  dependsOn:
+    - name: tier-1-infrastructure
+      namespace: flux-system
+  interval: 15m
+  retryInterval: 2m
+  timeout: 10m
+  wait: false
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  path: ./kubernetes/apps/tier-3-projects
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+        optional: true

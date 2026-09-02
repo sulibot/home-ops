@@ -37,6 +37,9 @@ jobs:
           # yq
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
+          # CNPG repository-wide contract checks discover manifests with rg.
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ripgrep
           # sops
           SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | grep tag_name | cut -d'"' -f4)
           sudo curl -sLo /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
