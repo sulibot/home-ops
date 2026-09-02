@@ -12,7 +12,7 @@ metadata:
     cnpg.io/cluster: postgres-vectorchord
 spec:
   schedule: "15 4 * * *"
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -41,6 +41,12 @@ spec:
                   MAX_AGE_SECONDS="${MAX_AGE_SECONDS:-129600}" # 36h
                   NOW="$(date -u +%s)"
 
+                  to_epoch() {
+                    jq -nr --arg timestamp "$1" \
+                      '$timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601' \
+                      2>/dev/null || echo 0
+                  }
+
                   check_cnpg_method() {
                     method="$1"
                     newest=0
@@ -52,7 +58,7 @@ spec:
                             ((.metadata.labels["cnpg.io/cluster"] // "") == $cluster)
                             or ((.spec.cluster.name // "") == $cluster)
                           )
-                        | "\(.spec.method // \"\")|\(.status.phase // \"\")|\(.status.stoppedAt // .status.completedAt // .metadata.creationTimestamp // \"\")"
+                        | "\(.spec.method // "")|\(.status.phase // "")|\(.status.stoppedAt // .status.completedAt // .metadata.creationTimestamp // "")"
                       ')"
 
                     [ -z "${rows}" ] && { rm -f "${rows_file}"; return 1; }
@@ -63,7 +69,7 @@ spec:
                       [ -z "${row_method}" ] && continue
                       [ "${row_method}" = "${method}" ] || continue
                       [ "${row_phase}" = "completed" ] || continue
-                      ts="$(date -u -d "${row_stopped}" +%s 2>/dev/null || echo 0)"
+                      ts="$(to_epoch "${row_stopped}")"
                       [ "${ts}" -gt "${newest}" ] && newest="${ts}"
                       found=1
                     done < "${rows_file}"
@@ -86,7 +92,7 @@ spec:
 
                     while IFS='|' read -r ready created; do
                       [ "${ready}" = "true" ] || continue
-                      ts="$(date -u -d "${created}" +%s 2>/dev/null || echo 0)"
+                      ts="$(to_epoch "${created}")"
                       [ "${ts}" -gt "${newest}" ] && newest="${ts}"
                     done < "${rows_file}"
                     rm -f "${rows_file}"

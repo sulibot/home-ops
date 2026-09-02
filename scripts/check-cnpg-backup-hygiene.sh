@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Validate CNPG backup hygiene:
-# - ScheduledBackup and ObjectStore metadata labels include cnpg.io/cluster
-# - label value matches postgres-vectorchord
+# Validate every repository-owned CNPG ScheduledBackup/ObjectStore label rather
+# than silently protecting only the original household PostgreSQL cluster.
 
 set -euo pipefail
 
@@ -13,51 +12,61 @@ require_cmd() {
 }
 
 require_cmd yq
+require_cmd rg
 
-TARGET_CLUSTER="postgres-vectorchord"
-ROOT="kubernetes/apps/tier-1-infrastructure/postgres-vectorchord"
-FILES=(
-  "${ROOT}/app/objectstore.yaml"
-  "${ROOT}/app/scheduledbackup.yaml"
-  "${ROOT}/app-false/objectstore.yaml"
-  "${ROOT}/app-false/scheduledbackup.yaml"
-  "${ROOT}/app-true/objectstore.yaml"
-  "${ROOT}/app-true/scheduledbackup.yaml"
+ROOT="kubernetes/apps"
+mapfile -t cluster_specs < <(rg -l '^kind: Cluster$' "$ROOT" --glob '*.yaml' | sort)
+mapfile -t backup_specs < <(rg -l '^kind: (ObjectStore|ScheduledBackup)$' "$ROOT" --glob '*.yaml' | sort)
+mapfile -t known_clusters < <(
+  for file in "${cluster_specs[@]}"; do
+    yq eval 'select(.apiVersion == "postgresql.cnpg.io/v1" and .kind == "Cluster") | .metadata.name // ""' "$file"
+  done | sed '/^$/d;/^---$/d' | sort -u
 )
 
+is_known_cluster() {
+  local candidate="$1"
+  local cluster
+  for cluster in "${known_clusters[@]}"; do
+    [[ "$cluster" == "$candidate" ]] && return 0
+  done
+  return 1
+}
+
 errors=0
-for f in "${FILES[@]}"; do
-  if [ ! -f "$f" ]; then
-    echo "[err] missing file: $f" >&2
-    errors=$((errors + 1))
-    continue
-  fi
+resource_count=0
+for file in "${backup_specs[@]}"; do
+  while IFS=$'\t' read -r kind label cluster_ref; do
+    [[ -n "$kind" ]] || continue
+    resource_count=$((resource_count + 1))
 
-  mapfile -t vals < <(yq eval '
-    select(.kind == "ObjectStore" or .kind == "ScheduledBackup")
-    | .metadata.labels."cnpg.io/cluster" // ""
-  ' "$f" | sed '/^---$/d')
-
-  if [ "${#vals[@]}" -eq 0 ]; then
-    echo "[err] ${f}: no ObjectStore/ScheduledBackup docs found" >&2
-    errors=$((errors + 1))
-    continue
-  fi
-
-  for v in "${vals[@]}"; do
-    if [ -z "$v" ]; then
-      echo "[err] ${f}: missing metadata.labels.cnpg.io/cluster" >&2
+    if [[ -z "$label" ]]; then
+      echo "[err] ${file}: ${kind} is missing metadata.labels.cnpg.io/cluster" >&2
       errors=$((errors + 1))
-    elif [ "$v" != "$TARGET_CLUSTER" ]; then
-      echo "[err] ${f}: cnpg.io/cluster='${v}' expected='${TARGET_CLUSTER}'" >&2
+      continue
+    fi
+    if ! is_known_cluster "$label"; then
+      echo "[err] ${file}: ${kind} labels unknown Cluster '${label}'" >&2
       errors=$((errors + 1))
     fi
-  done
+    if [[ "$kind" == "ScheduledBackup" && "$cluster_ref" != "$label" ]]; then
+      echo "[err] ${file}: ScheduledBackup label '${label}' does not match spec.cluster.name '${cluster_ref:-<empty>}'" >&2
+      errors=$((errors + 1))
+    fi
+  done < <(
+    yq eval -o=tsv \
+      'select(.kind == "ObjectStore" or .kind == "ScheduledBackup") | [.kind, (.metadata.labels."cnpg.io/cluster" // ""), (.spec.cluster.name // "")]' \
+      "$file" | sed '/^---$/d'
+  )
 done
 
-if [ "$errors" -gt 0 ]; then
+if [[ "$resource_count" -eq 0 ]]; then
+  echo "[err] no CNPG backup resources discovered under ${ROOT}" >&2
+  exit 1
+fi
+
+if [[ "$errors" -gt 0 ]]; then
   echo "[err] CNPG backup hygiene check failed with ${errors} error(s)" >&2
   exit 1
 fi
 
-echo "[ok] CNPG backup hygiene check passed"
+echo "[ok] CNPG backup hygiene passed for ${resource_count} resource(s) across ${#known_clusters[@]} Cluster name(s)"

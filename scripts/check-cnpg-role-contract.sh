@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Validate CNPG Database owner contract:
-# - every Database.spec.owner must exist in Cluster.spec.managed.roles
-# - each owner role must define passwordSecret.name == <owner>-pg-password
+# Validate every repository-owned CNPG Database owner against every manifest
+# variant of its referenced Cluster. Login roles must use the repository's
+# durable password Secret convention; nologin ownership roles need no password.
 
 set -euo pipefail
 
@@ -13,72 +13,74 @@ require_cmd() {
 }
 
 norm() {
-  local v="$1"
-  if [ "$v" = "null" ]; then
-    echo ""
+  local value="$1"
+  if [[ "$value" == "null" ]]; then
+    printf ''
   else
-    echo "$v"
+    printf '%s' "$value"
   fi
 }
 
 require_cmd yq
+require_cmd rg
 
-APP_ROOT="kubernetes/apps/tier-1-infrastructure/postgres-vectorchord"
-DB_DIR="${APP_ROOT}/databases"
-SPEC_FILES=(
-  "${APP_ROOT}/app/cluster.yaml"
-  "${APP_ROOT}/app-false/cluster.yaml"
-  "${APP_ROOT}/app-true/cluster.yaml"
-)
-
-for f in "${SPEC_FILES[@]}"; do
-  if [ ! -f "$f" ]; then
-    echo "[err] missing cluster spec file: $f" >&2
-    exit 1
-  fi
-done
-
-if [ ! -d "$DB_DIR" ]; then
-  echo "[err] missing databases directory: $DB_DIR" >&2
-  exit 1
-fi
-
-mapfile -t owners < <(
-  yq eval '.spec.owner // ""' "${DB_DIR}"/*.yaml | \
-    sed '/^$/d;/^---$/d' | sort -u
-)
-
-if [ "${#owners[@]}" -eq 0 ]; then
-  echo "[err] no database owners discovered under ${DB_DIR}" >&2
-  exit 1
-fi
-
-echo "Checking CNPG owner-role contract for owners: ${owners[*]}"
+ROOT="kubernetes/apps"
+mapfile -t database_specs < <(rg -l '^kind: Database$' "$ROOT" --glob '*.yaml' | sort)
+mapfile -t cluster_specs < <(rg -l '^kind: Cluster$' "$ROOT" --glob '*.yaml' | sort)
 
 errors=0
-for spec in "${SPEC_FILES[@]}"; do
-  echo "  validating: ${spec}"
-  for owner in "${owners[@]}"; do
-    role_name="$(norm "$(yq eval ".spec.managed.roles[] | select(.name == \"${owner}\") | .name" "$spec" 2>/dev/null | head -n1)")"
-    secret_name="$(norm "$(yq eval ".spec.managed.roles[] | select(.name == \"${owner}\") | .passwordSecret.name // \"\"" "$spec" 2>/dev/null | head -n1)")"
-    expected_secret="${owner//_/-}-pg-password"
+database_count=0
+for database_file in "${database_specs[@]}"; do
+  while IFS=$'\t' read -r cluster_name owner; do
+    [[ -n "$cluster_name" && -n "$owner" ]] || continue
+    database_count=$((database_count + 1))
+    matches=0
 
-    if [ -z "$role_name" ]; then
-      echo "[err] ${spec}: missing managed role for owner '${owner}'" >&2
-      errors=$((errors + 1))
-      continue
-    fi
+    for cluster_file in "${cluster_specs[@]}"; do
+      manifest_cluster="$(norm "$(yq eval 'select(.apiVersion == "postgresql.cnpg.io/v1" and .kind == "Cluster") | .metadata.name // ""' "$cluster_file" | head -n1)")"
+      [[ "$manifest_cluster" == "$cluster_name" ]] || continue
+      matches=$((matches + 1))
 
-    if [ "$secret_name" != "$expected_secret" ]; then
-      echo "[err] ${spec}: role '${owner}' has passwordSecret='${secret_name:-<empty>}' expected='${expected_secret}'" >&2
+      role_name="$(norm "$(yq eval ".spec.managed.roles[]? | select(.name == \"${owner}\") | .name // \"\"" "$cluster_file" | head -n1)")"
+      if [[ -z "$role_name" ]]; then
+        echo "[err] ${database_file}: owner '${owner}' is absent from ${cluster_file}" >&2
+        errors=$((errors + 1))
+        continue
+      fi
+
+      login="$(norm "$(yq eval ".spec.managed.roles[]? | select(.name == \"${owner}\") | .login // false" "$cluster_file" | head -n1)")"
+      secret_name="$(norm "$(yq eval ".spec.managed.roles[]? | select(.name == \"${owner}\") | .passwordSecret.name // \"\"" "$cluster_file" | head -n1)")"
+      if [[ "$login" == "true" ]]; then
+        expected_secret="${owner//_/-}-pg-password"
+        if [[ "$secret_name" != "$expected_secret" ]]; then
+          echo "[err] ${cluster_file}: login owner '${owner}' has passwordSecret='${secret_name:-<empty>}' expected='${expected_secret}'" >&2
+          errors=$((errors + 1))
+        fi
+      elif [[ -n "$secret_name" ]]; then
+        echo "[err] ${cluster_file}: nologin owner '${owner}' must not carry a password Secret" >&2
+        errors=$((errors + 1))
+      fi
+    done
+
+    if [[ "$matches" -eq 0 ]]; then
+      echo "[err] ${database_file}: no Cluster manifest found for '${cluster_name}'" >&2
       errors=$((errors + 1))
     fi
-  done
+  done < <(
+    yq eval -o=tsv \
+      'select(.apiVersion == "postgresql.cnpg.io/v1" and .kind == "Database") | [.spec.cluster.name, .spec.owner]' \
+      "$database_file" | sed '/^---$/d'
+  )
 done
 
-if [ "$errors" -gt 0 ]; then
+if [[ "$database_count" -eq 0 ]]; then
+  echo "[err] no CNPG Database resources discovered under ${ROOT}" >&2
+  exit 1
+fi
+
+if [[ "$errors" -gt 0 ]]; then
   echo "[err] CNPG owner-role contract check failed with ${errors} error(s)" >&2
   exit 1
 fi
 
-echo "[ok] CNPG owner-role contract check passed"
+echo "[ok] CNPG owner-role contract passed for ${database_count} Database resource(s)"

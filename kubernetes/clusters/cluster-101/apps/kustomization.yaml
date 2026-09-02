@@ -4,10 +4,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # Three-tier bootstrap model for fast deployment
+  # Four-tier bootstrap model. Project staging is isolated from household
+  # applications while reusing the cluster-wide platform controllers.
   - ../../../apps/tier-0-foundation/ks.yaml
   - ../../../apps/tier-1-infrastructure/ks.yaml
   - ../../../apps/tier-2-applications/ks.yaml
+  - ../../../apps/tier-3-projects/ks.yaml
 
   # dual-stack-services disabled
   # - ../../../bootstrap/dual-stack-services/ks.yaml

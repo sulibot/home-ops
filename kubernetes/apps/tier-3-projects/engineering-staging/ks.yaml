@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: engineering-staging
+  namespace: flux-system
+  labels:
+    layer: data
+    environment: staging
+    critical: "false"
+spec:
+  dependsOn:
+    - name: cloudnative-pg
+      namespace: flux-system
+    - name: storage-ready
+      namespace: flux-system
+    - name: kube-prometheus-stack
+      namespace: flux-system
+  interval: 15m
+  retryInterval: 30s
+  timeout: 10m
+  path: ./kubernetes/apps/tier-3-projects/engineering-staging/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: engineering-staging
+      namespace: engineering-staging
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      name: onward-staging
+      namespace: engineering-staging

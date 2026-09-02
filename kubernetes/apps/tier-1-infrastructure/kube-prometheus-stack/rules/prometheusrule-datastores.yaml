@@ -135,3 +135,86 @@ spec:
             description: |
               The CNPG metrics collector is reporting collection errors. Database health may still be good,
               but dashboards and alerts may be incomplete.
+
+        - alert: PostgresVectorchordBackupVerificationFailed
+          expr: |
+            kube_job_status_failed{
+              namespace="default",
+              job_name=~"postgres-vectorchord-backup-verifier-.*"
+            } > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: postgres-vectorchord
+          annotations:
+            summary: "Postgres vectorchord backup verification failed"
+            description: |
+              The verifier could not prove recent plugin and VolumeSnapshot backups for the household
+              database cluster. Inspect its Job, ScheduledBackups, Backups, and VolumeSnapshots immediately.
+
+        - alert: EngineeringStagingPostgresPodNotReady
+          expr: |
+            kube_pod_status_ready{
+              namespace="engineering-staging",
+              pod=~"engineering-staging-[0-9]+",
+              condition="true"
+            } == 0
+          for: 5m
+          labels:
+            severity: warning
+            component: engineering-staging-postgres
+          annotations:
+            summary: "Engineering staging Postgres pod {{ $labels.pod }} is not ready"
+            description: |
+              The shared non-production CNPG instance is unavailable. Staging projects are affected,
+              but household databases remain isolated on postgres-vectorchord.
+
+        - alert: EngineeringStagingPostgresMetricsMissing
+          expr: |
+            absent(up{
+              namespace="engineering-staging",
+              pod=~"engineering-staging-[0-9]+",
+              job="engineering-staging/engineering-staging"
+            })
+          for: 10m
+          labels:
+            severity: warning
+            component: engineering-staging-postgres
+          annotations:
+            summary: "Engineering staging Postgres metrics are missing"
+            description: |
+              Prometheus is not scraping the engineering-staging CNPG instance. Check the
+              engineering-staging PodMonitor and the Postgres metrics port.
+
+        - alert: EngineeringStagingPostgresVolumeFilling
+          expr: |
+            (
+              kubelet_volume_stats_used_bytes{namespace="engineering-staging",persistentvolumeclaim=~"engineering-staging-.*"}
+              /
+              kubelet_volume_stats_capacity_bytes{namespace="engineering-staging",persistentvolumeclaim=~"engineering-staging-.*"}
+            ) > 0.85
+          for: 15m
+          labels:
+            severity: warning
+            component: engineering-staging-postgres
+          annotations:
+            summary: "Engineering staging Postgres volume is above 85%"
+            description: |
+              The shared project-staging database volume is filling. Review per-database growth and
+              expand the retained RBD volume before writes are affected.
+
+        - alert: EngineeringStagingBackupVerificationFailed
+          expr: |
+            kube_job_status_failed{
+              namespace="engineering-staging",
+              job_name=~"engineering-staging-backup-verifier-.*"
+            } > 0
+          for: 1m
+          labels:
+            severity: warning
+            component: engineering-staging-postgres
+          annotations:
+            summary: "Engineering staging backup verification failed"
+            description: |
+              The daily verifier could not find a recent completed CNPG backup and ready VolumeSnapshot.
+              Inspect the ScheduledBackup, Backup, VolumeSnapshot, and verifier Job before trusting recovery.
