@@ -1,0 +1,31 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: onward-staging
+  namespace: engineering-staging
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: onward-staging
+      app.kubernetes.io/component: web
+  ingress:
+    # Kubelet probes originate from the node, not a namespace-scoped probe pod.
+    - fromEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+    # Only an explicitly labeled internal verifier may exercise the ClusterIP.
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: engineering-staging
+            app.kubernetes.io/name: onward-staging-verifier
+            app.kubernetes.io/component: verifier
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+  egress: []
