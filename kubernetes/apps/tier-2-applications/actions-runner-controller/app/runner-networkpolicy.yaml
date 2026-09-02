@@ -29,6 +29,11 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
+          rules:
+            dns:
+              # Populate Cilium's per-endpoint DNS cache so the FQDN rules
+              # below can resolve GitHub and registry destinations.
+              - matchPattern: "*"
     # Candidate code receives only the public services needed to check out the
     # repository, resolve pinned Actions, install npm packages, and transfer
     # GitHub artifacts. Private networks and arbitrary Internet egress remain
