@@ -16,6 +16,11 @@ dry_run push-verification-ref sulibot/onward "$candidate_sha" "$request_id" |
     . == ["git","push","--force-with-lease","https://github.com/sulibot/onward.git",($sha + ":refs/heads/agents/verification/" + $request)]
   ' >/dev/null
 
+dry_run delete-verification-ref sulibot/onward "$request_id" |
+  jq -e --arg request "$request_id" '
+    . == ["gh","api","--method","DELETE",("repos/sulibot/onward/git/refs/heads/agents/verification/" + $request)]
+  ' >/dev/null
+
 dry_run dispatch-verification sulibot/onward "$request_id" "$candidate_sha" "$base_sha" "$signature" |
   jq -e --arg request "$request_id" '
     index("-f") != null and
