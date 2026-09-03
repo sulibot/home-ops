@@ -1,0 +1,11 @@
+---
+# The traditional chart is preferred over the experimental operator while the
+# operator APIs are still explicitly unstable.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: supabase-community
+  namespace: engineering-staging
+spec:
+  interval: 1h
+  url: https://supabase-community.github.io/supabase-kubernetes
