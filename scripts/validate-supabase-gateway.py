@@ -56,8 +56,10 @@ def main():
 
     check('REST rejects missing key', '/rest/v1/', {401})
     check('REST rejects invalid key', '/rest/v1/', {401}, {'apikey': 'invalid-synthetic-key'})
+    check('Bearer alone does not bypass API key', '/rest/v1/', {401}, {'Authorization': 'Bearer ' + decode('serviceKey')})
     check('REST schema rejects anon', '/rest/v1/', {403}, anon)
     check('REST schema accepts service key', '/rest/v1/', {200}, admin)
+    check('Caller JWT is not overwritten', '/rest/v1/', {401}, {**admin, 'Authorization': 'Bearer invalid-synthetic-jwt'})
     check('Auth health', '/auth/v1/health', {200}, anon)
     check('Auth settings', '/auth/v1/settings', {200}, anon)
     check('Storage health', '/storage/v1/status', {200})
@@ -82,6 +84,7 @@ def main():
         'Sec-WebSocket-Key': base64.b64encode(secrets.token_bytes(16)).decode(),
     })
     check('Functions rejects missing JWT', '/functions/v1/synthetic-gateway-check', {401})
+    check('Functions rejects invalid JWT', '/functions/v1/synthetic-gateway-check', {401}, {'Authorization': 'Bearer invalid-synthetic-jwt'})
     print(f'Gateway checks: {len(failures)} failed')
     return bool(failures)
 

@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: context-fabric-supabase-envoy
+  annotations:
+    secret.reloader.stakater.com/reload: context-fabric-supabase
   labels:
     app.kubernetes.io/name: supabase-envoy
     app.kubernetes.io/part-of: context-fabric
@@ -16,8 +18,6 @@ spec:
       labels:
         app.kubernetes.io/name: supabase-envoy
         app.kubernetes.io/part-of: context-fabric
-      annotations:
-        secret.reloader.stakater.com/reload: context-fabric-supabase
     spec:
       automountServiceAccountToken: false
       securityContext:
