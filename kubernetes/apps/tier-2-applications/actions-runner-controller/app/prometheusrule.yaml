@@ -1,0 +1,52 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: actions-runner-controller
+  labels:
+    app.kubernetes.io/name: actions-runner-controller
+spec:
+  groups:
+    - name: actions-runner-controller.rules
+      rules:
+        - alert: ActionsRunnerMetricsMissing
+          expr: absent(gha_max_runners)
+          for: 15m
+          labels:
+            severity: warning
+            component: ci
+          annotations:
+            summary: GitHub Actions runner metrics are missing
+            description: No ARC listener capacity metrics have been observed for 15 minutes.
+            runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md
+        - alert: ActionsRunnerProvisioningStalled
+          expr: sum by (name) (gha_desired_runners) > sum by (name) (gha_registered_runners) and sum by (name) (gha_desired_runners) > 0
+          for: 15m
+          labels:
+            severity: warning
+            component: ci
+          annotations:
+            summary: GitHub Actions runners are not reaching desired capacity
+            description: Runner scale set {{ $labels.name }} has wanted more runners than it has registered for 15 minutes.
+            runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md
+        - alert: ActionsRunnerProvisioningFailed
+          expr: sum(gha_controller_failed_ephemeral_runners) > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: ci
+          annotations:
+            summary: ARC reports failed ephemeral runners
+            description: ARC has reported one or more failed ephemeral runners for 10 minutes.
+            runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md
+        - alert: ActionsRunnerDispatchStalled
+          expr: sum by (name) (gha_assigned_jobs) > sum by (name) (gha_running_jobs) and sum by (name) (gha_running_jobs) < sum by (name) (gha_max_runners) and sum by (name) (gha_desired_runners) == 0
+          for: 15m
+          labels:
+            severity: warning
+            component: ci
+          annotations:
+            summary: GitHub Actions jobs are assigned but ARC is not scaling
+            description: Runner scale set {{ $labels.name }} has queued work and spare configured capacity but no desired runners.
+            runbook_url: https://github.com/sulibot/home-ops/blob/main/docs/runbooks/actions-runner-observability.md

@@ -1,0 +1,30 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: actions-runner-jobs
+spec:
+  endpointSelector:
+    matchLabels:
+      network.sulibot.com/role: ci-runner
+  # Repository-controlled jobs accept no inbound connections.
+  ingress: []
+  egress:
+    # DNS is required before Cilium can classify public destinations as world.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # GitHub, package registries, and public test dependencies remain reachable;
+    # cluster, host, and private service endpoints are not.
+    - toEntities:
+        - world
