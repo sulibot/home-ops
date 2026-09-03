@@ -11,15 +11,11 @@ metadata:
     critical: "false"
 spec:
   dependsOn:
-    - name: cloudnative-pg
-      namespace: flux-system
     - name: secrets-ready
       namespace: flux-system
     - name: ingress-ready
       namespace: flux-system
     - name: storage-ready
-      namespace: flux-system
-    - name: kube-prometheus-stack
       namespace: flux-system
   interval: 15m
   retryInterval: 30s
@@ -36,14 +32,6 @@ spec:
     namespace: flux-system
   wait: true
   healthChecks:
-    - apiVersion: postgresql.cnpg.io/v1
-      kind: Cluster
-      name: engineering-staging
-      namespace: engineering-staging
-    - apiVersion: postgresql.cnpg.io/v1
-      kind: Database
-      name: onward-staging
-      namespace: engineering-staging
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
       name: context-fabric
