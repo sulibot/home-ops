@@ -60,6 +60,18 @@ spec:
                   else
                     echo "pgsodium configuration is already initialized"
                   fi
+          # The cluster and Cilium Gateway are IPv6-first. Kong's chart default
+          # listens only on IPv4, which leaves the accepted HTTPRoute returning
+          # 503 even while the pod is Ready.
+          - target:
+              kind: Deployment
+              name: context-fabric-supabase-kong
+            patch: |-
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: KONG_PROXY_LISTEN
+                  value: "0.0.0.0:8000, [::]:8000"
   values:
     secret:
       jwt:
