@@ -133,7 +133,7 @@ spec:
           app:
             image:
               repository: curlimages/curl
-              tag: 8.20.0
+              tag: 8.22.0
             command:
               - /bin/sh
               - -c
