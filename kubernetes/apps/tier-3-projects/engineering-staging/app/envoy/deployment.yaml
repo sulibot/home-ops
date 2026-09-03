@@ -45,7 +45,9 @@ spec:
                 -e 's/address: meta$/address: context-fabric-supabase-meta/' \
                 -e 's/address: studio$/address: context-fabric-supabase-studio/' \
                 /config/cds.yaml > /etc/envoy/cds.yaml
-              sed 's/address: 0.0.0.0/address: "::"\n        ipv4_compat: true/' \
+              sed \
+                -e 's/address: 0.0.0.0/address: "::"\n        ipv4_compat: true/' \
+                -e 's/host_rewrite_literal: realtime-dev.supabase-realtime/host_rewrite_literal: context-fabric-supabase-realtime.supabase-realtime/' \
                 /config/lds.template.yaml > /etc/envoy/lds.template.yaml
               exec /bin/sh /config/docker-entrypoint.sh --concurrency 2 --log-level warning
           env:
