@@ -45,6 +45,21 @@ spec:
               - op: add
                 path: /spec/template/spec/automountServiceAccountToken
                 value: false
+              # Chart 0.7.2 treats the filesystem-created lost+found directory
+              # as proof that this PVC is initialized, then starts PostgreSQL
+              # without its required custom configuration. Copy the image
+              # defaults whenever the expected config directory is absent.
+              - op: replace
+                path: /spec/template/spec/initContainers/0/args/0
+                value: |-
+                  set -eu
+                  echo "Initializing pgsodium persistent config directory..."
+                  if [ ! -d /mnt/pgsodium/conf.d ]; then
+                    echo "Required config is absent; copying image defaults..."
+                    cp -a /etc/postgresql-custom/. /mnt/pgsodium/
+                  else
+                    echo "pgsodium configuration is already initialized"
+                  fi
   values:
     secret:
       jwt:
