@@ -26,6 +26,10 @@ spec:
   timeout: 10m
   path: ./kubernetes/apps/tier-3-projects/engineering-staging/app
   prune: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   sourceRef:
     kind: GitRepository
     name: flux-system
