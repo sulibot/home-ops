@@ -927,6 +927,17 @@ inputs = {
       advertise = false
     },
     {
+      # Same pattern as vlan10/vlan31 below: vlan30 has a bound pd-v30 PD pool
+      # (confirmed via `/ipv6 pool print` and `/ipv6 dhcp-client print`) but
+      # never had a gateway address configured from it, so hosts here only
+      # ever got the ULA and ended up with no global IPv6 route at all.
+      interface = "vlan30"
+      from_pool = "pd-v30"
+      address   = "::fffe"
+      advertise = true
+      comment   = "Gateway - Auto from PD"
+    },
+    {
       interface = "vlan31"
       address   = "fd00:31::fffe/64"
       advertise = true
@@ -949,6 +960,15 @@ inputs = {
       address   = "fd00:200::fffe/64"
       advertise = true
       comment   = "Standard VM LAN IPv6"
+    },
+    {
+      # Same gap as vlan30 above: pd-v200 is bound but was never turned into
+      # a gateway address, so vlan200 hosts have no global IPv6 either.
+      interface = "vlan200"
+      from_pool = "pd-v200"
+      address   = "::fffe"
+      advertise = true
+      comment   = "Gateway - Auto from PD"
     },
   ]
 
@@ -1080,6 +1100,9 @@ inputs = {
     { name = "ap.sulibot.com", type = "A", address = "10.30.0.1", ttl = "5m" },
     { name = "printer.sulibot.com", type = "AAAA", address = "fd00:31::5", ttl = "5m" },
     { name = "printer.sulibot.com", type = "A", address = "10.31.0.5", ttl = "5m" },
+    # Persistent NixOS agent development LXC on vlan200.
+    { name = "agent-devbox01.sulibot.com", type = "AAAA", address = "fd00:200::210", ttl = "5m" },
+    { name = "agent-devbox01.sulibot.com", type = "A", address = "10.200.0.210", ttl = "5m" },
     # IPv4 A records — currently disabled on device, kept here for completeness
     { name = "pve01.sulibot.com", type = "A", address = "10.10.0.1", ttl = "5m", disabled = true },
     { name = "pve02.sulibot.com", type = "A", address = "10.10.0.2", ttl = "5m", disabled = true },
