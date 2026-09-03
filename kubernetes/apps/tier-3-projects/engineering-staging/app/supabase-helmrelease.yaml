@@ -1,0 +1,218 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: context-fabric
+  namespace: engineering-staging
+  labels:
+    app.kubernetes.io/part-of: context-fabric
+spec:
+  interval: 30m
+  timeout: 20m
+  maxHistory: 3
+  chart:
+    spec:
+      chart: supabase
+      version: 0.7.2
+      sourceRef:
+        kind: HelmRepository
+        name: supabase-community
+        namespace: engineering-staging
+      interval: 1h
+  install:
+    remediation:
+      retries: 5
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+  # Chart 0.7.2 omits this field when its value is false. Add it after render
+  # so workloads cannot receive an unused Kubernetes API credential.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+            patch: |-
+              - op: add
+                path: /spec/template/spec/automountServiceAccountToken
+                value: false
+          - target:
+              kind: StatefulSet
+            patch: |-
+              - op: add
+                path: /spec/template/spec/automountServiceAccountToken
+                value: false
+  values:
+    secret:
+      jwt:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          anonKey: anonKey
+          serviceKey: serviceKey
+          secret: jwtSecret
+      db:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          password: dbPassword
+          database: dbDatabase
+      smtp:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          username: smtpUsername
+          password: smtpPassword
+      dashboard:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          username: dashboardUsername
+          password: dashboardPassword
+          openAiApiKey: openAiApiKey
+      s3:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          keyId: s3KeyId
+          accessKey: s3AccessKey
+      realtime:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          secretKeyBase: realtimeSecretKeyBase
+          dbEncKey: realtimeDbEncKey
+      meta:
+        secretRef: context-fabric-supabase
+        secretRefKey:
+          cryptoKey: metaCryptoKey
+    deployment:
+      analytics:
+        enabled: false
+      vector:
+        enabled: false
+      minio:
+        enabled: false
+      auth:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      db:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 500m, memory: 1Gi}
+          limits: {memory: 4Gi}
+      functions:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      imgproxy:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      kong:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      meta:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      realtime:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      rest:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      storage:
+        automountServiceAccountToken: false
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+      studio:
+        automountServiceAccountToken: false
+        strategy:
+          type: Recreate
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {memory: 512Mi}
+    environment:
+      auth:
+        - name: API_EXTERNAL_URL
+          value: https://context-fabric-staging.sulibot.com
+        - name: GOTRUE_API_HOST
+          value: "0.0.0.0"
+        - name: GOTRUE_API_PORT
+          value: "9999"
+        - name: GOTRUE_SITE_URL
+          value: https://context-fabric-staging.sulibot.com
+        - name: GOTRUE_URI_ALLOW_LIST
+          value: https://context-fabric-staging.sulibot.com/*
+        - name: GOTRUE_DISABLE_SIGNUP
+          value: "true"
+        - name: GOTRUE_JWT_DEFAULT_GROUP_NAME
+          value: authenticated
+        - name: GOTRUE_JWT_ADMIN_ROLES
+          value: service_role
+        - name: GOTRUE_JWT_AUD
+          value: authenticated
+        - name: GOTRUE_JWT_EXP
+          value: "3600"
+        - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
+          value: "false"
+        - name: GOTRUE_MAILER_AUTOCONFIRM
+          value: "false"
+        - name: GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED
+          value: "false"
+        - name: GOTRUE_EXTERNAL_PHONE_ENABLED
+          value: "false"
+        - name: GOTRUE_SMS_AUTOCONFIRM
+          value: "false"
+      studio:
+        - name: HOSTNAME
+          value: "::"
+        - name: STUDIO_PORT
+          value: "3000"
+        - name: DEFAULT_ORGANIZATION_NAME
+          value: Sulibot Engineering
+        - name: DEFAULT_PROJECT_NAME
+          value: Context Fabric
+        - name: SUPABASE_PUBLIC_URL
+          value: https://context-fabric-staging.sulibot.com
+        - name: NEXT_ANALYTICS_BACKEND_PROVIDER
+          value: postgres
+    persistence:
+      db:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 40Gi
+      functions:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 1Gi
+      imgproxy:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 1Gi
+      snippets:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 1Gi
+      storage:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 10Gi
+      deno:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 1Gi
+      pgsodium:
+        enabled: true
+        storageClassName: csi-rbd-rbd-vm-sc-retain
+        size: 100Mi

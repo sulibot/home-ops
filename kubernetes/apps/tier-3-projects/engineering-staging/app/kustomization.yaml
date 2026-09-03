@@ -9,3 +9,7 @@ resources:
   - scheduledbackup.yaml
   - backup-verification-cronjob.yaml
   - podmonitor.yaml
+  - supabase-repository.yaml
+  - supabase-secret.sops.yaml
+  - supabase-helmrelease.yaml
+  - supabase-httproute.yaml
