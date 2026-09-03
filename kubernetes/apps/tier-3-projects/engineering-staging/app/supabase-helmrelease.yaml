@@ -67,6 +67,14 @@ spec:
               kind: Deployment
               name: context-fabric-supabase-kong
             patch: |-
+              # Chart 0.7.2 pins this variable at index 10. The test makes an
+              # upstream list-order change fail closed during render.
+              - op: test
+                path: /spec/template/spec/containers/0/env/10/name
+                value: KONG_DNS_ORDER
+              - op: replace
+                path: /spec/template/spec/containers/0/env/10/value
+                value: LAST,AAAA,A,CNAME
               - op: add
                 path: /spec/template/spec/containers/0/env/-
                 value:
