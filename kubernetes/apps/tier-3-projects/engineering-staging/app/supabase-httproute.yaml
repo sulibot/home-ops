@@ -15,5 +15,5 @@ spec:
       namespace: network
   rules:
     - backendRefs:
-        - name: context-fabric-supabase-kong
+        - name: context-fabric-supabase-envoy
           port: 8000

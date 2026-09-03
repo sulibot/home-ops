@@ -17,7 +17,7 @@ chart, while retaining the chart for the remaining services.
   Lua filters, RBAC, CORS, dashboard basic auth, and blocked management routes.
 - License: upstream Apache-2.0 (https://github.com/supabase/supabase/blob/bdfd69e9554a1f9fb76d0aee3b57d5eec5ac3dbe/LICENSE).
 
-At startup only Docker DNS names and the listener socket are adapted: cluster
+At startup Docker DNS names, the Realtime tenant Host header, and the listener socket are adapted: cluster
 names resolve to existing Kubernetes Services, and the listener accepts both
 IPv6 and IPv4. Cilium reaches an IPv6 Service; existing internal upstream
 Services stay IPv4. Envoy runs two workers and exposes no admin Service (the
@@ -29,6 +29,10 @@ Legacy HS256 API keys remain in use, as supported by upstream. Introducing
 opaque/asymmetric keys is a separate Auth/JWT migration, not part of replacing
 Kong. This gateway update does not claim that chart 0.7.2's other images match
 the latest Docker Compose release.
+
+Functions explicitly enables `VERIFY_JWT=true` (the chart defaults to false).
+No application Edge Functions are installed yet; the validation checks the
+runtime's authentication boundary, not a deployed business function.
 
 ## Upgrade and rollback
 

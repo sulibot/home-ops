@@ -60,29 +60,42 @@ spec:
                   else
                     echo "pgsodium configuration is already initialized"
                   fi
-          # The cluster and Cilium Gateway are IPv6-first. Kong's chart default
-          # listens only on IPv4, which leaves the accepted HTTPRoute returning
-          # 503 even while the pod is Ready.
+          # Chart 0.7.2 hardcodes its internal gateway URLs to Kong. Keep
+          # upstream Supabase API behavior but point consumers at Envoy.
           - target:
               kind: Deployment
-              name: context-fabric-supabase-kong
+              name: context-fabric-supabase-studio
             patch: |-
-              # Chart 0.7.2 pins this variable at index 10. The test makes an
-              # upstream list-order change fail closed during render.
-              - op: test
-                path: /spec/template/spec/containers/0/env/10/name
-                value: KONG_DNS_ORDER
-              - op: replace
-                path: /spec/template/spec/containers/0/env/10/value
-                value: A,CNAME,LAST
-              - op: add
-                path: /spec/template/spec/containers/0/env/-
-                value:
-                  name: KONG_PROXY_LISTEN
-                  value: "0.0.0.0:8000, [::]:8000"
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: context-fabric-supabase-studio
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: supabase-studio
+                        env:
+                          - name: SUPABASE_URL
+                            value: http://context-fabric-supabase-envoy:8000
+          - target:
+              kind: Deployment
+              name: context-fabric-supabase-functions
+            patch: |-
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: context-fabric-supabase-functions
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: supabase-functions
+                        env:
+                          - name: SUPABASE_URL
+                            value: http://context-fabric-supabase-envoy:8000
           # Most Supabase services bind IPv4 only. Make those internal Service
-          # records unambiguous for Kong; then restore the externally-routed
-          # Kong Service to the cluster's IPv6 family.
+          # records unambiguous for Envoy. Its separately-managed Service is IPv6.
           - target:
               kind: Service
             patch: |-
@@ -92,13 +105,6 @@ spec:
               - op: add
                 path: /spec/ipFamilies
                 value: [IPv4]
-          - target:
-              kind: Service
-              name: context-fabric-supabase-kong
-            patch: |-
-              - op: replace
-                path: /spec/ipFamilies
-                value: [IPv6]
   values:
     secret:
       jwt:
@@ -165,10 +171,7 @@ spec:
           requests: {cpu: 50m, memory: 128Mi}
           limits: {memory: 512Mi}
       kong:
-        automountServiceAccountToken: false
-        resources:
-          requests: {cpu: 50m, memory: 128Mi}
-          limits: {memory: 512Mi}
+        enabled: false
       meta:
         automountServiceAccountToken: false
         resources:
@@ -197,6 +200,9 @@ spec:
           requests: {cpu: 50m, memory: 128Mi}
           limits: {memory: 512Mi}
     environment:
+      functions:
+        - name: VERIFY_JWT
+          value: "true"
       auth:
         - name: API_EXTERNAL_URL
           value: https://context-fabric-staging.sulibot.com
