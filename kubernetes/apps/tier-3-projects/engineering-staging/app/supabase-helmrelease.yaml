@@ -74,12 +74,31 @@ spec:
                 value: KONG_DNS_ORDER
               - op: replace
                 path: /spec/template/spec/containers/0/env/10/value
-                value: LAST,AAAA,A,CNAME
+                value: A,CNAME,LAST
               - op: add
                 path: /spec/template/spec/containers/0/env/-
                 value:
                   name: KONG_PROXY_LISTEN
                   value: "0.0.0.0:8000, [::]:8000"
+          # Most Supabase services bind IPv4 only. Make those internal Service
+          # records unambiguous for Kong; then restore the externally-routed
+          # Kong Service to the cluster's IPv6 family.
+          - target:
+              kind: Service
+            patch: |-
+              - op: add
+                path: /spec/ipFamilyPolicy
+                value: SingleStack
+              - op: add
+                path: /spec/ipFamilies
+                value: [IPv4]
+          - target:
+              kind: Service
+              name: context-fabric-supabase-kong
+            patch: |-
+              - op: replace
+                path: /spec/ipFamilies
+                value: [IPv6]
   values:
     secret:
       jwt:
