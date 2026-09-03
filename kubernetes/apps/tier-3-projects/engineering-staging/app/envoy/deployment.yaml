@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: context-fabric-supabase-envoy
+  labels:
+    app.kubernetes.io/name: supabase-envoy
+    app.kubernetes.io/part-of: context-fabric
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: supabase-envoy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: supabase-envoy
+        app.kubernetes.io/part-of: context-fabric
+      annotations:
+        secret.reloader.stakater.com/reload: context-fabric-supabase
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: envoy
+          # Matches the pinned upstream Supabase Docker Compose gateway.
+          image: envoyproxy/envoy:v1.39.0@sha256:d59f7f5fa10cff6d5892b6c5e7df5c9297ddfb2c3683e33fbfb82da24de4fa66
+          command: [/bin/sh, -ec]
+          args:
+            - |
+              # Preserve upstream policies; adapt only Docker DNS and binding.
+              cp /config/envoy.yaml /etc/envoy/envoy.yaml
+              sed \
+                -e 's/address: auth$/address: context-fabric-supabase-auth/' \
+                -e 's/address: rest$/address: context-fabric-supabase-rest/' \
+                -e 's/address: realtime-dev.supabase-realtime$/address: context-fabric-supabase-realtime/' \
+                -e 's/address: storage$/address: context-fabric-supabase-storage/' \
+                -e 's/address: functions$/address: context-fabric-supabase-functions/' \
+                -e 's/address: meta$/address: context-fabric-supabase-meta/' \
+                -e 's/address: studio$/address: context-fabric-supabase-studio/' \
+                /config/cds.yaml > /etc/envoy/cds.yaml
+              sed 's/address: 0.0.0.0/address: "::"\n        ipv4_compat: true/' \
+                /config/lds.template.yaml > /etc/envoy/lds.template.yaml
+              exec /bin/sh /config/docker-entrypoint.sh --concurrency 2 --log-level warning
+          env:
+            - name: ANON_KEY
+              valueFrom:
+                secretKeyRef: {name: context-fabric-supabase, key: anonKey}
+            - name: SERVICE_ROLE_KEY
+              valueFrom:
+                secretKeyRef: {name: context-fabric-supabase, key: serviceKey}
+            - name: DASHBOARD_USERNAME
+              valueFrom:
+                secretKeyRef: {name: context-fabric-supabase, key: dashboardUsername}
+            - name: DASHBOARD_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: context-fabric-supabase, key: dashboardPassword}
+            - name: SUPABASE_PUBLIC_URL
+              value: https://context-fabric-staging.sulibot.com
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: upstream
+              mountPath: /config
+              readOnly: true
+            - name: rendered
+              mountPath: /etc/envoy
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: upstream
+          configMap:
+            name: context-fabric-supabase-envoy
+        # Rendered config contains API credentials: memory only, never a ConfigMap.
+        - name: rendered
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Mi
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Mi

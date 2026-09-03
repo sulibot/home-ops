@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: engineering-staging
+resources:
+  - deployment.yaml
+  - service.yaml
+configMapGenerator:
+  - name: context-fabric-supabase-envoy
+    files:
+      - upstream/envoy.yaml
+      - upstream/cds.yaml
+      - upstream/lds.template.yaml
+      - upstream/docker-entrypoint.sh
+generatorOptions:
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+  labels:
+    app.kubernetes.io/part-of: context-fabric

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: context-fabric-supabase-envoy
+  labels:
+    app.kubernetes.io/part-of: context-fabric
+spec:
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  ipFamilies: [IPv6]
+  selector:
+    app.kubernetes.io/name: supabase-envoy
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

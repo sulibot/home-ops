@@ -9,3 +9,4 @@ resources:
   - supabase-helmrelease.yaml
   - supabase-httproute.yaml
   - supabase-backup-cronjob.yaml
+  - envoy
