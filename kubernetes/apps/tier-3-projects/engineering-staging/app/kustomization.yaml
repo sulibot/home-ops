@@ -4,12 +4,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
-  - cluster.yaml
-  - onward-database.yaml
-  - scheduledbackup.yaml
-  - backup-verification-cronjob.yaml
-  - podmonitor.yaml
   - supabase-repository.yaml
   - supabase-secret.sops.yaml
   - supabase-helmrelease.yaml
   - supabase-httproute.yaml
+  - supabase-backup-cronjob.yaml
