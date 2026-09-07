@@ -59,7 +59,9 @@ spec:
             - port: "5432"
               protocol: TCP
     - toFQDNs:
-        - matchName: auth.sulibot.com
+        - matchName: accounts.google.com
+        - matchName: oauth2.googleapis.com
+        - matchName: www.googleapis.com
       toPorts:
         - ports:
             - port: "443"
