@@ -28,3 +28,10 @@ spec:
         - ports:
             - port: "3000"
               protocol: TCP
+    # Gateway API backends see traffic from Cilium's reserved ingress identity.
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP

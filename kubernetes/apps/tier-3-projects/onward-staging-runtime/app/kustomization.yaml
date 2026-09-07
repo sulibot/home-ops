@@ -6,5 +6,6 @@ resources:
   - serviceaccount.yaml
   - deployment.yaml
   - service.yaml
+  - httproute.yaml
   - networkpolicy.yaml
   - deny-egress.yaml
