@@ -18,16 +18,6 @@ spec:
         - ports:
             - port: "3000"
               protocol: TCP
-    # Only an explicitly labeled internal verifier may exercise the ClusterIP.
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: engineering-staging
-            app.kubernetes.io/name: onward-staging-verifier
-            app.kubernetes.io/component: verifier
-      toPorts:
-        - ports:
-            - port: "3000"
-              protocol: TCP
     # Gateway API backends see traffic from Cilium's reserved ingress identity.
     - fromEntities:
         - ingress
