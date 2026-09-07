@@ -46,7 +46,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: zot.sulibot.com/onward-staging@sha256:301575be9166b580c213b2a099875711423cc17d2532116e9c8978e40309a54e
+          image: zot.sulibot.com/onward-staging@sha256:cb67d1e7bde051d30886fda3909aa43ec087b1766e4ab6bc7b8e48cf104e1608
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
