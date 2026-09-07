@@ -46,8 +46,24 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: zot.sulibot.com/onward-staging@sha256:53bbbebf957f88b61aafdec385a8d29cdc7ada45f7d112da47049f7cefbc8990
+          image: zot.sulibot.com/onward-staging@sha256:ac4707718596ec04b7e5e13cb47dc32b37e6a7d362579b24355628ad1d0606ce
           imagePullPolicy: IfNotPresent
+          env:
+            - name: NEXT_PUBLIC_ONWARD_APP_ORIGIN
+              value: "https://onward-staging.sulibot.com"
+            - name: ONWARD_AI_DRIVER
+              value: disabled
+            - name: ONWARD_AUTH_DRIVER
+              value: provider
+            - name: ONWARD_MAIL_DRIVER
+              value: disabled
+            - name: ONWARD_QUEUE_DRIVER
+              value: disabled
+            - name: ONWARD_RUNTIME_ENV
+              value: staging
+          envFrom:
+            - secretRef:
+                name: onward-staging
           ports:
             - name: http
               containerPort: 3000
@@ -88,8 +104,13 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: private-artifacts
+              mountPath: /var/lib/onward/private-artifacts
       volumes:
         - name: tmp
           emptyDir:
             medium: Memory
             sizeLimit: 64Mi
+        - name: private-artifacts
+          persistentVolumeClaim:
+            claimName: onward-staging-private-artifacts

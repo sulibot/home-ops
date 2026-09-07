@@ -30,6 +30,7 @@ configMapGenerator:
       - blueprints/miniflux-provider.yaml
       - blueprints/freshrss-provider.yaml
       - blueprints/opencloud-provider.yaml
+      - blueprints/onward-provider.yaml
       - blueprints/proxy-providers.yaml
   - name: authentik-brand-assets
     files:
