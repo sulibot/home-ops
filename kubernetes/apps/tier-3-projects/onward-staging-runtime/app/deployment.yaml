@@ -52,7 +52,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: zot.sulibot.com/onward-staging@sha256:e7a0cec3e29ee2d0e25d003f6f6045f83922759b02e8ac224c1556bd62564199
+          image: zot.sulibot.com/onward-staging@sha256:1c9754eeb6a9bd8de39e52f0583822ea093732c0fe8c8e11afed79268057ffa2
           imagePullPolicy: IfNotPresent
           env:
             - name: NEXT_PUBLIC_ONWARD_APP_ORIGIN

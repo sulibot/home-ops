@@ -50,6 +50,7 @@ spec:
               protocol: TCP
     - toFQDNs:
         - matchName: accounts.google.com
+        - matchName: login.microsoftonline.com
         - matchName: oauth2.googleapis.com
         - matchName: www.googleapis.com
       toPorts:
