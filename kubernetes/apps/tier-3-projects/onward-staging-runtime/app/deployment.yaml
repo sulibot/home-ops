@@ -33,6 +33,12 @@ spec:
       serviceAccountName: onward-staging
       automountServiceAccountToken: false
       enableServiceLinks: false
+      # Resolve public FQDNs before Kubernetes search-suffix expansion so the
+      # exact CoreDNS split-horizon rule is reached instead of wildcard DNS.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       terminationGracePeriodSeconds: 30
       hostNetwork: false
       hostPID: false
