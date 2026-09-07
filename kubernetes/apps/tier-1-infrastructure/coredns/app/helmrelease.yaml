@@ -44,13 +44,6 @@ spec:
             configBlock: |-
               lameduck 5s
           - name: ready
-          # Keep cluster callers on the internal Gateway path while preserving
-          # the public TLS hostname. Exact rewrites also restore the original
-          # question name in CoreDNS responses.
-          - name: rewrite
-            parameters: >-
-              stop name exact auth.sulibot.com
-              cilium-gateway-gateway-internal.network.svc.cluster.local
           - name: kubernetes
             parameters: cluster.local in-addr.arpa ip6.arpa
             configBlock: |-
