@@ -52,7 +52,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: zot.sulibot.com/onward-staging@sha256:ccf52ad1bce6a9f6f74b5c0b7cc0c0d087fc8fb0bcdfd508c7cc9bf33df94c9d
+          image: zot.sulibot.com/onward-staging@sha256:81f97a49561ca28e083acec39bffb98c5c5170aabdbb7087cb834383c8a588dd
           imagePullPolicy: IfNotPresent
           env:
             - name: NEXT_PUBLIC_ONWARD_APP_ORIGIN
@@ -67,6 +67,8 @@ spec:
               value: disabled
             - name: ONWARD_RUNTIME_ENV
               value: staging
+            - name: ONWARD_TRUST_PROXY_AUTH_ORIGIN
+              value: cilium
           envFrom:
             - secretRef:
                 name: onward-staging
