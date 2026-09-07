@@ -200,7 +200,7 @@ wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 wrangler secret put ANTHROPIC_API_KEY      # 1Password: Anthropic
-wrangler secret put GOOGLE_CLIENT_ID       # 1Password: Plumb Google OAuth
+wrangler secret put GOOGLE_CLIENT_ID       # 1Password: Onward Google OAuth
 wrangler secret put GOOGLE_CLIENT_SECRET
 wrangler secret put NEXT_PUBLIC_GOOGLE_ENABLED   # "true"
 ```
