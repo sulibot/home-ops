@@ -328,12 +328,34 @@ chmod 0755 /usr/local/sbin/check-nfs-ganesha
 cat >/usr/local/sbin/nfs-gateway-state <<'EOF'
 #!/bin/sh
 set -eu
+
+# Keepalived runs separate IPv4 and IPv6 instances. Their transition hooks can
+# overlap during an election, so serialize them and only run Ganesha when this
+# node owns both addresses for the one logical NFS service.
+exec 9>/run/nfs-gateway-state.lock
+flock 9
+
+owns_service() {
+  ip -4 -o addr show dev eth0 | grep -q '@@NFS_VIP4@@/24' &&
+    ip -6 -o addr show dev eth0 | grep -q '@@NFS_VIP6@@/64'
+}
+
+stop_ganesha() {
+  rm -f /run/nfs-gateway-starting
+  systemctl kill --kill-whom=main --signal=KILL nfs-ganesha 2>/dev/null || true
+  systemctl reset-failed nfs-ganesha 2>/dev/null || true
+}
+
 case "${1:-}" in
   master)
+    if ! owns_service; then
+      stop_ganesha
+      exit 0
+    fi
     rm -f /run/nfs-gateway-inhibit /run/nfs-gateway-health-failures
     touch /run/nfs-gateway-starting
-    systemctl kill --kill-whom=main --signal=KILL nfs-ganesha 2>/dev/null || true
-    systemctl reset-failed nfs-ganesha 2>/dev/null || true
+    stop_ganesha
+    touch /run/nfs-gateway-starting
     systemctl start nfs-ganesha
     ready=false
     for _ in $(seq 1 30); do
@@ -351,22 +373,28 @@ case "${1:-}" in
       sleep 1
     done
     rm -f /run/nfs-gateway-starting
+    if ! owns_service; then
+      stop_ganesha
+      exit 0
+    fi
     if [ "${ready}" != true ]; then
+      stop_ganesha
       touch /run/nfs-gateway-inhibit
       exit 1
     fi
     ;;
   backup|fault|stop)
-    rm -f /run/nfs-gateway-starting
-    systemctl kill --kill-whom=main --signal=KILL nfs-ganesha 2>/dev/null || true
-    systemctl reset-failed nfs-ganesha 2>/dev/null || true
+    stop_ganesha
     ;;
   *)
     exit 2
     ;;
 esac
 EOF
-sed -i "s|@@NFS_COMMON_PATH@@|${NFS_COMMON_PATH}|g" \
+sed -i \
+  -e "s|@@NFS_COMMON_PATH@@|${NFS_COMMON_PATH}|g" \
+  -e "s|@@NFS_VIP4@@|${NFS_VIP4}|g" \
+  -e "s|@@NFS_VIP6@@|${NFS_VIP6}|g" \
   /usr/local/sbin/nfs-gateway-state
 chmod 0755 /usr/local/sbin/nfs-gateway-state
 
