@@ -52,7 +52,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: zot.sulibot.com/onward-staging@sha256:1d1d347dc30a8ceb8a7ccbcb2423f587b7c2889240de026240c541288fcb35c4
+          image: zot.sulibot.com/onward-staging@sha256:b160594a80005690b7dd911f334e8501412b966fa0622972d54aa0d9cc2a3f24
           imagePullPolicy: IfNotPresent
           env:
             # The cluster uses IPv6 pod addresses; Node's wildcard IPv6 socket
