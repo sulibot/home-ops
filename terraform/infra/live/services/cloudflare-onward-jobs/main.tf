@@ -43,14 +43,12 @@ resource "porkbun_nameservers" "onward_jobs" {
 # address is TEST-NET-1 and deliberately unroutable — if the route were ever
 # removed the request would fail rather than reach a stranger's server.
 #
-# Cloudflare has no rename for a Worker: changing the name in wrangler.jsonc
-# deploys a second script and leaves this route pointed at the first. So the
-# move from `plumb` to `onward` was ordered — deploy under the new name, push
-# its secrets (a fresh Worker has none, so a route repointed first would serve
-# 500s), then change this, then delete the old script.
+# Deploy the frontend demo Worker before repointing these routes. Keep its
+# name aligned with apps/web/wrangler.jsonc in the Onward application repository.
+# The original onward Worker and its backing resources remain available.
 
 locals {
-  worker = "onward"
+  worker = "onward-demo"
 }
 
 resource "cloudflare_dns_record" "apex" {
