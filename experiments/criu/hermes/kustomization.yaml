@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: criu-hermes-pilot
+resources:
+  - namespace.yaml
+  - dashboard-pod.yaml
+  - client-pod.yaml
+configMapGenerator:
+  - name: hermes-pilot-scripts
+    files:
+      - bootstrap.py
+      - identity_server.py

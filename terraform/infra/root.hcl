@@ -18,9 +18,8 @@ remote_state {
   }
 }
 
-terraform {
-  extra_arguments "region_var" {
-    commands  = get_terraform_commands_that_need_vars()
-    arguments = ["-var", "region=${local.region}"]
-  }
+inputs = {
+  # Use TF_VAR inputs rather than injected CLI flags: saved-plan apply must
+  # receive only its plan filename, with variable values frozen in that plan.
+  region = local.region
 }

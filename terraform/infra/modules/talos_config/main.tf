@@ -398,6 +398,9 @@ data "talos_machine_configuration" "controlplane" {
         proxy = {
           disabled = true # Cilium kube-proxy replacement
         }
+        coreDNS = {
+          disabled = true # CoreDNS is managed by Flux/Helm, not Talos bootstrap manifests
+        }
         apiServer = {
           certSANs = local.api_server_cert_sans
         }
@@ -504,6 +507,9 @@ EOF
         discovery = local.common_cluster_discovery
         proxy = {
           disabled = true # Cilium kube-proxy replacement
+        }
+        coreDNS = {
+          disabled = true # CoreDNS is managed by Flux/Helm, not Talos bootstrap manifests
         }
       }
     }),
@@ -1185,6 +1191,17 @@ locals {
 
 # Generate machine configs with per-node patches
 locals {
+  node_cri_customization_patches = {
+    for node_name in keys(local.all_nodes) : node_name => [
+      for name, content in lookup(var.node_cri_customizations, node_name, {}) : yamlencode({
+        apiVersion = "v1alpha1"
+        kind       = "CRICustomizationConfig"
+        name       = name
+        content    = content
+      })
+    ]
+  }
+
   machine_configs = {
     for node_name, node in local.all_nodes : node_name => {
       machine_type = node.machine_type
@@ -1208,6 +1225,7 @@ locals {
       # New fields for cleaner separation
       machine_config_patch = yamlencode(local.node_config_patches[node_name])
       extension_config     = local.extension_service_configs[node_name]
+      cri_config_patches   = local.node_cri_customization_patches[node_name]
 
       # Legacy combined field for backward compatibility with apply/ stage
       config_patch = <<-EOT
@@ -1215,6 +1233,10 @@ ${yamlencode(local.node_config_patches[node_name])}
 ---
 ${"# YAML Document 2: ExtensionServiceConfig for FRR BGP daemon"}
 ${local.extension_service_configs[node_name]}
+%{for patch in local.node_cri_customization_patches[node_name]~}
+---
+${patch}
+%{endfor~}
 EOT
     }
   }
@@ -1229,11 +1251,6 @@ data "talos_client_configuration" "cluster" {
     [for node in local.control_plane_nodes : node.public_ipv4],
     [for node in local.worker_nodes : node.public_ipv4]
   )
-}
-
-resource "local_file" "talosconfig" {
-  content  = data.talos_client_configuration.cluster.talos_config
-  filename = "${path.root}/talosconfig"
 }
 
 resource "local_file" "machine_config_patches" {

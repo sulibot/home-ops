@@ -1,0 +1,35 @@
+# Validated HTTP capability-only profile. Still broad privileges, NOT restricted.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: process-checkpoint-caps
+  namespace: criu-experiment
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: solwk03
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 5
+  containers:
+    - name: supervisor
+      image: zot.sulibot.com/experiments/criu@sha256:e541435075d9de5154df4f327efd508cd33fb1c4f1a301064e994edbc76c0fd3
+      securityContext:
+        privileged: false
+        capabilities:
+          add: [CHECKPOINT_RESTORE, SYS_PTRACE, SYS_ADMIN, NET_ADMIN, SYS_TIME]
+        seccompProfile:
+          type: Unconfined
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      volumeMounts:
+        - name: state
+          mountPath: /state
+  volumes:
+    - name: state
+      emptyDir:
+        sizeLimit: 512Mi

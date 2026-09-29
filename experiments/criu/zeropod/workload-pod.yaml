@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: zeropod-memory-canary
+  namespace: zeropod-experiment
+  labels:
+    app.kubernetes.io/name: zeropod-memory-canary
+  annotations:
+    zeropod.ctrox.dev/ports-map: workload=8081
+    zeropod.ctrox.dev/scaledown-duration: 15s
+spec:
+  runtimeClassName: zeropod
+  nodeSelector:
+    kubernetes.io/hostname: solwk03
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 5
+  containers:
+    - name: workload
+      image: zot.sulibot.com/experiments/criu@sha256:e541435075d9de5154df4f327efd508cd33fb1c4f1a301064e994edbc76c0fd3
+      imagePullPolicy: IfNotPresent
+      command: [python3, /opt/criu-demo/workload.py]
+      ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 100m
+          memory: 192Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
+      securityContext:
+        privileged: false
+      volumeMounts:
+        - name: workload-script
+          mountPath: /opt/criu-demo/workload.py
+          subPath: workload.py
+          readOnly: true
+        - name: state
+          mountPath: /state
+  volumes:
+    - name: workload-script
+      configMap:
+        name: zeropod-workload-script
+    - name: state
+      emptyDir:
+        sizeLimit: 16Mi

@@ -26,6 +26,7 @@ resources:
   - ./firefly/ks.yaml
   - ./go2rtc/ks.yaml
   - ./grimmory/ks.yaml
+  - ./hermes/ks.yaml
   # home-assistant migrated to bare-metal cluster-104
   # - ./home-assistant/ks.yaml
   - ./homepage/ks.yaml

@@ -1,0 +1,23 @@
+---
+# Experimental, deliberately unreferenced by hermes/ks.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../app
+patches:
+  - target:
+      group: helm.toolkit.fluxcd.io
+      version: v2
+      kind: HelmRelease
+      name: hermes
+    patch: |-
+      - op: add
+        path: /spec/values/controllers/dashboard/pod
+        value:
+          runtimeClassName: zeropod
+          nodeSelector:
+            kubernetes.io/hostname: solwk03
+          annotations:
+            zeropod.ctrox.dev/container-names: app
+            zeropod.ctrox.dev/ports-map: app=9119
+            zeropod.ctrox.dev/scaledown-duration: 30m

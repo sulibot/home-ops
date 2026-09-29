@@ -4,7 +4,7 @@ terraform {
   required_providers {
     talos = {
       source  = "siderolabs/talos"
-      version = "~> 0.10.0"
+      version = "~> 0.12.0" # Talos 1.14 CRICustomizationConfig support
     }
   }
 }
@@ -144,7 +144,13 @@ resource "talos_machine_configuration_apply" "nodes" {
   apply_mode                  = var.apply_mode
 
   config_patches = [for patch in var.machine_configs[each.key].config_patches : replace(patch, "$$", "$")]
-  on_destroy     = var.on_destroy
+  # Keep the object shape known during provider 0.12 ValidateConfig; passing
+  # the whole variable trips its pointer conversion on an unknown object.
+  on_destroy = {
+    reset    = var.on_destroy.reset
+    reboot   = var.on_destroy.reboot
+    graceful = var.on_destroy.graceful
+  }
 
   # Apply configs via IPv6. Was IPv4 (comment claimed the IPv6 ULA was
   # VRF-internal and unreachable from a workstation) - that's no longer true

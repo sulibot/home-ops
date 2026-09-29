@@ -1,0 +1,21 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: zeropod
+  namespace: flux-system
+spec:
+  # Keep the experimental runtime gated until native checkpoint/wake passes.
+  suspend: true
+  dependsOn:
+    - name: cert-manager
+  interval: 15m
+  retryInterval: 30s
+  timeout: 3m
+  path: ./talos/extensions/zeropod
+  # Runtime removal needs an explicit drain/disable sequence, not Git pruning.
+  prune: false
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true

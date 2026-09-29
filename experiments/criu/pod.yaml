@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: criu-experiment
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: process-checkpoint
+  namespace: criu-experiment
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: solwk03
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 5
+  containers:
+    - name: supervisor
+      image: zot.sulibot.com/experiments/criu@sha256:e541435075d9de5154df4f327efd508cd33fb1c4f1a301064e994edbc76c0fd3
+      imagePullPolicy: Always
+      securityContext:
+        privileged: false
+        capabilities:
+          add: [CHECKPOINT_RESTORE, SYS_PTRACE, SYS_ADMIN, NET_ADMIN, SYS_TIME]
+        seccompProfile:
+          type: Unconfined
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+          ephemeral-storage: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+          ephemeral-storage: 1Gi
+      ports:
+        - containerPort: 8080
+      volumeMounts:
+        - name: state
+          mountPath: /state
+  volumes:
+    - name: state
+      emptyDir:
+        sizeLimit: 512Mi

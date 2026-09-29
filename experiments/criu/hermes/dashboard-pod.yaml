@@ -1,0 +1,88 @@
+# Disposable Hermes dashboard only. No production PVC, provider key, bot, or route.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hermes-dashboard-checkpoint
+  namespace: criu-hermes-pilot
+  annotations:
+    zeropod.ctrox.dev/container-names: dashboard
+    zeropod.ctrox.dev/ports-map: dashboard=9119
+    zeropod.ctrox.dev/scaledown-duration: 30s
+spec:
+  runtimeClassName: zeropod
+  nodeSelector:
+    kubernetes.io/hostname: solwk03
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 10
+  containers:
+    - name: dashboard
+      image: docker.io/nousresearch/hermes-agent:v2026.9.24@sha256:fca358f12efd65bfaaca05884166f15c0e2788375ca30d77061ac1ebc96452b7
+      imagePullPolicy: IfNotPresent
+      # exec preserves PID 1 for the pinned image's s6-overlay entrypoint.
+      command: [/bin/sh, -ec]
+      args:
+        - |
+          export PYTHONPATH=/opt/hermes
+          python /opt/pilot/bootstrap.py
+          export HERMES_DASHBOARD_BASIC_AUTH_USERNAME=pilot
+          export HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH="$(cat /auth/password_hash)"
+          export HERMES_DASHBOARD_BASIC_AUTH_SECRET="$(cat /auth/signing_key)"
+          python /opt/pilot/identity_server.py &
+          exec /opt/hermes/docker/entrypoint-dispatch.sh dashboard --host 0.0.0.0 --no-open
+      env:
+        - name: HERMES_HOME
+          value: /opt/data
+        - name: HOME
+          value: /opt/data
+        - name: TZ
+          value: America/Los_Angeles
+      ports:
+        - name: dashboard
+          containerPort: 9119
+          protocol: TCP
+        - name: identity
+          containerPort: 9118
+          protocol: TCP
+      # One-time probe: no recurring kubelet traffic to prevent hibernation.
+      startupProbe:
+        exec:
+          command:
+            - python
+            - -c
+            - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9119/api/status', timeout=3).close()"
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 60
+      securityContext:
+        privileged: false
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+          ephemeral-storage: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+          ephemeral-storage: 2Gi
+      volumeMounts:
+        - name: hermes-home
+          mountPath: /opt/data
+        - name: auth
+          mountPath: /auth
+        - name: pilot-scripts
+          mountPath: /opt/pilot
+          readOnly: true
+  volumes:
+    - name: hermes-home
+      emptyDir:
+        sizeLimit: 1Gi
+    - name: auth
+      emptyDir:
+        medium: Memory
+        sizeLimit: 1Mi
+    - name: pilot-scripts
+      configMap:
+        name: hermes-pilot-scripts

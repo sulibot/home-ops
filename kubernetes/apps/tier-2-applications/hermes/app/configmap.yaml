@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config-seed
+data:
+  # Seed once; subsequent dashboard changes on the PVC are not overwritten.
+  config.yaml: |
+    security:
+      redact_secrets: true
+    privacy:
+      redact_pii: true
+    terminal:
+      backend: local
+      cwd: /opt/data/workspace

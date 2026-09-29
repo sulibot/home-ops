@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hermes-tcp-client
+  namespace: criu-hermes-pilot
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: solwk01
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  containers:
+    - name: client
+      image: zot.sulibot.com/experiments/criu@sha256:e541435075d9de5154df4f327efd508cd33fb1c4f1a301064e994edbc76c0fd3
+      imagePullPolicy: IfNotPresent
+      command: [python3, -c, "import time; time.sleep(86400)"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi

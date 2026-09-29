@@ -1,0 +1,150 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hermes
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: hermes
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 10000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+
+    controllers:
+      # Never checkpoint the gateway on HTTP idleness: Telegram and Discord
+      # deliver work over outbound connections, not this chart's HTTP route.
+      gateway:
+        # Dashboard-only setup is safe without guessing a model/provider or
+        # starting an unconfigured bot. Enable after configuring both in UI.
+        enabled: false
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          seed-config:
+            image: &image
+              repository: docker.io/nousresearch/hermes-agent
+              tag: v2026.9.24@sha256:fca358f12efd65bfaaca05884166f15c0e2788375ca30d77061ac1ebc96452b7
+            command: ["/bin/sh", "-ec"]
+            args: &seed-config
+              - |
+                mkdir -p /opt/data/workspace
+                if [ ! -e /opt/data/config.yaml ]; then
+                  umask 077
+                  tmp=$(mktemp /opt/data/.config.yaml.XXXXXX)
+                  cp /seed/config.yaml "$tmp"
+                  chown 10000:10000 "$tmp"
+                  ln "$tmp" /opt/data/config.yaml 2>/dev/null || true
+                  rm "$tmp"
+                fi
+                test -s /opt/data/config.yaml
+                chown 10000:10000 /opt/data/workspace
+        containers:
+          app:
+            image: *image
+            args: ["gateway", "run"]
+            env: &common-env
+              HERMES_HOME: /opt/data
+              HOME: /opt/data
+              TZ: America/Los_Angeles
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
+      dashboard:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          seed-config:
+            image: *image
+            command: ["/bin/sh", "-ec"]
+            args: *seed-config
+        containers:
+          app:
+            image: *image
+            args: ["dashboard", "--host", "0.0.0.0", "--no-open"]
+            env: *common-env
+            envFrom:
+              - secretRef:
+                  name: hermes-dashboard-auth-secret
+            # A one-time startup probe will not repeatedly wake a sleeping pod.
+            # The runtime overlay remains disabled until a native restore test.
+            probes:
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  # Kubelet may probe the IPv6 Pod IP, while the pinned
+                  # dashboard explicitly binds IPv4 only.
+                  exec:
+                    command:
+                      - python
+                      - -c
+                      - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9119/api/status', timeout=3).close()"
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+
+    service:
+      dashboard:
+        controller: dashboard
+        # The pinned dashboard binds 0.0.0.0, so only publish an IPv4 ClusterIP
+        # until native testing confirms an IPv6 bind for this image.
+        ipFamilyPolicy: SingleStack
+        ipFamilies:
+          - IPv4
+        ports:
+          http:
+            port: 9119
+
+    route:
+      dashboard:
+        hostnames:
+          - hermes.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: dashboard
+                port: 9119
+
+    persistence:
+      config:
+        existingClaim: hermes-config
+        globalMounts:
+          - path: /opt/data
+      seed:
+        type: configMap
+        name: hermes-config-seed
+        globalMounts:
+          - path: /seed

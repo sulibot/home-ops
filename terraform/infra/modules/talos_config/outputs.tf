@@ -23,10 +23,10 @@ output "machine_apply_configs" {
   value = {
     for node_name, config in local.machine_configs : node_name => {
       machine_configuration = replace(config.machine_configuration, "$", "$$")
-      config_patches = [
+      config_patches = concat([
         replace(config.machine_config_patch, "$", "$$"),
         replace(config.extension_config, "$", "$$")
-      ]
+      ], [for patch in config.cri_config_patches : replace(patch, "$", "$$")])
     }
   }
   sensitive = true

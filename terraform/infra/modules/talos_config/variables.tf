@@ -363,6 +363,27 @@ variable "use_vip" {
   default     = true
 }
 
+variable "node_cri_customizations" {
+  description = "Opt-in CRICustomizationConfig TOML fragments, keyed by node name then customization name. Talos 1.14+ restarts CRI when a fragment changes. Empty by default; never changes the default runtime implicitly."
+  type        = map(map(string))
+  default     = {}
+
+  validation {
+    condition     = alltrue([for name in keys(var.node_cri_customizations) : contains(keys(var.all_node_ips), name)])
+    error_message = "Every CRI customization target must be a node in all_node_ips."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for customizations in values(var.node_cri_customizations) : [
+        for name, content in customizations :
+        name != "customization" && length(trimspace(name)) > 0 && length(trimspace(content)) > 0
+      ]
+    ]))
+    error_message = "CRI customization names and TOML content must be nonempty; 'customization' is reserved for the legacy machine file."
+  }
+}
+
 variable "kube_vip_bgp_anycast" {
   description = "Optional kube-vip BGP anycast static pod for the control-plane API VIP. Peers to local bird2 by default so upstream PVE FRR keeps a single BGP adjacency per Talos node."
   type = object({

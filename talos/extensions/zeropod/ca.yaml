@@ -1,0 +1,32 @@
+# The manager generates short-lived per-Pod certificates from this CA at
+# startup. Zeropod v0.13.0 requires the CA private key to be Ed25519.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: zeropod-selfsigned
+  namespace: zeropod-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: zeropod-ca
+  namespace: zeropod-system
+spec:
+  secretName: ca-cert
+  commonName: zeropod-ca
+  isCA: true
+  duration: 87600h
+  renewBefore: 720h
+  privateKey:
+    algorithm: Ed25519
+    encoding: PKCS8
+  usages:
+    - cert sign
+    - digital signature
+    - client auth
+    - server auth
+  issuerRef:
+    name: zeropod-selfsigned
+    kind: Issuer

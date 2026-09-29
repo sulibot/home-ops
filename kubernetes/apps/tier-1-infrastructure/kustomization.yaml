@@ -78,6 +78,7 @@ resources:
   # - ./kiali/ks.yaml
   - ./keda/ks.yaml
   - ./keda-http-add-on/ks.yaml
+  - ./zeropod/ks.yaml
 
   # Additional observability
   - ./snmp-exporter/ks.yaml

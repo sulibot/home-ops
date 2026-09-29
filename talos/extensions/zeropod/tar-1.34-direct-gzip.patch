@@ -1,0 +1,15 @@
+--- a/src/system.c
++++ b/src/system.c
+@@ -24,4 +24,12 @@
+ static _Noreturn void
+ xexec (const char *cmd)
+ {
++  /* CRIU invokes tar --gzip on a Talos host without /bin/sh.  GNU tar's
++     normal compression path always executes that shell, even when cmd is
++     simply "gzip".  Use the packaged compressor directly for this case.  */
++  if (strcmp (cmd, "gzip") == 0)
++    {
++      execl ("/var/lib/zeropod/bin/gzip", "gzip", (char *) NULL);
++      exec_fatal (cmd);
++    }
+   char *argv[4];

@@ -1,0 +1,30 @@
+# Apply this CRICustomizationConfig to one Talos v1.14 worker only, after the
+# bootstrap init container has installed /var/lib/zeropod/bin and /lib.
+# Do not make zeropod the default runtime.
+apiVersion: v1alpha1
+kind: CRICustomizationConfig
+name: zeropod
+content: |
+  [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.zeropod]
+    runtime_type = "io.containerd.runc.v2"
+    runtime_path = "/var/lib/zeropod/bin/containerd-shim-zeropod-v2"
+    base_runtime_spec = "/etc/cri/conf.d/base-spec.json"
+    pod_annotations = [
+      "zeropod.ctrox.dev/ports-map",
+      "zeropod.ctrox.dev/container-names",
+      "zeropod.ctrox.dev/scaledown-duration",
+      "zeropod.ctrox.dev/disable-checkpointing",
+      "zeropod.ctrox.dev/pre-dump",
+      "zeropod.ctrox.dev/migrate",
+      "zeropod.ctrox.dev/live-migrate",
+      "zeropod.ctrox.dev/disable-probe-detection",
+      "zeropod.ctrox.dev/probe-buffer-size",
+      "zeropod.ctrox.dev/proxy-timeout",
+      "zeropod.ctrox.dev/connect-timeout",
+      "zeropod.ctrox.dev/disable-migrate-data",
+      "io.containerd.runc.v2.group",
+    ]
+
+    [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.zeropod.options]
+      ShimCgroup = "/podruntime/shim"
+      SystemdCgroup = false

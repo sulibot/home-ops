@@ -1,0 +1,61 @@
+# Disposable app-compatibility test only; no production workspace or credentials.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: criu-cloudbeaver-pilot
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cloudbeaver-checkpoint
+  namespace: criu-cloudbeaver-pilot
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: solwk03
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 5
+  containers:
+    - name: app
+      image: zot.sulibot.com/experiments/criu-cloudbeaver@sha256:3859b5bd3cbce2f12c84eaf5bbb1ab20e876609f26d2c829c62cd1d7cdf00998
+      imagePullPolicy: Always
+      env:
+        - name: IDLE_SECONDS
+          value: "45"
+      securityContext:
+        runAsUser: 0
+        privileged: false
+        allowPrivilegeEscalation: false
+        capabilities:
+          # CRIU reads rlimits of the UID 8978 JVM from the UID 0 supervisor.
+          add: [CHECKPOINT_RESTORE, SYS_PTRACE, SYS_ADMIN, NET_ADMIN, SYS_TIME, SYS_RESOURCE]
+        seccompProfile:
+          type: Unconfined
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+          ephemeral-storage: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+          ephemeral-storage: 2Gi
+      ports:
+        - name: front
+          containerPort: 8080
+        - name: control
+          containerPort: 8082
+      volumeMounts:
+        - name: state
+          mountPath: /state
+        - name: workspace
+          mountPath: /opt/cloudbeaver/workspace
+  volumes:
+    - name: state
+      emptyDir:
+        sizeLimit: 1Gi
+    - name: workspace
+      emptyDir:
+        sizeLimit: 512Mi

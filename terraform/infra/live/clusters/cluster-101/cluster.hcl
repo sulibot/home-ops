@@ -14,6 +14,14 @@ locals {
   kubernetes_api_host = "fd00:101::10" # API endpoint host controllers pin to (VIP on VM clusters, node IP on metal)
   talos_apply_mode    = "staged_if_needing_reboot"
 
+  # CRIU canary only. Install the matching pinned bootstrap DaemonSet first.
+  # Existing workloads continue using runc; Zeropod requires RuntimeClass opt-in.
+  node_cri_customizations = {
+    solwk03 = {
+      zeropod = yamldecode(file("${get_repo_root()}/talos/extensions/zeropod/cri-customization.yaml")).content
+    }
+  }
+
   # ENG-14: candidate kube-vip BGP anycast replacement for the fragile Talos
   # floating VIP. The native Talos VIP remains enabled for the proof phase;
   # do not remove it until pve01/pve02/pve03 all prefer their local CP route

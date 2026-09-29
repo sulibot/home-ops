@@ -236,10 +236,11 @@ locals {
     for hypervisor in local.hypervisors_used :
     hypervisor => distinct(compact(flatten([
       for name, node in local.nodes :
+      # Validate the addresses retained by the installed Talos config. GUA is
+      # installer-only for VM clusters; config-vm deliberately disables it.
       local.node_hypervisors[name] == hypervisor ? [
         node.public_ipv4,
-        node.public_ipv6,
-        node.gua_ipv6 != "" ? node.gua_ipv6 : null
+        node.public_ipv6
       ] : []
     ])))
   }
@@ -516,9 +517,13 @@ resource "proxmox_virtual_environment_vm" "nodes" {
     # Use the same datastore as the VM disk for Cloud-Init data.
     datastore_id = var.proxmox.vm_datastore
 
-    # Reference the custom user-data and network configuration files
-    user_data_file_id    = proxmox_virtual_environment_file.cloud_init_user_data[each.key].id
-    network_data_file_id = proxmox_virtual_environment_file.cloud_init_network_config[each.key].id
+    # Reference the snippets by their stable Proxmox volume IDs. The file
+    # resources are replaced when source_raw changes, which makes their IDs
+    # unknown during planning. Feeding those transient IDs into these ForceNew
+    # VM attributes would otherwise cause every VM to be replaced even though
+    # the snippets retain the same datastore paths.
+    user_data_file_id    = "${var.proxmox.datastore_id}:snippets/cloud-init-user-data-${each.value.name}.yml"
+    network_data_file_id = "${var.proxmox.datastore_id}:snippets/cloud-init-network-${each.value.name}.yml"
   }
 
   agent {

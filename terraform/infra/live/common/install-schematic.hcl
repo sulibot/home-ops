@@ -30,14 +30,14 @@ locals {
   ]
 
   # All official Siderolabs extensions with pinned digests
-  # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.12.4 - | tar x -O image-digests
+  # Extracted via: crane export ghcr.io/siderolabs/extensions:v1.14.1 - | tar x -O image-digests
   install_system_extensions = [
-    "ghcr.io/siderolabs/xe:20260110-v1.12.4@sha256:cdebb42c0a38376adaae7101c46ae3a3fc988cfedc6585dd913bf866b7d04c4a",
-    "ghcr.io/siderolabs/qemu-guest-agent:10.2.0@sha256:ae6ca226e7b66abdd072780408fc24b554c7c41fd2397826cf85a301133a776e",
-    "ghcr.io/siderolabs/crun:1.26@sha256:1a4da9e528d92f6e9ff415d020650272d7a3e5c6b84a5c60e1aa19de62ac77bf",
-    "ghcr.io/siderolabs/ctr:v2.1.6@sha256:fc7070c8960415c0dfd8bd3ccd9df813b31d353278be378b54cc4d6933ea23ea",
+    "ghcr.io/siderolabs/xe:20260810-v1.14.1@sha256:4fe9687410b68dbf11ebc0baec4018c3e77b94544cb869a5d0e71c25b5715764",
+    "ghcr.io/siderolabs/qemu-guest-agent:11.1.1@sha256:d63a9695bdc35b6f191223d75c605f14a4e33cb7e6c2b953370efcf02d4df84d",
+    "ghcr.io/siderolabs/crun:1.29.1@sha256:094d52b22e384670d326bbdff0deb655aabc97c8520df8436e3ad27c2902d69f",
+    "ghcr.io/siderolabs/ctr:v2.3.5@sha256:87476c24411b18c96f2b350153bdcc8e2c0d8a716ccd8b117997623dd820b60b",
     # bird2 BGP daemon for simplified BGP configuration - replaces custom FRR extension
-    "ghcr.io/siderolabs/bird2:2.18@sha256:851863979fda30005e74f17d018de5103d1618258684dbcdf81933bfae919490",
+    "ghcr.io/siderolabs/bird2:2.18@sha256:159778218c9293388805ab3a5005f8c55d37530b1e6a1cbb66c6c79cc3084558",
   ]
 
   # No custom extensions - all extensions are now official Siderolabs extensions

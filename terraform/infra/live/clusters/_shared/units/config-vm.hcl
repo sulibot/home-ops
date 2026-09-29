@@ -191,6 +191,10 @@ terraform {
 }
 
 inputs = {
+  # Per-node opt-in runtime fragments. Keep empty until the corresponding
+  # digest-pinned runtime bundle has been installed and validated on that node.
+  node_cri_customizations = try(local.cluster_config.node_cri_customizations, {})
+
   cilium_bgp_config_path = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/bgp/bgp.yaml"
   cilium_lb_pool_path    = "${get_repo_root()}/kubernetes/apps/tier-0-foundation/cilium/ippool/lb-pool.yaml"
 
