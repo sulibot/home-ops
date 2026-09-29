@@ -84,11 +84,19 @@ spec:
           - exemplar-storage
         retention: 14d
         retentionSize: 50GB
+        # Kubelet/cAdvisor can replay slightly older samples after a kubelet or
+        # container-runtime restart. Accept a bounded window so those samples
+        # are retained while the underlying node instability is investigated.
+        tsdb:
+          outOfOrderTimeWindow: 10m
         resources:
           requests:
             cpu: 100m
+            memory: 2Gi
           limits:
-            memory: 2000Mi
+            # The live workload peaked above 3 GiB during WAL replay. Keep
+            # enough headroom to avoid turning node recovery into an OOM loop.
+            memory: 4Gi
         storageSpec:
           volumeClaimTemplate:
             spec:

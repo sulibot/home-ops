@@ -75,6 +75,23 @@ spec:
               Prometheus storage usage is persistently high.
               Validate retention, scrape interval, and high-cardinality workloads before compaction pressure increases.
 
+        - alert: PrometheusOutOfOrderSamples
+          expr: |
+            sum by (namespace, pod) (
+              increase(prometheus_target_scrapes_sample_out_of_order_total[10m])
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: observability
+          annotations:
+            summary: "Prometheus is rejecting out-of-order samples"
+            description: |
+              Prometheus {{ $labels.namespace }}/{{ $labels.pod }} has rejected
+              out-of-order samples for at least five minutes. Check the affected
+              scrape target, kubelet/container-runtime restarts, and node clock
+              stability before increasing the configured acceptance window.
+
         - alert: LokiDiskForecast24h
           expr: |
             predict_linear(kubelet_volume_stats_available_bytes{namespace="observability",persistentvolumeclaim="storage-loki-0"}[6h], 24 * 3600) < 0
