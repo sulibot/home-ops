@@ -90,3 +90,4 @@ resources:
   # - ./zigbee/ks.yaml
   # zwave disabled - pod Pending
   # - ./zwave/ks.yaml
+  - ./synch/ks.yaml

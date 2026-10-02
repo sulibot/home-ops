@@ -1,0 +1,86 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synch
+  namespace: default
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synch
+    spec:
+      imagePullSecrets:
+        - name: synch-registry
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: app
+          image: ghcr.io/sulibot/synch-api:e781eb5d0e93@sha256:45e81e4a32d1767af9582a3598f5ef898079413d955524d98f2545cb65bf6a3e
+          ports:
+            - name: http
+              containerPort: 8787
+          env:
+            - name: DATA_DIR
+              value: /data
+            - name: PUBLIC_URL
+              value: https://synch.sulibot.com
+            - name: AUTH_ALLOWED_EMAILS
+              value: sulibot@gmail.com
+            - name: HOST
+              value: "::"
+            - name: PORT
+              value: "8787"
+            - name: BLOB_STORAGE
+              value: disk
+          envFrom:
+            - secretRef:
+                name: synch-secret
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: synch-data
+        - name: tmp
+          emptyDir: {}

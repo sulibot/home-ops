@@ -1,0 +1,23 @@
+apiVersion: v1
+data:
+    .dockerconfigjson: ENC[AES256_GCM,data:7xwiz9ILn3HBY7cmss8osG98VcvPE3UlS+dEhbyoTgkVLSQ/fCr785+H+Px2fjw0fc/zumuK86GAwQqVDVEH9zQgL5rHk41MYgf3PmfQBQKKFL3Z0EPQoA3pB50cArsddu5oxwmQbOPvukOMis9f1BBzSPmnqQvbyxgDjQf0evfFlrvTDY1lFA==,iv:1WdikgQbsXnhdtaxZ6bOtsDyUjN7V0R9eppz7nYHEMw=,tag:AeHU5gL4sgns8yzDl+4V0A==,type:str]
+kind: Secret
+metadata:
+    name: synch-registry
+    namespace: default
+type: kubernetes.io/dockerconfigjson
+sops:
+    age:
+        - recipient: age1k3sunyva3kc3jusxs3j93nyueqjgzcgg6s6qghn8aeqpuy7l35wss8gxvg
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBZb2xPQzRFdFVJQ1crNTdh
+            dlBhMi9CTGFmUzEzMHB1aktUSGJoZHFnYmt3CjdXRnFYOUtCL3dXRVdIZmdvTmpH
+            QjY5dHR3RVUzYnVnU2wvUTFZK1RGVEkKLS0tIEJKK1ZGK1JqUnhBa2piQzBRZEhN
+            QUtvZTJRaEJnVDh3YWVGelpyWmRhWWMK4LjeLJawI66sCQLo7p6JI25gWWTzXlBc
+            sHsyBN8vYnYBdq0B32ZzqSrN3Do6ueVRDypsikIjg9sjNBNSVOt94Q==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-02T16:27:01Z"
+    mac: ENC[AES256_GCM,data:MFedCMrg/t7XgpJ/dip1w17JWIBy5a1Ehdmh1OSZjxYiMbt6Tswe9OtpM74SJObbYVDbims/eZFkN6sdZuhogRhbDNvynAQ9M4oXTJNobcX122or38dCrljSBFachXnB4zsUd9tJcS1Lk4u6yq99q1VBfQ+rRtl0VjGdSK0YBok=,iv:biTLA+Ecrq5ngQNKGulo3ikKz3RzqYrVKGJ9sIp2/go=,tag:H2RXxGteHJlsWDuvA2PwLw==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.12.1
