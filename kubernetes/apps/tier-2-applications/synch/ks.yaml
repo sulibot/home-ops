@@ -9,9 +9,6 @@ metadata:
     component: application
     critical: "false"
 spec:
-  dependsOn:
-    - name: storage-ready
-      namespace: flux-system
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/synch/app

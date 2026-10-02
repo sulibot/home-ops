@@ -2,7 +2,7 @@
 
 Synch runs in the `default` namespace as one replica with `Recreate` deployment strategy. The Node API listens on port 8787 and both IP families (`HOST=::`). Its internal Cilium HTTPRoute serves <https://synch.sulibot.com>; `/health` is the readiness and liveness endpoint. Native authentication permits only `sulibot@gmail.com`.
 
-The deployed source revision is `e781eb5d0e93`. The image is `ghcr.io/sulibot/synch-api:e781eb5d0e93`, pinned to digest `sha256:45e81e4a32d1767af9582a3598f5ef898079413d955524d98f2545cb65bf6a3e`. Initial GitOps integration was committed as `9217d27` on home-ops main. The Synch Flux Kustomization depends on `storage-ready`; the actual internal gateway was verified independently.
+The deployed source revision is `e781eb5d0e93`. The image is `ghcr.io/sulibot/synch-api:e781eb5d0e93`, pinned to digest `sha256:45e81e4a32d1767af9582a3598f5ef898079413d955524d98f2545cb65bf6a3e`. Initial GitOps integration was committed as `9217d27` on home-ops main. The Synch Flux Kustomization health-checks its own resources. Kubernetes handles PVC binding and route readiness without coupling updates to unrelated global readiness aggregators; storage and the internal gateway were verified directly.
 
 ## DNS and access
 
