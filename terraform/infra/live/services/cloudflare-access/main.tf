@@ -48,9 +48,7 @@ locals {
   }
 
   cluster_104_mtls_candidates = {
-    "hass.sulibot.com"            = "Home Assistant Browser"
-    "music-assistant.sulibot.com" = "Music Assistant"
-    "music.sulibot.com"           = "Music Assistant"
+    "hass.sulibot.com" = "Home Assistant Browser"
   }
 
   # Move one hostname at a time into this set only after certificate

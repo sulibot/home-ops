@@ -5,6 +5,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - sulibot-com-tls-externalsecret.yaml
   - cilium-gatewayclassconfig.yaml
   - gateway-internal.yaml
   - gateway-tunnel.yaml

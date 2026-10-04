@@ -11,7 +11,7 @@ spec:
     - music-assistant.sulibot.com
     - ma.sulibot.com
   parentRefs:
-    - name: gateway-tunnel
+    - name: gateway-internal
       namespace: network
   rules:
     - backendRefs:
