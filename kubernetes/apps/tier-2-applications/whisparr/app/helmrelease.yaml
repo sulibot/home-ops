@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: ghcr.io/hotio/whisparr
-              tag: v3-3.3.4-release.794@sha256:0bab72994828d5a8c9b890d3ee081cc802f7c8b2376a901ca5d4c48ab9230fc8
+              tag: v3-3.3.4-release.794@sha256:31d209cc1d3c7c31eb1729a4f66a9043a8d741f79f4aece1c7cb672fefcb1c0e
             env:
               TZ: America/Los_Angeles
               PUID: "1000"
