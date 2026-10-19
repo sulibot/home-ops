@@ -21,3 +21,20 @@ resources:
   - ./matter-server
   - ./music-assistant
   - ./otbr
+
+# cluster-104 uses 1Password Connect. The shared OpenBao store is bound to
+# cluster-101's API audience and must only be installed on that cluster.
+patches:
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      version: v1
+      kind: Kustomization
+      name: openbao-secret-store
+      namespace: flux-system
+    patch: |-
+      $patch: delete
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: openbao-secret-store
+        namespace: flux-system
