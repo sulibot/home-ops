@@ -82,12 +82,14 @@ apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
   bird2 \
   ca-certificates \
+  certbot \
   curl \
   jq \
   logrotate \
   rclone \
   rsyslog \
-  openssl
+  openssl \
+  python3-certbot-dns-cloudflare
 
 installed_version="$(dpkg-query -W -f='${Version}' openbao 2>/dev/null || true)"
 if [[ "$installed_version" != "$OPENBAO_VERSION" ]]; then
@@ -119,6 +121,74 @@ if [[ ! -s /etc/openbao/tls/tls.crt || ! -s /etc/openbao/tls/tls.key ]]; then
   install -m 0644 -o root -g openbao /opt/openbao/tls/tls.crt /etc/openbao/tls/tls.crt
   install -m 0640 -o root -g openbao /opt/openbao/tls/tls.key /etc/openbao/tls/tls.key
 fi
+
+# OpenBao owns its public certificate lifecycle through Debian's certbot timer.
+# A root-only Cloudflare token is streamed separately after provisioning, so
+# neither the credential nor the issued private key enters Terraform state.
+cat >/usr/local/sbin/openbao-certbot-deploy <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+domain='$OPENBAO_DOMAIN'
+node_domain='$node_fqdn'
+lineage="\${RENEWED_LINEAGE:-/etc/letsencrypt/live/\$domain}"
+certificate="\$lineage/fullchain.pem"
+private_key="\$lineage/privkey.pem"
+
+openssl x509 -in "\$certificate" -checkend 604800 -noout
+openssl x509 -in "\$certificate" -noout -text |
+  grep -Fq "DNS:\$domain"
+openssl x509 -in "\$certificate" -noout -text |
+  grep -Fq "DNS:\$node_domain"
+cert_pub="\$(openssl x509 -in "\$certificate" -noout -pubkey |
+  openssl pkey -pubin -outform DER | sha256sum | awk '{print \$1}')"
+key_pub="\$(openssl pkey -in "\$private_key" -pubout -outform DER |
+  sha256sum | awk '{print \$1}')"
+if [[ -z "\$cert_pub" || "\$cert_pub" != "\$key_pub" ]]; then
+  echo "issued certificate and private key do not match" >&2
+  exit 1
+fi
+
+issued_fingerprint="\$(openssl x509 -in "\$certificate" -noout -fingerprint -sha256)"
+installed_fingerprint="\$(openssl x509 -in /etc/openbao/tls/tls.crt -noout -fingerprint -sha256 2>/dev/null || true)"
+if [[ "\$issued_fingerprint" == "\$installed_fingerprint" ]]; then
+  exit 0
+fi
+
+cert_tmp="\$(mktemp /etc/openbao/tls/.tls.crt.XXXXXX)"
+key_tmp="\$(mktemp /etc/openbao/tls/.tls.key.XXXXXX)"
+trap 'find "\$cert_tmp" "\$key_tmp" -type f -delete 2>/dev/null || true' EXIT
+install -m 0644 -o root -g openbao "\$certificate" "\$cert_tmp"
+install -m 0640 -o root -g openbao "\$private_key" "\$key_tmp"
+mv -f "\$cert_tmp" /etc/openbao/tls/tls.crt
+mv -f "\$key_tmp" /etc/openbao/tls/tls.key
+systemctl reload openbao.service
+systemctl is-active --quiet openbao.service
+EOF
+chmod 0750 /usr/local/sbin/openbao-certbot-deploy
+install -d -m 0755 /etc/letsencrypt/renewal-hooks/deploy
+ln -sfn /usr/local/sbin/openbao-certbot-deploy \
+  /etc/letsencrypt/renewal-hooks/deploy/openbao-reload
+
+# All members request the shared service name, so give each member a separate
+# daily renewal window. This prevents overlapping DNS-01 TXT challenges while
+# retaining certbot's normal 30-day renewal threshold and retry behavior.
+renewal_hour="$((1 + (node_suffix - 68) * 8))"
+printf -v renewal_hour '%02d' "$renewal_hour"
+install -d -m 0755 /etc/systemd/system/certbot.timer.d
+cat >/etc/systemd/system/certbot.timer.d/openbao-schedule.conf <<EOF
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* $renewal_hour:17:00
+RandomizedDelaySec=30m
+Persistent=true
+EOF
+
+# Remove the short-lived custom renewal unit used during migration to certbot.
+systemctl disable --now openbao-acme-renew.timer 2>/dev/null || true
+find /etc/systemd/system -maxdepth 1 -type f \
+  \( -name 'openbao-acme-renew.service' -o -name 'openbao-acme-renew.timer' \) \
+  -delete
 
 # The IPv6 wildcard is dual-stack on Linux and serves both routed VIPs
 # without competing IPv4 and IPv6 listener sockets.
@@ -436,6 +506,7 @@ chmod 0644 /etc/profile.d/openbao.sh
 systemctl daemon-reload
 systemctl enable --now openbao-service-vip.service
 systemctl enable --now bird.service
+systemctl enable --now certbot.timer
 
 # Validate and apply BIRD changes without tearing down the daemon. Never
 # advertise a service route merely because BIRD started successfully.

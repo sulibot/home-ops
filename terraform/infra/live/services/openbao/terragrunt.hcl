@@ -320,8 +320,29 @@ resource "null_resource" "openbao_tls_sync" {
   }
 }
 
-resource "null_resource" "openbao_post_deploy_validation" {
+# Bootstrap each member's independent ACME lifecycle. The DNS credential is
+# decrypted and streamed by the script, never passed through Terraform values
+# or state. Subsequent renewals run locally from the systemd timer.
+resource "null_resource" "openbao_acme_credentials_sync" {
   depends_on = [null_resource.openbao_tls_sync]
+
+  triggers = {
+    nodes       = join(",", local.openbao_node_ipv4)
+    script_sha  = filesha256("${get_terragrunt_dir()}/sync-acme-credentials.sh")
+    sync_rev    = "member-acme-v1"
+  }
+
+  provisioner "local-exec" {
+    command = "${get_terragrunt_dir()}/sync-acme-credentials.sh"
+    environment = {
+      OPENBAO_ACME_SECRETS_FILE = "${local.secrets_file}"
+      OPENBAO_NODES             = join(" ", local.openbao_node_ipv4)
+    }
+  }
+}
+
+resource "null_resource" "openbao_post_deploy_validation" {
+  depends_on = [null_resource.openbao_acme_credentials_sync]
 
   triggers = {
     nodes      = join(",", local.openbao_node_ipv4)

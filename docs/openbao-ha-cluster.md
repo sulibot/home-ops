@@ -255,16 +255,23 @@ label `source_type="openbao-audit"`; secret values remain HMACed by OpenBao.
 
 ## TLS rotation
 
-The Terragrunt unit reads the existing public wildcard certificate from the
-Kubernetes `network/sulibot-com-tls` Secret, with 1Password as a fallback.
-The private key is streamed directly to the members and never enters Terraform
-state. OpenBao reloads the listener pair with `SIGHUP` and does not seal.
+Each OpenBao member owns an independent Let's Encrypt certificate for
+`openbao.sulibot.com` and its node-specific DNS name. Debian's certbot timer
+checks renewal twice daily, uses DNS-01 through the existing restricted
+Cloudflare token, and runs a deploy hook that validates the certificate and
+key, installs them atomically, and reloads OpenBao without sealing it.
 
-Force a certificate refresh after wildcard renewal:
+Terraform streams the DNS credential from the SOPS-encrypted common secrets
+file into a root-only environment file. The credential and issued private keys
+never enter Terraform state. The Kubernetes wildcard certificate remains only
+as a bootstrap fallback for a newly created member.
+
+Inspect the renewal lifecycle on a member:
 
 ```bash
-cd terraform/infra/live/services/openbao
-terragrunt apply -replace=null_resource.openbao_tls_sync
+systemctl status certbot.timer
+journalctl -u certbot.service
+certbot certificates
 ```
 
 ## Backups
