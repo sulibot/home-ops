@@ -54,6 +54,39 @@ spec:
             - name: web
               containerPort: 80
               protocol: TCP
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  state="$(ot-ctl state | tr -d '\r' | head -n1)"
+                  case "$state" in leader|router|child) exit 0;; *) exit 1;; esac
+            failureThreshold: 90
+            periodSeconds: 2
+            timeoutSeconds: 2
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  state="$(ot-ctl state | tr -d '\r' | head -n1)"
+                  case "$state" in leader|router|child) exit 0;; *) exit 1;; esac
+            failureThreshold: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  state="$(ot-ctl state | tr -d '\r' | head -n1)"
+                  case "$state" in leader|router|child) exit 0;; *) exit 1;; esac
+            failureThreshold: 3
+            periodSeconds: 30
+            timeoutSeconds: 2
           securityContext:
             privileged: true
             capabilities:
