@@ -381,7 +381,7 @@ data:
           target:
             entity_id: light.sebby_bedroom_lights
           data:
-            brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+            brightness: "{{ trigger.to_state.attributes.get('brightness') | int(255) }}"
     - id: sebby_bedroom_lights_lock_enable
       alias: Sebby Bedroom Lights Lock Enable
       trigger:
@@ -474,7 +474,7 @@ data:
             target:
               entity_id: light.sebby_bedroom_lights
             data:
-              brightness: "{{ trigger.to_state.attributes.brightness | int(0) }}"
+              brightness: "{{ trigger.to_state.attributes.get('brightness') | int(255) }}"
     - id: sebby_bedroom_lights_lock_override_reset_press_window
       alias: Sebby Bedroom Lights Lock Override Reset Press Window
       mode: single
