@@ -7,6 +7,7 @@ resources:
   - ./namespace.yaml
   - ./flux-system
   - ../../apps/tier-0-foundation/external-secrets
+  - ../../apps/tier-1-infrastructure/reloader/app
   - ./multus
   - ./cilium-bgp
   - ./network
@@ -26,6 +27,16 @@ resources:
 # cluster-104 uses 1Password Connect. The shared OpenBao store is bound to
 # cluster-101's API audience and must only be installed on that cluster.
 patches:
+  - target:
+      group: helm.toolkit.fluxcd.io
+      version: v2
+      kind: HelmRelease
+      name: reloader
+      namespace: kube-system
+    patch: |-
+      - op: replace
+        path: /spec/values/reloader/podMonitor/enabled
+        value: false
   - target:
       group: kustomize.toolkit.fluxcd.io
       version: v1
