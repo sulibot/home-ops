@@ -102,6 +102,7 @@ spec:
                   - |
                     for i in $(seq 1 60); do
                       if ot-ctl state >/dev/null 2>&1; then
+                        ot-ctl txpower 10 || true
                         ot-ctl dataset set active "$THREAD_DATASET_TLV" || true
                         ot-ctl ifconfig up || true
                         ot-ctl thread start || true
