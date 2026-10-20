@@ -61,6 +61,7 @@ routes inside `index.html`, served by the Worker's single-page fallback).
 | 2026-10-19 | `4ddfb416` | `8f81b642` | Top five, email-confirmed sign-up, roles, round specs, share links, review emails |
 | 2026-10-20 | `6e67b2de` | `d2114699` | Phase 4: every rating mode, results links (`/s/`), reminders, log, compare |
 | 2026-10-20 | `33f05c60` | `eeb8c216` | "New here? Create an account" under the sign-in form |
+| 2026-10-20 | `d7ef264e` | `2bf3604a` | Next and Back loop through the designs |
 
 Every file under `public/` is public. Wrangler also publishes the Worker at
 `https://sulibot-design-review.sulibot.workers.dev`.
