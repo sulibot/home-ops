@@ -121,6 +121,11 @@ resource "supabase_settings" "review" {
     disable_signup     = false
     mailer_autoconfirm = false
 
+    # Every emailed link (confirmation, recovery, email change, magic link)
+    # stays valid for 24 hours, Supabase's maximum; reviewers often open the
+    # mail long after signing up. There is no per-type setting.
+    mailer_otp_exp = 86400
+
     password_min_length = 8
     # NOT SET: password_hibp_enabled (refuse passwords found in known breaches,
     # the one warning the security advisor raises here). The API answers 402
