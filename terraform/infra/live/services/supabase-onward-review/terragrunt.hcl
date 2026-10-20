@@ -23,7 +23,9 @@ include "root" {
 # CREDENTIALS
 #
 # `supabase_access_token`, plus the Resend key and sender shared with Plumb
-# (`plumb_smtp_password`, `plumb_smtp_sender`), all in common/secrets.sops.yaml.
+# (`plumb_smtp_password`, `plumb_smtp_sender`), and the Google OAuth client
+# (`sulibot_reviews_google_client_id`, `sulibot_reviews_google_client_secret`),
+# all in common/secrets.sops.yaml.
 #
 # Runbook: docs/runbooks/design-review-site.md
 
@@ -151,12 +153,27 @@ resource "supabase_settings" "review" {
     mailer_subjects_email_change          = local.mail.email_change.subject
     mailer_templates_email_change_content = local.mail.email_change.body
 
-    # Email and password only: no external providers are enabled.
+    # Google sign-in beside email and password. The OAuth client
+    # "sulibot-design-review" lives in Google Cloud; its id and secret are
+    # also kept in 1Password (Kubernetes vault, item "Reviewer Google OAuth":
+    # username = client id, credential = secret). Its authorised redirect URI is the
+    # google_redirect_uri output below, its JavaScript origin
+    # https://reviews.sulibot.com.
+    external_google_enabled          = true
+    external_google_client_id        = data.sops_file.secrets.data["sulibot_reviews_google_client_id"]
+    external_google_secret           = data.sops_file.secrets.data["sulibot_reviews_google_client_secret"]
+    external_google_skip_nonce_check = false
   })
 }
 
 output "project_ref" {
   value = local.project_ref
+}
+
+# The Google OAuth client must list this as an authorised redirect URI, or
+# Google refuses the flow.
+output "google_redirect_uri" {
+  value = "https://$${local.project_ref}.supabase.co/auth/v1/callback"
 }
 EOF
 }
