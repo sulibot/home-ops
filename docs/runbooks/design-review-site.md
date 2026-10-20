@@ -60,6 +60,7 @@ routes inside `index.html`, served by the Worker's single-page fallback).
 | 2026-10-19 | `852b914c` | `bfaf6d81` | reviews.sulibot.com as the primary name |
 | 2026-10-19 | `4ddfb416` | `8f81b642` | Top five, email-confirmed sign-up, roles, round specs, share links, review emails |
 | 2026-10-20 | `6e67b2de` | `d2114699` | Phase 4: every rating mode, results links (`/s/`), reminders, log, compare |
+| 2026-10-20 | `33f05c60` | `eeb8c216` | "New here? Create an account" under the sign-in form |
 
 Every file under `public/` is public. Wrangler also publishes the Worker at
 `https://sulibot-design-review.sulibot.workers.dev`.
