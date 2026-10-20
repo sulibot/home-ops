@@ -64,13 +64,19 @@ to a missing script. The Supabase unit owns the whole auth config it sets:
 anything changed in the dashboard is reverted on the next apply.
 
 Current auth settings: site URL `https://reviews.sulibot.com`; redirects
-`https://reviews.sulibot.com/**`, `https://review.sulibot.com/**` and `http://localhost:*/**`; open sign-up with
-`mailer_autoconfirm = true` (no confirmation mail; the owner's choice for this
-low-stakes site); passwords at least 8 characters; 1-hour JWTs with refresh
-token rotation; password-reset mail through Resend as
-`Onward design review <no-reply@sulibot.com>`, 100 an hour. Leaked-password
-protection (`password_hibp_enabled`) is a Pro-plan feature, so the security
-advisor's warning about it stays on this free project.
+`https://reviews.sulibot.com/**`, `https://review.sulibot.com/**` and
+`http://localhost:*/**`; open sign-up validated by an email link
+(`mailer_autoconfirm = false`; it was on at launch); passwords at least 8
+characters; 1-hour JWTs with refresh token rotation. Confirmation,
+password-reset and email-change mail go through Resend as
+`Onward design review <no-reply@sulibot.com>`, 100 an hour, using the short
+templates (subject, one sentence, one button) defined in the unit's locals.
+Magic-link mail keeps Supabase's default template. Leaked-password protection
+(`password_hibp_enabled`) is a Pro-plan feature, so the security advisor's
+warning about it stays on this free project.
+
+A reviewer stuck waiting for the confirmation mail can be confirmed by hand
+with the "Confirm an account" SQL in the Onward README.
 
 Check what Supabase is serving (the publishable key is public by design):
 

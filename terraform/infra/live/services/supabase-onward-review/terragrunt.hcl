@@ -69,6 +69,31 @@ variable "region" {
 locals {
   project_ref = "tczhezpecxlqwchmyhaj"
   site_url    = "https://reviews.sulibot.com"
+
+  # Auth mail: one sentence, one button, no images. Supabase fills in
+  # {{ .ConfirmationURL }}; format() fills the sentence and the button label.
+  mail_layout = <<-HTML
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#1f2328;max-width:480px">
+      <p style="margin:0 0 24px">%s</p>
+      <p style="margin:0 0 24px"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 20px;border-radius:6px;background:#1f2328;color:#ffffff;text-decoration:none;font-weight:600">%s</a></p>
+      <p style="margin:0;color:#59636e;font-size:14px">If you didn't ask for this, ignore it.</p>
+    </div>
+  HTML
+
+  mail = {
+    confirmation = {
+      subject = "Confirm your email for Onward design review"
+      body    = format(local.mail_layout, "Confirm this address to start reviewing the Onward designs.", "Confirm my email")
+    }
+    recovery = {
+      subject = "Reset your Onward design review password"
+      body    = format(local.mail_layout, "Choose a new password for your Onward design review account.", "Choose a new password")
+    }
+    email_change = {
+      subject = "Confirm your new email"
+      body    = format(local.mail_layout, "Confirm this is the new address for your Onward design review account.", "Confirm new email")
+    }
+  }
 }
 
 resource "supabase_settings" "review" {
@@ -90,12 +115,11 @@ resource "supabase_settings" "review" {
     refresh_token_rotation_enabled        = true
     security_refresh_token_reuse_interval = 10
 
-    # Open sign-up with no confirmation mail: a reviewer lands in the open
-    # round the moment the account exists. The owner chose convenience over
-    # proof of email ownership for this low-stakes site; reviewers, often on a
-    # phone, must not wait on a mailbox.
+    # Open sign-up, validated by an email link: a new account gets a session
+    # only after the reviewer clicks the confirmation mail. (Autoconfirm was on
+    # at launch; the owner switched to email validation on 2026-10-19.)
     disable_signup     = false
-    mailer_autoconfirm = true
+    mailer_autoconfirm = false
 
     password_min_length = 8
     # NOT SET: password_hibp_enabled (refuse passwords found in known breaches,
@@ -103,9 +127,10 @@ resource "supabase_settings" "review" {
     # "available on Pro Plans and up" on this free project, so the advisor
     # warning stays until the plan changes.
 
-    # Only password-reset mail goes out, through Resend. Supabase's built-in
-    # sender delivers to the organisation's team addresses alone, a few an
-    # hour. Same key and verified domain (sulibot.com) as Plumb.
+    # Confirmation, password-reset and email-change mail go out through
+    # Resend. Supabase's built-in sender delivers to the organisation's team
+    # addresses alone, a few an hour. Same key and verified domain
+    # (sulibot.com) as Plumb.
     smtp_admin_email      = data.sops_file.secrets.data["plumb_smtp_sender"]
     smtp_host             = "smtp.resend.com"
     smtp_port             = "587"
@@ -113,6 +138,13 @@ resource "supabase_settings" "review" {
     smtp_pass             = data.sops_file.secrets.data["plumb_smtp_password"]
     smtp_sender_name      = "Onward design review"
     rate_limit_email_sent = 100
+
+    mailer_subjects_confirmation          = local.mail.confirmation.subject
+    mailer_templates_confirmation_content = local.mail.confirmation.body
+    mailer_subjects_recovery              = local.mail.recovery.subject
+    mailer_templates_recovery_content     = local.mail.recovery.body
+    mailer_subjects_email_change          = local.mail.email_change.subject
+    mailer_templates_email_change_content = local.mail.email_change.body
 
     # Email and password only: no external providers are enabled.
   })
