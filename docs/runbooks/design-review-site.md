@@ -120,10 +120,10 @@ the Resend API. Two pieces live in the `onward-review` database:
 - the `pg_net` extension, enabled 2026-10-19 (migration `enable_pg_net`);
 - the Resend API key in Supabase Vault under the name `resend_api_key`. It is
   the same value as `plumb_smtp_password` in `common/secrets.sops.yaml`
-  (Resend uses the API key as the SMTP password). **Not yet stored as of
-  2026-10-19**: the agent's write was refused, so the owner runs it by hand.
+  (Resend uses the API key as the SMTP password). Stored by the owner on
+  2026-10-20 06:10 UTC with the command below.
 
-To store it from home-ops, with no secret on the command line or in shell
+To store it again (for example in a new project) from home-ops, with no secret on the command line or in shell
 history (run from the repo root):
 
 ```bash
