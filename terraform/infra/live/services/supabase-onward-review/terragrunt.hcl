@@ -3,7 +3,7 @@ include "root" {
 }
 
 # Auth settings for the Supabase project `onward-review` (ref
-# tczhezpecxlqwchmyhaj, us-east-1), the backend of the Sulibot design review
+# tczhezpecxlqwchmyhaj, us-east-1), the backend of Reviewer, the design review
 # site at https://reviews.sulibot.com (services/cloudflare-sulibot-review).
 #
 # Site URL, redirect allow-list, sign-up behaviour and SMTP are reviewable in a
@@ -84,16 +84,16 @@ locals {
 
   mail = {
     confirmation = {
-      subject = "Confirm your email for Sulibot design review"
-      body    = format(local.mail_layout, "Confirm this address to start reviewing designs with Sulibot design review.", "Confirm my email")
+      subject = "Confirm your email for Reviewer"
+      body    = format(local.mail_layout, "Confirm this address to start reviewing designs with Reviewer.", "Confirm my email")
     }
     recovery = {
-      subject = "Reset your Sulibot design review password"
-      body    = format(local.mail_layout, "Choose a new password for your Sulibot design review account.", "Choose a new password")
+      subject = "Reset your Reviewer password"
+      body    = format(local.mail_layout, "Choose a new password for your Reviewer account.", "Choose a new password")
     }
     email_change = {
       subject = "Confirm your new email"
-      body    = format(local.mail_layout, "Confirm this is the new address for your Sulibot design review account.", "Confirm new email")
+      body    = format(local.mail_layout, "Confirm this is the new address for your Reviewer account.", "Confirm new email")
     }
   }
 }
@@ -143,7 +143,7 @@ resource "supabase_settings" "review" {
     smtp_port             = "587"
     smtp_user             = "resend"
     smtp_pass             = data.sops_file.secrets.data["plumb_smtp_password"]
-    smtp_sender_name      = "Sulibot design review"
+    smtp_sender_name      = "Reviewer"
     rate_limit_email_sent = 100
 
     mailer_subjects_confirmation          = local.mail.confirmation.subject
