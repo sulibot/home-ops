@@ -168,3 +168,26 @@ apply `supabase-onward-review` (SMTP) and `supabase-plumb`, then
 The key currently has full access to the Resend account. A sending-only key
 restricted to `sulibot.com` would be enough for both SMTP and these
 notifications.
+
+## Google sign-in
+
+Reviewers can sign in with Google beside email and password. The OAuth client
+`sulibot-design-review` is in Google Cloud, with the authorised redirect URI
+`https://tczhezpecxlqwchmyhaj.supabase.co/auth/v1/callback` (the unit's
+`google_redirect_uri` output) and the JavaScript origin
+`https://reviews.sulibot.com`. Its id and secret are in 1Password (Kubernetes
+vault, item "Reviewer Google OAuth": username = client id, credential = secret)
+and in sops as `sulibot_reviews_google_client_id` and
+`sulibot_reviews_google_client_secret`.
+
+Copy them from 1Password into sops without printing either value (run from the
+repo root), then apply the unit:
+
+```bash
+F=terraform/infra/live/common/secrets.sops.yaml; I=rghc4jzpcc5cnl46jvyd37sg4y; op item get $I --vault Kubernetes --fields username --reveal | tr -d '\n' | jq -Rs . | sops set --value-stdin $F '["sulibot_reviews_google_client_id"]' && op item get $I --vault Kubernetes --fields credential --reveal | tr -d '\n' | jq -Rs . | sops set --value-stdin $F '["sulibot_reviews_google_client_secret"]'
+cd terraform/infra/live/services/supabase-onward-review && terragrunt apply
+```
+
+Check it with the publishable key: `/auth/v1/settings` should report
+`"google": true` under `external`.
+
