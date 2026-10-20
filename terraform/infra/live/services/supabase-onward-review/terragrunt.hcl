@@ -4,7 +4,7 @@ include "root" {
 
 # Auth settings for the Supabase project `onward-review` (ref
 # tczhezpecxlqwchmyhaj, us-east-1), the backend of the Onward design review
-# site at https://review.sulibot.com (services/cloudflare-sulibot-review).
+# site at https://reviews.sulibot.com (services/cloudflare-sulibot-review).
 #
 # Site URL, redirect allow-list, sign-up behaviour and SMTP are reviewable in a
 # plan here rather than clicked in the dashboard. Change them in this file: the
@@ -68,7 +68,7 @@ variable "region" {
 
 locals {
   project_ref = "tczhezpecxlqwchmyhaj"
-  site_url    = "https://review.sulibot.com"
+  site_url    = "https://reviews.sulibot.com"
 }
 
 resource "supabase_settings" "review" {
@@ -77,10 +77,11 @@ resource "supabase_settings" "review" {
   auth = jsonencode({
     site_url = local.site_url
     # The site builds every auth redirect from window.location.origin, so this
-    # is the served host plus local development on any port (the README uses
-    # 4817).
+    # is every served host plus local development on any port (the README uses
+    # 4817). review.sulibot.com was the first name and still serves the site.
     uri_allow_list = join(",", [
       "$${local.site_url}/**",
+      "https://review.sulibot.com/**",
       "http://localhost:*/**",
     ])
 

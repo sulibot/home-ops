@@ -1,4 +1,4 @@
-# Onward design review site (review.sulibot.com)
+# Onward design review site (reviews.sulibot.com)
 
 A small static site where invited people review a round of Onward design
 options on a laptop or a phone: they create an account with email and
@@ -6,10 +6,14 @@ password, mark each option "I would use this" or "Not for me", comment, rank
 them and send. The owner (sulibot@gmail.com, the admin) sees the results and
 runs rounds from the site itself.
 
-![QR code for https://review.sulibot.com](design-review-site-qr.png)
+![QR code for https://reviews.sulibot.com](design-review-site-qr.png)
 
-`design-review-site-qr.png` opens https://review.sulibot.com; put it on a
+`design-review-site-qr.png` opens https://reviews.sulibot.com; put it on a
 slide or print it so reviewers can scan it with a phone.
+
+`reviews.sulibot.com` is the public name. `review.sulibot.com`, the first
+name, still serves the same Worker so links and QR codes already handed out
+keep working.
 
 ## The split
 
@@ -17,7 +21,7 @@ slide or print it so reviewers can scan it with a phone.
 |---|---|---|
 | Site files (HTML, pictures, live mocks) | Onward repo | `tools/design-review/public/` |
 | Worker `sulibot-design-review` (assets only, no script) | Wrangler | `tools/design-review/wrangler.jsonc` in the Onward repo |
-| DNS record, Worker route | Terragrunt | `terraform/infra/live/services/cloudflare-sulibot-review` |
+| DNS records, Worker routes (reviews. and review.sulibot.com) | Terragrunt | `terraform/infra/live/services/cloudflare-sulibot-review` |
 | Supabase auth settings (site URL, redirects, sign-up, SMTP) | Terragrunt | `terraform/infra/live/services/supabase-onward-review` |
 | Supabase project `onward-review` (ref `tczhezpecxlqwchmyhaj`, us-east-1) | Supabase connector / dashboard | not Terraform-owned |
 | Schema, RLS, rounds and options | Onward repo / the site | `tools/design-review/schema.sql`; rounds are data |
@@ -59,8 +63,8 @@ The Cloudflare unit needs the Worker to exist first; Cloudflare refuses a route
 to a missing script. The Supabase unit owns the whole auth config it sets:
 anything changed in the dashboard is reverted on the next apply.
 
-Current auth settings: site URL `https://review.sulibot.com`; redirects
-`https://review.sulibot.com/**` and `http://localhost:*/**`; open sign-up with
+Current auth settings: site URL `https://reviews.sulibot.com`; redirects
+`https://reviews.sulibot.com/**`, `https://review.sulibot.com/**` and `http://localhost:*/**`; open sign-up with
 `mailer_autoconfirm = true` (no confirmation mail; the owner's choice for this
 low-stakes site); passwords at least 8 characters; 1-hour JWTs with refresh
 token rotation; password-reset mail through Resend as
