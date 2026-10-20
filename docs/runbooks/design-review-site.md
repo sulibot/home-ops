@@ -45,9 +45,21 @@ manage DNS and Worker routes but **not** Worker scripts (the deploy gets 403 on
 without `CLOUDFLARE_API_TOKEN` in the environment. To deploy from sops instead,
 the token needs **Account → Workers Scripts → Edit** on the Sulibot account.
 
-The first deploy (2026-10-19) shipped commit `d99227d3` of
-`claude/design-review-site-0b70ea`, exported with `git archive` so an
-uncommitted edit in that worktree did not go out.
+Deploy a committed revision, not a working tree: export it with
+`git archive <commit> tools/design-review | tar -x -C <empty dir>` and run the
+deploy from there, so an uncommitted edit in a worktree never goes out. Then
+check that `/` on both hostnames is byte-identical to that commit's
+`public/index.html`, and that a WebP under `/img/`, a `/live/<slug>/page.html`,
+`/admin`, `/r/<slug>` and `/s/<token>` all return 200 (the last three are
+routes inside `index.html`, served by the Worker's single-page fallback).
+
+| Date | Commit | Worker version | What it carried |
+|---|---|---|---|
+| 2026-10-19 | `d99227d3` | `ecede6f9` | First build |
+| 2026-10-19 | `1d0060b9` | `5fa69636` | Ledger design, admin area |
+| 2026-10-19 | `852b914c` | `bfaf6d81` | reviews.sulibot.com as the primary name |
+| 2026-10-19 | `4ddfb416` | `8f81b642` | Top five, email-confirmed sign-up, roles, round specs, share links, review emails |
+| 2026-10-20 | `6e67b2de` | `d2114699` | Phase 4: every rating mode, results links (`/s/`), reminders, log, compare |
 
 Every file under `public/` is public. Wrangler also publishes the Worker at
 `https://sulibot-design-review.sulibot.workers.dev`.
