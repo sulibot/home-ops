@@ -63,6 +63,7 @@ routes inside `index.html`, served by the Worker's single-page fallback).
 | 2026-10-20 | `33f05c60` | `eeb8c216` | "New here? Create an account" under the sign-in form |
 | 2026-10-20 | `d7ef264e` | `2bf3604a` | Next and Back loop through the designs |
 | 2026-10-20 | `975572b7` | `f28e291a` | Picture opens the live page, keys for every action, Open / All views, podium terminus |
+| 2026-10-20 | `d8b28443` | `0d49b500` | Designer's notes float over the picture; the phone bar fits 390 px |
 
 Every file under `public/` is public. Wrangler also publishes the Worker at
 `https://sulibot-design-review.sulibot.workers.dev`.
