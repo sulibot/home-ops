@@ -2,7 +2,9 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
-# Email authentication DNS for sulibot.com.
+# Email authentication DNS for sulibot.com, plus the zone's other hand-owned
+# TXT records (domain verification), which need to stay out of external-dns for
+# the same reason given below.
 #
 # A separate unit from `cloudflare-access` on the one-unit-per-service
 # convention, and for a reason beyond convention: that unit owns Zero Trust
@@ -149,6 +151,25 @@ resource "cloudflare_email_routing_rule" "dmarc" {
     type  = "forward"
     value = [local.dmarc_destination]
   }]
+}
+
+# ---------------------------------------------------------------------------
+# Domain verification
+# ---------------------------------------------------------------------------
+
+# Proves ownership of sulibot.com to Google Search Console, which Google
+# requires before it approves the OAuth consent screen branding for Reviewer
+# (reviews.sulibot.com). The token is public by design. It is an additional
+# TXT at the apex: the apex SPF record (Cloudflare Email Routing) stays as it
+# is and is not managed here.
+resource "cloudflare_dns_record" "google_site_verification" {
+  zone_id = local.zone_id
+  name    = "sulibot.com"
+  type    = "TXT"
+  content = "google-site-verification=kGlx_kl_0Ie4HVpgYEyLTOYzqcla79p85O7frWEzPf8"
+  ttl     = 1
+  # Cloudflare caps record comments at 100 characters.
+  comment = "Google Search Console domain verification for the Reviewer OAuth brand check (2026-10-20)"
 }
 
 # ---------------------------------------------------------------------------
