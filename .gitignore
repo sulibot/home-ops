@@ -176,3 +176,7 @@ terraform/infra/live/services/cloudflare-plumb/main.tf
 terraform/infra/live/services/cloudflare-plumb/providers.tf
 terraform/infra/live/services/supabase-plumb/main.tf
 terraform/infra/live/services/supabase-plumb/providers.tf
+terraform/infra/live/services/cloudflare-sulibot-review/main.tf
+terraform/infra/live/services/cloudflare-sulibot-review/providers.tf
+terraform/infra/live/services/supabase-onward-review/main.tf
+terraform/infra/live/services/supabase-onward-review/providers.tf
