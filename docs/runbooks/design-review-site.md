@@ -111,3 +111,42 @@ The same by SQL:
 update public.rounds set status = 'open'   where slug = 'round-1';
 update public.rounds set status = 'closed' where slug = 'round-1';
 ```
+
+## Email notifications: pg_net and the Resend key in Vault
+
+The site sends notification mail from a database trigger, through `pg_net`, to
+the Resend API. Two pieces live in the `onward-review` database:
+
+- the `pg_net` extension, enabled 2026-10-19 (migration `enable_pg_net`);
+- the Resend API key in Supabase Vault under the name `resend_api_key`. It is
+  the same value as `plumb_smtp_password` in `common/secrets.sops.yaml`
+  (Resend uses the API key as the SMTP password). **Not yet stored as of
+  2026-10-19**: the agent's write was refused, so the owner runs it by hand.
+
+To store it from home-ops, with no secret on the command line or in shell
+history (run from the repo root):
+
+```bash
+F=terraform/infra/live/common/secrets.sops.yaml; TOKEN=$(sops -d --extract '["supabase_access_token"]' $F); KEY=$(sops -d --extract '["plumb_smtp_password"]' $F); jq -n --arg q "select vault.create_secret('$KEY', 'resend_api_key', 'Resend API key for review notifications');" '{query:$q}' | curl -s -X POST "https://api.supabase.com/v1/projects/tczhezpecxlqwchmyhaj/database/query" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @-; unset KEY TOKEN
+```
+
+Or in the dashboard's SQL editor, pasting the key in place of the placeholder:
+
+```sql
+select vault.create_secret('<RESEND_API_KEY>', 'resend_api_key', 'Resend API key for review notifications');
+```
+
+Check it exists (names only; never select `decrypted_secret` where it can be
+logged):
+
+```sql
+select name, created_at from vault.secrets;
+```
+
+To rotate the key, change it in Resend, update `plumb_smtp_password` in sops,
+apply `supabase-onward-review` (SMTP) and `supabase-plumb`, then
+`select vault.update_secret(id, '<NEW_KEY>') from vault.secrets where name = 'resend_api_key';`.
+
+The key currently has full access to the Resend account. A sending-only key
+restricted to `sulibot.com` would be enough for both SMTP and these
+notifications.
