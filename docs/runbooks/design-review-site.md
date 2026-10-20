@@ -65,6 +65,7 @@ routes inside `index.html`, served by the Worker's single-page fallback).
 | 2026-10-20 | `975572b7` | `f28e291a` | Picture opens the live page, keys for every action, Open / All views, podium terminus |
 | 2026-10-20 | `d8b28443` | `0d49b500` | Designer's notes float over the picture; the phone bar fits 390 px |
 | 2026-10-20 | `50003feb` | `a1fb3fa7` | The gate fits a laptop window; the note grows with its text |
+| 2026-10-20 | `0452726b` (Onward main, PR 8) | `deede50e` | Sulibot design review branding: title, top bar, favicons, og image |
 
 Every file under `public/` is public. Wrangler also publishes the Worker at
 `https://sulibot-design-review.sulibot.workers.dev`.
