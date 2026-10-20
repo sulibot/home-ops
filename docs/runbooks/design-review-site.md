@@ -1,10 +1,10 @@
-# Onward design review site (reviews.sulibot.com)
+# Sulibot design review site (reviews.sulibot.com)
 
-A small static site where invited people review a round of Onward design
-options on a laptop or a phone: they create an account with email and
-password, mark each option "I would use this" or "Not for me", comment, rank
-them and send. The owner (sulibot@gmail.com, the admin) sees the results and
-runs rounds from the site itself.
+A small static site, provided by Sulibot, where invited people review a round
+of design options (today, for Onward) on a laptop or a phone: they create an
+account with email and password, mark each option "I would use this" or
+"Not for me", comment, rank them and send. The owner (sulibot@gmail.com, the
+admin) sees the results and runs rounds from the site itself.
 
 ![QR code for https://reviews.sulibot.com](design-review-site-qr.png)
 
@@ -86,7 +86,7 @@ Current auth settings: site URL `https://reviews.sulibot.com`; redirects
 (`mailer_autoconfirm = false`; it was on at launch); passwords at least 8
 characters; 1-hour JWTs with refresh token rotation. Confirmation,
 password-reset and email-change mail go through Resend as
-`Onward design review <no-reply@sulibot.com>`, 100 an hour, using the short
+`Sulibot design review <no-reply@sulibot.com>`, 100 an hour, using the short
 templates (subject, one sentence, one button) defined in the unit's locals.
 Magic-link mail keeps Supabase's default template. Leaked-password protection
 (`password_hibp_enabled`) is a Pro-plan feature, so the security advisor's
