@@ -14,6 +14,7 @@ Operational procedures for the home-ops cluster.
 - [Home Assistant operations](home-assistant-operations.md)
 - [Baserow/n8n auth operations](baserow-n8n-auth-operations.md)
 - [Kanidm user onboarding](kanidm-user-onboarding.md)
+- [Onward design review site](design-review-site.md)
 
 ## Storage, Ceph, Proxmox, and Kubernetes IO
 
