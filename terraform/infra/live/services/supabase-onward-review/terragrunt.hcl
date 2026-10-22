@@ -4,7 +4,7 @@ include "root" {
 
 # Auth settings for the Supabase project `onward-review` (ref
 # tczhezpecxlqwchmyhaj, us-east-1), the backend of Podium, the design review
-# site at https://reviews.sulibot.com (services/cloudflare-sulibot-review).
+# site at https://podium.sulibot.com (services/cloudflare-sulibot-review).
 #
 # Site URL, redirect allow-list, sign-up behaviour and SMTP are reviewable in a
 # plan here rather than clicked in the dashboard. Change them in this file: the
@@ -70,7 +70,7 @@ variable "region" {
 
 locals {
   project_ref = "tczhezpecxlqwchmyhaj"
-  site_url    = "https://reviews.sulibot.com"
+  site_url    = "https://podium.sulibot.com"
 
   # Auth mail: one sentence, one button, no images. Supabase fills in
   # {{ .ConfirmationURL }}; format() fills the sentence and the button label.
@@ -105,10 +105,13 @@ resource "supabase_settings" "review" {
     site_url = local.site_url
     # The site builds every auth redirect from window.location.origin, so this
     # is every served host plus local development on any port (the README uses
-    # 4817). review.sulibot.com was the first name and still serves the site.
+    # 4817). The earlier names redirect to podium.sulibot.com; they stay listed so a
+    # return that started on one of them still lands.
     uri_allow_list = join(",", [
       "$${local.site_url}/**",
+      "https://reviews.sulibot.com/**",
       "https://review.sulibot.com/**",
+      "https://reviewer.sulibot.com/**",
       "http://localhost:*/**",
     ])
 
@@ -158,7 +161,7 @@ resource "supabase_settings" "review" {
     # also kept in 1Password (Kubernetes vault, item "Podium Google OAuth":
     # username = client id, credential = secret). Its authorised redirect URI is the
     # google_redirect_uri output below, its JavaScript origin
-    # https://reviews.sulibot.com.
+    # https://podium.sulibot.com (and the earlier https://reviews.sulibot.com).
     external_google_enabled          = true
     external_google_client_id        = data.sops_file.secrets.data["sulibot_reviews_google_client_id"]
     external_google_secret           = data.sops_file.secrets.data["sulibot_reviews_google_client_secret"]
