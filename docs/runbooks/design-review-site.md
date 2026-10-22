@@ -1,8 +1,8 @@
-# Reviewer (reviews.sulibot.com)
+# Podium (reviews.sulibot.com)
 
-Renamed to Reviewer, made by Sulibot, on 2026-10-20; identifiers keep their old names.
+Renamed to Reviewer on 2026-10-20 and to Podium on 2026-10-21, made by Sulibot; identifiers keep their old names.
 
-Reviewer is a small static site, made by Sulibot, where invited people review
+Podium is a small static site, made by Sulibot, where invited people review
 a round of design options (today, for Onward) on a laptop or a phone: they
 create an account with email and password, mark each option "I would use this"
 or "Not for me", comment, rank them and send. The owner (sulibot@gmail.com, the
@@ -89,7 +89,7 @@ Current auth settings: site URL `https://reviews.sulibot.com`; redirects
 (`mailer_autoconfirm = false`; it was on at launch); passwords at least 8
 characters; 1-hour JWTs with refresh token rotation. Confirmation,
 password-reset and email-change mail go through Resend as
-`Reviewer <no-reply@sulibot.com>`, 100 an hour, using the short
+`Podium <no-reply@sulibot.com>`, 100 an hour, using the short
 templates (subject, one sentence, one button) defined in the unit's locals.
 Magic-link mail keeps Supabase's default template. Leaked-password protection
 (`password_hibp_enabled`) is a Pro-plan feature, so the security advisor's
@@ -178,7 +178,7 @@ Reviewers can sign in with Google beside email and password. The OAuth client
 `https://tczhezpecxlqwchmyhaj.supabase.co/auth/v1/callback` (the unit's
 `google_redirect_uri` output) and the JavaScript origin
 `https://reviews.sulibot.com`. Its id and secret are in 1Password (Kubernetes
-vault, item "Reviewer Google OAuth": username = client id, credential = secret)
+vault, item "Podium Google OAuth": username = client id, credential = secret)
 and in sops as `sulibot_reviews_google_client_id` and
 `sulibot_reviews_google_client_secret`.
 

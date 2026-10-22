@@ -3,7 +3,7 @@ include "root" {
 }
 
 # Auth settings for the Supabase project `onward-review` (ref
-# tczhezpecxlqwchmyhaj, us-east-1), the backend of Reviewer, the design review
+# tczhezpecxlqwchmyhaj, us-east-1), the backend of Podium, the design review
 # site at https://reviews.sulibot.com (services/cloudflare-sulibot-review).
 #
 # Site URL, redirect allow-list, sign-up behaviour and SMTP are reviewable in a
@@ -84,16 +84,16 @@ locals {
 
   mail = {
     confirmation = {
-      subject = "Confirm your email for Reviewer"
-      body    = format(local.mail_layout, "Confirm this address to start reviewing designs with Reviewer.", "Confirm my email")
+      subject = "Confirm your email for Podium"
+      body    = format(local.mail_layout, "Confirm this address to start reviewing designs with Podium.", "Confirm my email")
     }
     recovery = {
-      subject = "Reset your Reviewer password"
-      body    = format(local.mail_layout, "Choose a new password for your Reviewer account.", "Choose a new password")
+      subject = "Reset your Podium password"
+      body    = format(local.mail_layout, "Choose a new password for your Podium account.", "Choose a new password")
     }
     email_change = {
       subject = "Confirm your new email"
-      body    = format(local.mail_layout, "Confirm this is the new address for your Reviewer account.", "Confirm new email")
+      body    = format(local.mail_layout, "Confirm this is the new address for your Podium account.", "Confirm new email")
     }
   }
 }
@@ -143,7 +143,7 @@ resource "supabase_settings" "review" {
     smtp_port             = "587"
     smtp_user             = "resend"
     smtp_pass             = data.sops_file.secrets.data["plumb_smtp_password"]
-    smtp_sender_name      = "Reviewer"
+    smtp_sender_name      = "Podium"
     rate_limit_email_sent = 100
 
     mailer_subjects_confirmation          = local.mail.confirmation.subject
@@ -155,7 +155,7 @@ resource "supabase_settings" "review" {
 
     # Google sign-in beside email and password. The OAuth client
     # "sulibot-design-review" lives in Google Cloud; its id and secret are
-    # also kept in 1Password (Kubernetes vault, item "Reviewer Google OAuth":
+    # also kept in 1Password (Kubernetes vault, item "Podium Google OAuth":
     # username = client id, credential = secret). Its authorised redirect URI is the
     # google_redirect_uri output below, its JavaScript origin
     # https://reviews.sulibot.com.
