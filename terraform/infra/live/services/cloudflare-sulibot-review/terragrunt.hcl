@@ -65,8 +65,8 @@ locals {
   zone_id = data.sops_file.secrets.data["cloudflare_zone_id"]
   # podium.sulibot.com is the public name (the product was renamed Podium on
   # 2026-10-21). The earlier names keep a proxied record so links and QR codes
-  # already handed out still work: a redirect rule sends them to podium.sulibot.com
-  # with the path and query kept. Only the public name routes to the Worker.
+  # already handed out still work: for now every name routes to the Worker and the
+  # page redirects (see below); a redirect rule takes over once the token allows it.
   canonical = "podium.sulibot.com"
   legacy    = toset(["reviews.sulibot.com", "review.sulibot.com", "reviewer.sulibot.com"])
   hostnames = setunion(toset([local.canonical]), local.legacy)
@@ -92,7 +92,7 @@ resource "cloudflare_dns_record" "site" {
 # makes routing a reviewable infrastructure change instead of a side effect of
 # an application deployment.
 resource "cloudflare_workers_route" "site" {
-  for_each = toset([local.canonical])
+  for_each = local.hostnames
 
   zone_id = local.zone_id
   pattern = "$${each.key}/*"
@@ -101,44 +101,13 @@ resource "cloudflare_workers_route" "site" {
   depends_on = [cloudflare_dns_record.site]
 }
 
-# The earlier names redirect to the public one, keeping the path and query, so a
-# share link such as https://reviews.sulibot.com/r/round-1 still opens the round.
-# A zone has one ruleset per phase; this unit owns the dynamic-redirect phase.
-resource "cloudflare_ruleset" "legacy_redirect" {
-  zone_id = local.zone_id
-  name    = "Podium: earlier hostnames redirect to podium.sulibot.com"
-  kind    = "zone"
-  phase   = "http_request_dynamic_redirect"
-
-  rules = [{
-    description = "reviews, review and reviewer .sulibot.com -> podium.sulibot.com"
-    expression  = format("(http.host in {%s})", join(" ", [for h in sort(tolist(local.legacy)) : format("%q", h)]))
-    action      = "redirect"
-    action_parameters = {
-      from_value = {
-        status_code = 301
-        target_url = {
-          expression = format("concat(%q, http.request.uri.path, if(len(http.request.uri.query) > 0, concat(\"?\", http.request.uri.query), \"\"))", format("https://%s", local.canonical))
-        }
-        preserve_query_string = false
-      }
-    }
-    enabled = true
-  }]
-
-  depends_on = [cloudflare_dns_record.site]
-}
-
-# The unit started with one hostname and unkeyed resources.
-moved {
-  from = cloudflare_dns_record.site
-  to   = cloudflare_dns_record.site["review.sulibot.com"]
-}
-
-moved {
-  from = cloudflare_workers_route.site
-  to   = cloudflare_workers_route.site["review.sulibot.com"]
-}
+# The earlier names should 301 to the public one with a zone dynamic-redirect
+# ruleset (phase http_request_dynamic_redirect). The API token in sops has no
+# permission for rulesets (the dry run answers 403 "request is not authorized"),
+# so until a token with "Zone > Dynamic Redirect: Edit" replaces it, every name
+# routes to the Worker and the page itself moves a visitor on an earlier name to
+# podium.sulibot.com, keeping the path, query and hash. When the token allows it,
+# add the ruleset here and drop the legacy routes.
 
 output "hostnames" {
   value = local.hostnames
