@@ -19,7 +19,8 @@ spec:
       create: true
     deployment:
       selector:
-        k8s-app: kube-dns
+        matchLabels:
+          k8s-app: kube-dns
     service:
       name: kube-dns
       selector:
