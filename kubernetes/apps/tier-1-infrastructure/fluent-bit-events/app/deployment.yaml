@@ -21,7 +21,7 @@ spec:
       serviceAccountName: fluent-bit-events
       containers:
         - name: fluent-bit
-          image: cr.fluentbit.io/fluent/fluent-bit:4.2.2
+          image: cr.fluentbit.io/fluent/fluent-bit:4.2.8
           imagePullPolicy: IfNotPresent
           args:
             - --config=/fluent-bit/etc/fluent-bit.conf
