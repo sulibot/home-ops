@@ -34,9 +34,12 @@ spec:
             env:
               TZ: America/Los_Angeles
               DN_UPSTREAMS_0: "[10.101.0.0/16,fd00:101::/48]"
+              # Keep retired slots disabled so the 4K instance IDs stay stable in Notifiarr.
               DN_RADARR_0_URL: http://radarr.default.svc.cluster.local
+              DN_RADARR_0_TIMEOUT: -1s
               DN_RADARR_1_URL: http://radarr-4k.default.svc.cluster.local
               DN_SONARR_0_URL: http://sonarr.default.svc.cluster.local
+              DN_SONARR_0_TIMEOUT: -1s
               DN_SONARR_1_URL: http://sonarr-4k.default.svc.cluster.local
               TMPDIR: /tmp
             envFrom:

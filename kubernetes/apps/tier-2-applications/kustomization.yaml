@@ -22,6 +22,7 @@ resources:
   # - ./emby/ks.yaml
   - ./flaresolverr/ks.yaml
   - ./filebrowser/ks.yaml
+  - ./fileflows/ks.yaml
   - ./freshrss/ks.yaml
   - ./firefly/ks.yaml
   - ./go2rtc/ks.yaml

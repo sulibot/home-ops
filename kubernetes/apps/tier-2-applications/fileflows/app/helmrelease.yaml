@@ -1,0 +1,111 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fileflows
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: fileflows
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      strategy: rollback
+  values:
+    controllers:
+      fileflows:
+        type: deployment
+        replicas: 1
+        strategy: Recreate
+        initContainers:
+          work-permissions:
+            image:
+              repository: docker.io/library/busybox
+              tag: "1.38.0"
+            command: ["sh", "-c", "chown 1000:1000 /temp /review"]
+        containers:
+          app:
+            image:
+              repository: docker.io/revenz/fileflows
+              # Vendor image with FFmpeg/ffprobe and media tools included.
+              tag: modded-26.10-stable
+              digest: sha256:d58e0b7003cf68e6f32b016d6f6649a53eada0456d90867319cf1d476b82f819
+            env:
+              TZ: America/Los_Angeles
+              PUID: "1000"
+              PGID: "1000"
+              # The cluster probes the IPv6 pod address; bind both IP families.
+              Kestrel__Endpoints__Http__Url: "http://[::]:5000"
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 60
+                  periodSeconds: 5
+            securityContext:
+              allowPrivilegeEscalation: false
+              # Vendor entrypoint initializes permissions, then uses PUID/PGID.
+              readOnlyRootFilesystem: false
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: "2"
+                memory: 2Gi
+    defaultPodOptions:
+      hostname: fileflows
+    service:
+      app:
+        controller: fileflows
+        ipFamilyPolicy: PreferDualStack
+        ipFamilies: [IPv6, IPv4]
+        ports:
+          http:
+            port: 5000
+    route:
+      app:
+        hostnames:
+          - fileflows.sulibot.com
+        parentRefs:
+          - name: gateway-internal
+            namespace: network
+    persistence:
+      config:
+        existingClaim: fileflows-config
+        globalMounts:
+          - path: /app/Data
+      logs:
+        type: emptyDir
+        sizeLimit: 1Gi
+        globalMounts:
+          - path: /app/Logs
+      work:
+        existingClaim: fileflows-work
+        globalMounts:
+          - path: /temp
+            subPath: temp
+          - path: /review
+            subPath: review
+      content:
+        type: custom
+        # Enforced at volume and mount level; no library or flow is provisioned.
+        volumeSpec:
+          persistentVolumeClaim:
+            claimName: csi-cephfs-content-pvc
+            readOnly: true
+        globalMounts:
+          - path: /data
+            subPath: data
+            readOnly: true
