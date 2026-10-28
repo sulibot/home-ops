@@ -1,5 +1,26 @@
 # RouterOS Terraform Adoption
 
+## Automation authentication
+
+As of 2026-10-28, the shared encrypted `routeros_username` and
+`routeros_password` entries in `live/common/secrets.sops.yaml` use the dedicated
+`terraform-api` account. The previous saved admin password returned HTTP 401;
+admin SSH key access was unaffected and remains unchanged.
+
+The account is restricted to `10.0.0.0/8,fd00::/8` and uses a custom group with
+`read,write,test,ftp,sensitive,api,rest-api`. These policies support the Terraform
+router stack and the REST-based PXE file sync script. On RouterOS 7.23.2,
+`rest-api` without `api` authenticated but returned HTTP 500 / "not allowed"
+for reads; both policies are required by this installation. The group grants
+no SSH, WinBox, web login, reboot, password, or user-policy administration.
+
+This account was bootstrapped through the existing admin SSH connection and is
+not a Terraform-managed resource. Rotate its password together with the two
+encrypted credential entries. Do not replace the admin password to repair
+automation authentication.
+
+## Adoption history
+
 This stack is adopted for the currently managed RouterOS surface. As of the
 2026-07-10 final adoption checkpoint, `terragrunt plan` for this stack is a
 no-op: zero creates, zero updates, zero deletes.
