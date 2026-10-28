@@ -21,4 +21,3 @@ spec:
         # required because parent health checks wait on child Kustomizations.
         - --concurrent=2
         - --requeue-dependency=1m
-        - --feature-gates=ObjectLevelWorkloadIdentity=false

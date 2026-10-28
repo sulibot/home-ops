@@ -15,4 +15,3 @@ spec:
         - --log-encoding=json
         - --enable-leader-election
         - --concurrent=10
-        - --feature-gates=ObjectLevelWorkloadIdentity=false
