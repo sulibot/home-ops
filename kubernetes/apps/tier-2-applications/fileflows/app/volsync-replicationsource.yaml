@@ -17,7 +17,7 @@ spec:
 
   # --- Backup scheduling --------------------------------------------------
   trigger:
-    schedule: "37 * * * *"  # Hourly, app-specific minute via ks substitute
+    schedule: "48 2-23/3 * * *"  # Unique three-hour slot to avoid overlapping Ceph movers.
 
   # --- Kopia backup configuration ----------------------------------------
   kopia:

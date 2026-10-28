@@ -7,7 +7,8 @@ Internal UI: https://fileflows.sulibot.com
 - One server/internal agent, using the vendor's pinned `modded-26.10-stable` image.
 - `gateway-internal` only; no public tunnel route.
 - Explicit Kestrel IPv6 listener is required for this cluster's IPv6-first probes.
-- Configuration: `fileflows-config`, 2 GiB CephFS, with hourly VolSync/Kopia backups.
+- Configuration: `fileflows-config`, 2 GiB CephFS, with VolSync/Kopia backups every
+  three hours in a dedicated slot, matching the repository's Ceph load controls.
 - Work/review: `fileflows-work`, 100 GiB CephFS, mounted at `/temp` and `/review`.
   This is temporary review storage and is not included in configuration backups.
 - Production content is mounted **read-only** at `/data`, both in the volume and
