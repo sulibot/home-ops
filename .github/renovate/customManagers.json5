@@ -5,6 +5,7 @@
       customType: "regex",
       description: "Process annotated dependencies",
       managerFilePatterns: [
+        "/\\.hcl$/",
         "/\\.env(?:\\.j2)?$/",
         "/\\.sh(?:\\.j2)?$/",
         "/\\.yaml(?:\\.j2)?$/",
