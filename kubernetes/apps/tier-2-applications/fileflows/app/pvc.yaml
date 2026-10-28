@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fileflows-config
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 2Gi
+---
+# Separate staging/review space. Never mount the production library writable.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fileflows-work
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 100Gi

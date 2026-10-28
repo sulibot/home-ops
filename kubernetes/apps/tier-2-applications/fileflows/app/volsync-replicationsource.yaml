@@ -1,0 +1,54 @@
+---
+### yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/volsync.backube/replicationsource_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: "fileflows-src"
+  labels:
+    app.kubernetes.io/name: "fileflows"
+    app.kubernetes.io/component: backup
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+
+spec:
+  # --- Source PVC configuration -------------------------------------------
+  # This identifies the PVC being backed up.
+  # Override with VOLSYNC_SOURCE_PVC if the PVC name doesn't follow the fileflows-config pattern
+  sourcePVC: "fileflows-config"
+
+  # --- Backup scheduling --------------------------------------------------
+  trigger:
+    schedule: "37 * * * *"  # Hourly, app-specific minute via ks substitute
+
+  # --- Kopia backup configuration ----------------------------------------
+  kopia:
+    repository: "fileflows-volsync-secret"
+
+    # Access and storage configuration
+    storageClassName: "csi-cephfs-config-sc"
+    accessModes:
+      - "ReadWriteMany"
+    capacity: "2Gi"
+    copyMethod: Snapshot
+    compression: "zstd-fastest"
+    parallelism: 1
+
+    # Snapshot integration
+    volumeSnapshotClassName: "csi-cephfs-config-snapclass"
+
+    # Cache configuration
+    cacheStorageClassName: "csi-cephfs-config-sc"
+    cacheAccessModes:
+      - "ReadWriteMany"
+    cacheCapacity: "1Gi"
+
+    # Security context for backup mover
+    moverSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+
+    # Retention policy for stored snapshots
+    retain:
+      hourly: 24
+      daily: 7

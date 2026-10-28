@@ -1,0 +1,169 @@
+{
+  "Name": "DRAFT - SDR H264 to HEVC review copies",
+  "Type": 0,
+  "Revision": 2,
+  "Description": "PAUSED / UNASSIGNED. H264 SDR trial only; HEVC, AV1 and HDR are skipped. CPU HEVC 10-bit, quality 7/9, speed 2/5. Keeps audio, subtitles, original resolution and frame rate. Copies to /review, never replaces originals. Review output quality, size, tracks and playback before any production use.",
+  "Icon": "fas fa-video",
+  "Properties": {
+    "Outputs": null,
+    "Fields": [],
+    "Variables": {}
+  },
+  "Parts": [
+    {
+      "Uid": "7cdb129e-9a7a-483c-bcca-cc570ac6e291",
+      "FlowElementUid": "FileFlows.VideoNodes.VideoFile",
+      "xPos": 100,
+      "yPos": 80,
+      "Inputs": 0,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "0ba720af-9f95-402d-9d03-bf34c69395ea"
+        }
+      ],
+      "Type": 0
+    },
+    {
+      "Uid": "0ba720af-9f95-402d-9d03-bf34c69395ea",
+      "Name": "Only H264 - skip other codecs",
+      "FlowElementUid": "FileFlows.VideoNodes.VideoHasCodec",
+      "xPos": 100,
+      "yPos": 240,
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "ac170b91-6678-4b4b-bf6d-abef7b324dee"
+        }
+      ],
+      "Type": 3,
+      "Model": {
+        "Codec": "h264",
+        "CheckDeleted": false,
+        "Name": "",
+        "Color": ""
+      }
+    },
+    {
+      "Uid": "ac170b91-6678-4b4b-bf6d-abef7b324dee",
+      "Name": "Skip HDR for initial trial",
+      "FlowElementUid": "FileFlows.VideoNodes.VideoIsHdr",
+      "xPos": 100,
+      "yPos": 400,
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "b087c6bb-e3ea-4ee5-9b96-9e116e964d4f"
+        }
+      ],
+      "Type": 3,
+      "Model": {}
+    },
+    {
+      "Uid": "b087c6bb-e3ea-4ee5-9b96-9e116e964d4f",
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderStart",
+      "xPos": 100,
+      "yPos": 560,
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "220f7721-102a-4e3d-80e5-d4af3f410d1b"
+        }
+      ],
+      "Type": 4
+    },
+    {
+      "Uid": "220f7721-102a-4e3d-80e5-d4af3f410d1b",
+      "Name": "Remux to MKV",
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderRemuxToMkv",
+      "xPos": 500,
+      "yPos": 80,
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "2557a0b3-6cf5-4e16-b685-c48d262d1327"
+        }
+      ],
+      "Type": 6
+    },
+    {
+      "Uid": "2557a0b3-6cf5-4e16-b685-c48d262d1327",
+      "Name": "HEVC 10-bit - CPU - quality 7 speed 2",
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoEncodeSimple",
+      "xPos": 500,
+      "yPos": 240,
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "c9483943-802a-4e06-a4cc-621cae75d799"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Codec": "h265 10BIT",
+        "Encoder": "CPU",
+        "Quality": 7,
+        "Speed": 2
+      }
+    },
+    {
+      "Uid": "c9483943-802a-4e06-a4cc-621cae75d799",
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
+      "xPos": 500,
+      "yPos": 400,
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "608a8e72-4dca-410c-8414-ed46670f3a3b"
+        }
+      ],
+      "Type": 5,
+      "Model": {
+        "HardwareDecoding": false,
+        "Strictness": "experimental"
+      }
+    },
+    {
+      "Uid": "608a8e72-4dca-410c-8414-ed46670f3a3b",
+      "Name": "Copy review file - never replace original",
+      "FlowElementUid": "FileFlows.BasicNodes.File.CopyFile",
+      "xPos": 500,
+      "yPos": 560,
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [],
+      "Type": 2,
+      "Model": {
+        "InputFile": null,
+        "DestinationPath": "/review",
+        "DestinationFile": "{file.Orig.FileNameNoExtension}.HEVC-REVIEW.mkv",
+        "CopyFolder": false,
+        "AdditionalFiles": [],
+        "AdditionalFilesFromOriginal": false,
+        "PreserverOriginalDates": false,
+        "Name": "",
+        "Color": ""
+      }
+    }
+  ]
+}
