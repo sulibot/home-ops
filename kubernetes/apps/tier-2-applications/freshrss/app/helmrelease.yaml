@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: freshrss/freshrss
-              tag: 1.29.1@sha256:ab6b363102ccdbc39f6a62db926f567c61a5289bf25ba460f1c34423d8cc1a4d
+              tag: 1.30.4@sha256:af44385229541bee24aa9148d0ff8f3b40e095373c63a2c0f74e09a27d3c59df
             env:
               TZ: America/Los_Angeles
               CRON_MIN: "18,48"
