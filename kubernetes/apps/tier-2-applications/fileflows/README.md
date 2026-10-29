@@ -139,8 +139,10 @@ entering the first custom extension in a library whose `Extensions` list was
 absent. Both production libraries were repaired while the deployment was stopped,
 after a SQLite backup to
 `/app/Data/Backups/pre-extension-repair-20261029.sqlite`. Their library JSON now
-contains `FileTypes: 7` (Custom) and `Extensions: ["mkv"]`. No other database
-rows were changed; SQLite integrity passed. If restoring an older configuration,
+contains `Extensions: ["mkv"]`. After restart, Custom was selected and saved
+through the UI for both libraries; its persisted representation is `FileTypes: 0`
+with the nonempty extension list (the dropdown's value 7 is not the stored enum).
+No other database rows were edited offline; SQLite integrity passed. If restoring an older configuration,
 check these fields before resuming discovery. Never edit the live database.
 
 Run the destructive-operation safeguards locally with:
