@@ -20,6 +20,7 @@ import xml.etree.ElementTree as ET
 
 ROOTS = {"sonarr": Path('/data/media/tv-4k'), "radarr": Path('/data/media/movies-4k')}
 STATE = Path('/app/Data/Production')
+ROLLBACK = Path('/data/.fileflows-rollback')
 
 
 def log(message):
@@ -203,7 +204,14 @@ def process(source, candidate=None, check_only=False):
             raise RuntimeError('Unfinished replacement journal needs recovery: ' + str(j))
     key = uuid.uuid4().hex
     stage = source.parent / ('.fileflows-' + key + '.partial')
-    rollback = source.parent / ('.fileflows-' + key + '.original')
+    # Arr rename operations also rename companion files in a title directory.
+    # Keep the original inode outside every managed library, on the same mount.
+    ROLLBACK.mkdir(mode=0o700, exist_ok=True)
+    if ROLLBACK.is_symlink() or ROLLBACK.resolve() != ROLLBACK.absolute():
+        raise RuntimeError('Rollback directory must not be symlinked')
+    if ROLLBACK.stat().st_dev != source.stat().st_dev:
+        raise RuntimeError('Rollback directory must be on the source filesystem')
+    rollback = ROLLBACK / (key + '.original')
     journal = STATE / (key + '.json')
     record = {'source': str(source), 'stage': str(stage), 'rollback': str(rollback),
               'original_identity': original, 'phase': 'encoding', 'app': app,
