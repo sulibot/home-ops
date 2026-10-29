@@ -2,6 +2,39 @@
 
 Internal UI: https://fileflows.sulibot.com
 
+## Current operating policy: upgrades before conversion (2026-10-29)
+
+FileFlows is paused indefinitely for new jobs. The already-running conversion of
+The Deadly Affair may finish; it is excluded from the initial Radarr search pass.
+Do not resume the saved conversion queue solely because a download queue is empty.
+
+1. Sonarr/Radarr use the existing TRaSH-based quality hierarchy and exclusions.
+   All 93 current series use Sonarr profile 7; all 130 current movies use Radarr
+   profile 13. Both permit upgrades, prefer 4K WEB and allow 1080p fallback.
+2. HEVC/x265 is a modest +20 preference, not a requirement. LQ, release-title LQ,
+   upscales, BR-DISK, extras and Dolby Vision without HDR fallback remain -10000
+   with minimum score 0. Group quality scores outweigh codec preference; good
+   H.264 remains acceptable. Existing HEVC is not automatically recompressed.
+3. Proper/repack handling is `doNotPrefer` in both apps, allowing the existing
+   repack custom-format scores to control selection instead of an overriding
+   automatic repack preference. Standard TRaSH size definitions are retained;
+   they prioritize quality and do not guarantee smaller downloads.
+4. A single explicit upgrade search pass was submitted for 74 monitored movies
+   and 1,052 monitored episodes with existing files from Wanted/Cutoff Unmet.
+   An additional search covers one H.264 movie and 88 H.264 episodes already at
+   their resolution cutoff, which the standard cutoff list did not include:
+   75 movies and 1,140 episodes in total, without duplicate IDs between batches.
+   Search submission does not mean every title has an acceptable replacement.
+5. Before conversion resumes, confirm the search commands completed, downloads
+   and imports finished, and import errors were resolved. Rescan current library
+   paths, then reassess remaining H.264 files. Do not replay stale conversion jobs
+   for files replaced or renamed by Sonarr/Radarr. Prefer a validated native
+   FileFlows workflow for this later phase.
+
+The configuration snapshots and search receipts are stored under
+`/app/Data/Backups/arr-upgrade-first-20261029`. Notifiarr remains the profile sync
+owner. No automatic transition back to conversion has been configured.
+
 ## Initial setup, 2026-10-28
 
 - One server/internal agent, using the vendor's pinned `modded-26.10-stable` image.
