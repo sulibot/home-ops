@@ -32,7 +32,7 @@ spec:
           app:
             image:
               repository: ghcr.io/flaresolverr/flaresolverr
-              tag: v3.4.6
+              tag: v3.5.2
             env:
               HOST: "::"
               TZ: America/Los_Angeles
