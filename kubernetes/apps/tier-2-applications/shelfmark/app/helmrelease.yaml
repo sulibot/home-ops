@@ -30,7 +30,7 @@ spec:
           bootstrap-admin:
             image:
               repository: ghcr.io/calibrain/shelfmark-lite
-              tag: v1.3.1@sha256:05f265ceaaeb30eeb63d9cce84e66c5c8af59f74f8df8b601becc5f9944238ec
+              tag: v1.5.1@sha256:80a8f9082b4ec8bbd78f84033230a7f6a98babb601b1eb708767d6106928a826
             envFrom:
               - secretRef:
                   name: shelfmark-secret
@@ -157,7 +157,7 @@ spec:
           app:
             image:
               repository: ghcr.io/calibrain/shelfmark-lite
-              tag: v1.3.1@sha256:05f265ceaaeb30eeb63d9cce84e66c5c8af59f74f8df8b601becc5f9944238ec
+              tag: v1.5.1@sha256:80a8f9082b4ec8bbd78f84033230a7f6a98babb601b1eb708767d6106928a826
             command:
               - gunicorn
             args:
