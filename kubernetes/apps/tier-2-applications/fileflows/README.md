@@ -75,13 +75,19 @@ triggered. Counts refer to files, not necessarily individual episodes.
   or either active library root. Ancestor snapshots, backups, and other retained
   copies were not exhaustively audited.
 
-## Production setup, 2026-10-28
+## Production setup, 2026-10-29
 
 The user approved production replacement. The initial trial reduced Invincible
 S01E01 from 2.03 GB to 1.28 GB (37%). Full video/audio decoding, non-video payload
 hashes, duration, video properties, chapters and track metadata passed. A lost
 original-language subtitle flag was repaired with a stream-copy remux. Actual
 Apple TV playback and subjective picture quality have not been confirmed.
+
+The production worker subsequently replaced that episode, verified Sonarr file
+2583 for series 107, refreshed/renamed it to x265, requested Plex section 1 refresh,
+and removed both the original rollback link and review copy. Saved 753,226,568
+bytes. A manual run through the imported production flow then successfully skipped
+the now-HEVC file, confirming the FileFlows-to-worker integration.
 
 `flows/hevc-production.json` invokes the versioned `app/resources/production.py`
 through FileFlows' Function node. Library discovery and queue state are managed
@@ -93,6 +99,9 @@ are deployed through the generated ConfigMap and reloader.
   concurrent replacements. CPU limit is four cores, memory limit 2 GiB.
 - Scope: H.264 SDR MKV files in movies-4k and tv-4k. Existing HEVC, AV1, HDR,
   unknown SDR, other containers, multiple-video streams and hardlinks are skipped.
+- Libraries scan every three hours and watch filesystem events. `Skip File Access
+  Tests` is enabled: the scanner stalled holding an access-test handle on CephFS.
+  The worker still performs real read/write operations, validation and source checks.
 - Files modified within two hours or playing in Plex are deferred with an error.
 - CPU x265 Main10, CRF21, slow preset; no scaling or frame-rate changes. Explicit
   stream mapping and dispositions preserve audio, subtitles, attachments and chapters.
