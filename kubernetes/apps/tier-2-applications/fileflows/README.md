@@ -21,6 +21,9 @@ Do not resume the saved conversion queue solely because a download queue is empt
    they prioritize quality and do not guarantee smaller downloads.
 4. A single explicit upgrade search pass was submitted for 74 monitored movies
    and 1,052 monitored episodes with existing files from Wanted/Cutoff Unmet.
+   An additional search covers one H.264 movie and 88 H.264 episodes already at
+   their resolution cutoff, which the standard cutoff list did not include:
+   75 movies and 1,140 episodes in total, without duplicate IDs between batches.
    Search submission does not mean every title has an acceptable replacement.
 5. Before conversion resumes, confirm the search commands completed, downloads
    and imports finished, and import errors were resolved. Rescan current library
