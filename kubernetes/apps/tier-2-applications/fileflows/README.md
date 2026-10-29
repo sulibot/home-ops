@@ -11,7 +11,7 @@ Internal UI: https://fileflows.sulibot.com
   three hours in a dedicated slot, matching the repository's Ceph load controls.
 - Work/review: `fileflows-work`, 100 GiB CephFS, mounted at `/temp` and `/review`.
   This is temporary review storage and is not included in configuration backups.
-- Production content is mounted **read-only** at `/data`, both in the volume and
+- Initial content was mounted **read-only** at `/data`, both in the volume and
   container mount definitions. The server process runs as UID/GID 1000 after the
   vendor entrypoint initializes it.
 - The initial setup was paused with no libraries; see the production section
@@ -99,9 +99,11 @@ are deployed through the generated ConfigMap and reloader.
   concurrent replacements. CPU limit is four cores, memory limit 2 GiB.
 - Scope: H.264 SDR MKV files in movies-4k and tv-4k. Existing HEVC, AV1, HDR,
   unknown SDR, other containers, multiple-video streams and hardlinks are skipped.
-- Libraries scan every three hours and watch filesystem events. `Skip File Access
-  Tests` is enabled: the scanner stalled holding an access-test handle on CephFS.
-  The worker still performs real read/write operations, validation and source checks.
+- Libraries scan every three hours and watch filesystem events. File Type is
+  `Custom` with extension `mkv`, avoiding FileFlows' slow video-info detection
+  during discovery on CephFS. The worker probes each file before processing.
+  `Skip File Access Tests` is also enabled; that setting alone did not resolve
+  the scan delay. The worker performs real I/O, validation and source checks.
 - Files modified within two hours or playing in Plex are deferred with an error.
 - CPU x265 Main10, CRF21, slow preset; no scaling or frame-rate changes. Explicit
   stream mapping and dispositions preserve audio, subtitles, attachments and chapters.
@@ -129,6 +131,17 @@ worker is stopped and the source remains intact.
 The temporary rollback link is not a long-term backup. Existing snapshots or
 other backups can delay reclaimed space. The pre-production FileFlows SQLite
 backup is `/app/Data/Backups/pre-production-20261028.sqlite`.
+
+### Scanner configuration repair
+
+FileFlows 26.10.9 threw `InputListString.Add` / `NullReferenceException` when
+entering the first custom extension in a library whose `Extensions` list was
+absent. Both production libraries were repaired while the deployment was stopped,
+after a SQLite backup to
+`/app/Data/Backups/pre-extension-repair-20261029.sqlite`. Their library JSON now
+contains `FileTypes: 7` (Custom) and `Extensions: ["mkv"]`. No other database
+rows were changed; SQLite integrity passed. If restoring an older configuration,
+check these fields before resuming discovery. Never edit the live database.
 
 Run the destructive-operation safeguards locally with:
 
