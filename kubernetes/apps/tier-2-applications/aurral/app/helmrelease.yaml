@@ -28,7 +28,7 @@ spec:
           gluetun:
             image:
               repository: ghcr.io/qdm12/gluetun
-              tag: v3.41.1
+              tag: v3.41.3
             env:
               HEALTH_SERVER_ADDRESS: :9999
               WIREGUARD_ALLOWED_IPS: 0.0.0.0/0
