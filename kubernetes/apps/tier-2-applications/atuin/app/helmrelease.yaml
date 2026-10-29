@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: ghcr.io/atuinsh/atuin
-              tag: 18.16.1@sha256:9d4d79507b51be6d292b218f5cc791d79ca0a72f51ab48f786b091bd6eafb39f
+              tag: 18.24.3@sha256:aed6e5efed2b5b6a7d5e5d77e07b122613ea1cafe65f9f7e0193a4ef760961ba
             env:
               ATUIN_DB_URI:
                 valueFrom:
