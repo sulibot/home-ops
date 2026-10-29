@@ -14,8 +14,8 @@ Internal UI: https://fileflows.sulibot.com
 - Production content is mounted **read-only** at `/data`, both in the volume and
   container mount definitions. The server process runs as UID/GID 1000 after the
   vendor entrypoint initializes it.
-- Processing is paused indefinitely in the application. No library is assigned
-  to the draft flow and no files have been queued.
+- The initial setup was paused with no libraries; see the production section
+  below for the replacement workflow now authorized.
 
 The initial resources were applied from the local checkout to let the Helm
 controller install the application. The tier-2 application Kustomization now
@@ -75,19 +75,55 @@ triggered. Counts refer to files, not necessarily individual episodes.
   or either active library root. Ancestor snapshots, backups, and other retained
   copies were not exhaustively audited.
 
-## Before any conversion is enabled
+## Production setup, 2026-10-28
 
-The user has requested setup and inspection, not execution of conversion jobs.
-Keep processing paused and the production mount read-only.
+The user approved production replacement. The initial trial reduced Invincible
+S01E01 from 2.03 GB to 1.28 GB (37%). Full video/audio decoding, non-video payload
+hashes, duration, video properties, chapters and track metadata passed. A lost
+original-language subtitle flag was repaired with a stream-copy remux. Actual
+Apple TV playback and subjective picture quality have not been confirmed.
 
-An approved trial must use a few explicitly selected files. Verify encoder
-availability, sufficient staging space for simultaneous temporary/review copies,
-decoding, duration/sync, resolution, frame rate, audio/subtitle/attachment/chapter
-preservation, output size, and actual playback on the Apple TV/Samsung. Visually
-compare dark scenes, grain, animation, and motion. There is no claim yet that
-these presets meet the user's picture-quality or storage targets.
+`flows/hevc-production.json` invokes the versioned `app/resources/production.py`
+through FileFlows' Function node. Library discovery and queue state are managed
+in the UI and backed up with FileFlows' configuration; the worker and flow export
+are in Git. Reimport the export after changing its Function code. Script changes
+are deployed through the generated ConfigMap and reloader.
 
-Production replacement, concurrent-upgrade checks, app notifications, automatic
-validation, and rollback are a separate step. They are intentionally absent from
-this review-copy draft. Do not unmonitor titles globally: preserve wanted 4K
-upgrades from 1080p fallback releases.
+- Production media is writable. One internal runner; global worker lock prevents
+  concurrent replacements. CPU limit is four cores, memory limit 2 GiB.
+- Scope: H.264 SDR MKV files in movies-4k and tv-4k. Existing HEVC, AV1, HDR,
+  unknown SDR, other containers, multiple-video streams and hardlinks are skipped.
+- Files modified within two hours or playing in Plex are deferred with an error.
+- CPU x265 Main10, CRF21, slow preset; no scaling or frame-rate changes. Explicit
+  stream mapping and dispositions preserve audio, subtitles, attachments and chapters.
+- Encode into a hidden `.partial` file beside the source on CephFS. Require at
+  least 5% savings, matching metadata and non-video stream hashes, and a full
+  video/audio decode. Recheck source identity, manager file ID and Plex playback.
+- Retain a temporary hardlink to the original inode during atomic replacement.
+  Refresh and rename the affected title through Sonarr/Radarr, then request a
+  targeted Plex scan. Remove the old inode only after those steps succeed.
+- No monitoring or quality-profile changes: wanted 1080p-to-4K upgrades remain enabled.
+- Secrets are injected from existing Kubernetes Secrets; no API keys in exports.
+
+### Failure recovery
+
+Inspect `/app/Data/Production/*.json` and the FileFlows job log. A journal in
+`committing`, `replaced`, or `refreshing` blocks further eligible conversions and
+retains the `.fileflows-<id>.original` hardlink for recovery. Pause processing,
+verify the live manager path and journal identities, then either finish refresh
+and remove that rollback link or restore it to the managed path and refresh.
+Do not blindly delete journals or rollback links. A pre-commit validation failure
+removes its partial output and leaves the source intact. A pod killed during
+encoding can leave a `.partial` file, which can be removed after confirming the
+worker is stopped and the source remains intact.
+
+The temporary rollback link is not a long-term backup. Existing snapshots or
+other backups can delay reclaimed space. The pre-production FileFlows SQLite
+backup is `/app/Data/Backups/pre-production-20261028.sqlite`.
+
+Run the destructive-operation safeguards locally with:
+
+```sh
+cd kubernetes/apps/tier-2-applications/fileflows/app/resources
+python3 -m unittest -v test_production
+```

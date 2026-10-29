@@ -7,3 +7,11 @@ resources:
   - ./pvc.yaml
   - ./volsync-externalsecret.yaml
   - ./volsync-replicationsource.yaml
+configMapGenerator:
+  - name: fileflows-production
+    files:
+      - production.py=./resources/production.py
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
