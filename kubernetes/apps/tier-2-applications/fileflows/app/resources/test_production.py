@@ -48,12 +48,15 @@ class Safeguards(unittest.TestCase):
         self.state.mkdir()
         self.root_patch = patch.object(p, 'ROOTS', {'sonarr': self.root})
         self.state_patch = patch.object(p, 'STATE', self.state)
+        self.rollback_patch = patch.object(p, 'ROLLBACK', self.root / '.rollback')
         self.root_patch.start()
         self.state_patch.start()
+        self.rollback_patch.start()
 
     def tearDown(self):
         self.root_patch.stop()
         self.state_patch.stop()
+        self.rollback_patch.stop()
         self.tmp.cleanup()
 
     def test_hdr_skipped_before_write(self):
@@ -94,6 +97,33 @@ class Safeguards(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Source changed'):
                 p.process(self.source)
         self.assertEqual(self.source.read_bytes(), b'new upgrade from sonarr')
+
+    def test_arr_companion_rename_cannot_move_rollback(self):
+        title = self.root / 'Series'
+        title.mkdir()
+        self.source = self.source.rename(title / 'episode.mkv')
+        final = title / 'episode.x265.mkv'
+        def command(app, body):
+            if body['name'] == 'RenameFiles':
+                self.source.rename(final)
+                # Reproduce Arr's companion-file rename behavior.
+                for companion in title.glob('*.original'):
+                    companion.rename(final.with_suffix('.original'))
+        def api(app, endpoint):
+            return {'size': 7, 'path': str(final if final.exists() else self.source)}
+        with patch.object(p, 'probe', return_value=metadata()), \
+             patch.object(p, 'not_playing'), \
+             patch.object(p, 'managed_file', return_value=(1, 2)), \
+             patch.object(p, 'plex', return_value=f'<MediaContainer><Directory key="1"><Location path="{self.root}"/></Directory></MediaContainer>'.encode()), \
+             patch.object(p, 'encode', side_effect=lambda s, o, m: o.write_bytes(b'encoded')), \
+             patch.object(p, 'validate', return_value=metadata('hevc')), \
+             patch.object(p, 'command', side_effect=command), \
+             patch.object(p, 'api', side_effect=api):
+            result = p.process(self.source)
+        self.assertEqual(result['status'], 'replaced')
+        self.assertEqual(final.read_bytes(), b'encoded')
+        self.assertEqual(list(p.ROLLBACK.iterdir()), [])
+        self.assertEqual(json.loads(next(self.state.glob('*.json')).read_text())['phase'], 'complete')
 
 
 if __name__ == '__main__':

@@ -110,7 +110,9 @@ are deployed through the generated ConfigMap and reloader.
 - Encode into a hidden `.partial` file beside the source on CephFS. Require at
   least 5% savings, matching metadata and non-video stream hashes, and a full
   video/audio decode. Recheck source identity, manager file ID and Plex playback.
-- Retain a temporary hardlink to the original inode during atomic replacement.
+- Retain a temporary hardlink to the original inode in `/data/.fileflows-rollback`
+  during atomic replacement. This directory is outside the managed library roots
+  so Sonarr/Radarr cannot rename it as a companion file.
   Refresh and rename the affected title through Sonarr/Radarr, then request a
   targeted Plex scan. Remove the old inode only after those steps succeed.
 - No monitoring or quality-profile changes: wanted 1080p-to-4K upgrades remain enabled.
@@ -120,13 +122,20 @@ are deployed through the generated ConfigMap and reloader.
 
 Inspect `/app/Data/Production/*.json` and the FileFlows job log. A journal in
 `committing`, `replaced`, or `refreshing` blocks further eligible conversions and
-retains the `.fileflows-<id>.original` hardlink for recovery. Pause processing,
+retains the `/data/.fileflows-rollback/<id>.original` hardlink for recovery. Pause processing,
 verify the live manager path and journal identities, then either finish refresh
 and remove that rollback link or restore it to the managed path and refresh.
 Do not blindly delete journals or rollback links. A pre-commit validation failure
 removes its partial output and leaves the source intact. A pod killed during
 encoding can leave a `.partial` file, which can be removed after confirming the
 worker is stopped and the source remains intact.
+
+On 2026-10-29 the original same-folder rollback for The Looking Glass War was
+renamed by Radarr to the movie basename plus `.original`. The completed HEVC file
+was valid, but cleanup failed and its unfinished journal blocked 502 subsequent
+eligible jobs. The worker now keeps rollback links outside library folders; a
+regression test reproduces companion-file renaming. Recovery must verify the
+renamed backup's device/inode/size/mtime against the journal before removing it.
 
 The temporary rollback link is not a long-term backup. Existing snapshots or
 other backups can delay reclaimed space. The pre-production FileFlows SQLite
