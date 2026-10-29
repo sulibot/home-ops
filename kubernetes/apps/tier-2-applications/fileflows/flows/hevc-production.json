@@ -1,0 +1,46 @@
+{
+  "Name": "PRODUCTION - validated SDR H264 to HEVC replacement",
+  "Type": 0,
+  "Revision": 1,
+  "Description": "One worker. H264 SDR MKV only. CPU x265 CRF21 slow Main10. Preserve all tracks, dispositions and chapters. Full decode and payload verification; minimum 5% savings. Atomic replacement with crash-recovery journal, then targeted media-manager refresh/rename and Plex refresh. Skip HEVC, AV1, HDR, unknown SDR and hardlinks. Script versioned in home-ops.",
+  "Icon": "fas fa-video",
+  "Properties": {
+    "Outputs": null,
+    "Fields": [],
+    "Variables": {}
+  },
+  "Parts": [
+    {
+      "Uid": "1531a053-38b0-45ec-b22b-65d04fbaf4bc",
+      "FlowElementUid": "FileFlows.BasicNodes.File.InputFile",
+      "xPos": 100,
+      "yPos": 80,
+      "Inputs": 0,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "c5cdbff7-5b98-4f30-8707-f1623abae468"
+        }
+      ],
+      "Type": 0,
+      "Model": {}
+    },
+    {
+      "Uid": "c5cdbff7-5b98-4f30-8707-f1623abae468",
+      "Name": "Validate, encode, replace and refresh",
+      "FlowElementUid": "FileFlows.BasicNodes.Functions.Function",
+      "xPos": 100,
+      "yPos": 240,
+      "Inputs": 1,
+      "Outputs": 0,
+      "OutputConnections": [],
+      "Type": 2,
+      "Model": {
+        "Outputs": 0,
+        "Code": "const result = Flow.Execute({ command: \"/usr/bin/python3\", argumentList: [\"/opt/fileflows-production/production.py\", Flow.WorkingFile], timeout: 0 });\nif (result.exitCode !== 0) {\n    Logger.ELog(result.standardError || result.output || \"Production validation/replacement failed; inspect journal\");\n    return -1;\n}\nconst outcome = JSON.parse(result.standardOutput);\nLogger.ILog(JSON.stringify(outcome));\nif (outcome.status === \"replaced\") Flow.SetWorkingFile(outcome.path, true);\nreturn 0;"
+      }
+    }
+  ]
+}

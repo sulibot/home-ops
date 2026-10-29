@@ -21,6 +21,8 @@ spec:
   values:
     controllers:
       fileflows:
+        annotations:
+          reloader.stakater.com/auto: "true"
         type: deployment
         replicas: 1
         strategy: Recreate
@@ -41,6 +43,21 @@ spec:
               TZ: America/Los_Angeles
               PUID: "1000"
               PGID: "1000"
+              SONARR_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: sonarr-4k-secret
+                    key: SONARR__AUTH__APIKEY
+              RADARR_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: radarr-4k-secret
+                    key: RADARR__AUTH__APIKEY
+              PLEX_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: plex-secret
+                    key: PLEX_TOKEN
               # The cluster probes the IPv6 pod address; bind both IP families.
               Kestrel__Endpoints__Http__Url: "http://[::]:5000"
             probes:
@@ -62,7 +79,7 @@ spec:
                 cpu: 100m
                 memory: 512Mi
               limits:
-                cpu: "2"
+                cpu: "4"
                 memory: 2Gi
     defaultPodOptions:
       hostname: fileflows
@@ -100,12 +117,18 @@ spec:
             subPath: review
       content:
         type: custom
-        # Enforced at volume and mount level; no library or flow is provisioned.
+        # Production flow validates before atomic replacement on this filesystem.
         volumeSpec:
           persistentVolumeClaim:
             claimName: csi-cephfs-content-pvc
-            readOnly: true
+            readOnly: false
         globalMounts:
           - path: /data
             subPath: data
+            readOnly: false
+      production:
+        type: configMap
+        name: fileflows-production
+        globalMounts:
+          - path: /opt/fileflows-production
             readOnly: true
