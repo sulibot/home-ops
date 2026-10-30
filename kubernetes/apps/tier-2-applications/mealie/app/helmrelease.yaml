@@ -30,6 +30,7 @@ spec:
               repository: ghcr.io/mealie-recipes/mealie
               tag: v3.29.0
             env:
+              API_HOST: "::"
               TZ: America/Los_Angeles
               BASE_URL: https://mealie.sulibot.com
               ALLOW_SIGNUP: "false"
@@ -90,7 +91,19 @@ spec:
         ports:
           http:
             port: 9000
-    # Ingress is enabled after the vendor bootstrap password has been rotated.
+    route:
+      app:
+        hostnames:
+          - mealie.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 9000
     persistence:
       data:
         existingClaim: mealie-config
