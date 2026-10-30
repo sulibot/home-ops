@@ -20,3 +20,4 @@ resources:
   - sonarr-4k-log.yaml
   - digarr.yaml
   - twenty.yaml
+  - mealie.yaml

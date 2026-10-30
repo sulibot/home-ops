@@ -1,0 +1,14 @@
+# Fresh install only: pre-create without a restore source, as no backup exists yet.
+# Deliberately excluded from kustomization.yaml; the shared VolSync component owns
+# the steady-state PVC and will auto-restore it during disaster recovery.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mealie-config
+  namespace: default
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: csi-cephfs-config-sc
+  resources:
+    requests:
+      storage: 5Gi

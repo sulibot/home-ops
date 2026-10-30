@@ -1,0 +1,11 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: mealie
+  namespace: default
+spec:
+  cluster:
+    name: postgres-vectorchord
+  name: mealie
+  owner: mealie
+  ensure: present
