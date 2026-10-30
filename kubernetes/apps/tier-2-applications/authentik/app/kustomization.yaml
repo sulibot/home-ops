@@ -24,6 +24,7 @@ configMapGenerator:
       - blueprints/karakeep-provider.yaml
       - blueprints/paperless-provider.yaml
       - blueprints/actual-provider.yaml
+      - blueprints/mealie-provider.yaml
       - blueprints/filebrowser-provider.yaml
       - blueprints/cloudbeaver-provider.yaml
       - blueprints/vikunja-provider.yaml

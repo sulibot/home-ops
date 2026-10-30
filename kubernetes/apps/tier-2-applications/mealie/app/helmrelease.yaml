@@ -34,6 +34,28 @@ spec:
               TZ: America/Los_Angeles
               BASE_URL: https://mealie.sulibot.com
               ALLOW_SIGNUP: "false"
+              OIDC_AUTH_ENABLED: "true"
+              OIDC_SIGNUP_ENABLED: "true"
+              OIDC_CONFIGURATION_URL: https://auth.sulibot.com/application/o/mealie/.well-known/openid-configuration
+              OIDC_PROVIDER_NAME: Authentik
+              OIDC_AUTO_REDIRECT: "false"
+              OIDC_REMEMBER_ME: "true"
+              OIDC_USER_GROUP: trusted-users
+              OIDC_GROUPS_CLAIM: groups
+              # Authentik's built-in email scope emits email_verified=false.
+              # Only the existing trusted-users group may authenticate; the
+              # provider independently enforces policy-access-trusted.
+              OIDC_REQUIRES_EMAIL_VERIFICATION: "false"
+              OIDC_CLIENT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: mealie-oidc
+                    key: OIDC_CLIENT_ID
+              OIDC_CLIENT_SECRET:
+                valueFrom:
+                  secretKeyRef:
+                    name: mealie-oidc
+                    key: OIDC_CLIENT_SECRET
               DB_ENGINE: postgres
               POSTGRES_SERVER: postgres-vectorchord-rw.default.svc.cluster.local
               POSTGRES_PORT: "5432"

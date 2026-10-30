@@ -9,13 +9,25 @@ SQLite is not used on CephFS.
 
 ## Credentials and first login
 
-Open the `mealie` Login item in the 1Password `Kubernetes` vault. Its login
-password replaces the vendor bootstrap password. Signups are disabled.
-The initial email is Mealie's vendor placeholder; change it and the display
-name in the profile after first login, then update the saved 1Password login.
-Invite the second cook into the existing `Family` household in the `Home`
-group so recipes, plans, and shopping lists are shared. SMTP is not configured;
-use a copied invitation link. Do not create a separate household for the partner.
+Choose **Sign in with Authentik**. The existing `trusted-users` group and
+`policy-access-trusted` gate access; no group memberships are changed. First
+SSO login creates a regular Mealie account in `Home` / `Family`, so both cooks
+share the same household. No OIDC group automatically grants site administration.
+Public password registration is disabled.
+
+Recovery/site administration uses the `mealie` Login item in the 1Password
+`Kubernetes` vault. Its password replaces the vendor bootstrap password. The
+recovery email remains Mealie's vendor placeholder; it can be changed in the
+profile, with the saved 1Password username updated to match. SMTP is not
+configured. If another user needs an invitation, copy its link.
+
+The Authentik provider uses a dedicated confidential client, PKCE, standard
+openid/profile/email scopes and the groups claim, with strict `/login` and
+`/login?direct=1` redirect URIs. Authentik's built-in email mapping returns
+`email_verified=false`, so Mealie's email verification requirement is disabled
+only for this integration; both provider policy and Mealie require the existing
+trusted group. Keep that group's membership and email identities administrator
+controlled. Recovery password authentication stays enabled.
 
 U.S. English cooking units are seeded. New recipes default to private.
 Safari on iPhone can open the site directly or add it to the Home Screen.
