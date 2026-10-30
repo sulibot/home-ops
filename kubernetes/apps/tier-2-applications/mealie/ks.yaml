@@ -10,6 +10,8 @@ metadata:
     component: application
     critical: "false"
 spec:
+  # Resume after the 1Password item is populated and ExternalSecrets are synced.
+  suspend: true
   components:
     - ../../../../components/volsync
   dependsOn:
@@ -23,10 +25,6 @@ spec:
       namespace: flux-system
     - name: volsync-repository-pvc
       namespace: flux-system
-  decryption:
-    provider: sops
-    secretRef:
-      name: sops-age
   interval: 15m
   retryInterval: 30s
   path: ./kubernetes/apps/tier-2-applications/mealie/app
