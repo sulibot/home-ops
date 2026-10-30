@@ -18,6 +18,8 @@ entries:
         - url: "https://mealie.sulibot.com/login?direct=1"
           matching_mode: strict
       client_type: confidential
+      grant_types:
+        - authorization_code
       authentication_flow: !Find [authentik_flows.flow, [slug, sulibot-internal-authentication-flow]]
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
