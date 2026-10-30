@@ -10,8 +10,6 @@ metadata:
     component: application
     critical: "false"
 spec:
-  # Resume after the 1Password item is populated and ExternalSecrets are synced.
-  suspend: true
   components:
     - ../../../../components/volsync
   dependsOn:
