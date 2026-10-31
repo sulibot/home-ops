@@ -93,7 +93,7 @@ spec:
                 import urllib.request
 
                 # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
-                version = "v1.1.1"
+                version = "v1.2.1"
                 target = "/config/custom_components/auth_oidc"
                 manifest_path = os.path.join(target, "manifest.json")
 
