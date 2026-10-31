@@ -108,19 +108,6 @@ spec:
         ports:
           http:
             port: 8080
-    route:
-      app:
-        hostnames:
-          - tandoor.sulibot.com
-        parentRefs:
-          - name: gateway-tunnel
-            namespace: network
-          - name: gateway-internal
-            namespace: network
-        rules:
-          - backendRefs:
-              - identifier: app
-                port: 8080
     persistence:
       media:
         existingClaim: tandoor-config
