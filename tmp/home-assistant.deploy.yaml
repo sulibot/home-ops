@@ -85,7 +85,7 @@ spec:
         envFrom:
         - secretRef:
             name: home-assistant-secret
-        image: ghcr.io/home-operations/home-assistant:2026.3.1
+        image: ghcr.io/home-operations/home-assistant:2026.10.4
         imagePullPolicy: IfNotPresent
         name: app
         resources:
