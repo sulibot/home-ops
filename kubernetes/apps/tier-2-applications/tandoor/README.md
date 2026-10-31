@@ -12,11 +12,17 @@ chooses **LOGIN** on the signup screen, then chooses **AUTHENTIK** and signs in.
 The provider is restricted by the existing `policy-access-trusted` policy. Public
 signup is disabled, and invitation links must be shared privately.
 
-Tandoor also creates a separate personal space for each new social user; select
-Home after accepting the invitation. No SSO user is automatically made a
-shared-space administrator. Configure preferred measurement units in each
-user's settings. If invitations expire, sign in with the recovery administrator
-and create replacement Home invitations with the `user` role.
+The first household operator has Home-space `admin` access for setup and recipe
+file imports; this does not grant site-wide superuser privileges. The second
+invitation grants the `user` role in the shared Home / Family household. New
+social users also receive a personal space; select Home for shared work.
+
+Home is initialized with Tandoor's English starter data, including U.S.
+customary units and conversions. Configure any per-user unit preferences in account settings. If an
+invitation expires, the Home administrator can create a replacement for the
+Family household with the `user` role. To connect an existing local account to
+Authentik without creating another account, use **Settings → Account → External
+Provider → Authentik** while signed in.
 
 ## Recovery
 
