@@ -29,7 +29,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: snapshot
-              image: alpine/k8s:1.34.1
+              image: alpine/k8s:1.37.1
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
