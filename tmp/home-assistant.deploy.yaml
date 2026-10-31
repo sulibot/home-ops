@@ -167,7 +167,7 @@ spec:
               with open(marker_path, "w", encoding="utf-8") as handle:
                   handle.write(commit + "\n")
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: bootstrap-aidot
         resources: {}
@@ -237,7 +237,7 @@ spec:
                   json.dump(manifest, handle, indent=2)
                   handle.write("\n")
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: bootstrap-auth-oidc
         resources: {}
@@ -299,7 +299,7 @@ spec:
               [python_bin, "-m", "pip", "install", *packages]
           )
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: bootstrap-auth-oidc-deps
         resources: {}
@@ -356,7 +356,7 @@ spec:
               shutil.rmtree(target, ignore_errors=True)
               shutil.copytree(extract_dir, target)
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: bootstrap-hacs
         resources: {}
@@ -1160,7 +1160,7 @@ from homeassistant.helpers.event import async_track_state_change_event
               encoding="utf-8",
           )
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: bootstrap-matter-dimmer-bridge
         resources: {}
@@ -1527,7 +1527,7 @@ from homeassistant.helpers.event import async_track_state_change_event
           init_file.write_text(init_content, encoding="utf-8")
           print("auth_oidc init patched")
           PY
-        image: python:3.14-alpine
+        image: python:3.15-alpine
         imagePullPolicy: IfNotPresent
         name: patch-auth-oidc-finish
         resources: {}
