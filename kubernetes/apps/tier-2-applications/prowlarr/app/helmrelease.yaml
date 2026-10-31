@@ -38,6 +38,7 @@ spec:
                 set -eux
                 chown -R 1000:1000 /config
             securityContext:
+              runAsNonRoot: false
               runAsUser: 0
         containers:
           app:
