@@ -31,7 +31,7 @@ spec:
           configure:
             image:
               repository: boulderbadgedad/soulsync
-              tag: 2.7.6@sha256:5d4f9f7b02c416d0d52f76aeb4103b67e53f1b4ae93f87b55a14f20c45f8c35c
+              tag: 3.6.1@sha256:095926b17597dbf132ef16cb865bf850e255e218bc6ee9439cdbde2f8acadc0e
             envFrom:
               - secretRef:
                   name: slskd-secret
@@ -82,7 +82,7 @@ spec:
           app:
             image:
               repository: boulderbadgedad/soulsync
-              tag: 2.7.6@sha256:5d4f9f7b02c416d0d52f76aeb4103b67e53f1b4ae93f87b55a14f20c45f8c35c
+              tag: 3.6.1@sha256:095926b17597dbf132ef16cb865bf850e255e218bc6ee9439cdbde2f8acadc0e
             env:
               TZ: America/Los_Angeles
               PUID: "1000"
