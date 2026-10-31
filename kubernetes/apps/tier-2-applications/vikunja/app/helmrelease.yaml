@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: mirror.gcr.io/vikunja/vikunja
-              tag: 2.1.0@sha256:f13103b0287aef74a69241fa46e6cac76e14caf643602144ccaca57fc76e587f
+              tag: 2.7.1@sha256:f7dc8428d10aef17f3075886d3c1c022f566ec456f88985f02c137f4fc534576
             env:
               TZ: America/Los_Angeles
               PATH: /app/vikunja:$${PATH}
