@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: sportarr/sportarr
-              tag: 4.0.1012.1092@sha256:dc90a7ab745d9f5dd95afbc6018f6af696a68118b63855388f560b400bb55f58
+              tag: 4.1.11.1121@sha256:11527c4f90299ae109beb5a45c38ffcebe4c37942c4bd28012dc65848352d626
             env:
               PUID: "1000"
               PGID: "1000"
