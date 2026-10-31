@@ -76,7 +76,8 @@ spec:
           app:
             image:
               repository: ghcr.io/immichframe/immichframe
-              tag: v1.0.39.0@sha256:b4bd2ac6ec75c0117a24bd627dc0b449d485ac87ec3a410c73d5db05a4bbfcaf
+              # v1.0.39 requires Immich >=3.2; the server currently runs 3.1.
+              tag: v1.0.38.0@sha256:ac01a3afffc170d4a8085476302fd7963ad873955f8dda02a47290de9011c562
             env:
               IMMICHFRAME_CONFIG_PATH: /app/Config
               TZ: America/Los_Angeles
