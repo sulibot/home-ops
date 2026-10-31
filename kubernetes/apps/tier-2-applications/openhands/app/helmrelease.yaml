@@ -31,7 +31,7 @@ spec:
           app:
             image:
               repository: ghcr.io/openhands/agent-canvas
-              tag: 1.12.0@sha256:2c31423cdc1ec6007959790535682f3f7a1c141cd5b9d66e1344ac013d31223b
+              tag: 1.34.0@sha256:638c5e3ce76df74344bb18bd85f44af395337ade8e71f04532099fb380febadf
             env:
               TZ: America/Los_Angeles
               # LiteLLM provider/model string; talks directly to the Anthropic API using LLM_API_KEY below.
