@@ -44,7 +44,7 @@ spec:
               TZ: America/Los_Angeles
               # Ensure Next.js listens on IPv6 for cluster IPv6 service/gateway traffic.
               HOSTNAME: "::"
-              BROWSER_WEB_URL: http://localhost:9222
+              BROWSER_WEB_URL: http://127.0.0.1:9222
               CRAWLER_DOWNLOAD_BANNER_IMAGE: "true"
               CRAWLER_ENABLE_ADBLOCKER: "true"
               CRAWLER_STORE_SCREENSHOT: "true"
@@ -171,8 +171,9 @@ spec:
               tag: v1.56.0@sha256:1f578fa865f8251894b3bf38d6668d6209a3f451f8f65ab953e129d4c1db5ef4
             args:
               - /bin/meilisearch
-              - --experimental-dumpless-upgrade
+              - --upgrade-db
             env:
+              MEILI_HTTP_ADDR: "[::]:7700"
               MEILI_NO_ANALYTICS: "true"
               MEILI_MASTER_KEY:
                 valueFrom:
