@@ -1,0 +1,130 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tandoor
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: tandoor
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+  values:
+    controllers:
+      tandoor:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/tandoorrecipes/recipes
+              tag: 2.7.2
+            env:
+              TZ: America/Los_Angeles
+              TANDOOR_PORT: "8080"
+              ALLOWED_HOSTS: tandoor.sulibot.com
+              CSRF_TRUSTED_ORIGINS: https://tandoor.sulibot.com
+              DB_ENGINE: django.db.backends.postgresql
+              POSTGRES_HOST: postgres-vectorchord-rw.default.svc.cluster.local
+              POSTGRES_PORT: "5432"
+              POSTGRES_DB: tandoor
+              POSTGRES_USER: tandoor
+              POSTGRES_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: tandoor-pg-password
+                    key: password
+              SECRET_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: tandoor-secret
+                    key: SECRET_KEY
+              SOCIALACCOUNT_PROVIDERS:
+                valueFrom:
+                  secretKeyRef:
+                    name: tandoor-secret
+                    key: SOCIALACCOUNT_PROVIDERS
+              SOCIAL_PROVIDERS: allauth.socialaccount.providers.openid_connect
+              ENABLE_SIGNUP: "0"
+              SOCIAL_DEFAULT_ACCESS: "0"
+              ALLAUTH_TRUSTED_PROXY_COUNT: "2"
+              STATIC_ROOT: /tmp/staticfiles
+            probes:
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8080
+                    httpHeaders:
+                      - name: Host
+                        value: tandoor.sulibot.com
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness: *probe
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8080
+                    httpHeaders:
+                      - name: Host
+                        value: tandoor.sulibot.com
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: [ALL]
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: tandoor
+        ports:
+          http:
+            port: 8080
+    route:
+      app:
+        hostnames:
+          - tandoor.sulibot.com
+        parentRefs:
+          - name: gateway-tunnel
+            namespace: network
+          - name: gateway-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8080
+    persistence:
+      media:
+        existingClaim: tandoor-config
+        globalMounts:
+          - path: /opt/recipes/mediafiles
+      tmp:
+        type: emptyDir

@@ -45,6 +45,11 @@ spec:
 
   managed:
     roles:
+      - name: tandoor
+        login: true
+        ensure: present
+        passwordSecret:
+          name: tandoor-pg-password
       - name: mealie
         login: true
         ensure: present

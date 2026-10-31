@@ -79,6 +79,7 @@ resources:
   # sonarr disabled - migrated to sonarr-4k
   # - ./sonarr/ks.yaml
   - ./sportarr/ks.yaml
+  - ./tandoor/ks.yaml
   - ./tautulli/ks.yaml
   - ./twenty/ks.yaml
   - ./tqm/ks.yaml
