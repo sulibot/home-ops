@@ -236,7 +236,7 @@ spec:
                 import sys
 
                 # renovate: datasource=pypi depName=joserfc
-                version = "1.6.3"
+                version = "1.7.7"
                 packages = ["aiofiles", "jinja2", f"joserfc=={version}"]
                 venv = "/config/.venv"
                 python_bin = os.path.join(venv, "bin", "python")

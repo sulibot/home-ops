@@ -266,7 +266,7 @@ spec:
           import sys
 
           # renovate: datasource=pypi depName=joserfc
-          version = "1.6.3"
+          version = "1.7.7"
           packages = [
               "aiofiles",
               "jinja2",
