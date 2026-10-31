@@ -2,6 +2,12 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
     {
+      description: "Keep ImmichFrame compatible with Immich 3.1 until the server is upgraded to 3.2 or newer",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/immichframe/immichframe"],
+      allowedVersions: "/^v?1\\.0\\.38\\.0$/",
+    },
+    {
       description: "Upgrade generated Flux controllers with matching CRDs through the Flux distribution",
       matchManagers: ["kubernetes"],
       matchFileNames: ["kubernetes/clusters/**/flux-system/gotk-components.yaml"],
