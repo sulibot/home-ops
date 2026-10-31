@@ -5,16 +5,18 @@ postgres-vectorchord and a 5Gi CephFS media volume. Mealie is independent.
 
 ## Accounts
 
-The recovery administrator credentials are in the `tandoor` Login item in the
-1Password `Kubernetes` vault. Public signup is disabled. Authentik is restricted
-by the existing `policy-access-trusted` policy. To onboard a cook, sign in with
-the recovery account, create an invitation to the intended space with the `user`
-role, and have the cook open the invitation and sign in through Authentik. Repeat
-for the other cook. Invitation links are credentials; share them privately.
+The recovery administrator credentials and two single-use Home-space invitation
+links are in the `tandoor` Login item in the 1Password `Kubernetes` vault. Each
+invitation expires 30 days after creation. Each cook opens a different invitation,
+chooses **LOGIN** on the signup screen, then chooses **AUTHENTIK** and signs in.
+The provider is restricted by the existing `policy-access-trusted` policy. Public
+signup is disabled, and invitation links must be shared privately.
+
 Tandoor also creates a separate personal space for each new social user; select
-the shared space after accepting the invitation. No SSO user is automatically
-made a shared-space administrator. Configure preferred measurement units in each
-user's settings.
+Home after accepting the invitation. No SSO user is automatically made a
+shared-space administrator. Configure preferred measurement units in each
+user's settings. If invitations expire, sign in with the recovery administrator
+and create replacement Home invitations with the `user` role.
 
 ## Recovery
 
