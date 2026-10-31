@@ -1,4 +1,4 @@
-FROM quay.io/keycloak/keycloak:26.5.4
+FROM quay.io/keycloak/keycloak:26.8.1
 
 COPY policy.jar /opt/keycloak/providers/
 RUN /opt/keycloak/bin/kc.sh build
