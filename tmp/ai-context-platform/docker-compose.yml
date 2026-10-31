@@ -20,7 +20,7 @@ services:
       retries: 10
 
   qdrant:
-    image: qdrant/qdrant:v1.15.2
+    image: qdrant/qdrant:v1.20.0
     container_name: ai-context-qdrant
     restart: unless-stopped
     ports:
