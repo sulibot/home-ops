@@ -29,9 +29,6 @@ spec:
               tag: 2.7.2
             env:
               HOME: /tmp
-              DJANGO_SETTINGS_MODULE: recipes.home_settings
-              TANDOOR_HOME_SPACE_ID: "1"
-              TANDOOR_FAMILY_HOUSEHOLD_ID: "1"
               TZ: America/Los_Angeles
               TANDOOR_PORT: "8080"
               ALLOWED_HOSTS: tandoor.sulibot.com
@@ -126,16 +123,6 @@ spec:
               - identifier: app
                 port: 8080
     persistence:
-      auth:
-        type: configMap
-        name: tandoor-auth
-        globalMounts:
-          - path: /opt/recipes/recipes/home_settings.py
-            subPath: home_settings.py
-            readOnly: true
-          - path: /opt/recipes/cookbook/helper/home_auth.py
-            subPath: home_auth.py
-            readOnly: true
       media:
         existingClaim: tandoor-config
         globalMounts:
