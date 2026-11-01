@@ -5,12 +5,13 @@ postgres-vectorchord and a 5Gi CephFS media volume. Mealie is independent.
 
 ## Accounts
 
-The recovery administrator credentials and two single-use Home-space invitation
-links are in the `tandoor` Login item in the 1Password `Kubernetes` vault. Each
-invitation expires 30 days after creation. Each cook opens a different invitation,
-chooses **LOGIN** on the signup screen, then chooses **AUTHENTIK** and signs in.
-The provider is restricted by the existing `policy-access-trusted` policy. Public
-signup is disabled, and invitation links must be shared privately.
+The recovery administrator credentials and Home-space invitation links are in
+the `tandoor` Login item in the 1Password `Kubernetes` vault. The first invitation
+has been used; the second remains available until November 30, 2026. A new cook
+opens the unused invitation, chooses **LOGIN** on the signup screen, then chooses
+**AUTHENTIK** and signs in. The provider is restricted by the existing
+`policy-access-trusted` policy. Public signup is disabled, and invitation links
+must be shared privately.
 
 The first household operator has Home-space `admin` access for setup and recipe
 file imports; this does not grant site-wide superuser privileges. The second
