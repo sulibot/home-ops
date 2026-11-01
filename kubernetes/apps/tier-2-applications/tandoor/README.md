@@ -5,24 +5,38 @@ postgres-vectorchord and a 5Gi CephFS media volume. Mealie is independent.
 
 ## Accounts
 
-The recovery administrator credentials and two single-use Home-space invitation
-links are in the `tandoor` Login item in the 1Password `Kubernetes` vault. Each
-invitation expires 30 days after creation. Each cook opens a different invitation,
-chooses **LOGIN** on the signup screen, then chooses **AUTHENTIK** and signs in.
-The provider is restricted by the existing `policy-access-trusted` policy. Public
-signup is disabled, and invitation links must be shared privately.
+Choose **AUTHENTIK** on the login page. The existing Authentik
+`policy-access-trusted` policy gates sign-in. New trusted Authentik users are
+added to the shared Home / Family household as regular users; no invitation is
+needed. The first household operator has Home-space `admin` access for setup and
+recipe file imports, without site-wide superuser privileges. Existing accounts
+and memberships are not automatically relinked or promoted.
 
-The first household operator has Home-space `admin` access for setup and recipe
-file imports; this does not grant site-wide superuser privileges. The second
-invitation grants the `user` role in the shared Home / Family household. New
-social users also receive a personal space; select Home for shared work.
+The recovery administrator credentials are in the `tandoor` Login item in the
+1Password `Kubernetes` vault. Local account creation is disabled. To connect an
+existing local account to Authentik without creating another account, use
+**Settings → Account → External Provider → Authentik** while signed in.
 
 Home is initialized with Tandoor's English starter data, including U.S.
-customary units and conversions. Configure any per-user unit preferences in account settings. If an
-invitation expires, the Home administrator can create a replacement for the
-Family household with the `user` role. To connect an existing local account to
-Authentik without creating another account, use **Settings → Account → External
-Provider → Authentik** while signed in.
+customary units and conversions. Configure per-user unit preferences in account
+settings.
+
+### Authentication compatibility
+
+Tandoor 2.7.2 uses one `ENABLE_SIGNUP` switch for both local and social signup,
+so a small site-specific Django adapter in `app/auth` allows only the configured
+Authentik provider to register users while keeping local signup closed. It adds
+new users to the configured Home space and Family household by database IDs,
+with the `user` role. The Authentik provider's trusted policy is the access gate;
+email-based automatic linking is disabled. Missing or mismatched space/household
+IDs fail signup instead of granting access elsewhere. Verify these IDs after a
+fresh installation; database restores preserve them. Review and test the adapter
+against upstream authentication changes whenever upgrading Tandoor. Run the
+rollback-only regression check against the deployed pod from the repository root:
+
+```sh
+kubectl exec -i -n default deploy/tandoor -- /opt/recipes/venv/bin/python manage.py shell < kubernetes/apps/tier-2-applications/tandoor/tests/auth_regression.py
+```
 
 ## Recovery
 

@@ -4,3 +4,10 @@ resources:
   - helmrelease.yaml
   - ocirepository.yaml
   - externalsecret.yaml
+configMapGenerator:
+  - name: tandoor-auth
+    files:
+      - auth/home_settings.py
+      - auth/home_auth.py
+generatorOptions:
+  disableNameSuffixHash: true
