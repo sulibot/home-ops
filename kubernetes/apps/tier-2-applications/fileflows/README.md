@@ -35,6 +35,12 @@ The configuration snapshots and search receipts are stored under
 `/app/Data/Backups/arr-upgrade-first-20261029`. Notifiarr remains the profile sync
 owner. No automatic transition back to conversion has been configured.
 
+## Profile naming update, 2026-11-03
+
+Sonarr profile 7 is now named `4K WEB + 1080p Fallback`, matching the movie
+profile name. The name was saved in both Sonarr and its Notifiarr profile sync
+configuration. Quality ordering, scores, and assignments are unchanged.
+
 ## Initial setup, 2026-10-28
 
 - One server/internal agent, using the vendor's pinned `modded-26.10-stable` image.
