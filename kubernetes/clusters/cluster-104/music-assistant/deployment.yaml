@@ -55,7 +55,7 @@ spec:
             - name: data
               mountPath: /data
         - name: configure-network
-          image: ghcr.io/music-assistant/server:2.9.5
+          image: ghcr.io/music-assistant/server:2.10.9
           command:
             - python
             - -c
@@ -89,7 +89,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: app
-          image: ghcr.io/music-assistant/server:2.9.5
+          image: ghcr.io/music-assistant/server:2.10.9
           imagePullPolicy: IfNotPresent
           args:
             - --log-level=info
