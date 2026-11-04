@@ -18,7 +18,9 @@ spec:
         controlledValues: RequestsOnly
         minAllowed:
           cpu: 10m
-          memory: 64Mi
+          memory: 1Gi
         maxAllowed:
           cpu: "4"
-          memory: 16Gi
+          # Bound the reservation so Plex can schedule on the 16 GiB GPU nodes.
+          # RequestsOnly leaves actual memory usage unrestricted by this cap.
+          memory: 4Gi
