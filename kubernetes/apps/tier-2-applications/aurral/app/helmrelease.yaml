@@ -49,7 +49,9 @@ spec:
               HEALTH_SERVER_ADDRESS: :9999
               WIREGUARD_ALLOWED_IPS: 0.0.0.0/0
               # Cluster DNS, Lidarr, and telemetry must remain reachable locally.
-              FIREWALL_OUTBOUND_SUBNETS: 10.101.224.0/20,10.101.96.0/24,fd00:101:224::/60,fd00:101:96::/108
+              # Install service routes before pod routes: the IPv6 pod CIDR
+              # contains Cilium's gateway and otherwise breaks route setup.
+              FIREWALL_OUTBOUND_SUBNETS: 10.101.96.0/24,fd00:101:96::/108,10.101.224.0/20,fd00:101:224::/60
             envFrom:
               - secretRef:
                   name: aurral-nordvpn-secret
