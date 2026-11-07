@@ -94,6 +94,25 @@ spec:
                         env:
                           - name: SUPABASE_URL
                             value: http://context-fabric-supabase-envoy:8000
+          # Studio and Edge Functions share a ReadWriteOnce functions PVC.
+          # Keep both on one node, including after eviction or a worker reboot.
+          - target:
+              kind: Deployment
+              name: context-fabric-supabase-(studio|functions)
+            patch: |-
+              - op: add
+                path: /spec/template/spec/affinity
+                value:
+                  podAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      - topologyKey: kubernetes.io/hostname
+                        labelSelector:
+                          matchLabels:
+                            app.kubernetes.io/instance: context-fabric
+                          matchExpressions:
+                            - key: app.kubernetes.io/name
+                              operator: In
+                              values: [supabase-studio, supabase-functions]
           # Most Supabase services bind IPv4 only. Make those internal Service
           # records unambiguous for Envoy. Its separately-managed Service is IPv6.
           - target:
