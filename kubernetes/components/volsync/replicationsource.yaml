@@ -42,6 +42,9 @@ spec:
     cacheAccessModes:
       - "${VOLSYNC_CACHE_ACCESSMODES:=ReadWriteMany}"
     cacheCapacity: "${VOLSYNC_CACHE_CAPACITY:=5Gi}"
+    # Leave room for indexes and logs; Kopia's defaults can fill a 5Gi cache.
+    metadataCacheSizeLimitMB: ${VOLSYNC_METADATA_CACHE_LIMIT_MB:=2048}
+    contentCacheSizeLimitMB: ${VOLSYNC_CONTENT_CACHE_LIMIT_MB:=512}
 
     # Security context for backup mover
     moverSecurityContext:
