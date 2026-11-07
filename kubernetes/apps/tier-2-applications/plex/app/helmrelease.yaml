@@ -75,6 +75,9 @@ spec:
               requests:
                 cpu: 100m
                 memory: 1Gi
+              limits:
+                # Contain runaway background analysis on the 16 GiB GPU nodes.
+                memory: 6Gi
     defaultPodOptions:
       annotations:
         k8s.v1.cni.cncf.io/networks: |-
