@@ -82,7 +82,7 @@ spec:
               runAsGroup: 0
               capabilities:
                 drop: ["ALL"]
-                add: ["NET_ADMIN"]
+                add: ["NET_ADMIN", "CHOWN", "DAC_OVERRIDE"]
             resources:
               requests:
                 cpu: 10m
