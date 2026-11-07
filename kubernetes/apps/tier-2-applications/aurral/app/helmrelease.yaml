@@ -24,6 +24,22 @@ spec:
       aurral:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          init-vpn-directory:
+            image:
+              repository: public.ecr.aws/docker/library/busybox
+              tag: 1.37.0
+            command:
+              - sh
+              - -ec
+              - |
+                mkdir -p /tmp/gluetun
+                chmod 0755 /tmp/gluetun
+                chown 1000:1000 /tmp/gluetun
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
         containers:
           gluetun:
             image:
