@@ -40,6 +40,8 @@ spec:
     cacheAccessModes:
       - "ReadWriteMany"
     cacheCapacity: "1Gi"
+    metadataCacheSizeLimitMB: 512
+    contentCacheSizeLimitMB: 128
 
     # Security context for backup mover
     moverSecurityContext:
