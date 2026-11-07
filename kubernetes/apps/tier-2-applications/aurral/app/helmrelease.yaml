@@ -48,6 +48,8 @@ spec:
             env:
               HEALTH_SERVER_ADDRESS: :9999
               WIREGUARD_ALLOWED_IPS: 0.0.0.0/0
+              # Cluster DNS, Lidarr, and telemetry must remain reachable locally.
+              FIREWALL_OUTBOUND_SUBNETS: 10.101.224.0/20,10.101.96.0/24,fd00:101:224::/60,fd00:101:96::/108
             envFrom:
               - secretRef:
                   name: aurral-nordvpn-secret
