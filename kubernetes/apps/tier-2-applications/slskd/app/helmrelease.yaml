@@ -43,7 +43,8 @@ spec:
                 mkdir -p /tmp/gluetun
                 echo "[init] Setting permissions"
                 chown -R 1000:1000 /media/Downloads/soulseek/complete /media/Downloads/soulseek/incomplete /media/Downloads/soulseek/shared 2>/dev/null || true
-                chown -R 1000:1000 /tmp/gluetun
+                chmod 0755 /tmp/gluetun
+                chown 0:0 /tmp/gluetun
                 echo "[init] Initialization complete"
             securityContext:
               runAsUser: 0
@@ -239,9 +240,11 @@ spec:
             directories:
               downloads: /media/Downloads/soulseek/complete
               incomplete: /media/Downloads/soulseek/incomplete
-            permissions:
-              file:
-                mode: 750
+            transfers:
+              download:
+                destination:
+                  permissions:
+                    mode: 750
             shares:
               directories:
                 - /media/music
