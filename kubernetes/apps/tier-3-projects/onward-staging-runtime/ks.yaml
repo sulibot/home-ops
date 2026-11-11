@@ -22,6 +22,14 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
+  # The staging image: written by the ResourceSet onward-staging-image
+  # (image-automation/). Without the ConfigMap, the default in
+  # deployment.yaml applies.
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: onward-staging-image
+        optional: true
   wait: true
   healthChecks:
     - apiVersion: apps/v1
@@ -31,8 +39,8 @@ spec:
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 # Rolls staging to each new Onward main build: see image-automation/.
-# It does not depend on onward-staging-runtime, so a broken rollout can
-# still be replaced by the next build.
+# Nothing in it writes to git. It does not depend on onward-staging-runtime,
+# so a broken rollout can still be replaced by the next build.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
