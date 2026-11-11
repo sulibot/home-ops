@@ -103,11 +103,15 @@ spec:
             - port: "443"
               protocol: TCP
     # zot (10.200.0.51): push the image; pull the Node base image through its
-    # docker.io mirror. Google Chrome for the check scripts.
+    # docker.io mirror. Google Chrome for the check scripts. The Onward pages
+    # load Google Fonts (apps/web/src/app/layout.tsx); without them the page
+    # load event waits for the dropped connections and the checks time out.
     - toFQDNs:
         - matchName: zot.sulibot.com
         - matchName: dl.google.com
         - matchName: onward-staging.sulibot.com
+        - matchName: fonts.googleapis.com
+        - matchName: fonts.gstatic.com
       toPorts:
         - ports:
             - port: "443"
