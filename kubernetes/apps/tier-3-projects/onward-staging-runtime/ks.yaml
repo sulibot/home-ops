@@ -26,6 +26,11 @@ spec:
   # (image-automation/). Without the ConfigMap, the default in
   # deployment.yaml applies.
   postBuild:
+    # Flux substitutes only when at least one variable is set. This one keeps
+    # the ${ONWARD_STAGING_IMAGE:=...} default working while the ConfigMap
+    # does not exist; nothing reads it.
+    substitute:
+      ONWARD_STAGING_SUBSTITUTION: enabled
     substituteFrom:
       - kind: ConfigMap
         name: onward-staging-image
