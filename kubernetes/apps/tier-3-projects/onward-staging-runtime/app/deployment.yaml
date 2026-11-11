@@ -52,11 +52,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          # Flux image automation sets this line on each new Onward main
-          # build (../image-automation). Do not edit it by hand while the
-          # automation runs; see the runbook in sulibot/onward,
+          # Flux substitutes the newest Onward main build here, tag@digest,
+          # from the ConfigMap flux-system/onward-staging-image
+          # (../image-automation). The value after := applies when that
+          # ConfigMap does not exist. To pin an image, replace the whole value
+          # with a fixed image; see the runbook in sulibot/onward,
           # docs/staging-deployment.md.
-          image: zot.sulibot.com/onward-staging@sha256:f6f3646672a296f20606072f2ff703c067aed87cd8b9f91a2b391e2f8c42fc25 # {"$imagepolicy": "flux-system:onward-staging"}
+          image: ${ONWARD_STAGING_IMAGE:=zot.sulibot.com/onward-staging@sha256:f6f3646672a296f20606072f2ff703c067aed87cd8b9f91a2b391e2f8c42fc25}
           imagePullPolicy: IfNotPresent
           env:
             # The cluster uses IPv6 pod addresses; Node's wildcard IPv6 socket
