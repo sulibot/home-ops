@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/image.toolkit.fluxcd.io/imagepolicy_v1.json
+# Picks the newest build that the Onward staging workflow published:
+# main-<UTC start time, yyyymmddHHMMSS>-<first 12 characters of the commit>.
+# A rebuild of an older commit (the rollback path) gets a newer time, so it wins.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: onward-staging
+  labels:
+    app.kubernetes.io/name: onward-staging
+spec:
+  imageRepositoryRef:
+    name: onward-staging
+  # Write tag@digest, so the cluster still pulls by digest. Each tag is
+  # pushed once, so the first digest seen stays correct.
+  digestReflectionPolicy: IfNotPresent
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]{14})-[0-9a-f]{12}$'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc

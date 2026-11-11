@@ -1,0 +1,19 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/gitrepository_v1.json
+# A second, writable view of this repository. Only the image automation uses
+# it; Flux still applies the cluster from the read-only flux-system source.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: home-ops-image-updates
+spec:
+  interval: 1h
+  url: ssh://git@github.com/sulibot/home-ops
+  ref:
+    branch: main
+  secretRef:
+    name: home-ops-image-updates
+  # Keep the stored artifact small: nothing applies it.
+  ignore: |
+    /*
+    !/kubernetes/apps/tier-3-projects/onward-staging-runtime/
