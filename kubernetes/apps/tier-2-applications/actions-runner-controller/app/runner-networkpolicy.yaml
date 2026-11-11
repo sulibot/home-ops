@@ -52,3 +52,88 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+---
+# The Onward staging deploy lane (runners/onward-staging). It needs what
+# onward-runner has, plus zot to push the image, the internal gateway to check
+# staging, and the Google Chrome and Ubuntu package hosts, because the check
+# scripts drive Google Chrome. It still reaches no other private network.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: actions-runner-jobs-onward-staging
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: actions-runner-system
+      actions.github.com/scale-set-name: onward-staging-runner
+      app.kubernetes.io/component: runner
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  # One empty rule turns ingress enforcement on without allowing any source.
+  ingress:
+    - {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Checkout, Actions, artifacts and npm: the same list as onward-runner.
+    - toFQDNs:
+        - matchName: github.com
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubassets.com"
+        - matchPattern: "*.githubusercontent.com"
+        - matchPattern: "*.actions.githubusercontent.com"
+        - matchPattern: "*.blob.core.windows.net"
+        - matchName: registry.npmjs.org
+        - matchPattern: "*.npmjs.org"
+        - matchPattern: "*.npmjs.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # zot (10.200.0.51): push the image; pull the Node base image through its
+    # docker.io mirror. Google Chrome for the check scripts.
+    - toFQDNs:
+        - matchName: zot.sulibot.com
+        - matchName: dl.google.com
+        - matchName: onward-staging.sulibot.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Staging is served by gateway-internal. Cilium hands traffic for a
+    # Gateway address to its Envoy, which has the reserved ingress identity.
+    # The gateway routes by host name, so this lane can reach every site on
+    # the gateways, as any LAN client can. The sites keep their own sign-in.
+    - toEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Packages that Google Chrome needs (apt uses plain HTTP; files are
+    # signed). The runner image also lists the git-core PPA.
+    - toFQDNs:
+        - matchName: archive.ubuntu.com
+        - matchName: security.ubuntu.com
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: ppa.launchpadcontent.net
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

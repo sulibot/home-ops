@@ -1,0 +1,12 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Flux rolls staging to each new Onward main build. See the runbook in
+# sulibot/onward: docs/staging-deployment.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./externalsecret.yaml
+  - ./gitrepository.yaml
+  - ./imagerepository.yaml
+  - ./imagepolicy.yaml
+  - ./imageupdateautomation.yaml

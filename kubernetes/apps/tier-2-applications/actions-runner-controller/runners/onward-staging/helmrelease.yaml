@@ -1,0 +1,171 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+# The Onward staging deploy lane. Only sulibot/onward
+# .github/workflows/staging.yml runs here: it builds Dockerfile.demo, pushes
+# the image to zot and checks https://onward-staging.sulibot.com after Flux
+# rolls it out. Candidate code (branches, pull requests) runs on onward-runner,
+# which has no private network access.
+#
+# Because this lane can write to zot and reach the internal gateway, keep it
+# off every other workflow. GitHub Free cannot limit a self-hosted runner to
+# one workflow or branch, so this rule is a convention: review any onward
+# workflow that names onward-staging-runner.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &name onward-staging-runner
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: gha-runner-scale-set
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    githubConfigUrl: https://github.com/sulibot/onward
+    githubConfigSecret: onward-staging-runner-secret
+    minRunners: 0
+    # One deploy at a time. The workflow also queues runs behind each other.
+    maxRunners: 1
+    # Same bounded label sets as onward-runner: no refs, job names or run IDs.
+    listenerMetrics:
+      counters:
+        gha_started_jobs_total:
+          labels: [repository, event_name, job_workflow_name]
+        gha_completed_jobs_total:
+          labels: [repository, event_name, job_result, job_workflow_name]
+      gauges:
+        gha_assigned_jobs:
+          labels: [name, repository]
+        gha_running_jobs:
+          labels: [name, repository]
+        gha_registered_runners:
+          labels: [name, repository]
+        gha_busy_runners:
+          labels: [name, repository]
+        gha_min_runners:
+          labels: [name, repository]
+        gha_max_runners:
+          labels: [name, repository]
+        gha_desired_runners:
+          labels: [name, repository]
+        gha_idle_runners:
+          labels: [name, repository]
+      histograms:
+        gha_job_startup_duration_seconds:
+          labels: [repository, event_name, job_workflow_name]
+          buckets: [1, 2, 5, 10, 20, 30, 60, 120, 300, 600]
+        gha_job_execution_duration_seconds:
+          labels: [repository, event_name, job_result, job_workflow_name]
+          buckets: [5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 7200]
+    controllerServiceAccount:
+      name: actions-runner-controller
+      namespace: actions-runner-system
+    template:
+      spec:
+        # Workflow steps must not receive Kubernetes API credentials or the
+        # ARC App secret.
+        automountServiceAccountToken: false
+        # Query GitHub and registry names as absolute names first, so that
+        # Cilium's FQDN cache records the names the egress policy allows.
+        dnsConfig:
+          options:
+            - name: ndots
+              value: "1"
+        securityContext:
+          fsGroup: 1001
+          fsGroupChangePolicy: OnRootMismatch
+        initContainers:
+          # BuildKit runs as a native sidecar: it starts before the runner and
+          # stops after it. Talos sets user.max_user_namespaces=0, so rootless
+          # BuildKit cannot start; rootful BuildKit needs privileged mode
+          # (actions-runner-system is exempt from Pod Security admission).
+          # The runner reaches it only through the Unix socket below. Build
+          # steps run in BuildKit's own runc sandbox, without privileges: the
+          # daemon allows no insecure entitlements.
+          - name: buildkitd
+            image: docker.io/moby/buildkit:v0.34.2@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
+            restartPolicy: Always
+            args:
+              - --addr
+              - unix:///run/buildkit/buildkitd.sock
+              # The runner user is in group 1001 (pod fsGroup).
+              - --group
+              - "1001"
+            securityContext:
+              privileged: true
+            startupProbe:
+              exec:
+                command: [buildctl, --addr, unix:///run/buildkit/buildkitd.sock, debug, workers]
+              periodSeconds: 2
+              failureThreshold: 30
+            volumeMounts:
+              - name: buildkit-socket
+                mountPath: /run/buildkit
+              - name: buildkit-state
+                mountPath: /var/lib/buildkit
+            resources:
+              # pnpm install and next build run inside BuildKit.
+              requests:
+                cpu: "1"
+                memory: 3Gi
+              limits:
+                memory: 8Gi
+        volumes:
+          - name: work
+            ephemeral:
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  storageClassName: csi-rbd-rbd-vm-sc
+                  resources:
+                    requests:
+                      storage: 25Gi
+          # BuildKit layers stay off the node disk, which also holds the
+          # container image cache.
+          - name: buildkit-state
+            ephemeral:
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  storageClassName: csi-rbd-rbd-vm-sc
+                  resources:
+                    requests:
+                      storage: 30Gi
+          - name: buildkit-socket
+            emptyDir: {}
+        containers:
+          - name: runner
+            image: ghcr.io/home-operations/actions-runner:2.337.0@sha256:8b8e8326b5a08e658a0a41cfd2867afab69ca4194a152f986aa6fcd5430d09e7
+            command:
+              - /home/runner/run.sh
+            volumeMounts:
+              - name: work
+                mountPath: /home/runner/_work
+              - name: buildkit-socket
+                mountPath: /run/buildkit
+            env:
+              - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
+                value: "false"
+              - name: BUILDKIT_HOST
+                value: unix:///run/buildkit/buildkitd.sock
+            resources:
+              # The check job runs Google Chrome here.
+              requests:
+                cpu: 500m
+                memory: 1Gi
+              limits:
+                cpu: "4"
+                memory: 4Gi
