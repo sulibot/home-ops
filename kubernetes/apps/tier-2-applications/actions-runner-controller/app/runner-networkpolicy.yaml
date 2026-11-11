@@ -114,13 +114,24 @@ spec:
               protocol: TCP
     # Staging is served by gateway-internal. Cilium hands traffic for a
     # Gateway address to its Envoy, which has the reserved ingress identity.
-    # The gateway routes by host name, so this lane can reach every site on
-    # the gateways, as any LAN client can. The sites keep their own sign-in.
     - toEntities:
         - ingress
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
+    # Envoy then checks this policy against the backend that the route picks,
+    # not the gateway: without this rule it answered 403 (Hubble showed
+    # "to-proxy FORWARDED" and no flow to engineering-staging). So through the
+    # gateway this lane reaches the staging pod only, not the other sites.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: engineering-staging
+            k8s:app.kubernetes.io/name: onward-staging
+            k8s:app.kubernetes.io/component: web
+      toPorts:
+        - ports:
+            - port: "3000"
               protocol: TCP
     # Packages that Google Chrome needs (apt uses plain HTTP; files are
     # signed). The runner image also lists the git-core PPA.
