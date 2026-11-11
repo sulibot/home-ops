@@ -115,10 +115,12 @@ spec:
               - name: buildkit-state
                 mountPath: /var/lib/buildkit
             resources:
-              # pnpm install and next build run inside BuildKit.
+              # pnpm install and next build run inside BuildKit. The request
+              # is below the build's peak: memory requests on the workers are
+              # 76-99% full, while real use is about half. The limit holds.
               requests:
                 cpu: "1"
-                memory: 3Gi
+                memory: 2Gi
               limits:
                 memory: 8Gi
         volumes:
@@ -162,10 +164,11 @@ spec:
               - name: BUILDKIT_HOST
                 value: unix:///run/buildkit/buildkitd.sock
             resources:
-              # The check job runs Google Chrome here.
+              # The check job runs Google Chrome here; during a build this
+              # container is idle.
               requests:
-                cpu: 500m
-                memory: 1Gi
+                cpu: 250m
+                memory: 512Mi
               limits:
                 cpu: "4"
                 memory: 4Gi
