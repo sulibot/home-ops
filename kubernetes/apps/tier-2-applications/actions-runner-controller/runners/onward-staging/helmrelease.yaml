@@ -89,7 +89,7 @@ spec:
           # BuildKit runs as a native sidecar: it starts before the runner and
           # stops after it. Talos sets user.max_user_namespaces=0, so rootless
           # BuildKit cannot start; rootful BuildKit needs privileged mode
-          # (actions-runner-system is exempt from Pod Security admission).
+          # (../../namespace.yaml sets Pod Security to privileged).
           # The runner reaches it only through the Unix socket below. Build
           # steps run in BuildKit's own runc sandbox, without privileges: the
           # daemon allows no insecure entitlements.
