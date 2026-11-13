@@ -498,19 +498,20 @@ spec:
 
         - alert: CephFSMountDoctorFailing
           expr: |
-            kube_job_status_failed{namespace="ceph-csi", job_name=~"cephfs-mount-doctor-.*"} > 0
+            (kube_job_failed{namespace="ceph-csi", job_name=~"cephfs-mount-doctor-.*", condition="true"} == 1)
+            unless on(namespace, job_name) kube_job_superseded_by_success
           for: 0m
           labels:
             severity: critical
             layer: ceph
             service: storage
           annotations:
-            summary: "cephfs-mount-doctor found a dead CephFS session it could not auto-heal"
+            summary: "cephfs-mount-doctor failed without a subsequent successful run"
             description: |
-              The mount-doctor CronJob found at least one pod with a dead CephFS kernel-client
-              session and could not remediate it automatically (delete failed, or AUTO_FIX is
-              disabled). Check the Job's logs in Loki ({namespace="ceph-csi", app="cephfs-mount-doctor"})
-              for the affected pod and node.
+              The latest unrecovered mount-doctor failure may indicate an unhealed CephFS
+              session, a timeout, or a Kubernetes API error. Check the Job conditions and logs
+              in Loki ({namespace="ceph-csi", app="cephfs-mount-doctor"}) before remediation.
+              Historical failures stop alerting once a newer run succeeds.
             runbook_url: "docs/runbooks/ceph-recovery-too-slow.md"
 
         - alert: CephScrubOverdue

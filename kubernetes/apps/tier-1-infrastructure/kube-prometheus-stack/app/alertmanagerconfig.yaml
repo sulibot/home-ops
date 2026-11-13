@@ -110,26 +110,15 @@ spec:
             key: BUDDY_HEARTBEAT_URL
     - name: pushover
       pushoverConfigs:
-        - html: true
+        # Pushover accepts 1024 characters. Keep three bounded summaries and
+        # link to Alertmanager for the full descriptions and remaining alerts.
+        - html: false
           message: |-
-            {{- range .Alerts }}
-              {{- if ne .Annotations.description "" }}
-                {{ .Annotations.description }}
-              {{- else if ne .Annotations.summary "" }}
-                {{ .Annotations.summary }}
-              {{- else if ne .Annotations.message "" }}
-                {{ .Annotations.message }}
-              {{- else }}
-                Alert description not available
-              {{- end }}
-              {{- if gt (len .Labels.SortedPairs) 0 }}
-                <small>
-                  {{- range .Labels.SortedPairs }}
-                    <b>{{ .Name }}:</b> {{ .Value }}
-                  {{- end }}
-                </small>
-              {{- end }}
-            {{- end }}
+            {{ len .Alerts }} alert(s); showing up to 3. Full details in Alertmanager.
+            {{ range $i, $alert := .Alerts }}{{ if lt $i 3 }}
+            {{ printf "%.32s" $alert.Labels.namespace }}/{{ if $alert.Labels.job_name }}{{ printf "%.80s" $alert.Labels.job_name }}{{ else if $alert.Labels.entity }}{{ printf "%.80s" $alert.Labels.entity }}{{ else if $alert.Labels.pod }}{{ printf "%.80s" $alert.Labels.pod }}{{ else }}{{ printf "%.80s" $alert.Labels.instance }}{{ end }}
+            {{ if $alert.Annotations.summary }}{{ printf "%.160s" $alert.Annotations.summary }}{{ else if $alert.Annotations.description }}{{ printf "%.160s" $alert.Annotations.description }}{{ else }}Alert details available in Alertmanager{{ end }}
+            {{ end }}{{ end }}
           priority: |-
             {{ if eq .Status "firing" }}1{{ else }}0{{ end }}
           sendResolved: true

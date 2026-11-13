@@ -60,6 +60,27 @@ spec:
                   else
                     echo "pgsodium configuration is already initialized"
                   fi
+          # Readiness must reflect PostgreSQL accepting connections, not merely
+          # a running container. Do not restart a recovering database on probe failure.
+          - target:
+              kind: StatefulSet
+              name: context-fabric-supabase-db
+            patch: |-
+              apiVersion: apps/v1
+              kind: StatefulSet
+              metadata:
+                name: context-fabric-supabase-db
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: supabase-db
+                        readinessProbe:
+                          exec:
+                            command: [pg_isready, -h, "127.0.0.1", -p, "5432"]
+                          periodSeconds: 10
+                          timeoutSeconds: 5
+                          failureThreshold: 3
           # Chart 0.7.2 hardcodes its internal gateway URLs to Kong. Keep
           # upstream Supabase API behavior but point consumers at Envoy.
           - target:
