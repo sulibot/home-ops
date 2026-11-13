@@ -55,7 +55,11 @@ automation treated reconnection as a brightness adjustment and invoked
 condition tests passed; cluster-104 deployed it and the live condition was read
 back after rollout. The automation file is a ConfigMap subPath mount, so the
 initial attempt to save through the HA API returned `EBUSY`; it was deployed
-through GitOps instead. No direct light commands were sent.
+through GitOps instead. History confirmed five bulbs were off immediately before
+the reload and turned on during reconnect. After the guard deployed, restored
+those bulbs to their prior off state, checking for intervening state changes.
+The pre-existing master-bedroom switch/bulb mismatch is left visible; changing
+its physical switch state simply to clear the alert would override user intent.
 
 The following remained unavailable after reload:
 
