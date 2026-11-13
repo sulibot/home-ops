@@ -36,7 +36,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/jbops
-              tag: 2026.3.7@sha256:5fec0ac64f8093a526a2f37b24ded12dc7375fcda3ddcc2917dbf6716bd0fe44
+              tag: 2026.10.21@sha256:ac1c410b6e1d18b352fe07c32c0b72b8a8b76578099b932c1561f748ded19e92
             env:
               JBOPS__SCRIPT_PATH: utility/off_deck.py
             args:
