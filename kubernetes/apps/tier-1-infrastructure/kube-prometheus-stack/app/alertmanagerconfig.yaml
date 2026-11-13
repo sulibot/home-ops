@@ -22,6 +22,8 @@ spec:
             matchType: =
       - receiver: buddy-heartbeat
         groupWait: 0s
+        # Avoid inheriting the 5m group interval, which delays this heartbeat.
+        groupInterval: 2m30s
         repeatInterval: 2m30s
         matchers:
           - name: alertname
