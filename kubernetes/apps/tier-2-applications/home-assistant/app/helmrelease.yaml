@@ -30,7 +30,7 @@ spec:
           bootstrap-hacs:
             image:
               repository: python
-              tag: 3.14-alpine
+              tag: 3.15-alpine
             command:
               - /bin/sh
               - -ec
@@ -79,7 +79,7 @@ spec:
           bootstrap-auth-oidc:
             image:
               repository: python
-              tag: 3.14-alpine
+              tag: 3.15-alpine
             command:
               - /bin/sh
               - -ec
@@ -225,7 +225,7 @@ spec:
           bootstrap-auth-oidc-deps:
             image:
               repository: python
-              tag: 3.14-alpine
+              tag: 3.15-alpine
             command:
               - /bin/sh
               - -ec
