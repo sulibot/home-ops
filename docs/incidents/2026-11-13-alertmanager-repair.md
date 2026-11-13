@@ -51,8 +51,11 @@ Reloaded the existing Matter and Sonos integrations through the authenticated
 Home Assistant API. Both reloads succeeded. The master-bedroom mismatch cleared,
 but a living-room mismatch appeared. Inspection showed the existing brightness
 automation treated reconnection as a brightness adjustment and invoked
-`light.turn_on`. This requires a guard against missing/unknown/unavailable prior
-states before further integration reloads. No direct light commands were sent.
+`light.turn_on`. PR #546 adds a guard against missing/unknown/unavailable prior states. Nine
+condition tests passed; cluster-104 deployed it and the live condition was read
+back after rollout. The automation file is a ConfigMap subPath mount, so the
+initial attempt to save through the HA API returned `EBUSY`; it was deployed
+through GitOps instead. No direct light commands were sent.
 
 The following remained unavailable after reload:
 
@@ -69,3 +72,39 @@ weak -89 dBm / link-quality-1 neighbor alongside healthy links. Device power,
 battery, and Thread placement need physical checks if these devices do not
 recover. Commissioning records were preserved. Alerts remain active because
 these are real reachability failures, not notification defects.
+
+
+## Deployment follow-up
+
+Two live resources (`cross-layer-storage-rules` and AlertmanagerConfig
+`alertmanager`) had `kustomize.toolkit.fluxcd.io/reconcile=disabled` annotations.
+After comparing live/repository specifications, restored reconciliation. The
+Alertmanager override had Linear delivery paused and critical email enabled;
+PR #546 preserves those effective routes in Git before restoring management.
+The notification template was first narrowly patched without changing routes.
+
+Alertmanager also warned that Watchdog inherited a 5-minute group interval,
+which overrode its intended 2m30s repeat interval. Its group interval now
+explicitly matches the 2m30s repeat interval.
+
+## Plex OOM mitigation
+
+During verification Plex hit its 6 GiB limit again at 12:24:24 UTC. Metrics
+showed a similar spike before the preceding restart at 11:55 UTC. Logs showed
+loudness analysis repeatedly stuck on movie item 8516, John Carter, followed by
+`udc input failed` messages. This is consistent with the reported Plex loudness
+analysis memory issue; the specific decoder fault is not independently proven.
+
+Disabled `enableLoudnessAnalysis` through Plex's supported library preferences
+API for Movies (3), TV Shows (1), and Sports (8), then read back `false` for all
+three. Music/audio analysis and other scheduled maintenance remain enabled.
+This stops new video loudness measurements, so loudness normalization may be
+unavailable on videos not already analyzed. Existing measurements remain.
+No media files or library records were removed, and the 6 GiB memory cap remains.
+The in-flight analysis was not API-cancellable. With zero active playback
+sessions, restarted Plex once to terminate it and load the saved preferences.
+Re-enable these per-library preferences after a fixed Plex version is verified.
+
+References:
+- [Plex audio enhancement settings](https://support.plex.tv/articles/audio-track-enhancements-for-video/)
+- [Plex report of loudness-analysis memory growth](https://forums.plex.tv/t/loudness-analysis-grows-to-10-gb-ram-and-triggers-host-oom-killer/943677)
