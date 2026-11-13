@@ -116,6 +116,17 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    # Podium's deploy (onward .github/workflows/design-review-deploy.yml) may
+    # run on this main-only lane: wrangler talks to the Cloudflare API, and the
+    # job then checks that podium.sulibot.com answers. Only main runs here, so
+    # the Cloudflare token never reaches candidate code on onward-runner.
+    - toFQDNs:
+        - matchName: api.cloudflare.com
+        - matchName: podium.sulibot.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
     # Staging is served by gateway-internal. Cilium hands traffic for a
     # Gateway address to its Envoy, which has the reserved ingress identity.
     - toEntities:
