@@ -92,7 +92,7 @@ apps:
     createNamespace: true
     image:
       repository: ghcr.io/home-operations/sabnzbd
-      tag: 4.5.5
+      tag: 5.1.3
     env:
       - name: PUID
         value: "911"
