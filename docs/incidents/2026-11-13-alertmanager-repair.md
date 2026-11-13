@@ -48,8 +48,11 @@ A retained warning can persist after current latency recovers.
 ## Home Assistant physical-device follow-up
 
 Reloaded the existing Matter and Sonos integrations through the authenticated
-Home Assistant API. Both reloads succeeded. The master-bedroom switch mismatch
-alert cleared afterward; no light/switch state was commanded.
+Home Assistant API. Both reloads succeeded. The master-bedroom mismatch cleared,
+but a living-room mismatch appeared. Inspection showed the existing brightness
+automation treated reconnection as a brightness adjustment and invoked
+`light.turn_on`. This requires a guard against missing/unknown/unavailable prior
+states before further integration reloads. No direct light commands were sent.
 
 The following remained unavailable after reload:
 
