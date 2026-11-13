@@ -27,9 +27,9 @@ spec:
           - name: alertname
             value: Watchdog
             matchType: =
-      # Linear is the durable work log: always create/update a ticket for
-      # actionable severities, regardless of time of day.
-      - receiver: linear
+      # Preserve the active operator override: Linear ticket delivery is paused.
+      # The receiver definition remains available for an explicit re-enable.
+      - receiver: blackhole
         continue: true
         matchers:
           - name: severity
@@ -52,9 +52,8 @@ spec:
           - name: severity
             value: warning
             matchType: =
-      # Email delivery through smtp-relay/Resend is temporarily paused.
-      # Change this receiver back to `email` to resume delivery.
-      - receiver: blackhole
+      # Preserve the active critical-email route through smtp-relay/Resend.
+      - receiver: email
         matchers:
           - name: severity
             value: critical
