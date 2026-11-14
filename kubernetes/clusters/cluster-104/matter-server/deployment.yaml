@@ -52,7 +52,7 @@ spec:
               mountPath: /data
       containers:
         - name: app
-          image: ghcr.io/matter-js/matterjs-server:1.2.6@sha256:b9d7a5c9b1cd61dc15d19b9003290e5518fd58ddf240a650252dcafec9281eba
+          image: ghcr.io/matter-js/matterjs-server:1.6.0@sha256:9eb98c839d0b4b07f9230b96ad52de570f7f2a7c286c5992b4c04b6b26c08a3f
           imagePullPolicy: IfNotPresent
           args:
             - --storage-path=/data
