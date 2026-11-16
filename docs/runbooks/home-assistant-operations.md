@@ -1,5 +1,18 @@
 # Home Assistant Runbook
 
+## Latest deployment note (2026-11-16)
+
+Cluster-104 now runs Home Assistant **2026.11.1** after Renovate PR #443.
+HA migrated HACS to the built-in Marketplace; manage community integrations
+there. The older HACS bootstrap description below documents the pre-migration
+setup, and the legacy init container remains configured. Eufy Clean Rooms
+0.2.5 is installed alongside the repaired local Robovac controls. Its eight
+numbered rooms still require a supervised physical targeting test before
+cleaning automations are enabled.
+
+See [the update and installation record](../incidents/2026-11-16-home-assistant-update-eufy-rooms.md)
+for backups, verification, entity names and remaining validation.
+
 ## Purpose
 
 This runbook documents the Home Assistant deployment in the home-ops cluster from three perspectives:
