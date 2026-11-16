@@ -8,8 +8,9 @@ there. The older HACS bootstrap description below documents the pre-migration
 setup, and the legacy init container remains configured. Eufy Clean Rooms
 0.2.5 is installed alongside the repaired local Robovac controls. Map2 room 3
 was matched to the kitchen using the robot's room-outline geometry. The
-supervised kitchen test reports room cleaning; physical confirmation remains
-pending. Cleaning automations remain disabled.
+supervised kitchen vacuum test passed: HA reported room cleaning and the user
+confirmed the robot was cleaning the kitchen. Cleaning automations remain
+disabled; mop targeting and other rooms are untested.
 
 See [the update and installation record](../incidents/2026-11-16-home-assistant-update-eufy-rooms.md)
 for backups, verification, entity names and remaining validation.

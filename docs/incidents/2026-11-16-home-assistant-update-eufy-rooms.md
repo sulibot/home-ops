@@ -86,13 +86,14 @@ Sent one `eufy_clean_rooms.clean_rooms` command targeting
 `vacuum.eufy_s1_pro_rooms`, `rooms: [3]`, `clean_type: vacuum`,
 `fan_speed: Standard`, `clean_times: 1`. After its next status poll, HA reported
 `cleaning`, task `room cleaning`, Standard suction and no error codes.
-The user has been asked to confirm it physically enters and cleans the kitchen;
-that observation is still pending. The integration sets `cleaning_rooms`
-optimistically, so that attribute alone is not physical validation.
+The user physically confirmed: **“Yes, it is cleaning the kitchen.”** This
+validates the kitchen vacuum command end to end. The integration sets
+`cleaning_rooms` optimistically; the user's observation provides the physical
+validation beyond that attribute.
 
-No new cleaning automations were created or enabled. Keep unattended cleaning
-disabled until physical room targeting is confirmed. Mop targeting has not
-been tested.
+No new cleaning automations were created or enabled. Kitchen vacuum targeting
+is verified, but no schedule or household triggers have been selected. Mop
+targeting and the other seven rooms have not been tested.
 
 The integration installation and account setup live on the HA config PVC and
 are covered by its scheduled backup. This document records the operation; it
