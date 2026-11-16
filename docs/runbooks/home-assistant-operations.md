@@ -6,9 +6,10 @@ Cluster-104 now runs Home Assistant **2026.11.1** after Renovate PR #443.
 HA migrated HACS to the built-in Marketplace; manage community integrations
 there. The older HACS bootstrap description below documents the pre-migration
 setup, and the legacy init container remains configured. Eufy Clean Rooms
-0.2.5 is installed alongside the repaired local Robovac controls. Its eight
-numbered rooms still require a supervised physical targeting test before
-cleaning automations are enabled.
+0.2.5 is installed alongside the repaired local Robovac controls. Map2 room 3
+was matched to the kitchen using the robot's room-outline geometry. The
+supervised kitchen test reports room cleaning; physical confirmation remains
+pending. Cleaning automations remain disabled.
 
 See [the update and installation record](../incidents/2026-11-16-home-assistant-update-eufy-rooms.md)
 for backups, verification, entity names and remaining validation.

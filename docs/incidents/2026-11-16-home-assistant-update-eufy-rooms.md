@@ -66,17 +66,33 @@ The integration reports only generic names **Room 0–Room 7**. The room sensor 
 battery, task and error-code sensors were created. This integration does not
 provide a rendered live map.
 
-## Room test remains gated
+## Kitchen identification and supervised test
 
-No new cleaning automations were created or enabled. No room-clean command has
-been sent yet. Room discovery and working whole-job controls do not prove the
-correct physical room is targeted.
+The user identified the small central red region on the current Eufy Map2 as
+the kitchen and confirmed it was clear and they could observe the test.
+A read-only P2P map capture retrieved the room-outline bitmap and room table
+for local map ID 2 (310 x 370 pixels). Decoding the bitmap's room IDs and
+matching its geometry to the user's screenshot identified **room 3 as Kitchen**.
+This identification used the room geometry, not the app's repeated colors.
 
-Before enabling unattended cleaning, identify a numbered room against the Eufy
-app/physical layout, run one supervised room command, and confirm the robot
-enters that room. The user was asked whether the kitchen is available for that
-test and whether rooms are named in the app. Do not guess the kitchen's ID,
-substitute a fabricated name, or treat echoed target IDs as physical validation.
+The existing HA buttons now have display names **Vacuum Kitchen** and
+**Mop Kitchen**. Their entity IDs remain
+`button.eufy_s1_pro_rooms_vacuum_room_3` and
+`button.eufy_s1_pro_rooms_mop_room_3`. The robot's room table still uses
+generic names; service calls must use room ID 3 or `Room 3`, not `Kitchen`.
+Revalidate this association if the map is recreated or its rooms are split/merged.
+
+Sent one `eufy_clean_rooms.clean_rooms` command targeting
+`vacuum.eufy_s1_pro_rooms`, `rooms: [3]`, `clean_type: vacuum`,
+`fan_speed: Standard`, `clean_times: 1`. After its next status poll, HA reported
+`cleaning`, task `room cleaning`, Standard suction and no error codes.
+The user has been asked to confirm it physically enters and cleans the kitchen;
+that observation is still pending. The integration sets `cleaning_rooms`
+optimistically, so that attribute alone is not physical validation.
+
+No new cleaning automations were created or enabled. Keep unattended cleaning
+disabled until physical room targeting is confirmed. Mop targeting has not
+been tested.
 
 The integration installation and account setup live on the HA config PVC and
 are covered by its scheduled backup. This document records the operation; it
