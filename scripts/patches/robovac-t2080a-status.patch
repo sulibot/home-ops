@@ -1,0 +1,30 @@
+--- a/custom_components/robovac/vacuums/T2080A.py
++++ b/custom_components/robovac/vacuums/T2080A.py
+@@ -3 +3 @@
+-from homeassistant.components.vacuum import VacuumActivity, VacuumEntityFeature
++from homeassistant.components.vacuum import VacuumEntityFeature
+@@ -5,0 +6 @@
++from .T2080 import T2080
+@@ -25,10 +26,3 @@
+-        RobovacCommand.STATUS: {
+-            "code": 6,
+-            "values": {
+-                "0": "Standby",
+-                "1": "Cleaning",
+-                "2": "Paused",
+-                "5": "Returning",
+-                "34": "Docked",
+-            },
+-        },
++        # S1 Pro reports elapsed cleaning minutes on DPS 6. Activity is the
++        # protobuf status on DPS 153, shared with the T2080 definition.
++        RobovacCommand.STATUS: T2080.commands[RobovacCommand.STATUS],
+@@ -46,7 +40 @@
+-    activity_mapping = {
+-        "Standby": VacuumActivity.IDLE,
+-        "Cleaning": VacuumActivity.CLEANING,
+-        "Paused": VacuumActivity.PAUSED,
+-        "Returning": VacuumActivity.RETURNING,
+-        "Docked": VacuumActivity.DOCKED,
+-    }
++    activity_mapping = T2080.activity_mapping
