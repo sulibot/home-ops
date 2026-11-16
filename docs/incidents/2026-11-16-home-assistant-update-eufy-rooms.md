@@ -40,6 +40,10 @@ config state while HA is stopped. A version-only downgrade would not undo
 Marketplace/config migrations. Backups contain credentials and stay on the
 config volume or encrypted backup repository, never in Git.
 
+After the final restart, Marketplace reported no pending updates and the room
+list persisted. Post-update Kopia snapshot: `8a3c0b2ac1af502355eb1e1387115358`,
+root `k5e7184738efc4f49fa35019b1b40b80d`.
+
 ## Eufy Clean Rooms
 
 Installed `ajachierno/ha-eufy-clean-rooms` v0.2.5 through Marketplace, then used
@@ -58,7 +62,7 @@ into the repository. The release tag resolves to
   `mop_room_0` through `_7` buttons
 
 The local room lookup succeeded and discovered map **2**, with room IDs **0–7**.
-The device supplied generic names **Room 0–Room 7**. The room sensor reports 8;
+The integration reports only generic names **Room 0–Room 7**. The room sensor reports 8;
 battery, task and error-code sensors were created. This integration does not
 provide a rendered live map.
 
