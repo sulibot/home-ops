@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/controlplaneio-fluxcd/flux-operator/main/config/data/fluxcd.controlplane.io/resourcesetinputprovider_v1.json
+# Reads the tags of zot.sulibot.com/onward-staging each minute (zot needs no
+# login to read). The Onward Staging workflow pushes
+# main-<UTC start time, yyyymmddHHMMSS>-<first 12 characters of the commit>.
+# Without a semver filter the provider sorts tags in reverse alphabetical
+# order, so limit 1 keeps the newest. A rebuild of an older commit (the
+# rollback path) gets a newer time, so it wins.
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: onward-staging-image
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: 1m
+spec:
+  type: OCIArtifactTag
+  url: oci://zot.sulibot.com/onward-staging
+  filter:
+    includeTag: '^main-[0-9]{14}-[0-9a-f]{12}$'
+    limit: 1

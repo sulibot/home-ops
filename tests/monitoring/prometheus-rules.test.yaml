@@ -1,0 +1,185 @@
+rule_files:
+- rules.yaml
+evaluation_interval: 1m
+group_eval_order:
+- kubernetes.jobs
+tests:
+- name: recovered
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="batch",job_name="recovered-123"}
+    values: 100+0x5
+  - series: kube_job_failed{namespace="batch",job_name="recovered-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_status_failed{namespace="batch",job_name="recovered-123"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="batch",job_name="recovered-123",owner_kind="CronJob",owner_name="recovered"}
+    values: 1+0x5
+  - series: kube_cronjob_status_last_successful_time{namespace="batch",cronjob="recovered"}
+    values: 200+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="KubeJobFailed",alertstate="firing"}) or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: new-failure
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="batch",job_name="new-failure-123"}
+    values: 300+0x5
+  - series: kube_job_failed{namespace="batch",job_name="new-failure-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_status_failed{namespace="batch",job_name="new-failure-123"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="batch",job_name="new-failure-123",owner_kind="CronJob",owner_name="new-failure"}
+    values: 1+0x5
+  - series: kube_cronjob_status_last_successful_time{namespace="batch",cronjob="new-failure"}
+    values: 200+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="KubeJobFailed",alertstate="firing"}) or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: never-succeeded
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="batch",job_name="never-succeeded-123"}
+    values: 300+0x5
+  - series: kube_job_failed{namespace="batch",job_name="never-succeeded-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_status_failed{namespace="batch",job_name="never-succeeded-123"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="batch",job_name="never-succeeded-123",owner_kind="CronJob",owner_name="never-succeeded"}
+    values: 1+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="KubeJobFailed",alertstate="firing"}) or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: standalone
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="batch",job_name="standalone-123"}
+    values: 300+0x5
+  - series: kube_job_failed{namespace="batch",job_name="standalone-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_status_failed{namespace="batch",job_name="standalone-123"}
+    values: 1+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="KubeJobFailed",alertstate="firing"}) or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: transient-retry
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="batch",job_name="transient-retry-123"}
+    values: 300+0x5
+  - series: kube_job_failed{namespace="batch",job_name="transient-retry-123",condition="true"}
+    values: 0+0x5
+  - series: kube_job_status_failed{namespace="batch",job_name="transient-retry-123"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="batch",job_name="transient-retry-123",owner_kind="CronJob",owner_name="transient-retry"}
+    values: 1+0x5
+  - series: kube_cronjob_status_last_successful_time{namespace="batch",cronjob="transient-retry"}
+    values: 200+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="KubeJobFailed",alertstate="firing"}) or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: mount-doctor-last-success-200
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="ceph-csi",job_name="cephfs-mount-doctor-123"}
+    values: 100+0x5
+  - series: kube_job_failed{namespace="ceph-csi",job_name="cephfs-mount-doctor-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="ceph-csi",job_name="cephfs-mount-doctor-123",owner_kind="CronJob",owner_name="cephfs-mount-doctor"}
+    values: 1+0x5
+  - series: kube_cronjob_status_last_successful_time{namespace="ceph-csi",cronjob="cephfs-mount-doctor"}
+    values: 200+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="CephFSMountDoctorFailing",alertstate="firing"})
+      or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: mount-doctor-last-success-50
+  interval: 1m
+  input_series:
+  - series: kube_job_status_start_time{namespace="ceph-csi",job_name="cephfs-mount-doctor-123"}
+    values: 100+0x5
+  - series: kube_job_failed{namespace="ceph-csi",job_name="cephfs-mount-doctor-123",condition="true"}
+    values: 1+0x5
+  - series: kube_job_owner{namespace="ceph-csi",job_name="cephfs-mount-doctor-123",owner_kind="CronJob",owner_name="cephfs-mount-doctor"}
+    values: 1+0x5
+  - series: kube_cronjob_status_last_successful_time{namespace="ceph-csi",cronjob="cephfs-mount-doctor"}
+    values: 50+0x5
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="CephFSMountDoctorFailing",alertstate="firing"})
+      or vector(0)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: staging-healthy
+  interval: 1m
+  input_series:
+  - series: kube_statefulset_replicas{namespace="engineering-staging",statefulset="context-fabric-supabase-db"}
+    values: 1+0x20
+  - series: kube_cronjob_status_last_successful_time{namespace="engineering-staging",cronjob="context-fabric-snapshot"}
+    values: 1+0x20
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="EngineeringStagingPostgresMissing",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+  - expr: count(ALERTS{alertname="EngineeringStagingBackupStale",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: staging-missing
+  interval: 1m
+  input_series: []
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="EngineeringStagingPostgresMissing",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+  - expr: count(ALERTS{alertname="EngineeringStagingBackupStale",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: staging-scaled-down
+  interval: 1m
+  input_series:
+  - series: kube_statefulset_replicas{namespace="engineering-staging",statefulset="context-fabric-supabase-db"}
+    values: 0+0x20
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="EngineeringStagingPostgresMissing",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+  - expr: count(ALERTS{alertname="EngineeringStagingBackupStale",alertstate="firing"})
+      or vector(0)
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 1

@@ -16,6 +16,11 @@ spec:
     crds: CreateReplace
   values:
     cleanPrometheusOperatorObjectNames: true
+    # Replaced by kubernetes-jobs-rules, which distinguishes retained failures
+    # from a CronJob that has failed again since its most recent success.
+    defaultRules:
+      disabled:
+        KubeJobFailed: true
     alertmanager:
       route:
         main:

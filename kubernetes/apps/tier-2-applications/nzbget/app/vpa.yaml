@@ -19,6 +19,7 @@ spec:
         minAllowed:
           cpu: 10m
           memory: 64Mi
+        # Idle near 20 MiB; unpacking bursts use the 12Gi limit, not the request.
         maxAllowed:
           cpu: "4"
-          memory: 16Gi
+          memory: 1Gi

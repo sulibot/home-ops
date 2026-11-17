@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/controlplaneio-fluxcd/flux-operator/main/config/data/fluxcd.controlplane.io/resourceset_v1.json
+# Writes the newest staging image, tag@digest, to the ConfigMap that the
+# onward-staging-runtime Kustomization substitutes into its Deployment. The
+# watch label makes Flux apply the Deployment as soon as the ConfigMap
+# changes. To stop the rollouts: set the annotation
+# fluxcd.controlplane.io/reconcile: disabled here (see the runbook).
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: onward-staging-image
+spec:
+  inputsFrom:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: onward-staging-image
+  resources:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: onward-staging-image
+        namespace: flux-system
+        labels:
+          reconcile.fluxcd.io/watch: Enabled
+      data:
+        ONWARD_STAGING_IMAGE: zot.sulibot.com/onward-staging:<< inputs.tag >>@<< inputs.digest >>

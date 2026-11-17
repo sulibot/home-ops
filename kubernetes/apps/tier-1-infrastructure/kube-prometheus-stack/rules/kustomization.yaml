@@ -16,3 +16,4 @@ resources:
   - ./prometheusrule-nfs-gateway.yaml
   - ./prometheusrule-observability.yaml
   - ./prometheusrule-pods.yaml
+  - ./prometheusrule-jobs.yaml
