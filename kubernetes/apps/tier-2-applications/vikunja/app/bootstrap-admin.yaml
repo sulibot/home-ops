@@ -32,6 +32,8 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: vikunja-bootstrap-admin
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: enabled
 spec:
   ttlSecondsAfterFinished: 86400
   backoffLimit: 2
