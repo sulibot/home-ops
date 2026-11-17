@@ -1,0 +1,82 @@
+--- a/custom_components/robovac/vacuums/T2080A.py
++++ b/custom_components/robovac/vacuums/T2080A.py
+@@ -3 +3 @@
+-from homeassistant.components.vacuum import VacuumActivity, VacuumEntityFeature
++from homeassistant.components.vacuum import VacuumEntityFeature
+@@ -5,0 +6 @@
++from .T2080 import T2080
+@@ -21,3 +22,5 @@
+-        RobovacCommand.START_PAUSE: {
+-            "code": 160,
+-            "values": {"start": True, "pause": False},
++        # S1 Pro ModeCtrlRequest: auto-clean=0, pause=13, resume=14.
++        # DPS 160 is not a reliable start/pause command on this firmware.
++        RobovacCommand.MODE: {
++            "code": 152,
++            "values": {"auto": "AA==", "pause": "AggN", "resume": "AggO"},
+@@ -25,10 +28,3 @@
+-        RobovacCommand.STATUS: {
+-            "code": 6,
+-            "values": {
+-                "0": "Standby",
+-                "1": "Cleaning",
+-                "2": "Paused",
+-                "5": "Returning",
+-                "34": "Docked",
+-            },
+-        },
++        # S1 Pro reports elapsed cleaning minutes on DPS 6. Activity is the
++        # protobuf status on DPS 153, shared with the T2080 definition.
++        RobovacCommand.STATUS: T2080.commands[RobovacCommand.STATUS],
+@@ -46,7 +42 @@
+-    activity_mapping = {
+-        "Standby": VacuumActivity.IDLE,
+-        "Cleaning": VacuumActivity.CLEANING,
+-        "Paused": VacuumActivity.PAUSED,
+-        "Returning": VacuumActivity.RETURNING,
+-        "Docked": VacuumActivity.DOCKED,
+-    }
++    activity_mapping = T2080.activity_mapping
+--- a/custom_components/robovac/vacuum.py
++++ b/custom_components/robovac/vacuum.py
+@@ -1146,0 +1147,5 @@
++        # S1 Pro omits DPS 153 from initial query replies. Configuration
++        # fields alone cannot distinguish docked, paused or cleaning.
++        if self.model_code == "T2080A":
++            return 0
++
+@@ -1607,0 +1613,8 @@
++            mode = "auto"
++            if self.activity == VacuumActivity.PAUSED or (
++                self.model_code == "T2080A"
++                and (not self.tuyastatus or self.get_dps_code("STATUS") not in self.tuyastatus)
++            ):
++                resume = self.vacuum.getRoboVacCommandValue(RobovacCommand.MODE, "resume")
++                if resume != "resume":
++                    mode = "resume"
+@@ -1609 +1622 @@
+-                RobovacCommand.MODE, "auto"
++                RobovacCommand.MODE, mode
+@@ -1636,8 +1649,14 @@
+-        payload: dict[str, Any] = {
+-            self.get_dps_code("START_PAUSE"): self.vacuum.getRoboVacCommandValue(RobovacCommand.START_PAUSE, "pause")
+-        }
+-
+-        mode_pause_value = self.vacuum.getRoboVacCommandValue(RobovacCommand.MODE, "pause")
+-        if mode_pause_value != "pause":
+-            payload[self.get_dps_code("MODE")] = mode_pause_value
+-
++        supported_commands = self.vacuum.getSupportedCommands()
++        payload: dict[str, Any] = {}
++        if RobovacCommand.START_PAUSE in supported_commands:
++            payload[self.get_dps_code("START_PAUSE")] = self.vacuum.getRoboVacCommandValue(
++                RobovacCommand.START_PAUSE, "pause"
++            )
++        if RobovacCommand.MODE in supported_commands:
++            mode_pause_value = self.vacuum.getRoboVacCommandValue(RobovacCommand.MODE, "pause")
++            if mode_pause_value != "pause":
++                payload[self.get_dps_code("MODE")] = mode_pause_value
++
++        if not payload:
++            _LOGGER.error("%s does not declare a pause command", self.model_code)
++            return
