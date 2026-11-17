@@ -33,6 +33,15 @@ spec:
   postRenderers:
     - kustomize:
         patches:
+          # Storage uses a single-attach PVC; stop the old pod before replacement.
+          - target:
+              kind: Deployment
+              name: context-fabric-supabase-storage
+            patch: |-
+              - op: add
+                path: /spec/strategy
+                value:
+                  type: Recreate
           - target:
               kind: Deployment
             patch: |-
