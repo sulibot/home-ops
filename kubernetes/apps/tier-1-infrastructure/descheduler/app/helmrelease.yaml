@@ -13,6 +13,9 @@ spec:
     kind: Deployment
     deschedulerPolicyAPIVersion: descheduler/v1alpha2
     deschedulerPolicy:
+      # Avoid simultaneous eviction of many workloads during node pressure.
+      maxNoOfPodsToEvictTotal: 3
+      maxNoOfPodsToEvictPerNode: 1
       metricsProviders:
         - source: KubernetesMetrics
       profiles:
@@ -24,6 +27,8 @@ spec:
                 evictLocalStoragePods: true
                 evictSystemCriticalPods: false
                 nodeFit: true
+                # Single-replica applications cannot tolerate voluntary eviction.
+                minReplicas: 2
             - name: LowNodeUtilization
               args:
                 metricsUtilization:
