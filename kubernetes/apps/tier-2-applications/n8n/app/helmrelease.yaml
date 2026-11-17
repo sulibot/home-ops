@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: docker.n8n.io/n8nio/n8n
-              tag: 2.49.0
+              tag: 3.3.0
             env:
               TZ: America/Los_Angeles
               GENERIC_TIMEZONE: America/Los_Angeles
