@@ -2,6 +2,13 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
     {
+      description: "HA bootstrap venv must match Home Assistant's Python 3.14 runtime",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["python"],
+      matchFileNames: ["kubernetes/apps/tier-2-applications/home-assistant/**"],
+      allowedVersions: "/^3\\.14(?:\\.|-)/",
+    },
+    {
       description: "Keep ImmichFrame compatible with Immich 3.1 until the server is upgraded to 3.2 or newer",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/immichframe/immichframe"],
