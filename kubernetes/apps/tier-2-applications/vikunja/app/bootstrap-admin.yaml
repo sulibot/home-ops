@@ -40,7 +40,7 @@ spec:
   template:
     spec:
       serviceAccountName: vikunja-bootstrap
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
         - name: bootstrap
           image: alpine/k8s:1.37.2
