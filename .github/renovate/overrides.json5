@@ -2,6 +2,11 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
     {
+      description: "Hold Cilium 1.20 until the cluster-101 gateway regression is resolved",
+      matchPackageNames: ["quay.io/cilium/charts/cilium"],
+      allowedVersions: "<1.20.0",
+    },
+    {
       description: "HA bootstrap venv must match Home Assistant's Python 3.14 runtime",
       matchDatasources: ["docker"],
       matchPackageNames: ["python"],
@@ -16,8 +21,7 @@
     },
     {
       description: "Upgrade generated Flux controllers with matching CRDs through the Flux distribution",
-      matchManagers: ["kubernetes"],
-      matchFileNames: ["kubernetes/clusters/**/flux-system/gotk-components.yaml"],
+      matchFileNames: ["**/gotk-components.yaml"],
       enabled: false,
     },
     {
