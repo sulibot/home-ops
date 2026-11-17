@@ -219,6 +219,16 @@ data:
       report_state: true
       expose_by_default: false
       entity_config:
+        vacuum.eufy_s1_pro_rooms:
+          expose: true
+          name: Eufy Vacuum
+          room: Kitchen
+          aliases:
+            - Robot Vacuum
+        button.eufy_s1_pro_rooms_vacuum_room_3:
+          expose: true
+          name: Vacuum Kitchen
+          room: Kitchen
         light.living_room_lights:
           expose: true
           room: Living Room

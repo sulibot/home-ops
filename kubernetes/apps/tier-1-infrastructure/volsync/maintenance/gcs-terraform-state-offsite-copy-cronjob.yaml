@@ -41,7 +41,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: copy
-              image: rclone/rclone:v1.74-stable@sha256:2446d4214067d944640e0646a733b36c8d205542e2ed7d75c4729a7ec7443dd2
+              image: rclone/rclone:v1.75-stable@sha256:75be7eeb88109b89fd05c91c2001b130723878c33b272238a75e1fd49555bbbd
               imagePullPolicy: IfNotPresent
               env:
                 - name: GCS_SERVICE_ACCOUNT_JSON
