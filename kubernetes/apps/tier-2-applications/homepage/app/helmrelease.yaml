@@ -47,6 +47,8 @@ spec:
                 memory: 1Gi
 
     defaultPodOptions:
+      # Kubernetes service discovery requires the existing read-only RBAC token.
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

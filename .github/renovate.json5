@@ -44,6 +44,8 @@
     '**/*.backup',
     '**/*.before-reorg',
     'archive/**',
+    '**/_archive/**',
+    'tmp/**',
     'ansible/lae.proxmox/collections/**',
   ],
   flux: {
