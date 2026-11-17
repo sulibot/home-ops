@@ -60,6 +60,8 @@ spec:
             - --primary-interface=enp1s0.31
             - --log-level=info
           env:
+            - name: LISTEN_ADDRESS
+              value: "::"
             - name: TZ
               value: America/Los_Angeles
             - name: PORT
