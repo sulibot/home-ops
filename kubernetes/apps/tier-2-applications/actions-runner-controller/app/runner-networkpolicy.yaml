@@ -1,4 +1,5 @@
 ---
+# Quick and Full candidate-code runners share the same GitHub/npm boundary.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -7,8 +8,11 @@ spec:
   endpointSelector:
     matchLabels:
       k8s:io.kubernetes.pod.namespace: actions-runner-system
-      actions.github.com/scale-set-name: onward-runner
       app.kubernetes.io/component: runner
+    matchExpressions:
+      - key: actions.github.com/scale-set-name
+        operator: In
+        values: [onward-runner, onward-browser-runner]
   enableDefaultDeny:
     ingress: true
     egress: true
@@ -159,6 +163,33 @@ spec:
               protocol: TCP
     - toFQDNs:
         - matchName: ppa.launchpadcontent.net
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# Onward Full gate only (onward-browser-runner): Google Fonts. Onward's pages
+# load a stylesheet from fonts.googleapis.com and font files from
+# fonts.gstatic.com (apps/web/src/app/layout.tsx). Under default-deny the page
+# load event waits for those dropped connections and Playwright's page.goto
+# times out. Cilium adds this allowance to actions-runner-jobs-onward, which
+# still supplies DNS and the GitHub and npm hosts; quick checks (onward-runner)
+# keep GitHub and npm only. Added at the owner's request on 2026-11-17; the
+# evidence is in docs/runbooks/onward-browser-runner-image.md.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: actions-runner-jobs-onward-browser-fonts
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: actions-runner-system
+      actions.github.com/scale-set-name: onward-browser-runner
+      app.kubernetes.io/component: runner
+  egress:
+    - toFQDNs:
+        - matchName: fonts.googleapis.com
+        - matchName: fonts.gstatic.com
       toPorts:
         - ports:
             - port: "443"
