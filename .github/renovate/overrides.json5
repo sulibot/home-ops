@@ -22,6 +22,7 @@
     {
       description: "Upgrade generated Flux controllers with matching CRDs through the Flux distribution",
       matchFileNames: ["**/gotk-components.yaml"],
+      matchPackageNames: ["/^ghcr\\.io/fluxcd/.*-controller$/"],
       enabled: false,
     },
     {
