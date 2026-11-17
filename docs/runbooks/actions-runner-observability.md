@@ -23,7 +23,10 @@ kubectl get ciliumclusterwidenetworkpolicy actions-runner-jobs-onward
 
 Expected long-lived pods are one controller and one listener per scale set.
 Runner pods remain ephemeral and scale from zero to each set's configured
-maximum.
+maximum. The sets are `onward-runner`, `onward-browser-runner`,
+`onward-staging-runner`, and `home-ops-runner`. The browser set has zero idle
+runners and at most one Full-gate pod; see the
+[browser runner image runbook](onward-browser-runner-image.md).
 
 ## Confirm scraping
 
@@ -133,6 +136,11 @@ link-local ranges are denied. This blocks Kubernetes, ARC secrets, the private
 LAN/PVE management plane, Prometheus, Loki, Grafana, OpenTelemetry, and other
 private services. Controller and listener metrics accept ingress only from
 Prometheus and the Kubernetes host.
+
+The `onward-browser-runner` pods are selected by the same policy, so the
+same boundary holds for them. Chrome is baked into their image because the
+policy allows no Google or Ubuntu hosts; see the
+[browser runner image runbook](onward-browser-runner-image.md).
 
 If a repository legitimately requires a private dependency, add the smallest
 explicit endpoint/port allowance after reviewing its trust boundary. Do not

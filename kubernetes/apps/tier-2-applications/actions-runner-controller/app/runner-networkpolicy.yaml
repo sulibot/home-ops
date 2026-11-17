@@ -1,4 +1,5 @@
 ---
+# Quick and Full candidate-code runners share the same GitHub/npm boundary.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -7,8 +8,11 @@ spec:
   endpointSelector:
     matchLabels:
       k8s:io.kubernetes.pod.namespace: actions-runner-system
-      actions.github.com/scale-set-name: onward-runner
       app.kubernetes.io/component: runner
+    matchExpressions:
+      - key: actions.github.com/scale-set-name
+        operator: In
+        values: [onward-runner, onward-browser-runner]
   enableDefaultDeny:
     ingress: true
     egress: true

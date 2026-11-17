@@ -13,13 +13,13 @@ metadata:
   name: agentic-verification
   namespace: actions-runner-system
 spec:
-  # Keep one pod of admission headroom above maxRunners. The scale-set ceiling
-  # remains two; matching the quota exactly makes normal saturation look like
-  # an exhausted-namespace incident to kube-prometheus-stack.
+  # Two quick pods (1 CPU/3 Gi each) plus one Full pod (1 CPU/4 Gi)
+  # total 3 pods, 3 CPU and 10 Gi. Keep one pod, 1 CPU and 3 Gi of admission
+  # headroom so normal saturation does not look like an exhausted namespace.
   hard:
-    count/pods: "3"
-    requests.cpu: "3"
-    requests.memory: 9Gi
+    count/pods: "4"
+    requests.cpu: "4"
+    requests.memory: 13Gi
   scopeSelector:
     matchExpressions:
       - operator: In

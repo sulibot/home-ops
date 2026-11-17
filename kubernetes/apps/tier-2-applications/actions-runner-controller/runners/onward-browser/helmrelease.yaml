@@ -1,0 +1,125 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+# Only sulibot/onward .github/workflows/checks.yml job full runs here.
+# Candidate code from branch pushes and branch dispatches must stay as contained
+# as onward-runner: no Kubernetes token, the same egress policy, no registry
+# write access, no zot credentials, and no secrets in the job pod.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &name onward-browser-runner
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: gha-runner-scale-set
+  interval: 1h
+  timeout: 10m
+  maxHistory: 3
+  install:
+    remediation:
+      retries: 5
+    timeout: 10m
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 5
+      strategy: rollback
+    timeout: 10m
+  values:
+    githubConfigUrl: https://github.com/sulibot/onward
+    githubConfigSecret: onward-browser-runner-secret
+    minRunners: 0
+    # Full has its own slot so it cannot consume either quick-check slot.
+    maxRunners: 1
+    # Aggregate at metric creation time. Excluding git refs, job names, and run
+    # IDs keeps series cardinality bounded without scrape-time label collapse.
+    listenerMetrics:
+      counters:
+        gha_started_jobs_total:
+          labels: [repository, event_name, job_workflow_name]
+        gha_completed_jobs_total:
+          labels: [repository, event_name, job_result, job_workflow_name]
+      gauges:
+        gha_assigned_jobs:
+          labels: [name, repository]
+        gha_running_jobs:
+          labels: [name, repository]
+        gha_registered_runners:
+          labels: [name, repository]
+        gha_busy_runners:
+          labels: [name, repository]
+        gha_min_runners:
+          labels: [name, repository]
+        gha_max_runners:
+          labels: [name, repository]
+        gha_desired_runners:
+          labels: [name, repository]
+        gha_idle_runners:
+          labels: [name, repository]
+      histograms:
+        gha_job_startup_duration_seconds:
+          labels: [repository, event_name, job_workflow_name]
+          buckets: [1, 2, 5, 10, 20, 30, 60, 120, 300, 600]
+        gha_job_execution_duration_seconds:
+          labels: [repository, event_name, job_result, job_workflow_name]
+          buckets: [5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 7200]
+    controllerServiceAccount:
+      name: actions-runner-controller
+      namespace: actions-runner-system
+    template:
+      spec:
+        # Full checks run in the ephemeral runner pod and must not
+        # receive Kubernetes API credentials or access ARC App secrets.
+        automountServiceAccountToken: false
+        # GitHub assigns runner endpoints under deep, rotating hostnames such
+        # as *.actions.githubusercontent.com. Query them as absolute names
+        # before Kubernetes search suffixes so Cilium's FQDN cache records the
+        # policy-matching hostname instead of a synthesized *.cluster.local
+        # variant that cannot receive an egress identity.
+        dnsConfig:
+          options:
+            - name: ndots
+              value: "1"
+        priorityClassName: agentic-verification
+        securityContext:
+          fsGroup: 1001
+          fsGroupChangePolicy: OnRootMismatch
+        volumes:
+          - name: work
+            ephemeral:
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  storageClassName: csi-rbd-rbd-vm-sc
+                  resources:
+                    requests:
+                      storage: 25Gi
+        containers:
+          - name: runner
+            # Private image with Chrome baked in: job egress cannot fetch it.
+            # Recipe: docs/runbooks/onward-browser-runner-image.md.
+            image: zot.sulibot.com/onward-browser-runner:2.338.2-chrome157.0.8103.78@sha256:e95518246a397a9522c7eb5317cdf7ce4a7a8f4c2b0b677648be4460dffcc2ff
+            command:
+              - /home/runner/run.sh
+            volumeMounts:
+              - name: work
+                mountPath: /home/runner/_work
+            env:
+              - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
+                value: "false"
+              # onward-runner also sets NODE to the host IP. No reason for it is
+              # recorded, and the staging lane runs the same pnpm and Chrome
+              # tooling without it, so this set leaves it out.
+            resources:
+              # Full runs next build (NODE_OPTIONS caps its heap at 4 GB), then
+              # a Next dev server, mock server and Google Chrome together.
+              # Quick already peaked at 2.95 GiB. Keep the request at 4 Gi:
+              # worker memory requests are 51-81% full, real use about half.
+              # The 8 Gi limit is a ceiling, not a scheduling reservation.
+              requests:
+                cpu: "1"
+                memory: 4Gi
+              limits:
+                cpu: "4"
+                memory: 8Gi
