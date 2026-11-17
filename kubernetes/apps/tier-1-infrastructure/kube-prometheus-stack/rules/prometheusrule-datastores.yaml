@@ -156,7 +156,7 @@ spec:
           expr: |
             kube_pod_status_ready{
               namespace="engineering-staging",
-              pod=~"engineering-staging-[0-9]+",
+              pod=~"context-fabric-supabase-db-[0-9]+",
               condition="true"
             } == 0
           for: 5m
@@ -166,32 +166,36 @@ spec:
           annotations:
             summary: "Engineering staging Postgres pod {{ $labels.pod }} is not ready"
             description: |
-              The shared non-production CNPG instance is unavailable. Staging projects are affected,
+              The shared non-production Supabase PostgreSQL instance is unavailable. Staging projects are affected,
               but household databases remain isolated on postgres-vectorchord.
 
-        - alert: EngineeringStagingPostgresMetricsMissing
+        - alert: EngineeringStagingPostgresMissing
           expr: |
-            absent(up{
+            absent(kube_statefulset_replicas{
               namespace="engineering-staging",
-              pod=~"engineering-staging-[0-9]+",
-              job="engineering-staging/engineering-staging"
+              statefulset="context-fabric-supabase-db"
             })
+            or
+            kube_statefulset_replicas{
+              namespace="engineering-staging",
+              statefulset="context-fabric-supabase-db"
+            } < 1
           for: 10m
           labels:
             severity: warning
             component: engineering-staging-postgres
           annotations:
-            summary: "Engineering staging Postgres metrics are missing"
+            summary: "Engineering staging Postgres StatefulSet is missing or scaled down"
             description: |
-              Prometheus is not scraping the engineering-staging CNPG instance. Check the
-              engineering-staging PodMonitor and the Postgres metrics port.
+              The context-fabric-supabase-db StatefulSet must exist with at least one replica.
+              Check the context-fabric HelmRelease and engineering-staging workloads.
 
         - alert: EngineeringStagingPostgresVolumeFilling
           expr: |
             (
-              kubelet_volume_stats_used_bytes{namespace="engineering-staging",persistentvolumeclaim=~"engineering-staging-.*"}
+              kubelet_volume_stats_used_bytes{namespace="engineering-staging",persistentvolumeclaim="context-fabric-supabase-db"}
               /
-              kubelet_volume_stats_capacity_bytes{namespace="engineering-staging",persistentvolumeclaim=~"engineering-staging-.*"}
+              kubelet_volume_stats_capacity_bytes{namespace="engineering-staging",persistentvolumeclaim="context-fabric-supabase-db"}
             ) > 0.85
           for: 15m
           labels:
@@ -203,18 +207,39 @@ spec:
               The shared project-staging database volume is filling. Review per-database growth and
               expand the retained RBD volume before writes are affected.
 
-        - alert: EngineeringStagingBackupVerificationFailed
+        - alert: EngineeringStagingBackupFailed
           expr: |
-            kube_job_status_failed{
+            (kube_job_failed{
               namespace="engineering-staging",
-              job_name=~"engineering-staging-backup-verifier-.*"
-            } > 0
+              job_name=~"context-fabric-snapshot-.*",
+              condition="true"
+            } == 1)
+            unless on(namespace, job_name) kube_job_superseded_by_success
           for: 1m
           labels:
             severity: warning
             component: engineering-staging-postgres
           annotations:
-            summary: "Engineering staging backup verification failed"
+            summary: "Engineering staging snapshot backup failed"
             description: |
-              The daily verifier could not find a recent completed CNPG backup and ready VolumeSnapshot.
-              Inspect the ScheduledBackup, Backup, VolumeSnapshot, and verifier Job before trusting recovery.
+              The context-fabric-snapshot Job failed without a newer successful run.
+              Inspect its logs and database/storage VolumeSnapshots before trusting recovery.
+
+        - alert: EngineeringStagingBackupStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{
+              namespace="engineering-staging", cronjob="context-fabric-snapshot"
+            } > 36 * 3600
+            or
+            absent(kube_cronjob_status_last_successful_time{
+              namespace="engineering-staging", cronjob="context-fabric-snapshot"
+            })
+          for: 10m
+          labels:
+            severity: warning
+            component: engineering-staging-postgres
+          annotations:
+            summary: "Engineering staging has no successful snapshot backup in 36 hours"
+            description: |
+              The daily context-fabric-snapshot CronJob has not completed recently.
+              Check its schedule, suspension, Job logs, and VolumeSnapshot readiness.

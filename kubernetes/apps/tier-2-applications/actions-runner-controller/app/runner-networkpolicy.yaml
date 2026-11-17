@@ -52,3 +52,114 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+---
+# The Onward staging deploy lane (runners/onward-staging). It needs what
+# onward-runner has, plus zot to push the image, the internal gateway to check
+# staging, and the Google Chrome and Ubuntu package hosts, because the check
+# scripts drive Google Chrome. It still reaches no other private network.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: actions-runner-jobs-onward-staging
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: actions-runner-system
+      actions.github.com/scale-set-name: onward-staging-runner
+      app.kubernetes.io/component: runner
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  # One empty rule turns ingress enforcement on without allowing any source.
+  ingress:
+    - {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Checkout, Actions, artifacts and npm: the same list as onward-runner.
+    - toFQDNs:
+        - matchName: github.com
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubassets.com"
+        - matchPattern: "*.githubusercontent.com"
+        - matchPattern: "*.actions.githubusercontent.com"
+        - matchPattern: "*.blob.core.windows.net"
+        - matchName: registry.npmjs.org
+        - matchPattern: "*.npmjs.org"
+        - matchPattern: "*.npmjs.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # zot (10.200.0.51): push the image; pull the Node base image through its
+    # docker.io mirror. Google Chrome for the check scripts. The Onward pages
+    # load Google Fonts (apps/web/src/app/layout.tsx); without them the page
+    # load event waits for the dropped connections and the checks time out.
+    - toFQDNs:
+        - matchName: zot.sulibot.com
+        - matchName: dl.google.com
+        - matchName: onward-staging.sulibot.com
+        - matchName: fonts.googleapis.com
+        - matchName: fonts.gstatic.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Podium's deploy (onward .github/workflows/design-review-deploy.yml) may
+    # run on this main-only lane: wrangler talks to the Cloudflare API, and the
+    # job then checks that podium.sulibot.com answers. Only main runs here, so
+    # the Cloudflare token never reaches candidate code on onward-runner.
+    - toFQDNs:
+        - matchName: api.cloudflare.com
+        - matchName: podium.sulibot.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Staging is served by gateway-internal. Cilium hands traffic for a
+    # Gateway address to its Envoy, which has the reserved ingress identity.
+    - toEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Envoy then checks this policy against the backend that the route picks,
+    # not the gateway: without this rule it answered 403 (Hubble showed
+    # "to-proxy FORWARDED" and no flow to engineering-staging). So through the
+    # gateway this lane reaches the staging pod only, not the other sites.
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: engineering-staging
+            k8s:app.kubernetes.io/name: onward-staging
+            k8s:app.kubernetes.io/component: web
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+    # Packages that Google Chrome needs (apt uses plain HTTP; files are
+    # signed). The runner image also lists the git-core PPA.
+    - toFQDNs:
+        - matchName: archive.ubuntu.com
+        - matchName: security.ubuntu.com
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: ppa.launchpadcontent.net
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

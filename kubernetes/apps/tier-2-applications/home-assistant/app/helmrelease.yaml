@@ -93,7 +93,7 @@ spec:
                 import urllib.request
 
                 # renovate: datasource=github-releases depName=christiaangoossens/hass-oidc-auth
-                version = "v1.1.1"
+                version = "v1.2.1"
                 target = "/config/custom_components/auth_oidc"
                 manifest_path = os.path.join(target, "manifest.json")
 
@@ -236,7 +236,7 @@ spec:
                 import sys
 
                 # renovate: datasource=pypi depName=joserfc
-                version = "1.6.3"
+                version = "1.8.0"
                 packages = ["aiofiles", "jinja2", f"joserfc=={version}"]
                 venv = "/config/.venv"
                 python_bin = os.path.join(venv, "bin", "python")
@@ -274,7 +274,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/home-assistant
-              tag: 2026.7.2@sha256:547d0fcb67ceb2c2d3adf22db37c7ea79d9ff9e91f3e3c536c6aebd998083f0f
+              tag: 2026.11.1@sha256:c129b1e4190273254d93d413fe2a083233c9202d84cb08f84dddb01861df432e
             env:
               TZ: America/Los_Angeles
               PYTHONPATH: /config/.venv/lib/python3.14/site-packages

@@ -28,6 +28,7 @@ spec:
               repository: ghcr.io/tandoorrecipes/recipes
               tag: 2.7.2
             env:
+              HOME: /tmp
               TZ: America/Los_Angeles
               TANDOOR_PORT: "8080"
               ALLOWED_HOSTS: tandoor.sulibot.com
