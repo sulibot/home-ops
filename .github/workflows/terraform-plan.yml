@@ -126,7 +126,7 @@ jobs:
           unset openbao_token
 
       - name: Setup tools
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
           version: 2026.11.9
           tool_versions: |
