@@ -3,6 +3,9 @@ kind: Job
 metadata:
   name: postgres-vectorchord-ready-check
   namespace: default
+  annotations:
+    # Jobs must be recreated when Renovate updates their container image.
+    kustomize.toolkit.fluxcd.io/force: enabled
   labels:
     app.kubernetes.io/name: postgres-vectorchord
     app.kubernetes.io/component: ready-check
