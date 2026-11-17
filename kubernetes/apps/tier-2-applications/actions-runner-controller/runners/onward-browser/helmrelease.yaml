@@ -2,8 +2,9 @@
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
 # Only sulibot/onward .github/workflows/checks.yml job full runs here.
 # Candidate code from branch pushes and branch dispatches must stay as contained
-# as onward-runner: no Kubernetes token, the same egress policy, no registry
-# write access, no zot credentials, and no secrets in the job pod.
+# as onward-runner: no Kubernetes token, the same egress policy (GitHub and npm,
+# plus the two Google Fonts hosts that Onward's pages load), no registry write
+# access, no zot credentials, and no secrets in the job pod.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:

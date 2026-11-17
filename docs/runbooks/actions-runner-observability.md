@@ -138,8 +138,11 @@ private services. Controller and listener metrics accept ingress only from
 Prometheus and the Kubernetes host.
 
 The `onward-browser-runner` pods are selected by the same policy, so the
-same boundary holds for them. Chrome is baked into their image because the
-policy allows no Google or Ubuntu hosts; see the
+same boundary holds for them. A second policy,
+`actions-runner-jobs-onward-browser-fonts`, adds `fonts.googleapis.com` and
+`fonts.gstatic.com` on TCP 443 for that set only, because Onward's pages load
+them. Chrome is baked into their image because the policy allows no Google
+download or Ubuntu hosts; see the
 [browser runner image runbook](onward-browser-runner-image.md).
 
 If a repository legitimately requires a private dependency, add the smallest

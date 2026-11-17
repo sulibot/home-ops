@@ -18,7 +18,9 @@ It is outside the ARC Flux `app` and `runners` paths. No image build pipeline
 exists in this repository. Google Chrome Stable and the Liberation and Noto
 color emoji fonts are baked in because the job policy permits only cluster
 DNS and GitHub/artifact/npm hosts, not Google downloads or Ubuntu archives.
-Node and pnpm remain the workflow's responsibility.
+Node and pnpm remain the workflow's responsibility. The browser set also
+reaches `fonts.googleapis.com` and `fonts.gstatic.com` on TCP 443, through its
+own policy; see [Google Fonts egress](#google-fonts-egress).
 
 Playwright uses `channel: "chrome"`, which needs `/opt/google/chrome/chrome`.
 Downloaded Chromium is not a replacement. Playwright supplies `--no-sandbox`
@@ -173,20 +175,28 @@ Restore the last verified browser image tag and digest in its HelmRelease
 through a reviewed change; Flux rolls subsequent runners back while active
 jobs finish. For the first deployment there is no previous browser image:
 revert the Onward workflow routing first, drain active jobs, then remove the
-browser set through a reviewed revert and restore the prior shared selector
-and quota. GitHub-hosted Full remains blocked while billing is unresolved.
+browser set through a reviewed revert, including the fonts policy, and restore
+the prior shared selector and quota. GitHub-hosted Full remains blocked while
+billing is unresolved.
 Keep quick checks on their unchanged scale set. Never remove containment while
 candidate-code pods still exist.
 
-## Owner decision: Google Fonts
+## Google Fonts egress
 
-**NOT APPLIED.** The Full gate cannot pass with only GitHub and npm egress.
-Onward's pages include a stylesheet from `fonts.googleapis.com`
-(`apps/web/src/app/layout.tsx`) and preconnect to `fonts.gstatic.com`, which
-serves the font files. A default-deny policy drops those connections, so the
-page's `load` event waits for them, and Playwright's `page.goto` waits for
-`load`. Onward's `docs/staging-deployment.md` records the same failure on the
-staging lane, with Hubble flows.
+The browser set may reach `fonts.googleapis.com` and `fonts.gstatic.com` on
+TCP 443, and nothing else beyond what quick checks reach. The owner chose this
+on 2026-11-17. It is the policy `actions-runner-jobs-onward-browser-fonts` in
+`app/runner-networkpolicy.yaml`, which selects only `onward-browser-runner`
+pods. Cilium adds its allowance to `actions-runner-jobs-onward`, which still
+supplies cluster DNS, the GitHub and npm hosts, and ingress default-deny.
+`onward-runner` (quick) keeps GitHub and npm only.
+
+Why it is needed: Onward's pages include a stylesheet from
+`fonts.googleapis.com` (`apps/web/src/app/layout.tsx`) and preconnect to
+`fonts.gstatic.com`, which serves the font files. A default-deny policy drops
+those connections, so the page's `load` event waits for them, and Playwright's
+`page.goto` waits for `load`. Onward's `docs/staging-deployment.md` records the
+same failure on the staging lane, with Hubble flows.
 
 Shown on 2026-11-17 inside the candidate image on the owner's Mac, with the two
 hosts mapped to `192.0.2.1` (a documentation address nothing answers, so the
@@ -202,43 +212,19 @@ connection hangs as a dropped one does), the same smoke test
 A test that opens a page pays this wait; the table shows it for one test, not
 for all of them. These are the only extra hosts found. Not checked: the other
 Full-gate steps (stories, `pnpm build`, the demo build) with egress limited, so
-a further host is possible. `pnpm install` reaches npm, checkout and artifacts
-reach GitHub, and Chrome is baked in.
+a further host is possible; `pnpm install` reaches npm, checkout and artifacts
+reach GitHub, and Chrome is baked in. Also not checked on the cluster: that
+Cilium lets this second policy's allowance combine with the first for the same
+pods (the server accepted the manifest in a dry run, nothing was applied).
 
-The options are (a) allow the two hosts for the browser set only, below, or
-(b) change Onward so its tests do not load them (for example, a fixture that
-aborts those requests), which changes Onward's tests and was left out of
-this work. The owner can decide whether to apply the following exact patch
-from the repository root. It adds only TCP 443 to those two hosts for the
-browser set. Cilium combines its egress allowance with the existing shared
-policy, which still supplies DNS and ingress default-deny. Quick keeps only
-GitHub/npm egress. Do not apply merely because Chrome is installed.
+If the Full gate's first run stalls or times out on a page load, look for
+dropped flows from the runner pod before anything else:
 
-```diff
---- a/kubernetes/apps/tier-2-applications/actions-runner-controller/app/runner-networkpolicy.yaml
-+++ b/kubernetes/apps/tier-2-applications/actions-runner-controller/app/runner-networkpolicy.yaml
-@@ -167,3 +167,23 @@
-         - ports:
-             - port: "443"
-               protocol: TCP
-+---
-+# Optional browser-only Google Fonts access; quick retains GitHub/npm only.
-+apiVersion: cilium.io/v2
-+kind: CiliumClusterwideNetworkPolicy
-+metadata:
-+  name: actions-runner-jobs-onward-browser-fonts
-+spec:
-+  endpointSelector:
-+    matchLabels:
-+      k8s:io.kubernetes.pod.namespace: actions-runner-system
-+      actions.github.com/scale-set-name: onward-browser-runner
-+      app.kubernetes.io/component: runner
-+  egress:
-+    - toFQDNs:
-+        - matchName: fonts.googleapis.com
-+        - matchName: fonts.gstatic.com
-+      toPorts:
-+        - ports:
-+            - port: "443"
-+              protocol: TCP
+```bash
+hubble observe --namespace actions-runner-system --verdict DROPPED --last 200
 ```
+
+To take the allowance out again, delete that policy through a reviewed change.
+The alternative is to change Onward so its tests do not load those hosts (for
+example, a fixture that aborts the requests), which changes Onward's tests and
+was not part of this work.
