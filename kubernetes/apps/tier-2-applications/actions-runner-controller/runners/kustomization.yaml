@@ -6,3 +6,4 @@ resources:
   - ./verification-admission.yaml
   - ./home-ops
   - ./onward
+  - ./onward-staging

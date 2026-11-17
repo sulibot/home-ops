@@ -86,13 +86,11 @@ data:
       condition:
       - condition: template
         value_template: >-
-          {{ trigger.to_state is not none
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state in ['on', 'off']
              and trigger.to_state.state == 'on'
              and trigger.to_state.attributes.get('brightness') is not none
-             and (
-               trigger.from_state is none
-               or trigger.from_state.attributes.get('brightness') != trigger.to_state.attributes.get('brightness')
-             ) }}
+             and trigger.from_state.attributes.get('brightness') != trigger.to_state.attributes.get('brightness') }}
       action:
       - variables:
           target_lights: >-

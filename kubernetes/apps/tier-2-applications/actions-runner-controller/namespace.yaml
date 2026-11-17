@@ -5,3 +5,9 @@ metadata:
   name: actions-runner-system
   annotations:
     kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    # The onward-staging-runner pods run a privileged BuildKit sidecar. The
+    # cluster enforces baseline by default, and its Talos admission settings
+    # do not exempt this namespace. Only ARC creates pods here, from the
+    # templates in this folder; workflow steps get no Kubernetes credentials.
+    pod-security.kubernetes.io/enforce: privileged

@@ -50,6 +50,11 @@ inputs = {
       mailto           = ["sulibot@gmail.com"]
       repeat_missed    = true
       stdexcludes      = true
+      # Each host runs its own backup process. Bound each to 32 MiB/s so
+      # concurrent RBD reads + CephFS backup writes do not starve client I/O.
+      # Applied via the Proxmox backup API on 2026-11-13 after BlueStore
+      # latency spikes during the unrestricted nightly backup window.
+      bwlimit = 32768
       # 30253 and 10212 removed: both decommissioned, neither exists on
       # any host (10212 wasn't even present in the live job's vmid list -
       # terraform's declared config had drifted from reality). 30253 was
@@ -73,7 +78,7 @@ inputs = {
         "200051",
         "200052",
       ]
-      notes_template   = "{{guestname}}"
+      notes_template = "{{guestname}}"
       prune_backups = {
         "keep-daily"   = "7"
         "keep-weekly"  = "4"
