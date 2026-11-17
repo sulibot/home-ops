@@ -80,10 +80,12 @@ variable "firewall_nat_rules" {
     action             = string
     disabled           = optional(bool, false)
     out_interface_list = optional(string)
-    out_interface       = optional(string)
-    src_address         = optional(string)
-    dst_address         = optional(string)
-    to_addresses        = optional(string)
+    out_interface      = optional(string)
+    src_address        = optional(string)
+    dst_address        = optional(string)
+    to_addresses       = optional(string)
+    protocol           = optional(string)
+    dst_port           = optional(string)
   }))
   default = []
 }

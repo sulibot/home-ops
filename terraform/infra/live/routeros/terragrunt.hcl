@@ -301,6 +301,19 @@ inputs = {
       dst_address    = "10.99.99.2"
       comment        = "ENG-453: masquerade to RouterOS's WG address for OCI Phoenix tunnel"
     },
+    {
+      # Samsung rejects control WebSockets from other subnets before showing
+      # its pairing prompt. Cilium presents HA traffic as talos01's IPv4.
+      # Limit translation to this TV and its HTTP/TLS control ports.
+      chain        = "srcnat"
+      action       = "src-nat"
+      src_address  = "10.104.0.4"
+      dst_address  = "10.30.0.33"
+      protocol     = "tcp"
+      dst_port     = "8001,8002"
+      to_addresses = "10.30.0.254"
+      comment      = "HA Samsung Frame control same-subnet compatibility"
+    },
   ]
 
   # ENG-453: this tunnel is nested inside a home-ops workstation's own
