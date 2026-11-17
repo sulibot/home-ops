@@ -40,6 +40,9 @@ spec:
         - name: OTEL_SERVICE_NAME
           value: authentik
     authentik:
+      listen:
+        # Direct proxies connect from the cluster's node and pod networks.
+        trusted_proxy_cidrs: "127.0.0.0/8,::1/128,10.101.0.0/16,fd00:101::/64,fd00:101:224::/60"
       log_level: info
       postgresql:
         port: 5432

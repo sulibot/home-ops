@@ -58,6 +58,7 @@ spec:
               tag: 1.6.0@sha256:9eb98c839d0b4b07f9230b96ad52de570f7f2a7c286c5992b4c04b6b26c08a3f
             env:
               TZ: America/Los_Angeles
+              LISTEN_ADDRESS: "::"
               PORT: &port 5580
               LOG_LEVEL: debug
               PRIMARY_INTERFACE: net1
