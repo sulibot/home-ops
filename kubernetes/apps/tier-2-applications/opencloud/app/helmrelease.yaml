@@ -39,7 +39,7 @@ spec:
           app:
             image:
               repository: docker.io/opencloudeu/opencloud-rolling
-              tag: 7.5.0@sha256:6db1cfb06d430a663f16e9f33dcd4596d82a4875be0b4df233c26ce5f667ea74
+              tag: 9.2.0@sha256:99698aea6bd88cf28004c773941cf69e2d24da136a3a45f9819b90b60506d14d
             command:
               - /bin/sh
               - -c
