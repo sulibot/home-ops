@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: ghcr.io/ecwilsonaz/mediasage
-              tag: latest@sha256:684c7b8245abaf1b12b2c88d59dd344049dc12ac7cb7c1b561ed51bf85791a79
+              tag: latest@sha256:df1582f4732439312ab5b29b75e317d5e3c0f9eb55840e6f53cf42ee2e094039
             # Image entrypoint hardcodes `--host 0.0.0.0` (IPv4-only). This cluster is
             # dual-stack with IPv6 as the pod's primary address, so kubelet probes and
             # the gateway route would get connection-refused. Bind dual-stack instead.
