@@ -109,10 +109,17 @@ spec:
                     fieldPath: status.hostIP
             resources:
               requests:
-                # Measured 24h peaks were ~3.5 CPU and 2.95 GiB working set.
+                # Measured 24h peaks were ~3.5 CPU. Memory: onward's lint step
+                # (ESLint with typed rules, Node heap capped at 4096 MiB by the
+                # workflow) held the pod at the old 4Gi limit in 39 of 44 runs
+                # measured on 2026-11-16/17; over it, the pod swapped and lint
+                # went from about 4 to 10-20 minutes. 6Gi leaves the heap cap
+                # plus the rest of the job under the limit. Request equals limit
+                # so the scheduler accounts for all of it instead of packing two
+                # memory-heavy runners onto one 16 GB worker.
                 # Requests must be honest enough for safe scheduler bin-packing.
                 cpu: "1"
-                memory: 3Gi
+                memory: 6Gi
               limits:
                 cpu: "4"
-                memory: 4Gi
+                memory: 6Gi

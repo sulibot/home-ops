@@ -16,10 +16,11 @@ spec:
   # Keep one pod of admission headroom above maxRunners. The scale-set ceiling
   # remains two; matching the quota exactly makes normal saturation look like
   # an exhausted-namespace incident to kube-prometheus-stack.
+  # Memory is three pods at the onward runner's 6Gi request.
   hard:
     count/pods: "3"
     requests.cpu: "3"
-    requests.memory: 9Gi
+    requests.memory: 18Gi
   scopeSelector:
     matchExpressions:
       - operator: In
