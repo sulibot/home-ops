@@ -28,7 +28,7 @@ terraform {
   backend "gcs" {}
 
   required_providers {
-    oci  = { source = "oracle/oci", version = ">= 6.0.0, < 7.0.0" }
+    oci  = { source = "oracle/oci", version = "< 10.0.0" }
     sops = { source = "carlpett/sops", version = "~> 1.4.0" }
   }
 }
