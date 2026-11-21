@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: twentycrm/twenty
-              tag: v1.23.9@sha256:dfaa3c9aafa6a10eb8ab5305dcd0343b78e91180587cd2141966e56ef061110b
+              tag: v2.60.1@sha256:b190e54ca434ea1ee47fe73b8d76e77d0bf3c6f734fcec58e414108d6867939c
             command:
               - yarn
               - start:prod
@@ -106,7 +106,7 @@ spec:
           app:
             image:
               repository: twentycrm/twenty
-              tag: v1.23.9@sha256:dfaa3c9aafa6a10eb8ab5305dcd0343b78e91180587cd2141966e56ef061110b
+              tag: v2.60.1@sha256:b190e54ca434ea1ee47fe73b8d76e77d0bf3c6f734fcec58e414108d6867939c
             command:
               - yarn
               - worker:prod
