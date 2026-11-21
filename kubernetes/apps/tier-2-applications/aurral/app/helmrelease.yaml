@@ -96,7 +96,7 @@ spec:
           app:
             image:
               repository: ghcr.io/lklynet/aurral
-              tag: latest@sha256:fbe71cefb016cc9bc1528cc8eafbac2d658310d95a066c3673c5760c75178a62
+              tag: latest@sha256:dfca50e61cfdea54506c9836431a3c6b526873e0650f4a348a4a032a1324b7dc
             env:
               TZ: America/Los_Angeles
               # --experimental-loader: aurral is ESM ("type": "module");
